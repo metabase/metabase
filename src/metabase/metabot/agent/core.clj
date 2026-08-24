@@ -205,6 +205,15 @@
               (= (:finish-reason %) "length"))
         parts))
 
+(defn- terminal-error-message
+  "Message from a tool failure no retry can fix (a permission denial), or nil if there was none."
+  [parts]
+  (some (fn [part]
+          (when (and (= (:type part) :tool-output)
+                     (get-in part [:result :terminal-error?]))
+            (not-empty (get-in part [:result :output]))))
+        parts))
+
 (defn- should-continue?
   "Determine if agent should continue iterating."
   [iteration max-iterations terminal-tools parts]
@@ -492,6 +501,11 @@
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
 
+(defn- terminal-error-text-part
+  "Tool results are not rendered in the conversation, so a terminal error needs assistant text."
+  [message]
+  {:type :text, :id (str (random-uuid)), :text message})
+
 (defn- error-part [^Exception e]
   {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
 
@@ -568,24 +582,37 @@
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
-          (cond
-            (reduced? result')
-            ;; consumer signalled early termination (e.g. client disconnect / cancellation)
-            (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
+          ;; these profiles cannot answer in text, so a denial would otherwise loop to max-iterations
+          (let [terminal-error (when (:required-tool-call? profile)
+                                 (terminal-error-message parts))]
+            (cond
+              (reduced? result')
+              ;; consumer signalled early termination (e.g. client disconnect / cancellation)
+              (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
 
-            (should-continue? iteration max-iter terminal-tools parts)
-            (assoc loop-state :result result' :iteration (inc iteration))
+              terminal-error
+              (let [result'' (rf result' (terminal-error-text-part terminal-error))]
+                (if (reduced? result'')
+                  (assoc loop-state :status :reduced :finish-reason :reduced :result @result'')
+                  (do (log/info "Agent loop complete" {:iterations iteration :reason :terminal-error})
+                      (assoc loop-state
+                             :status :done
+                             :finish-reason :terminal-error
+                             :result (rf result'' (final-state-part @memory-atom))))))
 
-            :else
-            (let [reason (finish-reason iteration max-iter terminal-tools parts)]
-              (if (= reason :length)
-                (log/warn "Agent loop complete" {:iterations iteration :reason reason})
-                (log/info "Agent loop complete" {:iterations iteration :reason reason}))
-              (assoc loop-state
-                     :status :done
-                     ;; surfaced so run-agent-loop can record it on the turn span
-                     :finish-reason reason
-                     :result (rf result' (final-state-part @memory-atom))))))))))
+              (should-continue? iteration max-iter terminal-tools parts)
+              (assoc loop-state :result result' :iteration (inc iteration))
+
+              :else
+              (let [reason (finish-reason iteration max-iter terminal-tools parts)]
+                (if (= reason :length)
+                  (log/warn "Agent loop complete" {:iterations iteration :reason reason})
+                  (log/info "Agent loop complete" {:iterations iteration :reason reason}))
+                (assoc loop-state
+                       :status :done
+                       ;; surfaced so run-agent-loop can record it on the turn span
+                       :finish-reason reason
+                       :result (rf result' (final-state-part @memory-atom)))))))))))
 
 ;;; Public API
 

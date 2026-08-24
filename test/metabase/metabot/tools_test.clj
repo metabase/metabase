@@ -101,7 +101,12 @@
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "document_construct_model_chart"))
-    (is (contains? tools "document_construct_sql_chart"))))
+    (testing "document_construct_sql_chart needs the SQL capability, like the tools it delegates to"
+      (is (not (contains? tools "document_construct_sql_chart")))
+      (is (contains? (binding [scope/*current-user-scope* api-scope/unrestricted]
+                       (profiles/get-tools-for-profile :document-generate-content
+                                                       #{:permission-write-sql-queries}))
+                     "document_construct_sql_chart")))))
 
 (deftest ^:parallel get-tools-for-slackbot-profile-test
   (let [tools (tools-for-profile :slackbot)]

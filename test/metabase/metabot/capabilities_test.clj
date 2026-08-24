@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.capabilities :as capabilities]
+   [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
@@ -50,6 +51,14 @@
       (mt/with-current-user (mt/user->id :rasta)
         (is (= #{"frontend:something_new" "some:other_capability"}
                (capabilities/enforce-permissions #{"frontend:something_new" "some:other_capability"})))))))
+
+(deftest enforce-permissions-and-native-access-check-disagree-without-a-bound-user-test
+  (testing "the tool-offering gate grants everything rather than throwing"
+    (is (= claimed-capabilities (capabilities/enforce-permissions claimed-capabilities))))
+  (testing "the per-database gate still refuses"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"do not have permission to write SQL queries"
+                          (sql.common/check-native-query-access! (mt/id))))))
 
 (deftest enforce-permissions-leaves-empty-capabilities-untouched-test
   (testing "an absent or empty capability set is returned as-is without a permission lookup"

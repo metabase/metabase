@@ -212,7 +212,7 @@
                   (is (= "code_edit" (:data-type (first parts)))))))))))))
 
 (def ^:private no-native-permission-output
-  "You do not have permission to write SQL queries against this database. Use the query builder instead.")
+  "You do not have permission to write SQL queries against this database. Native query permissions are required.")
 
 (deftest create-sql-query-refuses-database-without-native-permission-test
   (testing "create_sql_query is allowed per database, not per instance"
@@ -231,11 +231,12 @@
                                           :title       "Results"}))
                                "SQL query successfully constructed")))
           (testing "a database the user can browse but not query natively is refused"
-            (is (= no-native-permission-output
-                   (:output (agent-sql/create-sql-query-tool
-                             {:database_id builder-db
-                              :sql_query   "SELECT 1"
-                              :title       "Results"}))))))))))
+            (let [result (agent-sql/create-sql-query-tool {:database_id builder-db
+                                                           :sql_query   "SELECT 1"
+                                                           :title       "Results"})]
+              (is (= no-native-permission-output (:output result)))
+              (is (true? (:terminal-error? result))
+                  "marked terminal so a forced-tool-call profile stops instead of retrying"))))))))
 
 (deftest edit-and-replace-sql-query-refuse-database-without-native-permission-test
   (testing "edit_sql_query and replace_sql_query refuse a query whose database the user cannot query natively"

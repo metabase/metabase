@@ -37,6 +37,9 @@
     :permission-write-transforms})
 
 (defn- granted-permission-capabilities
+  "Nil user grants everything as a crash guard -- `query-creation-capabilities` throws there under
+  EE with `:library`. Safe because `sql.common/check-native-query-access!` still refuses per
+  database."
   []
   (if (or api/*is-superuser?* (nil? api/*current-user-id*))
     permission-capabilities
