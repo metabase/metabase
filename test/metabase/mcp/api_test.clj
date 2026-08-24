@@ -74,8 +74,18 @@
                                body))
 
 (defn- save-access-token!
-  "Persist an OAuth access token into the provider backing the MCP endpoint."
+  "Persist an OAuth access token into the provider backing the MCP endpoint.
+
+   Token resolution fails closed when the issuing client is gone (SEC-863), so also make sure the
+   `test-client` row exists. Callers wrap this in a rollback-only transaction, which cleans it up."
   [token user-id scopes]
+  (when-not (t2/exists? :model/OAuthClient :client_id "test-client")
+    (t2/insert! :model/OAuthClient {:client_id         "test-client"
+                                    :redirect_uris     ["https://example.com/callback"]
+                                    :grant_types       ["authorization_code"]
+                                    :response_types    ["code"]
+                                    :scopes            ["openid"]
+                                    :registration_type "static"}))
   (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
                                 token (str user-id) "test-client" (vec scopes)
                                 (+ (inst-ms (java.util.Date.)) 3600000) nil))
