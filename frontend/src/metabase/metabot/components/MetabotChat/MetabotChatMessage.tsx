@@ -15,6 +15,7 @@ import {
   type MetabotDataPart,
   type MetabotDebugToolCallMessage,
   type MetabotIncompleteFinishReason,
+  type MetabotKnownTurnErrorCode,
   type MetabotMessage,
   type MetabotMessagePart,
   type MetabotMessageStatus,
@@ -466,12 +467,12 @@ export const AgentMessage = ({
 // subscription an upgrade, the quota a reset, the user a permission. Everything else gets a Retry —
 // most usefully a provider failure, whose retry resolves to the fallback provider because the failure
 // was recorded when the turn died.
-const UNRETRIABLE_ERROR_TYPES = [
+const UNRETRIABLE_ERROR_TYPES = new Set<string | undefined>([
   "conversation_out_of_sync",
   "metabase_ai_managed_locked",
   "ai_usage_limit_reached",
   "permission_denied",
-];
+] satisfies MetabotKnownTurnErrorCode[]);
 
 const AgentErroredTurnAlert = ({
   error,
@@ -488,7 +489,7 @@ const AgentErroredTurnAlert = ({
 }) => {
   const isOutOfSync = error.type === "conversation_out_of_sync";
   const canRetry =
-    onRetry != null && !UNRETRIABLE_ERROR_TYPES.includes(error.type ?? "");
+    onRetry != null && !UNRETRIABLE_ERROR_TYPES.has(error.type);
 
   return (
     <AgentTurnAlert
