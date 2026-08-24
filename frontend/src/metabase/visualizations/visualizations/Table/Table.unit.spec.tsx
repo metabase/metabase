@@ -10,12 +10,12 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import { loadVisualizationComponents } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import { loadVisualizationComponents } from "metabase/viz-core/lib/registry";
+import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {

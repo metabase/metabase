@@ -1,6 +1,6 @@
 import type { ColorPalette } from "metabase/ui/colors/types";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/viz-core/shared/utils/theme";
+import type { RenderingContext } from "metabase/viz-core/types";
 
 import { createColorGetter } from "../lib/colors";
 

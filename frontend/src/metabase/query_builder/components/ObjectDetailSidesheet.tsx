@@ -10,8 +10,8 @@ import {
   getRowUrl,
   getSingleResultsRow,
 } from "metabase/visualizations/components/ObjectDetail/utils";
-import { getSeriesWithDisplay } from "metabase/visualizations/lib/series";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { getSeriesWithDisplay } from "metabase/viz-core/lib/series";
+import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
@@ -114,8 +114,8 @@ function ObjectDetailSidesheetInner() {
   );
   const showImplicitActions = Boolean(
     question.canWrite() &&
-    question.type() === "model" &&
-    question.supportsImplicitActions(),
+      question.type() === "model" &&
+      question.supportsImplicitActions(),
   );
 
   return (

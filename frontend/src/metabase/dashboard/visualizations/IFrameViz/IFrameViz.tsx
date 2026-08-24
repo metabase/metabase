@@ -14,7 +14,7 @@ import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   getAllowedIframeAttributes,
   isAllowedIframeUrl,
-} from "metabase/visualizations/lib/iframe";
+} from "metabase/viz-core/lib/iframe";
 import type {
   Dashboard,
   VirtualDashboardCard,
@@ -177,10 +177,10 @@ function ForbiddenDomainError({ url }: { url: string }) {
 
   const renderMessage = () => {
     if (isAdmin) {
-      return jt`If you’re sure you trust this domain, you can add it to your ${<Link key="link" className={CS.link} to="/admin/settings/general#allowed-iframe-hosts" target="_blank">{t`allowed domains list`}</Link>} in admin settings.`;
+      return jt`If you’re sure you trust this domain, you can add it to your ${(<Link key="link" className={CS.link} to="/admin/settings/general#allowed-iframe-hosts" target="_blank">{t`allowed domains list`}</Link>)} in admin settings.`;
     }
     return showMetabaseLinks
-      ? jt`If you’re sure you trust this domain, you can ask an admin to add it to the ${<ExternalLink key="link" className={CS.link} href={docsUrl}>{t`allowed domains list`}</ExternalLink>}.`
+      ? jt`If you’re sure you trust this domain, you can ask an admin to add it to the ${(<ExternalLink key="link" className={CS.link} href={docsUrl}>{t`allowed domains list`}</ExternalLink>)}.`
       : t`If you’re sure you trust this domain, you can ask an admin to add it to the allowed domains list.`;
   };
 

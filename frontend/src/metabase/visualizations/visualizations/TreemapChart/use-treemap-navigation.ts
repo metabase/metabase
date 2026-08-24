@@ -7,15 +7,15 @@ import {
 } from "react";
 import { useLatest } from "react-use";
 
-import { getTreemapNodeKey } from "metabase/visualizations/echarts/graph/treemap/model/data";
+import { getTreemapNodeKey } from "metabase/viz-core/echarts/graph/treemap/model/data";
 import {
   getNode,
   getTreemapNodeId,
-} from "metabase/visualizations/echarts/graph/treemap/model/tree";
+} from "metabase/viz-core/echarts/graph/treemap/model/tree";
 import type {
   NodeId,
   TreemapTree,
-} from "metabase/visualizations/echarts/graph/treemap/model/types";
+} from "metabase/viz-core/echarts/graph/treemap/model/types";
 
 interface TreemapNavigation {
   viewRootId: NodeId | null;

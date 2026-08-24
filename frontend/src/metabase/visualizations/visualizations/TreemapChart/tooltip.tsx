@@ -3,8 +3,8 @@ import type { TooltipOption } from "echarts/types/dist/shared";
 import _ from "underscore";
 
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
-import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { getTreemapNodeKey } from "metabase/visualizations/echarts/graph/treemap/model/data";
+import { EChartsTooltip } from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
+import { getTreemapNodeKey } from "metabase/viz-core/echarts/graph/treemap/model/data";
 import {
   type TreemapInlineValueIds,
   getTreemapTooltipContext,
@@ -12,14 +12,14 @@ import {
   isGroupHeaderNode,
   isPointerBelowGroupHeader,
   isTreemapTooltipSuppressed,
-} from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
-import { getTreemapNodeRectById } from "metabase/visualizations/echarts/graph/treemap/model/tree";
+} from "metabase/viz-core/echarts/graph/treemap/model/tooltip";
+import { getTreemapNodeRectById } from "metabase/viz-core/echarts/graph/treemap/model/tree";
 import type {
   ChartPointer,
   TreemapNode,
   TreemapTree,
-} from "metabase/visualizations/echarts/graph/treemap/model/types";
-import { getTooltipBaseOption } from "metabase/visualizations/echarts/tooltip";
+} from "metabase/viz-core/echarts/graph/treemap/model/types";
+import { getTooltipBaseOption } from "metabase/viz-core/echarts/tooltip";
 
 const hasId = (value: unknown): value is { id: unknown } =>
   _.isObject(value) && "id" in value;

@@ -1,21 +1,21 @@
 import { t } from "ttag";
 
-import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
+import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
+import { GRAPH_GOAL_SETTINGS } from "metabase/viz-core/lib/settings/goal";
 import {
   BOXPLOT_DATA_SETTINGS,
   BOXPLOT_SETTINGS,
   GRAPH_AXIS_SETTINGS,
-} from "metabase/visualizations/lib/settings/graph";
-import { validateChartDataSettings } from "metabase/visualizations/lib/settings/validation";
+} from "metabase/viz-core/lib/settings/graph";
+import { validateChartDataSettings } from "metabase/viz-core/lib/settings/validation";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
+} from "metabase/viz-core/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
   VisualizationDefinition,
-} from "metabase/visualizations/types";
-import { transformSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
+} from "metabase/viz-core/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 

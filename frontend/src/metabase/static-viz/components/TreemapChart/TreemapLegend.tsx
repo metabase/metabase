@@ -2,8 +2,8 @@ import { Group } from "@visx/group";
 
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import { truncateText } from "metabase/visualizations/lib/text";
-import type { RenderingContext } from "metabase/visualizations/types";
+import { truncateText } from "metabase/viz-core/lib/text";
+import type { RenderingContext } from "metabase/viz-core/types";
 
 import {
   DOT_GAP,

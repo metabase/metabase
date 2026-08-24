@@ -3,8 +3,8 @@ import { t } from "ttag";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/viz-core/types";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { Action } from "./Action";

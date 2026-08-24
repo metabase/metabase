@@ -2,9 +2,11 @@ import { SdkVisualizationWrapper } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box, Flex } from "metabase/ui";
-
-import { EChartsTooltip, type EChartsTooltipProps } from "./EChartsTooltip";
-import S from "./EChartsTooltip.module.css";
+import {
+  EChartsTooltip,
+  type EChartsTooltipProps,
+} from "metabase/viz-core/components/ChartTooltip/EChartsTooltip/EChartsTooltip";
+import S from "metabase/viz-core/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 
 const data: EChartsTooltipProps = {
   header: "Header Text",

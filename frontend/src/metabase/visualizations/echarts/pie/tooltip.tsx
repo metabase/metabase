@@ -1,14 +1,12 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
-import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTooltipModel } from "metabase/visualizations/visualizations/PieChart/use-chart-events";
-
-import { getTooltipBaseOption } from "../tooltip";
-
-import type { PieChartFormatters } from "./format";
-import type { PieChartModel } from "./model/types";
-import { getSliceKeyPath } from "./util";
+import { EChartsTooltip } from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
+import type { PieChartFormatters } from "metabase/viz-core/echarts/pie/format";
+import type { PieChartModel } from "metabase/viz-core/echarts/pie/model/types";
+import { getSliceKeyPath } from "metabase/viz-core/echarts/pie/util";
+import { getTooltipBaseOption } from "metabase/viz-core/echarts/tooltip";
 
 interface ChartItemTooltip {
   chartModel: PieChartModel;

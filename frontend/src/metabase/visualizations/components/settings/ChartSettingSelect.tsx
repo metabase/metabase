@@ -6,7 +6,7 @@ import { Select, type SelectProps, Stack } from "metabase/ui";
 import {
   decodeWidgetValue,
   encodeWidgetValue,
-} from "metabase/visualizations/lib/settings/widgets";
+} from "metabase/viz-core/lib/settings/widgets";
 
 import S from "./ChartSettingSelect.module.css";
 import { WidgetPopoverPortalContext } from "./WidgetPopoverPortalContext";
@@ -134,7 +134,7 @@ export const ChartSettingSelect = ({
       data={data}
       disabled={disabled}
       value={selectedValue}
-      //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
+      //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in viz-core/lib/settings.ts where the onChange function is defined
       onChange={(v) => {
         onChange(
           // Unjustified type cast. FIXME

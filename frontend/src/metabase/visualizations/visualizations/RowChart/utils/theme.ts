@@ -2,8 +2,8 @@ import { useMemo } from "react";
 
 import { useMantineTheme } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import type { RowChartTheme } from "metabase/visualizations/shared/components/RowChart/types";
-import { getVisualizationTheme } from "metabase/visualizations/shared/utils/theme";
+import type { RowChartTheme } from "metabase/viz-core/shared/components/RowChart/types";
+import { getVisualizationTheme } from "metabase/viz-core/shared/utils/theme";
 
 export const useRowChartTheme = (
   fontFamily: string = "Lato",

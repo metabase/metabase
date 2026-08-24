@@ -7,11 +7,11 @@ import {
   getDefaultMapDimension,
   getDefaultMapMetric,
   getLegendTitles,
-} from "metabase/visualizations/lib/choropleth";
+} from "metabase/viz-core/lib/choropleth";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import type { GeoJSONData, RawSeries } from "metabase-types/api";
 
 import {

@@ -7,7 +7,7 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Button, Group, SegmentedControl, Stack, Text } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { CardDisplayType } from "metabase-types/api";
 
 import { ListViewColumnsSidebar } from "./ListViewColumnsSidebar";

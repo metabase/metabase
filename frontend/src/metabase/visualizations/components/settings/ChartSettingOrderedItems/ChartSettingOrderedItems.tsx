@@ -8,7 +8,7 @@ import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import { useDndSensors } from "metabase/common/hooks";
 import type { IconProps } from "metabase/ui";
 import type { AccentColorOptions } from "metabase/ui/colors/types";
-import type { ChartSettingOrderedItem } from "metabase/visualizations/types";
+import type { ChartSettingOrderedItem } from "metabase/viz-core/types";
 
 import { ColumnItem } from "../ColumnItem";
 
@@ -21,9 +21,8 @@ interface SortableColumnFunctions<T> {
   getItemName: (item: T) => string;
   onColorChange?: (item: T, color: string) => void;
 }
-interface ChartSettingOrderedItemsProps<
-  T extends ChartSettingOrderedItem,
-> extends SortableColumnFunctions<T> {
+interface ChartSettingOrderedItemsProps<T extends ChartSettingOrderedItem>
+  extends SortableColumnFunctions<T> {
   onSortEnd: ({ id, newIndex }: DragEndEvent) => void;
   items: T[];
   getId: (item: T) => string | number;

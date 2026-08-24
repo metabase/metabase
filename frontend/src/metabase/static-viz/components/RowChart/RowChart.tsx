@@ -4,17 +4,6 @@ import type { StaticChartProps } from "metabase/static-viz/components/StaticVisu
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import { getChartHeight } from "metabase/static-viz/lib/utils";
 import type { FontStyle, TextWidthMeasurer } from "metabase/utils/measure-text";
-import { extractRemappedColumns } from "metabase/visualizations";
-import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { RowChart } from "metabase/visualizations/shared/components/RowChart";
-import { getStaticChartTheme } from "metabase/visualizations/shared/components/RowChart/theme";
-import {
-  getGroupedDataset,
-  trimData,
-} from "metabase/visualizations/shared/utils/data";
-import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
-import type { RemappingHydratedChartData } from "metabase/visualizations/types";
 import {
   getColumnValueFormatter,
   getFormatters,
@@ -27,6 +16,17 @@ import {
   getLabels,
   getXValueRange,
 } from "metabase/visualizations/visualizations/RowChart/utils/settings";
+import { extractRemappedColumns } from "metabase/viz-core/lib/remapping";
+import { getChartGoal } from "metabase/viz-core/lib/settings/goal";
+import { getStackOffset } from "metabase/viz-core/lib/settings/stacking";
+import { RowChart } from "metabase/viz-core/shared/components/RowChart";
+import { getStaticChartTheme } from "metabase/viz-core/shared/components/RowChart/theme";
+import {
+  getGroupedDataset,
+  trimData,
+} from "metabase/viz-core/shared/utils/data";
+import { getTwoDimensionalChartSeries } from "metabase/viz-core/shared/utils/series";
+import type { RemappingHydratedChartData } from "metabase/viz-core/types";
 
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";

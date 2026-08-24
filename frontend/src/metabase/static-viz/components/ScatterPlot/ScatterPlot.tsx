@@ -4,11 +4,11 @@ import { init } from "echarts/core";
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getChartHeight } from "metabase/static-viz/lib/utils";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
-import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
+import { registerEChartsModules } from "metabase/viz-core/echarts";
+import { getChartLayout } from "metabase/viz-core/echarts/cartesian/layout";
+import { getLegendItems } from "metabase/viz-core/echarts/cartesian/model/legend";
+import { getScatterPlotModel } from "metabase/viz-core/echarts/cartesian/scatter/model";
+import { getScatterPlotOption } from "metabase/viz-core/echarts/cartesian/scatter/option";
 
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";

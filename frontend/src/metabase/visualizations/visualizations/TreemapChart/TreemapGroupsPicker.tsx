@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
-import { getTreemapChartColumns } from "metabase/visualizations/echarts/graph/treemap/model/data";
-import type { TreemapGroupsPickerProps } from "metabase/visualizations/types";
+import { getTreemapChartColumns } from "metabase/viz-core/echarts/graph/treemap/model/data";
+import type { TreemapGroupsPickerProps } from "metabase/viz-core/types";
 import type { TreemapRow } from "metabase-types/api";
 
 export function TreemapGroupsPicker({

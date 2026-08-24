@@ -1,7 +1,7 @@
 import { registerStaticVisualizations } from "metabase/static-viz/register";
-import { getVisualizationTransformed } from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { StaticVisualizationProps } from "metabase/visualizations/types";
+import { getVisualizationTransformed } from "metabase/viz-core/lib/registry";
+import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
+import type { StaticVisualizationProps } from "metabase/viz-core/types";
 
 import { BoxPlotChart } from "../BoxPlotChart/BoxPlotChart";
 import { ComboChart } from "../ComboChart";

@@ -4,8 +4,8 @@ import { isNotNull } from "metabase/utils/types";
 import {
   getIconForVisualizationType,
   visualizations,
-} from "metabase/visualizations";
-import { getSensibleVisualizations } from "metabase/visualizations/lib/sensibility";
+} from "metabase/viz-core/lib/registry";
+import { getSensibleVisualizations } from "metabase/viz-core/lib/sensibility";
 import type {
   Dataset,
   IconName,

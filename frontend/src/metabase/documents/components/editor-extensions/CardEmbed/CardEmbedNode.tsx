@@ -51,7 +51,7 @@ import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import { getDatasetError } from "metabase/visualizations/lib/errors";
+import { getDatasetError } from "metabase/viz-core/lib/errors";
 import Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
 

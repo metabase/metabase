@@ -5,9 +5,9 @@ import { act, screen, waitFor, within } from "__support__/ui";
 import { setup } from "metabase/query_builder/containers/test-utils";
 import { getCard } from "metabase/query_builder/selectors";
 import { checkNotNull } from "metabase/utils/types";
-import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
+import { registerVisualization } from "metabase/viz-core/lib/registry";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { CustomVizDisplayType } from "metabase-types/api";
 import {

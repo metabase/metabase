@@ -3,26 +3,26 @@ import { type EChartsType, init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { extractRemappings } from "metabase/visualizations";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getTreemapColors } from "metabase/visualizations/echarts/graph/treemap/model/colors";
+import { registerEChartsModules } from "metabase/viz-core/echarts";
+import { getTreemapColors } from "metabase/viz-core/echarts/graph/treemap/model/colors";
 import {
   getTreemapChartColumns,
   getTreemapData,
-} from "metabase/visualizations/echarts/graph/treemap/model/data";
-import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import { shouldShowParentLabels } from "metabase/visualizations/echarts/graph/treemap/model/labels";
-import { measureTreemapLabelLayouts } from "metabase/visualizations/echarts/graph/treemap/model/measure";
-import { getTreemapLayoutNodes } from "metabase/visualizations/echarts/graph/treemap/model/tree";
-import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
+} from "metabase/viz-core/echarts/graph/treemap/model/data";
+import { getTreemapFormatters } from "metabase/viz-core/echarts/graph/treemap/model/formatters";
+import { shouldShowParentLabels } from "metabase/viz-core/echarts/graph/treemap/model/labels";
+import { measureTreemapLabelLayouts } from "metabase/viz-core/echarts/graph/treemap/model/measure";
+import { getTreemapLayoutNodes } from "metabase/viz-core/echarts/graph/treemap/model/tree";
+import type { TreemapTree } from "metabase/viz-core/echarts/graph/treemap/model/types";
 import {
   type TreemapChartOptionConfig,
   getStaticTreemapOption,
-} from "metabase/visualizations/echarts/graph/treemap/option/option";
+} from "metabase/viz-core/echarts/graph/treemap/option/option";
+import { extractRemappings } from "metabase/viz-core/lib/remapping";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 
 import Watermark from "../../watermark.svg?component";
 

@@ -3,15 +3,15 @@ import _ from "underscore";
 
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Divider, Flex } from "metabase/ui";
-import { getVisualizationRaw } from "metabase/visualizations";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings/BaseChartSettings";
 import { ChartSettingsVisualization } from "metabase/visualizations/components/ChartSettings/ChartSettingsVisualization";
 import {
   useChartSettingsState,
   useSettingsWidgets,
 } from "metabase/visualizations/components/ChartSettings/hooks";
-import { getClickBehaviorSettings } from "metabase/visualizations/lib/settings";
-import { sanitizeDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import { getVisualizationRaw } from "metabase/viz-core/lib/registry";
+import { getClickBehaviorSettings } from "metabase/viz-core/lib/settings";
+import { sanitizeDashcardSettings } from "metabase/viz-core/lib/settings/typed-utils";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type { DashboardChartSettingsProps } from "./types";

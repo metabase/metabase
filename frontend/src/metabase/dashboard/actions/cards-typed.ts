@@ -17,8 +17,8 @@ import {
   getPositionForNewDashCard,
 } from "metabase/utils/dashboard_grid";
 import { checkNotNull } from "metabase/utils/types";
-import { getRegisteredDefaultSize } from "metabase/visualizations";
 import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
+import { getRegisteredDefaultSize } from "metabase/viz-core/lib/registry";
 import type {
   Card,
   CardId,
@@ -491,8 +491,8 @@ export const removeCardFromDashboard = createThunkAction(
       const dashcardCountByCardId = _.countBy(dashcards, "card_id");
       const isLastDashboardQuestionDashcard = Boolean(
         dashcard.card_id &&
-        dashcard.card.dashboard_id !== null &&
-        dashcardCountByCardId[dashcard.card_id] <= 1,
+          dashcard.card.dashboard_id !== null &&
+          dashcardCountByCardId[dashcard.card_id] <= 1,
       );
       dispatch(
         addUndo({

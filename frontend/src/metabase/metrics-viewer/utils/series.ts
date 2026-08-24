@@ -15,8 +15,8 @@ import { isNotNull } from "metabase/utils/types";
 import {
   formatBreakoutValue,
   getBreakoutSeriesName,
-} from "metabase/visualizations/echarts/cartesian/model/series";
-import { MAX_SERIES } from "metabase/visualizations/lib/utils";
+} from "metabase/viz-core/echarts/cartesian/model/series";
+import { MAX_SERIES } from "metabase/viz-core/lib/utils";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {

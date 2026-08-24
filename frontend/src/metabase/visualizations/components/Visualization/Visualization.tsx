@@ -31,40 +31,39 @@ import { getFont } from "metabase/styled-components/selectors";
 import type { IconProps } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoizeClass } from "metabase/utils/memoize";
-import {
-  extractRemappings,
-  getVisualizationComponent,
-  getVisualizationTransformed,
-  prefetchVisualizationComponent,
-} from "metabase/visualizations";
+import { getVisualizationComponent } from "metabase/visualizations";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
-import {
-  ChartSettingsError,
-  MinRowsError,
-} from "metabase/visualizations/lib/errors";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import {
   type CardSlownessStatus,
   type ClickActionModeGetter,
   type ClickActionsMode,
   type ClickObject,
-  type HighlightedObject,
-  type HoveredObject,
   type OnBrush,
   type QueryClickActionsMode,
-  type VisualizationDefinition,
-  type VisualizationGridSize,
   type VisualizationPassThroughProps,
   isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
+import { ChartSettingsError, MinRowsError } from "metabase/viz-core/lib/errors";
+import {
+  getVisualizationTransformed,
+  prefetchVisualizationComponent,
+} from "metabase/viz-core/lib/registry";
+import { extractRemappings } from "metabase/viz-core/lib/remapping";
+import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
+import { getCardKey, isSameSeries } from "metabase/viz-core/lib/utils";
+import type {
+  HighlightedObject,
+  HoveredObject,
+  VisualizationDefinition,
+  VisualizationGridSize,
+} from "metabase/viz-core/types";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {

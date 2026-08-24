@@ -3,13 +3,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color as colorHex } from "metabase/ui/colors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { segmentIsValid } from "metabase/visualizations/lib/utils";
+import { columnSettings } from "metabase/viz-core/lib/settings/column";
+import { segmentIsValid } from "metabase/viz-core/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/viz-core/types";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { isGaugeSegmentsArray } from "./types";

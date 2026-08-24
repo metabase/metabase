@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { formatPercent as formatPercentDefault } from "metabase/utils/formatting";
-import { getTreemapNodeKey } from "metabase/visualizations/echarts/graph/treemap/model/data";
-import { getTreemapPercentOfTotalFormatter } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import { hasChildren } from "metabase/visualizations/echarts/graph/treemap/model/tree";
-import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
-import { getTreemapTotal } from "metabase/visualizations/echarts/graph/treemap/model/value";
+import { getTreemapNodeKey } from "metabase/viz-core/echarts/graph/treemap/model/data";
+import { getTreemapPercentOfTotalFormatter } from "metabase/viz-core/echarts/graph/treemap/model/formatters";
+import { hasChildren } from "metabase/viz-core/echarts/graph/treemap/model/tree";
+import type { TreemapTree } from "metabase/viz-core/echarts/graph/treemap/model/types";
+import { getTreemapTotal } from "metabase/viz-core/echarts/graph/treemap/model/value";
 
 export const LEGEND_WIDTH = 363;
 export const ROW_HEIGHT = 16;

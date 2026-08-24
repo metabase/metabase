@@ -1,19 +1,19 @@
 import type {
   BreakoutChartColumns,
   MultipleMetricsChartColumns,
-} from "metabase/visualizations/lib/graph/columns";
+} from "metabase/viz-core/lib/graph/columns";
 import type {
   BarData,
   Series,
-} from "metabase/visualizations/shared/components/RowChart/types";
+} from "metabase/viz-core/shared/components/RowChart/types";
 import type {
   GroupedDatum,
   SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
+} from "metabase/viz-core/shared/types/data";
 import type {
   RemappingHydratedDatasetColumn,
   TooltipRowModel,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,

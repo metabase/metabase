@@ -11,20 +11,20 @@ import {
   columnSettings,
   isPivoted,
   tableColumnSettings,
-} from "metabase/visualizations/lib/settings/column";
-import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
+} from "metabase/viz-core/lib/settings/column";
+import { getOptionFromColumn } from "metabase/viz-core/lib/settings/utils";
+import { makeCellBackgroundGetter } from "metabase/viz-core/lib/table_format";
+import { getDefaultPivotColumn } from "metabase/viz-core/lib/utils";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
+} from "metabase/viz-core/shared/utils/sizes";
 import type {
   ColumnSettingDefinition,
   ComputedVisualizationSettings,
   FormattableColumn,
   VisualizationDefinition,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import {
   isAvatarURL,
   isCoordinate,

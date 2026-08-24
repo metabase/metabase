@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { formatPercent } from "metabase/utils/formatting";
-import type { TooltipRowModel } from "metabase/visualizations/types";
+import type { TooltipRowModel } from "metabase/viz-core/types";
 
 import S from "./TooltipRow.module.css";
 

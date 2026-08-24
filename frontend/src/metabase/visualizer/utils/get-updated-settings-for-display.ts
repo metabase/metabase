@@ -4,7 +4,7 @@ import { isNotNull } from "metabase/utils/types";
 import {
   getMaxDimensionsSupported,
   isCartesianChart,
-} from "metabase/visualizations";
+} from "metabase/viz-core/lib/registry";
 import type {
   DatasetColumn,
   VisualizationDisplay,

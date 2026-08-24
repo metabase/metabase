@@ -1,7 +1,7 @@
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import type { RawSeries } from "metabase-types/api";
 
 export interface StaticChartProps {

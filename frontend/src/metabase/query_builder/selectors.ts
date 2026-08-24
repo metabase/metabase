@@ -20,22 +20,17 @@ import { getSetting } from "metabase/settings";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
-import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { TimeSeriesInterval } from "metabase/viz-core/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInterval,
   minTimeseriesUnit,
-} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import {
-  getXValues,
-  isTimeseries,
-} from "metabase/visualizations/lib/renderer_utils";
-import { createRawSeries } from "metabase/visualizations/lib/series";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+} from "metabase/viz-core/echarts/cartesian/utils/timeseries";
+import { getVisualizationTransformed } from "metabase/viz-core/lib/registry";
+import { extractRemappings } from "metabase/viz-core/lib/remapping";
+import { getXValues, isTimeseries } from "metabase/viz-core/lib/renderer_utils";
+import { createRawSeries } from "metabase/viz-core/lib/series";
+import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -498,13 +493,13 @@ export const getIsResultDirty = createSelector(
       Lib.queryDisplayInfo(currentQuestion.query()).isEditable;
     return Boolean(
       haveParametersChanged ||
-      (isEditable &&
-        !areQueriesEquivalent({
-          originalQuestion,
-          lastRunQuestion,
-          currentQuestion,
-          tableMetadata,
-        })),
+        (isEditable &&
+          !areQueriesEquivalent({
+            originalQuestion,
+            lastRunQuestion,
+            currentQuestion,
+            tableMetadata,
+          })),
     );
   },
 );

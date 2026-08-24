@@ -9,8 +9,8 @@ import type {
   FunnelDatum,
   FunnelStep,
   Step,
-} from "metabase/visualizations/lib/funnel/types";
-import { truncateText } from "metabase/visualizations/lib/text";
+} from "metabase/viz-core/lib/funnel/types";
+import { truncateText } from "metabase/viz-core/lib/text";
 
 import { formatNumber } from "../../../lib/numbers";
 import type { FunnelSettings } from "../types";

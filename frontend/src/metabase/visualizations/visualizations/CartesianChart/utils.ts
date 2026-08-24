@@ -2,19 +2,16 @@ import type { EChartsCoreOption } from "echarts/core";
 
 import { dayjs } from "metabase/dayjs";
 import { isNotNull } from "metabase/utils/types";
-import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
+import { getDatasetKey } from "metabase/viz-core/echarts/cartesian/model/dataset";
 import type {
   BaseCartesianChartModel,
   ChartDataset,
   DataKey,
   SeriesModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import { getDashboardAdjustedSettings } from "metabase/visualizations/shared/settings-adjustments";
-import type {
-  HighlightedObject,
-  HoveredObject,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/echarts/cartesian/model/types";
+import { getDashboardAdjustedSettings } from "metabase/viz-core/shared/settings-adjustments";
+import type { HighlightedObject, HoveredObject } from "metabase/viz-core/types";
 import type { RawSeries } from "metabase-types/api";
 
 import { normalizeDimensionValue } from "./events";

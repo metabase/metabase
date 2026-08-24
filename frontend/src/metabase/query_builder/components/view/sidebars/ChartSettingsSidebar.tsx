@@ -14,8 +14,8 @@ import {
   onCloseChartSettings,
   onOpenChartType,
 } from "metabase/redux/query-builder";
-import { visualizations } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { visualizations } from "metabase/viz-core/lib/registry";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, VisualizationSettings } from "metabase-types/api";
 

@@ -1,4 +1,4 @@
-import { getDefaultSize } from "metabase/visualizations/shared/utils/sizes";
+import { getDefaultSize } from "metabase/viz-core/shared/utils/sizes";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 /**

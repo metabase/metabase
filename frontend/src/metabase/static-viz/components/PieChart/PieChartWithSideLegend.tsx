@@ -1,9 +1,9 @@
 import { Group } from "@visx/group";
 
-import { DIMENSIONS } from "metabase/visualizations/echarts/pie/constants";
-import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
-import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
-import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
+import { DIMENSIONS } from "metabase/viz-core/echarts/pie/constants";
+import { getPieChartFormatters } from "metabase/viz-core/echarts/pie/format";
+import { getPieChartModel } from "metabase/viz-core/echarts/pie/model";
+import { getPieChartOption } from "metabase/viz-core/echarts/pie/option";
 
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";

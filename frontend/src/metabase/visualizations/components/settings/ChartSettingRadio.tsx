@@ -4,7 +4,7 @@ import { Radio, Stack, Text } from "metabase/ui";
 import {
   decodeWidgetValue,
   encodeWidgetValue,
-} from "metabase/visualizations/lib/settings/widgets";
+} from "metabase/viz-core/lib/settings/widgets";
 
 interface ChartSettingRadioProps {
   options: { name: string; value: string | null }[];

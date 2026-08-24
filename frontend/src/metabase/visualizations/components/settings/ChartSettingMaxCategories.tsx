@@ -5,7 +5,7 @@ import { Checkbox, Select, Stack, Text } from "metabase/ui";
 import type {
   AggregationFunction,
   ChartSettingMaxCategoriesProps,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 
 import { ChartSettingInputNumeric } from "./ChartSettingInputNumeric";
 

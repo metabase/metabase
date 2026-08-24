@@ -2,16 +2,16 @@ import { t } from "ttag";
 
 import { color } from "metabase/ui/utils/colors";
 import { displayNameForColumn } from "metabase/value-formatting";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { columnSettings } from "metabase/viz-core/lib/settings/column";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
+} from "metabase/viz-core/shared/utils/sizes";
 import type {
   ColumnSettingDefinition,
   FormattableColumn,
   VisualizationDefinition,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import * as Lib from "metabase-lib";
 import {
   isAvatarURL,

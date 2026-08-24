@@ -3,13 +3,13 @@ import _ from "underscore";
 
 import type { VisualizerState } from "metabase/redux/store/visualizer";
 import {
-  extractRemappings,
   getVisualization,
   getVisualizationTransformed,
   isCartesianChart,
-} from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+} from "metabase/viz-core/lib/registry";
+import { extractRemappings } from "metabase/viz-core/lib/remapping";
+import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
+import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { Card, DatasetData, RawSeries } from "metabase-types/api";
 
 import {

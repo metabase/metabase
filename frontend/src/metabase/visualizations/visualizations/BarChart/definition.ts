@@ -1,15 +1,14 @@
 import { t } from "ttag";
 
 import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import {
   COMBO_CHARTS_SETTINGS_DEFINITIONS,
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/definition";
-
-import type { VisualizationDefinition } from "../../types";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/viz-core/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/viz-core/types";
 
 const BarViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
   {

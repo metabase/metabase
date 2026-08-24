@@ -15,9 +15,6 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
-import { extractRemappings, isCartesianChart } from "metabase/visualizations";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { createDataSource } from "metabase/visualizer/utils/data-source";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import { mergeVisualizerData } from "metabase/visualizer/utils/merge-data";
@@ -25,6 +22,10 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils/split-series";
+import { isCartesianChart } from "metabase/viz-core/lib/registry";
+import { extractRemappings } from "metabase/viz-core/lib/remapping";
+import { extendCardWithDashcardSettings } from "metabase/viz-core/lib/settings/typed-utils";
+import { makeCellBackgroundGetter } from "metabase/viz-core/lib/table_format";
 import type {
   Card,
   DashCardVisualizationSettings,

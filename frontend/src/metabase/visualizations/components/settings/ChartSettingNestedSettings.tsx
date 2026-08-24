@@ -2,12 +2,12 @@
 import { Component, type ComponentType } from "react";
 import _ from "underscore";
 
-import { updateSettings } from "metabase/visualizations/lib/settings";
-import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
+import { updateSettings } from "metabase/viz-core/lib/settings";
+import { getSettingsWidgets } from "metabase/viz-core/lib/widgets";
 import type {
   ComputedVisualizationSettings,
   VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 import ChartSettingsWidget from "../ChartSettingsWidget";

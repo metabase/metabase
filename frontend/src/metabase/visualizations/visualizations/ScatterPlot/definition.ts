@@ -1,12 +1,7 @@
 import { t } from "ttag";
 
-import {
-  getDefaultSize,
-  getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
 import { getCartesianChartDefinition } from "metabase/visualizations/visualizations/CartesianChart/definition";
-
-import { GRAPH_GOAL_SETTINGS } from "../../lib/settings/goal";
+import { GRAPH_GOAL_SETTINGS } from "metabase/viz-core/lib/settings/goal";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_BUBBLE_SETTINGS,
@@ -15,8 +10,12 @@ import {
   GRAPH_TREND_SETTINGS,
   SPLIT_PANELS_SETTINGS,
   TOOLTIP_SETTINGS,
-} from "../../lib/settings/graph";
-import type { VisualizationDefinition } from "../../types";
+} from "metabase/viz-core/lib/settings/graph";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/viz-core/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/viz-core/types";
 
 const ScatterViz: Omit<
   VisualizationDefinition,

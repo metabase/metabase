@@ -2,11 +2,11 @@ import { act, renderHook } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
 import type { MutableRefObject } from "react";
 
-import type { TreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
-import type { RenderingContext } from "metabase/visualizations/types";
+import type { TreemapFormatters } from "metabase/viz-core/echarts/graph/treemap/model/formatters";
+import type { TreemapTree } from "metabase/viz-core/echarts/graph/treemap/model/types";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/viz-core/shared/utils/theme";
+import type { RenderingContext } from "metabase/viz-core/types";
 
-import { DEFAULT_VISUALIZATION_THEME } from "../../shared/utils/theme";
 
 import { useLabelMeasurement } from "./use-label-measurement";
 

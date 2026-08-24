@@ -7,14 +7,14 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Box, Checkbox, Icon } from "metabase/ui";
 import { displayNameForColumn, formatValue } from "metabase/value-formatting";
-import { registerVisualization } from "metabase/visualizations/index";
-import { isColumnRightAligned } from "metabase/visualizations/lib/table";
+import type { AuditTableSorting } from "metabase/visualizations/types";
+import { TABLE_DEFINITION } from "metabase/visualizations/visualizations/Table/definition";
+import { registerVisualization } from "metabase/viz-core/lib/registry";
+import { isColumnRightAligned } from "metabase/viz-core/lib/table";
 import type {
-  AuditTableSorting,
   ComputedVisualizationSettings,
   VisualizationDefinition,
-} from "metabase/visualizations/types";
-import { TABLE_DEFINITION } from "metabase/visualizations/visualizations/Table/definition";
+} from "metabase/viz-core/types";
 import type { ClickObject } from "metabase-lib";
 import type { DatasetColumn, RowValues, Series } from "metabase-types/api";
 

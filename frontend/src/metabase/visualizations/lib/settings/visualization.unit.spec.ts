@@ -5,11 +5,11 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
+import { registerVisualizations } from "metabase/visualizations/register";
 import {
   getComputedSettingsForSeries,
   getStoredSettingsForSeries,
-} from "metabase/visualizations/lib/settings/visualization";
-import { registerVisualizations } from "metabase/visualizations/register";
+} from "metabase/viz-core/lib/settings/visualization";
 import type {
   Series,
   VisualizationDisplay,

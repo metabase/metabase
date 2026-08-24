@@ -1,14 +1,16 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
-import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getTooltipModel } from "metabase/visualizations/visualizations/CartesianChart/events";
+import { EChartsTooltip } from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
+import { GOAL_LINE_SERIES_ID } from "metabase/viz-core/echarts/cartesian/constants/dataset";
+import type {
+  BaseCartesianChartModel,
+  DataKey,
+} from "metabase/viz-core/echarts/cartesian/model/types";
+import { getTooltipBaseOption } from "metabase/viz-core/echarts/tooltip";
+import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { CardDisplayType } from "metabase-types/api";
-
-import { getTooltipBaseOption } from "../../tooltip";
-import { GOAL_LINE_SERIES_ID } from "../constants/dataset";
-import type { BaseCartesianChartModel, DataKey } from "../model/types";
 
 interface ChartItemTooltip {
   dataIndex: number;

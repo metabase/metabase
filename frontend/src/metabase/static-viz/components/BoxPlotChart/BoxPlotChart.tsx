@@ -3,14 +3,14 @@ import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
+import { registerEChartsModules } from "metabase/viz-core/echarts";
 import {
   getBoxPlotLayoutModel,
   getBoxPlotModel,
   getBoxPlotOption,
-} from "metabase/visualizations/echarts/boxplot";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
+} from "metabase/viz-core/echarts/boxplot";
+import { getChartLayout } from "metabase/viz-core/echarts/cartesian/layout";
+import { getLegendItems } from "metabase/viz-core/echarts/cartesian/model/legend";
 
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";

@@ -4,12 +4,12 @@ import { displayNameForColumn } from "metabase/value-formatting";
 import {
   columnSettings,
   tableColumnSettings,
-} from "metabase/visualizations/lib/settings/column";
+} from "metabase/viz-core/lib/settings/column";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/viz-core/types";
 
 export const OBJECT_DETAIL_DEFINITION: VisualizationDefinition = {
   getUiName() {

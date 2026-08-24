@@ -1,7 +1,7 @@
 import type { EChartsType } from "echarts/core";
 
-import type { ChartBoundsCoords } from "metabase/visualizations/echarts/cartesian/layout/types";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type { ChartBoundsCoords } from "metabase/viz-core/echarts/cartesian/layout/types";
+import type { TimelineEventsModel } from "metabase/viz-core/echarts/cartesian/timeline-events/types";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import {

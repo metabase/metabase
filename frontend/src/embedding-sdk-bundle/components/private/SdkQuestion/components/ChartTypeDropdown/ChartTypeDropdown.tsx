@@ -4,11 +4,11 @@ import { t } from "ttag";
 import type { IconName } from "metabase/embedding-sdk/types/icon";
 import { Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
+import type { Visualization } from "metabase/visualizations/types";
 import {
   getIconForVisualizationType,
   visualizations,
-} from "metabase/visualizations";
-import type { Visualization } from "metabase/visualizations/types";
+} from "metabase/viz-core/lib/registry";
 import type { CardDisplayType } from "metabase-types/api";
 
 import { useQuestionVisualization } from "../../hooks/use-question-visualization";

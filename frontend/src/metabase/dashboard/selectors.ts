@@ -31,7 +31,7 @@ import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
-import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import { extendCardWithDashcardSettings } from "metabase/viz-core/lib/settings/typed-utils";
 import Question from "metabase-lib/v1/Question";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,

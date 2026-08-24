@@ -1,15 +1,15 @@
 import Color from "color";
 import type { Feature, FeatureCollection } from "geojson";
 
-import { getCanonicalRowKey } from "metabase/visualizations/lib/region-codes";
-import { getComputedSettings } from "metabase/visualizations/lib/settings";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { getStoredSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { getCanonicalRowKey } from "metabase/viz-core/lib/region-codes";
+import { getComputedSettings } from "metabase/viz-core/lib/settings";
+import { columnSettings } from "metabase/viz-core/lib/settings/column";
+import { getStoredSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
+import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { GeoJSONData, RawSeries, RowValue } from "metabase-types/api";
 
 // Color constants and legend helpers are shared with the runtime ChoroplethMap via
-// metabase/visualizations/lib/choropleth (a Leaflet-free module the static-viz bundle can load).
+// metabase/viz-core/lib/choropleth (a Leaflet-free module the static-viz bundle can load).
 
 // Internal projection resolution, not output size — the SVG is rasterized at a fixed width downstream.
 export const MAP_WIDTH = 1000;

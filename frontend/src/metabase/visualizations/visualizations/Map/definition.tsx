@@ -6,19 +6,19 @@ import MetabaseSettings from "metabase/utils/settings";
 import {
   getDefaultMapDimension,
   getDefaultMapMetric,
-} from "metabase/visualizations/lib/choropleth";
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+} from "metabase/viz-core/lib/choropleth";
+import { ChartSettingsError } from "metabase/viz-core/lib/errors";
+import { columnSettings } from "metabase/viz-core/lib/settings/column";
 import {
   dimensionSetting,
   fieldSetting,
   metricSetting,
-} from "metabase/visualizations/lib/settings/utils";
+} from "metabase/viz-core/lib/settings/utils";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/viz-core/types";
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,

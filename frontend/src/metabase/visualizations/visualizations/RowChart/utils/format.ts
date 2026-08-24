@@ -3,16 +3,16 @@ import type { NumberLike, StringLike } from "@visx/scale";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/value-formatting";
-import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
+import { getFormattingOptionsWithoutScaling } from "metabase/viz-core/echarts/cartesian/model/util";
+import type { CartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
+import { getStackOffset } from "metabase/viz-core/lib/settings/stacking";
+import type { BarData } from "metabase/viz-core/shared/components/RowChart/types";
 import type {
   GroupedDatum,
   SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
-import type { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
-import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
+} from "metabase/viz-core/shared/types/data";
+import type { ChartTicksFormatters } from "metabase/viz-core/shared/types/format";
+import { getLabelsMetricColumn } from "metabase/viz-core/shared/utils/series";
 import type {
   DatasetColumn,
   RowValue,

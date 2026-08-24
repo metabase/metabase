@@ -15,8 +15,8 @@ import {
 } from "metabase/query_builder/selectors";
 import type { Dispatch } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
-import { registerVisualization } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { registerVisualization } from "metabase/viz-core/lib/registry";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { CustomVizDisplayType, UnsavedCard } from "metabase-types/api";
 import {

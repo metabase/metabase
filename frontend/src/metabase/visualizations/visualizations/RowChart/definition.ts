@@ -3,26 +3,26 @@ import { t } from "ttag";
 import {
   getCartesianChartColumns,
   hasValidColumnsSelected,
-} from "metabase/visualizations/lib/graph/columns";
-import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
+} from "metabase/viz-core/lib/graph/columns";
+import { GRAPH_DATA_SETTINGS } from "metabase/viz-core/lib/settings/graph";
 import {
   getBreakoutCardinality,
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
-} from "metabase/visualizations/lib/settings/validation";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { MAX_SERIES } from "metabase/visualizations/lib/utils";
-import { getSeries } from "metabase/visualizations/shared/utils/data";
+} from "metabase/viz-core/lib/settings/validation";
+import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
+import { MAX_SERIES } from "metabase/viz-core/lib/utils";
+import { getSeries } from "metabase/viz-core/shared/utils/data";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
+} from "metabase/viz-core/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
   VisualizationDefinition,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,

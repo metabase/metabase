@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
+import { GRAPH_GOAL_SETTINGS } from "metabase/viz-core/lib/settings/goal";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_COLORS_SETTINGS,
@@ -12,18 +12,18 @@ import {
   SPLIT_PANELS_SETTINGS,
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
-} from "metabase/visualizations/lib/settings/graph";
+} from "metabase/viz-core/lib/settings/graph";
 import {
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
-} from "metabase/visualizations/lib/settings/validation";
-import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
+} from "metabase/viz-core/lib/settings/validation";
+import { SERIES_SETTING_KEY } from "metabase/viz-core/shared/settings/series";
 import type {
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   Series,

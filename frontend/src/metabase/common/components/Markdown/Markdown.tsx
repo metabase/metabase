@@ -15,7 +15,7 @@ import remarkGfm from "remark-gfm";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
-import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";
+import { DATA_IMAGE_URI_PATTERN } from "metabase/viz-core/lib/utils";
 
 import S from "./Markdown.module.css";
 
@@ -58,9 +58,8 @@ function urlTransform(url: string): string {
   return defaultUrlTransform(url);
 }
 
-export interface MarkdownProps extends ComponentPropsWithRef<
-  typeof ReactMarkdown
-> {
+export interface MarkdownProps
+  extends ComponentPropsWithRef<typeof ReactMarkdown> {
   className?: string;
   dark?: boolean;
   disallowHeading?: boolean;

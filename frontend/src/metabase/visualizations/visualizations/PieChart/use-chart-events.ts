@@ -5,34 +5,33 @@ import { t } from "ttag";
 import { formatPercent } from "metabase/utils/formatting";
 import { checkNotNull } from "metabase/utils/types";
 import type {
+  ClickObject,
+  VisualizationProps,
+} from "metabase/visualizations/types";
+import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
-} from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
+} from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
+import type { PieChartFormatters } from "metabase/viz-core/echarts/pie/format";
 import type {
   PieChartModel,
   SliceTreeNode,
-} from "metabase/visualizations/echarts/pie/model/types";
-import type { EChartsSunburstSeriesMouseEvent } from "metabase/visualizations/echarts/pie/types";
+} from "metabase/viz-core/echarts/pie/model/types";
+import type { EChartsSunburstSeriesMouseEvent } from "metabase/viz-core/echarts/pie/types";
 import {
   getArrayFromMapValues,
   getSliceKeyPath,
   getSliceTreeNodesFromPath,
-} from "metabase/visualizations/echarts/pie/util";
+} from "metabase/viz-core/echarts/pie/util";
 import {
   getMarkerColorClass,
   useClickedStateTooltipSync,
-} from "metabase/visualizations/echarts/tooltip";
-import { getValueFromDimensionKey } from "metabase/visualizations/shared/settings/pie";
-import type {
-  ClickObject,
-  VisualizationProps,
-} from "metabase/visualizations/types";
-import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+} from "metabase/viz-core/echarts/tooltip";
+import { getTotalValue } from "metabase/viz-core/echarts/tooltip/utils";
+import { getValueFromDimensionKey } from "metabase/viz-core/shared/settings/pie";
+import type { EChartsEventHandler } from "metabase/viz-core/types/echarts";
 import type { ClickObjectDimension } from "metabase-lib";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-
-import { getTotalValue } from "../../echarts/tooltip/utils";
 
 export const getTooltipModel = (
   sliceKeyPath: string[],

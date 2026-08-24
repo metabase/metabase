@@ -2,10 +2,10 @@ import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getSankeyLayout } from "metabase/visualizations/echarts/graph/sankey/layout";
-import { getSankeyChartModel } from "metabase/visualizations/echarts/graph/sankey/model";
-import { getSankeyChartOption } from "metabase/visualizations/echarts/graph/sankey/option";
+import { registerEChartsModules } from "metabase/viz-core/echarts";
+import { getSankeyLayout } from "metabase/viz-core/echarts/graph/sankey/layout";
+import { getSankeyChartModel } from "metabase/viz-core/echarts/graph/sankey/model";
+import { getSankeyChartOption } from "metabase/viz-core/echarts/graph/sankey/option";
 
 import Watermark from "../../watermark.svg?component";
 

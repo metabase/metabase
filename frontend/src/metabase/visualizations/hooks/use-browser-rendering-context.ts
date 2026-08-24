@@ -8,8 +8,8 @@ import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/utils/measure-text";
-import { getVisualizationTheme } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
+import { getVisualizationTheme } from "metabase/viz-core/shared/utils/theme";
+import type { RenderingContext } from "metabase/viz-core/types";
 
 interface RenderingOptions {
   fontFamily: string;

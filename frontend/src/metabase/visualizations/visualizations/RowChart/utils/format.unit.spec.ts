@@ -1,9 +1,9 @@
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
+import type { CartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
+import type { BarData } from "metabase/viz-core/shared/components/RowChart/types";
 import type {
   GroupedDatum,
   SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
+} from "metabase/viz-core/shared/types/data";
 import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 

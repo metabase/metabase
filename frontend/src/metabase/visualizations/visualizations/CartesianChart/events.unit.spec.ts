@@ -7,17 +7,17 @@ import { dayjs } from "metabase/dayjs";
 import {
   INDEX_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
+} from "metabase/viz-core/echarts/cartesian/constants/dataset";
+import { getDatasetKey } from "metabase/viz-core/echarts/cartesian/model/dataset";
 import type {
   Datum,
   DimensionModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+} from "metabase/viz-core/echarts/cartesian/model/types";
 import type {
   EChartsSeriesBrushEndEvent,
   EChartsSeriesMouseEvent,
-} from "metabase/visualizations/echarts/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+} from "metabase/viz-core/echarts/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import {
   createMockColumn,
   createMockDatetimeColumn,

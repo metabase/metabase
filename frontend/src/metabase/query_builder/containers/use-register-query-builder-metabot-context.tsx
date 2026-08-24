@@ -1,12 +1,10 @@
 import { dayjs } from "metabase/dayjs";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
+import { getVisualizationTransformed } from "metabase/viz-core/lib/registry";
+import { extractRemappings } from "metabase/viz-core/lib/remapping";
+import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {

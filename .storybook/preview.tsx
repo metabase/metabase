@@ -29,7 +29,7 @@ import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheP
 import { Global, css, useTheme } from "@emotion/react";
 
 import { loadVisualizationComponents } from "metabase/visualizations";
-import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import { saveDomImageStyles } from "metabase/viz-core/lib/image-exports";
 
 import { initialize, mswLoader } from "msw-storybook-addon";
 

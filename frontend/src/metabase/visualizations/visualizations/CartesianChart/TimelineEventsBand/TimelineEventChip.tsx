@@ -3,8 +3,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Box, HoverCard, Icon, Text, UnstyledButton } from "metabase/ui";
-import { TIMELINE_EVENTS_BAND } from "metabase/visualizations/echarts/cartesian/constants/style";
-import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import { TIMELINE_EVENTS_BAND } from "metabase/viz-core/echarts/cartesian/constants/style";
+import type { TimelineEventGroup } from "metabase/viz-core/echarts/cartesian/timeline-events/types";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import S from "./TimelineEventsBand.module.css";

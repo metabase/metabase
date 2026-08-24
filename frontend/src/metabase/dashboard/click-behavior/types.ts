@@ -1,9 +1,7 @@
 import type { ClickBehaviorExtraData } from "metabase/dashboard/utils/click-behavior";
 import type { ValueAndColumnForColumnNameDate } from "metabase/value-formatting";
-import type {
-  ClickObject,
-  ComputedVisualizationSettings,
-} from "metabase/visualizations/types";
+import type { ClickObject } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type {
   Card,
   CardId,
@@ -28,10 +26,8 @@ export interface DrillExtraData extends ClickBehaviorExtraData {
 }
 
 // ClickObject with the shapes dashboards put in its untyped settings/extraData.
-export interface ClickBehaviorClickObject extends Omit<
-  ClickObject,
-  "settings" | "extraData"
-> {
+export interface ClickBehaviorClickObject
+  extends Omit<ClickObject, "settings" | "extraData"> {
   settings?: ComputedVisualizationSettings;
   extraData?: DrillExtraData;
 }

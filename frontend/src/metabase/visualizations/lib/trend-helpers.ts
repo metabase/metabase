@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { isEmpty } from "metabase/utils/validate";
-import { computeChange } from "metabase/visualizations/lib/numeric";
 import { formatPreviousPeriodOptionName } from "metabase/visualizations/visualizations/SmartScalar/utils";
+import { computeChange } from "metabase/viz-core/lib/numeric";
 import type { RowValues } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 

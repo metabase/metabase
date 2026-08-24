@@ -1,16 +1,16 @@
 import { c, t } from "ttag";
 
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
+import { ChartSettingsError } from "metabase/viz-core/lib/errors";
+import { columnSettings } from "metabase/viz-core/lib/settings/column";
+import { fieldSetting } from "metabase/viz-core/lib/settings/utils";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
+} from "metabase/viz-core/shared/utils/sizes";
 import type {
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, DatasetData, Series } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";

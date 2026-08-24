@@ -3,31 +3,8 @@ import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
-import {
-  GOAL_LINE_SERIES_ID,
-  INDEX_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type {
-  BaseCartesianChartModel,
-  ChartDataset,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import {
-  buildBrushMirrorGraphics,
-  buildClearBrushMirrorGraphics,
-} from "metabase/visualizations/echarts/cartesian/option";
-import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
-import {
-  type EChartsSeriesBrushEndEvent,
-  type EChartsSeriesBrushEvent,
-  type EChartsSeriesMouseEvent,
-  isLineXBrushRange,
-} from "metabase/visualizations/echarts/types";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
-import type {
-  RenderingContext,
-  VisualizationProps,
-} from "metabase/visualizations/types";
-import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   canBrush,
   getBrushClickObject,
@@ -36,9 +13,29 @@ import {
   getSeriesClickData,
   getSeriesHovered,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
+import {
+  GOAL_LINE_SERIES_ID,
+  INDEX_KEY,
+} from "metabase/viz-core/echarts/cartesian/constants/dataset";
+import type {
+  BaseCartesianChartModel,
+  ChartDataset,
+} from "metabase/viz-core/echarts/cartesian/model/types";
+import {
+  buildBrushMirrorGraphics,
+  buildClearBrushMirrorGraphics,
+} from "metabase/viz-core/echarts/cartesian/option";
+import { useClickedStateTooltipSync } from "metabase/viz-core/echarts/tooltip";
+import {
+  type EChartsSeriesBrushEndEvent,
+  type EChartsSeriesBrushEvent,
+  type EChartsSeriesMouseEvent,
+  isLineXBrushRange,
+} from "metabase/viz-core/echarts/types";
+import { getVisualizerSeriesCardIndex } from "metabase/viz-core/lib/series";
+import type { RenderingContext } from "metabase/viz-core/types";
+import type { EChartsEventHandler } from "metabase/viz-core/types/echarts";
 import type { CardId } from "metabase-types/api";
-
-import { getVisualizerSeriesCardIndex } from "../../lib/series";
 
 import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";

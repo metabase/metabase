@@ -6,10 +6,10 @@ import {
 import {
   INDEX_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type { Datum } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+} from "metabase/viz-core/echarts/cartesian/constants/dataset";
+import { getDatasetKey } from "metabase/viz-core/echarts/cartesian/model/dataset";
+import type { Datum } from "metabase/viz-core/echarts/cartesian/model/types";
+import type { CartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
 import {
   createMockColumn,
   createMockSingleSeries,

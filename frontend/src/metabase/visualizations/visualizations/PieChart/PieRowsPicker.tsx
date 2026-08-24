@@ -5,11 +5,11 @@ import { ChartSettingSeriesOrder } from "metabase/visualizations/components/sett
 import {
   createHexToAccentNumberMap,
   getPickerColorAlias,
-} from "metabase/visualizations/echarts/pie/util/colors";
+} from "metabase/viz-core/echarts/pie/util/colors";
 import type {
   ChartSettingOrderedItem,
   ComputedVisualizationSettings,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import type { PieRow, RawSeries } from "metabase-types/api";
 
 export function PieRowsPicker({

@@ -1,4 +1,4 @@
-import { isCartesianChart } from "metabase/visualizations";
+import { isCartesianChart } from "metabase/viz-core/lib/registry";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import { CartesianVerticalWell } from "./CartesianVerticalWell";

@@ -14,22 +14,20 @@ import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Flex, Loader, Text } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   HEAT_MAP_ZERO_COLOR,
   buildColorScale,
   getLegendTitles,
-} from "metabase/visualizations/lib/choropleth";
-import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import { getCanonicalRowKey } from "metabase/visualizations/lib/region-codes";
-import { unaggregatedDataWarningMap } from "metabase/visualizations/lib/warnings";
+} from "metabase/viz-core/lib/choropleth";
+import { MinColumnsError } from "metabase/viz-core/lib/errors";
+import { getCanonicalRowKey } from "metabase/viz-core/lib/region-codes";
+import { unaggregatedDataWarningMap } from "metabase/viz-core/lib/warnings";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  VisualizationDefinition,
-  VisualizationProps,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/viz-core/types";
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomGeoJSONMap,

@@ -4,11 +4,11 @@ import mergeRefs from "merge-refs";
 import { forwardRef, useEffect, useRef } from "react";
 import { useMount, useUnmount, useUpdateEffect } from "react-use";
 
-import { registerEChartsModules } from "metabase/visualizations/echarts";
+import { registerEChartsModules } from "metabase/viz-core/echarts";
 import type {
   EChartsEventHandler,
   ZREventHandler,
-} from "metabase/visualizations/types/echarts";
+} from "metabase/viz-core/types/echarts";
 
 import { EChartsRendererRoot } from "./EChartsRenderer.styled";
 

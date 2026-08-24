@@ -2,17 +2,14 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { formatValue } from "metabase/value-formatting";
-import {
-  ChartSettingsError,
-  MinRowsError,
-} from "metabase/visualizations/lib/errors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
-import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
+import { ChartSettingsError, MinRowsError } from "metabase/viz-core/lib/errors";
+import { columnSettings } from "metabase/viz-core/lib/settings/column";
+import { nestedSettings } from "metabase/viz-core/lib/settings/nested";
+import { keyForSingleSeries } from "metabase/viz-core/lib/settings/series";
 import {
   dimensionSetting,
   metricSetting,
-} from "metabase/visualizations/lib/settings/utils";
+} from "metabase/viz-core/lib/settings/utils";
 import {
   getDefaultPercentVisibility,
   getDefaultPieColumns,
@@ -23,13 +20,13 @@ import {
   getDefaultSortRows,
   getPieRows,
   getPieSortRowsDimensionSetting,
-} from "metabase/visualizations/shared/settings/pie";
-import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
+} from "metabase/viz-core/shared/settings/pie";
+import { SERIES_SETTING_KEY } from "metabase/viz-core/shared/settings/series";
 import {
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+} from "metabase/viz-core/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/viz-core/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { SingleSeries } from "metabase-types/api";
 

@@ -10,7 +10,7 @@ import {
 import { useLatest } from "react-use";
 
 import { TextInput } from "metabase/ui";
-import type { ChartSettingWidgetProps } from "metabase/visualizations/types";
+import type { ChartSettingWidgetProps } from "metabase/viz-core/types";
 
 const ALLOWED_CHARS = new Set([
   "0",
@@ -30,10 +30,8 @@ const ALLOWED_CHARS = new Set([
 
 // Note: there are more props than these that are provided by the viz settings
 // code, we just don't have types for them here.
-interface ChartSettingInputProps extends Omit<
-  ChartSettingWidgetProps<number>,
-  "onChangeSettings"
-> {
+interface ChartSettingInputProps
+  extends Omit<ChartSettingWidgetProps<number>, "onChangeSettings"> {
   options?: {
     isInteger?: boolean;
     isNonNegative?: boolean;

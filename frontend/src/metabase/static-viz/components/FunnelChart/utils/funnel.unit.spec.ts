@@ -1,7 +1,7 @@
 import { merge } from "icepick";
 
-import type { FunnelDatum } from "metabase/visualizations/lib/funnel/types";
-import { calculateFunnelSteps } from "metabase/visualizations/lib/funnel/utils";
+import type { FunnelDatum } from "metabase/viz-core/lib/funnel/types";
+import { calculateFunnelSteps } from "metabase/viz-core/lib/funnel/utils";
 
 import type { FunnelSettings } from "../types";
 

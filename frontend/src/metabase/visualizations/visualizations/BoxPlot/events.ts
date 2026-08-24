@@ -1,21 +1,23 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo } from "react";
 
+import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
+import type {
+  OnChangeCardAndRun,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import {
   extractSeriesDataKeyFromName,
   getBoxPlotClickData,
   isBoxPlotSeriesEvent,
-} from "metabase/visualizations/echarts/boxplot";
-import type { BoxPlotChartModel } from "metabase/visualizations/echarts/boxplot/model/types";
-import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
-import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
+} from "metabase/viz-core/echarts/boxplot";
+import type { BoxPlotChartModel } from "metabase/viz-core/echarts/boxplot/model/types";
+import type { EChartsSeriesMouseEvent } from "metabase/viz-core/echarts/types";
 import type {
   ComputedVisualizationSettings,
   HoveredObject,
-  OnChangeCardAndRun,
-  VisualizationProps,
-} from "metabase/visualizations/types";
-import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+} from "metabase/viz-core/types";
+import type { EChartsEventHandler } from "metabase/viz-core/types/echarts";
 import type { CardId, RawSeries } from "metabase-types/api";
 
 type UseBoxPlotEventsProps = {

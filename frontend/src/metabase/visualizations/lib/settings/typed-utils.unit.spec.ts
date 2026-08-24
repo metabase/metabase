@@ -1,16 +1,14 @@
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import {
-  createMockCard,
-  createMockTableColumnOrderSetting,
-} from "metabase-types/api/mocks";
-
-import { registerVisualization } from "../registry";
-
+import { registerVisualization } from "metabase/viz-core/lib/registry";
 import {
   extendCardWithDashcardSettings,
   mergeSettings,
   sanitizeDashcardSettings,
-} from "./typed-utils";
+} from "metabase/viz-core/lib/settings/typed-utils";
+import {
+  createMockCard,
+  createMockTableColumnOrderSetting,
+} from "metabase-types/api/mocks";
 
 registerVisualization(BarChart);
 

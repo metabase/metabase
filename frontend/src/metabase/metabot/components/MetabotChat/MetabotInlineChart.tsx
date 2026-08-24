@@ -36,7 +36,7 @@ import { ErrorView } from "metabase/visualizations/components/Visualization/Erro
 import {
   getDatasetError,
   getGenericErrorMessage,
-} from "metabase/visualizations/lib/errors";
+} from "metabase/viz-core/lib/errors";
 import Question from "metabase-lib/v1/Question";
 import type { DashboardTabId } from "metabase-types/api";
 

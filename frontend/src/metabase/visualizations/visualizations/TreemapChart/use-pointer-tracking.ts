@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 
-import type { ChartPointer } from "metabase/visualizations/echarts/graph/treemap/model/types";
-import type { ZREventHandler } from "metabase/visualizations/types/echarts";
+import type { ChartPointer } from "metabase/viz-core/echarts/graph/treemap/model/types";
+import type { ZREventHandler } from "metabase/viz-core/types/echarts";
 
 export function usePointerTracking(): {
   zrEventHandlers: ZREventHandler[];

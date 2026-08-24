@@ -11,11 +11,11 @@ import {
 } from "metabase/static-viz/components/FunnelChart/utils/funnel";
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextHeight } from "metabase/static-viz/lib/text";
-import type { FunnelDatum } from "metabase/visualizations/lib/funnel/types";
+import type { FunnelDatum } from "metabase/viz-core/lib/funnel/types";
 import {
   calculateFunnelSteps,
   calculateStepOpacity,
-} from "metabase/visualizations/lib/funnel/utils";
+} from "metabase/viz-core/lib/funnel/utils";
 
 import Watermark from "../../watermark.svg?component";
 

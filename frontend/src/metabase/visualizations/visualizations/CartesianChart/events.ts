@@ -11,23 +11,27 @@ import {
 } from "metabase/utils/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/utils/types";
 import type {
+  OnBrush,
+  OnChangeCardAndRun,
+} from "metabase/visualizations/types";
+import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
-} from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
+} from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
 import {
   INDEX_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
   X_AXIS_DATA_KEY,
   X_AXIS_RAW_VALUE_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
+} from "metabase/viz-core/echarts/cartesian/constants/dataset";
 import {
   isBreakoutSeries,
   isNumericAxis,
   isQuarterInterval,
   isTimeSeriesAxis,
-} from "metabase/visualizations/echarts/cartesian/model/guards";
-import { getOtherSeriesAggregationLabel } from "metabase/visualizations/echarts/cartesian/model/other-series";
+} from "metabase/viz-core/echarts/cartesian/model/guards";
+import { getOtherSeriesAggregationLabel } from "metabase/viz-core/echarts/cartesian/model/other-series";
 import type {
   AxisFormatter,
   BaseCartesianChartModel,
@@ -38,25 +42,28 @@ import type {
   DimensionModel,
   SeriesModel,
   StackModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
+} from "metabase/viz-core/echarts/cartesian/model/types";
+import { getMarkerColorClass } from "metabase/viz-core/echarts/tooltip";
+import { formatValueForTooltip } from "metabase/viz-core/echarts/tooltip/format";
+import {
+  getPercent,
+  getTotalValue,
+} from "metabase/viz-core/echarts/tooltip/utils";
 import {
   type EChartsSeriesBrushEndEvent,
   type EChartsSeriesMouseEvent,
   isLineXBrushRange,
-} from "metabase/visualizations/echarts/types";
-import { computeChange } from "metabase/visualizations/lib/numeric";
+} from "metabase/viz-core/echarts/types";
+import { computeChange } from "metabase/viz-core/lib/numeric";
 import {
   hasClickBehavior,
   isRemappedToString,
-} from "metabase/visualizations/lib/renderer_utils";
-import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
+} from "metabase/viz-core/lib/renderer_utils";
+import { dimensionIsTimeseries } from "metabase/viz-core/lib/timeseries";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
-  OnBrush,
-  OnChangeCardAndRun,
-} from "metabase/visualizations/types";
+} from "metabase/viz-core/types";
 import type {
   BrushClickObject,
   BrushRange,
@@ -76,9 +83,6 @@ import type {
   RowValue,
 } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
-
-import { formatValueForTooltip } from "../../echarts/tooltip/format";
-import { getPercent, getTotalValue } from "../../echarts/tooltip/utils";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
