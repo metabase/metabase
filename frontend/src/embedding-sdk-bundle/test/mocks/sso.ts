@@ -78,6 +78,7 @@ export const setupMockSamlEndpoints = ({
     return {
       url: providerUri,
       method: "saml",
+      "saml-popup-url": instanceUrl,
     };
   });
 
@@ -117,15 +118,12 @@ export const setupMockSamlEndpoints = ({
  * Returns the mocked popup object so you can verify it was closed, etc.
  */
 export const setupSamlPopup = () => {
-  const popupMock = {
-    closed: false,
-    close: jest.fn(),
-  };
+  const popupMock = { closed: false, close: jest.fn() };
 
-  jest
-    .spyOn(window, "open")
-    // Unjustified type cast. FIXME
-    .mockImplementation(() => popupMock as unknown as Window);
+  // The mock is used as the browser popup.
+  const popupWindow = popupMock as unknown as Window;
+
+  jest.spyOn(window, "open").mockImplementation(() => popupWindow);
 
   // Wait until the next tick to simulate popup message
   process.nextTick(() => {
@@ -137,6 +135,8 @@ export const setupSamlPopup = () => {
           type: "SAML_AUTH_COMPLETE",
           authData,
         },
+        origin: MOCK_INSTANCE_URL,
+        source: popupWindow,
       }),
     );
   });

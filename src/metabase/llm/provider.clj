@@ -145,6 +145,25 @@
                      :advanced? true
                      :default   "https://api.moonshot.ai/v1"
                      :help      (deferred-tru "Point this at the .cn platform to use it instead; keys are not interchangeable between the two.")}]}
+   {:type          "deepseek"
+    :label         (deferred-tru "DeepSeek")
+    :default-model "deepseek-v4-pro"
+    :mini-model    "deepseek-v4-flash"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     ;; No `:prefix`: DeepSeek keys carry the same `sk-` an OpenAI key does, so matching on it
+                     ;; would claim OpenAI keys while rejecting nothing.
+                     :required?   true
+                     :placeholder "sk-..."
+                     :docs-url    "https://platform.deepseek.com/api_keys"}
+                    {:key       :base-url
+                     :normalize strip-trailing-slashes
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.deepseek.com"
+                     :help      (deferred-tru "The root both surfaces hang off; leave off any /anthropic or /v1 path.")}]}
    {:type          "google"
     ;; "Google Gemini Enterprise" (nearly the official "Gemini Enterprise Agent Platform" name), not "Google
     ;; Gemini": the Gemini API is a separate surface with its own credentials, and may become a provider type of
@@ -558,6 +577,9 @@
    "moonshot"   {:type     "moonshot"
                  :settings {:api-key  {:setting :llm-moonshot-api-key :credential? true}
                             :base-url {:setting :llm-moonshot-api-base-url}}}
+   "deepseek"   {:type     "deepseek"
+                 :settings {:api-key  {:setting :llm-deepseek-api-key :credential? true}
+                            :base-url {:setting :llm-deepseek-api-base-url}}}
    "google"     {:type     "google"
                  :settings {:service-account-key {:setting :llm-google-service-account-key :credential? true}
                             :oauth-access-token  {:setting :llm-google-oauth-access-token :credential? true}
