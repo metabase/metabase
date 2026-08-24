@@ -30,7 +30,7 @@ To use a plugin on a per-component basis, pass the plugin as a prop to the compo
 See docs for specific components:
 
 - [Question plugins](../chart.md#customize-what-happens-when-someone-clicks-on-a-chart)
-- [Dashboard plugins](./dashboards.md#dashboard-plugins)
+- [Dashboard plugins](../dashboard.md#customize-the-menu-on-dashboard-cards-react-sdk-only)
 
 ## Global plugins
 
@@ -69,4 +69,4 @@ The plugins `getNoDataIllustration` and `getNoObjectIllustration` can only be us
 ## Further reading
 
 - [Question plugins](../chart.md#customize-what-happens-when-someone-clicks-on-a-chart)
-- [Dashboard plugins](./dashboards.md#dashboard-plugins)
+- [Dashboard plugins](../dashboard.md#customize-the-menu-on-dashboard-cards-react-sdk-only)

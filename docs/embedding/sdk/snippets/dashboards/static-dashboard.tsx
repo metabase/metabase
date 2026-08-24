@@ -1,7 +1,7 @@
 import React from "react";
 import {
-  CollectionBrowser,
   MetabaseProvider,
+  StaticDashboard,
   defineMetabaseAuthConfig,
 } from "@metabase/embedding-sdk-react";
 
@@ -10,15 +10,11 @@ const authConfig = defineMetabaseAuthConfig({
 });
 
 export default function App() {
-  const collectionId = 123; // This is the collection ID you want to browse
+  const dashboardId = 1; // This is the dashboard ID you want to embed
 
   return (
     <MetabaseProvider authConfig={authConfig}>
-      <CollectionBrowser
-        collectionId={collectionId}
-        pageSize={10}
-        visibleEntityTypes={["dashboard", "question", "collection"]}
-      />
+      <StaticDashboard dashboardId={dashboardId} withTitle={true} />
     </MetabaseProvider>
   );
 }
