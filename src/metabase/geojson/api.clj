@@ -32,7 +32,7 @@
                                  :throw-exceptions   false
                                  :dns-resolver       (u.http/network-policy-dns-resolver :external-only)})
                   (catch Throwable e
-                    (if (:ssrf (ex-data e))
+                    (if (:blocked-address (ex-data e))
                       (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400} e))
                       (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
         ;; only 2xx is a real success — a 3xx redirect isn't followed (`:redirect-strategy :none`, for SSRF

@@ -1,4 +1,5 @@
 (ns metabase.util.http
+  (:refer-clojure :exclude [get])
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
@@ -30,17 +31,14 @@
     (:body response)))
 
 ;; --------------------------------------------------------------------------------------------
-;; SSRF-hardened fetch of an untrusted (user-provided) URL.
+;; Fetching a URL that came from configuration or from a user.
 ;;
-;; Fetching a user-provided URL server-side is the classic SSRF risk. Defenses:
-;;  - HTTPS only; reject IP-literal hosts and localhost/metadata/internal hostnames.
-;;  - Validate every *resolved* IP is a public unicast address via a custom DnsResolver -- this
-;;    runs inside the connection the client actually opens, closing the DNS-rebinding TOCTOU gap.
-;;    It rejects loopback, link-local (incl. cloud metadata 169.254.169.254), site-local (RFC1918),
-;;    any-local, multicast, IPv6 ULA (fc00::/7), and IPv4 CGNAT (100.64/10).
-;;  - No redirects (a 3xx would be a bypass vector; here it just fails).
-;;  - No cookies/credentials (a fresh clj-http GET carries no Metabase session).
-;;  - Cap the download bytes and (optionally) restrict to an allowlist of content-types.
+;;  - The policy resolver checks every address the connection resolves to, from inside the
+;;    connection the client opens, so a host that changes what it resolves to between the check
+;;    and the connect is caught. It runs on redirect hops too.
+;;  - [[fetch-bytes]] additionally requires HTTPS and a real hostname, caps the body, and can
+;;    restrict the content-type.
+;;  - No cookies or credentials: a fresh clj-http request carries no Metabase session.
 ;; --------------------------------------------------------------------------------------------
 
 (def ^:private fetch-default-timeout-ms 8000)
@@ -174,12 +172,43 @@
           (if (every? #(address-allowed-for-network-policy? policy %) addrs)
             addrs
             (throw (ex-info "Refusing to connect to a non-permitted network address"
-                            {:ssrf true :policy policy :host host}))))))))
+                            {:blocked-address true :policy policy :host host}))))))))
 
-(def ^DnsResolver ^:private ssrf-safe-dns-resolver
-  "The strict `:external-only` resolver (public addresses only) used by [[fetch-bytes]].
-  See [[network-policy-dns-resolver]]."
-  (network-policy-dns-resolver :external-only))
+(def ^:private default-network-policy
+  "The policy [[request]] applies when a caller does not name one."
+  :external-only)
+
+(def ^:private policy->dns-resolver
+  "[[network-policy-dns-resolver]], cached per policy."
+  (memoize network-policy-dns-resolver))
+
+(defn request
+  "Make an outbound HTTP request. `opts` is a clj-http option map, plus:
+
+    :network-policy   which addresses we may connect to. Defaults to `:external-only`; see
+                      [[address-allowed-for-network-policy?]] for what each policy permits.
+
+  The policy is enforced on every address the connection resolves to, including redirect hops and
+  hosts written as IP literals. A `:dns-resolver` in `opts` is dropped -- the policy picks the
+  resolver. Everything else, timeouts and redirect handling included, is left to the caller."
+  [{:keys [network-policy url] :as opts}]
+  ;; same guard clj-http's own `get`/`post` apply, so an unset URL setting says so
+  (when (nil? url)
+    (throw (IllegalArgumentException. "Host URL cannot be nil")))
+  (let [resolver (policy->dns-resolver (or network-policy default-network-policy))]
+    (http/request (-> opts
+                      (dissoc :network-policy :dns-resolver)
+                      (m/assoc-some :dns-resolver resolver)))))
+
+(defn get
+  "GET `url`. See [[request]] for `opts`."
+  [url opts]
+  (request (assoc opts :method :get, :url url)))
+
+(defn post
+  "POST `url`. See [[request]] for `opts`."
+  [url opts]
+  (request (assoc opts :method :post, :url url)))
 
 (defn safe-url?
   "True if `url` is safe to fetch from untrusted input: HTTPS scheme, no userinfo, and a real DNS
@@ -234,13 +263,12 @@
                 user-agent fetch-default-user-agent}}]
    (when (safe-url? url)
      (try
-       (let [resp              (http/get url {:as                 :stream
-                                              :redirect-strategy  :none
-                                              :socket-timeout     timeout-ms
-                                              :connection-timeout timeout-ms
-                                              :throw-exceptions   false
-                                              :headers            {"User-Agent" user-agent}
-                                              :dns-resolver       ssrf-safe-dns-resolver})
+       (let [resp              (get url {:as                 :stream
+                                         :redirect-strategy  :none
+                                         :socket-timeout     timeout-ms
+                                         :connection-timeout timeout-ms
+                                         :throw-exceptions   false
+                                         :headers            {"User-Agent" user-agent}})
              ctype             (response-content-type resp)
              ^InputStream body (:body resp)]
          (try
