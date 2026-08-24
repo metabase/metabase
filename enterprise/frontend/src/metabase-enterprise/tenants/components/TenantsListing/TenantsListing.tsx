@@ -9,6 +9,7 @@ import {
 } from "metabase/admin/people/constants";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
+import { useTenantUrls } from "metabase/common/tenants";
 import CS from "metabase/css/core/index.css";
 import { useNavigate } from "metabase/router";
 import {
@@ -22,7 +23,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
-import * as Urls from "metabase-enterprise/urls";
 import type { Tenant } from "metabase-types/api";
 
 import { TenantsListingEmptyState } from "../TenantsListingEmptyState";
@@ -47,11 +47,12 @@ export const TenantsListing = ({
   hasNoTenants,
 }: TenantsListingProps) => {
   const navigate = useNavigate();
+  const tenantUrls = useTenantUrls();
 
   const openNewTenantModal = () => {
     const param = hasNoTenants ? "?onboarding=true" : "";
 
-    navigate(Urls.newTenant() + param);
+    navigate(tenantUrls.newTenant() + param);
   };
 
   const filteredTenants = useMemo(() => {
@@ -94,7 +95,7 @@ export const TenantsListing = ({
               <Flex
                 component={ForwardRefLink}
                 align="center"
-                to={Urls.editTenant(tenant.id)}
+                to={tenantUrls.editTenant(tenant.id)}
                 className={CS.link}
                 gap="lg"
               >
@@ -153,6 +154,8 @@ interface ActionsPopoverProps {
 }
 
 function ActionsPopover({ tenant }: ActionsPopoverProps) {
+  const tenantUrls = useTenantUrls();
+
   return (
     <Menu shadow="sm" width={200} position="bottom-end">
       <Menu.Target>
@@ -161,14 +164,17 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item component={ForwardRefLink} to={Urls.editTenant(tenant.id)}>
+        <Menu.Item
+          component={ForwardRefLink}
+          to={tenantUrls.editTenant(tenant.id)}
+        >
           {t`Edit tenant`}
         </Menu.Item>
         {tenant.is_active ? (
           <Menu.Item
             c="feedback-negative"
             component={ForwardRefLink}
-            to={Urls.deactivateTenant(tenant.id)}
+            to={tenantUrls.deactivateTenant(tenant.id)}
           >
             {t`Deactivate tenant`}
           </Menu.Item>
@@ -176,7 +182,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
           <Menu.Item
             c="feedback-negative"
             component={ForwardRefLink}
-            to={Urls.reactivateTenant(tenant.id)}
+            to={tenantUrls.reactivateTenant(tenant.id)}
           >
             {t`Reactivate tenant`}
           </Menu.Item>

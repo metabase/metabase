@@ -11,6 +11,7 @@ import {
 import type { Crumb } from "metabase/common/components/Breadcrumbs";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useTenantUrls, useUserUrls } from "metabase/common/tenants";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { MonitorBreadcrumbs } from "metabase/monitor/components/MonitorBreadcrumbs";
@@ -28,7 +29,6 @@ import {
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import { useGetTenantQuery } from "metabase-enterprise/api";
-import * as EnterpriseUrls from "metabase-enterprise/urls";
 
 import { useGetMetabotAnalyticsConversationQuery } from "../../api";
 import type { ConversationDetail } from "../../types";
@@ -40,6 +40,8 @@ export function ConversationHeader({
 }: {
   conversation: ConversationDetail;
 }) {
+  const tenantUrls = useTenantUrls();
+  const userUrls = useUserUrls();
   const { data: forkedFromConversation } =
     useGetMetabotAnalyticsConversationQuery(
       conversation.forked_from_conversation_id ?? skipToken,
@@ -95,7 +97,7 @@ export function ConversationHeader({
                 <Menu.Dropdown>
                   <Menu.Item
                     component={ForwardRefLink}
-                    to={Urls.editUser(conversation.user)}
+                    to={userUrls.editUser(conversation.user)}
                   >
                     {t`View ${firstName}'s details`}
                   </Menu.Item>
@@ -130,7 +132,7 @@ export function ConversationHeader({
                 <Icon name="company" size={16} c="text-disabled" />
                 <Anchor
                   component={ForwardRefLink}
-                  to={EnterpriseUrls.editTenant(tenant.id)}
+                  to={tenantUrls.editTenant(tenant.id)}
                   c="text-secondary"
                   size="md"
                   underline="hover"

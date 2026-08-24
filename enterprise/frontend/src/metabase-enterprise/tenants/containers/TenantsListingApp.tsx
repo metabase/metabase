@@ -53,8 +53,11 @@ export const TenantsListingApp = () => {
   const hasNoTenants = data?.data?.length === 0;
 
   return (
-    // Make the layout narrow when there are no tenants
-    <Box maw={hasNoTenants ? "700px" : undefined} mx="auto">
+    // Narrower when there are no tenants, so the empty state does not stretch
+    // across admin's full width. 50rem rather than 700px: that is the width of
+    // the embedding hub's content column, which mounts this same listing, and
+    // at 700 the empty state read as narrower than every sibling tab there.
+    <Box maw={hasNoTenants ? "50rem" : undefined} mx="auto">
       <Group justify="space-between" w="100%" mb="xl">
         <Title order={1}>{t`Tenants`}</Title>
 

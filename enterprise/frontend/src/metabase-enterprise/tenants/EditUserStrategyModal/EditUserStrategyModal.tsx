@@ -5,6 +5,7 @@ import { permissionApi } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useTenantUrls } from "metabase/common/tenants";
 import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useAdminSetting } from "metabase/settings";
@@ -20,6 +21,7 @@ export const EditUserStrategyModal = ({
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const tenantUrls = useTenantUrls();
   const { isLoading, error, value, updateSetting, refetch } =
     useAdminSetting("use-tenants");
 
@@ -90,7 +92,7 @@ export const EditUserStrategyModal = ({
       // This ensures `createTenantsRouteGuard` sees the updated setting.
       await refetch();
 
-      navigate("/admin/people/tenants");
+      navigate(tenantUrls.root());
     }
   };
 
