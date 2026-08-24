@@ -66,3 +66,20 @@
 .BulkActionButtonLabel {
   display: inline-flex;
 }
+
+.toast {
+  transform: translateX(-50%);
+  z-index: 150;
+}
+
+.toastNavbarOpen {
+  margin-left: calc(var(--mb-nav-sidebar-width) / 2);
+}
+
+.toastCard {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2.5rem;
+}

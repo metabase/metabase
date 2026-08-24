@@ -1,7 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
@@ -24,7 +23,7 @@ export const Sidebar = styled.aside<{
   align-items: center;
   background-color: var(--mb-color-background_page-primary);
   z-index: 4;
-  width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
+  width: ${(props) => props.width ?? "var(--mb-nav-sidebar-width)"};
   ${(props) =>
     props.side === "left"
       ? "border-inline-end: 1px solid var(--mb-color-border-neutral);"

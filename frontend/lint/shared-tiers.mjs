@@ -53,8 +53,8 @@ const SHARED_PLATFORM_LEVELS = [
   ["shared/visualizations", "shared/databases"],
   // P2 — independent peers with no edges between them.
   // Querying and detail-view compose visualizations. Metadata consumes detail-view from P3.
-  // detail-view keeps its enforceSharedTiers flag for one upward edge,
-  // DetailViewPage.tsx importing the nav layout constants (#79119 moves them).
+  // detail-view keeps its enforceSharedTiers flag for two upward edges,
+  // CollectionBreadcrumb.tsx and ModelNav.tsx importing metabase/questions from P3.
   ["shared/querying", "shared/pulse", "shared/detail-view"],
   // P3 — building blocks over querying, mutually independent.
   ["shared/metadata", "shared/parameters", "shared/questions"],

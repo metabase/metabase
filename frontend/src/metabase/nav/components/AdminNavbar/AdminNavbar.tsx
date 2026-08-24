@@ -13,7 +13,6 @@ import { useNavigate } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 
-import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 import { AppSwitcher } from "../AppSwitcher";
 import StoreLink from "../StoreLink";
 
@@ -63,7 +62,7 @@ export const AdminNavbar = ({
       aria-label={t`Navigation bar`}
       align="center"
       justify="space-between"
-      h={ADMIN_NAVBAR_HEIGHT}
+      h="var(--mb-admin-navbar-height)"
       bg="navbar-admin"
       fz="0.85rem"
       px="1rem"
@@ -154,10 +153,10 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
           gap="sm"
           miw="12rem"
           pos="fixed"
-          top={ADMIN_NAVBAR_HEIGHT}
+          top="var(--mb-admin-navbar-height)"
           right={0}
           bg="navbar-admin"
-          mah={`calc(100vh - ${ADMIN_NAVBAR_HEIGHT})`}
+          mah="calc(100vh - var(--mb-admin-navbar-height))"
           bdrs="0 0 0 0.5rem"
           style={{ overflowY: "auto" }}
         >

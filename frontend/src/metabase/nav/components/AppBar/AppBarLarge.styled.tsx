@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-
 interface AppBarRootProps {
   hasSidebarOpen?: boolean;
 }
@@ -11,7 +9,7 @@ export const AppBarRoot = styled.div<AppBarRootProps>`
   display: flex;
   align-items: center;
   gap: 1rem;
-  height: ${APP_BAR_HEIGHT};
+  height: var(--mb-app-bar-height);
   padding-left: 1.325rem;
   padding-right: 1rem;
   border-bottom: 1px solid

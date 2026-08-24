@@ -15,7 +15,6 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, setDetailView } from "metabase/redux/app";
 import { useParams } from "metabase/router";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { extractRemappedColumns } from "metabase/visualizations";
@@ -81,7 +80,6 @@ export function ModelDetailPage() {
   const rowName = getRowName(columns, row) || rowId;
 
   const dispatch = useDispatch();
-  const isNavBarOpen = useSelector(getIsNavbarOpen);
 
   useEffect(() => {
     dispatch(closeNavbar());
@@ -106,12 +104,6 @@ export function ModelDetailPage() {
   }
 
   return (
-    <DetailViewPage
-      columns={columns}
-      isNavBarOpen={isNavBarOpen}
-      row={row}
-      rowId={rowId}
-      table={table}
-    />
+    <DetailViewPage columns={columns} row={row} rowId={rowId} table={table} />
   );
 }

@@ -3,7 +3,6 @@ import { jt, t } from "ttag";
 
 import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { Group, Icon, Paper, Text, rem } from "metabase/ui";
 import type { SearchContext, SearchResult } from "metabase-types/api";
 
@@ -53,7 +52,7 @@ export const SearchResultsDropdown = ({
   return (
     <Paper
       className={S.searchResultsContainer}
-      h={{ base: `calc(100vh - ${APP_BAR_HEIGHT})`, sm: "auto" }}
+      h={{ base: "calc(100vh - var(--mb-app-bar-height))", sm: "auto" }}
       mah={{ sm: rem(400) }}
       data-testid="search-bar-results-container"
       withBorder

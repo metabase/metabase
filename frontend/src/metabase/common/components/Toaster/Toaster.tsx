@@ -78,7 +78,7 @@ export interface ToasterProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 // TODO: Port to Mantine Notifications or consolidate with Undo-style toasts or
-// BulkActionsToast
+// BulkActionBar
 export const Toaster = ({
   message,
   confirmText = t`Turn on`,
