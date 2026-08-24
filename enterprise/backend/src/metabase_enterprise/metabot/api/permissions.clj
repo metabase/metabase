@@ -113,8 +113,10 @@
   []
   (api/check-superuser)
   (check-mode-switchable!)
-  (t2/delete! :model/MetabotPermissions :group_id [:not-in (simple-mode-group-ids)])
+  ;; Flip the mode before deleting: a failed delete then only leaves rows simple mode ignores, where a failed
+  ;; setting write would leave group-level mode with its permissions already gone.
   (metabot-settings/metabot-advanced-permissions! false)
+  (t2/delete! :model/MetabotPermissions :group_id [:not-in (simple-mode-group-ids)])
   (permissions-response))
 
 (def ^{:arglists '([request respond raise])} routes
