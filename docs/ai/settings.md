@@ -70,7 +70,7 @@ To enable AI features with your own provider:
 
 1. Go to **Admin > AI**.
 2. Select your **Provider**.
-3. Enter your provider's credentials, an **API key** for most providers. For Amazon Bedrock, enter an AWS access key pair, or, when self-hosting, leave the keys blank to authenticate with the AWS default credentials chain. The **Get or manage keys in [provider]** link opens your provider's key management page in a new tab.
+3. Enter your provider's credentials, an **API key** for most providers. For Amazon Bedrock, enter an AWS access key pair, or, when self-hosting, leave the keys blank to authenticate with the AWS default credentials chain. The **Where do I find this?** link opens your provider's key management page in a new tab.
 4. Click **Connect**.
 5. Select a **Model** from the dropdown. Available models are fetched from the provider using your credentials.
 
