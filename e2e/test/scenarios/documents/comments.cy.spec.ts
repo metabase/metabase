@@ -1381,21 +1381,25 @@ describe("document comments", () => {
 
       cy.realType("> blockquote");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 1);
 
       Comments.getNewThreadInput().type("1. ol");
       cy.realPress("Enter");
       cy.realType("two");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 2);
 
       Comments.getNewThreadInput().type("- ul");
       cy.realPress("Enter");
       cy.realType("b");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 3);
 
       Comments.getNewThreadInput().type("```");
       cy.realPress("Enter");
       cy.realType("code");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 4);
 
       cy.reload();
 
