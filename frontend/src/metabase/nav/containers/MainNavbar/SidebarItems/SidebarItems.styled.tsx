@@ -7,7 +7,6 @@ import { forwardRef } from "react";
 
 import { Link } from "metabase/common/components/Link";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
@@ -134,10 +133,9 @@ export const FullWidthContainer = styled.div`
 `;
 
 const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;
-const ITEM_NAME_LABEL_WIDTH = Math.round(parseInt(NAV_SIDEBAR_WIDTH, 10) * 0.7);
 
 export const ItemName = styled(TreeNode.NameContainer)`
-  width: ${ITEM_NAME_LABEL_WIDTH}px;
+  width: calc(var(--mb-nav-sidebar-width) * 0.7);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

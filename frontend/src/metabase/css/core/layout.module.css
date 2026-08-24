@@ -1,3 +1,10 @@
+:root {
+  --mb-app-bar-height: 52px;
+  --mb-app-subheader-height: 48px;
+  --mb-admin-navbar-height: 65px;
+  --mb-nav-sidebar-width: 324px;
+}
+
 /* When converting to styled components, use FullWidthContainer */
 .wrapper {
   width: 100%;

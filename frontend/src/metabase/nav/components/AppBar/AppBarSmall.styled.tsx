@@ -1,15 +1,13 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { APP_BAR_HEIGHT, APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
-
 interface AppBarHeaderProps {
   isSubheaderVisible?: boolean;
 }
 
 export const AppBarHeader = styled.div<AppBarHeaderProps>`
   position: relative;
-  height: ${APP_BAR_HEIGHT};
+  height: var(--mb-app-bar-height);
   padding: 0 1rem;
   border-bottom: 1px solid transparent;
   border-color: ${(props) =>
@@ -21,7 +19,7 @@ interface AppBarSubheaderProps {
 }
 
 export const AppBarSubheader = styled.div<AppBarSubheaderProps>`
-  height: ${APP_SUBHEADER_HEIGHT};
+  height: var(--mb-app-subheader-height);
   padding: 1rem 1rem 1rem 1.25rem;
   transition: border-bottom-color 200ms ease;
   border-bottom: 1px solid

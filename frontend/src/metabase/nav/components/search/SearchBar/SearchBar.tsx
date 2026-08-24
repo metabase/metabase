@@ -19,7 +19,6 @@ import {
 } from "metabase/common/search";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 import { useSelector } from "metabase/redux";
 import type { To } from "metabase/router";
 import {
@@ -241,7 +240,7 @@ function SearchBar({
           pos="absolute"
           left={0}
           right={0}
-          top={{ base: APP_BAR_HEIGHT, sm: rem(42) }}
+          top={{ base: "var(--mb-app-bar-height)", sm: rem(42) }}
           c="text-primary"
           data-testid="search-results-floating-container"
         >
