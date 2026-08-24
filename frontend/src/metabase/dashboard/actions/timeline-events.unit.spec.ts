@@ -10,7 +10,8 @@ import {
 } from "metabase/redux/store/mocks";
 import {
   hideTimelineEvents,
-  showTimelineEvents,
+  hideTimelines,
+  showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import type { TimelineEventsVisibility } from "metabase-types/api";
 import {
@@ -20,7 +21,10 @@ import {
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import { updateDashCardsTimelineEventsVisibility } from "./timeline-events";
+import {
+  openEventsSidebar,
+  updateDashCardsTimelineEventsVisibility,
+} from "./timeline-events";
 
 const DASHCARD_ID = 1;
 const COLLECTION_ID = 5;
@@ -44,9 +48,11 @@ const timeline = createMockTimeline({
 function setup({
   isEditing = false,
   savedVisibility,
+  collectionId = COLLECTION_ID,
 }: {
   isEditing?: boolean;
   savedVisibility?: TimelineEventsVisibility;
+  collectionId?: number;
 } = {}) {
   return getMainStore(
     createMockState({
@@ -55,7 +61,7 @@ function setup({
         dashboards: {
           1: createMockStoreDashboard({
             id: 1,
-            collection_id: COLLECTION_ID,
+            collection_id: collectionId,
             dashcards: [DASHCARD_ID],
           }),
         },
@@ -93,24 +99,42 @@ const getSavedVisibility = (store: Store) =>
   ];
 
 describe("updateDashCardsTimelineEventsVisibility", () => {
-  it("hides an event without touching the dashcard settings when viewing", () => {
+  it("shows events without touching the dashcard settings when viewing", () => {
     const store = setup();
+    expect(getVisibleEventIds(store)).toEqual([]);
 
     store.dispatch(
-      updateDashCardsTimelineEventsVisibility(
-        [DASHCARD_ID],
-        (visibility, context) =>
-          hideTimelineEvents(visibility, [eventA], context),
+      updateDashCardsTimelineEventsVisibility([DASHCARD_ID], (visibility) =>
+        showTimelines(visibility, [timeline]),
       ),
     );
 
-    expect(getVisibleEventIds(store)).toEqual([eventB.id]);
+    expect(getVisibleEventIds(store)).toEqual([eventA.id, eventB.id]);
     expect(getSavedVisibility(store)).toBeUndefined();
     expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBeFalsy();
   });
 
-  it("saves the hidden event into the dashcard settings when editing", () => {
+  it("saves the shown timeline into the dashcard settings when editing", () => {
     const store = setup({ isEditing: true });
+
+    store.dispatch(
+      updateDashCardsTimelineEventsVisibility([DASHCARD_ID], (visibility) =>
+        showTimelines(visibility, [timeline]),
+      ),
+    );
+
+    expect(getVisibleEventIds(store)).toEqual([eventA.id, eventB.id]);
+    expect(getSavedVisibility(store)).toEqual({
+      shown_timeline_ids: [timeline.id],
+    });
+    expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBe(true);
+  });
+
+  it("saves an event hidden on a shown timeline when editing", () => {
+    const store = setup({
+      isEditing: true,
+      savedVisibility: { shown_timeline_ids: [timeline.id] },
+    });
 
     store.dispatch(
       updateDashCardsTimelineEventsVisibility(
@@ -122,34 +146,94 @@ describe("updateDashCardsTimelineEventsVisibility", () => {
 
     expect(getVisibleEventIds(store)).toEqual([eventB.id]);
     expect(getSavedVisibility(store)).toEqual({
+      shown_timeline_ids: [timeline.id],
       hidden_event_ids: [eventA.id],
     });
-    expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBe(true);
   });
 
   it("applies the visibility saved in the dashcard settings", () => {
     const store = setup({
-      savedVisibility: { hidden_timeline_ids: [10] },
+      savedVisibility: {
+        shown_timeline_ids: [timeline.id],
+        hidden_event_ids: [eventB.id],
+      },
     });
+
+    expect(getVisibleEventIds(store)).toEqual([eventA.id]);
+  });
+
+  it("clears the saved setting when the last timeline is hidden when editing", () => {
+    const store = setup({
+      isEditing: true,
+      savedVisibility: { shown_timeline_ids: [timeline.id] },
+    });
+
+    store.dispatch(
+      updateDashCardsTimelineEventsVisibility([DASHCARD_ID], (visibility) =>
+        hideTimelines(visibility, [timeline]),
+      ),
+    );
+
+    expect(getVisibleEventIds(store)).toEqual([]);
+    expect(getSavedVisibility(store)).toBeUndefined();
+  });
+});
+
+describe("openEventsSidebar", () => {
+  it("previews the collection's events on a chart with nothing saved", () => {
+    const store = setup();
+    expect(getVisibleEventIds(store)).toEqual([]);
+
+    store.dispatch(openEventsSidebar({ dashcardId: DASHCARD_ID }));
+
+    expect(store.getState().dashboard.sidebar.name).toBe("events");
+    expect(getVisibleEventIds(store)).toEqual([eventA.id, eventB.id]);
+    expect(getSavedVisibility(store)).toBeUndefined();
+    expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBeFalsy();
+  });
+
+  it("keeps the saved selection instead of previewing", () => {
+    const store = setup({
+      savedVisibility: {
+        shown_timeline_ids: [timeline.id],
+        hidden_event_ids: [eventA.id],
+      },
+    });
+
+    store.dispatch(openEventsSidebar({ dashcardId: DASHCARD_ID }));
+
+    expect(getVisibleEventIds(store)).toEqual([eventB.id]);
+  });
+
+  it("does not preview timelines from other collections", () => {
+    const store = setup({ collectionId: 999 });
+
+    store.dispatch(openEventsSidebar({ dashcardId: DASHCARD_ID }));
 
     expect(getVisibleEventIds(store)).toEqual([]);
   });
 
-  it("clears the saved setting when events return to the default when editing", () => {
-    const store = setup({
-      isEditing: true,
-      savedVisibility: { hidden_event_ids: [eventA.id] },
-    });
+  it("previews without dirtying while editing; a toggle then persists what's visible", () => {
+    const store = setup({ isEditing: true });
+
+    store.dispatch(openEventsSidebar({ dashcardId: DASHCARD_ID }));
+    expect(getVisibleEventIds(store)).toEqual([eventA.id, eventB.id]);
+    expect(getSavedVisibility(store)).toBeUndefined();
+    expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBeFalsy();
 
     store.dispatch(
       updateDashCardsTimelineEventsVisibility(
         [DASHCARD_ID],
         (visibility, context) =>
-          showTimelineEvents(visibility, [eventA], context),
+          hideTimelineEvents(visibility, [eventA], context),
       ),
     );
 
-    expect(getVisibleEventIds(store)).toEqual([eventA.id, eventB.id]);
-    expect(getSavedVisibility(store)).toBeUndefined();
+    expect(getVisibleEventIds(store)).toEqual([eventB.id]);
+    expect(getSavedVisibility(store)).toEqual({
+      shown_timeline_ids: [timeline.id],
+      hidden_event_ids: [eventA.id],
+    });
+    expect(getDashCardById(store.getState(), DASHCARD_ID).isDirty).toBe(true);
   });
 });
