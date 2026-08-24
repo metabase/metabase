@@ -309,6 +309,42 @@ describe("ActionToolbar", () => {
       });
     });
 
+    it("omits timeline_id from comment context when no timeline is selected", async () => {
+      fetchMock.post(
+        "path:/api/comment",
+        createMockComment({
+          target_type: "exploration",
+          target_id: EXPLORATION_ID,
+          child_target_id: String(PAGE_ID),
+        }),
+      );
+
+      setup({ timelines: [releases, incidents] });
+
+      await openCommentEditor();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Submit comment" }),
+      );
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/comment", { method: "POST" }),
+        ).toHaveLength(1);
+      });
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/comment", {
+        method: "POST",
+      });
+      expect(await lastCall?.request?.json()).toEqual({
+        target_id: EXPLORATION_ID,
+        target_type: "exploration",
+        child_target_id: String(PAGE_ID),
+        parent_comment_id: null,
+        content: mockCommentContent,
+        context: {},
+      });
+    });
+
     it("shows a toast when comment submission fails", async () => {
       fetchMock.post("path:/api/comment", 500);
 

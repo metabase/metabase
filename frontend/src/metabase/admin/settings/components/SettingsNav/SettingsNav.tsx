@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { getPlan, isProPlan } from "metabase/common/utils/plan";
 import { getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_DATA_APPS,
@@ -11,7 +10,7 @@ import {
   PLUGIN_SECURITY_CENTER,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { useSetting } from "metabase/settings";
+import { getPlan, isProPlan, useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
 
 import { CustomVisualizationsNav } from "./CustomVisualizationsNav";
