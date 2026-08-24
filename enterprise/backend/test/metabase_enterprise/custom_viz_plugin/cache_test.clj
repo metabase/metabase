@@ -123,8 +123,14 @@
   (testing "accepts http URLs"
     (is (= "http://localhost:5174/" (cache/dev-base-url "http://localhost:5174")))
     (is (= "http://localhost:5174/" (cache/dev-base-url "http://localhost:5174/"))))
-  (testing "accepts https URLs"
-    (is (= "https://dev.example.com/" (cache/dev-base-url "https://dev.example.com"))))
+  (testing "accepts https URLs to private addresses"
+    (is (= "https://192.168.1.50/" (cache/dev-base-url "https://192.168.1.50"))))
+  (testing "SECURITY: rejects URLs that resolve to public addresses"
+    (is (thrown-with-msg? Exception #"loopback or private"
+                          (cache/dev-base-url "https://8.8.8.8"))))
+  (testing "SECURITY: rejects the cloud metadata address"
+    (is (thrown-with-msg? Exception #"loopback or private"
+                          (cache/dev-base-url "http://169.254.169.254/latest"))))
   (testing "SECURITY: rejects ftp:// URLs"
     (is (thrown-with-msg? Exception #"http or https"
                           (cache/dev-base-url "ftp://evil.com/bundle"))))

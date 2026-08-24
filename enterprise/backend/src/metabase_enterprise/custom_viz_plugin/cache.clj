@@ -296,11 +296,11 @@
   #{"http" "https"})
 
 (def ^:private dev-network-policy
-  :allow-loopback)
+  :loopback-and-private)
 
-(defn- internal-address-ex
+(defn- disallowed-address-ex
   [^String label ^String url]
-  (ex-info (str label " resolves to an internal network address.")
+  (ex-info (str label " must resolve to a loopback or private network address.")
            {:status-code 400 :url url}))
 
 (defn- validate-url!
@@ -312,14 +312,14 @@
       (throw (ex-info (str label " must use http or https, got: " scheme)
                       {:status-code 400 :url url})))
     (when-not (u.http/host-allowed-for-network-policy? dev-network-policy url)
-      (throw (internal-address-ex label url)))))
+      (throw (disallowed-address-ex label url)))))
 
 (defn- rethrow-if-refused!
   "Re-throw `e` as a 400 if it is the network policy refusing to connect, otherwise do nothing. Without this
    the surrounding catch would report a refused address as a dev server that happens to be down."
   [^Exception e ^String url]
   (when (:ssrf (ex-data e))
-    (throw (internal-address-ex "Dev bundle URL" url))))
+    (throw (disallowed-address-ex "Dev bundle URL" url))))
 
 (defn dev-base-url
   "Validate and normalize the dev base URL. Ensures http/https scheme and trailing slash."
