@@ -1,5 +1,7 @@
 import path from "path";
 
+import remarkGfm from "remark-gfm";
+
 import type { StorybookConfig } from "@storybook/react-webpack5";
 const appConfig = require("../rspack.main.config.js");
 const webpack = require("webpack");
@@ -25,6 +27,13 @@ const stories = process.env.STORYBOOK_STORIES_FILTER
 
 const config: StorybookConfig = {
   stories,
+  docs: {
+    mdxPluginOptions: {
+      mdxCompileOptions: {
+        remarkPlugins: [remarkGfm],
+      },
+    },
+  },
   staticDirs: [
     "../resources/frontend_client",
     "./msw-public",
