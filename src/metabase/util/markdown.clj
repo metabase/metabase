@@ -4,7 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.markdown.image :as markdown.image])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
                              Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
@@ -206,12 +207,6 @@
   "URI schemes markdown links/images may use in rendered notifications; links with other schemes are dropped."
   #{"http" "https" "mailto"})
 
-(def ^:private data-image-uri-pattern
-  "Inline base64 images, allowed in addition to [[allowed-link-schemes]]. Keep in sync with
-  DATA_IMAGE_URI_PATTERN in frontend/src/metabase/visualizations/lib/utils.ts so notifications render
-  the same markdown the app does."
-  #"(?i)^data:image/(?:png|jpeg|jpg|gif|svg\+xml|webp);base64,")
-
 (defn- resolve-uri
   "If the provided URI is a relative path, resolve it relative to the site URL so that links work
   correctly in Slack/Email. Returns nil for URIs that are malformed or whose scheme isn't in
@@ -221,7 +216,7 @@
                                       (cond-> s
                                         (not (str/ends-with? s "/")) (str "/"))))]
     (when uri
-      (if (re-find data-image-uri-pattern uri)
+      (if (re-find markdown.image/data-image-uri-pattern uri)
         uri
         (try
           (let [scheme (.getScheme (URI. uri))]
