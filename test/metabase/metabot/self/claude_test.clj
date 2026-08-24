@@ -340,10 +340,11 @@
   "A streamed JSON error body that flips `closed?` when closed, like the real `:as :stream`
   response body the adapter must not leak."
   [closed? m]
+  ;; ByteArrayInputStream.close is documented as having no effect, so there is nothing to
+  ;; pass on to the parent
   (proxy [java.io.ByteArrayInputStream] [(.getBytes (json/encode m) "UTF-8")]
     (close []
-      (reset! closed? true)
-      (proxy-super close))))
+      (reset! closed? true))))
 
 (defn- reject-400
   [closed? message]
