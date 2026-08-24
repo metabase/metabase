@@ -73,6 +73,44 @@
       (is (= ["user"] (map :role (:messages body)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; Temperature gating
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- request-body-temperature
+  [model]
+  (:temperature (openrouter/openrouter-request-body {:model       model
+                                                     :input       [{:role :user :content "hi"}]
+                                                     :temperature 0.3})))
+
+(deftest ^:parallel request-body-drops-temperature-for-models-that-reject-it-test
+  (testing "the GPT-5 and o-series families take no explicit temperature"
+    (doseq [model ["openai/gpt-5.6-sol" "openai/gpt-5.5-pro" "openai/gpt-5.4" "openai/gpt-5.4-mini"
+                   "openai/o1" "openai/o3-mini"]]
+      (testing model
+        (is (nil? (request-body-temperature model))))))
+  (testing "neither does current-generation Claude, whose OpenRouter ids use dots for the minor version"
+    (doseq [model ["anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
+                   "anthropic/claude-opus-4.7" "anthropic/claude-sonnet-5"]]
+      (testing model
+        (is (nil? (request-body-temperature model)))))))
+
+(deftest ^:parallel request-body-keeps-temperature-for-models-that-accept-it-test
+  (testing "every other whitelisted model still gets the profile's temperature"
+    (doseq [model ["anthropic/claude-opus-4.6" "anthropic/claude-opus-4.5" "anthropic/claude-opus-4.1"
+                   "anthropic/claude-sonnet-4.6" "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5"
+                   "deepseek/deepseek-v4-pro" "mistralai/mistral-medium-3-5" "z-ai/glm-5.2"]]
+      (testing model
+        (is (= 0.3 (request-body-temperature model)))))))
+
+(deftest ^:parallel request-body-omits-temperature-when-none-is-supplied-test
+  (testing "a request with no temperature is unchanged either way"
+    (doseq [model ["openai/gpt-5.4" "anthropic/claude-haiku-4.5"]]
+      (testing model
+        (is (not (contains? (openrouter/openrouter-request-body {:model model
+                                                                 :input [{:role :user :content "hi"}]})
+                            :temperature)))))))
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; openrouter-request-body tool_choice tests
 ;;; ──────────────────────────────────────────────────────────────────
 

@@ -254,15 +254,14 @@ const notificationHandlerTypeToChannelMap: Record<
   ["channel/http"]: "http",
 };
 
-export function alertIsValid(
+export const alertHasValidTarget = (
   notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
   channelSpec: ChannelApiResponse | undefined,
-) {
+) => {
   const handlers = notification.handlers;
 
-  return (
+  return Boolean(
     channelSpec?.channels &&
-    notification.subscriptions.length > 0 &&
     handlers.length > 0 &&
     handlers.every((handlers) => channelIsValid(handlers)) &&
     handlers.every((c) => {
@@ -270,7 +269,17 @@ export function alertIsValid(
         notificationHandlerTypeToChannelMap[c.channel_type];
 
       return channelSpec?.channels[handlerChannelType]?.configured;
-    })
+    }),
+  );
+};
+
+export function alertIsValid(
+  notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
+  channelSpec: ChannelApiResponse | undefined,
+) {
+  return (
+    notification.subscriptions.length > 0 &&
+    alertHasValidTarget(notification, channelSpec)
   );
 }
 

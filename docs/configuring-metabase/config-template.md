@@ -240,6 +240,9 @@ config:
     llm-rate-limit-per-ip: 100
     llm-rate-limit-per-user: 20
     llm-request-timeout-ms: 120000
+    llm-vllm-api-base-url: null
+    llm-vllm-api-key: null
+    llm-vllm-request-timeout-ms: 300000
     llm-zai-api-base-url: https://api.z.ai/api/paas/v4
     llm-zai-api-key: null
     loading-message: doing-science

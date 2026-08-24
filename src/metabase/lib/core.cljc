@@ -1415,6 +1415,7 @@
  [lib.binning
   available-binning-strategies
   binning
+  default-bin-width
   with-binning]
  [metabase.lib.card
   ->card-metadata-columns
@@ -1608,6 +1609,7 @@
   check-measure-cycles
   check-measure-overwrite]
  [metabase.lib.serialize
+  prepare-after-deserialization
   prepare-for-serialization]
  [lib.stage
   append-stage

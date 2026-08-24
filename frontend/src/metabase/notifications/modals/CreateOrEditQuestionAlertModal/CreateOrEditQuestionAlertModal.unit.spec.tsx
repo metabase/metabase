@@ -167,6 +167,18 @@ describe("CreateOrEditQuestionAlertModal", () => {
     expect(screen.getByRole("button", { name: /send now/i })).toBeEnabled();
   });
 
+  it("should disable 'Send now' when there is nowhere to send the alert to", async () => {
+    setup({
+      isAdmin: true,
+      isEmailSetup: false,
+      isSlackSetup: true,
+    });
+
+    expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: /send now/i })).toBeDisabled();
+  });
+
   it("should show the editing alert data when in edit mode", async () => {
     // Create a custom notification with weekly schedule on Monday at 2pm
     const mockNotification = createMockNotification({
