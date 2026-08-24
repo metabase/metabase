@@ -2,7 +2,6 @@
   (:require
    [buddy.core.codecs :as buddy-codecs]
    [buddy.core.hash :as buddy-hash]
-   [clj-http.client :as http]
    [clojure.string :as str]
    [diehard.circuit-breaker :as dh.cb]
    [flatland.ordered.set :refer [ordered-set]]
@@ -15,6 +14,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -411,11 +411,13 @@
   (try
     ;; TODO count ollama tokens into :metabase-search/semantic-embedding-tokens?
     (log/debug "Generating Ollama embedding for text of length:" (count text))
-    (let [embedding (-> (http/post ollama-embeddings-endpoint
-                                   (merge embedding-http-timeouts
-                                          {:headers {"Content-Type" "application/json"}
-                                           :body    (json/encode {:model model-name
-                                                                  :prompt text})}))
+    ;; Ollama runs on the same host by design, so this does not take the deployment default
+    (let [embedding (-> (u.http/post ollama-embeddings-endpoint
+                                     (merge {:network-policy :allow-all}
+                                            embedding-http-timeouts
+                                            {:headers {"Content-Type" "application/json"}
+                                             :body    (json/encode {:model model-name
+                                                                    :prompt text})}))
                         :body
                         (json/decode true)
                         :embedding)]
@@ -427,10 +429,12 @@
 (defn- ollama-pull-model [model-name]
   (try
     (log/debug "Pulling embedding model from Ollama...")
-    (http/post "http://localhost:11434/api/pull" ;; TODO: make the host configurable
-               (merge embedding-http-timeouts
-                      {:headers {"Content-Type" "application/json"}
-                       :body    (json/encode {:model model-name})}))
+    ;; Ollama runs on the same host by design, so this does not take the deployment default
+    (u.http/post "http://localhost:11434/api/pull" ;; TODO: make the host configurable
+                 (merge {:network-policy :allow-all}
+                        embedding-http-timeouts
+                        {:headers {"Content-Type" "application/json"}
+                         :body    (json/encode {:model model-name})}))
     (catch Exception e
       (log/errorf "Failed to pull embedding model: %s" (ex-message e))
       (throw e))))
@@ -503,7 +507,7 @@
           start-ms             (u/start-timer)
           {:keys [usage embeddings]}
           (call-through-embedder-breaker
-           #(let [{:keys [usage data]} (-> (http/post endpoint request)
+           #(let [{:keys [usage data]} (-> (u.http/post endpoint request)
                                            :body
                                            (json/decode true))]
               {:usage usage

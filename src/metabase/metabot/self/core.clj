@@ -1,6 +1,5 @@
 (ns metabase.metabot.self.core
   (:require
-   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -12,6 +11,7 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -1052,8 +1052,8 @@
   `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
   (llm/assert-llm-host-allowed! url)
-  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
-                     :socket-timeout     (llm/llm-request-timeout-ms)}
-                    (merge req)
-                    (update :url #(str url %))
-                    (update :headers merge headers))))
+  (u.http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                       :socket-timeout     (llm/llm-request-timeout-ms)}
+                      (merge req)
+                      (update :url #(str url %))
+                      (update :headers merge headers))))

@@ -1,6 +1,5 @@
 (ns metabase-enterprise.semantic-search.embedding-circuit-breaker-test
   (:require
-   [clj-http.client :as http]
    [clojure.test :refer :all]
    [diehard.circuit-breaker :as dh.cb]
    ;; loaded for side effects: the health namespaces register the breaker state-change hooks that
@@ -14,7 +13,8 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.health-inspector.core :as health-inspector]
    [metabase.llm.settings :as llm.settings]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.http :as u.http])
   (:import
    (java.util.concurrent CountDownLatch TimeUnit)))
 
@@ -174,8 +174,8 @@
                          (dh.cb/circuit-breaker
                           {:failure-threshold 1, :success-threshold 1, :delay-ms 60000})})]
       (mt/with-dynamic-fn-redefs
-        [http/post                    (constantly {:body (str "{\"usage\":{\"total_tokens\":0},"
-                                                              "\"data\":[{\"embedding\":\"AAAAAA==\"}]}")})
+        [u.http/post                    (constantly {:body (str "{\"usage\":{\"total_tokens\":0},"
+                                                                "\"data\":[{\"embedding\":\"AAAAAA==\"}]}")})
          analytics/inc!               (constantly nil)
          token-tracking/record-tokens (fn [& _] (throw (ex-info "appdb unavailable" {})))]
         (is (thrown-with-msg?
@@ -199,7 +199,7 @@
                     (atom {endpoint (dh.cb/circuit-breaker
                                      {:failure-threshold 1 :success-threshold 1 :delay-ms 60000})})]
         (mt/with-dynamic-fn-redefs
-          [http/post (constantly {:body "{\"usage\":{},\"data\":[]}"})]
+          [u.http/post (constantly {:body "{\"usage\":{},\"data\":[]}"})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"unexpected number"

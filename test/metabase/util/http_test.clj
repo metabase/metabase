@@ -415,3 +415,17 @@
          (is (= 200 (:status (http/get (str "http://localhost:" port "/final")
                                        {:network-policy     :allow-all
                                         :connection-manager mgr})))))))))
+
+(deftest request-async-arity-applies-the-policy-test
+  (testing "clj-http's async arity is supported and still refuses a disallowed address"
+    ;; transforms_python's /cancel call passes :async? true with respond/raise, so the 3-arity has to exist
+    (do-with-redirect-server
+     (fn [port]
+       (let [raised (promise)
+             url    (str "http://localhost:" port "/final")]
+         (http/request {:url url, :method :get, :async? true, :network-policy :external-only}
+                       (fn [_] (deliver raised ::unexpectedly-succeeded))
+                       (fn [e] (deliver raised e)))
+         (let [outcome (deref raised 10000 ::timed-out)]
+           (is (instance? Throwable outcome))
+           (is (blocked-address-ex? outcome))))))))

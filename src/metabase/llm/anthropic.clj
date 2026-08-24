@@ -4,10 +4,10 @@
    Provides synchronous chat completions for text-to-SQL generation
    using tool_use for structured output."
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json])
   (:import
    (com.fasterxml.jackson.core JsonParseException)))
@@ -100,13 +100,13 @@
     ;; through `handle-api-error` (mirrors `metabase.metabot.self.core/request`).
     (llm.settings/assert-llm-host-allowed! url)
     (try
-      (let [response (http/post url
-                                {:headers            (build-request-headers (get-api-key-or-throw))
-                                 :body               (json/encode (build-request-body request))
-                                 :as                 :json
-                                 :content-type       :json
-                                 :socket-timeout     (llm.settings/llm-request-timeout-ms)
-                                 :connection-timeout (llm.settings/llm-connection-timeout-ms)})
+      (let [response (u.http/post url
+                                  {:headers            (build-request-headers (get-api-key-or-throw))
+                                   :body               (json/encode (build-request-body request))
+                                   :as                 :json
+                                   :content-type       :json
+                                   :socket-timeout     (llm.settings/llm-request-timeout-ms)
+                                   :connection-timeout (llm.settings/llm-connection-timeout-ms)})
             duration-ms (u/since-ms start-time)
             body        (:body response)
             usage       (:usage body)]

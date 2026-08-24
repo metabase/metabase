@@ -191,6 +191,31 @@
   [policy default-fn]
   (or policy (default-fn)))
 
+(def ^:private policy-async-connection-manager
+  "An async connection manager whose resolver enforces `policy`. Needed because clj-http's own
+  `make-regular-async-conn-manager` ignores `:dns-resolver`, so an async request would otherwise escape the policy.
+  Cached per policy: each one starts an IO reactor."
+  (memoize
+   (fn [policy]
+     (conn-mgr/make-reusable-async-conn-manager {:dns-resolver (network-policy-dns-resolver policy)}))))
+
+(defn- policied-opts
+  "`opts` with the policy's resolver attached, and with anything the caller passed that would defeat it removed."
+  [{:keys [network-policy url connection-manager] :as opts}]
+  ;; same guard clj-http's own `get`/`post` apply, so an unset URL setting says so
+  (when (nil? url)
+    (throw (IllegalArgumentException. "Host URL cannot be nil")))
+  (let [policy   (policy-or-default network-policy default-network-policy-fn)
+        resolver (policy->dns-resolver policy)]
+    (cond-> (-> opts
+                (dissoc :network-policy :dns-resolver)
+                (m/assoc-some :dns-resolver resolver))
+      ;; clj-http builds the async manager without the resolver, so supply one that carries the policy
+      (and resolver
+           (not connection-manager)
+           (or (:async? opts) (:async opts)))
+      (assoc :connection-manager (policy-async-connection-manager policy)))))
+
 (defn request
   "Make an outbound HTTP request. `opts` is a clj-http option map, plus:
 
@@ -204,14 +229,11 @@
   One exception to watch: clj-http only consults `:dns-resolver` when it builds the connection manager itself, so a
   `:connection-manager` in `opts` keeps whatever resolver it was constructed with and the policy here does nothing.
   Build pooled managers with [[policy-connection-manager]]."
-  [{:keys [network-policy url] :as opts}]
-  ;; same guard clj-http's own `get`/`post` apply, so an unset URL setting says so
-  (when (nil? url)
-    (throw (IllegalArgumentException. "Host URL cannot be nil")))
-  (let [resolver (policy->dns-resolver (policy-or-default network-policy default-network-policy-fn))]
-    (http/request (-> opts
-                      (dissoc :network-policy :dns-resolver)
-                      (m/assoc-some :dns-resolver resolver)))))
+  ([opts]
+   (http/request (policied-opts opts)))
+  ;; clj-http's own async arity: `:async? true` needs the two callbacks, and the policy applies just the same
+  ([opts respond raise]
+   (http/request (policied-opts opts) respond raise)))
 
 (def ^:private make-policy-connection-manager
   (memoize

@@ -1,9 +1,9 @@
 (ns metabase.actions.http-action
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.lib.core :as lib]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -133,7 +133,9 @@
   [action params->value]
   (try
     (let [{:keys [method url body headers]} (:template action)
+          ;; the URL is templated from user-supplied params, so it does not take the deployment default
           request {:method (keyword method)
+                   :network-policy :external-only
                    :url (parse-and-substitute url params->value)
                    :accept :json
                    :content-type :json
@@ -145,7 +147,7 @@
                                  (parse-and-substitute params->value)
                                  (json/decode)))
                    :body (parse-and-substitute body params->value)}
-          response (-> (http/request request)
+          response (-> (u.http/request request)
                        (select-keys [:body :headers :status])
                        (update :body json/decode))
           error (json/decode (apply-json-query response (or (:error_handle action) ".status >= 400")))]
