@@ -5,15 +5,14 @@ import {
   resetPermissionsBasePath,
   setPermissionsBasePath,
 } from "metabase/admin/permissions/utils/base-path";
-import { PermissionsAccentColorProvider } from "metabase/admin/permissions/utils/selection-color";
+import { PermissionsIsHubProvider } from "metabase/admin/permissions/utils/is-hub";
 import { Outlet } from "metabase/router";
-import type { ColorName } from "metabase/ui/colors/types";
 
 type PermissionsBasePathProps = {
   basePath?: string;
-  /** Overrides the editor's single accent color, which defaults to admin's
-   * purple. See `selection-color.tsx`. */
-  accentColor?: ColorName;
+  /** True when mounted in the embedding hub rather than admin. See
+   * `is-hub.tsx`. */
+  isHub?: boolean;
   children?: ReactNode;
 };
 
@@ -35,18 +34,16 @@ type PermissionsBasePathProps = {
  */
 export function PermissionsBasePath({
   basePath = ADMIN_PERMISSIONS_BASE_PATH,
-  accentColor,
+  isHub = false,
   children = <Outlet />,
 }: PermissionsBasePathProps) {
   setPermissionsBasePath(basePath);
 
   useEffect(() => resetPermissionsBasePath, []);
 
-  return accentColor ? (
-    <PermissionsAccentColorProvider value={accentColor}>
+  return (
+    <PermissionsIsHubProvider value={isHub}>
       {children}
-    </PermissionsAccentColorProvider>
-  ) : (
-    <>{children}</>
+    </PermissionsIsHubProvider>
   );
 }

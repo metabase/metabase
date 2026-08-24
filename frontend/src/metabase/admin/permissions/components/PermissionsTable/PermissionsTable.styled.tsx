@@ -5,6 +5,7 @@ import { forwardRef } from "react";
 import { Link } from "metabase/common/components/Link";
 import { Label } from "metabase/common/components/type/Label";
 import { Icon, type IconProps } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 const getTableBorder = () =>
   `1px solid color-mix(in srgb, var(--mb-color-border-neutral), transparent 50%)`;
@@ -81,7 +82,7 @@ export const EntityNameLink = styled(Link)`
   display: inline;
   font-weight: 700;
   text-decoration: underline;
-  color: var(--permissions-entity-link-color);
+  color: ${() => color("navbar-admin-inverse")};
 `;
 
 export const HintIcon = styled(

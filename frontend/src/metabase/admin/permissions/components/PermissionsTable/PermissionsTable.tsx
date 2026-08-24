@@ -1,8 +1,8 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
-import { type CSSProperties, memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 
-import { usePermissionsAccentColor } from "metabase/admin/permissions/utils/selection-color";
+import { usePermissionsIsHub } from "metabase/admin/permissions/utils/is-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
@@ -219,7 +219,7 @@ const EntityRow = memo(function EntityRow({
   onSelect,
   onAction,
 }: EntityRowProps) {
-  const accentColor = usePermissionsAccentColor();
+  const isHub = usePermissionsIsHub();
   const entityName = (
     <span className={cx(CS.flex, CS.alignCenter)}>
       <Ellipsified>{entity.name}</Ellipsified>
@@ -236,12 +236,9 @@ const EntityRow = memo(function EntityRow({
         {entity.canSelect ? (
           <EntityNameLink
             onClick={() => onSelect?.(entity)}
-            style={
-              // CSS custom properties aren't part of React's CSSProperties type.
-              {
-                "--permissions-entity-link-color": color(accentColor),
-              } as CSSProperties
-            }
+            // The hub overrides the link's default admin purple with its own
+            // blue, both colors the design system already owns.
+            style={isHub ? { color: color("brand") } : undefined}
           >
             {entityName}
           </EntityNameLink>

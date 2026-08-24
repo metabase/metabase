@@ -1,17 +1,16 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { Group } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
+import { Group, Icon } from "metabase/ui";
 
-import { ButtonsContainer, EditIcon, Root, Title } from "./EditBar.styled";
+import styles from "./EditBar.module.css";
 
 type Props = {
   title: string;
   center?: ReactNode;
   buttons: ReactNode;
-  /** Defaults to Metabase blue. Permissions passes its own accent color, see
-   * `selection-color.tsx`. */
-  accentColor?: ColorName;
+  admin?: boolean;
   className?: string;
   "data-testid"?: string;
 };
@@ -20,22 +19,25 @@ export function EditBar({
   title,
   center,
   buttons,
-  accentColor = "core-brand",
+  admin = false,
   className,
   "data-testid": dataTestId,
 }: Props) {
+  const isBrand = !admin;
+
   return (
-    <Root
-      className={className}
-      accentColor={accentColor}
+    <FullWidthContainer
+      className={cx(styles.root, { [styles.brand]: isBrand }, className)}
       data-testid={dataTestId ?? "edit-bar"}
     >
       <Group gap="sm" align="center" wrap="nowrap">
-        <EditIcon name="pencil" size={12} />
-        <Title>{title}</Title>
+        <Icon name="pencil" size={12} className={styles.editIcon} />
+        <span className={styles.title}>{title}</span>
       </Group>
       {center && <div>{center}</div>}
-      <ButtonsContainer accentColor={accentColor}>{buttons}</ButtonsContainer>
-    </Root>
+      <div className={cx(styles.buttonsContainer, { [styles.brand]: isBrand })}>
+        {buttons}
+      </div>
+    </FullWidthContainer>
   );
 }

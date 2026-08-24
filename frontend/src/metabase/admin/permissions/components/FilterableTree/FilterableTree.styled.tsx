@@ -1,12 +1,5 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { type CSSProperties, forwardRef } from "react";
-
-import { usePermissionsAccentColor } from "metabase/admin/permissions/utils/selection-color";
-import { Tree } from "metabase/common/components/tree";
-import type { TreeNodeProps } from "metabase/common/components/tree/types";
-import { alpha } from "metabase/ui/colors";
-import { color } from "metabase/ui/utils/colors";
 
 export const FilterableTreeRoot = styled.div`
   display: flex;
@@ -31,36 +24,3 @@ export const ItemGroupsDivider = styled.hr`
 export const EmptyStateContainer = styled.div`
   margin-top: 6.25rem;
 `;
-
-const StyledTreeNode = styled(Tree.Node)<{ style?: CSSProperties }>`
-  color: ${(props) =>
-    props.isSelected ? "var(--mantine-color-white)" : color("text-secondary")};
-  background-color: ${(props) =>
-    props.isSelected ? "var(--permissions-tree-node-selected)" : "unset"};
-
-  &:hover {
-    background-color: ${(props) =>
-      props.isSelected
-        ? "var(--permissions-tree-node-selected)"
-        : "var(--permissions-tree-node-hover)"};
-  }
-`;
-
-// Reads the accent color from context rather than hardcoding admin's purple,
-// so the embedding hub can mount this same tree with its own brand color.
-// See `selection-color.tsx`.
-export const AdminTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
-  function AdminTreeNode(props, ref) {
-    const accentColor = usePermissionsAccentColor();
-
-    // CSS custom properties aren't part of React's CSSProperties type.
-    const selectionColorVariables = {
-      "--permissions-tree-node-selected": color(accentColor),
-      "--permissions-tree-node-hover": alpha(accentColor, 0.1),
-    } as CSSProperties;
-
-    return (
-      <StyledTreeNode {...props} ref={ref} style={selectionColorVariables} />
-    );
-  },
-);

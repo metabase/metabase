@@ -1,0 +1,40 @@
+/*
+ * `li.<class>` rather than a bare `.<class>`: this needs to beat
+ * `TreeNodeRoot`'s own emotion-generated color/background rules
+ * (tree/TreeNode.styled.tsx), which are also single-class specificity, so
+ * source order alone can't be trusted to pick a winner.
+ */
+
+li.adminSelected {
+  color: var(--mantine-color-white);
+  background-color: var(--mb-color-navbar-admin);
+}
+
+li.adminSelected:hover {
+  background-color: var(--mb-color-navbar-admin);
+}
+
+li.adminUnselected {
+  color: var(--mb-color-text-secondary);
+}
+
+li.adminUnselected:hover {
+  background-color: var(--mb-color-navbar-admin-secondary);
+}
+
+li.hubSelected {
+  color: var(--mantine-color-white);
+  background-color: var(--mb-color-brand);
+}
+
+li.hubSelected:hover {
+  background-color: var(--mb-color-brand-hover);
+}
+
+li.hubUnselected {
+  color: var(--mb-color-text-secondary);
+}
+
+li.hubUnselected:hover {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}
