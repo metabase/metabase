@@ -43,6 +43,9 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
     sidebar,
   } = useDashboardContext();
 
+  // Sidebars docked next to the grid in view mode need the dashboard body
+  // locked to the viewport height so the sidebar scrolls on its own instead
+  // of stretching the page.
   const hasDockedSidebar = isSharing || sidebar.name === SIDEBAR_NAME.events;
 
   useDashboardChartPaste();
