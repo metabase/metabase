@@ -17,6 +17,18 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(deftest lock-wait-timed-out?-test
+  (testing "MySQL's ER_LOCK_WAIT_TIMEOUT decides whether we fall back to an in-band insert"
+    (let [timed-out (SQLException. "Lock wait timeout exceeded; try restarting transaction" "HY000" 1205)
+          other     (SQLException. "You have an error in your SQL syntax" "42000" 1064)]
+      (testing "recognised on its own"
+        (is (#'sut/lock-wait-timed-out? timed-out)))
+      (testing "and through a cause chain, which is how it usually arrives"
+        (is (#'sut/lock-wait-timed-out? (ex-info "wrapped" {} timed-out))))
+      (testing "any other error still propagates"
+        (is (not (#'sut/lock-wait-timed-out? other)))
+        (is (not (#'sut/lock-wait-timed-out? (ex-info "wrapped" {} other))))))))
+
 (defn- deadlock-exception
   "Build a deadlock SQLException for the current appdb type. Mirrors the codes in
   [[metabase.app-db.transient-error]] so the test exercises the real db-type path."

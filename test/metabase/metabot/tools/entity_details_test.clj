@@ -579,25 +579,23 @@
             (is (not (contains? exported "lib/metadata")))))))))
 
 (deftest card-details-tolerates-a-query-that-will-not-build-test
-  (testing "a Card whose stored query has no stages drops `:query_json` instead of failing the whole response"
+  (testing "one Card whose stored query has no stages does not take down the response the others are in"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Card {broken-id :id} {:name "Broken", :type :question, :dataset_query {}}
-                       :model/Card {good-id :id}   {:database_id   (mt/id)
-                                                    :type          :question
-                                                    :name          "Venues by Price"
-                                                    :dataset_query (mt/mbql-query venues
-                                                                     {:aggregation [[:count]]
-                                                                      :breakout    [$price]})}]
-          (let [broken (-> (entity-details/get-table-details {:entity-type :question :entity-id broken-id})
-                           :structured-output)
-                good   (-> (entity-details/get-table-details {:entity-type :question :entity-id good-id})
-                           :structured-output)]
-            (testing "the broken card still answers, without a query"
-              (is (= "Broken" (:name broken)))
-              (is (nil? (:query_json broken))))
-            (testing "and the card beside it is unaffected"
-              (is (map? (:query_json good))))))))))
+        (mt/with-temp [:model/Card broken {:name "Broken", :type :question, :dataset_query {}}
+                       :model/Card good   {:database_id   (mt/id)
+                                           :type          :question
+                                           :name          "Venues by Price"
+                                           :dataset_query (mt/mbql-query venues
+                                                            {:aggregation [[:count]]
+                                                             :breakout    [$price]})}]
+          ;; through `cards-details`, the batch path the typed-schemas endpoint walks -- calling
+          ;; `get-table-details` per card would not see the failure, since the whole seq died together
+          (let [details (->> (entity-details/cards-details :question (mt/id) [broken good] {})
+                             (into [] (map #(select-keys % [:name :query_json]))))]
+            (is (= ["Broken" "Venues by Price"] (mapv :name details)))
+            (is (nil? (:query_json (first details))))
+            (is (map? (:query_json (second details))))))))))
 
 (deftest card-details-exposes-query-json-native-test
   (testing "card-details surfaces native saved queries as a portable repr map, preserving the SQL inside"
