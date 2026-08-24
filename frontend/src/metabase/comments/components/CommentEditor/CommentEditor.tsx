@@ -3,7 +3,13 @@ import { Link } from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";
-import { type KeyboardEventHandler, useEffect, useMemo, useState } from "react";
+import {
+  type KeyboardEventHandler,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -61,6 +67,7 @@ export const CommentEditor = ({
 }: Props) => {
   const siteUrl = useSelector((state) => getSetting(state, "site-url"));
   const [content, setContent] = useState<string | null>(null);
+  const initialAutoFocusRef = useRef(autoFocus);
 
   const extensions = useMemo(
     () =>
@@ -114,7 +121,8 @@ export const CommentEditor = ({
     {
       extensions,
       content: initialContent || "",
-      autofocus: autoFocus,
+      // do not recreate the editor when autoFocus changes to prevent clearing its contents
+      autofocus: initialAutoFocusRef.current,
       editable: !readonly,
       immediatelyRender: true,
       onUpdate: ({ editor }) => {
@@ -130,7 +138,7 @@ export const CommentEditor = ({
         }
       },
     },
-    [readonly, autoFocus],
+    [readonly],
   );
 
   useEffect(() => {
