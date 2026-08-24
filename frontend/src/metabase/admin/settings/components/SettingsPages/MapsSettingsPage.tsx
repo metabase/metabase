@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+} from "metabase/settings-components/SettingsSection";
 
-import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { CustomGeoJSONWidget } from "../widgets/CustomGeoJSONWidget";
 
 export function MapsSettingsPage() {

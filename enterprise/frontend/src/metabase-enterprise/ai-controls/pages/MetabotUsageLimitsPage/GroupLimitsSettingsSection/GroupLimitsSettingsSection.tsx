@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { isDefaultGroup } from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components/SettingsSection";
 import { Tabs } from "metabase/ui";
 import {
   useGetAIControlsGroupLimitsQuery,

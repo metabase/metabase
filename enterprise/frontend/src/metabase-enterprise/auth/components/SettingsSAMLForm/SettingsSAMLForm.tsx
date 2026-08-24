@@ -3,16 +3,6 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import {
-  CollapsibleSettingsSection,
-  SETTINGS_CARD_DESCRIPTION_PROPS,
-  SETTINGS_CARD_STACK_PROPS,
-  SETTINGS_CARD_TITLE_PROPS,
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import {
   SETTINGS_FIELD_DESCRIPTION_PROPS,
@@ -38,6 +28,16 @@ import {
   useGetSettingsQuery,
   useSetting,
 } from "metabase/settings";
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
+import {
+  CollapsibleSettingsSection,
+  SETTINGS_CARD_DESCRIPTION_PROPS,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components/SettingsSection";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
 import { provisioningOptions } from "metabase-enterprise/auth/utils";

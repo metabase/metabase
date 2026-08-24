@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { UpsellUploads } from "metabase/admin/upsells";
+import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { UpsellUploads } from "metabase/admin/upsells";
-import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
+} from "metabase/settings-components/SettingsSection";
 import { Box, Flex } from "metabase/ui";
 
 import { UploadSettingsForm } from "../UploadSettings/UploadSettingsForm";

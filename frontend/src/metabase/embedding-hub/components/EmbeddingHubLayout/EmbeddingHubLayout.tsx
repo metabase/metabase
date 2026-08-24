@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { useEnsureDefaultEmbeddingThemes } from "metabase/admin/embedding/hooks";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/current-user";
+import { useEnsureDefaultEmbeddingThemes } from "metabase/embedding/themes/hooks";
 import {
   AreaLayout,
   AreaNavButton,

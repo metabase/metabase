@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import { useListChannelsQuery } from "metabase/api/channel";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { useListChannelsQuery } from "metabase/api/channel";
+} from "metabase/settings-components/SettingsSection";
 import {
   Button,
   Flex,

@@ -242,6 +242,10 @@ const elements = [
   createElement({ type: "shared", name: "segments", enforcePublicApi: true }),
   createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
+  // Settings-page building blocks (SettingHeader, SettingsSection,
+  // AdminSettingInput) pulled out of admin in EMB-1526 so embedding's shared
+  // widgets can compose them without importing feature/admin.
+  createElement({ type: "shared", name: "settings-components" }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "static-viz" }),
   createElement({ type: "shared", name: "status" }),
@@ -396,9 +400,11 @@ const elements = [
     }),
   ),
   // App tier only because a feature module may not import another feature
-  // module, and the hub mounts feature/admin pages directly. EMB-2229 moves
-  // the admin components the hub uses into shared/settings; once it lands,
-  // this becomes a feature module.
+  // module, and the hub mounts feature/admin pages directly (permissions,
+  // tenancy, upsell). EMB-1526 already moved the admin settings-page
+  // components the hub needed into shared/settings-components; EMB-2229
+  // removes the remaining feature/admin imports, and once it lands this
+  // becomes a feature module.
   createElement({
     type: "app",
     name: "embedding-hub",

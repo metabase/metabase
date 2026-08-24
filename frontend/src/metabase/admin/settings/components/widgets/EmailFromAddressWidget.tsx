@@ -3,11 +3,9 @@ import { t } from "ttag";
 import { UpsellEmailWhitelabelPill } from "metabase/admin/upsells";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useAdminSetting, useSetting } from "metabase/settings";
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
+import { SettingHeader } from "metabase/settings-components/SettingHeader";
 import { Box, Icon, TextInput } from "metabase/ui";
-
-import { SettingHeader } from "../SettingHeader";
-
-import { AdminSettingInput } from "./AdminSettingInput";
 
 export function EmailFromAddressWidget() {
   const { value: fromAddressValue } = useAdminSetting("email-from-address");

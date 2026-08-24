@@ -15,7 +15,7 @@ import {
 
 import { EmbeddingHubLayout } from "./EmbeddingHubLayout";
 
-jest.mock("metabase/admin/embedding/hooks", () => ({
+jest.mock("metabase/embedding/themes/hooks", () => ({
   useEnsureDefaultEmbeddingThemes: jest.fn(),
 }));
 

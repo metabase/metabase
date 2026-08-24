@@ -1,9 +1,9 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
+import { AdminSettingInput } from "metabase/settings-components/AdminSettingInput";
 
 const Description = () => {
   return jt`Enter the origins for the websites or web apps where you want to allow embedding, separated by a space. Here are the ${(

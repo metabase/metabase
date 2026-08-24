@@ -2,10 +2,6 @@ import { useCallback, useEffect } from "react";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import {
@@ -15,6 +11,10 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { useNavigate } from "metabase/router";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components/SettingsSection";
 import {
   Box,
   Button,
