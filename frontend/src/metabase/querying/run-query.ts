@@ -10,7 +10,10 @@ import {
   shouldUsePivotEndpoint,
 } from "metabase/api/query-endpoints";
 import type { Dispatch } from "metabase/redux/store";
-import { getReferencedEntitiesFromVizSettings } from "metabase/visualizations/lib/dynamic-goals";
+import {
+  getReferencedEntitiesFromVizSettings,
+  supportsDynamicGoals,
+} from "metabase/visualizations/lib/dynamic-goals";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -227,9 +230,9 @@ export async function runQuestionQuery(
     ];
   }
 
-  const referencedEntities = getReferencedEntitiesFromVizSettings(
-    card.visualization_settings ?? {},
-  );
+  const referencedEntities = supportsDynamicGoals(card.display)
+    ? getReferencedEntitiesFromVizSettings(card.visualization_settings ?? {})
+    : [];
 
   return [
     await handleQueryApiError(

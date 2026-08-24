@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import type {
@@ -12,6 +13,7 @@ import type {
   ReferencedEntity,
   ReferencedEntityType,
   RowValue,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
@@ -272,4 +274,10 @@ export function cardHasUnresolvedGoalReferences(
     const { error, isResolving } = resolveGoalValue(data, ref);
     return isResolving === true || error != null;
   });
+}
+
+export function supportsDynamicGoals(display: VisualizationDisplay): boolean {
+  return match(display)
+    .with("gauge", () => true)
+    .otherwise(() => false);
 }
