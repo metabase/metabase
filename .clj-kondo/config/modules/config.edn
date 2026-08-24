@@ -2969,6 +2969,7 @@
    :uses #{api
            api-keys
            app-db
+           auth-identity
            driver
            lib
            permissions

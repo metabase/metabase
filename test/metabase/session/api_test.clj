@@ -431,9 +431,8 @@
                    (mt/client :post 401 "session" (:old creds))))
             (is (malli= SessionResponse
                         (mt/client :post 200 "session" (:new creds))))
-            (is (some? (get-in (t2/select-one-fn :credentials :model/AuthIdentity
-                                                 :user_id id :provider "emailed-secret-password-reset")
-                               [:consumed_at]))
+            (is (some? (:consumed_at (t2/select-one-fn :credentials :model/AuthIdentity
+                                                       :user_id id :provider "emailed-secret-password-reset")))
                 "the reset token should be marked consumed")))))))
 
 (deftest reset-password-throttling-test
