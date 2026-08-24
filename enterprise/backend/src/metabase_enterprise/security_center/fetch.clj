@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -116,11 +117,13 @@
           query-params (cond-> {:site-uuid  site-uuid
                                 :mb-version (:tag config/mb-version-info)}
                          since (assoc :since (str since)))
-          resp         (http/get url
-                                 {:query-params       query-params
-                                  :throw-exceptions   false
-                                  :socket-timeout     5000
-                                  :connection-timeout 2000})]
+          ;; hm-url is token-check-url: hardcoded in prod, env-overridable in dev
+          resp         (u.http/get url
+                                   {:network-policy     :allow-all
+                                    :query-params       query-params
+                                    :throw-exceptions   false
+                                    :socket-timeout     5000
+                                    :connection-timeout 2000})]
       (if (http/success? resp)
         (let [advisories (:advisories (json/decode+kw (:body resp)))]
           (mu/validate-throw [:sequential ::advisory] advisories)

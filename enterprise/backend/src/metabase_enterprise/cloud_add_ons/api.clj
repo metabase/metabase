@@ -1,7 +1,6 @@
 (ns metabase-enterprise.cloud-add-ons.api
   "/api/ee/cloud-add-ons endpoints. "
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [metabase-enterprise.cloud-add-ons.core :as cloud-add-ons]
    [metabase-enterprise.harbormaster.client :as hm.client]
@@ -11,6 +10,7 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.store-api.core :as store-api]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
 
@@ -115,7 +115,8 @@
   "Make a GET request to fetch publicly available info from Metabase Store API endpoints."
   [endpoint]
   (if-let [url (store-api/store-api-url)]
-    (:body (http/get (str url "/api/v2" endpoint) {:as :json}))
+    ;; store-api-url is set in the environment, not through the API
+    (:body (u.http/get (str url "/api/v2" endpoint) {:network-policy :allow-all, :as :json}))
     (throw (ex-info (tru "Please configure store-api-url") {:status-code 400}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
