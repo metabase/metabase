@@ -1,7 +1,7 @@
 /**
- * @fileoverview Keeps frontend/lint/side-effect-files.json in step with the source tree.
- * The registry lists every source file that `metabase/no-module-side-effects` reports under the options
- * eslint.config.mjs gives it, so this scans the tree with just that rule and compares.
+ * @fileoverview Generates frontend/lint/side-effect-files.json, the registry of source files that run code at import time.
+ * It lints the whole tree with `metabase/no-module-side-effects` under the options from eslint.config.mjs and compares the reported files with the registry.
+ * Run `--update` after adding or removing import-time work in a source file, since frontend/lint/tests/side-effect-files.unit.spec.js fails when the registry is out of date.
  *
  *   bun frontend/lint/scripts/side-effect-files.js --check    exit 1 on drift, listing it
  *   bun frontend/lint/scripts/side-effect-files.js --update   add new files as unclassified, drop clean ones
@@ -77,7 +77,7 @@ function createLinter() {
   ];
   return (file) => {
     const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
-    // The registry records what a file does at import, so its imports of other effect files do not count.
+    // The registry records what a file itself does at import, so its imports of other listed files do not count.
     return linter
       .verify(source, config, { filename: path.join(REPO_ROOT, file) })
       .filter(
@@ -101,7 +101,7 @@ function scanEffectFiles() {
   return findings;
 }
 
-// Listed packages that no source file imports, so the list cannot keep dead entries.
+// Listed packages that no source file imports, so the hand-written list cannot keep dead entries.
 // A specifier is imported when it appears quoted, alone or with a subpath, anywhere in a source file.
 function unimportedPackages(registry, files) {
   const unseen = new Map(
@@ -141,8 +141,8 @@ function diffRegistry(registry, effectFiles) {
   return { missing, stale };
 }
 
-// The stale entries the registry spec fails on: the rule rejects imports of a file classified
-// "global" or "entry", so a stale entry keeps rejecting imports of a file that is now clean,
+// The stale entries the registry test fails on.
+// The rule rejects imports of a file classified "global" or "entry", so a stale entry of those kinds keeps rejecting imports of a file that is clean,
 // while a stale "self" entry affects nothing and can wait for an --update sweep.
 function enforcedStale(registry, stale) {
   return stale.filter((file) => classify(registry, file) !== "self");

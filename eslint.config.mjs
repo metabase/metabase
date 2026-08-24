@@ -1211,14 +1211,14 @@ const configs = [
   // SIDE-EFFECT-FREE MODULES
   // ============================================
   {
-    // Rspack drops any file in these directories whose exports go unused, so an
-    // import-time effect there is silently lost in production. Declaring a
-    // directory in SIDE_EFFECT_FREE_PATHS enrols it here.
+    // Rspack drops any file in these directories whose exports go unused, so code that ran at import there is silently lost in production.
+    // The rule reports the import-time work it can see, and runs on every directory in SIDE_EFFECT_FREE_PATHS with nothing else to configure.
     files: SIDE_EFFECT_FREE_PATHS.map(
       (dir) => `${path.relative(__dirname, dir)}/**/*.{ts,tsx,js,jsx}`,
     ),
     ignores: [
-      // A directory entry (trailing separator) covers every file under it
+      // Files in SIDE_EFFECT_PATHS are allowed to run code at import, so they are not linted.
+      // A directory entry (trailing separator) covers every file under it.
       ...SIDE_EFFECT_PATHS.map((entry) =>
         entry.endsWith(path.sep)
           ? `${path.relative(__dirname, entry)}/**`

@@ -1,25 +1,21 @@
 /**
- * @fileoverview Reads frontend/lint/side-effect-files.json, the registry of source files that
- * `metabase/no-module-side-effects` reports as doing work at import time.
+ * @fileoverview Reads frontend/lint/side-effect-files.json, the registry of source files that run code at import time.
  *
- * Every file it reports is listed, classified once by a human:
- *   "self"   the effect only matters to the file's own importers (its own singleton or listener,
- *            a value it exports), so dropping the file with its importers is correct
- *   "global" the effect is consumed by code that does not import the file (a polyfill, a vendor patch,
- *            a registry the app reads, a plugin slot write), so the file must be loaded from an entry
+ * The file list is generated, not written by hand.
+ * `bun frontend/lint/scripts/side-effect-files.js --update` lints the whole tree with `metabase/no-module-side-effects` and adds every reported file as `unclassified`,
+ * and the unit test frontend/lint/tests/side-effect-files.unit.spec.js fails when the list has drifted from the tree.
+ * A human then sets each file's classification once:
+ *   "self"   only the file's own importers rely on what it does (its own singleton, a value it exports), so dropping it with its importers is safe
+ *   "global" code that does not import the file relies on what it does (a polyfill, a vendor patch, a plugin slot write), so it must be loaded from an entry
  *   "entry"  a bundle entry or a side-effects list, effectful by design
- * `unclassified` files are treated as "global" until someone classifies them.
- * `facades` are directory prefixes whose effect is their own exports (`metabase/ui`, `metabase/dayjs`),
- * so importing them with bindings is always fine.
- * `packages` are bare specifiers of third-party packages whose import-time work is consumed by code
- * that does not import them (a polyfill, a plugin on a host like `leaflet-draw` on `L`, global CSS).
- * It is hand-maintained: node_modules are not scanned, and a package it does not list is assumed
- * self-contained, its import-time work serving only its own exports.
- * A key matches its exact specifier and every subpath under it (`leaflet-draw` covers `leaflet-draw/x`).
- * A vendor whose plugins extend the host (dayjs) gets a facade, and other rules forbid importing it raw,
- * so it needs no entry here.
- * Keys are repo-relative paths; a key containing `*` is a micromatch pattern, and an exact key wins over a pattern.
- * `scripts/side-effect-files.js --check` keeps the file in step with the tree.
+ * An `unclassified` file counts as "global" until someone classifies it.
+ *
+ * Keys are repo-relative paths.
+ * A key containing `*` is a micromatch pattern, and an exact key wins over a pattern.
+ * `facades` are directory prefixes whose only effect is their own exports (`metabase/ui`, `metabase/dayjs`), so importing them with bindings is always fine.
+ * `packages` is the one hand-written list: third-party packages whose import-time work is relied on by code that does not import them (a polyfill, `leaflet-draw` on `L`, global CSS).
+ * node_modules are not scanned, so a package that is not listed is assumed to serve only its own exports.
+ * A package key matches its exact specifier and every subpath under it (`leaflet-draw` covers `leaflet-draw/x`).
  */
 
 const fs = require("fs");
@@ -72,7 +68,8 @@ function classifyPackage(registry, source) {
   return listed == null ? null : registry.packages[listed];
 }
 
-// Problems a hand-edited registry can have. Empty when it is well formed.
+// Problems a hand-edited classification can introduce.
+// Empty when the registry is well formed.
 function validateRegistry(registry, effectFiles) {
   const problems = [];
   for (const [key, value] of Object.entries(registry.files)) {
