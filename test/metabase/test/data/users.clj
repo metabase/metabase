@@ -144,9 +144,11 @@
     {:username email
      :password password}))
 
-;; Keyed on the app db as well as the user: [[metabase.test.data/with-empty-h2-app-db!]] swaps in a
-;; different one, where a token minted against the previous database names a session that does not
-;; exist -- and the token minted inside it would otherwise leak back out when the original is restored.
+;; {[app-db username] session-key}
+;;
+;; The app db is in the key because `with-empty-h2-app-db!` swaps in a different one. A token from the old
+;; database names a session the new one has never heard of, so the request 401s. Tokens minted while the empty
+;; db is in place would stick around after the original comes back, too.
 (defonce ^:private tokens (atom {}))
 
 ;;; This is done by hitting the app DB directly instead of hitting [[metabase.test.http-client/authenticate]] to avoid
