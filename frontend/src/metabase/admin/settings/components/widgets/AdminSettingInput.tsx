@@ -112,18 +112,16 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     sent.current = { value: newValue };
     // chained so the writes reach the server in the order they were made, leaving the
     // value the user picked last as the one that sticks
-    writes.current = writes.current
-      .then(async () => {
-        const { error } = await updateSetting({ key: name, value: newValue });
-        if (error) {
-          sent.current = null;
-          if (inputType === "boolean") {
-            // remount resets a toggle; a text input would lose what the user typed
-            setResetKey((key) => key + 1);
-          }
+    writes.current = writes.current.then(async () => {
+      const { error } = await updateSetting({ key: name, value: newValue });
+      if (error) {
+        sent.current = null;
+        if (inputType === "boolean") {
+          // remount resets a toggle; a text input would lose what the user typed
+          setResetKey((key) => key + 1);
         }
-      })
-      .catch(() => undefined);
+      }
+    });
   };
 
   if (hidden || isLoading) {
