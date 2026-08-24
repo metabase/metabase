@@ -5,10 +5,17 @@ import {
   resetPermissionsBasePath,
   setPermissionsBasePath,
 } from "metabase/admin/permissions/utils/base-path";
+import {
+  PermissionsSelectionColorProvider,
+  type PermissionsSelectionColors,
+} from "metabase/admin/permissions/utils/selection-color";
 import { Outlet } from "metabase/router";
 
 type PermissionsBasePathProps = {
   basePath?: string;
+  /** Overrides the selected-row and link colors, which default to admin's
+   * purple. See `selection-color.tsx`. */
+  selectionColors?: PermissionsSelectionColors;
   children?: ReactNode;
 };
 
@@ -30,11 +37,18 @@ type PermissionsBasePathProps = {
  */
 export function PermissionsBasePath({
   basePath = ADMIN_PERMISSIONS_BASE_PATH,
+  selectionColors,
   children = <Outlet />,
 }: PermissionsBasePathProps) {
   setPermissionsBasePath(basePath);
 
   useEffect(() => resetPermissionsBasePath, []);
 
-  return <>{children}</>;
+  return selectionColors ? (
+    <PermissionsSelectionColorProvider value={selectionColors}>
+      {children}
+    </PermissionsSelectionColorProvider>
+  ) : (
+    <>{children}</>
+  );
 }
