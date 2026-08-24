@@ -381,7 +381,8 @@
                       (.flush os)
                       (recur)))))))
           (catch Exception e
-            (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e))))))))
+            (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e))
+            (sr/write-error! os e nil)))))))
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
   "Re-fetch the manifest from the dev server for a dev-only plugin. For uploaded
