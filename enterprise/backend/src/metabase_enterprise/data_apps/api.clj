@@ -100,11 +100,24 @@
              [:map {:closed false}
               [:source QuerySource]]]]])
 
+(def ^:private MetricResponse
+  [:map {:closed true}
+   [:id                     ms/PositiveInt]
+   [:name                   ms/NonBlankString]
+   [:type                   [:enum :metric]]
+   [:collection_id          [:maybe ms/PositiveInt]]
+   [:dataset_query          ms/Map]
+   [:database_id            ms/PositiveInt]
+   [:display                [:maybe [:or :keyword :string]]]
+   [:visualization_settings [:maybe ms/Map]]
+   [:description            [:maybe :string]]])
+
 (def ^:private QueryResolutionResponse
   [:map
    [:database_id ms/PositiveInt]
    [:dataset_query ms/Map]
-   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]])
+   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]
+   [:metrics [:sequential MetricResponse]]])
 
 (def ^:private ResourcePermissionsRequest
   [:map
@@ -207,6 +220,19 @@
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
+(defn- referenced-metrics
+  "Return direct metric references."
+  [query]
+  (let [metric-ids (lib/all-source-card-ids query)
+        metrics    (if (seq metric-ids)
+                     (t2/select :model/Card :id [:in metric-ids] :type "metric")
+                     [])]
+    (mapv #(update (select-keys % [:id :name :type :collection_id :dataset_query
+                                   :database_id :display :visualization_settings :description])
+                   :dataset_query
+                   lib/prepare-for-serialization)
+          (sort-by :id metrics))))
+
 (api.macros/defendpoint :post ["/:slug/query" :slug slug-regex] :- QueryResolutionResponse
   "Resolve an authored data-app query definition into a serializable Metabase query."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
@@ -225,7 +251,8 @@
                                  (lib/all-implicitly-joined-table-ids query))
                          set
                          sort
-                         vec)}))
+                         vec)
+     :metrics       (referenced-metrics query)}))
 
 (api.macros/defendpoint :post ["/:slug/draft" :slug slug-regex] :- DraftDataAppResponse
   "Create or reuse a data app draft before its first repository import."

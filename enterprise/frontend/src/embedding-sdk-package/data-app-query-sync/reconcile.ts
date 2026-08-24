@@ -8,6 +8,7 @@ import { RESOURCE_LOCKFILE, writeResourceLockfile } from "./lockfile";
 import { getErrorMessage, getRelativeDefinitionLocation } from "./messages";
 import type { MetabaseClient } from "./metabase-client";
 import { orNullOn404 } from "./metabase-client";
+import { reconcileMetrics, reconcileRemovedMetrics } from "./reconcile-metrics";
 import type {
   DiscoveredQuery,
   QueryLockEntry,
@@ -440,6 +441,14 @@ export async function reconcileQueries({
     previousEntries,
   );
   const resolvedQueries = await resolveQueries(appRoot, slug, queries, client);
+  const metricReconciliation = await reconcileMetrics({
+    appRoot,
+    collectionId,
+    resolvedQueries: resolvedQueries.map(({ resolved }) => resolved),
+    lockfile,
+    client,
+    log,
+  });
   const cardsById = await fetchReferencedCards(queries, recoveredIds, client);
   const repairs = findLockfileRepairs(
     queries,
@@ -461,6 +470,14 @@ export async function reconcileQueries({
   };
   const liveIds = await reconcileLiveQueries(context, resolvedQueries);
 
+  await reconcileRemovedMetrics({
+    appRoot,
+    collectionId,
+    ...metricReconciliation,
+    lockfile,
+    client,
+    log,
+  });
   await reconcileRemovedQueries(context, previousEntries, liveIds);
 
   if (!fs.existsSync(path.join(appRoot, RESOURCE_LOCKFILE))) {

@@ -4,6 +4,7 @@
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.metric :as schema.metric]
    [metabase.typed-schemas.schema.table :as schema.table]
    [toucan2.core :as t2]))
@@ -75,6 +76,44 @@
                :status-code   404
                :error-message "Not found."}
               (ex-data exception))))))
+
+(deftest metric-schemas-excludes-card-sourced-metrics-test
+  (with-redefs [schema.common/select-schema-cards
+                (constantly [{:id 247
+                              :dataset_query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages [{:lib/type :mbql.stage/mbql
+                                                        :source-table 10}]}}
+                             {:id 258
+                              :dataset_query {:query {:source-table "card__42"}}}
+                             {:id 259
+                              :dataset_query {:stages [{:source-card 42}]}}])
+                schema.metric/metric-details identity
+                schema.metric/metric-schema (fn [details _card] (:id details))]
+    (is (= [247]
+           (vec (schema.metric/metric-schemas nil nil))))))
+
+(deftest metric-schemas-excludes-metrics-that-reference-other-metrics-test
+  (with-redefs [schema.common/select-schema-cards
+                (constantly [{:id 247
+                              :dataset_query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages [{:lib/type :mbql.stage/mbql
+                                                        :source-table 10}]}}
+                             {:id 258
+                              :dataset_query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages [{:lib/type :mbql.stage/mbql
+                                                        :source-table 10
+                                                        :aggregation [[:metric
+                                                                       {:lib/uuid
+                                                                        "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
+                                                                       247]]}]}}])
+                schema.metric/metric-details identity
+                schema.metric/metric-schema (fn [details _card] (:id details))
+                t2/select-pks-set (constantly #{247})]
+    (is (= [247]
+           (vec (schema.metric/metric-schemas nil nil))))))
 
 (deftest table-source-names-filters-unreadable-tables-test
   (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}

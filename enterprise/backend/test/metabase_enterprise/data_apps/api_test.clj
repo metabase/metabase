@@ -133,6 +133,39 @@
                                            :limit 5}]}}
                 response))))))
 
+(deftest referenced-metrics-excludes-non-metric-cards-test
+  (mt/with-premium-features #{:data-apps-preview}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (let [metadata-provider (mt/metadata-provider)
+            orders-query      (lib/query metadata-provider
+                                         (lib.metadata/table metadata-provider (mt/id :orders)))
+            venue-count-query (-> (lib/query metadata-provider
+                                             (lib.metadata/table metadata-provider (mt/id :venues)))
+                                  (lib/aggregate (lib/count)))]
+        (mt/with-temp [:model/Card {question-id :id}
+                       {:name          "Orders"
+                        :type          :question
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :orders)
+                        :dataset_query orders-query}
+                       :model/Card {metric-id :id}
+                       {:name          "Venue count"
+                        :type          :metric
+                        :database_id   (mt/id)
+                        :table_id      (mt/id :venues)
+                        :dataset_query venue-count-query}]
+          (let [response (mt/user-http-request
+                          :crowberto :post 200 "apps/demo/query"
+                          {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                     :joins        [{:source     {:type "card" :id question-id}
+                                                     :strategy   "left-join"
+                                                     :conditions [{:operator "="
+                                                                   :left     {:type "column" :name "ID"}
+                                                                   :right    {:type "column" :name "USER_ID"}}]}]
+                                     :aggregations [{:type "metric" :id metric-id}]}]})]
+            (is (= [metric-id] (mapv :id (:metrics response))))))))))
+
 (deftest resolved-query-includes-implicitly-joined-tables-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -140,12 +173,12 @@
       (let [orders-id            (mt/id :orders)
             products-id          (mt/id :products)
             product-id-field-id  (mt/id :orders :product_id)
-            product-category-id  (mt/id :products :category)
             response             (mt/user-http-request
                                   :crowberto :post 200 "apps/demo/query"
-                                  {:stages [{:source   {:type "table" :id orders-id}
-                                             :breakout [[:field {:source-field product-id-field-id}
-                                                         product-category-id]]}]})]
+                                  {:stages [{:source    {:type "table" :id orders-id}
+                                             :breakouts [{:type            "column"
+                                                          :name            "CATEGORY"
+                                                          :source-field-id product-id-field-id}]}]})]
         (is (= #{orders-id products-id}
                (set (:table_ids response))))))))
 
@@ -240,17 +273,18 @@
              (mt/user-http-request :rasta :post 403 "apps/demo/query"
                                    {:stages [{:source {:type "table" :id (mt/id :venues)}}]}))))))
 
-(deftest non-superuser-cannot-reconcile-query-database-permissions-test
+(deftest non-superuser-cannot-reconcile-query-table-permissions-test
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (mt/with-temp [:model/Database {database-id :id} {}]
-        (create-app!)
-        (let [group-id (t2/select-one-fn :permission_group_id :model/DataApp :name "demo")]
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403 "apps/demo/resources/permissions"
-                                       {:database_ids [database-id]})))
-          (is (not= :unrestricted (view-data-permission group-id database-id))
-              "the refused call granted nothing"))))))
+      (create-app!)
+      (let [database-id (mt/id)
+            table-id    (mt/id :venues)
+            group-id    (t2/select-one-fn :permission_group_id :model/DataApp :name "demo")]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "apps/demo/resources/permissions"
+                                     {:table_ids [table-id]})))
+        (is (not= :unrestricted (view-data-permission group-id database-id table-id))
+            "the refused call granted nothing")))))
 
 (deftest superuser-can-create-or-reuse-a-data-app-draft-test
   (mt/with-premium-features #{:data-apps-preview}

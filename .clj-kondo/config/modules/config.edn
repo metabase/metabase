@@ -3229,7 +3229,8 @@
            premium-features
            settings
            util}
-   :model-imports #{:model/Collection
+   :model-imports #{:model/Card
+                    :model/Collection
                     :model/Database
                     :model/Permissions
                     :model/PermissionsGroup

@@ -360,7 +360,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
           cy.request({
             method: "PUT",
             url: `/api/apps/${APP_SLUG}/resources/permissions`,
-            body: { database_ids: [SAMPLE_DB_ID] },
+            body: { table_ids: [ORDERS_ID] },
             headers: { "x-api-key": key.unmasked_key },
             failOnStatusCode: false,
           })
@@ -636,11 +636,9 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
           // The graph reports only what departs from a group's defaults, so a
           // database the app no longer reads drops out of it entirely.
-          cy.request("/api/permissions/graph").then(({ body: graph }) => {
+          getPermissionByGroup(app.permission_group_id).should((graph) => {
             expect(
-              graph.groups[app.permission_group_id][SAMPLE_DB_ID]?.[
-                "view-data"
-              ],
+              graph[SAMPLE_DB_ID]?.["view-data"],
               "revoked by the second sync",
             ).to.be.undefined;
           });
