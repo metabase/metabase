@@ -95,7 +95,9 @@ export function EmbeddingHubLayout() {
       upperNav={upperNav}
       lowerNav={<NewEmbedNavButton showLabel={isNavbarOpened} />}
     >
-      <EmbeddingHubContent>
+      <EmbeddingHubContent
+        fullWidth={isUnder(pathname, Urls.embeddingHubPermissions())}
+      >
         <Outlet />
       </EmbeddingHubContent>
     </AreaLayout>
