@@ -144,12 +144,25 @@
         (when previous
           (set-session-lock-wait-timeout! conn previous))))))
 
+(defn- lock-wait-timeout-code?
+  "Whether any exception in `e`'s cause chain is MySQL's ER_LOCK_WAIT_TIMEOUT. The server can raise it on its
+  own schedule, so it does not always arrive as a `SQLTimeoutException` or through
+  [[do-with-lock-wait-timeout]]."
+  [^Throwable e]
+  (loop [^Throwable e e]
+    (cond
+      (nil? e)                                                            false
+      (and (instance? SQLException e)
+           (= (.getErrorCode ^SQLException e) lock-wait-timeout-error-code)) true
+      :else                                                               (recur (.getCause e)))))
+
 (defn- lock-wait-timed-out?
   "Whether `e` says we timed out waiting for a row lock, rather than failing for some other reason."
   [^Throwable e]
   (or (instance? java.sql.SQLTimeoutException e)
       (instance? java.sql.SQLTimeoutException (ex-cause e))
       (true? (::acquisition-timeout (ex-data e)))
+      (lock-wait-timeout-code? e)
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (defn- insert-lock-row-out-of-band!
