@@ -2,8 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
-import { ColorRange } from "metabase/common/components/ColorRange";
 import { Popover, type PopoverProps, rem } from "metabase/ui";
+
+import { ColorRange } from "../ColorRange";
 
 import { ColorRangePopover } from "./ColorRangePopover";
 
