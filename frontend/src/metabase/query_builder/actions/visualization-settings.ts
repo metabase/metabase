@@ -46,7 +46,8 @@ export const onUpdateVisualizationSettings =
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     await dispatch(
       updateQuestion(updatedQuestion, {
-        run: shouldRunForGoalReferences(updatedQuestion, getState),
+        run:
+          isEditable && shouldRunForGoalReferences(updatedQuestion, getState),
         shouldUpdateUrl: isEditable,
       }),
     );

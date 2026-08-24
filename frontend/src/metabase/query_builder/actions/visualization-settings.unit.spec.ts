@@ -1,6 +1,7 @@
 import { createMockEntitiesState } from "__support__/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
   Dataset,
@@ -79,6 +80,10 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 describe("onUpdateVisualizationSettings", () => {
   it("re-runs the query when a range starts referencing another question", async () => {
     await dispatchWith(
@@ -102,6 +107,18 @@ describe("onUpdateVisualizationSettings", () => {
     await dispatchWith(
       DYNAMIC_SEGMENTS,
       onUpdateVisualizationSettings(STATIC_SEGMENTS),
+    );
+    expectRun(false);
+  });
+
+  it("does not run the query when the question is not editable", async () => {
+    jest
+      .spyOn(Lib, "queryDisplayInfo")
+      .mockReturnValue({ isNative: false, isEditable: false });
+
+    await dispatchWith(
+      STATIC_SEGMENTS,
+      onUpdateVisualizationSettings(DYNAMIC_SEGMENTS),
     );
     expectRun(false);
   });
