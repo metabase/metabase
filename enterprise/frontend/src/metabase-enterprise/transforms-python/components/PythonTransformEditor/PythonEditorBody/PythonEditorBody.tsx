@@ -15,7 +15,7 @@ import { PythonEditor } from "../../PythonEditor";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
 import { createPythonImportTokenLocator } from "./utils";
 
-type PythonEditorBodyProps = {
+export type PythonEditorBodyProps = {
   disabled?: boolean;
   source: string;
   proposedSource?: string;

@@ -4,7 +4,6 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.util :as mut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -219,15 +218,6 @@
   "Schema for a valid map. Open: it constrains nothing about its keys, so its contents pass through as they arrived."
   (mu/with-api-error-message
    [:map {:closed false}]
-   (deferred-tru "Value must be a map.")))
-
-(def KeywordizedMap
-  "Schema for an open map whose incoming string keys are normalized to keywords on API decode."
-  (mu/with-api-error-message
-   [:map {:closed     false
-          :decode/api (fn [m]
-                        (cond-> m
-                          (map? m) walk/keywordize-keys))}]
    (deferred-tru "Value must be a map.")))
 
 (def Email

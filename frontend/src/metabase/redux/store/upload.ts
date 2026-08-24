@@ -12,6 +12,7 @@ export type FileUpload = {
   collectionId?: CollectionId;
   modelId?: string;
   tableId?: TableId;
+  tableName?: string;
   message?: string;
   error?: string;
   uploadMode?: UploadMode;

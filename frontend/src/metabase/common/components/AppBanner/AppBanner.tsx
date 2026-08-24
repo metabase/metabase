@@ -1,6 +1,5 @@
-import dayjs from "dayjs";
-
 import { getUserIsAdmin } from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useSetting, useUserSetting } from "metabase/settings";

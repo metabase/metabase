@@ -14,23 +14,24 @@
   production deployments. Short-lived OAuth access tokens can be generated via `gcloud auth print-access-token` and
   are useful for local testing. If both are configured, then the service account key is used.
 
-  A project id is also required. This can either be extracted from the service account key JSON or provided explicitly
-  via the [[llm/llm-google-project-id]] setting (required when using an OAuth token).
+  A project id is also required. This can either be extracted from the service account key JSON or provided
+  explicitly by the connection (required when using an OAuth token).
 
   You can also specify which Google Cloud location requests should be served from. The default is `global`, but we
   also support the multi-region `us` and `eu` locations, as well as specific locations like `us-east1` or
   `europe-west2` etc.
 
-  The effective endpoint URL depends on the location setting, but can also be overridden via an env var.
+  The effective endpoint URL depends on the connection's location, but the connection can also name one outright.
   See [[api-base-url]] for details."
   (:require
    [clojure.string :as str]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
-   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -48,15 +49,22 @@
   "The model to use when the request does not name one."
   "google/gemini-3.5-flash")
 
-;;; Auth / HTTP plumbing
+(def ^:private model-context-windows
+  "Input context windows for known Google Gemini models, keyed by publisher-qualified model id.
+  Values:
+  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-5-flash
+  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-6-flash
+  - https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-7-flash"
+  {"google/gemini-3.5-flash" 1048576
+   "google/gemini-3.6-flash" 1048576
+   "google/gemini-3.7-flash" 1048576})
 
-(defn- settings-credentials
-  "Returns the Google credentials from the `llm-google-*` settings."
-  []
-  {:service-account-key (not-empty (llm/llm-google-service-account-key))
-   :oauth-access-token  (not-empty (llm/llm-google-oauth-access-token))
-   :project-id          (not-empty (llm/llm-google-project-id))
-   :location            (not-empty (llm/llm-google-location))})
+(defn context-window-tokens
+  "The input context window for `model`, or nil when it isn't one we know."
+  [model]
+  (get model-context-windows model))
+
+;;; Auth / HTTP plumbing
 
 (def ^:private cloud-platform-scope
   "The OAuth2 scope for access tokens made from the service account key.
@@ -163,8 +171,8 @@
   locations. Thus a non-global location gets its host from [[location-host]], and the admin does not have to set a
   second setting. If the admin set a base URL, for example a proxy or a test double, this function returns it without
   a change."
-  [credentials]
-  (let [configured (llm/llm-google-api-base-url)
+  [{:keys [base-url] :as credentials}]
+  (let [configured (or (not-empty base-url) llm/google-global-api-base-url)
         location   (effective-location credentials)]
     (if (and (not= location global-location)
              (= configured llm/google-global-api-base-url))
@@ -174,15 +182,21 @@
 (defn- resolve-google-auth
   "Resolves the `{:auth {:url ... :headers ...} :credentials ...}` pair for a Google request.
 
-  If `credentials` is nil, uses [[settings-credentials]]. The credentials in the result are the resolved ones, so that
-  callers can build resource paths from the project and the location. A service account key has precedence over an
-  OAuth access token. Throws if no project ID resolves, or if `ai-proxy?` is true."
+  The credentials in the result are the resolved ones, so that callers can build resource paths from the project and
+  the location. A service account key has precedence over an OAuth access token. Throws if no project ID resolves, or
+  if `ai-proxy?` is true."
   [credentials ai-proxy?]
   (when ai-proxy?
     (throw (ex-info (tru "AI proxy is not supported for the Google provider")
                     {:api-error  true
                      :error-code :proxy-unsupported})))
-  (let [{:keys [service-account-key oauth-access-token project-id] :as creds} (or credentials (settings-credentials))
+  ;; blank credentials count as absent — the environment can hand a setting an empty string, and one credential
+  ;; left blank must not shadow the other or the project ID a service account key carries
+  (let [{:keys [service-account-key oauth-access-token project-id]
+         :as   creds}      (merge credentials
+                                  {:service-account-key (u/trimmed-string (:service-account-key credentials))
+                                   :oauth-access-token  (u/trimmed-string (:oauth-access-token credentials))
+                                   :project-id          (u/trimmed-string (:project-id credentials))})
         sa-creds    (when service-account-key
                       (cached-service-account-credentials service-account-key))
         project-id  (or project-id (some-> sa-creds service-account-project-id))
@@ -250,9 +264,7 @@
   The `llm-metabot-provider` setting takes the Google model as free text — unlike a whitelisted provider, nothing
   upstream of this constrains it."
   [credentials model]
-  (let [model-str (str model)
-        publisher (provider-util/provider-and-model->provider model-str)
-        model-id  (provider-util/provider-and-model->model model-str)]
+  (let [[publisher model-id] (str/split (str model) #"/" 2)]
     (when (str/blank? model-id)
       (throw (ex-info (tru "Invalid Google model {0} — expected a publisher-qualified ID like \"google/gemini-3.5-flash\""
                            (pr-str model))
@@ -304,7 +316,6 @@
   - For 404s include a hint to check that the provided location is correct."
   [credentials e]
   (let [data        (ex-data e)
-        credentials (or credentials (settings-credentials))
         location    (:location credentials)
         known?      (conj multi-region-locations global-location)
         endpoint    (delay (try (api-base-url credentials) (catch Exception _ nil)))
@@ -348,11 +359,11 @@
   nil)
 
 (defn- configured-google-model
-  "Returns the saved model string if the configured Metabot provider is Google."
+  "The publisher-qualified model of the connection Metabot is pointed at, when that connection is a Google one."
   []
-  (let [value (metabot.settings/llm-metabot-provider)]
-    (when (= (provider-util/provider-and-model->provider value) "google")
-      (provider-util/provider-and-model->model value))))
+  (let [{:keys [type model]} (llm.provider/resolve-model-ref (metabot.settings/llm-metabot-provider))]
+    (when (= type "google")
+      model)))
 
 (defn list-models
   "Validates the Google credentials and the candidate model with a free `countTokens` call.

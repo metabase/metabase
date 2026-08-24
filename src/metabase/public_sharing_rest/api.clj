@@ -32,7 +32,6 @@
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -707,14 +706,12 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField string?]
-       [:lonField string?]]]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card       (api/check-404 (t2/select-one :model/Card :public_uuid uuid, :archived false))
-        lat-field  (json/decode+kw latField)
-        lon-field  (json/decode+kw lonField)]
+  (let [card (api/check-404 (t2/select-one :model/Card :public_uuid uuid, :archived false))]
     (request/as-admin
-      (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))))
+      (api.tiles/process-tiles-query-for-card card parameters zoom x y latField lonField))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -734,17 +731,15 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField string?]
-       [:lonField string?]]]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [dashboard  (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
-        dashcard   (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        card       (api/check-404 (t2/select-one :model/Card card-id))
-        lat-field  (json/decode+kw latField)
-        lon-field  (json/decode+kw lonField)]
+  (let [dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
+        dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card      (api/check-404 (t2/select-one :model/Card card-id))]
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
-                                                  parameters zoom x y lat-field lon-field))))
+                                                  parameters zoom x y latField lonField))))
 
 ;;; ------------------------------------------------ Public Documents -------------------------------------------------
 
