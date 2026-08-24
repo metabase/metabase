@@ -10,8 +10,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.test.fixtures :as fixtures]
    [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
 
