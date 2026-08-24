@@ -57,19 +57,24 @@
                            {:id "test-id-0"
                             :user_id support-user-id
                             :session_key "test1"
-                            :auth_identity_id (t2/select-one-pk :model/AuthIdentity :user_id support-user-id :provider "password")}
+                            :auth_identity_id (t2/select-one-pk :model/AuthIdentity
+                                                                :user_id support-user-id
+                                                                :provider "password")}
                            :model/Session {other-session-id :id}
                            {:id "test-id-1"
                             :user_id other-user-id
                             :session_key "test2"
-                            :auth_identity_id (t2/select-one-pk :model/AuthIdentity :user_id other-user-id :provider "password")}]
+                            :auth_identity_id (t2/select-one-pk :model/AuthIdentity
+                                                                :user_id other-user-id
+                                                                :provider "password")}]
               (let [revoked-timestamp (t/offset-date-time)]
                 (t2/update! :model/SupportAccessGrantLog grant-id {:revoked_at revoked-timestamp})
                 (is (nil? (t2/select-one :model/Session :id support-session-id))
                     "Support user session should be deleted")
                 (is (some? (t2/select-one :model/Session :id other-session-id))
                     "Other user session should remain")
-                (is (some? (:expires_at (t2/select-one :model/AuthIdentity :user_id support-user-id :provider "password")))
+                (is (some? (:expires_at (t2/select-one :model/AuthIdentity
+                                                       :user_id support-user-id :provider "password")))
                     "Support user auth identity should have expires_at set")
                 (is (nil? (:expires_at (t2/select-one :model/AuthIdentity :user_id other-user-id :provider "password")))
                     "Other user auth identity should remain unchanged")))))))))

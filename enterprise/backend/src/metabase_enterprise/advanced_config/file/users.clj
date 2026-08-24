@@ -41,6 +41,8 @@
   ;; the profile write and the password write must land together — initialize! runs no transaction of its own
   (t2/with-transaction [_]
     (let [password (:password user)
+          ;; the password is stored only via set-password!; never hand it to the User model
+          user     (dissoc user :password)
           user-id  (if-let [existing-user (select-user (:email user))]
                      (do
                        (log/info (u/format-color :blue "Updating User %d" (:id existing-user)))
