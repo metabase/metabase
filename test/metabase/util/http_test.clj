@@ -190,10 +190,10 @@
   (testing "loopback-and-private admits loopback and the private ranges"
     (doseq [ip ["127.0.0.1" "127.0.1.5" "::1" "10.1.2.3" "192.168.0.1" "100.64.0.1" "fc00::1"]]
       (is (true? (http/address-allowed-for-network-policy? :loopback-and-private (InetAddress/getByName ip))) ip)))
-  (testing "loopback-and-private refuses public addresses -- unlike the other policies it is loopback/private ONLY"
+  (testing "loopback-and-private refuses public addresses"
     (doseq [ip public-ips]
       (is (false? (http/address-allowed-for-network-policy? :loopback-and-private (InetAddress/getByName ip))) ip)))
-  (testing "loopback-and-private still refuses link-local -- the cloud metadata service is the address that matters"
+  (testing "loopback-and-private still refuses link-local"
     (doseq [ip ["169.254.169.254" "fe80::1" "0.0.0.0" "224.0.0.1" "ff02::1"]]
       (is (false? (http/address-allowed-for-network-policy? :loopback-and-private (InetAddress/getByName ip))) ip)))
   (testing "allow-all admits everything"

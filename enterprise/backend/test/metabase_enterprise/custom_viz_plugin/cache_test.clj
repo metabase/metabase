@@ -128,7 +128,7 @@
   (testing "SECURITY: rejects URLs that resolve to public addresses"
     (is (thrown-with-msg? Exception #"loopback or private"
                           (cache/dev-base-url "https://8.8.8.8"))))
-  (testing "SECURITY: rejects the cloud metadata address"
+  (testing "SECURITY: rejects link-local address"
     (is (thrown-with-msg? Exception #"loopback or private"
                           (cache/dev-base-url "http://169.254.169.254/latest"))))
   (testing "SECURITY: rejects ftp:// URLs"
