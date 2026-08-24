@@ -16,6 +16,7 @@ import {
 } from "metabase/admin/permissions/permissions";
 import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
 import { assertNumericId } from "metabase/admin/permissions/types";
+import { getPermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
@@ -54,7 +55,7 @@ export function TenantCollectionPermissionsPage() {
   }, [dispatch]);
 
   const navigateToItem = ({ id }: { id: CollectionId }) =>
-    navigate(`/admin/permissions/tenant-collections/${id}`);
+    navigate(`${getPermissionsBasePath()}/tenant-collections/${id}`);
 
   const handlePermissionChange = useCallback(
     (
