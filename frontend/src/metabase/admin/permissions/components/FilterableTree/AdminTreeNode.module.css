@@ -1,40 +1,42 @@
 /*
- * `li.<class>` rather than a bare `.<class>`: this needs to beat
- * `TreeNodeRoot`'s own emotion-generated color/background rules
+ * `:not([data-css-specificity-hack])` rather than a bare class: this needs
+ * to beat `TreeNodeRoot`'s own emotion-generated color/background rules
  * (tree/TreeNode.styled.tsx), which are also single-class specificity, so
- * source order alone can't be trusted to pick a winner.
+ * source order alone can't be trusted to pick a winner. See
+ * ArchiveButton.module.css / MetricExpressionPill.module.css for the same
+ * trick elsewhere.
  */
 
-li.adminSelected {
-  color: var(--mantine-color-white);
+.adminSelected:not([data-css-specificity-hack="🦑"]) {
+  color: var(--mb-color-core-white);
   background-color: var(--mb-color-navbar-admin);
 }
 
-li.adminSelected:hover {
+.adminSelected:not([data-css-specificity-hack="🦑"]):hover {
   background-color: var(--mb-color-navbar-admin);
 }
 
-li.adminUnselected {
+.adminUnselected:not([data-css-specificity-hack="🦑"]) {
   color: var(--mb-color-text-secondary);
 }
 
-li.adminUnselected:hover {
+.adminUnselected:not([data-css-specificity-hack="🦑"]):hover {
   background-color: var(--mb-color-navbar-admin-secondary);
 }
 
-li.hubSelected {
-  color: var(--mantine-color-white);
+.hubSelected:not([data-css-specificity-hack="🦑"]) {
+  color: var(--mb-color-core-white);
   background-color: var(--mb-color-brand);
 }
 
-li.hubSelected:hover {
+.hubSelected:not([data-css-specificity-hack="🦑"]):hover {
   background-color: var(--mb-color-brand-hover);
 }
 
-li.hubUnselected {
+.hubUnselected:not([data-css-specificity-hack="🦑"]) {
   color: var(--mb-color-text-secondary);
 }
 
-li.hubUnselected:hover {
+.hubUnselected:not([data-css-specificity-hack="🦑"]):hover {
   background-color: var(--mb-color-background_surface-brand-subtle);
 }

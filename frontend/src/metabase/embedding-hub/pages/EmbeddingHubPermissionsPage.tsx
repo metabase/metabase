@@ -41,7 +41,10 @@ export function EmbeddingHubPermissionsPage() {
           as soon as the content moves. Its own toolbar padding is the
           compromise. */}
       <Box style={{ flex: 1, minHeight: 0 }}>
-        <PermissionsBasePath basePath={Urls.embeddingHubPermissions()} isHub />
+        <PermissionsBasePath
+          basePath={Urls.embeddingHubPermissions()}
+          isEmbeddingHub
+        />
       </Box>
     </Stack>
   );
