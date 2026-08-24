@@ -1,5 +1,6 @@
 (ns metabase.channel.impl.http
   (:require
+   ;; aliased for the ::http/unexceptional-status keyword below
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -9,7 +10,6 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.urls :as urls]
-   [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -55,8 +55,7 @@
 (mu/defmethod channel/send! :channel/http
   [{{:keys [url method auth-method auth-info]} :details} :- HTTPChannel
    request]
-  (let [strategy (channel.settings/http-channel-host-strategy)
-        resolver (u.http/network-policy-dns-resolver strategy)]
+  (let [strategy (channel.settings/http-channel-host-strategy)]
     (check-url! strategy url)
     (let [req (-> (merge
                    {:accept       :json
@@ -68,13 +67,10 @@
                      (= "request-body" auth-method) (update :body merge auth-info)
                      (= "header" auth-method)       (update :headers merge auth-info)
                      (= "query-param" auth-method)  (update :query-params merge auth-info)))
-                  (assoc :url url)
-                  ;; Remove an incoming resolver under :allow-all; rendered requests must not control
-                  ;; DNS resolution.
-                  (u/assoc-dissoc :dns-resolver resolver))]
-      (http/request (cond-> req
-                      (or (map? (:body req))
-                          (sequential? (:body req))) (update :body json/encode))))))
+                  (assoc :url url, :network-policy strategy))]
+      (u.http/request (cond-> req
+                        (or (map? (:body req))
+                            (sequential? (:body req))) (update :body json/encode))))))
 
 (defn- maybe-parse-json
   [x]

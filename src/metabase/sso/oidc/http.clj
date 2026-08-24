@@ -4,7 +4,6 @@
    All server-side OIDC HTTP requests should go through this namespace
    to ensure SSRF validation via `oidc-allowed-networks`."
   (:require
-   [clj-http.client :as http]
    [metabase.sso.settings :as sso.settings]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
@@ -28,13 +27,11 @@
                     {:url url}))))
 
 (defn- request-opts
-  "Merge caller `opts` over the defaults, adding the connection-time SSRF `:dns-resolver` for the current
-   `oidc-allowed-networks` policy so a host that rebinds to an internal address between validation and
-   connection is still rejected. Omitted for `:allow-all`, which imposes no restriction."
+  "Merge caller `opts` over the defaults and pin the `oidc-allowed-networks` policy last, so a caller
+   cannot loosen it."
   [opts]
-  (let [resolver (u.http/network-policy-dns-resolver (sso.settings/oidc-allowed-networks))]
-    (cond-> (merge default-opts opts)
-      resolver (assoc :dns-resolver resolver))))
+  (assoc (merge default-opts opts)
+         :network-policy (sso.settings/oidc-allowed-networks)))
 
 (defn oidc-get
   "Perform a validated GET request for OIDC operations.
@@ -43,7 +40,7 @@
    (oidc-get url {}))
   ([url opts]
    (validate-url! url)
-   (http/get url (request-opts opts))))
+   (u.http/get url (request-opts opts))))
 
 (defn oidc-post
   "Perform a validated POST request for OIDC operations.
@@ -52,4 +49,4 @@
    (oidc-post url {}))
   ([url opts]
    (validate-url! url)
-   (http/post url (request-opts opts))))
+   (u.http/post url (request-opts opts))))

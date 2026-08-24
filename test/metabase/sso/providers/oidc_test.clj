@@ -1,13 +1,13 @@
 (ns metabase.sso.providers.oidc-test
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.auth-identity.provider :as provider]
    [metabase.sso.oidc.discovery :as oidc.discovery]
    [metabase.sso.oidc.tokens :as oidc.tokens]
    [metabase.sso.providers.oidc]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.http :as u.http]))
 
 (set! *warn-on-reflection* true)
 
@@ -93,7 +93,7 @@
   (testing "Returns error when token exchange fails"
     (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                 (fn [_issuer] test-discovery-doc)
-                                http/post
+                                u.http/post
                                 (fn [_url _opts]
                                   {:status 400
                                    :body {:error "invalid_grant"}})]
@@ -106,7 +106,7 @@
   (testing "Returns error when token response missing id_token"
     (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                 (fn [_issuer] test-discovery-doc)
-                                http/post
+                                u.http/post
                                 (fn [_url _opts]
                                   {:status 200
                                    :body {:access_token "access-token-123"}})]
@@ -121,7 +121,7 @@
   (testing "Returns error when token validation fails"
     (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                 (fn [_issuer] test-discovery-doc)
-                                http/post
+                                u.http/post
                                 (fn [_url _opts]
                                   {:status 200
                                    :body {:id_token "invalid-token"
@@ -142,7 +142,7 @@
   (testing "Returns error when email not in claims"
     (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                 (fn [_issuer] test-discovery-doc)
-                                http/post
+                                u.http/post
                                 (fn [_url _opts]
                                   {:status 200
                                    :body {:id_token "valid-token"
@@ -165,7 +165,7 @@
   (testing "Successfully authenticates user with valid token"
     (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                 (fn [_issuer] test-discovery-doc)
-                                http/post
+                                u.http/post
                                 (fn [_url _opts]
                                   {:status 200
                                    :body {:id_token "valid-token"
@@ -194,7 +194,7 @@
   (testing "Successfully authenticates with minimal claims"
     (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                 (fn [_issuer] test-discovery-doc)
-                                http/post
+                                u.http/post
                                 (fn [_url _opts]
                                   {:status 200
                                    :body {:id_token "valid-token"
@@ -221,7 +221,7 @@
   (testing "Uses custom attribute mappings when provided"
     (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
                                 (fn [_issuer] test-discovery-doc)
-                                http/post
+                                u.http/post
                                 (fn [_url _opts]
                                   {:status 200
                                    :body {:id_token "valid-token"
