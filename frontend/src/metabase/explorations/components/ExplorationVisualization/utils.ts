@@ -857,15 +857,6 @@ export function buildCommentHighlightContext(
   };
 }
 
-/**
- * The label shown on a comment's badge, built from the click that created it.
- *
- * Formatted here rather than derived from the stored dimension values on read: the value's
- * presentation lives in the chart's column settings (a binned currency point reads "$0 - $10", a
- * month-bucketed timestamp reads "January 2026"), and those settings are not something the server
- * sees. The server stores the string verbatim and withholds it, with the rest of the context, from
- * viewers its data-access gate excludes.
- */
 export function buildHighlightLabel(
   clicked: ClickObject,
   settings?: ComputedVisualizationSettings,

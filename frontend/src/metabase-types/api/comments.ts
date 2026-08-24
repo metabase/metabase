@@ -10,27 +10,16 @@ export type CommentEntityType = "document" | "exploration";
 
 export type EntityId = string | number;
 
-/** Identity of the chart point a comment is anchored to. */
 export type CommentHighlight = {
   columnName?: string;
   dimensions?: { value: RowValue; columnName: string }[];
 };
 
-/** Mirrors the closed `CommentContext` schema on the server; any other key is dropped on create. */
 export type CommentContext = {
   timeline_id?: TimelineId | null;
   exploration_query_ids?: ExplorationQueryId[];
   highlighted?: CommentHighlight;
-  /**
-   * The point's label as the chart rendered it, formatted at create time — only the client knows
-   * the column settings (binning, currency, date granularity) that produced it. Stored verbatim;
-   * the server never derives or rewrites it, and withholds it with the rest of the context from
-   * viewers its data-access gate excludes.
-   */
   highlight_label?: string;
-  // The server schema is the thing that actually closes this blob; the index signature keeps the
-  // type assignable where callers still treat a comment's context as opaque JSON.
-  [key: string]: unknown;
 };
 
 export interface Comment {
