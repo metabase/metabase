@@ -58,7 +58,7 @@ import type {
 import { dimensionIsNumeric } from "../numeric";
 import { getMaxDimensionsSupported, getMaxMetricsSupported } from "../registry";
 
-import { trackStackedSeriesEnabled } from "metabase/visualizations/analytics";
+import { trackStackedSeriesEnabled } from "./analytics";
 
 export const getSeriesDisplays = (
   transformedSeries: Series,
