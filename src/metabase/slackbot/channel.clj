@@ -29,20 +29,27 @@
    See https://docs.slack.dev/reference/block-kit/blocks/section-block."
   3000)
 
+(def markdown-text-limit
+  "Slack rejects a message whose `markdown` blocks carry more than this many characters in total.
+   The limit is cumulative across the payload rather than per block, so it is a whole-message budget.
+   See https://docs.slack.dev/reference/block-kit/blocks/markdown-block."
+  12000)
+
 (defn- final-text-blocks
   "Build the leading text block(s) for a finalized non-streaming Slack message."
   [text]
   (if (str/blank? text)
     []
-    [{:type "section"
-      :text {:type "mrkdwn"
-             :text text}}]))
+    ;; Slack expands one `markdown` block into several as it renders: a heading becomes a `header`,
+    ;; a thematic break a `divider`, a table a `table` -- and those count against the 50-block limit.
+    [{:type "markdown"
+      :text text}]))
 
 (defn- truncation-notice
   "Copy explaining that an answer was cut short.
    `url` points at the Metabase instance; nil leaves the sentence standing without a link."
   [url]
-  (str "_This answer was longer than " section-text-limit " characters. That is too long to post in "
+  (str "_This answer was longer than " markdown-text-limit " characters. That is too long to post in "
        "Slack, so I cut it short._\n\n"
        "Ask a narrower question so the answer comes back smaller"
        (if url
@@ -126,7 +133,7 @@
               ;; `final-text` doubles as the message's `:text` -- Slack's notification preview, and
               ;; what `streaming/thread->history` replays to the model as the assistant's own words.
               ;; The notice stays out of it, so the model is never told it said this.
-              final-text              (u.str/elide answer section-text-limit)
+              final-text              (u.str/elide answer markdown-text-limit)
               ;; Derived rather than re-tested: `elide` returns `answer` itself when it fits, so
               ;; the notice cannot disagree with whether a cut actually happened.
               truncated?              (not= final-text answer)
@@ -138,7 +145,7 @@
                                                                          final-text :blocks final-blocks)]
           (when truncated?
             (log/infof "[slackbot] channel answer truncated (answer_length=%d limit=%d)"
-                       (count answer) section-text-limit)
+                       (count answer) markdown-text-limit)
             (analytics/inc! :metabase-slackbot/responses-truncated))
           (when-let [res-ts (:ts res)]
             (metabot.persistence/set-response-slack-msg-id! assistant-msg-id res-ts))
