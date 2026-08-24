@@ -2,7 +2,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { memo, useCallback, useRef, useState } from "react";
 
-import { usePermissionsIsEmbeddingHub } from "metabase/admin/permissions/utils/is-embedding-hub";
+import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
@@ -218,7 +218,7 @@ const EntityRow = memo(function EntityRow({
   onSelect,
   onAction,
 }: EntityRowProps) {
-  const isEmbeddingHub = usePermissionsIsEmbeddingHub();
+  const isEmbeddingHub = isEmbeddingHubPermissions();
   const entityName = (
     <span className={cx(CS.flex, CS.alignCenter)}>
       <Ellipsified>{entity.name}</Ellipsified>
