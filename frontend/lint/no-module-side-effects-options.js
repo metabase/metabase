@@ -21,4 +21,16 @@ const NO_MODULE_SIDE_EFFECTS_OPTIONS = {
   ],
 };
 
-module.exports = { NO_MODULE_SIDE_EFFECTS_OPTIONS };
+// Files the rule never runs on, in eslint.config.mjs and in the registry generator alike.
+const NO_MODULE_SIDE_EFFECTS_IGNORES = [
+  "**/*.unit.spec.*",
+  "**/*.stories.*",
+  "**/tests/**",
+  "**/__support__/**",
+  "**/*.d.ts",
+];
+
+module.exports = {
+  NO_MODULE_SIDE_EFFECTS_OPTIONS,
+  NO_MODULE_SIDE_EFFECTS_IGNORES,
+};

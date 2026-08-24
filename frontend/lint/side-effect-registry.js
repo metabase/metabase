@@ -13,19 +13,22 @@ const DEFAULT_REGISTRY_PATH = path.resolve(__dirname, "side-effect-files.json");
 // entry: the file is a bundle entry point, so its side effects are always included
 const CLASSIFICATIONS = ["self", "global", "entry"];
 
-const PACKAGE_CLASSIFICATIONS = ["global"];
-
 function loadRegistry(registryPath = DEFAULT_REGISTRY_PATH) {
   const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
   const files = registry.files || {};
-  const patterns = Object.keys(files).filter((key) => key.includes("*"));
   return {
     facades: registry.facades || [],
     files,
     packages: registry.packages || {},
-    patterns,
+    patterns: Object.keys(files).filter((key) => key.includes("*")),
     unclassified: new Set(registry.unclassified || []),
   };
+}
+
+function matchingPatterns(registry, file) {
+  return registry.patterns.filter((pattern) =>
+    micromatch.isMatch(file, pattern),
+  );
 }
 
 // An unclassified file counts as "global", and an exact key wins over a pattern.
@@ -36,10 +39,8 @@ function classify(registry, file) {
   if (registry.unclassified.has(file)) {
     return "global";
   }
-  const matched = registry.patterns.filter((pattern) =>
-    micromatch.isMatch(file, pattern),
-  );
-  return matched.length > 0 ? registry.files[matched[0]] : null;
+  const [pattern] = matchingPatterns(registry, file);
+  return pattern == null ? null : registry.files[pattern];
 }
 
 function isFacade(registry, file) {
@@ -67,20 +68,17 @@ function validateRegistry(registry, effectFiles) {
     if (specifier === "" || specifier.startsWith(".")) {
       problems.push(`packages: "${specifier}" is not a bare specifier`);
     }
-    if (!PACKAGE_CLASSIFICATIONS.includes(value)) {
+    if (value !== "global") {
       problems.push(`${specifier}: unknown package classification "${value}"`);
     }
   }
   for (const file of effectFiles) {
-    if (file in registry.files) {
-      continue;
-    }
     const values = new Set(
-      registry.patterns
-        .filter((pattern) => micromatch.isMatch(file, pattern))
-        .map((pattern) => registry.files[pattern]),
+      matchingPatterns(registry, file).map(
+        (pattern) => registry.files[pattern],
+      ),
     );
-    if (values.size > 1) {
+    if (!(file in registry.files) && values.size > 1) {
       problems.push(
         `${file}: matches patterns with different classifications, add an exact entry`,
       );

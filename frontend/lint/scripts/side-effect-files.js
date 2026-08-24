@@ -10,6 +10,7 @@ const tseslint = require("typescript-eslint");
 
 const rule = require("../eslint-plugin-metabase/rules/no-module-side-effects");
 const {
+  NO_MODULE_SIDE_EFFECTS_IGNORES,
   NO_MODULE_SIDE_EFFECTS_OPTIONS,
 } = require("../no-module-side-effects-options");
 const {
@@ -23,69 +24,61 @@ const REPO_ROOT = path.resolve(__dirname, "../../..");
 
 const SOURCE_ROOTS = ["frontend/src", "enterprise/frontend/src"];
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
-// The same files eslint.config.mjs leaves out of the rule.
-const IGNORED_PATTERNS = [
-  "**/*.unit.spec.*",
-  "**/*.stories.*",
-  "**/tests/**",
-  "**/__support__/**",
-  "**/*.d.ts",
-];
 
 const RULE_NAME = "metabase/no-module-side-effects";
 
+const LINTER_CONFIG = [
+  {
+    files: ["**/*.{ts,tsx,js,jsx}"],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+      sourceType: "module",
+    },
+    plugins: { metabase: { rules: { "no-module-side-effects": rule } } },
+    rules: { [RULE_NAME]: ["error", NO_MODULE_SIDE_EFFECTS_OPTIONS] },
+  },
+];
+
+function readSource(file) {
+  return fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+}
+
 function listSourceFiles() {
-  const files = [];
-  const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const entryPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(entryPath);
-      } else if (SOURCE_EXTENSIONS.has(path.extname(entry.name))) {
-        files.push(path.relative(REPO_ROOT, entryPath).replaceAll("\\", "/"));
-      }
-    }
-  };
-  for (const root of SOURCE_ROOTS) {
-    walk(path.join(REPO_ROOT, root));
-  }
-  return files
-    .filter((file) => !micromatch.isMatch(file, IGNORED_PATTERNS))
+  return SOURCE_ROOTS.flatMap((root) =>
+    fs
+      .readdirSync(path.join(REPO_ROOT, root), {
+        recursive: true,
+        withFileTypes: true,
+      })
+      .filter(
+        (entry) =>
+          entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name)),
+      )
+      .map((entry) =>
+        path
+          .relative(REPO_ROOT, path.join(entry.parentPath, entry.name))
+          .replaceAll("\\", "/"),
+      ),
+  )
+    .filter((file) => !micromatch.isMatch(file, NO_MODULE_SIDE_EFFECTS_IGNORES))
     .sort();
 }
 
-function createLinter() {
+function scanEffectFiles() {
   const linter = new Linter();
-  const config = [
-    {
-      files: ["**/*.{ts,tsx,js,jsx}"],
-      languageOptions: {
-        parser: tseslint.parser,
-        parserOptions: { ecmaFeatures: { jsx: true } },
-        sourceType: "module",
-      },
-      plugins: { metabase: { rules: { "no-module-side-effects": rule } } },
-      rules: { [RULE_NAME]: ["error", NO_MODULE_SIDE_EFFECTS_OPTIONS] },
-    },
-  ];
-  return (file) => {
-    const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+  const findings = new Map();
+  for (const file of listSourceFiles()) {
     // The registry records what a file itself does at import, so its imports of other listed files don't count.
-    return linter
-      .verify(source, config, { filename: path.join(REPO_ROOT, file) })
+    const messages = linter
+      .verify(readSource(file), LINTER_CONFIG, {
+        filename: path.join(REPO_ROOT, file),
+      })
       .filter(
         (message) =>
           message.ruleId === RULE_NAME &&
           message.messageId !== "importsGlobalEffect",
       );
-  };
-}
-
-function scanEffectFiles() {
-  const lint = createLinter();
-  const findings = new Map();
-  for (const file of listSourceFiles()) {
-    const messages = lint(file);
     if (messages.length > 0) {
       findings.set(file, messages);
     }
@@ -105,7 +98,7 @@ function unimportedPackages(registry, files) {
     if (unseen.size === 0) {
       break;
     }
-    const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+    const source = readSource(file);
     for (const [specifier, pattern] of unseen) {
       if (pattern.test(source)) {
         unseen.delete(specifier);

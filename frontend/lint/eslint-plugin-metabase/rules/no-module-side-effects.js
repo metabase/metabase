@@ -75,31 +75,32 @@ const DEFAULT_PURE_CALLEES = [
   { module: "underscore", names: ["compose", "memoize", "once"] },
 ];
 
-// These change their first argument, so we report on the argument rather than the call.
-const FIRST_ARGUMENT_MUTATORS = new Set([
-  "Object.assign",
-  "Object.defineProperty",
-  "Object.defineProperties",
-  "Object.freeze",
-  "Object.seal",
+// `Object.assign` and these others change their first argument, so we report on the argument rather than the call.
+const MUTATING_OBJECT_METHODS = new Set([
+  "assign",
+  "defineProperty",
+  "defineProperties",
+  "freeze",
+  "seal",
 ]);
 
-const CONTROL_FLOW_STATEMENTS = new Set([
-  "IfStatement",
-  "ForStatement",
-  "ForInStatement",
-  "ForOfStatement",
-  "WhileStatement",
-  "DoWhileStatement",
-  "TryStatement",
-  "SwitchStatement",
-  "ThrowStatement",
-  "LabeledStatement",
-  "BlockStatement",
-  "DebuggerStatement",
-]);
+// A control-flow statement at module scope is reported once as a whole, under the keyword the message names.
+const CONTROL_FLOW_KEYWORDS = {
+  IfStatement: "if",
+  ForStatement: "for",
+  ForInStatement: "for",
+  ForOfStatement: "for",
+  WhileStatement: "while",
+  DoWhileStatement: "while",
+  TryStatement: "try",
+  SwitchStatement: "switch",
+  ThrowStatement: "throw",
+  DebuggerStatement: "debugger",
+  LabeledStatement: "a block",
+  BlockStatement: "a block",
+};
 
-// Anything under one of these is skipped: function bodies run later, class bodies aren't inspected, and a control-flow statement is reported once as a whole.
+// Anything under one of these is skipped: function bodies run later, class bodies aren't inspected, and a control-flow statement is already reported as a whole.
 const NOT_MODULE_SCOPE = new Set([
   "FunctionDeclaration",
   "FunctionExpression",
@@ -109,7 +110,7 @@ const NOT_MODULE_SCOPE = new Set([
   "PropertyDefinition",
   "AccessorProperty",
   "StaticBlock",
-  ...CONTROL_FLOW_STATEMENTS,
+  ...Object.keys(CONTROL_FLOW_KEYWORDS),
 ]);
 
 const EXPRESSION_WRAPPERS = new Set([
@@ -201,14 +202,13 @@ module.exports = {
   },
 
   create(context) {
-    const sourceCode = context.sourceCode || context.getSourceCode();
-    const filename = context.filename || context.getFilename();
+    const { sourceCode, filename } = context;
     const options = context.options[0] || {};
     const pureCallees = [
       ...DEFAULT_PURE_CALLEES,
       ...(options.pureCallees || []),
     ];
-    const sideEffectPaths = normalizeSideEffectPaths(
+    const isSideEffectPath = sideEffectPathMatcher(
       options.sideEffectPaths || [],
     );
     const internalModules = new Set(options.internalModules || []);
@@ -218,6 +218,8 @@ module.exports = {
     const sourceRoots = (options.sourceRoots || DEFAULT_SOURCE_ROOTS).map(
       (root) => path.resolve(REPO_ROOT, root),
     );
+    // getScope() on the Program node returns the outer global scope, so ask the scope manager for the module scope itself.
+    const moduleScope = sourceCode.scopeManager.acquire(sourceCode.ast, true);
 
     function isInternalModule(source) {
       return (
@@ -225,26 +227,31 @@ module.exports = {
       );
     }
 
-    // Collected over the whole file before anything is checked, so a function declared below its call site still counts as local.
-    const localNames = new Set();
-    const importBindings = new Map();
+    // The import a module-scope name refers to, or null when this file declares the name or it is a global.
+    function importOf(name) {
+      const def = moduleScope.set
+        .get(name)
+        ?.defs.find(
+          (def) =>
+            def.type === "ImportBinding" &&
+            def.parent.type === "ImportDeclaration",
+        );
+      return def == null
+        ? null
+        : {
+            module: def.parent.source.value,
+            importedName: importedNameOf(def.node),
+          };
+    }
 
-    function classifyRoot(root) {
-      if (root == null || root.type !== "Identifier") {
-        return "local";
-      }
-      if (importBindings.has(root.name)) {
-        return "import";
-      }
-      if (localNames.has(root.name)) {
-        return "local";
-      }
-      return "global";
+    function isDeclaredHere(name) {
+      return moduleScope.set.has(name) && importOf(name) == null;
     }
 
     // The annotation may sit on the call or on a wrapper around it (`/* #__PURE__ */ foo()!`).
     function isPureAnnotated(node) {
-      for (const current of wrapperChain(node)) {
+      let current = node;
+      while (current != null) {
         const comments = sourceCode.getCommentsBefore(current);
         if (
           comments.length > 0 &&
@@ -252,16 +259,15 @@ module.exports = {
         ) {
           return true;
         }
+        current = EXPRESSION_WRAPPERS.has(current.parent.type)
+          ? current.parent
+          : null;
       }
       return false;
     }
 
-    function isAllowlistedCallee(callee) {
-      const { root, name } = getCalleeInfo(callee);
-      const binding = root == null ? null : importBindings.get(root.name);
-      if (binding == null) {
-        return false;
-      }
+    function isPureCallee(callee, root, binding) {
+      const name = calledName(callee);
       return pureCallees.some(
         (entry) =>
           entry.module === binding.module &&
@@ -278,79 +284,59 @@ module.exports = {
         : text;
     }
 
-    function reportMutationOf(target, node, targetNode) {
-      const kind = classifyRoot(getRoot(target));
-      if (kind === "local") {
+    function reportMutationOf(target, node) {
+      const root = getRoot(target);
+      if (root == null || isDeclaredHere(root.name)) {
         return;
       }
       context.report({
         node,
-        messageId: kind === "import" ? "assignToImport" : "assignToGlobal",
-        data: { target: display(targetNode || target) },
+        messageId:
+          importOf(root.name) == null ? "assignToGlobal" : "assignToImport",
+        data: { target: display(target) },
       });
     }
 
     // A call whose result is kept is only reported when it goes into a third-party package, since we trust our own code and `new` to only return a value.
-    function checkCall(node, inStatement) {
+    function checkCall(node) {
       if (isPureAnnotated(node)) {
         return;
       }
       const callee =
         node.type === "TaggedTemplateExpression" ? node.tag : node.callee;
-      const dottedPath = getDottedPath(callee);
-      if (dottedPath != null && FIRST_ARGUMENT_MUTATORS.has(dottedPath)) {
-        const [mutated] = node.arguments || [];
+      const root = getRoot(callee);
+      if (
+        root?.name === "Object" &&
+        MUTATING_OBJECT_METHODS.has(calledName(callee))
+      ) {
+        const [mutated] = node.arguments;
         if (mutated != null) {
-          reportMutationOf(mutated, node, mutated);
+          reportMutationOf(mutated, node);
         }
         return;
       }
-      if (isAllowlistedCallee(callee)) {
-        return;
-      }
-      const root = getRoot(callee);
-      const kind = classifyRoot(root);
-      if (kind === "import") {
-        const trusted =
-          !inStatement &&
-          (node.type === "NewExpression" ||
-            isInternalModule(importBindings.get(root.name).module));
-        if (!trusted) {
+      const binding = root == null ? null : importOf(root.name);
+      if (binding == null) {
+        if (isDiscarded(node)) {
           context.report({
             node,
-            messageId: "callOnImport",
+            messageId: "callAtModuleScope",
             data: { callee: display(callee) },
           });
         }
-      } else if (inStatement) {
+        return;
+      }
+      if (isPureCallee(callee, root, binding)) {
+        return;
+      }
+      const returnsValue =
+        node.type === "NewExpression" || isInternalModule(binding.module);
+      if (isDiscarded(node) || !returnsValue) {
         context.report({
           node,
-          messageId: "callAtModuleScope",
+          messageId: "callOnImport",
           data: { callee: display(callee) },
         });
-      }
-    }
-
-    function checkAssignment(node) {
-      if (node.left.type === "Identifier") {
-        if (classifyRoot(node.left) === "global") {
-          context.report({
-            node,
-            messageId: "assignToGlobal",
-            data: { target: display(node.left) },
-          });
-        }
-      } else if (node.left.type === "MemberExpression") {
-        reportMutationOf(node.left, node);
-      }
-    }
-
-    function checkUpdate(node) {
-      if (
-        node.argument.type === "MemberExpression" ||
-        classifyRoot(node.argument) === "global"
-      ) {
-        reportMutationOf(node.argument, node);
       }
     }
 
@@ -359,17 +345,16 @@ module.exports = {
       const target = source.startsWith(".")
         ? normalizePath(path.resolve(path.dirname(filename), source))
         : source;
-      if (sideEffectPaths.allows(target)) {
-        return;
+      if (!isSideEffectPath(target)) {
+        context.report({ node, messageId: "bareImport", data: { source } });
       }
-      context.report({ node, messageId: "bareImport", data: { source } });
     }
 
     // A file imported for its bindings is dropped from the bundle along with this file.
     function checkBindingImport(node) {
       const source = node.source.value;
       const target = resolveImport(source, path.dirname(filename), sourceRoots);
-      if (target == null || sideEffectPaths.allows(target)) {
+      if (target == null || isSideEffectPath(target)) {
         return;
       }
       const relative = normalizePath(path.relative(REPO_ROOT, target));
@@ -395,7 +380,7 @@ module.exports = {
       if (
         !isInternalModule(source) &&
         classifyPackage(registry, source) === "global" &&
-        !sideEffectPaths.allows(normalizePath(filename))
+        !isSideEffectPath(normalizePath(filename))
       ) {
         context.report({
           node,
@@ -409,62 +394,13 @@ module.exports = {
       }
     }
 
-    function checkTopLevelStatement(node) {
-      if (node.type === "ImportDeclaration") {
-        checkImport(node);
-      } else if (CONTROL_FLOW_STATEMENTS.has(node.type)) {
-        context.report({
-          node,
-          messageId: "controlFlow",
-          data: { kind: statementKeyword(node) },
-        });
-      }
-    }
-
-    function collectBindings(node) {
-      switch (node.type) {
-        case "ImportDeclaration":
-          for (const specifier of node.specifiers) {
-            importBindings.set(specifier.local.name, {
-              module: node.source.value,
-              importedName: importedNameOf(specifier),
-            });
-          }
-          return;
-        case "VariableDeclaration":
-          for (const declarator of node.declarations) {
-            for (const name of patternNames(declarator.id)) {
-              localNames.add(name);
-            }
-          }
-          return;
-        case "FunctionDeclaration":
-        case "ClassDeclaration":
-        case "TSEnumDeclaration":
-        case "TSModuleDeclaration":
-        case "TSDeclareFunction":
-          if (node.id && node.id.type === "Identifier") {
-            localNames.add(node.id.name);
-          }
-          return;
-        case "ExportNamedDeclaration":
-          if (node.declaration != null) {
-            collectBindings(node.declaration);
-          }
-          return;
-        case "ExportDefaultDeclaration":
-          collectBindings(node.declaration);
-          return;
-        default:
-          return;
-      }
-    }
-
     function atModuleScope(check) {
       return (node) => {
-        const placement = placementOf(node);
-        if (placement !== "skipped") {
-          check(node, placement === "statement");
+        const ancestors = sourceCode.getAncestors(node);
+        if (
+          !ancestors.some((ancestor) => NOT_MODULE_SCOPE.has(ancestor.type))
+        ) {
+          check(node);
         }
       };
     }
@@ -472,10 +408,15 @@ module.exports = {
     return {
       Program(program) {
         for (const statement of program.body) {
-          collectBindings(statement);
-        }
-        for (const statement of program.body) {
-          checkTopLevelStatement(statement);
+          if (statement.type === "ImportDeclaration") {
+            checkImport(statement);
+          } else if (statement.type in CONTROL_FLOW_KEYWORDS) {
+            context.report({
+              node: statement,
+              messageId: "controlFlow",
+              data: { kind: CONTROL_FLOW_KEYWORDS[statement.type] },
+            });
+          }
         }
       },
       CallExpression: atModuleScope(checkCall),
@@ -491,8 +432,12 @@ module.exports = {
       AwaitExpression: atModuleScope((node) => {
         context.report({ node, messageId: "topLevelAwait" });
       }),
-      AssignmentExpression: atModuleScope(checkAssignment),
-      UpdateExpression: atModuleScope(checkUpdate),
+      AssignmentExpression: atModuleScope((node) => {
+        reportMutationOf(node.left, node);
+      }),
+      UpdateExpression: atModuleScope((node) => {
+        reportMutationOf(node.argument, node);
+      }),
       UnaryExpression: atModuleScope((node) => {
         if (node.operator === "delete") {
           reportMutationOf(node.argument, node);
@@ -502,23 +447,17 @@ module.exports = {
   },
 };
 
-// Returns "skipped" under a function, a class body or a control-flow statement, "statement" when the value is thrown away, and "value" when it is kept.
-function placementOf(node) {
-  let placement = null;
-  for (let current = node; current.parent != null; current = current.parent) {
-    const { parent } = current;
-    if (NOT_MODULE_SCOPE.has(parent.type)) {
-      return "skipped";
-    }
-    if (placement == null && !discardsValueOf(parent, current)) {
-      placement = parent.type === "ExpressionStatement" ? "statement" : "value";
-    }
+// Whether the value of `node` is thrown away, looking through the parents that only pass it along.
+function isDiscarded(node) {
+  let current = node;
+  while (forwardsValueOf(current.parent, current)) {
+    current = current.parent;
   }
-  return placement ?? "value";
+  return current.parent.type === "ExpressionStatement";
 }
 
 // Whether `parent` passes `child`'s value straight through.
-function discardsValueOf(parent, child) {
+function forwardsValueOf(parent, child) {
   switch (parent.type) {
     case "SequenceExpression":
       return true;
@@ -531,22 +470,9 @@ function discardsValueOf(parent, child) {
   }
 }
 
-function wrapperChain(node) {
-  const chain = [node];
-  let current = node;
-  while (
-    current.parent != null &&
-    EXPRESSION_WRAPPERS.has(current.parent.type)
-  ) {
-    current = current.parent;
-    chain.push(current);
-  }
-  return chain;
-}
-
 function unwrap(node) {
   let current = node;
-  while (current != null && EXPRESSION_WRAPPERS.has(current.type)) {
+  while (EXPRESSION_WRAPPERS.has(current.type)) {
     current = current.expression;
   }
   return current;
@@ -576,46 +502,23 @@ function getRoot(node) {
   return null;
 }
 
-// The root binding and the name called: `rem` for `rem(4)`, `extend` for `Button.extend({})`, `t` for `c("ctx").t\`\``.
-function getCalleeInfo(callee) {
+// The name a callee is called by: `rem` for `rem(4)`, `extend` for `Button.extend({})`, `t` for `c("ctx").t\`\``.
+function calledName(callee) {
   const inner = unwrap(callee);
-  if (inner == null) {
-    return { root: null, name: null };
-  }
-  if (inner.type === "Identifier") {
-    return { root: inner, name: inner.name };
-  }
-  if (inner.type === "MemberExpression") {
-    const name =
-      !inner.computed && inner.property.type === "Identifier"
+  switch (inner.type) {
+    case "Identifier":
+      return inner.name;
+    case "MemberExpression":
+      return !inner.computed && inner.property.type === "Identifier"
         ? inner.property.name
         : null;
-    return { root: getRoot(inner), name };
-  }
-  if (
-    inner.type === "CallExpression" ||
-    inner.type === "TaggedTemplateExpression"
-  ) {
-    return getCalleeInfo(inner.callee || inner.tag);
-  }
-  return { root: getRoot(inner), name: null };
-}
-
-function getDottedPath(node) {
-  const parts = [];
-  let current = unwrap(node);
-  while (current != null && current.type === "MemberExpression") {
-    if (current.computed || current.property.type !== "Identifier") {
+    case "CallExpression":
+      return calledName(inner.callee);
+    case "TaggedTemplateExpression":
+      return calledName(inner.tag);
+    default:
       return null;
-    }
-    parts.unshift(current.property.name);
-    current = unwrap(current.object);
   }
-  if (current == null || current.type !== "Identifier") {
-    return null;
-  }
-  parts.unshift(current.name);
-  return parts.join(".");
 }
 
 function importedNameOf(specifier) {
@@ -628,53 +531,6 @@ function importedNameOf(specifier) {
       return specifier.imported.type === "Identifier"
         ? specifier.imported.name
         : String(specifier.imported.value);
-  }
-}
-
-function patternNames(pattern) {
-  switch (pattern.type) {
-    case "Identifier":
-      return [pattern.name];
-    case "ObjectPattern":
-      return pattern.properties.flatMap((property) =>
-        property.type === "RestElement"
-          ? patternNames(property.argument)
-          : patternNames(property.value),
-      );
-    case "ArrayPattern":
-      return pattern.elements.flatMap((element) =>
-        element == null ? [] : patternNames(element),
-      );
-    case "AssignmentPattern":
-      return patternNames(pattern.left);
-    case "RestElement":
-      return patternNames(pattern.argument);
-    default:
-      return [];
-  }
-}
-
-function statementKeyword(node) {
-  switch (node.type) {
-    case "IfStatement":
-      return "if";
-    case "ForStatement":
-    case "ForInStatement":
-    case "ForOfStatement":
-      return "for";
-    case "WhileStatement":
-    case "DoWhileStatement":
-      return "while";
-    case "TryStatement":
-      return "try";
-    case "SwitchStatement":
-      return "switch";
-    case "ThrowStatement":
-      return "throw";
-    case "DebuggerStatement":
-      return "debugger";
-    default:
-      return "a block";
   }
 }
 
@@ -737,26 +593,14 @@ function stripScriptExtension(file) {
   return file.replace(/\.[jt]sx?$/, "");
 }
 
-// A directory entry ends with a separator and covers every file under it.
-function normalizeSideEffectPaths(paths) {
-  const files = new Set();
-  const directories = [];
-  for (const entry of paths) {
-    const absolute = normalizePath(path.resolve(entry));
-    if (normalizePath(entry).endsWith("/")) {
-      directories.push(`${absolute}/`);
-    } else {
-      files.add(absolute);
-      files.add(stripScriptExtension(absolute));
-    }
-  }
-  return {
-    allows(target) {
-      return (
-        files.has(target) ||
-        files.has(stripScriptExtension(target)) ||
-        directories.some((directory) => target.startsWith(directory))
-      );
-    },
-  };
+// A directory entry ends with a separator and covers every file under it, and a file entry matches with or without its extension.
+function sideEffectPathMatcher(entries) {
+  const paths = entries.map(normalizePath);
+  const directories = paths.filter((entry) => entry.endsWith("/"));
+  const files = new Set(
+    paths.filter((entry) => !entry.endsWith("/")).map(stripScriptExtension),
+  );
+  return (target) =>
+    files.has(stripScriptExtension(target)) ||
+    directories.some((directory) => target.startsWith(directory));
 }

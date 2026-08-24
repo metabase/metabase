@@ -28,7 +28,10 @@ import {
   SIDE_EFFECT_PATHS,
 } from "./frontend/build/shared/rspack/side-effect-free-modules.js";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
-import { NO_MODULE_SIDE_EFFECTS_OPTIONS } from "./frontend/lint/no-module-side-effects-options.js";
+import {
+  NO_MODULE_SIDE_EFFECTS_IGNORES,
+  NO_MODULE_SIDE_EFFECTS_OPTIONS,
+} from "./frontend/lint/no-module-side-effects-options.js";
 import {
   elements as boundaryElements,
   enforcedRules as boundaryRules,
@@ -1221,11 +1224,7 @@ const configs = [
           ? `${path.relative(__dirname, entry)}/**`
           : path.relative(__dirname, entry),
       ),
-      "**/*.unit.spec.*",
-      "**/*.stories.*",
-      "**/tests/**",
-      "**/__support__/**",
-      "**/*.d.ts",
+      ...NO_MODULE_SIDE_EFFECTS_IGNORES,
     ],
     rules: {
       "metabase/no-module-side-effects": [
