@@ -11,6 +11,7 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockField,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -681,6 +682,9 @@ describe("Question", () => {
     it("should return the template tags of a native question", () => {
       const nativeQuestionWithTemplateTags = {
         ...native_orders_count_card,
+        param_fields: {
+          bbb: [createMockField({ id: PRODUCTS.CATEGORY })],
+        },
         dataset_query: {
           ...native_orders_count_card.dataset_query,
           native: {
