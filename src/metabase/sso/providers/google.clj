@@ -1,9 +1,9 @@
 (ns metabase.sso.providers.google
   "Google OAuth authentication provider implementation."
   (:require
-   [clj-http.client :as http]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.sso.google :as sso.google]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
@@ -26,7 +26,7 @@
 
     :else
     (try
-      (let [token-info-response (http/post (format google-auth-token-info-url token))
+      (let [token-info-response (u.http/post (format google-auth-token-info-url token) {})
             {first-name :given_name last-name  :family_name :keys [email]}
             (sso.google/google-auth-token-info token-info-response)]
         (log/info "Successfully authenticated Google Sign-In token")

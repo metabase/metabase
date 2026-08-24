@@ -1,12 +1,12 @@
 (ns metabase.premium-features.api
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
+   [metabase.util.http :as u.http]
    [metabase.util.log :as log]
    [ring.util.response :as response])
   (:import
@@ -32,7 +32,9 @@
       (try
         (let [encoded-token (URLEncoder/encode ^String token "UTF-8")
               url (str (str/replace service-base-url #"/+$" "") "/v1/invalidate-token-cache/" encoded-token)
-              response (http/post url {:throw-exceptions false})]
+              ;; base URL comes from the environment, not the API
+              response (u.http/post url {:network-policy   :allow-all
+                                         :throw-exceptions false})]
           (when-not (<= 200 (:status response) 299)
             (log/warnf "LLM proxy token cache invalidation failed with status %s" (:status response))))
         (catch Exception e
