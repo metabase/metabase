@@ -94,10 +94,8 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     settingDetails,
   } = useAdminSetting(name);
   const [resetKey, setResetKey] = useState(0);
-  // The last value this input wrote, kept only until the refetch after the
-  // write lands. The server value is stale during that window, so comparing
-  // against it would silently drop a change that reverses one still being
-  // saved.
+  // The server value stays stale until the write refetches, so a change that
+  // reverses one still in flight would compare equal and be dropped.
   const lastSentValue = useRef<EnterpriseSettingValue>();
   const displayValue = settingDetails?.value ?? initialValue;
 
@@ -119,7 +117,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     const response = await updateSetting({ key: name, value: newValue });
     if (response.error) {
       lastSentValue.current = undefined;
-      // booleans re-sync to the server value; typed values survive a rejected save
+      // remount resets a toggle; a text input would lose what the user typed
       if (inputType === "boolean") {
         setResetKey((key) => key + 1);
       }
