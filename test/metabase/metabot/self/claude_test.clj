@@ -331,6 +331,7 @@
       (is (nil? (speed {:model "claude-opus-5"}))))
     (testing "no speed on models without fast mode"
       (is (nil? (speed {:model "claude-opus-4-7" :fast? true})))
+      (is (nil? (speed {:model "claude-opus-6" :fast? true})))
       (is (nil? (speed {:model "claude-sonnet-4-6" :fast? true})))
       (is (nil? (speed {:model "claude-haiku-4-5" :fast? true}))))
     (testing "no speed through the AI proxy"

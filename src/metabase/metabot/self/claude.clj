@@ -443,12 +443,14 @@
   [model]
   (some? (model-thinking-config model)))
 
+(def ^:private fast-mode-models
+  "The models Anthropic documents fast mode for: https://code.claude.com/docs/en/fast-mode"
+  #{"claude-opus-4-8" "claude-opus-5"})
+
 (defn fast-mode-model?
-  "Whether `model` supports Anthropic fast mode (Opus 4.8 and later)."
+  "Whether `model` supports Anthropic fast mode."
   [model]
-  (when-let [[family major minor] (claude-model-version model)]
-    (and (= family "opus")
-         (or (> major 4) (and (= major 4) (>= minor 8))))))
+  (contains? fast-mode-models (strip-vendor-prefix model)))
 
 (mu/defn claude-request-body
   "Build the Anthropic Messages API request body for an LLM request.
