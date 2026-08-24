@@ -38,9 +38,10 @@
    "sqlserver" "tsql",
    ;; Embedded/lightweight
    "sqlite" "sqlite",
-   ;; H2 uses PostgreSQL compatibility mode in sqlglot but this causes incorrect identifier
-   ;; quoting (H2 folds to UPPERCASE internally, postgres quoting forces lowercase), so we
-   ;; skip validation. Vertica is not supported by sqlglot.
+   ;; sqlglot has no H2 dialect, and its nearest stand-in, postgres mode, folds the other
+   ;; way (H2 folds unquoted identifiers to uppercase, postgres to lowercase), so anything
+   ;; the transpiler folds or quotes comes out wrong for H2; skip validation. Vertica is
+   ;; not supported by sqlglot.
    "h2" nil
    "vertica" nil})
 

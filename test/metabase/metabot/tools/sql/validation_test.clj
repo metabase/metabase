@@ -115,7 +115,9 @@
 ;; Transpilation must not add identifier quoting: dialects like Snowflake and Postgres fold
 ;; unquoted identifiers, so quoting locks in the written casing and breaks references that the
 ;; database itself would have resolved (BOT-1013). Identifiers keep the quoting they were
-;; written with, in both fold directions.
+;; written with, in both fold directions. The one exception is a name that collides with the
+;; target dialect's reserved words, which is quoted in the dialect's folded case so it still
+;; resolves to the same object.
 
 (defn- transpiled-sql [dialect sql]
   (:transpiled-sql (metabot.tools.sql.validation/validate-sql dialect sql)))
@@ -132,7 +134,23 @@
     :expected "WITH Orders AS (\n  SELECT\n    1 AS id\n)\nSELECT\n  id\nFROM ORDERS"}
    {:context "table-valued functions transpile"
     :dialect "postgres" :sql "SELECT * FROM generate_series(1, 10) AS g(n)"
-    :expected "SELECT\n  *\nFROM GENERATE_SERIES(1, 10) AS g(n)"}])
+    :expected "SELECT\n  *\nFROM GENERATE_SERIES(1, 10) AS g(n)"}
+   {:context "reserved words are quoted in the dialect's folded case, lowercase dialect"
+    :dialect "postgres" :sql "select Order, user from t"
+    :expected "SELECT\n  \"order\",\n  \"user\"\nFROM t"}
+   {:context "reserved words are quoted in the dialect's folded case, uppercase dialect"
+    :dialect "snowflake" :sql "select order from t"
+    :expected "SELECT\n  \"ORDER\"\nFROM t"}
+   {:context "Snowflake-specific reserved words are covered, not just the ANSI ones"
+    :dialect "snowflake" :sql "SELECT BY FROM t"
+    :expected "SELECT\n  \"BY\"\nFROM t"}
+   {:context "Oracle-specific reserved words are covered, not just the ANSI ones"
+    :dialect "oracle" :sql "SELECT DATE, LEVEL, USER FROM t"
+    :expected "SELECT\n  \"DATE\",\n  \"LEVEL\",\n  \"USER\"\nFROM t"}
+   {:context "a word another dialect reserves stays bare where the target does not reserve it:
+             on SQLite a quoted unresolved identifier silently becomes a string literal"
+    :dialect "sqlite" :sql "SELECT user FROM orders LIMIT 3"
+    :expected "SELECT\n  user\nFROM orders\nLIMIT 3"}])
 
 (deftest ^:parallel quoting-preservation-test
   (doseq [{:keys [context dialect expected sql]} quoting-cases]
@@ -149,6 +167,12 @@
               "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT", "TOTAL" "FLOAT"}}}]
              ["postgres" "SELECT subtotal AS \"Total\" FROM orders WHERE total > 0"
               "public" {"public" {"orders" {"subtotal" "FLOAT", "total" "FLOAT"}}}]
+             ["postgres" "SELECT SubTotal FROM Orders WHERE Total > 0"
+              "public" {"public" {"orders" {"subtotal" "FLOAT", "total" "FLOAT"}}}]
+             ["postgres" "SELECT \"order\" FROM t"
+              "public" {"public" {"t" {"order" "FLOAT"}}}]
+             ["postgres" "SELECT order FROM t"
+              "public" {"public" {"t" {"order" "FLOAT"}}}]
              ["postgres" "WITH Orders AS (SELECT 1 AS id) SELECT id FROM ORDERS"
               "public" {"public" {"unrelated" {"x" "INT"}}}]
              ["snowflake" "WITH x AS (SELECT * FROM orders) SELECT subtotal FROM x"
