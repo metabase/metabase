@@ -18,5 +18,6 @@
                      :aggregation     [[:count]]}]
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= "count"
+             ;; the deprecated fn is what this test exists to cover
              #_{:clj-kondo/ignore [:deprecated-var]}
              (annotate.legacy-helper-fns/aggregation-name inner-query [:count]))))))
