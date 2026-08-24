@@ -80,13 +80,38 @@
 (deftest metric-schemas-excludes-card-sourced-metrics-test
   (with-redefs [schema.common/select-schema-cards
                 (constantly [{:id 247
-                              :dataset_query {:query {:source-table 10}}}
+                              :dataset_query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages [{:lib/type :mbql.stage/mbql
+                                                        :source-table 10}]}}
                              {:id 258
                               :dataset_query {:query {:source-table "card__42"}}}
                              {:id 259
                               :dataset_query {:stages [{:source-card 42}]}}])
                 schema.metric/metric-details identity
                 schema.metric/metric-schema (fn [details _card] (:id details))]
+    (is (= [247]
+           (vec (schema.metric/metric-schemas nil nil))))))
+
+(deftest metric-schemas-excludes-metrics-that-reference-other-metrics-test
+  (with-redefs [schema.common/select-schema-cards
+                (constantly [{:id 247
+                              :dataset_query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages [{:lib/type :mbql.stage/mbql
+                                                        :source-table 10}]}}
+                             {:id 258
+                              :dataset_query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages [{:lib/type :mbql.stage/mbql
+                                                        :source-table 10
+                                                        :aggregation [[:metric
+                                                                       {:lib/uuid
+                                                                        "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
+                                                                       247]]}]}}])
+                schema.metric/metric-details identity
+                schema.metric/metric-schema (fn [details _card] (:id details))
+                t2/select-pks-set (constantly #{247})]
     (is (= [247]
            (vec (schema.metric/metric-schemas nil nil))))))
 
