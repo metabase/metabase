@@ -18,7 +18,7 @@
     :right-angled-triangle
     :obtuse-triangle]))
 
-(deftest make-hierarchy-test
+(deftest ^:parallel make-hierarchy-test
   (testing "Hiccup structures have the expected topological order"
     (is (= [:isosceles-trapezoid
             :right-trapezoid
@@ -57,7 +57,7 @@
             :obtuse-triangle       [:triangle]}
            (update-vals (:parents polygons) vec)))))
 
-(deftest root-order-test
+(deftest ^:parallel root-order-test
   (testing "A root without children is included"
     (is (= [:root]
            (vec (ordered-hierarchy/sorted-tags
@@ -71,7 +71,7 @@
       (is (= roots
              (filterv (set roots) (ordered-hierarchy/sorted-tags hierarchy)))))))
 
-(deftest hierarchy-syntax-validation-test
+(deftest ^:parallel hierarchy-syntax-validation-test
   (testing "A basis must be a vector"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Hierarchy basis must be a vector"
@@ -96,7 +96,7 @@
            (vec (ordered-hierarchy/sorted-tags
                  (ordered-hierarchy/make-hierarchy [:root :child [:child]])))))))
 
-(deftest derive-validation-test
+(deftest ^:parallel derive-validation-test
   (is (thrown-with-msg? AssertionError
                         #"Tag must be a keyword"
                         (ordered-hierarchy/derive (ordered-hierarchy/make-hierarchy) 'child :parent))))
