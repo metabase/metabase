@@ -124,7 +124,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
           // instead of leaving the research flow (UXW-4832).
           cy.location("pathname").should("eq", "/question/research/plan");
 
-          H.addMetricsAndDimensions({
+          H.addMetricsToExploration({
             metrics: [ORDERS_COUNT_METRIC_NAME],
           });
 
@@ -188,9 +188,8 @@ describe("scenarios > explorations > new research > manual flow", () => {
     H.visitNewExploration();
     H.startManualExploration();
 
-    // --- "+ Data" → Metrics modal search ---
-    cy.findByRole("button", { name: /Data/ }).click();
-    cy.findByRole("menuitem", { name: "Metrics" }).click();
+    // --- "+ Metrics" modal search ---
+    cy.findByRole("button", { name: /Metrics/ }).click();
     // Seeded names are "Count of orders" + "Count of orders over time".
     cy.wait("@getDimensions");
     // Seeded metrics aren't in the library; switch off the default Library tab.
@@ -300,7 +299,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
           result: {
             metrics: [firstMetric],
             dimension_groups: [interestingGroup],
-            groups: [{ anchor: "metric", metric_id: firstMetric.id }],
+            groups: [{ metric_id: firstMetric.id }],
           },
         },
         {

@@ -29,7 +29,7 @@ function dimension(
 }
 
 describe("selectionToResearchPlanContext", () => {
-  it("serializes a metric block as a metric-anchored group with only selected dimensions", () => {
+  it("serializes a block with only selected dimensions", () => {
     const region = dimension("d1", { display_name: "Region" });
     const plan = dimension("d2", { display_name: "Plan" });
     const block = mockExplorationBlock(
@@ -48,7 +48,6 @@ describe("selectionToResearchPlanContext", () => {
     expect(result.groups).toEqual([
       {
         block_id: "metric:42",
-        anchor: "metric",
         metric: { id: 42, name: "Revenue" },
         dimensions: [{ id: "d1", name: "Region" }],
       },
