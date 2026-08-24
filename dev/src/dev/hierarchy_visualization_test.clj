@@ -1,4 +1,4 @@
-(ns metabase.util.hierarchy-visualization-test
+(ns dev.hierarchy-visualization-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [dev.hierarchy-visualization :as hierarchy.visualization]
@@ -11,7 +11,7 @@
       (derive :shared :left)
       (derive :shared :right)))
 
-(deftest hierarchy->graph-test
+(deftest ^:parallel hierarchy->graph-test
   (testing "Regular hierarchies have stable default ordering"
     (is (= {:nodes    [:left :right :root :shared]
             :roots    [:root]
@@ -33,7 +33,7 @@
                          :second-root []}}
              (hierarchy.visualization/hierarchy->graph hierarchy))))))
 
-(deftest tree-str-test
+(deftest ^:parallel tree-str-test
   (is (= (str ":root\n"
               "├── :left\n"
               "│   └── :shared\n"
@@ -68,7 +68,7 @@
              (is (nil? (hierarchy.visualization/print-tree
                         (ordered-hierarchy/make-hierarchy [:root])))))))))
 
-(deftest dot-str-test
+(deftest ^:parallel dot-str-test
   (is (= (str "digraph hierarchy {\n"
               "  rankdir=LR;\n"
               "  n0 [label=\"left\"];\n"
@@ -91,7 +91,7 @@
             (ordered-hierarchy/make-hierarchy [:root])
             {:label-fn (constantly "first\r\nsecond\rthird")})))))
 
-(deftest mermaid-str-test
+(deftest ^:parallel mermaid-str-test
   (is (= (str "flowchart TD\n"
               "  n0[\"left\"]\n"
               "  n1[\"right\"]\n"

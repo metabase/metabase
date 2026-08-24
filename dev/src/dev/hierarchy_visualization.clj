@@ -45,7 +45,8 @@
                             (update :seen conj node)
                             (update :nodes conj node))
                         (get children node))))]
-      (:nodes (reduce visit {:seen #{}, :nodes []} (concat roots nodes))))))
+      ;; Nodes unreachable from a root only occur in malformed hierarchies; sort them so output stays stable.
+      (:nodes (reduce visit {:seen #{}, :nodes []} (concat roots (sort-by pr-str nodes)))))))
 
 (defn hierarchy->graph
   "Returns the direct relationships in `hierarchy` as `:nodes`, `:roots`, and `:children`.
