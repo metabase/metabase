@@ -1278,27 +1278,28 @@ jobs:
     needs:
       - determine-driver-skips
       # if you add a driver job, you must add it to this list for it to be a required check
-      - be-tests-h2
       - be-tests-athena-ee
-      - be-tests-snowflake-ee
       - be-tests-bigquery-cloud-sdk-ee
+      - be-tests-clickhouse-ee
       - be-tests-databricks-ee
+      - be-tests-databricks-multi-catalog-ee
       - be-tests-druid-jdbc-ee
-      - be-tests-mysql-mariadb
+      - be-tests-h2
+      - be-tests-h2-oss
       - be-tests-mongo
-      - be-tests-mongo-ssl
       - be-tests-mongo-sharded-cluster-ee
+      - be-tests-mongo-ssl
+      - be-tests-mysql-mariadb
       - be-tests-oracle
       - be-tests-postgres
       - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
+      - be-tests-snowflake-ee
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
+      - be-tests-vertica-ee
       # - be-tests-starburst-ee
-      # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
-      # - be-tests-vertica-ee
-      - be-tests-clickhouse-ee
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result
