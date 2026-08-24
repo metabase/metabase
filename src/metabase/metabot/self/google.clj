@@ -476,16 +476,22 @@
   Similar to the Azure provider, there is no list-models call that we can use to whitelist models for the Gemini
   Enterprise Agent Platform. An endpoint does exist, but it sometimes returns models that are not really available and
   sometimes omits models that are available, hence we can't rely on it. See
-  https://github.com/googleapis/python-genai/issues/679"
+  https://github.com/googleapis/python-genai/issues/679
+
+  `:probe?` reports the model the probe verified as `:learned-config` `:probed-model`, for the connect and edit paths
+  to record on the connection and re-verify against later passing it in as the `proposed-model` on future attempts."
   ([] (list-models {}))
-  ([{:keys [credentials model ai-proxy?]}]
-   (when-let [model (not-empty model)]
-     (try
-       (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)]
-         (validate-model! auth credentials model))
-       (catch Exception e
-         (rethrow-google-api-error! credentials e))))
-   {:models []}))
+  ([{:keys [credentials model proposed-model ai-proxy? probe?]}]
+   (if-let [model (or (not-empty model) (not-empty proposed-model))]
+     (do
+       (try
+         (let [{:keys [auth credentials]} (resolve-google-auth credentials ai-proxy?)]
+           (validate-model! auth credentials model))
+         (catch Exception e
+           (rethrow-google-api-error! credentials e)))
+       (cond-> {:models []}
+         probe? (assoc :learned-config {:probed-model model})))
+     {:models []})))
 
 (mu/defn google-raw
   "Makes a streaming request to the Gemini Enterprise Agent Platform.
