@@ -1404,7 +1404,6 @@ describe("document comments", () => {
       cy.intercept("GET", "/api/document/*").as("reloadedDocument");
       cy.intercept("GET", "/api/comment?*").as("reloadedComments");
       cy.reload();
-      cy.log("wait out the app boot + data reload before asserting");
       cy.wait(["@reloadedDocument", "@reloadedComments"]);
 
       H.getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
