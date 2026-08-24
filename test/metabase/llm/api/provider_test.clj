@@ -110,9 +110,9 @@
         (is (nil? (fields "model")))
         (is (= "google/gemini-3.5-flash" (:default_model google)))
         (testing "and the catalog rides along so the connection form can offer the model to validate against"
-          (is (= [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                  {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                  {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}
+          (is (= [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}
+                  {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
+                  {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
                   {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
                   {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
                   {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
@@ -869,9 +869,9 @@
           (is (= [{:key    "gemini-catalog"
                    :name   "gemini-catalog"
                    :type   "google"
-                   :models [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}
-                            {:id "google/gemini-3.6-flash" :display_name "gemini-3.6-flash"}
-                            {:id "google/gemini-3.7-flash" :display_name "gemini-3.7-flash"}
+                   :models [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}
+                            {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
+                            {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
                             {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
                             {:id "anthropic/claude-opus-5" :display_name "Claude Opus 5"}
                             {:id "anthropic/claude-opus-4-6" :display_name "Claude Opus 4.6"}
