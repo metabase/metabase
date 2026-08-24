@@ -10,6 +10,7 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockField,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,

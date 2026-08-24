@@ -70,10 +70,10 @@
   source table or source card, plus a placeholder `:count` aggregation per original aggregation, so the frontend can
   still tell MBQL and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs."
   [query]
-  (if (lib/native? query)
+  (if (lib/native-only-query? query)
     (lib/native-query query "-")
-    (if-let [source (or (some->> (lib/primary-source-table-id query) (lib.metadata/table query))
-                        (some->> (lib/primary-source-card-id query) (lib.metadata/card query)))]
+    (if-let [source (or (some->> (lib/source-table-id query) (lib.metadata/table query))
+                        (some->> (lib/source-card-id query) (lib.metadata/card query)))]
       (reduce lib/aggregate
               (lib/query query source)
               (repeatedly (count (lib/aggregations query -1)) lib/count))
