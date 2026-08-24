@@ -81,3 +81,17 @@
       (with-collector captured {:status 200 :headers {} :body "{}"}
         (client/client :post 200 "analytics-proxy" sample-payload))
       (is (nil? (get-in @captured [:headers "x-forwarded-for"]))))))
+
+;;; ---------------------------------------- collector destination ----------------------------------------
+
+(deftest collector-written-through-the-api-must-be-external-test
+  (testing "a collector URL written through the settings API may not point inside the network"
+    ;; same URL as the built-in default, but written to the app db -- no fake route, because the policy
+    ;; resolver has to refuse before any connection is attempted
+    (mt/with-temporary-setting-values [snowplow-url "http://localhost:9090"]
+      (client/client :post 502 "analytics-proxy" sample-payload)))
+  (testing "the built-in default is trusted, so a dev collector on localhost still works"
+    (fake/with-fake-routes
+      {"http://localhost:9090/com.snowplowanalytics.snowplow/tp2"
+       (constantly {:status 200 :headers {} :body "{}"})}
+      (is (= {} (client/client :post 200 "analytics-proxy" sample-payload))))))
