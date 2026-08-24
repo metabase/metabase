@@ -207,7 +207,7 @@
           (perms/add-user-to-groups! user-id (map u/the-id groups))))))))
 
 ;; Declare the topic a valid event here in case subscribers are not loaded yet. (SEC-863)
-(derive :event/user-credentials-revoked :metabase/event)
+(events/derive! :event/user-credentials-revoked :metabase/event)
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]

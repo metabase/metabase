@@ -6,8 +6,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(derive ::event :metabase/event)
-(derive :event/user-credentials-revoked ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/user-credentials-revoked ::event)
 
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [user-id] :as _event}]
