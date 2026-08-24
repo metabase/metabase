@@ -1,4 +1,4 @@
-import { useViewportSize } from "@mantine/hooks";
+import { useElementSize } from "@mantine/hooks";
 import { useMemo } from "react";
 
 import {
@@ -12,7 +12,6 @@ import {
   getHeaderColumns,
   getRowName,
 } from "metabase/detail-view/utils";
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { Box, Group, Stack, rem } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -26,7 +25,6 @@ import S from "./DetailViewPage.module.css";
 
 interface Props {
   columns: DatasetColumn[];
-  isNavBarOpen: boolean;
   row: RowValues;
   rowId: string | number;
   table: Table;
@@ -38,7 +36,6 @@ const BREAKPOINT_SMALL = 640;
 
 export function DetailViewPage({
   columns,
-  isNavBarOpen,
   row,
   rowId,
   table,
@@ -47,9 +44,7 @@ export function DetailViewPage({
   const headerColumns = useMemo(() => getHeaderColumns(columns), [columns]);
   const rowName = getRowName(columns, row) || rowId;
   const icon = getEntityIcon(table.entity_type);
-  const viewport = useViewportSize();
-  const navBarWidth = isNavBarOpen ? parseInt(NAV_SIDEBAR_WIDTH, 10) : 0;
-  const width = viewport.width - navBarWidth;
+  const { ref, width } = useElementSize();
   const isMediumBreakpoint = width <= BREAKPOINT_MEDIUM;
   const isSmallBreakpoint = width <= BREAKPOINT_SMALL;
   const paddingLeft = isSmallBreakpoint ? 32 : DETAIL_VIEW_PADDING_LEFT;
@@ -61,6 +56,7 @@ export function DetailViewPage({
       data-testid="object-detail"
       gap={0}
       mih="100%"
+      ref={ref}
     >
       {headerColumns.length > 0 && (
         <Box
