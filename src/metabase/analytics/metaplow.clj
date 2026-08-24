@@ -9,14 +9,14 @@
   Emission is gated by [[metabase.analytics.settings/metaplow-tracking-enabled]]. The public entry point used by the
   rest of the codebase is [[metabase.analytics.event/track-event!]], which fans out to both Snowplow and Metaplow."
   (:require
-   [clj-http.client :as http]
-   [clj-http.conn-mgr :as conn-mgr]
    [clojure.core.async :as a]
    [clojure.walk :as walk]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -78,27 +78,37 @@
                :name     event-name
                :data     enriched-data}}))
 
-(defonce ^:private
-  ^{:doc "Reuses TCP/TLS connections across requests to the metaplow collector. Same idea as Snowplow's
-         `PoolingHttpClientConnectionManager` setup in `metabase.analytics.snowplow`, just via clj-http's wrapper.
-         Sized to `worker-count`: every request goes to one host, so `:default-per-route` is the actual parallelism
-         cap. Wrapped in `delay` so the pool isn't created until the first event is sent."}
-  connection-manager
-  (delay (conn-mgr/make-reusable-conn-manager {:threads           worker-count
-                                               :default-per-route worker-count})))
+(defn- collector-network-policy
+  "A collector chosen by the operator (env var) or by us (the built-in default) is trusted. One written through the
+  settings API is not, so it may not point inside the network."
+  []
+  (if (= :database (setting/get-raw-value-source :metaplow-url))
+    :external-only
+    :allow-all))
+
+(defn- connection-manager
+  "Reuses TCP/TLS connections across requests to the metaplow collector. Same idea as Snowplow's
+  `PoolingHttpClientConnectionManager` setup in `metabase.analytics.snowplow`. Sized to `worker-count`: every request
+  goes to one host, so `:default-per-route` is the actual parallelism cap. Cached per policy, not created until the
+  first event is sent."
+  [policy]
+  (u.http/policy-connection-manager policy {:threads           worker-count
+                                            :default-per-route worker-count}))
 
 (defn- send-event!
   "POST a single payload to the Metaplow `/api/send` endpoint. Returns a map with `:status` (HTTP status code, or -1
   on connection failure)."
   [payload]
   (try
-    (http/post (analytics.settings/metaplow-url)
-               {:body               (json/encode payload)
-                :content-type       :json
-                :socket-timeout     5000
-                :connection-timeout 5000
-                :throw-exceptions   false
-                :connection-manager @connection-manager})
+    (let [policy (collector-network-policy)]
+      (u.http/post (analytics.settings/metaplow-url)
+                   {:network-policy     policy
+                    :body               (json/encode payload)
+                    :content-type       :json
+                    :socket-timeout     5000
+                    :connection-timeout 5000
+                    :throw-exceptions   false
+                    :connection-manager (connection-manager policy)}))
     (catch Throwable e
       (analytics/inc! :metabase-metaplow/errors {:stage :send-event!})
       (log/warnf "Connection failure sending Metaplow event: %s" (ex-message e))
