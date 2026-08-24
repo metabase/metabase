@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
@@ -55,8 +55,6 @@ type InputDetails =
       searchable?: never;
     };
 
-type PendingWrite = { value: EnterpriseSettingValue } | null;
-
 export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
   name: S;
   title?: string;
@@ -91,70 +89,16 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     value: initialValue,
     updateSetting,
     isLoading,
-    isFetching,
     description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
-  const [resetKey, setResetKey] = useState(0);
-  // One write in flight at a time, holding the newest queued value. The server value
-  // stays stale until the post-write refetch, so a change that reverses one still in
-  // flight would compare equal to it and be dropped, and two concurrent PUTs could
-  // land in either order.
-  const writes = useRef<{
-    inFlight: boolean;
-    queued: PendingWrite;
-    lastSent: PendingWrite;
-  }>({ inFlight: false, queued: null, lastSent: null });
   const displayValue = settingDetails?.value ?? initialValue;
 
-  useEffect(() => {
-    // a sibling setting's refetch also ends here, so keep the sentinel while our
-    // own write is unfinished
-    if (!isFetching && !writes.current.inFlight) {
-      writes.current.lastSent = null;
-    }
-  }, [isFetching]);
-
-  const save = async (value: EnterpriseSettingValue) => {
-    const response = await updateSetting({ key: name, value });
-    return !response.error;
-  };
-
-  const runQueue = async (value: EnterpriseSettingValue) => {
-    const w = writes.current;
-    w.inFlight = true;
-    for (let send: PendingWrite = { value }; send; ) {
-      w.lastSent = send;
-      const saved = await save(send.value);
-      if (!saved) {
-        w.lastSent = null;
-      }
-      // a queued value equal to the one in flight is a no-op only if that write landed;
-      // a failed one leaves it unsaved, so it goes out again
-      const next: PendingWrite =
-        w.queued && (!saved || w.queued.value !== send.value) ? w.queued : null;
-      w.queued = null;
-      if (!saved && !next && inputType === "boolean") {
-        // remount resets a toggle; a text input would lose what the user typed
-        setResetKey((key) => key + 1);
-      }
-      send = next;
-    }
-    w.inFlight = false;
-  };
-
   const handleChange = (newValue: EnterpriseSettingValue) => {
-    const w = writes.current;
-    const pending = w.queued ?? w.lastSent;
-    const baseline = pending ? pending.value : displayValue;
-    if (newValue === baseline) {
+    if (newValue === initialValue) {
       return;
     }
-    if (w.inFlight) {
-      w.queued = { value: newValue };
-    } else {
-      runQueue(newValue);
-    }
+    updateSetting({ key: name, value: newValue });
   };
 
   if (hidden || isLoading) {
@@ -173,7 +117,6 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
         <SetByEnvVar varName={settingDetails.env_name} />
       ) : (
         <BasicAdminSettingInput
-          key={resetKey}
           name={name}
           value={displayValue}
           onChange={handleChange}
