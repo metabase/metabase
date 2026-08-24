@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [get])
   (:require
    [clj-http.client :as http]
+   [clj-http.conn-mgr :as conn-mgr]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.util.json :as json])
@@ -190,7 +191,11 @@
 
   The policy is enforced on every address the connection resolves to, including redirect hops and
   hosts written as IP literals. A `:dns-resolver` in `opts` is dropped -- the policy picks the
-  resolver. Everything else, timeouts and redirect handling included, is left to the caller."
+  resolver. Everything else, timeouts and redirect handling included, is left to the caller.
+
+  One exception to watch: clj-http only consults `:dns-resolver` when it builds the connection manager itself, so a
+  `:connection-manager` in `opts` keeps whatever resolver it was constructed with and the policy here does nothing.
+  Build pooled managers with [[policy-connection-manager]]."
   [{:keys [network-policy url] :as opts}]
   ;; same guard clj-http's own `get`/`post` apply, so an unset URL setting says so
   (when (nil? url)
@@ -199,6 +204,21 @@
     (http/request (-> opts
                       (dissoc :network-policy :dns-resolver)
                       (m/assoc-some :dns-resolver resolver)))))
+
+(def ^:private make-policy-connection-manager
+  (memoize
+   (fn [policy opts]
+     (conn-mgr/make-reusable-conn-manager
+      (assoc opts :dns-resolver (network-policy-dns-resolver policy))))))
+
+(defn policy-connection-manager
+  "A reusable clj-http connection manager whose DNS resolver enforces `policy`, for a caller that needs to pool
+  connections. Pass it to [[request]] as `:connection-manager` alongside the same `:network-policy`.
+
+  `opts` are [[clj-http.conn-mgr/make-reusable-conn-manager]]'s. Cached per policy and `opts`, since a manager's
+  resolver is fixed when it is built."
+  [policy opts]
+  (make-policy-connection-manager policy opts))
 
 (defn get
   "GET `url`. See [[request]] for `opts`."

@@ -1,5 +1,6 @@
 (ns metabase.util.http-test
   (:require
+   [clj-http.conn-mgr :as conn-mgr]
    [clojure.test :refer :all]
    [metabase.test.util.dynamic-redefs :refer [with-dynamic-fn-redefs]]
    [metabase.util.http :as http]
@@ -321,8 +322,8 @@
      (fn [port]
        (let [checked (atom #{})]
          (binding [http/*system-dns-resolver* (doto (InMemoryDnsResolver.)
-                                               (.add "start.test" (addresses "127.0.0.1"))
-                                               (.add "hop.test"   (addresses "127.0.0.2")))]
+                                                (.add "start.test" (addresses "127.0.0.1"))
+                                                (.add "hop.test"   (addresses "127.0.0.2")))]
            ;; permit the first hop's address and refuse the redirect target's, so only a check on
            ;; the redirect hop can stop this
            (with-dynamic-fn-redefs [http/address-allowed-for-network-policy?
@@ -348,9 +349,9 @@
      (fn [port]
        (let [checked (atom #{})]
          (binding [http/*system-dns-resolver* (doto (InMemoryDnsResolver.)
-                                               (.add "start.test" (addresses "127.0.0.1"))
-                                               ;; what the system resolver does with a literal: hands it back
-                                               (.add "127.0.0.2" (addresses "127.0.0.2")))]
+                                                (.add "start.test" (addresses "127.0.0.1"))
+                                                ;; what the system resolver does with a literal: hands it back
+                                                (.add "127.0.0.2" (addresses "127.0.0.2")))]
            (with-dynamic-fn-redefs [http/address-allowed-for-network-policy?
                                     (fn [_policy ^InetAddress addr]
                                       (let [ip (.getHostAddress addr)]
@@ -380,3 +381,29 @@
   (testing "an unset URL setting gets a readable error rather than an obscure failure"
     (is (thrown-with-msg? IllegalArgumentException #"URL cannot be nil"
                           (http/get nil {:network-policy :allow-all})))))
+
+(deftest policy-connection-manager-enforces-the-policy-test
+  (testing "a pooled manager built for a policy still refuses a disallowed address"
+    ;; clj-http ignores :dns-resolver when a :connection-manager is supplied, so the pool has to carry the
+    ;; resolver itself -- this is the case that would otherwise silently lose the policy
+    (do-with-redirect-server
+     (fn [port]
+       (let [mgr (http/policy-connection-manager :external-only {:threads 2, :default-per-route 2})
+             e   (is (thrown? Exception (http/get (str "http://localhost:" port "/final")
+                                                  {:connection-manager mgr})))]
+         (is (blocked-address-ex? e))))))
+  (testing "a pool built without the policy's resolver loses the policy -- the reason the helper exists"
+    (do-with-redirect-server
+     (fn [port]
+       (let [plain (conn-mgr/make-reusable-conn-manager {:threads 2, :default-per-route 2})]
+         ;; :external-only here has no effect: clj-http never consults :dns-resolver once a manager is supplied
+         (is (= 200 (:status (http/get (str "http://localhost:" port "/final")
+                                       {:network-policy     :external-only
+                                        :connection-manager plain}))))))))
+  (testing "and an :allow-all pool reaches loopback"
+    (do-with-redirect-server
+     (fn [port]
+       (let [mgr (http/policy-connection-manager :allow-all {:threads 2, :default-per-route 2})]
+         (is (= 200 (:status (http/get (str "http://localhost:" port "/final")
+                                       {:network-policy     :allow-all
+                                        :connection-manager mgr})))))))))
