@@ -115,19 +115,26 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     }
   }, [isFetching]);
 
+  const save = async (value: EnterpriseSettingValue) => {
+    const response = await updateSetting({ key: name, value });
+    return !response.error;
+  };
+
   const runQueue = async (value: EnterpriseSettingValue) => {
     const w = writes.current;
     w.inFlight = true;
     for (let send: PendingWrite = { value }; send; ) {
       w.lastSent = send;
-      const response = await updateSetting({ key: name, value: send.value });
-      if (response.error) {
+      const saved = await save(send.value);
+      if (!saved) {
         w.lastSent = null;
       }
+      // a queued value equal to the one in flight is a no-op only if that write landed;
+      // a failed one leaves it unsaved, so it goes out again
       const next: PendingWrite =
-        w.queued && w.queued.value !== send.value ? w.queued : null;
+        w.queued && (!saved || w.queued.value !== send.value) ? w.queued : null;
       w.queued = null;
-      if (response.error && !next && inputType === "boolean") {
+      if (!saved && !next && inputType === "boolean") {
         // remount resets a toggle; a text input would lose what the user typed
         setResetKey((key) => key + 1);
       }
