@@ -3,8 +3,10 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.tiles.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api.macros :as api.macros]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]
    [metabase.tiles.api :as api.tiles]
@@ -64,6 +66,19 @@
     (case mbql-or-native
       :mbql   (mt/$ids $people.longitude)
       :native [:field "LONGITUDE" {:base-type :type/Float}]))))
+
+(defn implicit-join-query
+  "Query on Orders; the People lat/lon columns are only reachable via an implicit join through USER_ID."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+
+(defn encoded-implicit-join-field-ref
+  "JSON-encoded legacy ref with `:source-field` for a People column reached from Orders via an implicit join."
+  [field-name]
+  (let [col (m/find-first #(= (:id %) (mt/id :people field-name))
+                          (lib/visible-columns (implicit-join-query)))]
+    (json/encode (lib/->legacy-MBQL (lib/ref col)))))
 
 (deftest ^:parallel ad-hoc-query-test
   (testing "GET /api/tiles/:zoom/:x/:y with latField and lonField query params"
@@ -286,6 +301,39 @@
                      :lonField (encoded-lon-field-ref :mbql))))
           (is (= ["SECRET"]
                  (map :name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
+
+(deftest ^:parallel ad-hoc-implicit-join-ref-test
+  (testing "GET /api/tiles/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join (:source-field)"
+    (is (= "Fields referenced via implicit joins are not supported."
+           (mt/user-http-request
+            :crowberto :get 400 "tiles/1/1/1"
+            :query (json/encode (implicit-join-query))
+            :latField (encoded-implicit-join-field-ref :latitude)
+            :lonField (encoded-implicit-join-field-ref :longitude))))))
+
+(deftest ^:parallel saved-card-implicit-join-ref-test
+  (testing "GET /api/tiles/:card-id/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join (:source-field)"
+    (mt/with-temp [:model/Card card {:dataset_query (implicit-join-query)}]
+      (is (= "Fields referenced via implicit joins are not supported."
+             (mt/user-http-request
+              :crowberto :get 400 (format "tiles/%d/1/1/1" (u/id card))
+              :latField (encoded-implicit-join-field-ref :latitude)
+              :lonField (encoded-implicit-join-field-ref :longitude)))))))
+
+(deftest ^:parallel dashcard-implicit-join-ref-test
+  (testing "GET /api/tiles/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join (:source-field)"
+    (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                   :model/Card          {card-id :id}      {:dataset_query (implicit-join-query)}
+                   :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                            :dashboard_id dashboard-id}]
+      (is (= "Fields referenced via implicit joins are not supported."
+             (mt/user-http-request
+              :crowberto :get 400 (format "tiles/%d/dashcard/%d/card/%d/1/1/1"
+                                          dashboard-id
+                                          dashcard-id
+                                          card-id)
+              :latField (encoded-implicit-join-field-ref :latitude)
+              :lonField (encoded-implicit-join-field-ref :longitude)))))))
 
 (deftest ^:parallel legacy-ref-schema-strips-extra-keys-test
   (testing "the tile latField/lonField schema decodes a JSON field ref, validates it, and strips undeclared properties"
