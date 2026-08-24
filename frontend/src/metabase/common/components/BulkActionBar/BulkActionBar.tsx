@@ -4,15 +4,7 @@ import type { HTMLAttributes } from "react";
 import Animation from "metabase/css/core/animation.module.css";
 import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import {
-  Box,
-  type BoxProps,
-  Card,
-  Flex,
-  Portal,
-  Text,
-  rem,
-} from "metabase/ui";
+import { Box, type BoxProps, Card, Flex, Portal, Text, rem } from "metabase/ui";
 
 import S from "./BulkActionBar.module.css";
 

@@ -104,11 +104,6 @@ export function ModelDetailPage() {
   }
 
   return (
-    <DetailViewPage
-      columns={columns}
-      row={row}
-      rowId={rowId}
-      table={table}
-    />
+    <DetailViewPage columns={columns} row={row} rowId={rowId} table={table} />
   );
 }
