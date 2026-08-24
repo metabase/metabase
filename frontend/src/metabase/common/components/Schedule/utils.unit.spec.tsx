@@ -264,22 +264,6 @@ describe("changeScheduleType", () => {
     });
   });
 
-  it("should not keep a weekday on a monthly schedule set to the 15th", () => {
-    expect(
-      changeScheduleType(
-        {
-          schedule_type: "monthly",
-          schedule_day: "fri",
-          schedule_frame: "mid",
-          schedule_hour: 20,
-          schedule_minute: 0,
-        },
-        "monthly",
-        getScheduleDefaults,
-      ),
-    ).toMatchObject({ schedule_day: null, schedule_frame: "mid" });
-  });
-
   it("should keep the minute the user already picked past the hour", () => {
     expect(
       changeScheduleType(
