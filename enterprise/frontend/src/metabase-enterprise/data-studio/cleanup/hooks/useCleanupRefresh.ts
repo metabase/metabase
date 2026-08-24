@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { trackDataStudioCleanupRefreshStarted } from "metabase/common/data-studio/analytics";
@@ -12,12 +12,13 @@ import {
 
 import { getErrorStatus } from "../utils";
 
+import { useOnChange } from "./useOnChange";
+
 const POLLING_INTERVAL = 3000;
 
 export function useCleanupRefresh() {
   const dispatch = useDispatch();
   const [isPolling, setIsPolling] = useState(false);
-  const previousSnapshotId = useRef<number | null | undefined>(undefined);
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const statusQuery = useGetUsageMetadataRefreshStatusQuery(undefined, {
     pollingInterval: isPolling ? POLLING_INTERVAL : 0,
@@ -35,24 +36,18 @@ export function useCleanupRefresh() {
     setIsPolling(isActive);
   }
 
-  useEffect(() => {
-    if (!statusQuery.isSuccess) {
-      return;
-    }
-
-    if (
-      previousSnapshotId.current !== undefined &&
-      previousSnapshotId.current !== snapshotId
-    ) {
+  useOnChange(
+    snapshotId,
+    () => {
       dispatch(
         usageMetadataApi.util.invalidateTags([
           { type: "usage-metadata-candidate", id: "LIST" },
         ]),
       );
       sendSuccessToast(t`Cleanup analysis refreshed`);
-    }
-    previousSnapshotId.current = snapshotId;
-  }, [dispatch, sendSuccessToast, snapshotId, statusQuery.isSuccess]);
+    },
+    { enabled: statusQuery.isSuccess },
+  );
 
   const start = async () => {
     try {
