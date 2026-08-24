@@ -25,6 +25,7 @@
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -186,9 +187,11 @@
 (defn- http-fetch
   [base-url token site-uuid]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params {:site-uuid site-uuid
-                                    :mb-version (:tag config/mb-version-info)}
-                     :throw-exceptions false
+          ;; token-check-url is hardcoded in prod, env-overridable in dev
+          (u.http/get {:network-policy :allow-all
+                       :query-params {:site-uuid site-uuid
+                                      :mb-version (:tag config/mb-version-info)}
+                       :throw-exceptions false
                      ;; socket is data transfer, connection is handshake and create connection timeout
                      :socket-timeout     5000     ;; in milliseconds
                      :connection-timeout 2000})))     ;; in milliseconds
@@ -222,12 +225,13 @@
       (tracing/with-span :tasks "metering.send-events" {}
         (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)]
           (try
-            (http/post (metering-url token token-check-url)
-                       {:body (json/encode (merge (metering-stats)
-                                                  {:site-uuid site-uuid
-                                                   :mb-version (:tag config/mb-version-info)}))
-                        :content-type :json
-                        :throw-exceptions false})
+            (u.http/post (metering-url token token-check-url)
+                         {:network-policy :allow-all
+                          :body (json/encode (merge (metering-stats)
+                                                    {:site-uuid site-uuid
+                                                     :mb-version (:tag config/mb-version-info)}))
+                          :content-type :json
+                          :throw-exceptions false})
             (catch Throwable e
               (log/errorf "Error sending metering events: %s" (ex-message e)))))))))
 

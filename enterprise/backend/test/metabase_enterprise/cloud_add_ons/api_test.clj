@@ -1,11 +1,11 @@
 (ns metabase-enterprise.cloud-add-ons.api-test
   (:require
-   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.http :as u.http]))
 
 (deftest ^:synchronized post-product-type-test
   (testing "POST /api/ee/cloud-add-ons/metabase-ai"
@@ -251,16 +251,16 @@
                                                403 "Could not establish a connection to Metabase Cloud."
                                                401 "Could not establish a connection to Metabase Cloud."}]
             (testing (format "error status %d" status-code)
-              (with-redefs [http/get (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
+              (with-redefs [u.http/get (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
                 (is (=? error-message
                         (mt/user-http-request :crowberto :get status-code "ee/cloud-add-ons/plans")))))))
         (testing "responds with HTTP status 500 for other errors"
-          (with-redefs [http/get (fn [& _] (throw (ex-info "TEST" {:status 500})))]
+          (with-redefs [u.http/get (fn [& _] (throw (ex-info "TEST" {:status 500})))]
             (is (=? "Unexpected error"
                     (mt/user-http-request :crowberto :get 500 "ee/cloud-add-ons/plans")))))
         (testing "succeeds"
           (let [plan-data {:body {:plan-name "Pro" :tier "premium"}}]
-            (with-redefs [http/get (fn [& _] plan-data)]
+            (with-redefs [u.http/get (fn [& _] plan-data)]
               (is (=? (:body plan-data)
                       (mt/user-http-request :crowberto :get 200 "ee/cloud-add-ons/plans"))))))))))
 
@@ -281,15 +281,15 @@
                                                403 "Could not establish a connection to Metabase Cloud."
                                                401 "Could not establish a connection to Metabase Cloud."}]
             (testing (format "error status %d" status-code)
-              (with-redefs [http/get (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
+              (with-redefs [u.http/get (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
                 (is (=? error-message
                         (mt/user-http-request :crowberto :get status-code "ee/cloud-add-ons/addons")))))))
         (testing "responds with HTTP status 500 for other errors"
-          (with-redefs [http/get (fn [& _] (throw (ex-info "TEST" {:status 500})))]
+          (with-redefs [u.http/get (fn [& _] (throw (ex-info "TEST" {:status 500})))]
             (is (=? "Unexpected error"
                     (mt/user-http-request :crowberto :get 500 "ee/cloud-add-ons/addons")))))
         (testing "succeeds"
           (let [addons-data {:body [{:addon-id "metabase-ai" :status "active"}]}]
-            (with-redefs [http/get (fn [& _] addons-data)]
+            (with-redefs [u.http/get (fn [& _] addons-data)]
               (is (=? (:body addons-data)
                       (mt/user-http-request :crowberto :get 200 "ee/cloud-add-ons/addons"))))))))))

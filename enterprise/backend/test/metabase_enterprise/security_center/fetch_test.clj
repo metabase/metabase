@@ -1,11 +1,11 @@
 (ns metabase-enterprise.security-center.fetch-test
   (:require
-   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -93,7 +93,7 @@
           advisory  (make-json-advisory "SC-2026-001"
                                         "matching_query" {"default" query-edn})]
       (mt/with-model-cleanup [:model/SecurityAdvisory]
-        (with-redefs [http/get                                      (constantly (fake-store-response [advisory]))
+        (with-redefs [u.http/get                                      (constantly (fake-store-response [advisory]))
                       premium-features/premium-embedding-token      (constantly "fake-token")
                       premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
           (fetch/sync-advisories!)
@@ -114,7 +114,7 @@
                                        "download_jar_urls" [{"version" "0.58.11"
                                                              "url" "https://downloads.example.com/metabase.jar"}])]
       (mt/with-model-cleanup [:model/SecurityAdvisory]
-        (with-redefs [http/get                                                    (constantly (fake-store-response [advisory]))
+        (with-redefs [u.http/get                                                    (constantly (fake-store-response [advisory]))
                       premium-features/premium-embedding-token                    (constantly "fake-token")
                       premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
           (fetch/sync-advisories!)
@@ -159,7 +159,7 @@
         (let [advisory (make-json-advisory (str "SC-BAD-" label)
                                            "matching_query" {"default" query-edn})]
           (mt/with-model-cleanup [:model/SecurityAdvisory]
-            (with-redefs [http/get                                                    (constantly (fake-store-response [advisory]))
+            (with-redefs [u.http/get                                                    (constantly (fake-store-response [advisory]))
                           premium-features/premium-embedding-token                    (constantly "fake-token")
                           premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
               ;; sync should not throw — error is caught per-advisory
@@ -175,7 +175,7 @@
       (let [advisory (make-json-advisory (str "SC-OK-" label)
                                          "matching_query" {"default" query-edn})]
         (mt/with-model-cleanup [:model/SecurityAdvisory]
-          (with-redefs [http/get                                                    (constantly (fake-store-response [advisory]))
+          (with-redefs [u.http/get                                                    (constantly (fake-store-response [advisory]))
                         premium-features/premium-embedding-token                    (constantly "fake-token")
                         premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
             (fetch/sync-advisories!)

@@ -1,7 +1,6 @@
 (ns metabase-enterprise.billing.api
   "`/api/ee/billing/` endpoint(s)"
   (:require
-   [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -11,6 +10,7 @@
    [metabase.store-api.core :as store-api]
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
@@ -29,9 +29,11 @@
    ^{::memoize/args-fn (fn [[token email language]] [token email language])}
    (fn [token email language]
      (try (some-> (metabase-billing-info-url)
-                  (http/get {:basic-auth   [email token]
-                             :language     language
-                             :content-type :json})
+                  ;; store-api-url is set in the environment, not through the API
+                  (u.http/get {:network-policy :allow-all
+                               :basic-auth     [email token]
+                               :language       language
+                               :content-type   :json})
                   :body
                   json/decode+kw)
           (catch JsonParseException _
