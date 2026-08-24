@@ -21,7 +21,7 @@ import {
 } from "metabase/common/components/Sortable";
 import { useToast } from "metabase/common/hooks";
 import { useLlmConnectionModels } from "metabase/metabot/hooks";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { PLUGIN_AI_CONTROLS, PLUGIN_METABOT } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
@@ -227,7 +227,7 @@ export function AIProviderList() {
         </Button>
       </Stack>
 
-      {hasConnections && <PLUGIN_METABOT.ProviderFallbackSettings />}
+      {hasConnections && <PLUGIN_AI_CONTROLS.ProviderFallbackSettings />}
 
       {(isAdding || editing) && (
         <ProviderConnectionModal

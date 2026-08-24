@@ -72,7 +72,7 @@ const setup = ({
     currentUser: createMockUser({ is_superuser: true }),
   };
 
-  setupEnterpriseOnlyPlugin("metabot");
+  setupEnterpriseOnlyPlugin("ai-controls");
 
   renderWithProviders(<AIProviderList />, { storeInitialState });
 };
