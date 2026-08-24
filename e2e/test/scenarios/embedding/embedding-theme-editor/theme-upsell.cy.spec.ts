@@ -8,7 +8,7 @@ describe("scenarios > embedding > themes > upsell", () => {
     });
 
     it("shows the upsell with Metabase Pro copy and an external upgrade link", () => {
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       cy.log("nav label has an upsell gem");
       cy.findByTestId("admin-layout-sidebar")
@@ -55,7 +55,7 @@ describe("scenarios > embedding > themes > upsell", () => {
         body: { available: false, plan_alias: "pro-cloud" },
       });
 
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       cy.log("nav label has an upsell gem");
       cy.findByTestId("admin-layout-sidebar")
@@ -103,7 +103,7 @@ describe("scenarios > embedding > themes > upsell", () => {
         body: { available: false, plan_alias: "pro-cloud" },
       });
 
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.findByText("Metabase Pro").should("be.visible");
@@ -145,7 +145,7 @@ describe("scenarios > embedding > themes > upsell", () => {
         body: { available: true, plan_alias: "pro-cloud" },
       });
 
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.findByText("Metabase Pro").should("be.visible");
@@ -173,7 +173,7 @@ describe("scenarios > embedding > themes > upsell", () => {
     });
 
     it("does not show the upsell and renders the themes listing", () => {
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       cy.log("nav label has no upsell gem");
       cy.findByTestId("admin-layout-sidebar")

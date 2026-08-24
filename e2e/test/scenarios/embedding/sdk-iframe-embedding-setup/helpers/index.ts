@@ -29,7 +29,7 @@ export const visitNewEmbedPage = (
 ) => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
-  cy.visit("/admin/embedding");
+  cy.visit("/embedding/security");
 
   cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
     .first()

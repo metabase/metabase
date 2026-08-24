@@ -21,7 +21,6 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { Route, type RouteComponent, redirect } from "metabase/router";
-import { getTokenFeature } from "metabase/settings";
 
 import type { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { getSettingsRoutes } from "./settingsRoutes";
@@ -108,63 +107,6 @@ const upsellTenants = () =>
     }),
   );
 
-const embeddingApp = () =>
-  import(
-    /* webpackChunkName: "admin" */ "metabase/admin/embedding/containers/AdminEmbeddingApp"
-  ).then(({ AdminEmbeddingApp }) => ({ Component: AdminEmbeddingApp }));
-
-const embeddingSettings = () =>
-  import(
-    /* webpackChunkName: "admin" */ "metabase/admin/settings/components/EmbeddingSettings"
-  ).then(({ EmbeddingSettings }) => ({ Component: EmbeddingSettings }));
-
-const embeddingSecuritySettings = () =>
-  import(
-    /* webpackChunkName: "admin" */ "metabase/admin/settings/components/EmbeddingSettings"
-  ).then(({ EmbeddingSecuritySettings }) => ({
-    Component: EmbeddingSecuritySettings,
-  }));
-
-const guestEmbedsSettings = () =>
-  import(
-    /* webpackChunkName: "admin" */ "metabase/admin/settings/components/EmbeddingSettings"
-  ).then(({ GuestEmbedsSettings }) => ({ Component: GuestEmbedsSettings }));
-
-const setupGuide = () =>
-  import(
-    /* webpackChunkName: "admin" */ "metabase/admin/embedding/setup-guide"
-  ).then(({ SetupGuideAdminSettingsPage }) => ({
-    Component: SetupGuideAdminSettingsPage,
-  }));
-
-const setupPermissions = () =>
-  import(/* webpackChunkName: "admin" */ "metabase/embedding/setup-guide").then(
-    ({ SetupPermissionsAndTenantsPage }) => ({
-      Component: SetupPermissionsAndTenantsPage,
-    }),
-  );
-
-const setupSso = () =>
-  import(/* webpackChunkName: "admin" */ "metabase/embedding/setup-guide").then(
-    ({ SetupSsoPage }) => ({
-      Component: SetupSsoPage,
-    }),
-  );
-
-const themeListing = () =>
-  import(
-    /* webpackChunkName: "admin" */ "metabase/admin/embedding/components/ThemeListing"
-  ).then(({ EmbeddingThemeListingApp }) => ({
-    Component: EmbeddingThemeListingApp,
-  }));
-
-const themeEditor = () =>
-  import(
-    /* webpackChunkName: "admin" */ "metabase/admin/embedding/components/ThemeEditor"
-  ).then(({ EmbeddingThemeEditorApp }) => ({
-    Component: EmbeddingThemeEditorApp,
-  }));
-
 const performanceApp = () =>
   import(
     /* webpackChunkName: "admin" */ "metabase/admin/performance/components/PerformanceApp"
@@ -226,9 +168,6 @@ export const getRoutes = (
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
-  const state = store.getState();
-  const hasSimpleEmbedding = getTokenFeature(state, "embedding_simple");
-
   return (
     <Route path="/admin" element={<CanAccessSettings />}>
       <Route lazy={adminApp}>
@@ -338,40 +277,41 @@ export const getRoutes = (
           </Route>
         </Route>
 
-        {/* EMBEDDING */}
+        {/* EMBEDDING — the admin embedding section moved to the embedding
+            hub at /embedding (EMB-1526). Every old path redirects to its hub
+            equivalent so no bookmarked/linked URL breaks. */}
         <Route
-          path="embedding"
-          element={createElement(createAdminRouteGuard("embedding"))}
-        >
-          <Route lazy={embeddingApp}>
-            <Route index lazy={embeddingSettings} />
-
-            <Route path="setup-guide">
-              <Route index lazy={setupGuide} />
-
-              <Route path="permissions" lazy={setupPermissions} />
-
-              <Route path="sso" lazy={setupSso} />
-            </Route>
-
-            {/* EE with non-starter plan has embedding settings on different pages */}
-            {hasSimpleEmbedding && (
-              <Route path="guest" lazy={guestEmbedsSettings} />
-            )}
-
-            <Route path="security" lazy={embeddingSecuritySettings} />
-            <Route path="themes" lazy={themeListing} />
-            <Route path="themes/:themeId" lazy={themeEditor} />
-          </Route>
-        </Route>
-
-        {/* OSS/Starter has all embedding settings on the same page */}
-        {!hasSimpleEmbedding && (
-          <Route
-            path="/admin/embedding/guest"
-            element={redirect("/admin/embedding")}
-          />
-        )}
+          path="/admin/embedding"
+          element={redirect("/embedding/security")}
+        />
+        <Route
+          path="/admin/embedding/setup-guide"
+          element={redirect("/embedding")}
+        />
+        <Route
+          path="/admin/embedding/setup-guide/permissions"
+          element={redirect("/embedding/get-started/permissions-setup")}
+        />
+        <Route
+          path="/admin/embedding/setup-guide/sso"
+          element={redirect("/embedding/get-started/sso-setup")}
+        />
+        <Route
+          path="/admin/embedding/guest"
+          element={redirect("/embedding/security")}
+        />
+        <Route
+          path="/admin/embedding/security"
+          element={redirect("/embedding/security")}
+        />
+        <Route
+          path="/admin/embedding/themes"
+          element={redirect("/embedding/appearance")}
+        />
+        <Route
+          path="/admin/embedding/themes/:themeId"
+          element={redirect("/embedding/appearance/:themeId")}
+        />
 
         {/* Backwards compatibility for embedding settings */}
         <Route

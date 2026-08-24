@@ -8,7 +8,7 @@ describe("scenarios > modular embedding settings", { tags: "@EE" }, () => {
   });
 
   it("should link to user strategy when tenants are disabled", () => {
-    cy.visit("/admin/embedding/modular");
+    cy.visit("/embedding/security");
 
     H.main()
       .findByText("Tenants")
@@ -20,7 +20,7 @@ describe("scenarios > modular embedding settings", { tags: "@EE" }, () => {
 
   it("should link to tenants page when tenants are enabled", () => {
     H.updateSetting("use-tenants", true);
-    cy.visit("/admin/embedding/modular");
+    cy.visit("/embedding/security");
 
     H.main()
       .findByText("Tenants")

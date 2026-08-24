@@ -29,7 +29,7 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
     });
 
     it("admin settings configuration form is not present", () => {
-      cy.visit("/admin/embedding/guest");
+      cy.visit("/embedding/security");
       cy.findByTestId("content-translation-configuration").should("not.exist");
     });
   });
@@ -56,7 +56,7 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
     describe("The translation download button", () => {
       it("downloads the stored translations", () => {
         uploadTranslationDictionaryViaAPI(germanFieldNames);
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
         cy.findByTestId("content-translation-configuration")
           .button(/Get translation dictionary template/i)
           .click();
@@ -184,7 +184,7 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
       });
 
       it("rejects, in the frontend, a CSV upload that is too big", () => {
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
         cy.get("#content-translation-dictionary-upload-input").selectFile(
           {
             contents: Cypress.Buffer.from(
@@ -210,7 +210,7 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
       });
 
       it("rejects invalid CSV", () => {
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
         const validCSV = getCSVWithHeaderRow(germanFieldNames);
         const invalidCSV = validCSV + '\nde,Price,"Preis"X';
 

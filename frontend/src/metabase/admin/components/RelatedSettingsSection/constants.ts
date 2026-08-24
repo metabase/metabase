@@ -23,7 +23,7 @@ export const getModularEmbeddingRelatedSettingItems = ({
           {
             icon: "shield_outline" as const,
             name: t`Security`,
-            to: "/admin/embedding/security",
+            to: "/embedding/security",
           },
         ]
       : []),
@@ -76,7 +76,7 @@ export const getGuestEmbedsRelatedSettingItems = (): RelatedSettingItem[] => [
   {
     icon: "shield_outline",
     name: t`Security`,
-    to: "/admin/embedding/security",
+    to: "/embedding/security",
   },
   {
     icon: "database",

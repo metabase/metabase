@@ -15,7 +15,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("Contains setup guide in sidebar", () => {
-      cy.visit("/admin/embedding");
+      cy.visit("/embedding/security");
 
       cy.findByTestId("admin-layout-sidebar")
         .findByText("Setup guide")
@@ -28,7 +28,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it('"Create a dashboard" card should save the x-ray and show a success toast without leaving the guide', () => {
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/embedding/get-started");
 
       cy.log("Find and click on 'Create a dashboard' card");
       cy.findByTestId("admin-layout-content")
@@ -50,11 +50,11 @@ describe("scenarios - setup guide", () => {
       H.undoToast().findByText("See it").should("be.visible");
 
       cy.log("Should remain on the setup guide");
-      cy.url().should("include", "/admin/embedding/setup-guide");
+      cy.url().should("include", "/embedding/get-started");
     });
 
     it('"Connect a database" card should pass from param in navigation URL', () => {
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/embedding/get-started");
 
       cy.log("Find and click on 'Connect a database' card");
       cy.findByTestId("admin-layout-content")
@@ -86,7 +86,7 @@ describe("scenarios - setup guide", () => {
         },
       });
 
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/embedding/get-started");
 
       cy.log("'Connect a database' should not be marked as done");
       cy.findByTestId("admin-layout-content")
@@ -131,7 +131,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it('"Get embed snippet" card should take you to the embed flow', () => {
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/embedding/get-started");
 
       cy.findByTestId("admin-layout-content")
         .findByText("Get embed snippet")
@@ -148,7 +148,7 @@ describe("scenarios - setup guide", () => {
       cy.log("Create a dashboard to embed");
       H.createDashboard({ name: "Test Dashboard" });
 
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/embedding/get-started");
 
       cy.log("step should not be marked as done at first");
       cy.findByTestId("admin-layout-content")
@@ -276,7 +276,7 @@ describe("scenarios - setup guide", () => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
 
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/embedding/get-started");
 
       H.main()
         .findByText("Tenants")
@@ -292,7 +292,7 @@ describe("scenarios - setup guide", () => {
       H.activateToken("pro-self-hosted");
 
       H.updateSetting("use-tenants", true);
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/embedding/get-started");
 
       H.main()
         .findByText("Tenants")
@@ -303,13 +303,13 @@ describe("scenarios - setup guide", () => {
     });
 
     it('"Configure data permissions and enable tenants" card should navigate to permissions onboarding page', () => {
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/embedding/get-started");
 
       cy.findByTestId("admin-layout-content")
         .findByText("Configure data permissions and enable tenants")
         .click();
 
-      cy.url().should("include", "/admin/embedding/setup-guide/permissions");
+      cy.url().should("include", "/embedding/get-started/permissions-setup");
 
       H.main()
         .findByText("Configure data permissions and enable tenants")
@@ -322,7 +322,7 @@ describe("scenarios - setup guide", () => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("all 5 steps are present and none are completed at first");
       H.main().within(() => {
@@ -383,7 +383,7 @@ describe("scenarios - setup guide", () => {
       H.activateToken("pro-self-hosted");
 
       cy.log("create an x-ray dashboard via the embedding setup guide");
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/embedding/get-started");
 
       cy.findByTestId("admin-layout-content")
         .findByText("Create a dashboard")
@@ -399,7 +399,7 @@ describe("scenarios - setup guide", () => {
       cy.log("wait for x-ray dashboard to generate and save it");
       H.undoToast().should("contain", "Your dashboard was saved");
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("tenants should not be enabled");
       cy.request("GET", "/api/session/properties").then((response) => {
@@ -504,7 +504,7 @@ describe("scenarios - setup guide", () => {
       cy.log("enable tenants via setting without creating a shared collection");
       H.updateSetting("use-tenants", true);
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("no steps should be completed");
       H.main().within(() => {
@@ -535,7 +535,7 @@ describe("scenarios - setup guide", () => {
         namespace: "shared-tenant-collection",
       });
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("wait until step is marked as complete");
       H.main().icon("check").should("have.length", 1);
@@ -556,7 +556,7 @@ describe("scenarios - setup guide", () => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("click the enable tenants button");
       H.main()
@@ -615,7 +615,7 @@ describe("scenarios - setup guide", () => {
       });
 
       it("can create two tenants and show summary", () => {
-        cy.visit("/admin/embedding/setup-guide/permissions");
+        cy.visit("/embedding/get-started/permissions-setup");
 
         cy.log("step 1 should be marked as done before navigating");
         H.main()
@@ -745,7 +745,7 @@ describe("scenarios - setup guide", () => {
           slug: "existing-tenant",
         });
 
-        cy.visit("/admin/embedding/setup-guide/permissions");
+        cy.visit("/embedding/get-started/permissions-setup");
 
         H.main()
           .findByRole("listitem", { name: "Create tenants" })
@@ -779,7 +779,7 @@ describe("scenarios - setup guide", () => {
       });
 
       it("reloads with strategy pre-selected and 'Select data' step unlocked when RLS is configured", () => {
-        cy.visit("/admin/embedding/setup-guide/permissions");
+        cy.visit("/embedding/get-started/permissions-setup");
 
         cy.log(
           "'Select data' step should not be locked when RLS is configured",
@@ -805,7 +805,7 @@ describe("scenarios - setup guide", () => {
         cy.signInAsAdmin();
         H.activateToken("pro-self-hosted");
 
-        cy.visit("/admin/embedding/setup-guide/permissions");
+        cy.visit("/embedding/get-started/permissions-setup");
 
         cy.log("enable tenants and create shared collection");
         H.main()
@@ -868,7 +868,7 @@ describe("scenarios - setup guide", () => {
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("enable tenants and create shared collection");
       H.main()
@@ -955,7 +955,7 @@ describe("scenarios - setup guide", () => {
         "updatePermissionsGraph",
       );
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("steps 3, 4, and 5 should be locked initially");
       H.main().within(() => {
@@ -1178,7 +1178,7 @@ describe("scenarios - setup guide", () => {
         },
       );
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("wait for checklist data to load before interacting with steps");
       H.main()
@@ -1290,7 +1290,7 @@ describe("scenarios - setup guide", () => {
           "updatePermissionsGraph",
         );
 
-        cy.visit("/admin/embedding/setup-guide/permissions");
+        cy.visit("/embedding/get-started/permissions-setup");
 
         cy.log("enable tenants and create shared collection");
         H.main()
@@ -1392,7 +1392,7 @@ describe("scenarios - setup guide", () => {
     );
 
     it("locks the production embed step when JWT is not enabled", () => {
-      cy.visit("/admin/embedding/setup-guide");
+      cy.visit("/embedding/get-started");
 
       cy.log("jwt should be disabled by default");
       cy.request("GET", "/api/session/properties").then(({ body }) => {
@@ -1438,7 +1438,7 @@ describe("scenarios - setup guide", () => {
       H.addPostgresDatabase("QA Postgres12");
 
       cy.get<number>("@postgresID").then((postgresId) => {
-        cy.visit("/admin/embedding/setup-guide/permissions");
+        cy.visit("/embedding/get-started/permissions-setup");
 
         H.main()
           .findByRole("radio", { name: /Connection impersonation/ })
@@ -1503,7 +1503,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("should show 'no compatible databases' message when only Sample Database exists", () => {
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("select connection impersonation strategy");
       H.main()
@@ -1531,7 +1531,7 @@ describe("scenarios - setup guide", () => {
     it("should show disabled database with tooltip when database does not support connection impersonation", function () {
       H.addPostgresDatabase("QA Postgres12");
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       H.main()
         .findByRole("radio", { name: /Connection impersonation/ })
@@ -1585,7 +1585,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("creates a tenant with database_role attribute when using connection impersonation", () => {
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("select connection impersonation strategy");
       H.main()
@@ -1655,7 +1655,7 @@ describe("scenarios - setup guide", () => {
       );
       cy.intercept("GET", "/api/embedding-hub/checklist").as("getChecklist");
 
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log(
         "wait for checklist to load and page to settle on the summary step",
@@ -1745,7 +1745,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("creates a tenant with database_slug attribute when using database routing", () => {
-      cy.visit("/admin/embedding/setup-guide/permissions");
+      cy.visit("/embedding/get-started/permissions-setup");
 
       cy.log("select database routing strategy");
       H.main()
@@ -1803,7 +1803,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("disables the Enable JWT button when IdP URI is empty", () => {
-      cy.visit("/admin/embedding/setup-guide/sso");
+      cy.visit("/embedding/get-started/sso-setup");
 
       cy.findByLabelText(/JWT Identity Provider URI/i)
         .should("be.visible")
@@ -1818,7 +1818,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("can configure JWT auth and complete SSO setup", () => {
-      cy.visit("/admin/embedding/setup-guide/sso");
+      cy.visit("/embedding/get-started/sso-setup");
 
       cy.log("no steps should be completed initially");
       H.main().icon("check").should("not.exist");
@@ -1876,7 +1876,7 @@ describe("scenarios - setup guide", () => {
       });
 
       cy.log("should go back to setup guide");
-      cy.url().should("include", "/admin/embedding/setup-guide");
+      cy.url().should("include", "/embedding/get-started");
       cy.url().should("not.include", "/sso");
 
       cy.log("'Configure SSO' card should be marked as done");
@@ -1910,7 +1910,7 @@ describe("scenarios - setup guide", () => {
       "jwt-shared-secret": "0".repeat(64),
     });
 
-    cy.visit("/admin/embedding/setup-guide/sso");
+    cy.visit("/embedding/get-started/sso-setup");
 
     cy.log("step 1 should be marked as done");
     H.main()

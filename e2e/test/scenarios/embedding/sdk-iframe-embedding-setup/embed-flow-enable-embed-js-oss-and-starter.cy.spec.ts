@@ -26,7 +26,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
         H.updateSetting("enable-embedding-modular", false);
         H.updateSetting("show-static-embed-terms", true);
 
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
 
         cy.findAllByTestId("guest-embeds-setting-card")
           .first()
@@ -102,7 +102,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
         H.updateSetting("enable-embedding-modular", true);
         H.updateSetting("show-static-embed-terms", true);
 
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
 
         cy.findAllByTestId("guest-embeds-setting-card")
           .first()
@@ -142,7 +142,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
         H.updateSetting("enable-embedding-modular", true);
         H.updateSetting("show-static-embed-terms", false);
 
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
 
         cy.findAllByTestId("guest-embeds-setting-card")
           .first()
@@ -163,7 +163,7 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
         H.updateSetting("enable-embedding-modular", false);
         H.updateSetting("show-modular-embed-terms", true);
 
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
 
         cy.findAllByTestId("guest-embeds-setting-card")
           .first()

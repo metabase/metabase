@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const standalonePath = "/admin/embedding/guest";
+const standalonePath = "/embedding/security";
 
 // These tests will run on both OSS and EE instances. Both without a token!
 describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
@@ -39,7 +39,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should show the sdk upsell link in oss", () => {
-      cy.visit("/admin/embedding");
+      cy.visit("/embedding/security");
 
       mainPage().within(() => {
         cy.findByRole("link", { name: "Upgrade" })
