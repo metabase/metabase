@@ -18,12 +18,12 @@
   https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html"
   (:require
    [clojure.string :as str]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai :as openai]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -153,8 +153,9 @@
 (defn- ensure-credentials
   "Validate the credentials of the connection serving this request.
   Self-hosted, no access key pair at all is fine, signing falls back to the AWS default credentials chain; on a
-  hosted deployment the chain would resolve the operator's own identity, so the pair is required. Half a pair
-  throws, as does a session token without the pair and an unknown region; the region defaults to us-east-1."
+  hosted deployment, or one whose license cannot be checked, the chain would resolve the operator's own identity,
+  so the pair is required. Half a pair throws, as does a session token without the pair and an unknown region; the
+  region defaults to us-east-1."
   [credentials]
   (let [key-id (u/trimmed-string (:access-key-id credentials))
         secret (u/trimmed-string (:secret-access-key credentials))
@@ -163,7 +164,7 @@
       (throw (incomplete-credentials-ex)))
     (when (and token (not key-id))
       (throw (token-without-pair-ex)))
-    (when (and (not key-id) (premium-features/is-hosted?))
+    (when (and (not key-id) (llm.provider/hosted?))
       (throw (hosted-keyless-ex)))
     (-> credentials
         (u/assoc-dissoc :access-key-id key-id)

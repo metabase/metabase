@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -187,6 +188,22 @@
                                                             :secret-access-key "test-secret"})))
         (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                              :secret-access-key "test-secret"})))))))
+
+(deftest indeterminate-hosting-bedrock-requires-key-pair-test
+  (testing "a token status the token service could not confirm counts as hosted, since the chain would sign as the
+            operator on a Cloud instance that cannot reach it"
+    (with-redefs [premium-features/canonically-has-feature? (constantly nil)]
+      (is (true? (llm.provider/hosted?)))
+      (is (= [[:access-key-id :secret-access-key]]
+             (:required-any (llm.provider/provider-type "bedrock"))))
+      (is (false? (llm.provider/config-complete? "bedrock" {})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"bedrock needs one of: Access key ID \+ Secret access key"
+           (llm.provider/validate-config! "bedrock" {})))))
+  (testing "a token the service did answer for leaves a self-hosted deployment keyless"
+    (with-redefs [premium-features/canonically-has-feature? (constantly false)]
+      (is (false? (llm.provider/hosted?)))
+      (is (nil? (llm.provider/validate-config! "bedrock" {}))))))
 
 (deftest validate-config!-field-validator-test
   (testing "a field's own validator runs on a non-blank value"

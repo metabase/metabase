@@ -315,11 +315,19 @@
     hosted-required-any (update :required-any (fnil into []) hosted-required-any)
     :always             (update :fields (partial mapv #(if-let [h (:hosted-help %)] (assoc % :help h) %)))))
 
+(defn hosted?
+  "Whether hosted credential policy applies. [[premium-features/is-hosted?]] reads the `:hosting` license feature,
+  which reads as absent while the token service is unreachable, so an indeterminate token status counts as hosted
+  too: on Cloud a keyless Bedrock connection would otherwise sign as the operator."
+  []
+  (or (premium-features/is-hosted?)
+      (nil? (premium-features/canonically-has-feature? :hosting))))
+
 (defn provider-type
   "The registry entry for `type-name`, or nil when it is not a known provider type."
   [type-name]
   (when-let [entry (get provider-type-by-name type-name)]
-    (cond-> entry (premium-features/is-hosted?) hosted-provider-type)))
+    (cond-> entry (hosted?) hosted-provider-type)))
 
 (defn provider-types
   "Every registered provider type."

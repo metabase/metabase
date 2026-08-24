@@ -7,6 +7,7 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util.json :as json])
   (:import
@@ -123,6 +124,21 @@
 (deftest list-models-hosted-keyless-rejected-test
   (testing "a hosted deployment rejects a keyless connection before the credentials chain is touched"
     (mt/with-premium-features #{:hosting}
+      (let [chain-calls (atom 0)
+            requests    (atom 0)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]
+          (with-redefs [http/request (fn [_] (swap! requests inc) {:body {:data fake-catalog}})]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Metabase Cloud requires an access key pair"
+                 (bedrock/list-models)))
+            (is (zero? @chain-calls))
+            (is (zero? @requests))))))))
+
+(deftest list-models-unconfirmed-hosting-keyless-rejected-test
+  (testing "a token status the token service could not confirm is treated as hosted, so a Cloud instance that
+            cannot reach it does not fall back to the operator identity"
+    (with-redefs [premium-features/canonically-has-feature? (constantly nil)]
       (let [chain-calls (atom 0)
             requests    (atom 0)]
         (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]
