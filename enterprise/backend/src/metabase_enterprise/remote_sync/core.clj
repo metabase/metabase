@@ -180,31 +180,38 @@
               row (remote-sync.db/instance-names (keyword "model" model-name) (map :id group))]
           [[model-name (:id row)] (:name row)])))
 
-(defn- card-item-models
-  "`{card-id model}` for the Cards in `entities` — only their `type` separates questions from models and
-  metrics, and the eligibility select doesn't carry it."
+(defn- card-item-details
+  "`{card-id {:model model :display display}}` for the Cards in `entities`. Their `type` is what separates
+  questions from models and metrics, and `display` is what lets clients show a question's visualization
+  icon instead of a generic one; the eligibility select carries neither."
   [entities]
   (when-let [ids (seq (keep #(when (= "Card" (:model %)) (:id %)) entities))]
     (into {}
-          (map (fn [{:keys [id type]}]
-                 [id (case (keyword type)
-                       :model  "dataset"
-                       :metric "metric"
-                       "card")]))
+          (map (fn [{:keys [id type display]}]
+                 [id {:model   (case (keyword type)
+                                 :model  "dataset"
+                                 :metric "metric"
+                                 "card")
+                      ;; Named for the wire, as the dirty-changes payload already does for `display`.
+                      :display (some-> display name)}]))
           ;; :card_schema is required alongside :type — selecting it runs Card's schema upgrades.
           (remote-sync.db/card-types ids))))
 
 (defn- describe-entities
-  "`[{:model :id :name}]` for `entities`, which are `{:model \"Card\" :id 412}` maps, in the order given."
+  "`[{:model :id :name}]` for `entities`, which are `{:model \"Card\" :id 412}` maps, in the order given.
+  Cards carry `:display` too, so clients can pick the visualization icon."
   [entities]
-  (let [names       (entity-names entities)
-        card-models (card-item-models entities)]
+  (let [names        (entity-names entities)
+        card-details (card-item-details entities)]
     (mapv (fn [{:keys [model id]}]
-            {:model (if (= "Card" model)
-                      (get card-models id "card")
-                      (dependency-item-model model))
-             :id    id
-             :name  (get names [model id])})
+            ;; Keyed by id alone, so only consult it once the entity is known to be a Card.
+            (let [card (when (= "Card" model) (get card-details id))]
+              (cond-> {:model (if (= "Card" model)
+                                (:model card "card")
+                                (dependency-item-model model))
+                       :id    id
+                       :name  (get names [model id])}
+                (:display card) (assoc :display (:display card)))))
           entities)))
 
 (defn- sync-remedy
@@ -239,17 +246,41 @@
       {:collection (select-keys collection [:id :name])})
     {:collection nil}))
 
+(defn- referencing-entities
+  "`[model-name id]` pairs naming the entities that reference `dep`, in the order the traversal found them.
+  Nested models (DashboardCard, DashboardCardSeries, Action) fall away as they do for dependents — they
+  have no name of their own, and the parent that does is in the same path."
+  [dep]
+  (distinct (for [path            (:used-by dep)
+                  [model-name id] path
+                  :when           (contains? model-name->collection-item-model model-name)]
+              [model-name id])))
+
+(defn- describe-used-by
+  "The rendered `:used-by` of each dependency in `deps`, positionally. Names resolve in a single pass over
+  the whole set, so a refusal naming dozens of dependencies costs the same few selects as one naming a
+  single dependency."
+  [deps]
+  (let [entities  (vec (distinct (mapcat referencing-entities deps)))
+        described (zipmap entities
+                          (describe-entities (mapv (fn [[model-name id]] {:model model-name :id id})
+                                                   entities)))]
+    (mapv #(mapv described (referencing-entities %)) deps)))
+
 (defn- describe-dependencies
   "Renders [[collections/ineligible-dependencies]] for the API: what each dependency is, the collection it
-  lives in, and the collection (or the Library) that would have to be synced to cover it."
+  lives in, the entities that reference it, and the collection (or the Library) that would have to be
+  synced to cover it."
   [deps]
   (let [collections (collections-by-id (map (comp :collection_id :instance) deps))
         top-levels  (collections-by-id (map top-level-ancestor-id (vals collections)))]
-    (mapv (fn [described {:keys [instance] :as dep}]
+    (mapv (fn [described used-by {:keys [instance] :as dep}]
             (merge described
-                   {:remedy (sync-remedy dep collections top-levels)}
+                   {:remedy  (sync-remedy dep collections top-levels)
+                    :used_by used-by}
                    (dependency-collection instance collections)))
           (describe-entities deps)
+          (describe-used-by deps)
           deps)))
 
 (defn- describe-dependents

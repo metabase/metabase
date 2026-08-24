@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -31,6 +32,7 @@ import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 import { BranchSwitcherSection } from "./BranchSwitcherSection";
 import { CollectionsToSyncSection } from "./CollectionsToSyncSection";
 import { GitSettingsSection } from "./GitSettingsSection";
+import { ManageUnsyncedContentModal } from "./ManageUnsyncedContentModal";
 import { ReadOnlyBranchSection } from "./ReadOnlyBranchSection";
 import { RemoteSyncConflictModal } from "./RemoteSyncConflictModal";
 import { RemoteSyncDependencyModal } from "./RemoteSyncDependencyModal";
@@ -72,6 +74,7 @@ export const RemoteSyncSettingsForm = ({
     variant,
   });
   const { handleDisable, disableModal, isDisabling } = useDisableRemoteSync();
+  const [isManagingContent, setIsManagingContent] = useState(false);
 
   const dirtyEntities = dirtyData?.dirty ?? [];
   const dependencyFailures = unsyncedDependenciesError?.errors.collections;
@@ -159,9 +162,20 @@ export const RemoteSyncSettingsForm = ({
                 </Flex>
               </Stack>
 
-              {/* Inside the form so its fix-and-save can write through formik; Mantine portals it out. */}
+              {/* Inside the form so the fix-and-save can write through formik; Mantine portals these out. */}
               {!isModalVariant && (
-                <RemoteSyncDependencyModal failures={dependencyFailures} />
+                <>
+                  <RemoteSyncDependencyModal
+                    failures={dependencyFailures}
+                    isOpen={!isManagingContent}
+                    onManageContent={() => setIsManagingContent(true)}
+                  />
+                  <ManageUnsyncedContentModal
+                    failures={dependencyFailures}
+                    isOpen={isManagingContent}
+                    onClose={() => setIsManagingContent(false)}
+                  />
+                </>
               )}
             </Form>
           );

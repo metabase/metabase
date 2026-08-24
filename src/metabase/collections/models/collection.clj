@@ -1347,14 +1347,16 @@
 
   Returns a vector of maps, one per ineligible dependency:
 
-    {:model \"Card\", :id 412, :instance <row>}
+    {:model \"Card\", :id 412, :instance <row>, :used-by [{\"DashboardCard\" 12 \"Dashboard\" 3}]}
 
   `:instance` carries whatever [[select-for-eligibility-check]] loaded for it, notably `:collection_id`.
-  It falls out of the traversal that [[non-remote-synced-dependencies]] already runs, so reporting it
-  costs no extra queries."
+  `:used-by` carries the [[serdes/descendants]] provenance: one entry per entity that reached this one,
+  naming the direct referrer rather than the whole path back to `model`. Both fall out of the traversal
+  that [[non-remote-synced-dependencies]] already runs, so reporting them costs no extra queries."
   [{:keys [id] :as model}]
   (if (collections.db/collection-exists? (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
-    (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
+    (let [traversed   (traverse-descendants [(name (t2/model model)) id] true)
+          descendants (u/group-by first second (keys traversed))]
       (into []
             (for [m (collectable-models)
                   :let [model-name (name m)
@@ -1367,7 +1369,8 @@
                   :when (not eligible?)]
               {:model    model-name
                :id       inst-id
-               :instance (get by-id inst-id)})))
+               :instance (get by-id inst-id)
+               :used-by  (vec (get traversed [model-name inst-id]))})))
     []))
 
 (defn non-remote-synced-dependencies
