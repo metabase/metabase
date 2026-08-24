@@ -188,34 +188,49 @@ export const clearDayForMidFrame = (
     ? { ...schedule, schedule_day: null }
     : schedule;
 
-export const resetScheduleToTypeDefaults = (
+export const clearUnusedScheduleFields = (
+  schedule: ScheduleBuilderValue,
+  getFieldValue: (field: ScheduleField) => ScheduleSettings[ScheduleField] = (
+    field,
+  ) => schedule[field],
+): ScheduleBuilderValue => {
+  const { schedule_type } = schedule;
+  const fieldsInCron = getScheduleFieldsInCron(schedule_type);
+
+  return clearDayForMidFrame(
+    SCHEDULE_FIELDS.reduce<ScheduleBuilderValue>(
+      (memo, field) => ({
+        ...memo,
+        [field]: fieldsInCron.includes(field) ? getFieldValue(field) : null,
+      }),
+      { schedule_type },
+    ),
+  );
+};
+
+const hasSameMeaningInBothTypes = (
+  field: ScheduleField,
+  previousType: ScheduleBuilderType,
+  nextType: ScheduleBuilderType,
+): boolean =>
+  field !== "schedule_minute" ||
+  (previousType === "every_n_minutes") === (nextType === "every_n_minutes");
+
+export const changeScheduleType = (
   previousValue: ScheduleBuilderValue,
   nextType: ScheduleBuilderType,
   getDefaults: GetScheduleDefaults,
 ): ScheduleBuilderValue => {
-  const nextValue: ScheduleBuilderValue = {
-    schedule_type: nextType,
-    ...getDefaults(nextType),
-  };
+  const defaults = getDefaults(nextType);
+  const isFieldCarriedOver = (field: ScheduleField) =>
+    hasSameMeaningInBothTypes(field, previousValue.schedule_type, nextType) &&
+    isNotNull(previousValue[field]);
 
-  if (nextType !== "monthly" || previousValue.schedule_frame !== "mid") {
-    return nextValue;
-  }
-
-  return { ...nextValue, schedule_frame: "mid" };
-};
-
-export const clearUnusedScheduleFields = (
-  schedule: ScheduleBuilderValue,
-): ScheduleBuilderValue => {
-  const fieldsInCron = getScheduleFieldsInCron(schedule.schedule_type);
-  const nextValue = SCHEDULE_FIELDS.reduce<ScheduleBuilderValue>(
-    (memo, field) =>
-      fieldsInCron.includes(field) ? memo : { ...memo, [field]: null },
-    schedule,
+  return clearUnusedScheduleFields(
+    { ...previousValue, schedule_type: nextType },
+    (field) =>
+      isFieldCarriedOver(field) ? previousValue[field] : defaults[field],
   );
-
-  return clearDayForMidFrame(nextValue);
 };
 
 export const toScheduleSettings = (value: ScheduleValue): ScheduleSettings => {

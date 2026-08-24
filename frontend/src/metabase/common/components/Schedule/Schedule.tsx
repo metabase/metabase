@@ -33,11 +33,11 @@ import type {
 import { isScheduleCronValue } from "./types";
 import {
   type GetScheduleDefaults,
+  changeScheduleType,
   clearDayForMidFrame,
   getScheduleDefaults,
   isScheduleComplete,
   normalizeScheduleValue,
-  resetScheduleToTypeDefaults,
 } from "./utils";
 
 export interface ScheduleProps {
@@ -101,7 +101,7 @@ export const Schedule = ({
       }
 
       emitChange(
-        resetScheduleToTypeDefaults(
+        changeScheduleType(
           toScheduleBuilderValue(normalizedValue),
           scheduleType,
           getDefaults,

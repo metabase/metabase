@@ -3,12 +3,12 @@ import type { SelectProps } from "metabase/ui";
 import { getDefaultsWithoutHour } from "./test-utils";
 import type { ScheduleBuilderValue, ScheduleValue } from "./types";
 import {
+  changeScheduleType,
   combineConsecutiveStrings,
   getLongestSelectLabel,
   getScheduleDefaults,
   isScheduleComplete,
   normalizeScheduleValue,
-  resetScheduleToTypeDefaults,
 } from "./utils";
 
 describe("Schedule utility functions", () => {
@@ -197,7 +197,7 @@ describe("normalizeScheduleValue", () => {
   });
 });
 
-describe("resetScheduleToTypeDefaults", () => {
+describe("changeScheduleType", () => {
   const daily: ScheduleBuilderValue = {
     schedule_type: "daily",
     schedule_day: null,
@@ -208,7 +208,7 @@ describe("resetScheduleToTypeDefaults", () => {
 
   it("should apply the defaults of the new type", () => {
     expect(
-      resetScheduleToTypeDefaults(
+      changeScheduleType(
         { schedule_type: "hourly" },
         "weekly",
         getScheduleDefaults,
@@ -222,9 +222,35 @@ describe("resetScheduleToTypeDefaults", () => {
     });
   });
 
+  it("should keep the time the user already picked", () => {
+    expect(changeScheduleType(daily, "weekly", getScheduleDefaults)).toEqual({
+      schedule_type: "weekly",
+      schedule_day: "mon",
+      schedule_frame: null,
+      schedule_hour: 20,
+      schedule_minute: 0,
+    });
+  });
+
+  it("should keep the weekday the user already picked", () => {
+    expect(
+      changeScheduleType(
+        { ...daily, schedule_type: "weekly", schedule_day: "fri" },
+        "monthly",
+        getScheduleDefaults,
+      ),
+    ).toEqual({
+      schedule_type: "monthly",
+      schedule_day: "fri",
+      schedule_frame: "first",
+      schedule_hour: 20,
+      schedule_minute: 0,
+    });
+  });
+
   it("should keep the monthly frame the previous schedule was on", () => {
     expect(
-      resetScheduleToTypeDefaults(
+      changeScheduleType(
         { ...daily, schedule_frame: "mid" },
         "monthly",
         getScheduleDefaults,
@@ -233,23 +259,80 @@ describe("resetScheduleToTypeDefaults", () => {
       schedule_type: "monthly",
       schedule_day: null,
       schedule_frame: "mid",
-      schedule_hour: 8,
+      schedule_hour: 20,
       schedule_minute: 0,
+    });
+  });
+
+  it("should not keep a weekday on a monthly schedule set to the 15th", () => {
+    expect(
+      changeScheduleType(
+        {
+          schedule_type: "monthly",
+          schedule_day: "fri",
+          schedule_frame: "mid",
+          schedule_hour: 20,
+          schedule_minute: 0,
+        },
+        "monthly",
+        getScheduleDefaults,
+      ),
+    ).toMatchObject({ schedule_day: null, schedule_frame: "mid" });
+  });
+
+  it("should keep the minute the user already picked past the hour", () => {
+    expect(
+      changeScheduleType(
+        { schedule_type: "hourly", schedule_minute: 15 },
+        "daily",
+        getScheduleDefaults,
+      ),
+    ).toMatchObject({ schedule_type: "daily", schedule_minute: 15 });
+  });
+
+  it("should not read a by-the-minute interval as a minute past the hour", () => {
+    expect(
+      changeScheduleType(
+        { schedule_type: "every_n_minutes", schedule_minute: 30 },
+        "hourly",
+        getScheduleDefaults,
+      ),
+    ).toMatchObject({ schedule_type: "hourly", schedule_minute: 0 });
+
+    expect(
+      changeScheduleType(
+        { schedule_type: "hourly", schedule_minute: 45 },
+        "every_n_minutes",
+        getScheduleDefaults,
+      ),
+    ).toMatchObject({
+      schedule_type: "every_n_minutes",
+      schedule_minute: 10,
     });
   });
 
   it("should give no hour to a type that does not need one", () => {
     expect(
-      resetScheduleToTypeDefaults(daily, "hourly", getScheduleDefaults),
+      changeScheduleType(daily, "hourly", getScheduleDefaults),
     ).toMatchObject({
       schedule_type: "hourly",
       schedule_hour: null,
     });
   });
 
-  it("should leave the hour unpicked when the defaults do not supply one", () => {
+  it("should leave the hour unpicked when neither the previous schedule nor the defaults supply one", () => {
     expect(
-      resetScheduleToTypeDefaults(daily, "weekly", getDefaultsWithoutHour),
+      changeScheduleType(
+        { schedule_type: "hourly" },
+        "weekly",
+        getDefaultsWithoutHour,
+      ),
     ).toMatchObject({ schedule_type: "weekly", schedule_hour: null });
+  });
+
+  it("should keep the hour the user picked even when the defaults supply none", () => {
+    expect(
+      changeScheduleType(daily, "weekly", getDefaultsWithoutHour),
+    ).toMatchObject({ schedule_type: "weekly", schedule_hour: 20 });
   });
 });

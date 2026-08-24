@@ -396,10 +396,16 @@ describe("Schedule", () => {
         "0 0 8 1 * ? *",
       ],
       [
-        "switch weekly to monthly drops the weekday",
+        "switch weekly to monthly keeps the weekday",
         "0 0 8 ? * 6 *",
         { frequency: "monthly" },
-        "0 0 8 1 * ? *",
+        "0 0 8 ? * 6#1 *",
+      ],
+      [
+        "switch daily to weekly keeps the time",
+        "0 30 15 * * ? *",
+        { frequency: "weekly" },
+        "0 30 15 ? * 2 *",
       ],
       [
         "switch monthly to daily clears frame and weekday",
@@ -462,9 +468,9 @@ describe("Schedule", () => {
     });
 
     describe("with defaults that supply no hour", () => {
-      it("leaves the time unpicked when coming from a custom cron expression", async () => {
+      it("leaves the time unpicked when the previous type had no time", async () => {
         const { onScheduleChange } = setup({
-          value: { schedule_type: "cron", cron: "0 0 15 1 * ? *" },
+          value: { schedule_type: "cron", cron: "0 0 * * * ? *" },
           getDefaults: getDefaultsWithoutHour,
         });
 
@@ -476,7 +482,21 @@ describe("Schedule", () => {
         expect(lastEvent.cronString).toBeNull();
       });
 
-      it("unpicks the time the user had picked on the previous type", async () => {
+      it("keeps the time a custom cron expression named", async () => {
+        const { onScheduleChange } = setup({
+          value: { schedule_type: "cron", cron: "0 0 15 1 * ? *" },
+          getDefaults: getDefaultsWithoutHour,
+        });
+
+        await pickField("frequency", "daily");
+
+        expect(screen.getByTestId("select-time")).toHaveValue("3:00");
+        expectAmPmToBe("PM");
+        const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
+        expect(lastEvent.cronString).toBe("0 0 15 * * ? *");
+      });
+
+      it("keeps the time the user had picked on the previous type", async () => {
         const { onScheduleChange } = setup({
           value: scheduleFromCron("0 0 20 * * ? *"),
           getDefaults: getDefaultsWithoutHour,
@@ -484,10 +504,10 @@ describe("Schedule", () => {
 
         await pickField("frequency", "weekly");
 
-        expect(screen.getByTestId("select-time")).toHaveValue("");
-        expectAmPmToBe("AM");
+        expect(screen.getByTestId("select-time")).toHaveValue("8:00");
+        expectAmPmToBe("PM");
         const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
-        expect(lastEvent.cronString).toBeNull();
+        expect(lastEvent.cronString).toBe("0 0 20 ? * 2 *");
       });
 
       it("lets the user pick AM/PM before the time, without picking a time for them", async () => {
