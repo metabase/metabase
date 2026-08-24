@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Center, Loader, Text } from "metabase/ui";
+import { useResolvedGoalSegments } from "metabase/visualizations/hooks/use-resolved-goal-segments";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
@@ -29,7 +30,6 @@ import {
 } from "./constants";
 import { GAUGE_CHART_DEFINITION } from "./definition";
 import { isGaugeRange } from "./types";
-import { useResolvedGoalSegments } from "./use-resolved-goal-segments";
 import { getValue, radians } from "./utils";
 
 function GaugeComponent({
