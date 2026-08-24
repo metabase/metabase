@@ -146,13 +146,17 @@
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "ee/ai-controls/permissions/advanced"))))
-      (testing "flips the setting and leaves every row in place"
+      (testing "removes the rows of every group outside group-level mode and keeps the rest"
         (with-metabot-permissions-snapshot
           (t2/delete! :model/MetabotPermissions)
-          (let [all-users-id (u/the-id (perms/all-users-group))]
+          (let [all-users-id    (u/the-id (perms/all-users-group))
+                all-external-id (u/the-id (perms/all-external-users-group))]
             (mt/with-temporary-setting-values [metabot-advanced-permissions false]
               (mt/with-temp [:model/PermissionsGroup   {group-id :id} {:name "Other Group"}
                              :model/MetabotPermissions _              {:group_id   all-users-id
+                                                                       :perm_type  :permission/metabot
+                                                                       :perm_value :yes}
+                             :model/MetabotPermissions _              {:group_id   all-external-id
                                                                        :perm_type  :permission/metabot
                                                                        :perm_value :yes}
                              :model/MetabotPermissions _              {:group_id   group-id
@@ -161,7 +165,11 @@
                 (let [response (mt/user-http-request :crowberto :post 200 "ee/ai-controls/permissions/advanced")]
                   (is (=? {:advanced true} response))
                   (is (true? (metabot-settings/metabot-advanced-permissions)))
-                  (is (=? {"permission/metabot" "yes"} (group-perm-values response all-users-id)))
+                  (is (= {group-id :permission/metabot-nlq}
+                         (t2/select-fn->fn :group_id :perm_type :model/MetabotPermissions))
+                      "only the groups group-level mode shows keep their rows")
+                  (is (=? {"permission/metabot" "no"} (group-perm-values response all-users-id)))
+                  (is (=? {"permission/metabot" "no"} (group-perm-values response all-external-id)))
                   (is (=? {"permission/metabot-nlq" "yes"} (group-perm-values response group-id))))))))))))
 
 (deftest disable-advanced-permissions-test

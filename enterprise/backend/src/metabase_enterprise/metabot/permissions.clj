@@ -13,9 +13,10 @@
 (defn- group-id-clause
   "HoneySQL clause restricting resolution to the groups the current permission mode exposes in the admin UI.
   Simple mode only shows Administrators, All Users and All tenant users; group-level mode shows every group
-  except All Users and All tenant users. Group-level mode keeps the rows it hides, so they are back in force
-  if simple mode is restored; the switch back to simple mode drops the group-level rows. Hidden rows must not
-  resolve while they are hidden: a :yes nobody can see would override every visible :no (#80394)."
+  except those two. Switching modes deletes the rows the other mode owns, but rows for a hidden group can still
+  turn up: a serialization import, a `PUT /api/setting` mode change, or an API write against a hidden group all
+  make them, and instances that switched modes before this fix still hold theirs. They must not resolve, since a
+  :yes nobody can see would override every visible :no (#80394)."
   []
   (let [default-group-ids [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))]]
     (if (metabot-settings/metabot-advanced-permissions)

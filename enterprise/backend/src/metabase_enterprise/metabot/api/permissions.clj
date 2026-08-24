@@ -86,10 +86,15 @@
                                                  :perm_value perm-value-kw})))))
   (permissions-response))
 
+(defn- default-group-ids
+  "IDs of the groups group-level mode hides: All Users and, under tenants, All tenant users."
+  []
+  [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
+
 (defn- simple-mode-group-ids
   "IDs of the groups simple mode shows: Administrators, All Users and, under tenants, All tenant users."
   []
-  [(u/the-id (perms/admin-group)) (u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
+  (conj (default-group-ids) (u/the-id (perms/admin-group))))
 
 (defn- check-mode-switchable!
   "Throw a 400 when `metabot-advanced-permissions` is forced by an env var, since writing the setting would then have no
@@ -99,22 +104,24 @@
                  (tru "The permission mode is set by the MB_METABOT_ADVANCED_PERMISSIONS environment variable.")))
 
 (api.macros/defendpoint :post "/advanced" :- permissions-response-schema
-  "Switch to group-level permissions. The All Users and All tenant users rows are kept but stop counting
-   towards a user's permissions until simple mode is switched back on."
+  "Switch to group-level permissions. Removes the permissions of All Users and All tenant users, so nobody has
+   access until they are in a group that grants it."
   []
   (api/check-superuser)
   (check-mode-switchable!)
+  ;; Flip the mode before deleting: a failed delete then only leaves rows the new mode ignores, where a failed
+  ;; setting write would leave the old mode with its permissions already gone.
   (metabot-settings/metabot-advanced-permissions! true)
+  (t2/delete! :model/MetabotPermissions :group_id [:in (default-group-ids)])
   (permissions-response))
 
 (api.macros/defendpoint :delete "/advanced" :- permissions-response-schema
   "Switch back to simple permissions. Removes the permissions of every group other than Administrators, All Users
-   and All tenant users, whose rows come back into force as they were before group-level mode was switched on."
+   and All tenant users."
   []
   (api/check-superuser)
   (check-mode-switchable!)
-  ;; Flip the mode before deleting: a failed delete then only leaves rows simple mode ignores, where a failed
-  ;; setting write would leave group-level mode with its permissions already gone.
+  ;; Flip the mode first, for the reason given on the POST above.
   (metabot-settings/metabot-advanced-permissions! false)
   (t2/delete! :model/MetabotPermissions :group_id [:not-in (simple-mode-group-ids)])
   (permissions-response))
