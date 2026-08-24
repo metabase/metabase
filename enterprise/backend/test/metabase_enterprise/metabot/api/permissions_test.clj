@@ -216,10 +216,14 @@
                          :model/MetabotPermissions _              {:group_id   group-id
                                                                    :perm_type  :permission/metabot
                                                                    :perm_value :yes}]
+            ;; Write the setting for real before throwing, so the failure has to undo the settings cache too.
             (mt/with-dynamic-fn-redefs [metabot-settings/metabot-advanced-permissions!
-                                        (fn [_] (throw (ex-info "boom" {})))]
+                                        (fn [advanced?]
+                                          ((mt/original-fn #'metabot-settings/metabot-advanced-permissions!) advanced?)
+                                          (throw (ex-info "boom" {})))]
               (mt/user-http-request :crowberto :delete 500 "ee/ai-controls/permissions/advanced"))
-            (is (true? (metabot-settings/metabot-advanced-permissions)))
+            (is (true? (metabot-settings/metabot-advanced-permissions))
+                "the cached mode goes back to the one the database still holds")
             (is (t2/exists? :model/MetabotPermissions :group_id group-id)
                 "the rows the switch would have deleted are rolled back with it")))))))
 
