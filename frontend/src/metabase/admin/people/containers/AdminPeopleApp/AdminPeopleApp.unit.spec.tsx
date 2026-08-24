@@ -152,7 +152,7 @@ describe("AdminPeopleApp", () => {
       await setupTenantRoute("/admin/people/tenants");
 
       expect(
-        await screen.findByText("Manage customer-facing analytics at scale"),
+        await screen.findByText("Use a multi-tenant user strategy"),
       ).toBeInTheDocument();
     });
   });
