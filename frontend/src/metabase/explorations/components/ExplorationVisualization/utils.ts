@@ -823,7 +823,7 @@ export function buildCommentHighlightContext(
 ): {
   highlighted: HighlightedObject;
   exploration_query_ids: ExplorationQueryId[];
-  highlight_label: string | null;
+  highlight_label?: string;
 } | null {
   const queryId = resolveExplorationQueryIdForClick(
     clicked,
@@ -852,7 +852,8 @@ export function buildCommentHighlightContext(
       })),
     },
     exploration_query_ids: [queryId],
-    highlight_label: buildHighlightLabel(clicked, settings, segmentName),
+    highlight_label:
+      buildHighlightLabel(clicked, settings, segmentName) ?? undefined,
   };
 }
 
