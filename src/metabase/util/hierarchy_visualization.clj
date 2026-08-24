@@ -32,14 +32,19 @@
   ;; Ordered hierarchies store children newest-first; visualizations follow derivation order.
   (update-vals (:children hierarchy) #(vec (reverse %))))
 
-(defn- preferred-node-order
-  [hierarchy nodes]
-  (if (ordered-hierarchy? hierarchy)
-    (distinct (concat (keys (:children hierarchy))
-                      (mapcat reverse (vals (:children hierarchy)))
-                      (reverse (:sorted-tags hierarchy))
-                      nodes))
-    nodes))
+(defn- ordered-node-order
+  [hierarchy children nodes]
+  (let [roots (remove #(seq (get-in hierarchy [:parents %]))
+                      (keys (:children hierarchy)))]
+    (letfn [(visit [{:keys [seen] :as state} node]
+              (if (contains? seen node)
+                state
+                (reduce visit
+                        (-> state
+                            (update :seen conj node)
+                            (update :nodes conj node))
+                        (get children node))))]
+      (:nodes (reduce visit {:seen #{}, :nodes []} (concat roots nodes))))))
 
 (defn hierarchy->graph
   "Returns the direct relationships in `hierarchy` as `:nodes`, `:roots`, and `:children`.
@@ -56,10 +61,12 @@
                         (cond->> nodes
                           sort-key (clojure.core/sort-by sort-key)
                           true vec))
-         nodes        (order-nodes (preferred-node-order hierarchy node-set))
          raw-children (if ordered?
                         (ordered-children hierarchy)
                         (invert-parents (:parents hierarchy)))
+         nodes        (order-nodes (if ordered?
+                                     (ordered-node-order hierarchy raw-children node-set)
+                                     node-set))
          children     (into {}
                             (map (fn [node]
                                    [node (order-nodes (get raw-children node))]))

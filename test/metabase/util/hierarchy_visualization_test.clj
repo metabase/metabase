@@ -22,13 +22,16 @@
            (hierarchy.visualization/hierarchy->graph regular-hierarchy))))
   (testing "Ordered hierarchies retain basis and root order"
     (let [hierarchy (ordered-hierarchy/make-hierarchy
-                     [:first-root :second-child :first-child]
+                     [:first-root :leaf [:branch :grandchild]]
                      [:second-root])]
-      (is (= [:first-root :second-root]
-             (:roots (hierarchy.visualization/hierarchy->graph hierarchy))))
-      (is (= [:second-child :first-child]
-             (get-in (hierarchy.visualization/hierarchy->graph hierarchy)
-                     [:children :first-root]))))))
+      (is (= {:nodes    [:first-root :leaf :branch :grandchild :second-root]
+              :roots    [:first-root :second-root]
+              :children {:first-root  [:leaf :branch]
+                         :leaf        []
+                         :branch      [:grandchild]
+                         :grandchild  []
+                         :second-root []}}
+             (hierarchy.visualization/hierarchy->graph hierarchy))))))
 
 (deftest tree-str-test
   (is (= (str ":root\n"
