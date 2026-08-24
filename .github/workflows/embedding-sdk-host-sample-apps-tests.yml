@@ -249,7 +249,7 @@ jobs:
       # Host apps are the only suite here running through Metabase's Cypress config,
       # whose `after:spec` hook reports failures and writes QUARANTINE_FAILURES_FILE.
       # Sample-app suites load their own config (no-op), so ci-conductor is scoped to this job.
-      CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+      CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
       CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
       CI_CONDUCTOR_TEST_SUITE: embedding-sdk-host-app
       REPO_ID: ${{ github.event.repository.id }}
