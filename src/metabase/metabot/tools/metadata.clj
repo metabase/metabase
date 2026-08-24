@@ -38,7 +38,9 @@
         {:value structured}
         {:error (or output (str "No metadata returned for ID " id))}))
     (catch Exception e
-      (log/error "Failed to fetch metadata" {:id id, :error (ex-message e)})
+      (if (= 404 (:status-code (ex-data e)))
+        (log/debugf "Omitting unresolvable metadata entry: %s %s" id (ex-message e))
+        (log/error "Failed to fetch metadata" {:id id, :error (ex-message e)}))
       {:error (or (ex-message e) (str "Failed to fetch metadata for ID " id))})))
 
 (defn get-metadata
