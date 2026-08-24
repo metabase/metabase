@@ -16,7 +16,7 @@
    (com.vladsch.flexmark.parser Parser)
    (com.vladsch.flexmark.util.ast Document Node)
    (com.vladsch.flexmark.util.data MutableDataSet)
-   (java.net URI)))
+   (java.net URI URISyntaxException)))
 
 (set! *warn-on-reflection* true)
 
@@ -202,17 +202,26 @@
   link-resolver callback."
   nil)
 
+(def ^:private allowed-link-schemes
+  "URI schemes markdown links/images may use in rendered notifications; links with other schemes are dropped."
+  #{"http" "https" "mailto"})
+
 (defn- resolve-uri
   "If the provided URI is a relative path, resolve it relative to the site URL so that links work
-  correctly in Slack/Email."
+  correctly in Slack/Email. Returns nil for URIs that are malformed or whose scheme isn't in
+  [[allowed-link-schemes]] — callers should drop the link."
   [^String uri]
   (letfn [(ensure-slash ^String [s] (when s
                                       (cond-> s
                                         (not (str/ends-with? s "/")) (str "/"))))]
     (when uri
-      (if-let [site-url (ensure-slash *site-url*)]
-        (.. (URI. site-url) (resolve uri) toString)
-        uri))))
+      (try
+        (let [scheme (.getScheme (URI. uri))]
+          (when (or (nil? scheme) (allowed-link-schemes (u/lower-case-en scheme)))
+            (if-let [site-url (ensure-slash *site-url*)]
+              (.. (URI. site-url) (resolve uri) toString)
+              uri)))
+        (catch URISyntaxException _ nil)))))
 
 (defn- ^:private strip-tag
   "Given the value from the :content field of a Markdown AST node, and a keyword representing a tag type, converts all
@@ -317,9 +326,16 @@
   [{:keys [content attrs]}]
   (let [resolved-uri     (resolve-uri (:href attrs))
         resolved-content (resolved-content content)]
-    (if (contains? #{:image :image-ref} (:tag (first content)))
+    (cond
+      ;; a dropped (malformed or non-allow-listed) link renders as its text alone
+      (nil? resolved-uri)
+      resolved-content
+
       ;; If this is a linked image, add link target on separate line after image placeholder
+      (contains? #{:image :image-ref} (:tag (first content)))
       [resolved-content "\n(" resolved-uri ")"]
+
+      :else
       ["<" resolved-uri "|" resolved-content ">"])))
 
 (defmethod ast->slack :link-ref
@@ -403,14 +419,21 @@
                      (^LinkResolver apply [_this ^LinkResolverBasicContext _context]
                        (reify LinkResolver
                          (resolveLink [_this node _context link]
-                           (if-let [url (cond
-                                          (instance? MailLink node) (.getUrl link)
-                                          (empty-link-ref? node) nil
-                                          :else (resolve-uri (.getUrl link)))]
+                           (cond
+                             (instance? MailLink node)
                              (.. link
                                  (withStatus LinkStatus/VALID)
-                                 (withUrl url))
-                             link)))))]
+                                 (withUrl (.getUrl link)))
+
+                             (empty-link-ref? node)
+                             link
+
+                             :else
+                             ;; nil from resolve-uri means the URL is malformed or not allow-listed —
+                             ;; blank it out rather than let flexmark render the original one
+                             (.. link
+                                 (withStatus LinkStatus/VALID)
+                                 (withUrl (or (resolve-uri (.getUrl link)) ""))))))))]
     (.build (.linkResolverFactory (HtmlRenderer/builder options) lr-factory))))
 
 (defmulti process-markdown

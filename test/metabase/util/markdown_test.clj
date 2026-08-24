@@ -1,6 +1,8 @@
 (ns metabase.util.markdown-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.util :as u]
    [metabase.util.markdown :as markdown]))
 
 (defn- slack
@@ -250,3 +252,36 @@
   (testing "HTML in the source markdown is escaped properly, but HTML entities are retained"
     (is (= "<p>&lt;h1&gt;header&lt;/h1&gt;</p>\n" (html "<h1>header</h1>")))
     (is (= "<p>&amp;</p>\n"                       (html "&amp;")))))
+
+(deftest ^:parallel process-markdown-link-scheme-test
+  (testing "Only links/images with allow-listed URI schemes are rendered"
+    (doseq [markdown ["[x](javascript:alert(1))"
+                      "[x](JaVaScRiPt:alert(1))"
+                      "[x](JAVASCRIPT:alert(1))"
+                      "[x](javascript&#58;alert(1))"
+                      "[x](vbscript:msgbox(1))"
+                      "[x](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)"
+                      "![x](data:image/svg+xml;base64,PHN2Zy8+)"]
+            :let     [rendered (u/lower-case-en (html markdown))]
+            scheme   ["javascript" "vbscript" "data:"]]
+      (testing (str markdown " does not render " scheme)
+        (is (not (str/includes? rendered scheme)))))))
+
+(deftest ^:parallel process-markdown-link-scheme-slack-test
+  (testing "Links with non-allow-listed schemes render as their text alone in Slack"
+    (is (= "x" (slack "[x](javascript:alert(1))")))
+    (is (= "x" (slack "[x](DaTa:text/html;base64,PHNjcmlwdD4=)")))))
+
+(deftest ^:parallel process-markdown-allowed-scheme-case-test
+  (testing "Scheme allow-listing is case-insensitive for allowed schemes too"
+    (is (= "<p><a href=\"HTTPS://metabase.com\">x</a></p>\n" (html "[x](HTTPS://metabase.com)")))))
+
+(deftest ^:parallel process-markdown-malformed-uri-test
+  (testing "A link destination that isn't a parseable URI drops the link instead of aborting the render"
+    (doseq [markdown ["[x](data:text/html,<b>y</b>)"
+                      "[x](<http://exa mple.com/foo>)"]
+            channel  [:html :slack]
+            :let     [rendered (markdown/process-markdown markdown channel "https://example.com")]]
+      (testing (format "%s via %s" markdown channel)
+        (is (string? rendered))
+        (is (not (str/includes? (u/lower-case-en rendered) "data:text")))))))
