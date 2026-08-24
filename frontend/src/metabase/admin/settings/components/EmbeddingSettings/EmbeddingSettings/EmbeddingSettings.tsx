@@ -8,19 +8,16 @@ import {
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellDevInstances } from "metabase/admin/upsells";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_CONTENT_TRANSLATION,
-  PLUGIN_EMBEDDING_SDK,
   PLUGIN_IS_EE_BUILD,
 } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
-import { Box, Group, Icon, Stack, Text } from "metabase/ui";
+import { Text } from "metabase/ui";
 
 import { EmbeddingSdkSettings } from "../EmbeddingSdkSettings/EmbeddingSdkSettings";
-import S from "../EmbeddingSettings.module.css";
 import { EmbeddingSettingsCard } from "../EmbeddingSettingsCard";
 import { SharedCombinedEmbeddingSettings } from "../SharedCombinedEmbeddingSettings";
 
@@ -46,10 +43,6 @@ function EmbeddingSettingsPageWrapper({ children }: PropsWithChildren) {
 }
 
 function EmbeddingSettingsEE() {
-  const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
-
-  const isHosted = useSetting("is-hosted?");
-
   // The quickstart is part of the documentation page, unlike the SDK, so we only need a single docs link.
   const embedJsDocumentationUrl = useDocsUrl("embedding/embedded-analytics-js");
 
@@ -85,33 +78,6 @@ function EmbeddingSettingsEE() {
       </Text>
 
       <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
-
-      {isReactSdkFeatureAvailable && isHosted && (
-        <Box py="xl" px="xxl" className={S.SectionCard}>
-          <Stack gap="xxs">
-            <Text
-              htmlFor="version-pinning"
-              component="label"
-              c="text-primary"
-              fw="bold"
-              fz="lg"
-            >
-              {t`Version pinning`}
-            </Text>
-
-            <Text c="text-secondary" lh="lg" mb="sm">
-              {t`Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.`}
-            </Text>
-
-            <ExternalLink href="mailto:help@metabase.com">
-              <Group gap="sm" fw="bold" w="fit-content">
-                <Icon name="mail" size={14} aria-hidden />
-                <span>{t`Request version pinning`}</span>
-              </Group>
-            </ExternalLink>
-          </Stack>
-        </Box>
-      )}
     </>
   );
 }

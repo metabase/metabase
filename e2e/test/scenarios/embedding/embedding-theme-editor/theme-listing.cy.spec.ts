@@ -20,7 +20,7 @@ describe(
     });
 
     it("lazily seeds Light and Dark on first visit, and preserves admin deletions across reloads", () => {
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.log(
@@ -51,7 +51,7 @@ describe(
 
     it("does not create a theme when cancelling from the draft editor", () => {
       cy.intercept("POST", "/api/embed-theme").as("createTheme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main()
         .findByRole("button", { name: /New theme/ })
@@ -75,7 +75,7 @@ describe(
 
     it("navigates to theme editor when clicking an existing theme card", () => {
       createThemeViaApi("My theme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.findByText("My theme").click();
@@ -98,7 +98,7 @@ describe(
       H.updateSetting("application-colors", whitelabelColors);
 
       cy.intercept("POST", "/api/embed-theme").as("createTheme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main()
         .findByRole("button", { name: /New theme/ })
@@ -126,7 +126,7 @@ describe(
 
     it("can duplicate a theme", () => {
       createThemeViaApi("Untitled theme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().within(() => {
         cy.findByText("Untitled theme").should("be.visible");
@@ -146,7 +146,7 @@ describe(
 
     it("can delete a theme with confirmation", () => {
       createThemeViaApi("Untitled theme");
-      cy.visit("/admin/embedding/themes");
+      cy.visit("/embedding/appearance");
 
       H.main().findByText("Untitled theme").should("be.visible");
 

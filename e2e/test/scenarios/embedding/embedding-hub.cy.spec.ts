@@ -291,6 +291,51 @@ describe("scenarios > embedding > embedding hub > security", () => {
       assertPublishedDashboardIsListed();
     });
   });
+
+  describe("oss", { tags: "@OSS" }, () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.updateSetting("show-modular-embed-terms", false);
+    });
+
+    it("shows the Pro upsell banner and the CORS setting", () => {
+      cy.visit("/embedding/security");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByText(
+          "Upgrade to Metabase Pro to access the SDK for React and more advanced options.",
+        ).should("be.visible");
+        cy.findByRole("button", { name: "Try Metabase Pro" }).should(
+          "be.visible",
+        );
+
+        cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
+      });
+    });
+  });
+
+  describe("starter", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("starter");
+      H.updateSetting("show-modular-embed-terms", false);
+    });
+
+    it("shows the Pro upsell banner and the CORS setting", () => {
+      cy.visit("/embedding/security");
+
+      cy.findByTestId("embedding-hub-main").within(() => {
+        // Starter is below Pro too -- SDK access is still gated.
+        cy.findByRole("button", { name: "Try Metabase Pro" }).should(
+          "be.visible",
+        );
+
+        cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
+      });
+    });
+  });
 });
 
 describe("scenarios > embedding > embedding hub > authentication", () => {

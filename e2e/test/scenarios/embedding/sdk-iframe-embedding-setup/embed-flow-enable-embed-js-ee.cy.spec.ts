@@ -10,7 +10,7 @@ const { H } = cy;
 
 const DATA_BY_EMBEDDING_TYPE = {
   guest: {
-    path: "/admin/embedding/guest",
+    path: "/embedding/security",
     token: null,
     authMethodLabel: "Guest",
     cardTestId: "guest-embeds-setting-card",
@@ -22,7 +22,7 @@ const DATA_BY_EMBEDDING_TYPE = {
       /You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature/,
   },
   modular: {
-    path: "/admin/embedding",
+    path: "/embedding/security",
     token: "bleeding-edge",
     authMethodLabel: "Metabase account (SSO)",
     cardTestId: "sdk-setting-card",

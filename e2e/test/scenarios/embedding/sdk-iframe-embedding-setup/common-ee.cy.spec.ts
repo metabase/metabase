@@ -71,7 +71,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       .contains("General")
       .should("be.visible");
 
-    cy.visit("/admin/embedding");
+    cy.visit("/embedding/security");
     cy.findAllByTestId("sdk-setting-card").should("be.visible");
 
     cy.findAllByTestId("sdk-setting-card")
@@ -127,7 +127,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       };
 
       const openFromAdminEmbedding = () => {
-        cy.visit("/admin/embedding");
+        cy.visit("/embedding/security");
         cy.findAllByTestId("sdk-setting-card")
           .first()
           .within(() => {
@@ -136,7 +136,7 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
       };
 
       const openFromAdminGuestEmbeds = () => {
-        cy.visit("/admin/embedding/guest");
+        cy.visit("/embedding/security");
         cy.findAllByTestId("guest-embeds-setting-card")
           .first()
           .within(() => {

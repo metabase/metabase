@@ -8,7 +8,7 @@ import { SetupGuideXrayPickerModal } from "../components/SetupGuideXrayPickerMod
 import type { SetupGuideModalToTrigger } from "../types/setup-guide";
 
 // Fallback for callers that do not say where they are.
-const DEFAULT_SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
+const DEFAULT_SETUP_GUIDE_PATH = "/embedding/get-started";
 
 /**
  * The checklist's modals and the state that opens them, so the stepper on the

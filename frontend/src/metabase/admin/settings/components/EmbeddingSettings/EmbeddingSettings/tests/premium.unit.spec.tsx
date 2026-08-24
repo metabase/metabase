@@ -35,44 +35,6 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
     ).toBeInTheDocument();
   });
 
-  describe("Version pinning", () => {
-    it("should offer users version pinning when they have a cloud instance", async () => {
-      await setup({
-        tokenFeatures: { embedding_sdk: true, embedding_simple: true },
-        isEmbeddingEnabled: true,
-        showModularEmbedTerms: false,
-        isHosted: true,
-        enterprisePlugins: [
-          "embedding-sdk",
-          "embedding_iframe_sdk",
-          "embedding_iframe_sdk_setup",
-        ],
-      });
-
-      expect(screen.getByText("Version pinning")).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          /Metabase Cloud instances are automatically upgraded to new releases/i,
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: "Request version pinning" }),
-      ).toBeInTheDocument();
-    });
-
-    it("should not offer users version pinning on self hosted instances", () => {
-      setup({
-        tokenFeatures: { embedding_sdk: true, embedding_simple: true },
-        isHosted: false,
-      });
-
-      expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("link", { name: "Request version pinning" }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
   it("should show Security and Appearance in related settings", async () => {
     await setup({
       tokenFeatures: { embedding_sdk: true, embedding_simple: true },
