@@ -396,6 +396,33 @@ describe("scenarios > embedding > embedding hub > permissions", () => {
       cy.url().should("include", "/embedding/permissions");
       cy.url().should("not.include", "/admin/permissions");
     });
+
+    it("navigates every tab and level of the editor without leaving the hub", () => {
+      cy.visit("/embedding/permissions");
+
+      cy.log("Data tab, Groups view: lands here by default");
+      cy.findAllByRole("menuitem").first().click();
+      cy.findByTestId("permission-table").should("be.visible");
+
+      cy.log("Data tab, Databases view");
+      cy.findByRole("tab", { name: "Databases" }).click();
+      cy.findAllByRole("menuitem").first().click();
+      cy.findByTestId("permission-table").should("be.visible");
+
+      cy.log("Collections tab");
+      cy.findByRole("tab", { name: "Collections" }).click();
+      cy.findAllByRole("menuitem").first().click();
+      cy.findByTestId("permission-table").should("be.visible");
+
+      cy.log("Application tab");
+      cy.findByRole("tab", { name: "Application" }).click();
+      cy.findByTestId("permission-table").should("be.visible");
+
+      cy.log("Still inside the embedding hub throughout");
+      cy.url().should("include", "/embedding/permissions");
+      cy.url().should("not.include", "/admin/permissions");
+      cy.findByTestId("embedding-hub-nav").should("be.visible");
+    });
   });
 });
 
