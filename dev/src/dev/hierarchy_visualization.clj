@@ -1,5 +1,6 @@
-(ns metabase.util.hierarchy-visualization
+(ns dev.hierarchy-visualization
   "Render Clojure hierarchies as text trees or graph-description languages."
+  {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
   (:require
    [clojure.string :as str]))
 
@@ -139,6 +140,8 @@
                        [(truncation-line prefix last? root?)])
 
                    :else
+                   ;; `derive` prevents cycles, but hierarchy values are ordinary maps that can be manually
+                   ;; constructed or malformed. Detect cycles defensively so visualization cannot recurse forever.
                    (let [cycle?       (contains? path node)
                          shared?      (and (not repeat-shared?) (contains? @seen node))
                          line          (str prefix
@@ -185,7 +188,6 @@
    (print-tree hierarchy nil))
   ([hierarchy options]
    ;; This function exists specifically for interactive REPL output; logging would add unwanted formatting and context.
-   #_{:clj-kondo/ignore [:discouraged-var]}
    (println (tree-str hierarchy options))))
 
 (defn- node-ids
@@ -208,6 +210,20 @@
                       {:direction direction :allowed allowed})))
     direction))
 
+(defn- graph-lines
+  [hierarchy sort-by label-fn node-line edge-line]
+  (let [{:keys [children nodes]} (hierarchy->graph hierarchy {:sort-by sort-by})
+        ids                      (node-ids nodes)]
+    (concat
+     (map (fn [node]
+            (node-line (ids node) (label-fn node)))
+          nodes)
+     (mapcat (fn [parent]
+               (map (fn [child]
+                      (edge-line (ids parent) (ids child)))
+                    (get children parent)))
+             nodes))))
+
 (defn dot-str
   "Returns a Graphviz DOT description of `hierarchy`.
 
@@ -216,23 +232,15 @@
    (dot-str hierarchy nil))
   ([hierarchy {:keys [direction label-fn sort-by]
                :or   {label-fn pr-str}}]
-   (let [{:keys [children nodes]} (hierarchy->graph hierarchy {:sort-by sort-by})
-         ids                      (node-ids nodes)
-         direction                (validate-direction direction #{"TB" "BT" "LR" "RL"} "TB")
-         node-lines               (map (fn [node]
-                                         (format "  %s [label=\"%s\"];"
-                                                 (ids node)
-                                                 (dot-escape (label-fn node))))
-                                       nodes)
-         edge-lines               (mapcat (fn [parent]
-                                            (map (fn [child]
-                                                   (format "  %s -> %s;" (ids parent) (ids child)))
-                                                 (get children parent)))
-                                          nodes)]
+   (let [direction (validate-direction direction #{"TB" "BT" "LR" "RL"} "TB")
+         lines     (graph-lines hierarchy
+                                sort-by
+                                label-fn
+                                #(format "  %s [label=\"%s\"];" %1 (dot-escape %2))
+                                #(format "  %s -> %s;" %1 %2))]
      (str/join "\n"
                (concat ["digraph hierarchy {" (str "  rankdir=" direction ";")]
-                       node-lines
-                       edge-lines
+                       lines
                        ["}"])))))
 
 (defn- mermaid-escape
@@ -252,20 +260,12 @@
    (mermaid-str hierarchy nil))
   ([hierarchy {:keys [direction label-fn sort-by]
                :or   {label-fn pr-str}}]
-   (let [{:keys [children nodes]} (hierarchy->graph hierarchy {:sort-by sort-by})
-         ids                      (node-ids nodes)
-         direction                (validate-direction direction #{"TD" "TB" "BT" "LR" "RL"} "TD")
-         node-lines               (map (fn [node]
-                                         (format "  %s[\"%s\"]"
-                                                 (ids node)
-                                                 (mermaid-escape (label-fn node))))
-                                       nodes)
-         edge-lines               (mapcat (fn [parent]
-                                            (map (fn [child]
-                                                   (format "  %s --> %s" (ids parent) (ids child)))
-                                                 (get children parent)))
-                                          nodes)]
+   (let [direction (validate-direction direction #{"TD" "TB" "BT" "LR" "RL"} "TD")
+         lines     (graph-lines hierarchy
+                                sort-by
+                                label-fn
+                                #(format "  %s[\"%s\"]" %1 (mermaid-escape %2))
+                                #(format "  %s --> %s" %1 %2))]
      (str/join "\n"
                (concat [(str "flowchart " direction)]
-                       node-lines
-                       edge-lines)))))
+                       lines)))))

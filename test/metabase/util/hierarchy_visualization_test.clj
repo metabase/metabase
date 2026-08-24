@@ -1,7 +1,7 @@
 (ns metabase.util.hierarchy-visualization-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.util.hierarchy-visualization :as hierarchy.visualization]
+   [dev.hierarchy-visualization :as hierarchy.visualization]
    [metabase.util.ordered-hierarchy :as ordered-hierarchy]))
 
 (def ^:private regular-hierarchy
