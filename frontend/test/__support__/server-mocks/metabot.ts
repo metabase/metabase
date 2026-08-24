@@ -13,7 +13,7 @@ import type {
 } from "metabase/metabot/state/types";
 import type { ParentedMessage } from "metabase/metabot/utils/message-tree";
 import type {
-  LlmActiveModel,
+  LlmActiveModels,
   LlmConnectionModels,
   LlmProviderConnection,
   LlmProviderType,
@@ -33,7 +33,7 @@ import type {
 } from "metabase-types/api";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import {
-  createMockLlmActiveModel,
+  createMockLlmActiveModels,
   createMockLlmProviderConnection,
 } from "metabase-types/api/mocks/llm";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
@@ -376,10 +376,10 @@ export function setupLlmModelsEndpoint(
 const LLM_ACTIVE_MODEL_ROUTE_NAME = "llm-active-model";
 
 export function setupLlmActiveModelEndpoint(
-  activeModel: LlmActiveModel = createMockLlmActiveModel(),
+  activeModels: LlmActiveModels = createMockLlmActiveModels(),
 ) {
   fetchMock.removeRoute(LLM_ACTIVE_MODEL_ROUTE_NAME);
-  fetchMock.get("path:/api/llm/active-model", activeModel, {
+  fetchMock.get("path:/api/llm/active-model", activeModels, {
     name: LLM_ACTIVE_MODEL_ROUTE_NAME,
   });
 }

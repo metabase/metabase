@@ -22,13 +22,13 @@ import { UndoListing } from "metabase/common/components/UndoListing";
 import { AIProviderSetup } from "metabase/metabot";
 import { reinitialize } from "metabase/plugins";
 import type {
-  LlmActiveModel,
+  LlmActiveModels,
   LlmConnectionModels,
   LlmProviderConnection,
   LlmProviderType,
 } from "metabase-types/api";
 import {
-  createMockLlmActiveModel,
+  createMockLlmActiveModels,
   createMockLlmConnectionModels,
   createMockLlmModel,
   createMockLlmProviderConnection,
@@ -192,7 +192,7 @@ type SetupOpts = {
   providerTypesFail?: boolean;
   createdConnection?: LlmProviderConnection;
   updatedConnection?: LlmProviderConnection;
-  activeModel?: LlmActiveModel;
+  activeModels?: LlmActiveModels;
 };
 
 async function setup({
@@ -204,7 +204,7 @@ async function setup({
   providerTypesFail = false,
   createdConnection = ANTHROPIC_CONNECTION,
   updatedConnection = ANTHROPIC_CONNECTION,
-  activeModel = createMockLlmActiveModel(),
+  activeModels = createMockLlmActiveModels(),
 }: SetupOpts = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -233,7 +233,7 @@ async function setup({
   }
   setupLlmProvidersEndpoint(connections);
   setupLlmModelsEndpoint(models);
-  setupLlmActiveModelEndpoint(activeModel);
+  setupLlmActiveModelEndpoint(activeModels);
   setupReorderLlmProvidersEndpoint(connections);
   setupCreateLlmProviderEndpoint(createdConnection);
   setupUpdateLlmProviderEndpoint(updatedConnection);
