@@ -97,6 +97,10 @@ export function AIProviderList() {
 
   const [isAdding, { open: startAdding, close: stopAdding }] =
     useDisclosure(false);
+  // Bumped when saving a reorder fails: SortableList keeps the dragged order internally and only resyncs
+  // from `items` when they change, which a failed save never makes happen — remounting snaps it back to
+  // the order the server actually holds.
+  const [sortableResetKey, setSortableResetKey] = useState(0);
   const [editing, setEditing] = useState<LlmProviderConnection | undefined>();
   const [deleting, setDeleting] = useState<LlmProviderConnection | undefined>();
   const [sendToast] = useToast();
@@ -139,6 +143,7 @@ export function AIProviderList() {
         icon: "warning",
         toastColor: "feedback-negative",
       });
+      setSortableResetKey((key) => key + 1);
     }
   };
 
@@ -173,6 +178,7 @@ export function AIProviderList() {
         {hasConnections && (
           <Stack gap={0}>
             <SortableList
+              key={sortableResetKey}
               items={connections}
               getId={getConnectionKey}
               sensors={[pointerSensor]}
