@@ -259,13 +259,12 @@
   the single model they serve, and the managed provider — fall through to the Metabot model itself, so this always
   names a model as long as Metabot does.
 
-  Quick tasks follow the same [[effective-model-ref]] fallback as Metabot itself, so a failing provider does not
-  leave every conversation unnamed."
+  This is the model the admin picked, whether or not its provider is currently failing; callers about to run
+  inference want [[mini-model-selection]], which applies the fallback."
   []
-  (effective-model-ref
-   (or (explicit-mini-model)
-       (let [metabot-ref (llm-metabot-provider)]
-         (or (mini-model-ref metabot-ref) metabot-ref)))))
+  (or (explicit-mini-model)
+      (let [metabot-ref (llm-metabot-provider)]
+        (or (mini-model-ref metabot-ref) metabot-ref))))
 
 (defsetting llm-mini-model
   (deferred-tru "The AI provider connection and model used for quick background tasks, such as naming Metabot conversations, in the same connection-key/model-name format as `llm-metabot-provider`. Defaults to the fastest model offered by the connection Metabot runs on.")
@@ -278,6 +277,17 @@
                 (when new-value
                   (validate-model-ref! new-value))
                 (setting/set-value-of-type! :string :llm-mini-model new-value)))
+
+(defn mini-model-selection
+  "What quick background tasks run on right now, in the same `{:model-ref :selected-model-ref :fallback}` shape
+  as [[metabot-model-selection]]. Quick tasks follow the same [[effective-model-ref]] fallback as Metabot itself,
+  so a failing provider does not leave every conversation unnamed."
+  []
+  (let [selected  (llm-mini-model)
+        effective (effective-model-ref selected)]
+    {:model-ref          effective
+     :selected-model-ref selected
+     :fallback           (model-fallback selected effective)}))
 
 (defsetting llm-metabot-configured?
   "Whether the connection selected for Metabot has the credentials it needs."

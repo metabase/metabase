@@ -2,7 +2,7 @@ import type {
   CreateLlmProviderRequest,
   ExtractSourcesRequest,
   ExtractSourcesResponse,
-  LlmActiveModel,
+  LlmActiveModels,
   LlmConnectionModels,
   LlmProviderConnection,
   LlmProviderType,
@@ -45,7 +45,7 @@ export const llmApi = Api.injectEndpoints({
       }),
       providesTags: () => [listTag("llm-models")],
     }),
-    getLlmActiveModel: builder.query<LlmActiveModel, void>({
+    getLlmActiveModel: builder.query<LlmActiveModels, void>({
       query: () => ({
         method: "GET",
         url: "/api/llm/active-model",
