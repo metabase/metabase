@@ -253,8 +253,8 @@
                                     (reset! opts o)
                                     {:models         [{:id "vllm-test" :display_name "vllm-test"}
                                                       {:id "other" :display_name "other"}]
-                                     :probed-model   "vllm-test"
-                                     :learned-config {:model-reasoning "true"}})]
+                                     :learned-config {:model-reasoning "true"
+                                                      :probed-model    "vllm-test"}})]
         (mt/with-temporary-setting-values [llm-providers []]
           (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
             (is (=? {:key    "vllm"
@@ -269,7 +269,8 @@
             (is (= "vllm/vllm-test" (metabot.settings/llm-metabot-provider)))
             (testing "and what the probe learned is stored on the connection, where the request path reads it"
               (is (= {:base-url        "http://vllm.internal:8000/v1"
-                      :model-reasoning "true"}
+                      :model-reasoning "true"
+                      :probed-model    "vllm-test"}
                      (stored-config "vllm")))
               (is (true? (metabot.settings/llm-metabot-supports-reasoning?))))))))))
 
@@ -319,8 +320,8 @@
                                   (fn [_provider o]
                                     (reset! opts o)
                                     {:models         [{:id "served-a" :display_name "served-a"}]
-                                     :probed-model   "served-b"
-                                     :learned-config {:model-reasoning "false"}})]
+                                     :learned-config {:model-reasoning "false"
+                                                      :probed-model    "served-b"}})]
         (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
                                                                       {:base-url        "http://old.internal:8000/v1"
                                                                        :model-reasoning "true"})]]
@@ -330,7 +331,8 @@
             (is (=? {:model "served-b" :probe? true} @opts))
             (testing "and the probe's fresh verdict replaces the one the connection was carrying"
               (is (= {:base-url        "http://vllm.internal:8000/v1"
-                      :model-reasoning "false"}
+                      :model-reasoning "false"
+                      :probed-model    "served-b"}
                      (stored-config "vllm")))
               (is (false? (metabot.settings/llm-metabot-supports-reasoning?))))))))))
 

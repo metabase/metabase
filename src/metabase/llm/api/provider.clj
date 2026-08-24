@@ -157,8 +157,8 @@
 
   `probe?` asks a type that can check more than its credentials to do so — vLLM exercises the tool calling and
   structured output the agent loop depends on against the model it will run on. Only [[verify-credentials!]] sets
-  it: a probe generates, so it is far too slow for a plain listing. A probe reports back the model it exercised as
-  `:probed-model` and anything it determined about the connection as `:learned-config`, both passed through here."
+  it: a probe generates, so it is far too slow for a plain listing. A probe reports whatever it determined about the
+  connection as `:learned-config`, passed through here for [[verify-credentials!]]'s callers to store on it."
   [{:keys [type config]} config-override model probe?]
   (let [fixed (llm.provider/fixed-models type)]
     (if (llm.provider/managed-type? type)
@@ -170,7 +170,7 @@
           (let [listed (metabot.self/list-models type (cond-> {:credentials config}
                                                         model  (assoc :model model)
                                                         probe? (assoc :probe? true)))]
-            (merge (select-keys listed [:probed-model :learned-config])
+            (merge (select-keys listed [:learned-config])
                    {:models (cond
                               configured-model [{:id configured-model :display_name (last (str/split configured-model #"/"))}]
                               fixed            (vec fixed)
@@ -235,8 +235,8 @@
   for a type that probes more than its credentials, by exercising the model it will run on. Throws a 400 carrying
   the provider's own message when the credentials are rejected.
 
-  Returns `{:probed-model :learned-config}`: the model a probe exercised, for a type with no default model to fall
-  back on, and whatever the probe determined about the connection, for the caller to store on it.
+  Returns `{:learned-config ...}`: whatever the probe determined about the connection, for the caller to store on
+  it. A probe records the model it exercised as `:probed-model`.
 
   The listing that verified the credentials is seeded into [[models-cache]] under the connection as it will be
   stored, so the model refetch the client fires right after saving is answered from it instead of round-tripping
@@ -249,7 +249,7 @@
       (swap! models-cache cache/miss
              (models-cache-key (assoc conn :config (merge config learned-config)))
              (select-keys listed [:models]))
-      (select-keys listed [:probed-model :learned-config]))))
+      (select-keys listed [:learned-config]))))
 
 (defn- selected-model
   "The model `llm-metabot-provider` names for `conn-key`, or nil when the selection points elsewhere.
@@ -408,14 +408,14 @@
                     :name   (or (not-empty name) (str (:label provider-type)))
                     :config config}]
       (llm.provider/validate-config! type config)
-      (let [{:keys [probed-model learned-config]} (verify-credentials! conn config model)
+      (let [{:keys [learned-config]} (verify-credentials! conn config model)
             conn              (update conn :config merge learned-config)
             had-usable-model? (metabot-has-a-usable-model?)]
         (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
         (when-not had-usable-model?
           ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the model
           ;; the probe exercised, so connecting one leaves the instance working rather than model-less
-          (select-model-for-new-connection! conn (or model probed-model)))
+          (select-model-for-new-connection! conn (or model (:probed-model learned-config))))
         (connection-response (assoc conn :source :db))))))
 
 (api.macros/defendpoint :put "/providers/:key"
