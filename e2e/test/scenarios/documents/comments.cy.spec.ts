@@ -1401,7 +1401,11 @@ describe("document comments", () => {
       cy.realPress([META_KEY, "Enter"]);
       Comments.getAllComments().should("have.length", 4);
 
+      cy.intercept("GET", "/api/document/*").as("reloadedDocument");
+      cy.intercept("GET", "/api/comment?*").as("reloadedComments");
       cy.reload();
+      cy.log("wait out the app boot + data reload before asserting");
+      cy.wait(["@reloadedDocument", "@reloadedComments"]);
 
       H.getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
       H.getOrderedList("ol", Comments.getSidebar()).should("be.visible");
