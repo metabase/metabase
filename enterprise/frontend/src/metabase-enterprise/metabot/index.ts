@@ -5,6 +5,7 @@ import {
   MetabaseAIProviderSetup,
   hasMetabaseManagedProviderDetails,
 } from "./components/MetabotAdmin/MetabaseAIProviderSetup";
+import { ProviderFallbackSettings } from "./components/MetabotAdmin/ProviderFallbackSettings";
 
 export function initializePlugin() {
   if (
@@ -16,5 +17,8 @@ export function initializePlugin() {
     PLUGIN_METABOT.MetabaseAIProviderSetup = MetabaseAIProviderSetup;
     PLUGIN_METABOT.hasMetabaseManagedProviderDetails =
       hasMetabaseManagedProviderDetails;
+  }
+  if (hasPremiumFeature("ai_controls")) {
+    PLUGIN_METABOT.ProviderFallbackSettings = ProviderFallbackSettings;
   }
 }
