@@ -57,6 +57,7 @@ import {
   markCardAsSlow,
   setDashboardAttributes,
   setDocumentTitle,
+  setMultipleDashCardAttributes,
   setShowLoadingCompleteFavicon,
   setSidebar,
 } from "./actions";
@@ -231,6 +232,21 @@ export const timelineEvents = createReducer(
     builder.addCase(setDashCardTimelineEventsVisibility, (state, action) => {
       state.overrides = { ...state.overrides, ...action.payload };
     });
+    // once a card's visibility is written into its settings, the settings are
+    // the truth; a leftover session override would shadow them
+    builder.addCase(
+      setMultipleDashCardAttributes,
+      (state, { payload: { dashcards } }) => {
+        dashcards.forEach(({ id, attributes }) => {
+          if (
+            attributes.visualization_settings &&
+            "timeline_events.visibility" in attributes.visualization_settings
+          ) {
+            delete state.overrides[id];
+          }
+        });
+      },
+    );
     builder.addCase(selectTimelineEvents, (state, action) => {
       state.selection = action.payload;
     });
