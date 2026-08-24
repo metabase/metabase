@@ -21,6 +21,7 @@ import type {
   DatasetData,
   GoalValue,
   ReferencedEntitiesResults,
+  ReferencedEntity,
   SearchResult,
 } from "metabase-types/api";
 import {
@@ -57,10 +58,15 @@ const DATASET_QUERY = createMockStructuredDatasetQuery();
 
 type SetupOpts = {
   data?: DatasetData;
+  referencedEntities?: ReferencedEntity[];
   value?: GoalValue | null;
 };
 
-function setup({ data = DATA, value = 0 }: SetupOpts = {}) {
+function setup({
+  data = DATA,
+  referencedEntities = [],
+  value = 0,
+}: SetupOpts = {}) {
   const onChange = jest.fn();
   renderWithProviders(
     <GoalValueInput
@@ -68,6 +74,7 @@ function setup({ data = DATA, value = 0 }: SetupOpts = {}) {
       data={data}
       datasetQuery={DATASET_QUERY}
       id="goal-value"
+      referencedEntities={referencedEntities}
       value={value}
       onChange={onChange}
     />,
@@ -194,7 +201,10 @@ describe("GoalValueInput", () => {
         },
       },
     });
-    setup({ value: { type: "card", id: 9, column: "total" } });
+    setup({
+      referencedEntities: [{ type: "card", id: 9 }],
+      value: { type: "card", id: 9, column: "total" },
+    });
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
 
@@ -244,6 +254,7 @@ describe("GoalValueInput", () => {
           },
         },
       }),
+      referencedEntities: [{ type: "card", id: 9 }],
       value: { type: "card", id: 9, column: "avg" },
     });
 
@@ -264,6 +275,7 @@ describe("GoalValueInput", () => {
         datasetQuery={DATASET_QUERY}
         id="goal-value"
         placeholder="Min"
+        referencedEntities={[{ type: "card", id: 9 }]}
         value={{ type: "card", id: 9, column: "total" }}
         onChange={jest.fn()}
       />,
@@ -307,6 +319,7 @@ describe("GoalValueInput", () => {
         datasetQuery={DATASET_QUERY}
         id="goal-value"
         placeholder="Min"
+        referencedEntities={[{ type: "card", id: 9 }]}
         value={{ type: "card", id: 9, column: "avg" }}
         onChange={jest.fn()}
       />,
@@ -357,6 +370,7 @@ describe("GoalValueInput", () => {
           data={DATA}
           datasetQuery={DATASET_QUERY}
           id="goal-value"
+          referencedEntities={[]}
           value={value}
           onChange={setValue}
         />
@@ -699,6 +713,23 @@ describe("GoalValueInput", () => {
       await screen.findByRole("menuitem", {
         name: "Couldn't load this source",
       }),
+    ).toBeInTheDocument();
+  });
+
+  it("says so when the picked source has no numeric columns", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "No numbers" }),
+    ]);
+    setupCardEndpoints(
+      createMockCard({ id: 15, name: "No numbers", result_metadata: [] }),
+    );
+    setup();
+
+    await openMenu();
+    await pickEntity("No numbers");
+
+    expect(
+      await screen.findByRole("menuitem", { name: "No numeric columns" }),
     ).toBeInTheDocument();
   });
 });

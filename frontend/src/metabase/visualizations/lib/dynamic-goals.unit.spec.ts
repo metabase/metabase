@@ -524,6 +524,33 @@ describe("getUnansweredGoalEntities", () => {
     ]);
   });
 
+  it("includes entities whose answer is missing a referenced column", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: {
+              cols: [createMockColumn({ name: "goal" })],
+              rows: [[250]],
+            },
+          },
+        },
+        measure: {
+          4: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "sum" })], rows: [[10]] },
+          },
+        },
+      },
+    });
+
+    expect(getUnansweredGoalEntities(data, SEGMENTS)).toEqual([
+      { type: "card", id: 9 },
+    ]);
+  });
+
   it("skips entities that failed: the dataset answered them", () => {
     const data = createMockDatasetData({
       ...DATA,

@@ -15,7 +15,10 @@ import {
 } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
-import { getSegmentColor } from "metabase/visualizations/lib/dynamic-goals";
+import {
+  getSegmentColor,
+  getUnansweredGoalEntities,
+} from "metabase/visualizations/lib/dynamic-goals";
 import type {
   DatasetData,
   DatasetQuery,
@@ -50,6 +53,9 @@ export const ChartSettingSegmentsEditor = ({
     ]);
 
   const canRemove = segments.length > 1 || canRemoveAll;
+
+  const referencedEntities =
+    data != null ? getUnansweredGoalEntities(data, segments) : [];
 
   return (
     <Stack gap="lg">
@@ -99,6 +105,7 @@ export const ChartSettingSegmentsEditor = ({
                   datasetQuery={datasetQuery}
                   id={`segment-min-${index}`}
                   placeholder={t`Min`}
+                  referencedEntities={referencedEntities}
                   value={segment.min}
                   onChange={(min) => updateSegment(index, { min })}
                 />
@@ -113,6 +120,7 @@ export const ChartSettingSegmentsEditor = ({
                   datasetQuery={datasetQuery}
                   id={`segment-max-${index}`}
                   placeholder={t`Max`}
+                  referencedEntities={referencedEntities}
                   value={segment.max}
                   onChange={(max) => updateSegment(index, { max })}
                 />

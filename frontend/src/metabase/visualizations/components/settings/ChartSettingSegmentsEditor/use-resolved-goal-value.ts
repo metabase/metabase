@@ -1,12 +1,18 @@
 import { t } from "ttag";
 
-import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
 import {
   type ResolvedGoalValue,
+  isUnansweredGoalValue,
   resolveGoalValue,
-  toReferencedEntity,
 } from "metabase/visualizations/lib/dynamic-goals";
-import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
+import type {
+  DatasetData,
+  DatasetQuery,
+  GoalForeignColumnRef,
+  GoalValue,
+  ReferencedEntity,
+} from "metabase-types/api";
 import { isGoalForeignColumnRef } from "metabase-types/guards";
 
 const RESOLVING: ResolvedGoalValue = {
@@ -15,29 +21,24 @@ const RESOLVING: ResolvedGoalValue = {
 };
 
 /**
- * Like `resolveGoalValue`, but a foreign reference the query can't answer
- * is resolved by re-running the question's query with the reference attached.
+ * Like `resolveGoalValue`, but a foreign reference the query can't answer is
+ * resolved by re-running the question's query with the references attached.
  */
 export function useResolvedGoalValue(
   datasetQuery: DatasetQuery | undefined,
   data: DatasetData,
   value: GoalValue | null,
+  referencedEntities: ReferencedEntity[],
 ): ResolvedGoalValue {
   const resolved = resolveGoalValue(data, value);
-  const isUnanswered =
-    resolved.isResolving === true ||
-    resolved.error?.reason === "column-not-found";
   const unansweredRef =
-    isUnanswered && isGoalForeignColumnRef(value) ? value : null;
+    isUnansweredGoalValue(resolved) && isGoalForeignColumnRef(value)
+      ? value
+      : null;
 
-  const { currentData: freshDataset, isError } = useGetAdhocQueryQuery(
-    unansweredRef != null && datasetQuery != null
-      ? {
-          ...datasetQuery,
-          referenced_entities: [toReferencedEntity(unansweredRef)],
-          ignore_error: true,
-        }
-      : skipToken,
+  const { currentData: freshDataset, isError } = useReferencedEntitiesQuery(
+    datasetQuery,
+    unansweredRef != null ? referencedEntities : [],
   );
 
   if (unansweredRef == null) {
@@ -45,26 +46,32 @@ export function useResolvedGoalValue(
   }
 
   if (isError || freshDataset?.error != null) {
-    if (resolved.error != null) {
-      return resolved;
-    }
-
-    const { type, id, column } = unansweredRef;
-    return {
-      value: null,
-      error: {
-        type,
-        id,
-        column,
-        reason: "query-failed",
-        message: t`Couldn't load this value`,
-      },
-    };
+    return resolved.error != null ? resolved : queryFailed(unansweredRef);
   }
 
   if (freshDataset?.data == null) {
     return RESOLVING;
   }
 
-  return resolveGoalValue(freshDataset.data, unansweredRef);
+  const fresh = resolveGoalValue(freshDataset.data, unansweredRef);
+
+  // a completed response without an answer for this reference would otherwise resolve forever
+  return fresh.isResolving === true ? queryFailed(unansweredRef) : fresh;
+}
+
+function queryFailed({
+  type,
+  id,
+  column,
+}: GoalForeignColumnRef): ResolvedGoalValue {
+  return {
+    value: null,
+    error: {
+      type,
+      id,
+      column,
+      reason: "query-failed",
+      message: t`Couldn't load this value`,
+    },
+  };
 }

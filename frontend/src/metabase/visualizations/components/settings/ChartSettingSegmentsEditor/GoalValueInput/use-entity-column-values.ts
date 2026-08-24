@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
 import {
   resolveGoalValue,
   toReferencedEntity,
@@ -19,14 +19,9 @@ export function useEntityColumnValues(
   entity: GoalForeignEntityRef | null,
   { enabled }: { enabled: boolean },
 ): ResolveColumnValue {
-  const { currentData: freshDataset } = useGetAdhocQueryQuery(
-    enabled && entity != null && datasetQuery != null
-      ? {
-          ...datasetQuery,
-          referenced_entities: [toReferencedEntity(entity)],
-          ignore_error: true,
-        }
-      : skipToken,
+  const { currentData: freshDataset } = useReferencedEntitiesQuery(
+    datasetQuery,
+    enabled && entity != null ? [toReferencedEntity(entity)] : [],
   );
 
   const entityData =

@@ -293,6 +293,62 @@ describe("ChartSettingSegmentsEditor", () => {
     );
   });
 
+  it("collapses sibling bound requests into one query for all unanswered references", async () => {
+    setupCardDataset({
+      dataset: {
+        data: createMockDatasetData({
+          referenced_entities: {
+            card: {
+              [CARD_ID]: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "total" })],
+                  rows: [[250]],
+                },
+              },
+            },
+            measure: {
+              [MEASURE_ID]: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "revenue" })],
+                  rows: [[999]],
+                },
+              },
+            },
+          },
+        }),
+      },
+    });
+    setup({
+      value: [
+        createMockSegment({
+          min: { type: "card", id: CARD_ID, column: "total" },
+          max: { type: "measure", id: MEASURE_ID, column: "revenue" },
+        }),
+      ],
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
+        rows: [[10]],
+      }),
+    });
+
+    const pills = screen.getAllByRole("button", {
+      name: "Change value source",
+    });
+    expect(await within(pills[0]).findByText("250")).toBeInTheDocument();
+    expect(await within(pills[1]).findByText("999")).toBeInTheDocument();
+
+    const calls = fetchMock.callHistory.calls("path:/api/dataset");
+    expect(calls).toHaveLength(1);
+    expect(await calls[0].request?.json()).toMatchObject({
+      referenced_entities: [
+        { type: "card", id: CARD_ID },
+        { type: "measure", id: MEASURE_ID },
+      ],
+    });
+  });
+
   it("offers both value sources for a bound", async () => {
     setup({
       data: createMockDatasetData({

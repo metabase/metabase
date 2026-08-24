@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
 import {
   type ResolvedGoalSegment,
   getGoalSegmentErrors,
@@ -25,14 +25,9 @@ export function useResolvedGoalSegments(
 ): GoalSegmentsState {
   const unansweredEntities = getUnansweredGoalEntities(data, segments);
 
-  const { currentData: freshDataset, isError } = useGetAdhocQueryQuery(
-    unansweredEntities.length > 0 && datasetQuery != null
-      ? {
-          ...datasetQuery,
-          referenced_entities: unansweredEntities,
-          ignore_error: true,
-        }
-      : skipToken,
+  const { currentData: freshDataset, isError } = useReferencedEntitiesQuery(
+    datasetQuery,
+    unansweredEntities,
   );
 
   const answeredData = useMemo(() => {

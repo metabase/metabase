@@ -33,6 +33,7 @@ import type {
   GoalForeignEntityRef,
   GoalValue,
   MeasureId,
+  ReferencedEntity,
   ReferencedEntityType,
 } from "metabase-types/api";
 import {
@@ -66,6 +67,7 @@ export type GoalValueInputProps = {
   datasetQuery: DatasetQuery | undefined;
   id: string;
   placeholder?: string;
+  referencedEntities: ReferencedEntity[];
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
 };
@@ -76,6 +78,7 @@ export const GoalValueInput = ({
   datasetQuery,
   id,
   placeholder,
+  referencedEntities,
   value,
   onChange,
 }: GoalValueInputProps) => {
@@ -103,12 +106,16 @@ export const GoalValueInput = ({
     data,
     entity,
     {
-      enabled:
-        menuLevel === "entity" && !entityInfo.isLoading && !entityInfo.hasError,
+      enabled: menuLevel === "entity" && entityInfo.columns.length > 0,
     },
   );
 
-  const resolved = useResolvedGoalValue(datasetQuery, data, value);
+  const resolved = useResolvedGoalValue(
+    datasetQuery,
+    data,
+    value,
+    referencedEntities,
+  );
   const selfColumnLabel = isSelfRef
     ? (selfColumns.find((column) => column.name === value)?.label ??
       String(value))

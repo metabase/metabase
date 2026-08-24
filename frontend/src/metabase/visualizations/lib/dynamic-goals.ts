@@ -213,6 +213,13 @@ export function getGoalSegmentErrors(
   });
 }
 
+export function isUnansweredGoalValue(resolved: ResolvedGoalValue): boolean {
+  return (
+    resolved.isResolving === true ||
+    resolved.error?.reason === "column-not-found"
+  );
+}
+
 export function getUnansweredGoalEntities(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
@@ -220,7 +227,7 @@ export function getUnansweredGoalEntities(
   const unansweredRefs = validGoalSegments(segments)
     .flatMap((segment) => [segment.min, segment.max])
     .filter(isGoalForeignColumnRef)
-    .filter((ref) => resolveGoalValue(data, ref).isResolving === true);
+    .filter((ref) => isUnansweredGoalValue(resolveGoalValue(data, ref)));
   const entities = new Map(
     unansweredRefs.map((ref) => [
       `${ref.type}:${ref.id}`,

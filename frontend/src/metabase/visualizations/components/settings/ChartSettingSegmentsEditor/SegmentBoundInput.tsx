@@ -1,5 +1,10 @@
 import { Box } from "metabase/ui";
-import type { DatasetData, DatasetQuery, GoalValue } from "metabase-types/api";
+import type {
+  DatasetData,
+  DatasetQuery,
+  GoalValue,
+  ReferencedEntity,
+} from "metabase-types/api";
 
 import { GoalValueInput } from "./GoalValueInput";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
@@ -10,6 +15,7 @@ type Props = {
   datasetQuery: DatasetQuery | undefined;
   id: string;
   placeholder: string;
+  referencedEntities: ReferencedEntity[];
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
 };
@@ -20,6 +26,7 @@ export function SegmentBoundInput({
   datasetQuery,
   id,
   placeholder,
+  referencedEntities,
   value,
   onChange,
 }: Props) {
@@ -40,6 +47,7 @@ export function SegmentBoundInput({
           datasetQuery={datasetQuery}
           id={id}
           placeholder={placeholder}
+          referencedEntities={referencedEntities}
           value={value}
           onChange={onChange}
         />
