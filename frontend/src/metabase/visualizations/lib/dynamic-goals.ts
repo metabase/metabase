@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { color } from "metabase/ui/colors";
 import type {
   Card,
   CardId,
@@ -190,8 +191,14 @@ export function resolveGoalSegments(
       return [];
     }
 
-    return [{ color: segment.color, label: segment.label, min, max }];
+    return [
+      { color: getSegmentColor(segment), label: segment.label, min, max },
+    ];
   });
+}
+
+export function getSegmentColor(segment: GoalSegment): string {
+  return segment.color ?? color("text-secondary");
 }
 
 export function getGoalSegmentErrors(

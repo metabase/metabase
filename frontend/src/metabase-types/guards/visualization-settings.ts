@@ -40,7 +40,7 @@ export function isGoalValue(value: unknown): value is GoalValue {
 export function isGoalSegment(value: unknown): value is GoalSegment {
   return (
     isObject(value) &&
-    typeof value.color === "string" &&
+    (value.color === undefined || typeof value.color === "string") &&
     (value.min == null || isGoalValue(value.min)) &&
     (value.max == null || isGoalValue(value.max))
   );

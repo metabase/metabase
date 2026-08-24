@@ -15,6 +15,7 @@ import {
 } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
+import { getSegmentColor } from "metabase/visualizations/lib/dynamic-goals";
 import type {
   DatasetData,
   DatasetQuery,
@@ -61,7 +62,7 @@ export const ChartSettingSegmentsEditor = ({
                 leftSection={
                   <ColorSelector
                     pillSize="small"
-                    value={segment.color}
+                    value={getSegmentColor(segment)}
                     colors={getColorPalette()}
                     onChange={(newColor) => {
                       updateSegment(index, { color: newColor });

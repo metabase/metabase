@@ -1,3 +1,4 @@
+import { color } from "metabase/ui/colors";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
@@ -239,6 +240,14 @@ describe("resolveGoalSegments", () => {
 
     expect(segments).toEqual([
       { min: 0, max: 100, color: "red", label: "range" },
+    ]);
+  });
+
+  it("gives a legacy segment without a color a default fill", () => {
+    const segments = resolveGoalSegments(DATA, [{ min: 0, max: 100 }]);
+
+    expect(segments).toEqual([
+      { min: 0, max: 100, color: color("text-secondary"), label: undefined },
     ]);
   });
 

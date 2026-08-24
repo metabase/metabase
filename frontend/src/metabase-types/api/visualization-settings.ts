@@ -84,7 +84,8 @@ export type GoalForeignEntityRef =
 export type GoalForeignColumnRef = GoalForeignEntityRef & { column: string };
 
 export type GoalSegment = {
-  color: string;
+  // the pre-2022 segments editor could persist segments without a color
+  color?: string;
   label?: string;
   min: GoalValue | null;
   max: GoalValue | null;
