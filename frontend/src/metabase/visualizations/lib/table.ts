@@ -23,7 +23,7 @@ export function getTableClickedObjectRowData(
   rowIndex: number,
   columnIndex: number,
   isPivoted: boolean,
-  data: DatasetData,
+  data: Pick<DatasetData, "sourceRows">,
 ): Dimension[] | null {
   const { rows, cols } = series.data;
 
@@ -45,7 +45,7 @@ export function getTableClickedObjectRowData(
 }
 
 export function getTableCellClickedObject(
-  data: DatasetData,
+  data: Pick<DatasetData, "rows" | "cols">,
   settings: VisualizationSettings,
   rowIndex: number,
   columnIndex: number,

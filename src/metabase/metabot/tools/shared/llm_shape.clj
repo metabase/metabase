@@ -83,7 +83,7 @@
   (u/pprint-to-str (cond-> query (map? query) (dissoc :lib/metadata))))
 
 (defn export-query-for-llm
-  "Render a `query` (legacy or pMBQL map, or a pre-resolved string) for the LLM. A query
+  "Render a `query` (legacy or MBQL 5 map, or a pre-resolved string) for the LLM. A query
   map with a `:database` is normalized and exported to the portable representations form
   the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
   sources pass through; a `pprint`'d map is the last-resort fallback. A permission-refused

@@ -1,4 +1,14 @@
+import _ from "underscore";
+
 import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
+import {
+  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
+  isEmbeddingSdk,
+} from "metabase/embedding-sdk/config";
+import {
+  convertLinkColumnToClickBehavior,
+  removeInternalClickBehaviors,
+} from "metabase/embedding-sdk/lib/links";
 import {
   registerSettingWidgets,
   registerVisualization,
@@ -31,7 +41,10 @@ import { ChartSettingSeriesOrder } from "./components/settings/ChartSettingSerie
 import { ChartSettingTableColumns } from "./components/settings/ChartSettingTableColumns";
 import { ChartSettingToggle } from "./components/settings/ChartSettingToggle";
 import { ChartSettingsTableFormatting } from "./components/settings/ChartSettingsTableFormatting";
+import { setTooltipRootProvider } from "./echarts/tooltip";
 import { registerJsxFormatting } from "./lib/register-jsx-formatting";
+import { setComputedSettingsTransform } from "./lib/settings";
+import type { ComputedVisualizationSettings, SettingsExtra } from "./types";
 import { AREA_CHART_DEFINITION } from "./visualizations/AreaChart/definition";
 import { BAR_CHART_DEFINITION } from "./visualizations/BarChart/definition";
 import { BOXPLOT_CHART_DEFINITION } from "./visualizations/BoxPlot/definition";
@@ -207,8 +220,35 @@ function registerVisualizationSettingWidgets() {
   });
 }
 
+function transformComputedSettingsForSdk(
+  computedSettings: ComputedVisualizationSettings,
+  extra: SettingsExtra,
+): ComputedVisualizationSettings {
+  if (!isEmbeddingSdk()) {
+    return computedSettings;
+  }
+
+  const shouldKeepInternalClickBehavior = extra.enableEntityNavigation;
+
+  return _.compose(
+    // remove internal click behaviors unless internal navigation is enabled
+    shouldKeepInternalClickBehavior ? _.identity : removeInternalClickBehaviors,
+    convertLinkColumnToClickBehavior,
+  )(computedSettings);
+}
+
+function registerSdkAwareBehaviors() {
+  setComputedSettingsTransform(transformComputedSettingsForSdk);
+  setTooltipRootProvider(() =>
+    isEmbeddingSdk()
+      ? document.getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID)
+      : document.body,
+  );
+}
+
 export function registerVisualizations() {
   registerVisualizationComponents();
   registerVisualizationSettingWidgets();
   registerJsxFormatting();
+  registerSdkAwareBehaviors();
 }

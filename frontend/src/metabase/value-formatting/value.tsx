@@ -1,7 +1,7 @@
 import cx from "classnames";
-import dayjs, { type Dayjs } from "dayjs";
 
 import CS from "metabase/css/core/index.css";
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { formatNumber, removeNewLines } from "metabase/utils/formatting";
 import { parseNumber } from "metabase/utils/number";
@@ -27,7 +27,11 @@ import { getJsxMarkdownRenderer } from "./registry";
 import { formatTime } from "./time";
 import { formatUrl } from "./url";
 
-export function formatValue(value: unknown, _options: ColumnSettings = {}) {
+export type FormatValueOptions = ColumnSettings & {
+  copyLinkUrl?: boolean;
+};
+
+export function formatValue(value: unknown, _options: FormatValueOptions = {}) {
   let { prefix, suffix, ...options } = _options;
   // avoid rendering <ExternalLink> if we have click_behavior set
   if (
