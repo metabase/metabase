@@ -674,22 +674,22 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().within(() => {
       cy.findByText(`id = ${FIRST_COLLECTION_ENTITY_ID}`).should("be.visible");
 
-      cy.log("click on the button to switch target collection");
-      cy.findByText("use second collection").click();
-      cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("be.visible");
-    });
-
-    getSdkRoot().within(() => {
       cy.log(
-        "the data picker auto-opens after the target-collection re-render because no source table is selected; interact with the already-open popover directly instead of toggling it, which races the async auto-open",
+        "the data picker auto-opens for a new question, but only via mount-time state: switching the target collection neither remounts nor reopens it, so a popover left open here would be closed for good by the outside click below; consume it by picking the source table first",
       );
       H.popover()
         .findByRole("link", { name: "Orders" })
         .should("be.visible")
         .click();
+      cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+
+      cy.log("click on the button to switch target collection");
+      cy.findByText("use second collection").click();
+      cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("be.visible");
 
       cy.log("ensure that the interactive question still works");
-      cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+      cy.findByRole("button", { name: "Visualize" }).click();
+      tableInteractive().findByText("Product ID").should("be.visible");
     });
   });
 
