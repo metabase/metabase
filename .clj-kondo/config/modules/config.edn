@@ -440,6 +440,7 @@
    :uses #{api
            app-db
            collections
+           permissions
            queries
            util}
    :model-exports #{:model/CardBookmark :model/CollectionBookmark :model/DashboardBookmark}
