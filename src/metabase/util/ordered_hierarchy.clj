@@ -59,8 +59,8 @@
 
   Each optional basis uses Hiccup-style syntax: `[parent child [child grandchild ...] ...]`.
 
-  Always use [[derive]] to extend the result. [[clojure.core/derive]] does not maintain the custom `:children` and
-  `:sorted-tags` fields or the metadata used by this namespace."
+  Always use [[derive]] to extend the result.
+  [[clojure.core/derive]] does not maintain this namespace's custom fields or metadata."
   ([]
    (-> (clojure.core/make-hierarchy)
        (assoc :children (ordered-map)
@@ -115,7 +115,8 @@
             (update :processing disj node))))))
 
 (defn- toposort
-  "Performs a depth-first topological sort. Children precede their parents, and sibling ties follow derivation order."
+  "Performs a depth-first topological sort.
+  Children precede their parents, and sibling ties follow derivation order."
   [roots graph]
   (->> roots
        (reduce (partial toposort-visit graph)
@@ -149,8 +150,8 @@
 (defn derive
   "Establishes a parent/child relationship between two keyword tags.
 
-  Direct parents retain derivation order. Ancestors use leaves-to-roots topological order, and descendants use the
-  reverse order."
+  Direct parents retain derivation order.
+  Ancestors use leaves-to-roots topological order, and descendants use the reverse order."
   [h tag parent]
   (assert (not= tag parent) "A tag cannot derive from itself.")
   (assert (keyword? tag) "Tag must be a keyword.")
@@ -170,8 +171,9 @@
 (defn first-common-ancestor
   "Returns the first shared ancestor of `tag-a` and `tag-b` in the hierarchy's leaves-to-roots topological order.
 
-  Each tag counts as its own ancestor. If either tag is nil, returns the other tag. Returns nil when there is no common
-  ancestor."
+  Each tag counts as its own ancestor.
+  If either tag is nil, returns the other tag.
+  Returns nil when there is no common ancestor."
   [h tag-a tag-b]
   (cond
     (nil? tag-a) tag-b
