@@ -1,18 +1,28 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { openEventsSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context/context";
+import { useDispatch } from "metabase/redux";
 
 export const EventsButton = () => {
-  const { toggleSidebar, sidebar } = useDashboardContext();
+  const { sidebar, closeSidebar } = useDashboardContext();
+  const dispatch = useDispatch();
+  const isEventsSidebarOpen = sidebar.name === SIDEBAR_NAME.events;
+  // only the dashboard-wide panel toggles closed; a dashcard-scoped events
+  // sidebar switches to the dashboard-wide one instead
+  const isDashboardWideOpen =
+    isEventsSidebarOpen && sidebar.props.dashcardId == null;
 
   return (
     <ToolbarButton
       tooltipLabel={t`Events`}
       icon="calendar"
-      isActive={sidebar.name === SIDEBAR_NAME.events}
-      onClick={() => toggleSidebar(SIDEBAR_NAME.events)}
+      isActive={isEventsSidebarOpen}
+      onClick={() =>
+        isDashboardWideOpen ? closeSidebar() : dispatch(openEventsSidebar())
+      }
       aria-label={t`Events`}
     />
   );

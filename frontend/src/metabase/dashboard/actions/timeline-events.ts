@@ -4,7 +4,9 @@ import _ from "underscore";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getDashCardById, getIsEditing } from "metabase/dashboard/selectors";
 import {
+  getCollectionTimelinesVisibility,
   getDashCardTimelineEventsVisibility,
+  getTimelineEventsDashCardIds,
   getTimelineEventsVisibilityContext,
 } from "metabase/dashboard/timeline-events/selectors";
 import type {
@@ -33,8 +35,36 @@ export const deselectTimelineEvents = createAction(
   "metabase/dashboard/DESELECT_TIMELINE_EVENTS",
 );
 
-export const openEventsSidebar = (props: EventsSidebarProps = {}) =>
-  setSidebar({ name: SIDEBAR_NAME.events, props });
+export const openEventsSidebar =
+  (props: EventsSidebarProps = {}) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    const state = getState();
+    // Opening the panel is the opt-in gesture: charts without any saved or
+    // session visibility preview the collection's timelines. The preview is
+    // transient even while editing, so opening never dirties the dashboard;
+    // it only persists once a toggle is made.
+    const seed = getCollectionTimelinesVisibility(state);
+    if (!isDefaultVisibility(seed)) {
+      const dashcardIds =
+        props.dashcardId != null
+          ? [props.dashcardId]
+          : getTimelineEventsDashCardIds(state);
+      const unconfiguredIds = dashcardIds.filter(
+        (dashcardId) =>
+          getDashCardTimelineEventsVisibility(state, dashcardId) == null,
+      );
+      if (unconfiguredIds.length > 0) {
+        dispatch(
+          setDashCardTimelineEventsVisibility(
+            Object.fromEntries(
+              unconfiguredIds.map((dashcardId) => [dashcardId, seed]),
+            ),
+          ),
+        );
+      }
+    }
+    dispatch(setSidebar({ name: SIDEBAR_NAME.events, props }));
+  };
 
 export type TimelineEventsVisibilityUpdate = (
   visibility: TimelineEventsVisibility,

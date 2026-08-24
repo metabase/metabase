@@ -6,6 +6,7 @@ import {
 import { createCachedSelector } from "re-reselect";
 import { shallowEqual } from "react-redux";
 
+import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import {
   getCurrentDashcards,
   getDashboard,
@@ -44,6 +45,18 @@ export const getTimelineEventsVisibilityContext = createSelector(
 
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
+
+// Opening the Events panel opts charts into the dashboard collection's
+// timelines when they have no saved or session state yet.
+export const getCollectionTimelinesVisibility = createSelector(
+  [getTransformedTimelines, getDashboardCollectionId],
+  (timelines, collectionId): TimelineEventsVisibility => {
+    const timelineIds = getCollectionTimelines(timelines, collectionId).map(
+      (timeline) => timeline.id,
+    );
+    return timelineIds.length > 0 ? { shown_timeline_ids: timelineIds } : {};
+  },
+);
 
 const resolveDashCardVisibility = (
   overrides: DashboardTimelineEventsState["overrides"],
