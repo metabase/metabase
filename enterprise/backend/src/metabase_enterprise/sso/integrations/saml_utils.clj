@@ -1,7 +1,8 @@
 (ns metabase-enterprise.sso.integrations.saml-utils
   "Functions for handling SAML authentication with the SDK side, including HTML popups"
   (:require
-   [java-time.api :as t])
+   [java-time.api :as t]
+   [metabase.util.json :as json])
   (:import
    (java.time Instant)))
 
@@ -15,7 +16,7 @@
   <title>Authentication Complete</title>
   <script>
     const authData = {
-      id: \"" key "\",
+      id: " (json/encode key) ",
       exp: " (.getEpochSecond exp) ",
       iat: " (.getEpochSecond iat) ",
       status: \"ok\"
@@ -25,7 +26,7 @@
         window.opener.postMessage({
           type: 'SAML_AUTH_COMPLETE',
           authData: authData
-        }, '" origin "');
+        }, " (json/encode origin) ");
 
         setTimeout(function() {
           window.close();
@@ -35,7 +36,7 @@
         document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
       }
     } else {
-      window.location.href = '" continue-url "';
+      window.location.href = " (json/encode continue-url) ";
     }
   </script>
 </head>
