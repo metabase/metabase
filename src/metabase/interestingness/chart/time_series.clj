@@ -44,9 +44,33 @@
         (< pct-change -10) :decreasing
         :else :flat))))
 
+(defn- reconcile-direction
+  "Guard against a regression-derived `direction` that would mislead the reader.
+
+  The regression slope and the first→last `change-pct` are computed independently
+  and can flatly contradict each other — the source of labels like
+  'strongly increasing (-97.9% overall)'. When the slope direction disagrees in
+  *sign* with the change the reader actually sees, or when the series is so noisy
+  that its swings dwarf its mean (CV ≥ 1.0), report `:no-clear-trend` rather than
+  asserting a direction.
+
+  Note we deliberately do NOT suppress on moderate CV: a clean, wide ramp
+  (e.g. 100→20) legitimately has CV ≈ 0.5, and is a real trend."
+  [direction change-pct cv]
+  (let [dir-sign (case direction
+                   (:strongly-increasing :increasing) 1
+                   (:strongly-decreasing :decreasing) -1
+                   0)]
+    (cond
+      (and (not (zero? dir-sign)) (neg? (* dir-sign change-pct))) :no-clear-trend
+      (>= cv 1.0)                                                 :no-clear-trend
+      :else                                                       direction)))
+
 (defn- compute-trend
   "Compute trend summary using linear regression.
-  Returns map with :direction :overall-change-pct :start-value :end-value"
+  Returns map with :direction :overall-change-pct :start-value :end-value.
+  `:direction` is reconciled against the first→last change and series noise (see
+  [[reconcile-direction]]) so it never contradicts the data it summarizes."
   [values]
   (let [n (count values)
         values-vec (vec values)
@@ -56,8 +80,10 @@
         start-val (first values-vec)
         end-val (last values-vec)
         mean-val (dfn/mean values)
+        std-dev (dfn/standard-deviation values)
+        cv (if (zero? mean-val) 0.0 (/ std-dev (Math/abs (double mean-val))))
         change-pct (stats.u/percentage-change start-val end-val)]
-    {:direction (slope-to-direction slope mean-val n)
+    {:direction (reconcile-direction (slope-to-direction slope mean-val n) change-pct cv)
      :overall-change-pct change-pct
      :start-value start-val
      :end-value end-val}))
@@ -185,6 +211,41 @@
 
 ;;; ------------------------------------------------ Main Entry Point ------------------------------------------------
 
+(defn- argmax-min
+  "Find the indices of the max and min values in `values`, plus the count of
+  points strictly above the mean. Single pass. Returns
+  `{:argmax i :argmin j :above-mean k}` or nil when `values` is empty."
+  [values]
+  (when (seq values)
+    (let [vs (vec values)
+          n  (count vs)
+          mean (/ (reduce + 0.0 vs) n)]
+      (loop [i 1
+             argmax 0
+             argmin 0
+             above (if (> (nth vs 0) mean) 1 0)]
+        (if (>= i n)
+          {:argmax argmax :argmin argmin :above-mean above}
+          (let [v (nth vs i)]
+            (recur (inc i)
+                   (if (> v (nth vs argmax)) i argmax)
+                   (if (< v (nth vs argmin)) i argmin)
+                   (if (> v mean) (inc above) above))))))))
+
+(defn- compute-peak-trough
+  "Locate the peak (max y) and trough (min y) in a time series, together with
+  their x-coordinates (dates), and count how many points sit above the mean.
+  These are pre-computed answers to the questions downstream consumers (the
+  AI Summary generator, for instance) need to ground citations — the
+  date of the peak isn't recoverable from the summary's `:min`/`:max` alone."
+  [values dates]
+  (when-let [{:keys [argmax argmin above-mean]} (argmax-min values)]
+    (let [vs (vec values)
+          ds (vec dates)]
+      {:peak           {:x (nth ds argmax) :y (nth vs argmax)}
+       :trough         {:x (nth ds argmin) :y (nth vs argmin)}
+       :above-mean     above-mean})))
+
 (defn- compute-series-stats
   "Compute statistics for a single time series.
 
@@ -198,12 +259,14 @@
         outliers (if is-cumulative
                    (outliers/find-outliers-cumulative values dates)
                    (outliers/find-outliers values dates))
-        basic-stats {:summary (stats.u/compute-summary values)
-                     :time-range (compute-time-range dates)
-                     :data-points (count values)
-                     :trend (compute-trend values)
-                     :is-cumulative is-cumulative
-                     :outliers outliers}]
+        peak-trough (compute-peak-trough values dates)
+        basic-stats (cond-> {:summary (stats.u/compute-summary values)
+                             :time-range (compute-time-range dates)
+                             :data-points (count values)
+                             :trend (compute-trend values)
+                             :is-cumulative is-cumulative
+                             :outliers outliers}
+                      peak-trough (merge peak-trough))]
     (if deep?
       (assoc basic-stats
              :volatility (compute-volatility values)

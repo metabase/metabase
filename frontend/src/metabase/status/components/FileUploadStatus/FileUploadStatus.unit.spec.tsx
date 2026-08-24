@@ -1,5 +1,3 @@
-import fetchMock from "fetch-mock";
-
 import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
@@ -30,13 +28,6 @@ describe("FileUploadStatus", () => {
     setupCollectionsEndpoints({
       collections: [firstCollection, secondCollection],
     });
-    fetchMock.get(
-      "path:/api/table/123",
-      createMockCollection({
-        id: 123,
-        name: "Fancy Table",
-      }),
-    );
   });
 
   it("Should group uploads by collection", async () => {
@@ -85,6 +76,7 @@ describe("FileUploadStatus", () => {
   it("Should show upload status for a table append", async () => {
     const uploadOne = createMockUpload({
       tableId: 123,
+      tableName: "Fancy Table",
       collectionId: undefined,
       id: 1,
     });

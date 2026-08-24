@@ -45,12 +45,16 @@ export const useDataAppBundle = (
         return;
       }
 
-      const { component, providerProps } = instantiateDataAppBundle(
+      const { component, providerProps } = await instantiateDataAppBundle(
         code,
         name,
         window,
         allowedHosts,
       );
+
+      if (cancelled) {
+        return;
+      }
 
       setData({ component, providerProps });
     };

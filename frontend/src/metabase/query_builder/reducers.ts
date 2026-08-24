@@ -11,11 +11,12 @@ import {
 } from "metabase/api";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
+  API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   CANCEL_QUERY,
   CANCEL_QUESTION_CHANGES,
+  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   CLEAR_QUERY_RESULT,
-  CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
   CLOSE_CHART_SETTINGS,
   CLOSE_CHART_TYPE,
   CLOSE_QB,
@@ -24,28 +25,46 @@ import {
   CLOSE_QUESTION_SETTINGS,
   CLOSE_SIDEBARS,
   CLOSE_TIMELINES,
+  DESELECT_TIMELINE_EVENTS,
   EDIT_SUMMARY,
+  HIDE_TIMELINE_EVENTS,
   INITIALIZE_QB,
+  LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ON_CLOSE_SUMMARY,
-  OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
   OPEN_CHART_SETTINGS,
   OPEN_CHART_TYPE,
+  OPEN_DATA_REFERENCE_AT_QUESTION,
   OPEN_QUESTION_INFO,
   OPEN_QUESTION_SETTINGS,
   OPEN_TIMELINES,
   QUERY_COMPLETED,
   QUERY_ERRORED,
+  RELOAD_CARD,
   RESET_QB,
   RESET_ROW_ZOOM,
   RESET_UI_CONTROLS,
   RUN_QUERY,
+  SELECT_TIMELINE_EVENTS,
+  SET_CARD_AND_RUN,
+  SET_CURRENT_STATE,
+  SET_DATA_REFERENCE_STACK,
   SET_DOCUMENT_TITLE,
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
+  SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
+  SET_METADATA_DIFF,
+  SET_MODAL_SNIPPET,
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
   SET_PARAMETER_VALUE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
+  SET_SNIPPET_COLLECTION_ID,
   SET_UI_CONTROLS,
   SHOW_CHART_SETTINGS,
+  SHOW_TIMELINE_EVENTS,
   SOFT_RELOAD_CARD,
+  TOGGLE_DATA_REFERENCE,
+  TOGGLE_SNIPPET_SIDEBAR,
+  TOGGLE_TEMPLATE_TAGS_EDITOR,
+  UPDATE_QUESTION,
   ZOOM_IN_ROW,
 } from "metabase/redux/query-builder";
 import type {
@@ -68,29 +87,6 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 
-import {
-  API_CREATE_QUESTION,
-  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
-  DESELECT_TIMELINE_EVENTS,
-  HIDE_TIMELINE_EVENTS,
-  LOAD_OBJECT_DETAIL_FK_REFERENCES,
-  OPEN_DATA_REFERENCE_AT_QUESTION,
-  RELOAD_CARD,
-  SELECT_TIMELINE_EVENTS,
-  SET_CARD_AND_RUN,
-  SET_CURRENT_STATE,
-  SET_DATA_REFERENCE_STACK,
-  SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
-  SET_METADATA_DIFF,
-  SET_MODAL_SNIPPET,
-  SET_NATIVE_EDITOR_SELECTED_RANGE,
-  SET_SNIPPET_COLLECTION_ID,
-  SHOW_TIMELINE_EVENTS,
-  TOGGLE_DATA_REFERENCE,
-  TOGGLE_SNIPPET_SIDEBAR,
-  TOGGLE_TEMPLATE_TAGS_EDITOR,
-  UPDATE_QUESTION,
-} from "./actions";
 import {
   CLOSED_NATIVE_EDITOR_SIDEBARS,
   DEFAULT_LOADING_CONTROLS,
@@ -257,15 +253,6 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         isShowingSummarySidebar: true,
       }))
       .addCase(ON_CLOSE_SUMMARY, (state) => ({
-        ...state,
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      }))
-      .addCase(OPEN_AI_QUESTION_ANALYSIS_SIDEBAR, (state) => ({
-        ...state,
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-        isShowingAIQuestionAnalysisSidebar: true,
-      }))
-      .addCase(CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR, (state) => ({
         ...state,
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       }))
@@ -453,7 +440,12 @@ export const lastRunCard = createReducer<Card | null>(null, (builder) => {
       QUERY_COMPLETED,
       (_state, action) => action.payload.card,
     )
-    .addCase(QUERY_ERRORED, () => null);
+    // A null payload means the run was cancelled and the rendered result is
+    // still valid, so keep the card; a real error clears it
+    .addCase<string, { type: string; payload: unknown }>(
+      QUERY_ERRORED,
+      (_state, action) => (action.payload ? null : undefined),
+    );
 });
 
 // The results of a query execution. optionally an error if the query fails to complete successfully.
@@ -639,6 +631,21 @@ type NestedCardPayloadAction = {
   };
 };
 
+const handleQueryCompleted = (
+  state: Card | null,
+  action: NestedCardPayloadAction,
+): Card | null => {
+  if (!state) {
+    return state;
+  }
+  return {
+    ...state,
+    display: action.payload.card.display,
+    result_metadata: action.payload.card.result_metadata,
+    visualization_settings: action.payload.card.visualization_settings,
+  };
+};
+
 // the card that is actively being worked on
 //
 // NOTE: the `.addCase` / `.addMatcher` calls below are written as separate
@@ -684,17 +691,7 @@ export const card = createReducer<Card | null>(null, (builder) => {
   );
   builder.addCase<string, NestedCardPayloadAction>(
     QUERY_COMPLETED,
-    (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        display: action.payload.card.display,
-        result_metadata: action.payload.card.result_metadata,
-        visualization_settings: action.payload.card.visualization_settings,
-      };
-    },
+    handleQueryCompleted,
   );
   builder.addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
     if (!state) {

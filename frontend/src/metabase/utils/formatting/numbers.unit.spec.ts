@@ -1,4 +1,8 @@
-import { formatNumber, numberFormatterForOptions } from "./numbers";
+import {
+  formatNumber,
+  formatPercent,
+  numberFormatterForOptions,
+} from "./numbers";
 
 describe("formatNumber", () => {
   it("should respect the decimals setting even when compact is true (metabase#54063)", () => {
@@ -402,5 +406,12 @@ describe("formatNumber with scale (multiply function)", () => {
     expect(formatNumber(-5, { scale: 3 })).toBe("-15");
     expect(formatNumber(BigInt(-5), { scale: 3 })).toBe("-15");
     expect(formatNumber(BigInt(-5), { scale: 2.5 })).toBe("-12.5");
+  });
+});
+
+describe("formatPercent", () => {
+  it("formats percent with two decimals", () => {
+    expect(formatPercent(0.12245)).toBe("12.25 %");
+    expect(formatPercent(0)).toBe("0.00 %");
   });
 });

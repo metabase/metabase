@@ -10,7 +10,7 @@ import type { ModalComponentProps } from "metabase/common/components/ModalRoute"
 import { useSetCollection } from "metabase/common/hooks";
 import { getDefaultTimelineName } from "metabase/common/utils/timelines";
 import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import MoveTimelineModal from "metabase/timelines/common/components/MoveTimelineModal";
 import * as Urls from "metabase/urls";
 import type { CollectionId, Timeline } from "metabase-types/api";
@@ -19,6 +19,7 @@ import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
 function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const setCollection = useSetCollection();
   const id = Urls.extractEntityId(params.timelineId);
   const {
@@ -49,19 +50,17 @@ function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
         const { data: collection } = await dispatch(
           collectionApi.endpoints.getCollection.initiate({ id: collectionId }),
         );
-        dispatch(
-          push(
-            Urls.timelineInCollection({
-              ...timeline,
-              collection_id:
-                typeof collectionId === "number" ? collectionId : null,
-              collection,
-            }),
-          ),
+        navigate(
+          Urls.timelineInCollection({
+            ...timeline,
+            collection_id:
+              typeof collectionId === "number" ? collectionId : null,
+            collection,
+          }),
         );
       })();
     },
-    [dispatch, setCollection, sourceCollection],
+    [dispatch, setCollection, sourceCollection, navigate],
   );
 
   if (isLoading || error || !timeline) {

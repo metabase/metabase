@@ -51,14 +51,13 @@
           (channel/send! {:type :channel/slack}
                          {:channel "C0CHANNEL" :blocks [] :pdf pdf})
           (is (= [{:channel "C0CHANNEL" :text "the caption"}] @posted)))))
-    (testing "when sharing to a DM fails after the caption was delivered as the opener, send! does not re-post it"
+    (testing "the same fallback applies to a DM, where the caption is never posted ahead of the file"
       (let [posted (atom [])]
-        (mt/with-dynamic-fn-redefs [slack/upload-file-to-channel! (fn [& _]
-                                                                    (throw (ex-info "boom" {::slack/caption-already-posted? true})))
+        (mt/with-dynamic-fn-redefs [slack/upload-file-to-channel! (fn [& _] (throw (ex-info "boom" {})))
                                     slack/post-chat-message!      (fn [m] (swap! posted conj m))]
           (channel/send! {:type :channel/slack}
                          {:channel "U0USER123" :blocks [] :pdf pdf})
-          (is (= [] @posted)))))))
+          (is (= [{:channel "U0USER123" :text "the caption"}] @posted)))))))
 
 (deftest mkdwn-link-escaping-test
   (let [parts [{:type :card

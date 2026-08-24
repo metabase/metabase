@@ -240,7 +240,7 @@ result_metadata:
   lib/source-column-alias: total_revenue
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: h5F2EjHsRd73Dqqh8sAtd
   label: basic_aggregations

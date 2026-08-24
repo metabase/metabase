@@ -20,12 +20,14 @@ import {
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import type { MetabaseProviderPropsStoreInternalProps } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
+import { getSetting } from "metabase/settings";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { initializePlugins } from "sdk-ee-plugins";
@@ -48,8 +50,8 @@ let hasInitializedPlugins = false;
  * to avoid an extra frame where children render without plugins.
  */
 function useInitPlugins(reduxStore: SdkStore) {
-  const tokenFeatures = useSelector(
-    (state) => state.settings.values["token-features"],
+  const tokenFeatures = useSelector((state) =>
+    getSetting(state, "token-features"),
   );
 
   // Modular Embedding already initializes the plugins in its entrypoint.
@@ -188,6 +190,11 @@ export type ComponentProviderProps = MetabaseProviderProps & {
   reduxStore?: SdkStore;
   isLocalHost?: boolean;
 };
+
+export type MetabaseProviderPropsStoreExternalProps = Omit<
+  ComponentProviderProps,
+  "children" | keyof MetabaseProviderPropsStoreInternalProps
+>;
 
 export const ComponentProvider = memo(function ComponentProvider({
   children,

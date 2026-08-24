@@ -1,13 +1,7 @@
-import type { Location } from "history";
 import { useCallback } from "react";
 
-import {
-  Route,
-  useNavigate,
-  useParams,
-  useRoute,
-  useRouter,
-} from "metabase/router";
+import type { Location, RouteObject } from "metabase/router";
+import { Route, useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, type ModalProps } from "metabase/ui";
 
 type RouteParams = Record<string, string | undefined>;
@@ -20,14 +14,10 @@ type RouteParams = Record<string, string | undefined>;
 export type ModalComponentProps = {
   params: RouteParams;
   location: Location;
-  /**
-   * The matched route, passed through only for `LeaveRouteConfirmModal`, which
-   * hands it to react-router v3's `setRouteLeaveHook`. Do not use it to derive
-   * URLs: `onClose` already returns to the parent page.
-   */
-  route?: Route;
   onClose: () => void;
 };
+
+type ModalComponent = React.ComponentType<ModalComponentProps>;
 
 type ModalRouteOptions = {
   /**
@@ -47,14 +37,63 @@ type ModalRouteOptions = {
  */
 export function modalRoute(
   path: string,
-  ComposedModal: React.ComponentType<ModalComponentProps>,
-  { noWrap = false, modalProps }: ModalRouteOptions = {},
+  ComposedModal: ModalComponent,
+  options: ModalRouteOptions = {},
+) {
+  const ModalRouteComponent = createModalRouteComponent(ComposedModal, options);
+
+  // Keyed for the plugin route arrays, which React renders as a list.
+  return <Route key={path} path={path} element={<ModalRouteComponent />} />;
+}
+
+/**
+ * `modalRoute` for a modal that lives in a code-split chunk, for a route tree
+ * still authored as `<Route>` elements. `createRoutesFromElements` reads `lazy`
+ * off the element, so this defers the modal without the tree having to convert.
+ */
+export function lazyModalRouteElement(
+  path: string,
+  loadModal: () => Promise<ModalComponent>,
+  options: ModalRouteOptions = {},
+) {
+  return (
+    <Route
+      key={path}
+      path={path}
+      lazy={async () => ({
+        Component: createModalRouteComponent(await loadModal(), options),
+      })}
+    />
+  );
+}
+
+/**
+ * `modalRoute` for a modal that lives in a code-split chunk.
+ *
+ * `route.lazy` cannot supply `children`, so a lazy page's modal children have to
+ * be route objects of their own. This keeps the path static, which is what
+ * matching needs, and defers only the modal itself.
+ */
+export function lazyModalRoute(
+  path: string,
+  loadModal: () => Promise<ModalComponent>,
+  options: ModalRouteOptions = {},
+): RouteObject {
+  return {
+    path,
+    lazy: async () => ({
+      Component: createModalRouteComponent(await loadModal(), options),
+    }),
+  };
+}
+
+function createModalRouteComponent(
+  ComposedModal: ModalComponent,
+  { noWrap = false, modalProps }: ModalRouteOptions,
 ) {
   function ModalRouteComponent() {
     const params = useParams();
-    // The raw v3 location (with `query`), which some modals still read.
-    const { location } = useRouter();
-    const route = useRoute() ?? undefined;
+    const location = useLocation();
     const navigate = useNavigate();
     const onClose = useCallback(
       () => navigate("..", { relative: "route" }),
@@ -62,12 +101,7 @@ export function modalRoute(
     );
 
     const modal = (
-      <ComposedModal
-        params={params}
-        location={location}
-        route={route}
-        onClose={onClose}
-      />
+      <ComposedModal params={params} location={location} onClose={onClose} />
     );
 
     if (noWrap) {
@@ -92,6 +126,5 @@ export function modalRoute(
     ComposedModal.displayName || ComposedModal.name
   }]`;
 
-  // Keyed for the plugin route arrays, which React renders as a list.
-  return <Route key={path} path={path} element={<ModalRouteComponent />} />;
+  return ModalRouteComponent;
 }

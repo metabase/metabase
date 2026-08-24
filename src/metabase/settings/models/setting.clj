@@ -5,6 +5,7 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [environ.core :as env]
    [malli.core :as mc]
    [medley.core :as m]
@@ -83,10 +84,6 @@
   (derive :metabase/model))
 
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
-
-(defmethod serdes/hash-fields :model/Setting
-  [_setting]
-  [:key])
 
 (declare export?)
 
@@ -412,7 +409,7 @@
        ;; Non-admin setting managers can only access settings that are not marked as admin-only
        (not api/*is-superuser?*)
        (has-advanced-setting-access?)
-       (not= (:visibility setting) :admin))
+       (contains? #{:public :authenticated :settings-manager} (:visibility setting)))
       (and
        ;; Non-admins can only access user-local settings not marked as admin-only
        (allows-user-local-values? setting)
@@ -730,7 +727,7 @@
 (defn- throw-or-log
   "Given an error that should never happen, throw it for us, log it for customers."
   [e]
-  (if config/is-prod? (log/warn e) (throw e)))
+  (if config/is-prod? (log/warn (ex-message e)) (throw e)))
 
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
@@ -787,12 +784,14 @@
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
        (catch Throwable e
-         (log/warn "Error inserting a new Setting:\n"
-                   (ex-message e) "\n"
-                   "Assuming Setting already exists in DB and updating existing value.")
+         (log/warnf "Error inserting a new Setting: %s. Assuming Setting already exists in DB and updating existing value."
+                    (ex-message e))
          (update-setting! setting-name new-value))))
 
-(defn- obfuscated-value? [v]
+(defn obfuscated-value?
+  "Whether `v` looks like a value already obfuscated by [[obfuscate-value]], i.e. the client echoed back a masked
+  value rather than entering a new one."
+  [v]
   (when (seq v)
     (boolean (re-matches #"^\*{10}.{2}$" v))))
 
@@ -1042,7 +1041,10 @@
 
   This method will throw an exception if trying to update a read-only setting, unless `:bypass-read-only?` is set."
   [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
-  (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)]
+  (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)
+        new-value                    (cond-> new-value
+                                       (and (= (:type setting) :json) (coll? new-value))
+                                       walk/keywordize-keys)]
     (validate-settable! setting bypass-read-only?)
     (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
@@ -1532,7 +1534,7 @@
      :value          (try
                        (m/mapply user-facing-value setting options)
                        (catch Throwable e
-                         (log/error e "Error fetching value of Setting")))
+                         (log/errorf "Error fetching value of Setting: %s" (ex-message e))))
      :is_env_setting from-env?
      :env_name       (env-var-name setting)
      :description    (str (description))
@@ -1675,7 +1677,7 @@
   (cond
     (instance? JsonEOFException ex) false
     (instance? JsonParseException ex) true
-    :else (do (log/warn ex "Unexpected exception while parsing JSON")
+    :else (do (log/warnf "Unexpected exception while parsing JSON: %s" (ex-message ex))
               ;; err on the side of caution
               true)))
 
@@ -1712,8 +1714,9 @@
                            (name (:name invalid-setting)))
                       (dissoc invalid-setting :parse-error)
                       (:parse-error invalid-setting)))
-      (log/warn (:parse-error invalid-setting)
-                (format "Unable to parse setting %s" (:name invalid-setting))))))
+      (log/warnf "Unable to parse setting %s: %s"
+                 (name (:name invalid-setting))
+                 (ex-message (:parse-error invalid-setting))))))
 
 (defn migrate-encrypted-settings!
   "We have some settings that may currently be encrypted in the database that we'd like to disable encryption for.

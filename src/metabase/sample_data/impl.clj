@@ -18,7 +18,7 @@
 
 (def ^String sample-database-name
   "Canonical name of the bundled Sample Database. Shared with consumers that need to
-  identify or validate the sample DB (e.g. workspace-manager config import)."
+  identify or validate the sample DB."
   "Sample Database")
 
 (def ^:private ^String sqlite-sample-database-filename "sample-database.sqlite")
@@ -108,7 +108,12 @@
       (sync/sync-database! db))
     (log/debug "Finished adding Sample Database.")
     (catch Throwable e
-      (log/error e "Failed to load sample database"))))
+      (log/errorf "Failed to load sample database: %s" (ex-message e)))))
+
+(defn sample-database-id
+  "ID of the Sample Database if it exists, otherwise nil."
+  []
+  (t2/select-one-pk :model/Database :is_sample true))
 
 (defn- table-schema-for-engine
   "The schema value the sync process assigns to the sample database's tables for a given engine: H2 puts

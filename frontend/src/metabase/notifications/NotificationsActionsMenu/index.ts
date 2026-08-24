@@ -1,1 +1,1 @@
-export * from "./DashboardSubscriptionMenuItem";
+export * from "./CommonNotificationsMenuItem";

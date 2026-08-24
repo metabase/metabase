@@ -155,8 +155,14 @@ describe("scenarios > account > notifications", () => {
 
       clickUnsubscribe();
 
+      // Wait for the confirm modal's entrance transition to settle before
+      // clicking. A bare findByText resolves the instant the title mounts, while
+      // the modal is still animating in and its title transiently overlaps the
+      // Unsubscribe button — clicking then fails "covered by another element".
+      // Anchoring on the title being visible defers the click until the modal
+      // has finished opening.
       H.modal().within(() => {
-        cy.findByText("Confirm you want to unsubscribe");
+        cy.findByText("Confirm you want to unsubscribe").should("be.visible");
         cy.findByText("Unsubscribe").click();
       });
 

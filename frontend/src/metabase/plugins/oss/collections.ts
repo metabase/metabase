@@ -22,6 +22,7 @@ export type ItemWithCollection = { collection: CollectionEssentials };
 
 type GetCollectionIdType = (
   sourceCollectionId?: CollectionId | null,
+  options?: { disabled?: boolean },
 ) => CollectionId | null;
 
 export type CollectionAuthorityLevelDisplayProps = {

@@ -1,6 +1,6 @@
 (ns metabase.agent-lib.representations.resolve
   "Resolve a parsed (string-keyed, portable) representations query into canonical numeric-ID
-  pMBQL.
+  MBQL 5.
 
   Pipeline:
 
@@ -19,16 +19,18 @@
        * adds `:lib/uuid` to every clause;
        * keywordizes known enum values (temporal units, base-types, join strategies);
        * kebab-cases keys where applicable;
-       * attaches the metadata-provider at `:lib/metadata` so the result is a \"real\" pMBQL that
+       * attaches the metadata-provider at `:lib/metadata` so the result is a \"real\" MBQL 5 that
          can be handed to `lib.query` / the QP directly.
 
   The output is a valid MBQL 5 query ready for the query processor.
 
-  The inverse direction — final pMBQL back to portable form — is handled by [[export-query]];
+  The inverse direction — final MBQL 5 back to portable form — is handled by [[export-query]];
   the result is a Clojure map matching the external (keyword-keyed) shape, ready for JSON
   encoding or for handing back to the LLM as the canonical MBQL 5 representation."
   (:require
    [clojure.walk :as walk]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
@@ -76,7 +78,7 @@
 ;;; ============================================================
 
 (defn- annotate-field-types
-  "Walk a normalized pMBQL query and stamp `:base-type` / `:effective-type` on every
+  "Walk a normalized MBQL 5 query and stamp `:base-type` / `:effective-type` on every
   `[:field opts field-id]` clause whose integer `field-id` is known to `metadata-provider`
   but whose `opts` map is missing `:base-type`.
 
@@ -99,6 +101,29 @@
                             (cond-> (assoc opts :base-type (:base-type field))
                               (:effective-type field)
                               (assoc :effective-type (:effective-type field)))))
+           node))
+       node))
+   pmbql-query))
+
+(defn- annotate-metric-and-measure-ref-types
+  "BOT-1901: Stamp `:effective-type` on `:metric` / `:measure` refs missing it, computed
+  from the metric's / measure's aggregation definition — mirroring the FE's `lib.ref/ref-method
+  :metadata/metric`. Untyped refs poison arithmetic type inference in
+  [[metabase.agent-lib.representations.repair/assert-editor-accepts-expressions!]]"
+  [pmbql-query]
+  (walk/postwalk
+   (fn [node]
+     (if (and (vector? node)
+              (#{:metric :measure} (nth node 0 nil))
+              (map? (nth node 1 nil))
+              (pos-int? (nth node 2 nil))
+              (not (contains? (nth node 1) :effective-type)))
+       (let [md (case (nth node 0)
+                  :metric  (lib.metadata/metric pmbql-query (nth node 2))
+                  :measure (lib.metadata/measure pmbql-query (nth node 2)))
+             t  (when md (lib.metadata.calculation/type-of pmbql-query md))]
+         (if (and t (isa? t :type/*) (not= t :type/*))
+           (update node 1 assoc :effective-type t)
            node))
        node))
    pmbql-query))
@@ -162,10 +187,11 @@
          with-mp  (assoc resolved :lib/metadata metadata-provider)]
      (-> (lib.normalize/normalize ::lib.schema/query with-mp)
          (annotate-field-types metadata-provider)
+         annotate-metric-and-measure-ref-types
          validate-absolute-datetime-literals))))
 
 ;;; ============================================================
-;;; Export final pMBQL back to portable representations
+;;; Export final MBQL 5 back to portable representations
 ;;; ============================================================
 
 (defn- keyword->repr-string
@@ -198,7 +224,7 @@
     :else           x))
 
 (defn export-query
-  "Convert a final normalized numeric-ID pMBQL query back to portable representations data.
+  "Convert a final normalized numeric-ID MBQL 5 query back to portable representations data.
 
   This is the inverse of [[resolve-query]] for the agent/tool output path: table/field/card IDs
   are exported to portable FK paths / entity_ids, lib's normalized keyworded form is converted
@@ -233,5 +259,5 @@
      (try
        (export-query metadata-provider pmbql-query content-store)
        (catch Exception e
-         (log/warn e "Failed to export pMBQL query to portable representations; omitting from LLM payload")
+         (log/warnf "Failed to export MBQL 5 query to portable representations; omitting from LLM payload: %s" (ex-message e))
          nil)))))

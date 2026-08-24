@@ -1,10 +1,9 @@
 (ns metabase.query-processor.pivot.test-util
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.pivot.test-util]}}}}}}
   (:require
-   [clojure.test :as t]
    [metabase.lib.core :as lib]
-   [metabase.test :as mt]
-   [metabase.util.experiment :as experiment]))
+   [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.test :as mt]))
 
 (defn applicable-drivers
   "Drivers that these pivot table tests should run on"
@@ -97,41 +96,15 @@
 
 ;;; ---- Pivot-path parity check ----
 ;;;
-;;; The pivot dispatcher in `qp.pivot/run-pivot-query` uses the [[metabase.util.experiment]] framework to run BOTH
-;;; the multi-query and native paths whenever the driver supports `:native-pivot-tables`. In production the candidate
-;;; runs throttled and async; in tests we enable the experiment, run synchronously, and make a result mismatch fail
-;;; the surrounding test loudly.
-
-(defn- failing-report-fn
-  "Experiment report-fn that records a mismatch as a `clojure.test` failure."
-  [{exp-name :name :keys [match? control-outcome candidate-outcome]}]
-  (when-not match?
-    (t/do-report {:type     :fail
-                  :message  (format "Pivot parity mismatch in experiment %s" exp-name)
-                  :expected control-outcome
-                  :actual   candidate-outcome})))
-
-(defn do-with-pivot-parity-check
-  "Functional form of [[with-pivot-parity-check]]. Calls `thunk` with the pivot-native-vs-multi experiment enabled,
-  the candidate forced to run synchronously, and a report-fn that records mismatches as `clojure.test` failures.
-  All overrides are thread-local `binding`s, so the fixture is safe to use under `^:parallel` tests."
-  [thunk]
-  (binding [experiment/*enabled-override*   true
-            experiment/*report-fn-override* failing-report-fn
-            experiment/*sync?*              true]
-    (thunk)))
-
-(defmacro with-pivot-parity-check
-  "Run `body` with the pivot-native-vs-multi experiment forced on synchronously, with a report-fn that throws on
-  mismatch. Any pivot query inside `body` whose driver supports `:native-pivot-tables` runs through both paths and
-  the result row multisets are compared."
-  [& body]
-  `(do-with-pivot-parity-check (^:once fn* [] ~@body)))
+;;; `qp.pivot/run-pivot-query` runs both the native and multi-query paths and reports mismatches whenever
+;;; `qp.pivot/*check-pivot-parity?*` is on. That defaults to `true` in test builds, so every pivot query
+;;; in the test suite gets parity coverage automatically — no fixture required. Tests that intentionally
+;;; exercise behavior that differs between the two paths (e.g. the per-sub-query row cap applied by
+;;; `qp.pivot/pivot-query-max-rows`) can wrap the divergent block in [[without-pivot-parity-check]].
 
 (defmacro without-pivot-parity-check
-  "Disable the pivot-native-vs-multi parity check inside `body`. Use for tests whose query intentionally exercises
-  behavior that differs between the multi-query and native paths (e.g. the per-sub-query row cap applied by
-  `metabase.query-processor.pivot/pivot-query-max-rows`)."
+  "Disable pivot parity checking inside `body`. Use for tests whose query intentionally exercises behavior
+  that differs between the multi-query and native paths."
   [& body]
-  `(binding [experiment/*enabled-override* false]
+  `(binding [qp.pivot/*check-pivot-parity?* false]
      ~@body))

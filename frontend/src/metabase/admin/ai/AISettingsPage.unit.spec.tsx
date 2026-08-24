@@ -12,6 +12,9 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  setupLlmModelsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupMetabotPromptSuggestionsEndpoint,
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
@@ -101,20 +104,11 @@ const setup = async ({
       key: "llm-metabot-provider",
       value: null,
     }),
-    createMockSettingDefinition({
-      key: "llm-anthropic-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-openai-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-openrouter-api-key",
-      value: undefined,
-    }),
   ]);
   setupUpdateSettingEndpoint();
+  setupLlmProviderTypesEndpoint();
+  setupLlmProvidersEndpoint();
+  setupLlmModelsEndpoint();
   setupCollectionByIdEndpoint({ collections });
   setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
   setupCollectionsEndpoints({ collections: [] });
@@ -142,10 +136,24 @@ const setup = async ({
     },
   });
 
+  // Wait for the settings queries to settle before returning.
+  // When AI features are off the MCP toggles stay disabled by design, so there we just await render.
   if (page === "mcp") {
-    await screen.findByRole("switch", { name: "MCP server" });
+    if (aiFeaturesEnabled) {
+      await waitFor(() =>
+        expect(
+          screen.getByRole("switch", { name: "MCP server" }),
+        ).toBeEnabled(),
+      );
+    } else {
+      await screen.findByRole("switch", { name: "MCP server" });
+    }
   } else {
-    await screen.findByText("Disable all AI features");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("switch", { name: "Disable all AI features" }),
+      ).toBeEnabled(),
+    );
   }
 
   return view;
@@ -265,16 +273,16 @@ describe("AISettingsPage", () => {
   });
 
   it("switches tabs using a query param without changing the pathname", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       enableEmbedding: true,
       initialRoute: "/admin/metabot",
     });
 
     await userEvent.click(screen.getByRole("tab", { name: "Embedded" }));
 
-    expect(history?.getCurrentLocation()).toMatchObject({
+    expect(router?.location).toMatchObject({
       pathname: "/admin/metabot",
-      query: { metabot_id: String(FIXED_METABOT_IDS.EMBEDDED) },
+      search: `?metabot_id=${FIXED_METABOT_IDS.EMBEDDED}`,
       hash: "",
     });
   });

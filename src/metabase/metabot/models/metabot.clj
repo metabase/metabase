@@ -37,10 +37,6 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Metabot
-  [_table]
-  [:name])
-
 (defmethod serdes/deserialization-dependencies "Metabot"
   [{:keys [collection_id prompts]}]
   (cond-> (set (mapcat serdes/deserialization-dependencies prompts))

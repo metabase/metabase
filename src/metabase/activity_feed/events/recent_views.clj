@@ -10,8 +10,8 @@
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
-(derive ::dashboard-read :metabase/event)
-(derive :event/dashboard-read ::dashboard-read)
+(events/derive! ::dashboard-read :metabase/event)
+(events/derive! :event/dashboard-read ::dashboard-read)
 
 (m/defmethod events/publish-event! ::dashboard-read
   "Handle processing for a single event notification which should update the recent views for a user."
@@ -21,10 +21,10 @@
           user-id  (or user-id api/*current-user-id*)]
       (recent-views/update-users-recent-views! user-id :model/Dashboard model-id :view))
     (catch Throwable e
-      (log/warnf e "Failed to process recent_views event: %s" topic))))
+      (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))
 
-(derive ::table-read :metabase/event)
-(derive :event/table-read ::table-read)
+(events/derive! ::table-read :metabase/event)
+(events/derive! :event/table-read ::table-read)
 
 (m/defmethod events/publish-event! ::table-read
   "Handle processing for a single table read event."
@@ -39,10 +39,10 @@
               user-id  (or user-id api/*current-user-id*)]
           (recent-views/update-users-recent-views! user-id :model/Table model-id :view)))
       (catch Throwable e
-        (log/warnf e "Failed to process recent_views event: %s" topic)))))
+        (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e))))))
 
-(derive ::card-query-event :metabase/event)
-(derive :event/card-query ::card-query-event)
+(events/derive! ::card-query-event :metabase/event)
+(events/derive! :event/card-query ::card-query-event)
 
 (m/defmethod events/publish-event! ::card-query-event
   "Handle processing for a single card query event."
@@ -55,10 +55,10 @@
                  (not (t2/select-one-fn :document_id :model/Card :id card-id)))
         (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e
-      (log/warnf e "Failed to process recent_views event: %s" topic))))
+      (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))
 
-(derive ::card-create-with-result-metadata :metabase/event)
-(derive :event/card-create-with-result-metadata ::card-create-with-result-metadata)
+(events/derive! ::card-create-with-result-metadata :metabase/event)
+(events/derive! :event/card-create-with-result-metadata ::card-create-with-result-metadata)
 
 (m/defmethod events/publish-event! ::card-create-with-result-metadata
   "Handle recent-view processing for created cards with result metadata."
@@ -66,11 +66,11 @@
   (try
     (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card card-id :view)
     (catch Throwable e
-      (log/warnf e "Failed to process recent_views event: %s" topic))))
+      (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))
 
-(derive ::legacy-card-event :metabase/event)
+(events/derive! ::legacy-card-event :metabase/event)
 ;; in practice, updating or creating a card will immediately trigger a card-read
-(derive :event/card-read ::legacy-card-event)
+(events/derive! :event/card-read ::legacy-card-event)
 
 (m/defmethod events/publish-event! ::legacy-card-event
   "Handle recent-view processing for card reads"
@@ -82,10 +82,10 @@
       (try
         (recent-views/update-users-recent-views! user-id :model/Card object-id :view)
         (catch Throwable e
-          (log/warnf e "Failed to process recent_views event: %s" topic))))))
+          (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))))
 
-(derive ::collection-touch-event :metabase/event)
-(derive :event/collection-touch ::collection-touch-event)
+(events/derive! ::collection-touch-event :metabase/event)
+(events/derive! :event/collection-touch ::collection-touch-event)
 
 (m/defmethod events/publish-event! ::collection-touch-event
   "Handle processing for a single collection touch event."
@@ -93,4 +93,4 @@
   (try
     (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Collection collection-id :view)
     (catch Throwable e
-      (log/warnf e "Failed to process recent_views event: %s" topic))))
+      (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))

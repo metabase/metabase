@@ -1,8 +1,9 @@
 import { merge } from "icepick";
 
+import type { FunnelDatum } from "metabase/visualizations/lib/funnel/types";
 import { calculateFunnelSteps } from "metabase/visualizations/lib/funnel/utils";
 
-import type { FunnelDatum, FunnelSettings } from "../types";
+import type { FunnelSettings } from "../types";
 
 import { calculateFunnelPolygonPoints, reorderData } from "./funnel";
 

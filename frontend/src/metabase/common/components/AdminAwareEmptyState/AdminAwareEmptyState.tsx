@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import type { IconName } from "metabase-types/api";
 /*
  * AdminAwareEmptyState is a component that can

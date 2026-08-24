@@ -110,7 +110,7 @@
       (try
         (send-notification! (notification-info pulse dashboard pulse-channel) :notification/sync? (not async?))
         (catch Exception e
-          (log/errorf e "[Pulse %d] Error sending to %s channel" (:id pulse) (:channel_type pulse-channel)))))
+          (log/errorf "[Pulse %d] Error sending to %s channel: %s" (:id pulse) (:channel_type pulse-channel) (ex-message e)))))
     nil))
 
 (defn pulse->task-run-info

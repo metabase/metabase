@@ -57,7 +57,7 @@
            :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]})
         query-result))
     (catch Exception e
-      (log/error e "Failed to construct slackbot notebook query")
+      (log/errorf "Failed to construct slackbot notebook query: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}))))

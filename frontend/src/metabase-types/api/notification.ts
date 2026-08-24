@@ -125,14 +125,14 @@ export type NotificationCronSubscription = {
   updated_at?: string;
 };
 
-export interface ListNotificationsRequest extends PaginationRequest {
+export type ListNotificationsRequest = PaginationRequest & {
   include_inactive?: boolean;
   creator_id?: UserId;
   recipient_id?: UserId;
   creator_or_recipient_id?: UserId;
   card_id?: CardId;
   permission_group_id?: number;
-}
+};
 
 export type CreateAlertNotificationRequest = NotificationCardData & {
   handlers: NotificationHandler[];

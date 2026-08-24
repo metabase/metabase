@@ -125,7 +125,7 @@ const databaseTestCases = [
   {
     engine: "Redshift",
     connectionString:
-      "jdbc:redshift://examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com:5439/dev",
+      "jdbc:redshift://examplecluster.abc123xyz789.us-west-2.redshift.amazonaws.com:5439/dev;UID=testuser;PWD=testpass;SocketTimeout=0",
     expectedFields: [
       {
         label: "Host",
@@ -134,6 +134,12 @@ const databaseTestCases = [
       { label: "Port", value: "5439" },
       { label: "Database name", value: "dev" },
       { label: "Display name", value: "dev" },
+      { label: "Username", value: "testuser" },
+      { label: "Password", value: "testpass" },
+      {
+        label: "Additional JDBC connection string options",
+        value: "SocketTimeout=0",
+      },
     ],
   },
   {

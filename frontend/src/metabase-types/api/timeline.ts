@@ -59,10 +59,10 @@ export interface TimelineEventData {
   question_id?: CardId;
 }
 
-export interface ListTimelinesRequest {
+export type ListTimelinesRequest = {
   include?: "events";
   archived?: boolean;
-}
+};
 
 export interface ListCollectionTimelinesRequest {
   id: CollectionId;

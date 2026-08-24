@@ -10,6 +10,19 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+(defonce ^{:private true
+           :doc "Hierarchy of declared reaction types, all descending from `:metabot/registered-action`. Kept
+  separate from Clojure's global hierarchy so that a registration here cannot collide with other users of the global
+  hierarchy, and so the watch below only fires for reaction registrations."}
+  hierarchy
+  (make-hierarchy))
+
+(defn- derive!
+  "Make `parent` an ancestor of `tag` in the reaction [[hierarchy]]."
+  [tag parent]
+  (alter-var-root #'hierarchy derive tag parent)
+  nil)
+
 (mr/def ::reaction-type
   "A Metabot reaction type keyword e.g. `:metabot.reaction/message`"
   [:fn
@@ -26,13 +39,13 @@
   The schema name matches the reaction-name."
   [reaction-name :- ::reaction-type
    schema]
-  (derive reaction-name :metabot/registered-action)
+  (derive! reaction-name :metabot/registered-action)
   (mr/register! reaction-name schema))
 
 (defn- known-reaction-types
   "Reaction types with schemas that were declared with [[defreaction]]."
   []
-  (descendants :metabot/registered-action))
+  (descendants hierarchy :metabot/registered-action))
 
 ;;; this is just a placeholder so LSP can register the place it lives for jump-to-definition functionality. Actual
 ;;; schema gets created below by [[reaction-schema]] and [[update-reaction-schema!]]
@@ -58,7 +71,7 @@
 (update-reaction-schema!)
 
 ;;; when the descendants of `:metabot/registered-action` change update the `::reaction` schema
-(add-watch #'clojure.core/global-hierarchy
+(add-watch #'hierarchy
            ::update-reaction-schema
            (fn [_key _ref old-hierarchy new-hierarchy]
              (when-not (= (descendants old-hierarchy :metabot/registered-action)

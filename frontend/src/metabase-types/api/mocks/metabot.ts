@@ -31,6 +31,7 @@ export const createMockMetabotConversation = (
   profile_id: null,
   message_count: 1,
   last_message_at: new Date().toISOString(),
+  forked_from_conversation_id: null,
   ...opts,
 });
 

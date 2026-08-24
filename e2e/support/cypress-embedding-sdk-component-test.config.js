@@ -9,7 +9,7 @@ const embeddingSdkComponentTestConfig = {
   video: false,
   experimentalMemoryManagement: true,
   numTestsKeptInMemory: 1,
-  specPattern: "e2e/test-component/scenarios/embedding-sdk/**/*.cy.spec.tsx",
+  specPattern: "e2e/test-component/scenarios/**/*.cy.spec.tsx",
   indexHtmlFile: "e2e/support/component-index.html",
   supportFile: "e2e/support/component-cypress.js",
 

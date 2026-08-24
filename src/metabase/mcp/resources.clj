@@ -37,7 +37,7 @@
   (str "<!doctype html><html><head><base href=\"{{{instanceUrlRaw}}}/\"></head><body><script>"
        "window.metabaseConfig = {"
        "instanceUrl: {{{instanceUrl}}},"
-       "sessionToken: {{{sessionToken}}}"
+       "uiCredential: {{{uiCredential}}}"
        "};</script></body></html>"))
 
 ;; An atom rather than a dynamic var because `resources/read` is invoked from the
@@ -63,7 +63,7 @@
 
 (defn render-embed-mcp-template
   "Render the embed-mcp.html Mustache template with the given vars map.
-   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :sessionToken (JSON-encoded or nil),
+   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :uiCredential (JSON-encoded or nil),
    :mcpSessionId (JSON-encoded or nil)."
   [vars]
   (cond
@@ -290,14 +290,14 @@
    distinct bodies the second URI's asset is silently dropped and the widget 404s."
   [tag]
   (fn [opts]
-    (let [site-url    (system/site-url)
-          session-key (:session-key opts)
-          session-id  (:session-id opts)]
+    (let [site-url      (system/site-url)
+          ui-credential (:ui-credential opts)
+          session-id    (:session-id opts)]
       (str "<!-- metabase-mcp-asset: " tag " -->\n"
            (render-embed-mcp-template
             {:instanceUrl    (json/encode site-url)
              :instanceUrlRaw site-url
-             :sessionToken   (when session-key (json/encode session-key))
+             :uiCredential   (when ui-credential (json/encode ui-credential))
              :mcpSessionId   (when session-id (json/encode session-id))})))))
 
 (register-ui-resource!

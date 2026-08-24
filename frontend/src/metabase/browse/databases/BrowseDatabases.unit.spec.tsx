@@ -8,7 +8,7 @@ import {
 } from "__support__/ui";
 import { BrowseSchemas } from "metabase/browse/schemas/BrowseSchemas";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -17,8 +17,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { BrowseDatabases } from "./BrowseDatabases";
-
-const RoutedBrowseSchemas = withRouteProps(BrowseSchemas);
 
 type setupOpts = {
   isAdmin?: boolean;
@@ -51,10 +49,7 @@ describe("BrowseDatabases", () => {
       return renderWithProviders(
         <>
           <Route path="/browse/databases" element={<BrowseDatabases />} />
-          <Route
-            path="/browse/databases/:slug"
-            element={<RoutedBrowseSchemas />}
-          />
+          <Route path="/browse/databases/:slug" element={<BrowseSchemas />} />
         </>,
         {
           storeInitialState: createMockState({ currentUser: createMockUser() }),
@@ -78,16 +73,14 @@ describe("BrowseDatabases", () => {
       });
 
     it("opens the database under its name url when the name is unique", async () => {
-      const { history } = renderBrowseDatabasesWithRouter([
+      const { router } = renderBrowseDatabasesWithRouter([
         databaseWithSchemas(7, "Sales", ["PUBLIC", "ANALYTICS"]),
       ]);
 
       await userEvent.click(await screen.findByText("Sales"));
 
       expect(await screen.findByText("PUBLIC")).toBeInTheDocument();
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/browse/databases/Sales",
-      );
+      expect(router?.location.pathname).toBe("/browse/databases/Sales");
     });
 
     it.each([
@@ -110,16 +103,14 @@ describe("BrowseDatabases", () => {
 
     it("opens a database whose name starts with a digit", async () => {
       // "7-sales" as a url segment would be read back as database 7
-      const { history } = renderBrowseDatabasesWithRouter([
+      const { router } = renderBrowseDatabasesWithRouter([
         databaseWithSchemas(3, "7-sales", ["ONE", "TWO"]),
       ]);
 
       await userEvent.click(await screen.findByText("7-sales"));
 
       expect(await screen.findByText("ONE")).toBeInTheDocument();
-      expect(history?.getCurrentLocation().pathname).not.toBe(
-        "/browse/databases/7-sales",
-      );
+      expect(router?.location.pathname).not.toBe("/browse/databases/7-sales");
     });
   });
 

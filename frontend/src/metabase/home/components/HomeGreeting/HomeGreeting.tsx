@@ -5,27 +5,27 @@ import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import animationStyles from "metabase/css/core/animation.module.css";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import { Flex, Tooltip } from "metabase/ui";
-
-import { getHasMetabotLogo } from "../../selectors";
 
 import S from "./HomeGreeting.module.css";
 
-export const HomeGreeting = (): JSX.Element => {
+export const HomeGreeting = (): JSX.Element | null => {
   const user = useSelector(getUser);
-  const showLogo = useSelector(getHasMetabotLogo);
+  const showGreeting = useSetting("show-metabot");
   const name = user?.first_name;
   const message = useMemo(() => getMessage(name), [name]);
 
+  if (!showGreeting) {
+    return null;
+  }
+
   return (
     <Flex align="center">
-      {showLogo && <MetabotGreeting />}
-      <span
-        data-testid="greeting-message"
-        className={cx(S.greetingMessage, showLogo ? S.withLogo : S.withoutLogo)}
-      >
+      <MetabotGreeting />
+      <span data-testid="greeting-message" className={S.greetingMessage}>
         {message}
       </span>
     </Flex>

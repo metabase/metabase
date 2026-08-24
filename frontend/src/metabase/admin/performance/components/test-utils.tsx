@@ -14,7 +14,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import type { TokenFeatures } from "metabase-types/api";
+import type { CacheConfig, TokenFeatures } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import {
   createMockCacheConfig,
@@ -31,11 +31,29 @@ import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 export interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   tokenFeatures?: Partial<TokenFeatures>;
+  cacheConfigs?: CacheConfig[];
 }
+
+const getDefaultCacheConfigs = (): CacheConfig[] => [
+  createMockCacheConfigWithMultiplierStrategy({ model_id: 1 }),
+  createMockCacheConfigWithDoNotCacheStrategy({ model_id: 2 }),
+  createMockCacheConfigWithDurationStrategy({ model_id: 3 }),
+  createMockCacheConfig({
+    model: "root",
+    model_id: 0,
+    strategy: {
+      type: "duration",
+      duration: 1,
+      unit: CacheDurationUnit.Hours,
+      refresh_automatically: false,
+    },
+  }),
+];
 
 export const setupStrategyEditorForDatabases = ({
   enterprisePlugins,
   tokenFeatures = {},
+  cacheConfigs = getDefaultCacheConfigs(),
 }: SetupOpts = {}) => {
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({}),
@@ -55,21 +73,6 @@ export const setupStrategyEditorForDatabases = ({
   }
   setupTokenStatusEndpoint({ valid: !!enterprisePlugins });
 
-  const cacheConfigs = [
-    createMockCacheConfigWithMultiplierStrategy({ model_id: 1 }),
-    createMockCacheConfigWithDoNotCacheStrategy({ model_id: 2 }),
-    createMockCacheConfigWithDurationStrategy({ model_id: 3 }),
-    createMockCacheConfig({
-      model: "root",
-      model_id: 0,
-      strategy: {
-        type: "duration",
-        duration: 1,
-        unit: CacheDurationUnit.Hours,
-        refresh_automatically: false,
-      },
-    }),
-  ];
   setupPerformanceEndpoints(cacheConfigs);
 
   const databases = Array.from({ length: 4 }, (_, i) =>

@@ -54,10 +54,10 @@ export type RevisionEntityType =
   | "document"
   | "transform";
 
-export interface ListRevisionRequest {
+export type ListRevisionRequest = {
   entity: RevisionEntityType;
   id: number | string;
-}
+};
 
 export interface RevertRevisionRequest {
   entity: RevisionEntityType;

@@ -100,6 +100,7 @@ jobs:
     env:
       MB_EDITION: ee
       MB_RUN_MODE: e2e
+      MB_WAREHOUSE_ALLOWED_NETWORKS: "allow-all"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
@@ -156,9 +157,9 @@ jobs:
           REPO_URL="https://github.com/metabase/${REPO_NAME}.git"
           echo "Checking if branch '${SAMPLE_APP_BRANCH_NAME}' exists in ${REPO_URL}..."
           if git ls-remote --exit-code --heads "$REPO_URL" "${SAMPLE_APP_BRANCH_NAME}"; then
-            echo "sample_app_branch_exists=true" >> $GITHUB_OUTPUT
+            echo "sample_app_branch_exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "sample_app_branch_exists=false" >> $GITHUB_OUTPUT
+            echo "sample_app_branch_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Prepare and launch Sample Apps
@@ -211,6 +212,7 @@ jobs:
     env:
       MB_EDITION: ee
       MB_RUN_MODE: e2e
+      MB_WAREHOUSE_ALLOWED_NETWORKS: "allow-all"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
@@ -278,6 +280,7 @@ jobs:
     env:
       MB_EDITION: ee
       MB_RUN_MODE: e2e
+      MB_WAREHOUSE_ALLOWED_NETWORKS: "allow-all"
       METASTORE_DEV_SERVER_URL: ${{ secrets.METASTORE_DEV_SERVER_URL }}
       CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
@@ -360,6 +363,7 @@ jobs:
         test_suite:
           [
             "vite-6-host-app-e2e",
+            "vite-6-data-app-host-app-e2e",
             "next-15-app-router-host-app-e2e",
             "next-15-pages-router-host-app-e2e",
             "angular-20-host-app-e2e",

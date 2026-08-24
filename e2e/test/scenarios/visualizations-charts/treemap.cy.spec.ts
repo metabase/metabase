@@ -88,6 +88,7 @@ describe("scenarios > visualizations > treemap", () => {
       .and("contain", "Nuts");
 
     cy.log("Clicking a group drills into it");
+    H.ensureChartIsActive();
     H.echartsContainer().findByText("Legumes").click();
 
     treemapBreadcrumb()

@@ -6,11 +6,10 @@ import {
   useGetChannelInfoQuery,
   useListSecurityAdvisoriesQuery,
 } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
-import { getPlan } from "metabase/common/utils/plan";
+import { getUserIsAdmin } from "metabase/current-user";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getPlan, useSetting } from "metabase/settings";
 import { Icon } from "metabase/ui";
 
 import { isAffected } from "../../utils";

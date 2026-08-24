@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { BaseUpsellPage } from "metabase/data-studio/upsells/pages/BaseUpsellPage";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { BaseUpsellPage } from "metabase/monitor/upsells";
 
 export function DependencyDiagnosticsUpsellPage() {
   usePageTitle(t`Dependency diagnostics`);

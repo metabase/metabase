@@ -1,7 +1,7 @@
-import { formatPercent } from "metabase/static-viz/lib/numbers";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
+import { formatPercent } from "metabase/utils/formatting";
 import type { RenderingContext } from "metabase/visualizations/types";
 
+import { DEFAULT_VISUALIZATION_THEME } from "../../../../shared/utils/theme";
 import type { TreemapTree } from "../model/types";
 
 import { getTreemapChartOption } from "./option";

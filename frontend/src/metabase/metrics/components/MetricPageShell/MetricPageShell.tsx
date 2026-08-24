@@ -7,7 +7,7 @@ import type { CollectionPickerValueItem } from "metabase/common/components/Picke
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import type { Card } from "metabase-types/api";
 
 import { CollectionBreadcrumbs } from "../CollectionBreadcrumbs";
@@ -33,6 +33,7 @@ export function MetricPageShell({
   const [updateCard] = useUpdateCardMutation();
   const [deleteCard] = useDeleteCardMutation();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   return (
     <>
@@ -54,7 +55,7 @@ export function MetricPageShell({
           onDeletePermanently={async () => {
             try {
               await deleteCard(card.id).unwrap();
-              dispatch(push("/trash"));
+              navigate("/trash");
               dispatch(
                 addUndo({
                   message: t`This item has been permanently deleted.`,

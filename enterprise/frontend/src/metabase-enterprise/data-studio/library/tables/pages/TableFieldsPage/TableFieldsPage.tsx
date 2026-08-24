@@ -15,6 +15,7 @@ import {
   SyncOptionsModal,
   TableSection,
 } from "metabase/metadata/components";
+import { useParams } from "metabase/router";
 import {
   Box,
   Button,
@@ -37,11 +38,8 @@ type TableFieldsPageParams = {
   fieldId?: string;
 };
 
-type TableFieldsPageProps = {
-  params: TableFieldsPageParams;
-};
-
-export function TableFieldsPage({ params }: TableFieldsPageProps) {
+export function TableFieldsPage() {
+  const params = useParams<TableFieldsPageParams>();
   const tableId = Urls.extractEntityId(params.tableId);
   const fieldId = Urls.extractEntityId(params.fieldId);
   const { table, isLoading, error } = useLoadTableWithMetadata(tableId);

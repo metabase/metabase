@@ -5,6 +5,10 @@ import { getBaseColorsForThemeDefinitionOnly } from "../base-colors";
 
 const baseColors = getBaseColorsForThemeDefinitionOnly();
 
+// `orion[110]` at 20% opacity. Kept off the alpha scale because `orionAlpha` is
+// based on `orion[100]`.
+const ORION_110_ALPHA_20 = "hsla(205, 63%, 5%, 0.2)";
+
 // To be removed once the rename in GDGT-2517 is complete. Prefer the keys in
 // `actualColors` below.
 const deprecatedColors = {
@@ -38,10 +42,10 @@ const deprecatedColors = {
   error: baseColors.lobster[50],
   filter: baseColors.octopus[40],
   focus: baseColors.blue[70],
-  "icon-brand": "var(--mb-color-text-brand)",
-  "icon-primary": "var(--mb-color-text-primary)",
-  "icon-disabled": "var(--mb-color-text-disabled)",
-  "icon-secondary": "var(--mb-color-text-secondary)",
+  "icon-brand": baseColors.brand[40], // Matches text-brand
+  "icon-primary": baseColors.orionAlphaInverse[80], // Matches text-primary
+  "icon-disabled": baseColors.orionAlphaInverse[40], // Matches text-disabled
+  "icon-secondary": baseColors.orionAlphaInverse[60], // Matches text-secondary
   "illustration-brand-secondary": baseColors.brand[80],
   "illustration-brand-tertiary": baseColors.brand[90],
   "metabase-brand": baseColors.blue[40],
@@ -51,7 +55,7 @@ const deprecatedColors = {
   "saturated-purple": baseColors.octopus[40],
   "saturated-red": baseColors.lobster[40],
   "saturated-yellow": baseColors.dubloon[30],
-  shadow: `color-mix(in srgb, ${baseColors.orion[110]} 20%, transparent)`,
+  shadow: ORION_110_ALPHA_20,
   "success-secondary": baseColors.palm[40],
   success: baseColors.palm[50],
   summarize: baseColors.palm[40],
@@ -71,23 +75,21 @@ const deprecatedColors = {
   "border-strong": baseColors.orionAlphaInverse[30],
   "border-stronger": baseColors.orionAlphaInverse[50],
   "border-subtle": baseColors.orionAlphaInverse[10],
-  gold: "#FFD700",
+  gold: baseColors.gold,
   "upsell-primary": baseColors.ocean[30],
   "upsell-secondary": baseColors.ocean[80],
-  "upsell-gem": "#00d4ff",
+  "upsell-gem": baseColors.upsellGem,
 };
 
 const actualColors = {
   "background_page-filter": baseColors.filter[90],
   "background_page-highlighted":
     "color-mix(in srgb, var(--mb-color-core-brand) 7%, transparent)",
-  "background_page-primary": baseColors.orion[100],
-  "background_page-primary-inverse": "white",
-  "background_page-secondary":
-    "color-mix(in srgb, var(--mb-color-background_page-primary), black 25%)",
+  "background_page-primary": baseColors.orion[95],
+  "background_page-primary-inverse": baseColors.white,
+  "background_page-secondary": baseColors.orion[100],
   "background_page-secondary-inverse": baseColors.orion[5],
-  "background_page-tertiary":
-    "color-mix(in srgb, var(--mb-color-background_page-primary), black 50%)",
+  "background_page-tertiary": baseColors.orion[110],
   "background_page-tertiary-inverse": baseColors.orion[10],
   "background_surface-brand-strong": baseColors.brand[20],
   "background_surface-brand-strong-hover": baseColors.brand[10],
@@ -104,10 +106,9 @@ const actualColors = {
   "background_surface-error-subtle": baseColors.lobster[90],
   "background_surface-hover":
     "color-mix(in srgb, var(--mb-color-core-brand) 7%, transparent)",
-  "background_surface-primary": "var(--mb-color-background_page-primary)",
+  "background_surface-primary": baseColors.orion[95], // Matches background_page-primary
   "background_surface-primary-hover": baseColors.orionAlphaInverse[20],
-  "background_surface-primary-inverse":
-    "var(--mb-color-background_page-primary-inverse)",
+  "background_surface-primary-inverse": baseColors.white, // Matches background_page-primary-inverse
   "background_surface-primary-inverse-hover": baseColors.orionAlpha[10],
   "background_surface-primary-inverse-pressed": baseColors.orionAlpha[20],
   "background_surface-primary-pressed": baseColors.orionAlphaInverse[10],
@@ -130,7 +131,7 @@ const actualColors = {
   "border-neutral-subtle": baseColors.orionAlphaInverse[10],
   "core-blue-saturated": baseColors.ocean[40],
   "core-brand-hover": baseColors.brand[30],
-  "core-gold": "#FFD700",
+  "core-gold": baseColors.gold,
   "core-green-saturated": baseColors.palm[40],
   "core-info": baseColors.orion[50],
   "core-metabase_brand": baseColors.blue[40],
@@ -138,7 +139,7 @@ const actualColors = {
   "core-purple-saturated": baseColors.octopus[40],
   "core-red-saturated": baseColors.lobster[40],
   "core-white": baseColors.orion[110],
-  "core-white_constant": "white",
+  "core-white_constant": baseColors.white,
   "core-yellow-saturated": baseColors.dubloon[30],
   "feedback-negative": baseColors.lobster[50],
   "feedback-negative-strong": baseColors.lobster[30],
@@ -155,7 +156,7 @@ const actualColors = {
   "navbar-admin": baseColors.octopus[80],
   "navbar-admin-inverse": baseColors.octopus[60],
   "navbar-admin-secondary": baseColors.octopus[60],
-  "shadow-default": `color-mix(in srgb, ${baseColors.orion[110]} 20%, transparent)`,
+  "shadow-default": ORION_110_ALPHA_20,
   "switch-off": baseColors.orionAlphaInverse[20],
   "text-brand": baseColors.brand[40],
   "text-brand-hover": baseColors.brand[30],
@@ -172,7 +173,7 @@ const actualColors = {
   "text-syntax-parameter": baseColors.mango[40],
   "text-syntax-parameter-active": baseColors.mango[90],
   "tooltip-background": baseColors.orion[70],
-  "tooltip-background-focused": `color-mix(in srgb, ${baseColors.orion[70]} 50%, #000)`,
+  "tooltip-background-focused": baseColors.orion[80],
   "tooltip-text": baseColors.orionAlphaInverse[80],
   "tooltip-text-secondary": baseColors.orionAlphaInverse[60],
 };

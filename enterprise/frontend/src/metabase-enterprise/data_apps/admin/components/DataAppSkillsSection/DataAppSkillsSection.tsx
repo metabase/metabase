@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { CopyTextArea } from "metabase/common/components/CopyTextArea";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Stack, Text, Title } from "metabase/ui";
 import {
   isLocalOrSnapshotVersion,

@@ -258,11 +258,12 @@
                                          :from     [[:permissions_group_membership :pgm]]
                                          :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
                                          :where    [:and
-                                                    [:exists {:select [1]
-                                                              :from [[:permissions :p]]
-                                                              :where [:and
-                                                                      [:= :p.group_id :pg.id]
-                                                                      [:= :p.object monitoring]]}]]
+                                                    [:exists ^:allow-subquery
+                                                     {:select [1]
+                                                      :from [[:permissions :p]]
+                                                      :where [:and
+                                                              [:= :p.group_id :pg.id]
+                                                              [:= :p.object monitoring]]}]]
                                          :group-by [:pgm.user_id]}
                                         app-db/query
                                         (mapv :user_id)))
@@ -397,7 +398,7 @@
          :message      (channel.template/render template-name template-context)
          :bcc?         bcc?})
        (catch Exception e
-         (log/errorf e "Failed to send message to '%s' with subject '%s'" (str/join ", " recipients) subject))))))
+         (log/errorf "Failed to send message to %d recipient(s): %s" (count recipients) (ex-message e)))))))
 
 (defn- send-email!
   "Sends an email on a background thread, returning a future."

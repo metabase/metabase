@@ -101,12 +101,12 @@
       (mt/with-log-messages-for-level [messages :error]
         (is (=? {:specific-errors {:username ["missing required key, received: nil"]}}
                 (mt/client :post 400 "session" {:email (:email user), :password "wooo"})))
-        (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+        (is (=? {:level :error, :e nil, :message #"^Authentication endpoint error: .+"}
                 (or (->> (messages)
                          ;; geojson can throw errors and we want the authentication error
                          ;;
                          ;; TODO -- huh? geojson???? -- Cam
-                         (m/find-first #(= (:message %) "Authentication endpoint error")))
+                         (m/find-first #(re-find #"^Authentication endpoint error" (:message %))))
                     ["no matching message:" (messages)])))))))
 
 (deftest login-validation-username-required-test
@@ -154,7 +154,9 @@
       (testing "Error should be logged (#14317)"
         (mt/with-log-messages-for-level [messages :error]
           (login)
-          (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+          (is (=? {:level   :error
+                   :e       nil
+                   :message #"^Authentication endpoint error: Too many attempts! You must wait \d+ seconds before trying again\.$"}
                   (first (messages))))))
       (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))

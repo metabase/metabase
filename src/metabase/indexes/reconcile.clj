@@ -147,5 +147,5 @@
   (try
     (vec (driver/fetch-table-indexes (:engine database) database schema table-name))
     (catch Throwable t
-      (log/warnf t "fetch-table-indexes failed for %s.%s" schema table-name)
+      (log/warnf "fetch-table-indexes failed for %s.%s: %s" schema table-name (ex-message t))
       nil)))

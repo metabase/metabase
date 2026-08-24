@@ -530,7 +530,7 @@
   (try
     (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
     (catch Throwable e
-      (log/error e "Sending usage stats FAILED"))))
+      (log/errorf "Sending usage stats FAILED: %s" (ex-message e)))))
 
 (defn- in-docker?
   "Is the current Metabase process running in a Docker container?
@@ -794,7 +794,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :scim :multi-factor-auth :sandboxes :email-allow-list :semantic-search :workspaces]]
+  (let [features [:sso-jwt :sso-saml :scim :multi-factor-auth :sandboxes :email-allow-list :semantic-search]]
     (map
      (fn [feature]
        {:name      feature

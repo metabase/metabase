@@ -49,7 +49,15 @@
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
-(driver/register! :starburst, :parent #{:sql-mbql5 :sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :starburst, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/host-carrying-parameters :starburst
+  [_driver]
+  ["httpProxy" "socksProxy"])
+
+(defmethod driver/non-host-parameters :starburst
+  [_driver]
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
 
 (set! *warn-on-reflection* true)
 
@@ -67,6 +75,7 @@
                               :convert-timezone                true
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
+                              :native-pivot-tables             true
                               :now                             true
                               :database-routing                true
                               :connection-impersonation        true}]
@@ -312,7 +321,7 @@
   [driver [_ _opts pred]]
   ;; starburst will use the precision given here in the final expression, which chops off digits
   ;; need to explicitly provide two digits after the decimal
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :sum-where 1.00M pred)))
+  (sql.qp/->honeysql driver [:sum-where {} 1.00M pred]))
 
 (defmethod sql.qp/->honeysql [:starburst :time]
   [_ [_ _opts t]]
@@ -457,8 +466,8 @@
       ;; included in trino-jdbc. We check the vendor-specific error code instead.
       ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
       (when (= 133001 (.getErrorCode e))
-        (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
-                    table-schema table-name))
+        (log/debugf "Table %s.%s is not accessible through this catalog (mixed catalog table type): %s"
+                    table-schema table-name (ex-message e)))
       false)))
 
 (defn- describe-schema
@@ -508,7 +517,7 @@
                             [[schema name] comment])))
                   (jdbc/reducible-result-set rs {})))))
       (catch Throwable e
-        (log/debug e "Failed to read table comments from system.metadata.table_comments")
+        (log/debugf "Failed to read table comments from system.metadata.table_comments: %s" (ex-message e))
         {}))))
 
 (defmethod driver/describe-database* :starburst
@@ -607,7 +616,7 @@
        (try
          (.setReadOnly conn true)
          (catch Throwable e
-           (log/warn e "Error setting starburst connection to read-only")))
+           (log/warnf "Error setting starburst connection to read-only: %s" (ex-message e))))
        ;; as with statement and prepared-statement, cannot set holdability on the connection level
        conn
        (catch Throwable e
@@ -791,7 +800,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting prepared statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (if (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
         (proxy-prepared-statement driver conn stmt params)
         (proxy-optimized-prepared-statement driver conn stmt params))
@@ -808,7 +817,7 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (catch Throwable e
-        (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
+        (log/debugf "Error setting statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
     (proxy [java.sql.Statement] []
       (execute [sql]
         (try
@@ -999,7 +1008,7 @@
 
 (defmethod sql.qp/inline-value [:starburst String]
   [_ ^String s]
-  (str \' (sql.u/escape-sql s :ansi) \'))
+  (sql.u/quote-literal s :ansi))
 
 (defmethod sql.qp/inline-value [:starburst Time]
   [driver t]
@@ -1033,7 +1042,7 @@
 
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 ;; starburst returns line numbers in error messages which will be off by 1 if
 ;; the remark is prepended (#64133)

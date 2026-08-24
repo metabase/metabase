@@ -6,8 +6,8 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { Flex } from "metabase/ui";
+import { useForceUpdate } from "metabase/utils/use-force-update";
 
 import { FormatButton } from "../FormatButton/FormatButton";
 

@@ -1,4 +1,5 @@
 name: Create Backport PR
+description: Cherry-picks a commit onto a release branch and opens the backport pull request.
 
 inputs:
   target-version: # major version number like 34 or 86
@@ -42,7 +43,7 @@ runs:
           git cherry-pick --abort
 
           echo "Could not cherry pick because of a conflict"
-          echo "has-conflicts=true" >> $GITHUB_OUTPUT
+          echo "has-conflicts=true" >> "$GITHUB_OUTPUT"
 
           # Add a shell script for resolving conflicts
           echo "git reset HEAD~1" > ./backport.sh
@@ -57,27 +58,30 @@ runs:
           #${ORIGINAL_PULL_REQUEST_NUMBER}
           > [!IMPORTANT]
           > Manual conflict resolution is required.
-          > Checkout the branch and run \`./backport.sh\` script. Force push your changes after cherry-picking. Check the box below when done.
+          > Checkout the branch and run \`./backport.sh\` script. Force push your changes after cherry-picking. Mark the PR as ready for review once conflicts have been addressed.
 
           Conflicts:
           \`\`\`shell
           ${CONFLICT_LIST}
           \`\`\`
-
-          - [ ] Conflicts resolved
         END
           )
         else
-          echo "has-conflicts=false" >> $GITHUB_OUTPUT
+          echo "has-conflicts=false" >> "$GITHUB_OUTPUT"
           PR_BODY="#${ORIGINAL_PULL_REQUEST_NUMBER}"
         fi
 
         git push -u origin ${BACKPORT_BRANCH}
 
-        BACKPORT_PR_URL=$(gh pr create --base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "🤖 backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
+        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "🤖 backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
+        if [ "$CONFLICTS" -gt 0 ]; then
+          PR_ARGS+=(--draft)
+        fi
+
+        BACKPORT_PR_URL=$(gh pr create "${PR_ARGS[@]}")
         BACKPORT_PR_NUMBER=${BACKPORT_PR_URL##*/}
 
-        echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> $GITHUB_OUTPUT
+        echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> "$GITHUB_OUTPUT"
         echo "New PR has been created: #${BACKPORT_PR_NUMBER}"
 
         git checkout ${{ github.sha }}

@@ -1,7 +1,6 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { getVisualization } from "metabase/visualizations";
 import type {
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
@@ -12,6 +11,8 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { getVisualization } from "../registry";
 
 // Merge two settings objects together.
 // Settings from the second argument take precedence over the first.

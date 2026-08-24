@@ -2,10 +2,6 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
-  useRegenerateApiKeyMutation,
-  useUpdateApiKeyMutation,
-} from "metabase/api";
-import {
   Form,
   FormErrorMessage,
   FormGroupWidget,
@@ -16,6 +12,11 @@ import {
 import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
+
+import {
+  useRegenerateApiKeyMutation,
+  useUpdateApiKeyMutation,
+} from "../../api/api-key";
 
 import S from "./EditApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";

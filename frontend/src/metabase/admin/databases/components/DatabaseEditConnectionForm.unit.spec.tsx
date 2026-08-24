@@ -1,15 +1,11 @@
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type { DatabaseData } from "metabase-types/api";
 import { createMockEngines } from "metabase-types/api/mocks";
 
 import { DatabaseEditConnectionForm } from "./DatabaseEditConnectionForm";
-
-const RoutedDatabaseEditConnectionForm = withRouteProps(
-  DatabaseEditConnectionForm,
-);
 
 interface SetupOpts {
   database?: Partial<DatabaseData>;
@@ -25,7 +21,7 @@ function setup({ database, isAttachedDWH = false }: SetupOpts = {}) {
     <Route
       path="/"
       element={
-        <RoutedDatabaseEditConnectionForm
+        <DatabaseEditConnectionForm
           database={database}
           isAttachedDWH={isAttachedDWH}
           onSubmitted={jest.fn()}

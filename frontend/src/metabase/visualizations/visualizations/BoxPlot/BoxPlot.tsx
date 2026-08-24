@@ -225,7 +225,6 @@ function BoxPlotInner({
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}
           ref={containerRef}
-          display="boxplot"
           option={option ?? {}}
           eventHandlers={hasValidOption ? eventHandlers : undefined}
           onInit={handleInit}
@@ -236,7 +235,7 @@ function BoxPlotInner({
   );
 }
 
-export function BoxPlot(props: VisualizationProps) {
+function BoxPlotComponent(props: VisualizationProps) {
   return (
     <ChartRenderingErrorBoundary onRenderError={props.onRenderError}>
       <BoxPlotInner {...props} />
@@ -244,4 +243,7 @@ export function BoxPlot(props: VisualizationProps) {
   );
 }
 
-Object.assign(BoxPlot, BOXPLOT_CHART_DEFINITION);
+export const BoxPlot = Object.assign(
+  BoxPlotComponent,
+  BOXPLOT_CHART_DEFINITION,
+);

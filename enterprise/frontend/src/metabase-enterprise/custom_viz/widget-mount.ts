@@ -1,27 +1,27 @@
 import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 
-import type { CustomVizPluginId } from "metabase-types/api";
+import type { CustomVizPluginRuntime } from "metabase-types/api";
 
 /**
- * A host-allocated `WidgetMount` tagged with the id of the plugin it renders.
+ * A host-allocated `WidgetMount` tagged with the plugin it renders.
  */
 type WidgetMountWithPlugin = WidgetMount & {
-  pluginId: CustomVizPluginId;
+  plugin: CustomVizPluginRuntime;
 };
 
 /**
  * Wrap a plugin-supplied function-shaped widget in a host-allocated
- * `WidgetMount` tagged with its plugin id.
+ * `WidgetMount` tagged with its plugin.
  */
 export function wrapPluginWidget(
   pluginWidget: WidgetMount,
-  pluginId: CustomVizPluginId,
+  plugin: CustomVizPluginRuntime,
 ): WidgetMountWithPlugin {
   const mount: WidgetMount = (container, initialProps) =>
     pluginWidget(container, initialProps);
 
-  return Object.assign(mount, { pluginId });
+  return Object.assign(mount, { plugin });
 }
 
 export function isWidgetMount(
@@ -32,19 +32,19 @@ export function isWidgetMount(
         id: string;
       }>,
 ): value is WidgetMountWithPlugin {
-  return typeof value === "function" && "pluginId" in value;
+  return typeof value === "function" && "plugin" in value;
 }
 
 /**
- * Recover the plugin id tagged onto a host-allocated mount by
+ * Recover the plugin tagged onto a host-allocated mount by
  * `wrapPluginWidget`.
  */
-export function getWidgetMountPluginId(
+export function getWidgetMountPlugin(
   maybeWidgetMount: WidgetMount,
-): CustomVizPluginId | undefined {
+): CustomVizPluginRuntime | undefined {
   if (!isWidgetMount(maybeWidgetMount)) {
     return undefined;
   }
 
-  return maybeWidgetMount.pluginId;
+  return maybeWidgetMount.plugin;
 }

@@ -27,7 +27,7 @@ import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode } from "metabase/redux/store";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
@@ -69,6 +69,7 @@ export function QueryModals({
   onChangeLocation,
 }: QueryModalsProps) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
 
   const initialCollectionId = useGetDefaultCollectionId();
@@ -121,9 +122,9 @@ export function QueryModals({
         { id: dashboardId, name: "", ...question.dashboard(), ...dashboard },
         { editMode: true, scrollToDashcard: dashcard?.id, tabId },
       );
-      dispatch(push(url));
+      navigate(url);
     },
-    [dispatch],
+    [dispatch, navigate],
   );
 
   const handleSaveModalCreate = useCallback(

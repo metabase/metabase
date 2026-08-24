@@ -28,7 +28,7 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   search: "1-1-4",
   serialization: "1-0-1",
   settings: "1-0-2",
-  setup: "1-0-3",
+  setup: "1-0-4",
   timeline: "1-0-0",
   upsell: "1-0-0",
 };

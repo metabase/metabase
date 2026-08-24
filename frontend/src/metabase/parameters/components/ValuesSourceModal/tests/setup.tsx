@@ -57,7 +57,7 @@ export const setup = async ({
   const databases = [createMockDatabase()];
   const rootCollection = createMockCollection(ROOT_COLLECTION);
   const personalCollection = createMockCollection({
-    id: currentUser.personal_collection_id,
+    id: currentUser.personal_collection_id ?? undefined,
   });
   const onSubmit = jest.fn();
   const onClose = jest.fn();

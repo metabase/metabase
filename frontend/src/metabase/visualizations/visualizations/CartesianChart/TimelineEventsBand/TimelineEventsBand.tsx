@@ -6,7 +6,10 @@ import {
   TIMELINE_EVENTS_BAND,
 } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type {
+  TimelineEventGroup,
+  TimelineEventsModel,
+} from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import { TimelineEventChip } from "./TimelineEventChip";
@@ -24,9 +27,11 @@ interface TimelineEventsBandProps {
   chartLayout: ChartLayout;
   xAxisIndex: number;
   selectedTimelineEventIds?: TimelineEventId[];
+  onGroupHover?: (group: TimelineEventGroup | null) => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
+  onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
 export const TimelineEventsBand = ({
@@ -36,9 +41,11 @@ export const TimelineEventsBand = ({
   chartLayout,
   xAxisIndex,
   selectedTimelineEventIds,
+  onGroupHover,
   onOpenTimelines,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
+  onSeeAllEvents,
 }: TimelineEventsBandProps) => {
   const gridBottom = chartSize.height - chartLayout.padding.bottom;
   const trackTop = gridBottom + TIMELINE_EVENTS_BAND.marginY;
@@ -114,9 +121,11 @@ export const TimelineEventsBand = ({
           eventsGroup={eventsGroup}
           centerY={centerY}
           selectedEventIds={selectedTimelineEventIds ?? []}
+          onGroupHover={onGroupHover}
           onOpenTimelines={onOpenTimelines}
           onSelectTimelineEvents={onSelectTimelineEvents}
           onDeselectTimelineEvents={onDeselectTimelineEvents}
+          onSeeAllEvents={onSeeAllEvents}
         />
       ))}
     </div>

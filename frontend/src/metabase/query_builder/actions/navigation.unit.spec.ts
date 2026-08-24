@@ -1,8 +1,8 @@
 // Pins the QB location-change read seam, the counterpart to url.ts which
 // produces the pushes. locationChanged decides between re-running initializeQB
-// and dispatching popState based on location.action plus location.state. The
+// and dispatching popState based on the navigation type plus location.state. The
 // router migration re-plumbs this read seam, so this locks the current matrix.
-import type { Location } from "history";
+import type { Location } from "metabase/router";
 
 import * as initializeQBModule from "./core/initializeQB";
 import { locationChanged } from "./navigation";
@@ -13,7 +13,6 @@ const loc = (over: Partial<Location> = {}): Location =>
     pathname: "/question/1",
     search: "",
     hash: "",
-    action: "PUSH",
     state: null,
     ...over,
   }) as Location;
@@ -40,7 +39,7 @@ describe("locationChanged", () => {
   it("does nothing when location and nextLocation are the same reference", () => {
     const location = loc();
 
-    locationChanged(location, location, {})(dispatch);
+    locationChanged(location, location, {}, "PUSH")(dispatch);
 
     expect(dispatch).not.toHaveBeenCalled();
     expect(initSpy).not.toHaveBeenCalled();
@@ -50,12 +49,11 @@ describe("locationChanged", () => {
     const location = loc({ pathname: "/question/1" });
     const nextLocation = loc({
       pathname: "/question/2",
-      action: "PUSH",
       state: null,
     });
     const nextParams = { slug: "2" };
 
-    locationChanged(location, nextLocation, nextParams)(dispatch);
+    locationChanged(location, nextLocation, nextParams, "PUSH")(dispatch);
 
     expect(initSpy).toHaveBeenCalledTimes(1);
     expect(initSpy).toHaveBeenCalledWith(nextLocation, nextParams);
@@ -66,11 +64,10 @@ describe("locationChanged", () => {
     const location = loc({ pathname: "/question/1" });
     const nextLocation = loc({
       pathname: "/question/2",
-      action: "PUSH",
       state: { card: { id: 2 } },
     });
 
-    locationChanged(location, nextLocation, {})(dispatch);
+    locationChanged(location, nextLocation, {}, "PUSH")(dispatch);
 
     expect(initSpy).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
@@ -80,11 +77,10 @@ describe("locationChanged", () => {
     const location = loc({ pathname: "/question/1" });
     const nextLocation = loc({
       pathname: "/question/2",
-      action: "REPLACE",
       state: null,
     });
 
-    locationChanged(location, nextLocation, {})(dispatch);
+    locationChanged(location, nextLocation, {}, "REPLACE")(dispatch);
 
     expect(initSpy).toHaveBeenCalledTimes(1);
     expect(dispatchedAThunk(dispatch)).toBe(false);
@@ -94,11 +90,10 @@ describe("locationChanged", () => {
     const location = loc({ pathname: "/question/1" });
     const nextLocation = loc({
       pathname: "/question/2",
-      action: "REPLACE",
       state: { card: { id: 2 } },
     });
 
-    locationChanged(location, nextLocation, {})(dispatch);
+    locationChanged(location, nextLocation, {}, "REPLACE")(dispatch);
 
     expect(initSpy).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
@@ -108,11 +103,10 @@ describe("locationChanged", () => {
     const location = loc({ pathname: "/question/1" });
     const nextLocation = loc({
       pathname: "/question/2",
-      action: "POP",
       state: null,
     });
 
-    locationChanged(location, nextLocation, {})(dispatch);
+    locationChanged(location, nextLocation, {}, "POP")(dispatch);
 
     expect(initSpy).toHaveBeenCalledTimes(1);
     expect(dispatchedAThunk(dispatch)).toBe(true);
@@ -122,11 +116,10 @@ describe("locationChanged", () => {
     const location = loc({ pathname: "/question/1" });
     const nextLocation = loc({
       pathname: "/question/2",
-      action: "POP",
       state: { card: { id: 2 } },
     });
 
-    locationChanged(location, nextLocation, {})(dispatch);
+    locationChanged(location, nextLocation, {}, "POP")(dispatch);
 
     expect(initSpy).not.toHaveBeenCalled();
     expect(dispatchedAThunk(dispatch)).toBe(true);
@@ -134,9 +127,9 @@ describe("locationChanged", () => {
 
   it("does nothing on a POP that did not change the url", () => {
     const location = loc({ pathname: "/question/1" });
-    const nextLocation = loc({ pathname: "/question/1", action: "POP" });
+    const nextLocation = loc({ pathname: "/question/1" });
 
-    locationChanged(location, nextLocation, {})(dispatch);
+    locationChanged(location, nextLocation, {}, "POP")(dispatch);
 
     expect(initSpy).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();

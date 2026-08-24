@@ -23,8 +23,8 @@ interface UseMcpFeedbackProps {
   /** Ad-hoc query that is being shown, captured from construct_query */
   query: string | null;
 
-  /** Metabase session tokens for authenticating feedback requests */
-  sessionToken: string;
+  /** Purpose-bound MCP UI credential for feedback requests */
+  uiCredential: string;
 }
 
 export function useMcpFeedback({
@@ -32,7 +32,7 @@ export function useMcpFeedback({
   mcpSessionId,
   prompt,
   query,
-  sessionToken,
+  uiCredential,
 }: UseMcpFeedbackProps) {
   const [selectedFeedback, setSelectedFeedback] =
     useState<McpFeedbackChoice | null>(null);
@@ -73,7 +73,7 @@ export function useMcpFeedback({
 
       await submitMcpFeedback({
         instanceUrl,
-        sessionToken,
+        uiCredential,
         mcpSessionId,
         payload,
       });

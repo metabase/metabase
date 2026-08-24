@@ -27,7 +27,6 @@
   See also [[metabase.parameters.chain-filter]] for another explanation of remapping."
   (:refer-clojure :exclude [mapv select-keys some empty? not-empty get-in])
   (:require
-   [clojure.data :as data]
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -159,18 +158,25 @@
                                                        :human-readable-field-name (-> dimension :human-readable-field-id unique-name))})))))
            (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)))))
 
+(mu/defn- original-fields->new-fields
+  [remap-infos :- [:maybe [:sequential ::remap-info]]]
+  (into {}
+        (mapcat (fn [{:keys [original-field-clause new-field-clause dimension]}]
+                  (let [original-with-id (assoc original-field-clause 2 (:field-id dimension))]
+                    [[(simplify-ref-options original-field-clause) new-field-clause]
+                     [(simplify-ref-options original-with-id) new-field-clause]])))
+        remap-infos))
+
 (mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- ::lib.schema/fields
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` to any Field clauses that are
   remapped-from."
   [infos  :- [:maybe [:sequential ::remap-info]]
    fields :- ::lib.schema/fields]
-  (let [field->remapped-col (into {}
-                                  (map (fn [{:keys [original-field-clause new-field-clause]}]
-                                         [(simplify-ref-options original-field-clause) new-field-clause]))
-                                  infos)]
+  (let [field->remapped-col (original-fields->new-fields infos)]
     (mapv
      (fn [field-ref]
-       (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name] (field->remapped-col (simplify-ref-options field-ref))]
+       (if-let [[_tag {::keys [new-field-dimension-id], :as _opts} _id-or-name]
+                (field->remapped-col (simplify-ref-options field-ref))]
          (lib/update-options field-ref assoc ::original-field-dimension-id new-field-dimension-id)
          field-ref))
      fields)))
@@ -265,10 +271,7 @@
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
       (let [new-fields         (add-fk-remaps-to-fields infos fields)
             ;; make a map of field-id-clause -> fk-clause from the tuples
-            original->remapped (into {}
-                                     (map (fn [{:keys [original-field-clause new-field-clause]}]
-                                            [(simplify-ref-options original-field-clause) new-field-clause]))
-                                     infos)
+            original->remapped (original-fields->new-fields infos)
             ;; PERF: More indexing on the same stuff! This really needs to be poured into a common context.
             new-breakout       (add-fk-remaps-rewrite-breakout original->remapped breakout)
             new-order-by       (add-fk-remaps-rewrite-order-by original->remapped order-by)
@@ -435,7 +438,7 @@
     from-display-name :name
     to-name           :human-readable-field-name} :- ::external-remapping]
   (log/trace "Considering column\n"
-             (u/pprint-to-str 'cyan (select-keys column [:id :name :fk_field_id :display_name :options]))
+             (pr-str (select-keys column [:id :fk_field_id :options]))
              (u/colorize :magenta "\nAdd :remapped_to metadata?")
              "\n=>" '(= dimension-id original-field-dimension-id)
              "\n=>" (list '= dimension-id original-field-dimension-id)
@@ -470,11 +473,11 @@
                                   from-name)
                :display_name  from-display-name}))
     (when (not= column <>)
-      (log/tracef "Added metadata:\n%s" (u/pprint-to-str 'green (second (data/diff column <>)))))))
+      (log/trace "Added remapping metadata to column"))))
 
 (mu/defn- merge-metadata-for-externally-remapped-column :- [:maybe [:sequential :map]]
   [columns :- [:maybe [:sequential :map]] dimension :- ::external-remapping]
-  (log/tracef "Merging metadata for external dimension\n%s" (u/pprint-to-str 'yellow (into {} dimension)))
+  (log/tracef "Merging metadata for external dimension %s" (:id dimension))
   (mapv #(merge-metadata-for-externally-remapped-column* columns % dimension)
         columns))
 

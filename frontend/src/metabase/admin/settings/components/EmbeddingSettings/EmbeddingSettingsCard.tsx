@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { Alert, Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
+import { Alert, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./EmbeddingSettings.module.css";
@@ -59,20 +59,13 @@ export function EmbeddingSettingsCard({
 
         {alertInfoText && (
           <Alert
+            size="compact"
+            variant="light"
             data-testid="sdk-settings-alert-info"
             mt="md"
-            bg="background_page-secondary"
-            bd="1px solid var(--mb-color-border-neutral)"
+            icon={<Icon name="info" />}
           >
-            <Flex gap="sm">
-              <Box>
-                <Icon c="text-secondary" name="info" mt="2px" />
-              </Box>
-
-              <Text c="text-primary" lh="lg">
-                {alertInfoText}
-              </Text>
-            </Flex>
+            {alertInfoText}
           </Alert>
         )}
       </Stack>
