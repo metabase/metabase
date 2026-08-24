@@ -99,6 +99,7 @@ const BEDROCK_TYPE = createMockLlmProviderType({
   type: "bedrock",
   label: "Amazon Bedrock",
   all_or_none: [["access-key-id", "secret-access-key"]],
+  requires: { "session-token": ["access-key-id", "secret-access-key"] },
   fields: [
     createMockLlmProviderField({
       key: "access-key-id",
@@ -573,6 +574,37 @@ describe("AIProviderSettingsSection", () => {
     expect(
       within(modal).getByRole("button", { name: "Connect" }),
     ).toBeDisabled();
+  });
+
+  it("connects with a Bedrock session token only alongside the key pair", async () => {
+    await setup();
+
+    const modal = await openAddProviderModal();
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Amazon Bedrock" }),
+    );
+    await userEvent.click(
+      within(modal).getByRole("button", { name: /Advanced settings/ }),
+    );
+    await userEvent.type(
+      within(modal).getByLabelText(/Session token/),
+      "FwoG-token",
+    );
+    expect(
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeDisabled();
+
+    await userEvent.type(
+      within(modal).getByLabelText(/Access key ID/),
+      "AKIA123",
+    );
+    await userEvent.type(
+      within(modal).getByLabelText(/Secret access key/),
+      "secret123",
+    );
+    expect(
+      within(modal).getByRole("button", { name: "Connect" }),
+    ).toBeEnabled();
   });
 
   it("opens advanced settings for a connection that already customized one", async () => {

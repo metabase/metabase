@@ -120,6 +120,35 @@
          #"session token without its access key pair"
          (bedrock/list-models {:credentials {:session-token "FwoGZXIvYXdzEXAMPLE"}})))))
 
+(deftest list-models-hosted-keyless-rejected-test
+  (testing "a hosted deployment rejects a keyless connection before the credentials chain is touched"
+    (mt/with-premium-features #{:hosting}
+      (let [chain-calls (atom 0)
+            requests    (atom 0)]
+        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]
+          (with-redefs [http/request (fn [_] (swap! requests inc) {:body {:data fake-catalog}})]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Metabase Cloud requires an access key pair"
+                 (bedrock/list-models)))
+            (is (zero? @chain-calls))
+            (is (zero? @requests))))))))
+
+(deftest list-models-hosted-explicit-pair-works-test
+  (testing "a hosted deployment still signs with an explicit customer key pair"
+    (mt/with-premium-features #{:hosting}
+      (let [captured (atom nil)]
+        (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
+          (is (=? {:models [{:id "anthropic.claude-fable-5"}
+                            {:id "anthropic.claude-haiku-4-5"}
+                            {:id "anthropic.claude-opus-4-8"}
+                            {:id "openai.gpt-5.4"}
+                            {:id "openai.gpt-5.5"}]}
+                  (bedrock/list-models {:credentials {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                      :secret-access-key "wJalrXUtnFEMI"}})))
+          (is (=? {:headers {"Authorization" #".*Credential=AKIAIOSFODNN7EXAMPLE/.*"}}
+                  @captured)))))))
+
 (deftest list-models-accepts-credentials-override-test
   (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
                                      llm.settings/llm-bedrock-secret-access-key nil]

@@ -54,9 +54,9 @@ To disable Metabase AI provider and stop charges:
 
 ### Bring your own AI provider
 
-You can connect Metabot to one of the supported providers with your own credentials: an API key for most providers, while Amazon Bedrock can also authenticate without any stored keys. When you connect a provider, the **Model** dropdown lists the supported models that your credentials can access.
+You can connect Metabot to one of the supported providers with your own credentials: an API key for most providers, while Amazon Bedrock on a self-hosted Metabase can also authenticate without any stored keys. When you connect a provider, the **Model** dropdown lists the supported models that your credentials can access.
 
-- **Amazon Bedrock**: Claude and GPT models. Enter an AWS access key pair, or leave the keys blank to authenticate with the AWS default credentials chain (IAM role, instance profile, IRSA, or EKS Pod Identity), so no long-lived keys are needed.
+- **Amazon Bedrock**: Claude and GPT models. Enter an AWS access key pair. On a self-hosted Metabase you can instead leave the keys blank to authenticate with the AWS default credentials chain (IAM role, instance profile, IRSA, or EKS Pod Identity), so no long-lived keys are needed; on Metabase Cloud the key pair is required.
 - **Anthropic**: Claude models (Opus, Sonnet, Haiku, and Fable).
 - **Microsoft Azure**: Your own Azure deployments of Claude or GPT models. Enter the deployment name you configured in Azure.
 - **Mistral**
@@ -70,7 +70,7 @@ To enable AI features with your own provider:
 
 1. Go to **Admin > AI**.
 2. Select your **Provider**.
-3. Enter your provider's credentials, an **API key** for most providers. For Amazon Bedrock, enter an AWS access key pair, or leave the keys blank to authenticate with the AWS default credentials chain. The **Get or manage keys in [provider]** link opens your provider's key management page in a new tab.
+3. Enter your provider's credentials, an **API key** for most providers. For Amazon Bedrock, enter an AWS access key pair, or, when self-hosting, leave the keys blank to authenticate with the AWS default credentials chain. The **Get or manage keys in [provider]** link opens your provider's key management page in a new tab.
 4. Click **Connect**.
 5. Select a **Model** from the dropdown. Available models are fetched from the provider using your credentials.
 

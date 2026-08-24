@@ -157,6 +157,37 @@
          clojure.lang.ExceptionInfo #"together, or neither"
          (llm.provider/validate-config! "bedrock" {:secret-access-key "test-secret"})))))
 
+(deftest config-complete?-requires-test
+  (testing "a session token rides along with the bedrock pair, never alone"
+    (is (false? (llm.provider/config-complete? "bedrock" {:session-token "FwoGZXIvYXdzEXAMPLE"})))
+    (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                         :secret-access-key "test-secret"
+                                                         :session-token     "FwoGZXIvYXdzEXAMPLE"})))))
+
+(deftest validate-config!-requires-test
+  (testing "a dependent field is taken only together with the fields it requires"
+    (is (nil? (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                        :secret-access-key "test-secret"
+                                                        :session-token     "FwoGZXIvYXdzEXAMPLE"})))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"bedrock takes Session token only together with Access key ID \+ Secret access key"
+         (llm.provider/validate-config! "bedrock" {:session-token "FwoGZXIvYXdzEXAMPLE"})))))
+
+(deftest hosted-bedrock-requires-key-pair-test
+  (testing "on a hosted deployment keyless bedrock is neither valid nor complete, since the default chain would sign as the operator"
+    (mt/with-premium-features #{:hosting}
+      (is (= [[:access-key-id :secret-access-key]]
+             (:required-any (llm.provider/provider-type "bedrock"))))
+      (is (false? (llm.provider/config-complete? "bedrock" {})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"bedrock needs one of: Access key ID \+ Secret access key"
+           (llm.provider/validate-config! "bedrock" {})))
+      (testing "an explicit customer pair stays valid"
+        (is (nil? (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                            :secret-access-key "test-secret"})))
+        (is (true? (llm.provider/config-complete? "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                             :secret-access-key "test-secret"})))))))
+
 (deftest validate-config!-field-validator-test
   (testing "a field's own validator runs on a non-blank value"
     (is (thrown-with-msg?

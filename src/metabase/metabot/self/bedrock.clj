@@ -23,6 +23,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai :as openai]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -50,9 +51,9 @@
            cause))
 
 (defn- chain-credentials
-  "Credentials resolved from the AWS SDK default provider chain: environment, web identity token (IRSA), EKS Pod
-  Identity, ECS task role, EC2 instance profile. `create` returns the SDK's shared chain; its delegates cache what
-  they resolve, so short-lived role credentials rotate without a restart."
+  "Credentials resolved from the AWS SDK default provider chain
+  (https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html). The SDK's shared
+  chain caches what it resolves, so short-lived role credentials rotate without a restart."
   ^AwsCredentialsIdentity []
   (.resolveCredentials (DefaultCredentialsProvider/create)))
 
@@ -132,6 +133,12 @@
             :error-code  :api-key-missing
             :status-code 403}))
 
+(defn- hosted-keyless-ex []
+  (ex-info (tru "AWS Bedrock on Metabase Cloud requires an access key pair")
+           {:api-error   true
+            :error-code  :api-key-missing
+            :status-code 403}))
+
 (defn- incomplete-credentials-ex []
   (ex-info (tru "AWS Bedrock needs both an access key ID and a secret access key, or neither to use the default credentials chain")
            {:api-error   true
@@ -145,7 +152,8 @@
 
 (defn- ensure-credentials
   "Validate the credentials of the connection serving this request.
-  No access key pair at all is fine, signing falls back to the AWS default credentials chain, but half a pair
+  Self-hosted, no access key pair at all is fine, signing falls back to the AWS default credentials chain; on a
+  hosted deployment the chain would resolve the operator's own identity, so the pair is required. Half a pair
   throws, as does a session token without the pair and an unknown region; the region defaults to us-east-1."
   [credentials]
   (let [key-id (u/trimmed-string (:access-key-id credentials))
@@ -155,6 +163,8 @@
       (throw (incomplete-credentials-ex)))
     (when (and token (not key-id))
       (throw (token-without-pair-ex)))
+    (when (and (not key-id) (premium-features/is-hosted?))
+      (throw (hosted-keyless-ex)))
     (-> credentials
         (u/assoc-dissoc :access-key-id key-id)
         (u/assoc-dissoc :secret-access-key secret)

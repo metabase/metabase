@@ -19,6 +19,7 @@
   (:require
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]))
@@ -248,11 +249,17 @@
     ;; Both keys select explicit credentials, neither selects the AWS default credentials chain; one without the
     ;; other authenticates nothing.
     :all-or-none   [[:access-key-id :secret-access-key]]
+    ;; A session token only extends a key pair; alone it authenticates nothing.
+    :requires      {:session-token [:access-key-id :secret-access-key]}
+    ;; The default chain resolves the instance's own AWS identity, which on Metabase Cloud belongs to the
+    ;; operator rather than the tenant, so hosted deployments must bring explicit keys.
+    :hosted-required-any [[:access-key-id :secret-access-key]]
     :fields        [{:key         :access-key-id
                      :label       (deferred-tru "Access key ID")
                      :type        :password
                      :placeholder "AKIA..."
                      :help        (deferred-tru "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile).")
+                     :hosted-help (deferred-tru "On Metabase Cloud, Bedrock always authenticates with your own AWS keys.")
                      :docs-url    "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"}
                     {:key   :secret-access-key
                      :label (deferred-tru "Secret access key")
@@ -299,10 +306,20 @@
 (def ^:private provider-type-by-name
   (into {} (map (juxt :type identity)) provider-type-registry))
 
+(defn- hosted-provider-type
+  "`entry` adjusted for a hosted deployment: `:hosted-required-any` groups become `:required-any` and a field's
+  `:hosted-help` replaces its `:help`. Everything downstream (validation, completeness, the connection form)
+  reads the entry through [[provider-type]], so this is the one place hosted policy is applied."
+  [{:keys [hosted-required-any] :as entry}]
+  (cond-> entry
+    hosted-required-any (update :required-any (fnil into []) hosted-required-any)
+    :always             (update :fields (partial mapv #(if-let [h (:hosted-help %)] (assoc % :help h) %)))))
+
 (defn provider-type
   "The registry entry for `type-name`, or nil when it is not a known provider type."
   [type-name]
-  (get provider-type-by-name type-name))
+  (when-let [entry (get provider-type-by-name type-name)]
+    (cond-> entry (premium-features/is-hosted?) hosted-provider-type)))
 
 (defn provider-types
   "Every registered provider type."
@@ -427,11 +444,26 @@
                              (str/join " + " (map (comp str label-for) group)))
                         {:status-code 400 :all-or-none all-or-none}))))))
 
+(defn- validate-requires!
+  "Throw a 400 when `config` carries a field without the fields its `:requires` entry names: for Bedrock, a
+  session token without its access key pair."
+  [type-name config]
+  (let [{:keys [requires fields]} (provider-type type-name)
+        label-for                 (into {} (map (juxt :key :label)) fields)
+        carried?                  #(u/trimmed-string (get config %))]
+    (doseq [[field-key deps] requires]
+      (when (and (carried? field-key) (not-every? carried? deps))
+        (throw (ex-info (tru "{0} takes {1} only together with {2}."
+                             type-name
+                             (str (label-for field-key))
+                             (str/join " + " (map (comp str label-for) deps)))
+                        {:status-code 400 :requires {field-key deps}}))))))
+
 (defn validate-config!
   "Check a connection's `:config` against its provider type's field descriptors: required fields are present, fields
   that declare a `:prefix` start with it, `:options` values are among the options, per-field `:validate` hooks pass,
-  one of the type's `:required-any` credential groups is carried, and no `:all-or-none` group is carried in part.
-  Throws a 400 on the first problem."
+  one of the type's `:required-any` credential groups is carried, no `:all-or-none` group is carried in part, and
+  no field is carried without its `:requires` dependencies. Throws a 400 on the first problem."
   [type-name config]
   (when-not (provider-type type-name)
     (throw (ex-info (tru "Unknown provider type {0}." (pr-str type-name))
@@ -439,7 +471,8 @@
   (doseq [field (:fields (provider-type type-name))]
     (validate-field! type-name field config))
   (validate-required-any! type-name config)
-  (validate-all-or-none! type-name config))
+  (validate-all-or-none! type-name config)
+  (validate-requires! type-name config))
 
 (defn credentials-complete?
   "Whether `config` carries the credentials a request needs.
@@ -456,9 +489,9 @@
   deployment configured before the connection list existed still lives. [[validate-config!]] still requires them
   of anything saved through the API, so only the environment and a hand-written `llm-providers` can omit them."
   [type-name config]
-  (let [{:keys [fields required-any all-or-none]} (provider-type type-name)
-        model-keys                                (set (model-fields type-name))
-        carried?                                  #(u/trimmed-string (get config %))]
+  (let [{:keys [fields required-any all-or-none requires]} (provider-type type-name)
+        model-keys                                         (set (model-fields type-name))
+        carried?                                           #(u/trimmed-string (get config %))]
     (and (every? (fn [{:keys [key required? default]}]
                    (or (not required?)
                        default
@@ -470,7 +503,11 @@
                             required-any)))
          (every? (fn [group] (or (every? carried? group)
                                  (not-any? carried? group)))
-                 all-or-none))))
+                 all-or-none)
+         (every? (fn [[field-key deps]]
+                   (or (not (carried? field-key))
+                       (every? carried? deps)))
+                 requires))))
 
 (defn config-complete?
   "Whether a connection of `type-name` can make requests: [[credentials-complete?]], or for the Metabase-managed

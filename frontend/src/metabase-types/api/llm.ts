@@ -78,6 +78,7 @@ export interface LlmProviderType {
   models: LlmModel[];
   required_any: string[][];
   all_or_none: string[][];
+  requires: Record<string, string[]>;
   fields: LlmProviderField[];
 }
 

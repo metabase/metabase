@@ -29,6 +29,7 @@ export const createMockLlmProviderType = (
   models: [],
   required_any: [],
   all_or_none: [],
+  requires: {},
   fields: [createMockLlmProviderField()],
   ...opts,
 });

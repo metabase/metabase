@@ -144,7 +144,8 @@ export function ProviderConnectionForm({
   // and the backend fills it in for a connection that never touched it. A type with alternative credential
   // groups (Google: a service account key, or an OAuth token with a project ID) additionally needs one group
   // filled in full; its fields are individually optional because either group will do. A type with paired
-  // credential groups (Bedrock: the AWS key pair) needs each filled in full or left empty in full.
+  // credential groups (Bedrock: the AWS key pair) needs each filled in full or left empty in full, and a
+  // dependent field (Bedrock: the session token) only counts filled when the fields it requires are too.
   const hasValue = (key: string) => (config[key] ?? "").trim() !== "";
   const isComplete =
     providerType != null &&
@@ -160,6 +161,9 @@ export function ProviderConnectionForm({
       providerType.required_any.some((group) => group.every(hasValue))) &&
     providerType.all_or_none.every(
       (group) => group.every(hasValue) || !group.some(hasValue),
+    ) &&
+    Object.entries(providerType.requires).every(
+      ([key, deps]) => !hasValue(key) || deps.every(hasValue),
     );
 
   const handleSave = async () => {
