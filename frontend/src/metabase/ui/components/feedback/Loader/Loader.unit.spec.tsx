@@ -5,11 +5,6 @@ import { Loader, type LoaderProps, setCustomLoader } from "./Loader";
 import { loaderOverrides } from "./Loader.config";
 
 type SetupOpts = LoaderProps & {
-  /**
-   * Register the theme override. The size scale and the default colour live
-   * there, so anything asserting on them needs it. Off by default so the rest
-   * of the suite keeps Mantine's unprefixed class names.
-   */
   withTheme?: boolean;
 };
 

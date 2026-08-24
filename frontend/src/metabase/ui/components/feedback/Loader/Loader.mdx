@@ -22,18 +22,11 @@ Our themed wrapper around [Mantine Loader](https://mantine.dev/core/loader/).
 | `lg`   | 18px     | 2px    |
 | `xl`   | 22px     | 2.5px  |
 
-`md` is the default. Raw numbers and CSS lengths still work as an escape hatch,
-but only the named sizes get the ring thickness from the spec — prefer a named
-size unless the diameter is a layout dimension rather than a loader size.
+`md` is the default. Raw numbers and CSS lengths still work as an escape hatch.
 
 ## Caveats
 
-- `oval` (the default) is the only type Figma specs, and `dots` is the sole
-  alternative the design system offers — Mantine's `bars` is not part of the
-  API. The size scale above is tuned to the ring, so pin an explicit px size
-  when using `dots`.
-- The colour comes from the `icon-brand` token. Pass `color` (not `c`, which
-  sets text colour and has no effect on the spinner) to override it.
+- `oval` (the default) is the only type Figma specs, and `dots` is the sole alternative the design system offers. Mantine's `bars` is not part of the API.
 
 ## Examples
 

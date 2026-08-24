@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 
-import { Box, Loader, type LoaderProps } from "metabase/ui";
+import { Box, Group, Loader, type LoaderProps } from "metabase/ui";
 import {
   StoryJsx,
   StorySection,
@@ -39,19 +39,25 @@ export const Default = {
   render: (args: LoaderProps) => <Loader {...args} />,
 };
 
-const gridStyle = {
+const gridStyle2Columns = {
   display: "grid",
-  gridTemplateColumns: "20rem 4rem max-content",
+  gridTemplateColumns: "1fr 1fr",
   columnGap: "2rem",
   rowGap: "1rem",
   alignItems: "center",
   justifyItems: "start",
+  padding: "1rem 0",
+} as const;
+
+const grid3Columns = {
+  ...gridStyle2Columns,
+  gridTemplateColumns: "1fr 1fr 1fr",
 } as const;
 
 const OverviewTemplate = () => (
   <StoryShowcase title="Loader">
     <StorySection title="Sizes" description="The default size is “md”.">
-      <Box style={gridStyle}>
+      <Box style={grid3Columns}>
         {SIZES.map((size) => (
           <Fragment key={size}>
             <StoryJsx>{`<Loader size="${size}" />`}</StoryJsx>
@@ -62,41 +68,26 @@ const OverviewTemplate = () => (
       </Box>
     </StorySection>
 
-    <StorySection
-      title="Types"
-      description="Figma specs the ring only. The size scale is tuned to it, so pin an explicit px size when using dots."
-    >
-      <Box style={gridStyle}>
+    <StorySection title="Types">
+      <Group>
         <StoryJsx>{`<Loader type="oval" />`}</StoryJsx>
-        <div />
         <Loader type="oval" />
-
-        <StoryJsx>{`<Loader type="dots" size={32} />`}</StoryJsx>
-        <div />
-        <Loader type="dots" size={32} />
-      </Box>
+      </Group>
+      <Group>
+        <StoryJsx>{`<Loader type="dots" />`}</StoryJsx>
+        <Loader type="dots" />
+      </Group>
     </StorySection>
 
     <StorySection
       title="Color"
       description="Defaults to the icon-brand token. An explicit color prop overrides it."
     >
-      <Box style={gridStyle}>
+      <Box style={gridStyle2Columns}>
         <StoryJsx>{`<Loader />`}</StoryJsx>
-        <div />
         <Loader />
-
         <StoryJsx>{`<Loader color="text-secondary" />`}</StoryJsx>
-        <div />
         <Loader color="text-secondary" />
-
-        <StoryJsx>{`<Loader color="core-white" />`}</StoryJsx>
-        <div />
-        {/* On a brand fill, as in ActionButton. `core-brand` rather than a
-            surface token so the white stays visible in both themes. */}
-        <Box bg="core-brand" p="sm" style={{ lineHeight: 0 }}>
-          <Loader color="core-white" />
-        </Box>
       </Box>
     </StorySection>
 
@@ -104,9 +95,8 @@ const OverviewTemplate = () => (
       title="Label"
       description="Renders the loader stacked above a caption."
     >
-      <Box style={gridStyle}>
+      <Box style={gridStyle2Columns}>
         <StoryJsx>{`<Loader label="Loading…" />`}</StoryJsx>
-        <div />
         <Loader label="Loading…" />
       </Box>
     </StorySection>
