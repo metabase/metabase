@@ -135,10 +135,11 @@
   (let [{:keys [ok upload_url file_id] :as res} (get-upload-url client {:filename filename
                                                                         :length (alength ^bytes image-bytes)})]
     (when ok
-      ;; upload_url comes from Slack's response, so it keeps the default policy
+      ;; upload_url comes from Slack's response, so it does not take the deployment default
       (u.http/post upload_url
-                   {:headers {"Content-Type" "image/png"}
-                    :body    image-bytes})
+                   {:network-policy :external-only
+                    :headers        {"Content-Type" "image/png"}
+                    :body           image-bytes})
       (:body (slack-post-json client "/files.completeUploadExternal"
                               (cond-> {:files      [{:id file_id
                                                      :title filename}]
@@ -199,9 +200,10 @@
    Caller is responsible for closing the stream (e.g. via `with-open`)."
   ^InputStream
   [client url]
-  ;; url is a Slack-supplied file URL, so it keeps the default policy
-  (-> (u.http/get url {:headers {"Authorization" (str "Bearer " (:token client))}
-                       :as      :stream})
+  ;; url is a Slack-supplied file URL, so it does not take the deployment default
+  (-> (u.http/get url {:network-policy :external-only
+                       :headers        {"Authorization" (str "Bearer " (:token client))}
+                       :as             :stream})
       :body))
 
 ;; -------------------- SLACK STREAMING API --------------------
