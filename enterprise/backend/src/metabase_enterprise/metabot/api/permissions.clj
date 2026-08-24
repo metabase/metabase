@@ -7,9 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.scope :as scope]
-   [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -86,24 +84,14 @@
                                                  :perm_value perm-value-kw})))))
   (permissions-response))
 
-(defn- default-group-ids
-  "IDs of the groups group-level mode hides: All Users and, under tenants, All tenant users."
-  []
-  [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
-
-(defn- simple-mode-group-ids
-  "IDs of the groups simple mode shows: Administrators, All Users and, under tenants, All tenant users."
-  []
-  (conj (default-group-ids) (u/the-id (perms/admin-group))))
-
 (defn- switch-mode!
-  "Write the permission mode and drop the rows of the mode being left behind, in one transaction.
+  "Write the permission mode and drop the rows the mode being switched to hides, in one transaction.
   The setting write goes last, and a failure reloads the settings cache, since writing the setting updates the
   cache in place and this node would otherwise keep serving a mode the database rolled back."
-  [advanced? group-id-clause]
+  [advanced?]
   (try
     (t2/with-transaction [_conn]
-      (t2/delete! :model/MetabotPermissions :group_id group-id-clause)
+      (t2/delete! :model/MetabotPermissions {:where (metabot-perms/hidden-groups-clause advanced?)})
       (metabot-settings/metabot-advanced-permissions! advanced?))
     (catch Throwable e
       (setting/restore-cache!)
@@ -122,7 +110,7 @@
   []
   (api/check-superuser)
   (check-mode-switchable!)
-  (switch-mode! true [:in (default-group-ids)])
+  (switch-mode! true)
   (permissions-response))
 
 (api.macros/defendpoint :delete "/advanced" :- permissions-response-schema
@@ -131,7 +119,7 @@
   []
   (api/check-superuser)
   (check-mode-switchable!)
-  (switch-mode! false [:not-in (simple-mode-group-ids)])
+  (switch-mode! false)
   (permissions-response))
 
 (def ^{:arglists '([request respond raise])} routes

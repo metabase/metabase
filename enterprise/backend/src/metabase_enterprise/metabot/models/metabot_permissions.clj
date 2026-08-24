@@ -3,6 +3,8 @@
   (:require
    [metabase.metabot.scope :as scope]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,6 +17,26 @@
 (t2/deftransforms :model/MetabotPermissions
   {:perm_type  mi/transform-keyword
    :perm_value mi/transform-keyword})
+
+(defn- default-group-ids
+  "IDs of the groups simple mode owns: All Users and, under tenants, All tenant users."
+  []
+  [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
+
+(defn visible-groups-clause
+  "HoneySQL predicate on `:group_id` matching the groups `advanced?` mode shows in the admin UI.
+  Simple mode shows Administrators, All Users and All tenant users; group-level mode shows every group but the
+  last two."
+  [advanced?]
+  (if advanced?
+    [:not-in :group_id (default-group-ids)]
+    [:in :group_id (conj (default-group-ids) (u/the-id (perms/admin-group)))]))
+
+(defn hidden-groups-clause
+  "HoneySQL predicate on `:group_id` matching the groups `advanced?` mode hides -- the complement of
+  `visible-groups-clause`. Switching into a mode deletes the rows it matches."
+  [advanced?]
+  [:not (visible-groups-clause advanced?)])
 
 (defn permissions-for-group
   "Returns the full set of permissions for a group, filling in defaults for any missing perm types."

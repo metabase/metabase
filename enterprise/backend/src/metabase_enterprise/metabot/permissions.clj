@@ -3,25 +3,11 @@
   Resolves per-group permissions from the database, taking the most permissive value across the user's groups
   that the active permission mode shows."
   (:require
+   [metabase-enterprise.metabot.models.metabot-permissions :as metabot-perms]
    [metabase-enterprise.metabot.settings :as metabot-settings]
    [metabase.metabot.scope :as scope]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
-
-(defn- group-id-clause
-  "HoneySQL clause restricting resolution to the groups the current permission mode exposes in the admin UI.
-  Simple mode only shows Administrators, All Users and All tenant users; group-level mode shows every group
-  except those two. Switching modes deletes the rows the other mode owns, but rows for a hidden group can still
-  turn up: a serialization import, a `PUT /api/setting` mode change, or an API write against a hidden group all
-  make them, and instances that switched modes before this fix still hold theirs. They must not resolve, since a
-  :yes nobody can see would override every visible :no (#80394)."
-  []
-  (let [default-group-ids [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))]]
-    (if (metabot-settings/metabot-advanced-permissions)
-      [:not-in :group_id default-group-ids]
-      [:in :group_id (conj default-group-ids (u/the-id (perms/admin-group)))])))
 
 (defenterprise resolve-user-permissions
   "Resolve the effective metabot permissions for a user by taking the most permissive value across the groups
@@ -38,7 +24,14 @@
                                        {:select [:group_id]
                                         :from   [(t2/table-name :model/PermissionsGroupMembership)]
                                         :where  [:= :user_id user-id]}]
-                                      (group-id-clause)]})
+                                      ;; Rows for a group the active mode hides must not resolve, since a :yes
+                                      ;; nobody can see would override every visible :no (#80394). Switching
+                                      ;; modes deletes them, but they come back: a serialization import, a
+                                      ;; `PUT /api/setting` mode change, or an API write against a hidden group
+                                      ;; all make them, and instances that switched modes before this fix still
+                                      ;; hold theirs.
+                                      (metabot-perms/visible-groups-clause
+                                       (metabot-settings/metabot-advanced-permissions))]})
           by-type (group-by :perm_type stored)]
       (reduce-kv
        (fn [acc perm-type default-value]
