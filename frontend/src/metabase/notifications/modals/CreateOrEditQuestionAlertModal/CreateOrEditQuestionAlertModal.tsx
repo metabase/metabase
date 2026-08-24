@@ -12,8 +12,14 @@ import {
 } from "metabase/api";
 import type { ScheduleValueType } from "metabase/common/components/Schedule/types";
 import CS from "metabase/css/core/index.css";
+import {
+  canAccessSettings,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
+  alertHasValidTarget,
   alertIsValid,
   getAlertTriggerOptions,
   getDefaultQuestionAlertRequest,
@@ -24,11 +30,6 @@ import {
 } from "metabase/pulse";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import {
-  canAccessSettings,
-  getUser,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
 import {
   Button,
   Flex,
@@ -294,6 +295,7 @@ export const CreateOrEditQuestionAlertModal = ({
   }
 
   const isValid = alertIsValid(notification, channelSpec);
+  const hasValidTarget = alertHasValidTarget(notification, channelSpec);
   const hasChanges = !isEqual(editingNotification, notification);
   const hasError = errorCreating || errorUpdating;
 
@@ -441,6 +443,7 @@ export const CreateOrEditQuestionAlertModal = ({
         <Button
           variant="outline"
           color="core-brand"
+          disabled={!hasValidTarget}
           loading={isLoading}
           onClick={onSendNow}
         >
@@ -450,7 +453,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            bg={hasError ? "feedback-negative" : "core-brand"}
+            color={hasError ? "feedback-negative" : "core-brand"}
             disabled={!isValid || isCreating || isUpdating}
             loading={isCreating || isUpdating}
             onClick={onCreateOrEditAlert}

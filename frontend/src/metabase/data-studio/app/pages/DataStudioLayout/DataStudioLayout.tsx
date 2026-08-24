@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { useUserKeyValue } from "metabase/current-user";
 import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
 import {
   AreaLayout,

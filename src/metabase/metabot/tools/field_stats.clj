@@ -1,7 +1,9 @@
 (ns metabase.metabot.tools.field-stats
   (:require
    [clojure.set :as set]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
@@ -43,6 +45,19 @@
                              (select-keys (metabot.tools.u/->result-column query col)
                                           [:portable_fk :table_reference]))})
 
+(defn- check-column-table-perms!
+  [col]
+  (let [table-id (:table-id col)
+        field-id (:id col)]
+    (when (int? table-id)
+      (api/check-403
+       (contains? (if (= :source/implicitly-joinable (:lib/source col))
+                    (metabot.perms/queryable-table-ids #{table-id})
+                    (metabot.perms/data-accessible-table-ids #{table-id}))
+                  table-id))
+      (when-let [allowed (get (metabot.perms/sandbox-restricted-fields #{table-id}) table-id)]
+        (api/check-403 (contains? allowed field-id))))))
+
 (defn- table-field-stats
   [table-id field-id limit]
   (try
@@ -51,6 +66,7 @@
                                            {:agent-error? true :status-code 404})))
           visible-cols (lib/visible-columns query)
           col          (metabot.tools.u/find-column-by-field-id field-id visible-cols)]
+      (check-column-table-perms! col)
       (field-metadata-output query col field-id limit))
     (catch Exception ex
       (metabot.tools.u/handle-agent-error ex))))
@@ -63,6 +79,7 @@
                                            {:agent-error? true :status-code 404})))
           visible-cols (lib/visible-columns query)
           col          (metabot.tools.u/find-column-by-field-id field-id visible-cols)]
+      (check-column-table-perms! col)
       (field-metadata-output query col field-id limit))
     (catch Exception ex
       (metabot.tools.u/handle-agent-error ex))))
@@ -75,6 +92,7 @@
                                               {:agent-error? true :status-code 404})))
           filterable-cols (lib/filterable-columns query)
           col             (metabot.tools.u/find-column-by-field-id field-id filterable-cols)]
+      (check-column-table-perms! col)
       (field-metadata-output query col field-id limit))
     (catch Exception ex
       (metabot.tools.u/handle-agent-error ex))))

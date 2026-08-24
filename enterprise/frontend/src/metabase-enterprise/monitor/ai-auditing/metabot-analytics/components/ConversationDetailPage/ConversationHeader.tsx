@@ -14,9 +14,17 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { MonitorBreadcrumbs } from "metabase/monitor/components/MonitorBreadcrumbs";
-import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { ActionIcon, Anchor, Flex, Icon, Menu, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Anchor,
+  Flex,
+  Icon,
+  Menu,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import { useGetTenantQuery } from "metabase-enterprise/api";
@@ -70,9 +78,9 @@ export function ConversationHeader({
       <Flex justify="space-between" align="flex-start" gap="md">
         <Stack gap="sm">
           <Flex align="center">
-            <MonitorHeaderTitle>
+            <Title order={2}>
               {conversation.title || t`Conversation with ${userName}`}
-            </MonitorHeaderTitle>
+            </Title>
             {conversation.user && (
               <Menu shadow="md" position="bottom-start" withinPortal>
                 <Menu.Target>

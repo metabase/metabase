@@ -46,7 +46,6 @@ function setup({
     currentUser,
     entities: createMockEntitiesState({
       databases: [database],
-      collections: [],
     }),
     settings: mockSettings({
       "token-features": createMockTokenFeatures({ advanced_permissions: true }),

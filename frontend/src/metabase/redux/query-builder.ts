@@ -9,10 +9,9 @@
  */
 import { createAction } from "redux-actions";
 
-import { userApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { currentUserApi, getUser } from "metabase/current-user";
 import { createThunkAction } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { checkNotNull } from "metabase/utils/types";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
@@ -58,18 +57,6 @@ export const editSummary = createAction(EDIT_SUMMARY);
 
 export const ON_CLOSE_SUMMARY = "metabase/qb/ON_CLOSE_SUMMARY";
 export const onCloseSummary = createAction(ON_CLOSE_SUMMARY);
-
-export const OPEN_AI_QUESTION_ANALYSIS_SIDEBAR =
-  "metabase/qb/OPEN_AI_QUESTION_ANALYSIS_SIDEBAR";
-export const onOpenAIQuestionAnalysisSidebar = createAction(
-  OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
-);
-
-export const CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR =
-  "metabase/qb/CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR";
-export const onCloseAIQuestionAnalysisSidebar = createAction(
-  CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
-);
 
 export const OPEN_CHART_SETTINGS = "metabase/qb/OPEN_CHART_SETTINGS";
 export const onOpenChartSettings = createAction(OPEN_CHART_SETTINGS);
@@ -189,7 +176,7 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
     await runRtkEndpoint(
       user.id,
       dispatch,
-      userApi.endpoints.updateUserModalQbnewb,
+      currentUserApi.endpoints.updateUserModalQbnewb,
     );
   };
 });

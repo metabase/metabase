@@ -197,7 +197,7 @@
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
-(deftest ^:sequential edge-case-identifiers-test
+(deftest ^:synchronized edge-case-identifiers-test
   (mt/test-driver :postgres
     (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
       (mt/dataset dots-in-names
@@ -430,7 +430,11 @@
     (testing "Give us a bigint cast when the field is bigint (#22732)"
       (let [boolean-boop-field {:database-type "bigint" :nfc-path [:bleh "boop" :foobar 1234]}]
         (is (= ["(boop.bleh#>> (array[?, ?, 1234]::text[]))::bigint" "boop" "foobar"]
-               (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
+               (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))
+    (testing "a database-type that isn't a plain type name is quoted as an identifier instead of spliced raw"
+      (let [evil-field {:database-type "integer); select 1 --" :nfc-path [:bleh :meh]}]
+        (is (= ["(\"boop\".\"bleh\"#>> (array[?]::text[]))::\"integer); select 1 --\"" "meh"]
+               (sql.qp/format-honeysql :postgres (#'sql.qp/json-query :postgres boop-identifier evil-field))))))))
 
 (deftest ^:parallel json-query-survives-impersonation-validation-test
   (testing "JSON-extracted field SQL still extracts the same value after `validate-impersonated-query*` re-emits it (#73776)"

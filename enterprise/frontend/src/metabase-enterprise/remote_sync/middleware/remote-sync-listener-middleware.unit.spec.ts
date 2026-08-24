@@ -10,7 +10,9 @@ import {
   setupUpdateCollectionEndpoint,
 } from "__support__/server-mocks";
 import { Api } from "metabase/api";
+import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
+import { dashboardApi } from "metabase/api/dashboard";
 import { seedApiQueryCache } from "metabase/redux/store/mocks";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type { EnterpriseSettings } from "metabase-types/api";
@@ -597,6 +599,74 @@ describe("remote-sync-listener-middleware", () => {
         const dirtyCalls = fetchMock.callHistory.calls("remote-sync-dirty");
         expect(dirtyCalls.length).toBeGreaterThan(1);
       });
+    });
+  });
+  describe("card, dashboard and document listeners", () => {
+    afterEach(() => {
+      fetchMock.clearHistory();
+    });
+
+    const subscribeAndSettle = async (
+      store: ReturnType<typeof createTestStore>,
+    ) => {
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncChanges.initiate(undefined),
+      );
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("remote-sync-dirty"),
+      );
+    };
+
+    const dirtyCallCount = () =>
+      fetchMock.callHistory.calls("remote-sync-dirty").length;
+
+    it("invalidates when a card is updated, whatever its sync state was", async () => {
+      fetchMock.put("path:/api/card/1", { id: 1, is_remote_synced: false });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        cardApi.endpoints.updateCard.initiate({ id: 1, name: "Renamed" }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a card is deleted, without needing its previous state", async () => {
+      fetchMock.delete("path:/api/card/1", 204);
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(cardApi.endpoints.deleteCard.initiate(1));
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a dashboard is updated", async () => {
+      fetchMock.put("path:/api/dashboard/2", {
+        id: 2,
+        is_remote_synced: false,
+      });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        dashboardApi.endpoints.updateDashboard.initiate({
+          id: 2,
+          name: "Renamed",
+        }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
     });
   });
 });

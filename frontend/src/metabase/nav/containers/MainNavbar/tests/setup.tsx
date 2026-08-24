@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 
@@ -20,6 +19,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { dayjs } from "metabase/dayjs";
 import type { DashboardState, StoreDashboard } from "metabase/redux/store";
 import {
   createMockDashboardState,

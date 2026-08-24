@@ -17,6 +17,7 @@ import {
 } from "metabase/common/collections/utils";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
+import { getIsTenantUser, getUserIsAdmin } from "metabase/current-user";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -24,7 +25,6 @@ import {
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Route, redirect } from "metabase/router";
-import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";

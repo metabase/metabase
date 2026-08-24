@@ -14,11 +14,11 @@ import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseIt
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionItem,
+  Database,
   ListCollectionItemsSortColumn,
   SortDirection,
   SortingOptions,

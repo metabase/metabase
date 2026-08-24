@@ -151,11 +151,9 @@ export const TABLE_DEFINITION = {
       },
       widget: "toggle",
       inline: true,
-      getHidden: (
-        [{ data }]: Series,
-        settings: ComputedVisualizationSettings,
-      ) => data && data.cols.length !== 3 && !settings["table.pivot"],
-      getDefault: ([{ card, data }]: Series) => {
+      getHidden: ([{ data }]: Series) => data && data.cols.length !== 3,
+      getDefault: ([series]: Series) => {
+        const { card, data } = series;
         let native: boolean;
         try {
           native = isNative(card);
@@ -173,8 +171,16 @@ export const TABLE_DEFINITION = {
           return false;
         }
 
-        return getDefaultPivotColumn(data.cols, data.rows) != null;
+        return getDefaultPivotColumn(series) != null;
       },
+      isValid: (
+        [{ data }]: Series,
+        settings: ComputedVisualizationSettings,
+      ) => {
+        const isInvalid = settings["table.pivot"] && data?.cols.length !== 3; // must have exactly 3 columns to pivot
+        return !isInvalid;
+      },
+      persistDefault: true,
     },
 
     "table.pivot_column": {
@@ -183,12 +189,8 @@ export const TABLE_DEFINITION = {
         return t`Pivot column`;
       },
       widget: "field",
-      getDefault: ([
-        {
-          data: { cols, rows },
-        },
-      ]: Series) => {
-        return getDefaultPivotColumn(cols, rows)?.name;
+      getDefault: ([series]: Series) => {
+        return getDefaultPivotColumn(series)?.name;
       },
       getProps: ([
         {

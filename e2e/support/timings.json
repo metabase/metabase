@@ -489,6 +489,10 @@
       "duration": 31935
     },
     {
+      "spec": "../test/scenarios/dashboard/title-drill.cy.spec.js",
+      "duration": 30006
+    },
+    {
       "spec": "../test/scenarios/dashboard/visualizer/basics.cy.spec.ts",
       "duration": 143576
     },
@@ -1125,10 +1129,6 @@
       "duration": 9849
     },
     {
-      "spec": "../test/scenarios/native/native_subquery.cy.spec.js",
-      "duration": 26282
-    },
-    {
       "spec": "../test/scenarios/native/native-database-source.cy.spec.js",
       "duration": 58890
     },
@@ -1143,6 +1143,10 @@
     {
       "spec": "../test/scenarios/native/native.cy.spec.js",
       "duration": 131328
+    },
+    {
+      "spec": "../test/scenarios/native/native_subquery.cy.spec.js",
+      "duration": 26282
     },
     {
       "spec": "../test/scenarios/native/snippet-tags.cy.spec.ts",
@@ -1163,6 +1167,10 @@
     {
       "spec": "../test/scenarios/navigation/navbar.cy.spec.js",
       "duration": 24848
+    },
+    {
+      "spec": "../test/scenarios/onboarding/about.cy.spec.js",
+      "duration": 3
     },
     {
       "spec": "../test/scenarios/onboarding/add-initial-data.cy.spec.ts",
@@ -1573,12 +1581,12 @@
       "duration": 21853
     },
     {
-      "spec": "../test/scenarios/visualizations-charts/line_chart.cy.spec.js",
-      "duration": 64891
-    },
-    {
       "spec": "../test/scenarios/visualizations-charts/line-bar-tooltips.cy.spec.js",
       "duration": 97254
+    },
+    {
+      "spec": "../test/scenarios/visualizations-charts/line_chart.cy.spec.js",
+      "duration": 64891
     },
     {
       "spec": "../test/scenarios/visualizations-charts/maps.cy.spec.js",
