@@ -476,7 +476,7 @@
                                  :parameters (json/encode [{:type   "category"
                                                             :value  "456"
                                                             :target ["variable" ["template-tag" "foo"]]
-                                                            :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}])))))))))
+                                                            :id     "abc123"}])))))))))
 
 (deftest execute-public-card-with-default-parameters-test
   (testing "GET /api/public/card/:uuid/query with parameters with default values"
@@ -526,6 +526,21 @@
                                                                     :target ["dimension" ["template-tag" "venue_id"]],
                                                                     :type "id",
                                                                     :value nil}]))))))))))
+
+(deftest execute-public-card-with-invalid-parameters-test
+  (testing "GET /api/public/card/:uuid/query -- malformed `parameters` is rejected with a 400"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card [{uuid :public_uuid} {}]
+        (let [url (str "public/card/" uuid "/query")]
+          (testing "valid JSON that is not a sequence of parameter maps"
+            (client/client :get 400 url
+                           :parameters (json/encode {:_PRICE_ 3})))
+          (testing "a sequence of maps missing the required :id"
+            (client/client :get 400 url
+                           :parameters (json/encode [{:value 3}])))
+          (testing "a parameter with a non-scalar garbage :id"
+            (client/client :get 400 url
+                           :parameters (json/encode [{:id {:not "a string"} :value 3}]))))))))
 
 ;; Cards with required params
 (defn- do-with-required-param-card! [f]
@@ -1874,6 +1889,30 @@
             (is (png? (client/client :get 200 url
                                      :latField lat-field
                                      :lonField lon-field)))))))))
+
+(deftest card-tile-query-implicit-join-ref-test
+  (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Card _card {:dataset_query (tiles.api-test/implicit-join-query)
+                                          :public_uuid uuid}]
+          (is (= "An error occurred."
+                 (client/client :get 400 (str "public/tiles/card/" uuid "/1/1/1")
+                                :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
+                                :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
+
+(deftest dashcard-tile-query-implicit-join-ref-test
+  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join"
+    (let [uuid (str (random-uuid))]
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid uuid}
+                       :model/Card          {card-id :id}      {:dataset_query (tiles.api-test/implicit-join-query)}
+                       :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                                :dashboard_id dashboard-id}]
+          (is (= "An error occurred."
+                 (client/client :get 400 (str "public/tiles/dashboard/" uuid "/dashcard/" dashcard-id "/card/" card-id "/1/1/1")
+                                :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
+                                :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
 
 ;;; --------------------------------- POST /oembed ----------------------------------
 

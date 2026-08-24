@@ -1,6 +1,6 @@
 import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { getUserPersonalCollectionId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 
 /**
  * gets the personal collection for the current user

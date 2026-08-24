@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import type { Database, User } from "metabase-types/api";
 

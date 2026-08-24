@@ -107,7 +107,6 @@ config:
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
-    can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
     csp-img-allowed-hosts: ''
@@ -213,20 +212,31 @@ config:
     llm-anthropic-model: claude-opus-4-5-20251101
     llm-azure-api-base-url: null
     llm-azure-api-key: null
+    llm-azure-deployment-name: null
+    llm-azure-model-family: null
     llm-bedrock-access-key-id: null
     llm-bedrock-region: us-east-1
     llm-bedrock-secret-access-key: null
     llm-bedrock-session-token: null
     llm-connection-timeout-ms: 10000
+    llm-google-api-base-url: https://aiplatform.googleapis.com
+    llm-google-location: null
+    llm-google-oauth-access-token: null
+    llm-google-project-id: null
+    llm-google-service-account-key: null
     llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
+    llm-mini-model: null
     llm-mistral-api-base-url: https://api.mistral.ai/v1
     llm-mistral-api-key: null
+    llm-moonshot-api-base-url: https://api.moonshot.ai/v1
+    llm-moonshot-api-key: null
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
     llm-openai-model: gpt-5.4
     llm-openrouter-api-base-url: https://openrouter.ai/api
     llm-openrouter-api-key: null
+    llm-providers: []
     llm-rate-limit-per-ip: 100
     llm-rate-limit-per-user: 20
     llm-request-timeout-ms: 120000
@@ -238,9 +248,19 @@ config:
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
+    metabot-advanced-permissions: false
+    metabot-chat-system-prompt: ''
     metabot-enabled: true
+    metabot-icon: metabot
+    metabot-limit-reset-rate: monthly
+    metabot-limit-unit: tokens
+    metabot-name: Metabot
+    metabot-nlq-system-prompt: ''
+    metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
     metabot-recent-views-enabled: true
+    metabot-show-illustrations: true
     metabot-slack-signing-secret: null
+    metabot-sql-system-prompt: ''
     mfa-challenge-signing-key: null
     mfa-enforcement: 'off'
     native-query-autocomplete-match-style: substring
@@ -353,4 +373,5 @@ config:
     usage-metadata-schedule: 0 0 2 * * ? *
     use-native-pivot-tables: false
     user-visibility: all
+    warehouse-allowed-networks: null
 ```

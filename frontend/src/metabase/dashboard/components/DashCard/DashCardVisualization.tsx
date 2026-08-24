@@ -38,9 +38,13 @@ import {
 } from "metabase/visualizations/components/legend/LegendCaption";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { CardSlownessStatus } from "metabase/visualizations/types";
+import type {
+  CardSlownessStatus,
+  ClickObject,
+} from "metabase/visualizations/types";
 import {
   createDataSource,
+  formatVisualizerClickObject,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
@@ -455,6 +459,9 @@ export function DashCardVisualization({
     const cardResult = cardId ? datasets?.[cardId] : undefined;
     // Unjustified type cast. FIXME
     const result = cardResult ?? (series[0] as unknown as Dataset);
+    const isVisualizerCard = isVisualizerDashboardCard(dashcard);
+    const openUnderlyingQuestionItems =
+      onChangeCardAndRun && !cardTitle ? titleMenuItems : undefined;
 
     const showMenu =
       question &&
@@ -463,6 +470,8 @@ export function DashCardVisualization({
         dashboard,
         dashcardMenu,
         result,
+        canEdit: !isVisualizerCard,
+        openUnderlyingQuestionItems,
       });
 
     const errorStatus =
@@ -495,15 +504,11 @@ export function DashCardVisualization({
             question={question}
             result={result}
             dashcard={dashcard}
-            canEdit={!isVisualizerDashboardCard(dashcard)}
+            canEdit={!isVisualizerCard}
             onEditVisualization={
-              isVisualizerDashboardCard(dashcard)
-                ? onEditVisualization
-                : undefined
+              isVisualizerCard ? onEditVisualization : undefined
             }
-            openUnderlyingQuestionItems={
-              onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
-            }
+            openUnderlyingQuestionItems={openUnderlyingQuestionItems}
           />
         )}
       </Group>
@@ -528,6 +533,18 @@ export function DashCardVisualization({
   const { getExtraDataForClick } = useClickBehaviorData({
     dashcardId: dashcard.id,
   });
+
+  // Visualizer cards render remapped columns,
+  // so click objects must be mapped back to the columns of the underlying questions before computing actions.
+  const transformClickObject = useMemo(() => {
+    if (!isVisualizerDashboardCard(dashcard) || !rawSeries) {
+      return undefined;
+    }
+    const { columnValuesMapping } =
+      dashcard.visualization_settings.visualization;
+    return (clicked: ClickObject) =>
+      formatVisualizerClickObject(clicked, rawSeries, columnValuesMapping);
+  }, [dashcard, rawSeries]);
 
   const renderLoadingView = (loadingViewProps: LoadingViewProps) => (
     <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
@@ -574,6 +591,7 @@ export function DashCardVisualization({
           actionButtons={actionButtons}
           replacementContent={visualizationOverlay}
           getExtraDataForClick={getExtraDataForClick}
+          transformClickObject={transformClickObject}
           onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
           onTogglePreviewing={onTogglePreviewing}
           onChangeCardAndRun={onChangeCardAndRun}

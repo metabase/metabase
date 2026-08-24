@@ -69,7 +69,7 @@ const HEADING_ICON: Record<
 export interface ExplorationTreeContextValue {
   explorationId: ExplorationId;
   canWrite: boolean;
-  handlePrefetch: (item: ITreeNodeItem<ExplorationTreeNode>) => void;
+  onPrefetchPage: (pageId: ExplorationPageNodeId) => void;
   shouldScrollSelectionRef: React.MutableRefObject<boolean>;
   getSelectedPageUrl: (pageId: ExplorationPageNodeId) => string;
   readPageIds: ReadonlySet<string>;
@@ -357,7 +357,7 @@ function ExplorationTreeItem({
   isSelected,
   depth,
   explorationId,
-  handlePrefetch,
+  onPrefetchPage,
   shouldScrollSelectionRef,
   getSelectedPageUrl,
   readPageIds,
@@ -407,7 +407,7 @@ function ExplorationTreeItem({
         [S.treeRowSelected]: isSelected,
         [S.treeRowNested]: depth > 0,
       })}
-      onMouseEnter={() => handlePrefetch(item)}
+      onMouseEnter={() => onPrefetchPage(pageId)}
       onClick={handleClick}
       // custom css var used for tree styles
       style={{ "--tree-depth": depth } as React.CSSProperties}

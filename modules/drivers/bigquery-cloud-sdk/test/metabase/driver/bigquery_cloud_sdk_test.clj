@@ -13,6 +13,7 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
@@ -52,6 +53,42 @@
   [table-name]
   (bigquery.tx/execute! (format "DROP TABLE IF EXISTS `%s`;" (fmt-table-name table-name))))
 
+(deftest ^:parallel exactly-named-datasets-agrees-with-scan-test
+  (testing "a filter of plain names selects exactly the datasets a scan of the whole project would keep"
+    (let [universe ["orders" "orders_v2" "ORDERS" "public" "public_archive" "a_b" "x1"]]
+      (doseq [patterns ["orders" "ORDERS" "orders,public" "  orders , public  " "a_b" "x1,orders_v2"
+                        ;; naming something absent is fine -- it just selects nothing
+                        "not_a_dataset" "orders,not_a_dataset"]]
+        (testing (pr-str patterns)
+          (let [named (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                                          :dataset-filters-patterns patterns})]
+            (is (some? named)
+                "should be recognized as naming its datasets outright")
+            ;; only names that exist can come back from a lookup, so compare within the universe
+            (is (= (set (filter #(driver.s/include-schema? patterns nil %) universe))
+                   (set (filter (set universe) named)))))))))
+  (testing "a dataset named twice is looked up once, as a scan would yield it once"
+    (is (= ["orders" "public"]
+           (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                               :dataset-filters-patterns "orders,public,orders"}))))
+  (testing "filters that a name lookup cannot answer fall through to a scan"
+    (doseq [[patterns why] {"orders*"        "wildcard"
+                            "*"              "wildcard"
+                            "a,b*"           "wildcard in one segment"
+                            "crazy\\*schema" "escaped asterisk is not a legal dataset ID"
+                            "_hidden"        "leading underscore means hidden; a scan never lists it"
+                            "orders,_hidden" "one hidden name is enough to need a scan"
+                            ""               "blank means include everything"
+                            nil              "blank means include everything"}]
+      (testing why
+        (is (nil? (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                                      :dataset-filters-patterns patterns}))))))
+  (testing "only inclusion filters name datasets; anything else needs a scan"
+    (doseq [filters-type ["exclusion" "all" nil]]
+      (testing (pr-str filters-type)
+        (is (nil? (#'bigquery/exactly-named-datasets {:dataset-filters-type     filters-type
+                                                      :dataset-filters-patterns "orders"})))))))
+
 (deftest ^:parallel sanity-check-test
   (mt/test-driver
     :bigquery-cloud-sdk
@@ -59,6 +96,44 @@
       test-data
       (is (seq (mt/rows
                 (mt/run-mbql-query orders {:limit 1})))))))
+
+(defn- service-account-json
+  [& {:as extra}]
+  (json/encode (merge {:type         "service_account"
+                       :project_id   "test-project"
+                       :client_email "test@test-project.iam.gserviceaccount.com"}
+                      extra)))
+
+(deftest ^:parallel connection-hosts-test
+  (testing "the fixed vendor endpoints are reported even when nothing is configured"
+    (is (= #{"bigquery.googleapis.com" "oauth2.googleapis.com"}
+           (set (driver/connection-hosts :bigquery-cloud-sdk
+                                         {:service-account-json (service-account-json)})))))
+  (testing "the alternate hostname replaces the API endpoint (it is a URL, not a bare host)"
+    (is (= #{"bq.internal" "oauth2.googleapis.com"}
+           (set (driver/connection-hosts :bigquery-cloud-sdk
+                                         {:host                 "https://bq.internal:9999"
+                                          :service-account-json (service-account-json)})))))
+  (testing "`token_uri` from the service account JSON is fetched by Metabase, so it counts as a connection host"
+    ;; `ServiceAccountCredentials/fromStream` honors `token_uri`, so the credentials blob -- not just `:host` --
+    ;; decides where Metabase POSTs a signed JWT.
+    (is (= #{"bigquery.googleapis.com" "sts.internal"}
+           (set (driver/connection-hosts
+                 :bigquery-cloud-sdk
+                 {:service-account-json (service-account-json :token_uri "http://sts.internal/token")})))))
+  (testing "credentials we cannot read fail closed rather than reporting only the endpoints we can see"
+    (is (thrown? Exception
+                 (driver/connection-hosts :bigquery-cloud-sdk {:service-account-json "{not json"})))))
+
+(deftest client-honors-network-policy-test
+  (testing "the network policy is enforced when the client is built, not only when the database is saved"
+    ;; BigQuery is not a `:sql-jdbc` driver, so it has no connection pool to re-check the details on the way out.
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Cannot connect to a private or internal network address"
+           (#'bigquery/database-details->client {:host                 "https://169.254.169.254"
+                                                 :service-account-json (service-account-json)}))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1562,5 +1637,5 @@
   (testing "no clustering index -> no clause"
     (is (nil? (#'bigquery/clustering-clause [{:kind :btree :columns [{:name "category"}]}]))))
   (testing "a SQL-injection payload in a clustering column is backtick-escaped, so it can only ever be an identifier"
-    (is (= "CLUSTER BY `c``; DROP TABLE x; --`"
+    (is (= "CLUSTER BY `c\\`; DROP TABLE x; --`"
            (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "c`; DROP TABLE x; --"}]}])))))

@@ -5,7 +5,7 @@ import { useEffect, useId, useRef } from "react";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified } from "metabase/ui";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { RowValue, VisualizationSettings } from "metabase-types/api";
 
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
 import { RowToggleIcon } from "./RowToggleIcon";
@@ -169,7 +169,7 @@ export const TopHeaderCell = ({
 };
 
 type LeftHeaderCellProps = TopHeaderCellProps & {
-  rowIndex: string[];
+  rowIndex: RowValue[][];
   settings: VisualizationSettings;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
 };

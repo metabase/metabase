@@ -26,6 +26,14 @@
 
 (driver/register! :druid-jdbc :parent #{:sql-jdbc})
 
+(defmethod driver/host-carrying-parameters :druid-jdbc
+  [_driver]
+  ["url" "LB_URLS"])
+
+(defmethod driver/non-host-parameters :druid-jdbc
+  [_driver]
+  ["HOSTNAME_VERIFICATION"])
+
 (doseq [[feature supported?] {:set-timezone            true
                               :expression-aggregations true
                               :expression-literals     true

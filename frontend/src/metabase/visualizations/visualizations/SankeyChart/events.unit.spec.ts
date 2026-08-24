@@ -1,5 +1,5 @@
+import { getDataFromClicked } from "metabase/value-formatting";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
-import { getDataFromClicked } from "metabase/visualizations/lib/formatting/click-data";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   createMockCard,

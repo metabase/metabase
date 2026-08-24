@@ -1,4 +1,5 @@
 import type { DocumentContent } from "./document";
+import type { TimelineId } from "./timeline";
 import type { BaseUser, User, UserId } from "./user";
 
 export type CommentId = number;
@@ -7,7 +8,10 @@ export type CommentEntityType = "document" | "exploration";
 
 export type EntityId = string | number;
 
-export type CommentContext = Record<string, unknown>;
+export interface CommentContext {
+  timeline_id?: TimelineId;
+  [key: string]: unknown;
+}
 
 export interface Comment {
   id: CommentId;

@@ -8,12 +8,13 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
@@ -194,19 +195,30 @@
                     (contains? success-ids (:id p))))
              parts)))))
 
+(defn- truncated?
+  "Whether the provider cut this iteration off at its output-token limit. A truncated
+  turn may contain a half-streamed tool call, so it must not continue the loop."
+  [parts]
+  (some #(and (= (:type %) :usage)
+              (= (:finish-reason %) "length"))
+        parts))
+
 (defn- should-continue?
   "Determine if agent should continue iterating."
   [iteration max-iterations terminal-tools parts]
   (and (< iteration max-iterations)
        (has-tool-calls? parts)
-       (not (terminal-tool-call? terminal-tools parts))))
+       (not (terminal-tool-call? terminal-tools parts))
+       (not (truncated? parts))))
 
 (defn- finish-reason
   "Determine why the agent loop stopped."
   [iteration max-iterations terminal-tools parts]
   (cond
-    (>= iteration max-iterations)              :max-iterations
+    (truncated? parts)                         :length
     (terminal-tool-call? terminal-tools parts) :terminal-tool
+    (and (>= iteration max-iterations)
+         (has-tool-calls? parts))              :max-iterations
     :else                                      :stop))
 
 ;;; Call LLM
@@ -380,10 +392,9 @@
 
 (defn chart-config->chart
   "Create chart structure from chart-config"
-  [id {:keys [query timeline_events image_base_64] :as chart-config}]
+  [id {:keys [query timeline_events] :as chart-config}]
   {:chart_id id
    :queries [query]
-   :image_base_64 image_base_64
    :timeline_events (or timeline_events [])
    ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
    ;;                           what is the reason behind that if any and either add it or drop.
@@ -494,7 +505,7 @@
   whether the request was routed through the AI proxy.
   Non-usage parts pass through unchanged."
   [usage-atom provider-and-model]
-  (let [model (or (some-> provider-and-model provider-util/strip-metabase-prefix)
+  (let [model (or (some-> provider-and-model llm.provider/strip-managed-prefix)
                   "unknown")]
     (map (fn [part]
            (if (= (:type part) :usage)
@@ -513,7 +524,7 @@
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools context memory-atom tracking-opts]} agent
-          max-iter           (:max-iterations profile 10)
+          max-iter           (:max-iterations profile 15)
           terminal-tools     (set (:terminal-tools profile))
           tracking-opts      (assoc tracking-opts :iteration iteration)
           memory             @memory-atom
@@ -565,7 +576,9 @@
 
             :else
             (let [reason (finish-reason iteration max-iter terminal-tools parts)]
-              (log/info "Agent loop complete" {:iterations iteration :reason reason})
+              (if (= reason :length)
+                (log/warn "Agent loop complete" {:iterations iteration :reason reason})
+                (log/info "Agent loop complete" {:iterations iteration :reason reason}))
               (assoc loop-state
                      :status :done
                      ;; surfaced so run-agent-loop can record it on the turn span
@@ -660,7 +673,8 @@
                       scope/*current-user-scope*               scopes
                       scope/*current-user-metabot-permissions* perms
                       scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
-                      scope/*current-loadable-skill-ids*       (atom #{})]
+                      scope/*current-loadable-skill-ids*       (atom #{})
+                      metabot.perms/*cache*                    (atom {})]
               (try
                 ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
                 ;; inherited when an in-process `capture-reducible` already bound one). Spans stream
@@ -694,18 +708,21 @@
                                             :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
                             ;; A :reduced stop (client disconnect / cancellation) has already terminated
                             ;; the reducing fn — stepping it again would violate the transducer contract.
-                            ;; Append trailing parts only on a normal finish: the debug log, and the
-                            ;; eval-session pointer that lets the harness locate the per-session
-                            ;; `<session-id>.jsonl` (it reads that file, not the stream, so a skipped
-                            ;; pointer on disconnect costs nothing). Gate the pointer on a non-nil
-                            ;; `*session-id*` too: the in-process `capture-reducible`/`capturing` path is
-                            ;; capture-active but deliberately file-less (session id nil, read `:trace`),
-                            ;; so emitting a pointer there would name a `<nil>.jsonl` that never exists.
+                            ;; Append trailing parts only on a normal finish: the debug log, the
+                            ;; loop's finish reason, and the eval-session pointer that lets the
+                            ;; harness locate the per-session `<session-id>.jsonl` (it reads that
+                            ;; file, not the stream, so a skipped pointer on disconnect costs
+                            ;; nothing). Gate the pointer on a non-nil `*session-id*` too: the
+                            ;; in-process `capture-reducible`/`capturing` path is capture-active but
+                            ;; deliberately file-less (session id nil, read `:trace`), so emitting a
+                            ;; pointer there would name a `<nil>.jsonl` that never exists.
                             (if (= :reduced finish-reason)
                               result
-                              (cond-> result
-                                (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
-                                (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*))))))]
+                              (-> result
+                                  (cond->
+                                   (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
+                                   (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*)))
+                                  (rf {:type :finish :finish-reason finish-reason})))))]
                     turn-result))
                 (catch Exception e
                   (analytics/inc! :metabase-metabot/agent-errors labels)

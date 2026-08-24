@@ -1209,3 +1209,10 @@
           "column is a doubled-quote identifier")
       (is (str/includes? stmt "name = N'by\"cat''; DROP TABLE x; --'")
           "name in the IF NOT EXISTS guard is a doubled-quote N'' string literal"))))
+
+(deftest ^:parallel connection-parameter-hosts-test
+  (testing "`serverName` in additional-options overrides the host in the URL, so it counts as a connection host"
+    (let [details {:host "real.example.com" :port 1433 :db "db"}
+          hosts   #(set (driver/connection-parameter-hosts :sqlserver %))]
+      (is (contains? (hosts (assoc details :additional-options "serverName=10.0.0.1")) "10.0.0.1"))
+      (is (not (contains? (hosts details) "10.0.0.1"))))))

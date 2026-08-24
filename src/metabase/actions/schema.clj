@@ -1,9 +1,12 @@
 (ns metabase.actions.schema
   (:require
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -11,6 +14,57 @@
 (mr/def ::id
   "Valid Action ID"
   pos-int?)
+
+(def ^:private prefetch-parameter-values-message
+  (deferred-tru "value must be a JSON object mapping parameter ids to scalar values."))
+
+(defn- decode-prefetch-parameter-values
+  [x]
+  (let [parsed (if (string? x)
+                 (try
+                   (json/decode x)
+                   (catch Throwable _
+                     (throw (ex-info (str prefetch-parameter-values-message) {:status-code 400}))))
+                 x)]
+    (when-not (map? parsed)
+      (throw (ex-info (str prefetch-parameter-values-message) {:status-code 400})))
+    parsed))
+
+(defn- parameter-values-schema
+  [{:keys [decoded-key-schema key-schema value-schema message decode]}]
+  (let [strict [:map-of key-schema value-schema]]
+    [:schema
+     (cond-> {:description message}
+       decode (assoc :decode/api decode))
+     [:and
+      [:map-of decoded-key-schema :any]
+      [:fn {:error/fn (fn [_ _] message)}
+       #(mr/validate strict %)]]]))
+
+(mr/def ::prefetch-parameter-values
+  (parameter-values-schema
+   {:decoded-key-schema :string
+    :key-schema         [:ref ::lib.schema.parameter/id]
+    :value-schema       [:ref ::lib.schema.parameter/parameter.value.scalar]
+    :message            prefetch-parameter-values-message
+    :decode             decode-prefetch-parameter-values}))
+
+(def ^:private execute-parameter-values-message
+  (deferred-tru "value must map parameter ids to scalar values."))
+
+(mr/def ::execute-parameter-values
+  (parameter-values-schema
+   {:decoded-key-schema :keyword
+    :key-schema         :keyword
+    :value-schema       [:ref ::lib.schema.parameter/parameter.value]
+    :message            execute-parameter-values-message}))
+
+(mr/def ::execute-parameter-values.string-keys
+  (parameter-values-schema
+   {:decoded-key-schema :string
+    :key-schema         [:ref ::lib.schema.parameter/id]
+    :value-schema       [:ref ::lib.schema.parameter/parameter.value]
+    :message            execute-parameter-values-message}))
 
 (mr/def ::type
   [:enum
@@ -64,7 +118,7 @@
 
 (def ^:private query-action-entries
   [[:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query {:optional true} [:maybe ::queries.schema/query]]])
+   [:dataset_query {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]])
 
 (mr/def ::query-action
   (into [:map] query-action-entries))
@@ -102,15 +156,15 @@
                                  [:public_uuid       {:optional true} [:maybe ms/UUIDString]]
                                  [:made_public_by_id {:optional true} [:maybe ::lib.schema.id/user]]
                                  [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]])])]
-    (mu/dispatched-map
-     ;; dispatch on the normalized type so a JSON string picks the same branch as a keyword
-     (comp keyword :type)
-     common
-     [[:http     http-action-entries]
-      [:implicit implicit-action-entries]
-      [:query    query-action-entries]
+    [:merge
+     (into [:map] common)
+     [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+              :dispatch         (comp keyword :type)}
+      [:http     (into [:map] http-action-entries)]
+      [:implicit (into [:map] implicit-action-entries)]
+      [:query    (into [:map] query-action-entries)]
       ;; a partial update need not repeat `:type`; accept every type's keys rather than dropping them
-      [nil       (into [] cat [http-action-entries implicit-action-entries query-action-entries])]])))
+      [nil       (into [:map] cat [http-action-entries implicit-action-entries query-action-entries])]]]))
 
 (mr/def ::action
   "An Action as it should appear when we `SELECT` it from the app DB."

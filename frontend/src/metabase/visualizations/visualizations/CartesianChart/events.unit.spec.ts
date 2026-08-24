@@ -1,10 +1,9 @@
-import dayjs from "dayjs";
-
 import {
   createMockBreakoutSeriesModel,
   createMockCartesianChartModel,
   createMockSeriesModel,
 } from "__support__/echarts";
+import { dayjs } from "metabase/dayjs";
 import {
   INDEX_KEY,
   X_AXIS_DATA_KEY,
@@ -23,6 +22,7 @@ import {
   createMockColumn,
   createMockDatetimeColumn,
   createMockSingleSeries,
+  createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
 import {
@@ -30,6 +30,7 @@ import {
   getBrushClickObject,
   getEventDimensions,
   getSeriesClickData,
+  getTooltipModel,
   normalizeDimensionValue,
 } from "./events";
 
@@ -612,5 +613,61 @@ describe("getBrushClickObject", () => {
       end: 4,
     });
     expect(clicked?.column).toBe(priceColumn);
+  });
+});
+
+describe("getTooltipModel", () => {
+  // The shape produced by funnelToBarTransform and scalarsBarTransform:
+  // each series is a separate card with a datapoint at only its own category.
+  const createStepSeriesChartModel = (dataset: Datum[]) =>
+    createMockCartesianChartModel({
+      seriesModels: [
+        createMockSeriesModel({ dataKey: "Doohickey", name: "Doohickey" }),
+        createMockSeriesModel({ dataKey: "Gadget", name: "Gadget" }),
+      ],
+      dataset,
+      transformedDataset: dataset,
+    });
+
+  it("shows only series with a datapoint at the hovered position in the default tooltip (metabase#76933)", () => {
+    const chartModel = createStepSeriesChartModel([
+      { [X_AXIS_DATA_KEY]: "Doohickey", [INDEX_KEY]: 0, Doohickey: 3976 },
+      { [X_AXIS_DATA_KEY]: "Gadget", [INDEX_KEY]: 1, Gadget: 4939 },
+    ]);
+
+    const tooltipModel = getTooltipModel(
+      chartModel,
+      createMockVisualizationSettings({ "graph.tooltip_type": "default" }),
+      0,
+      "bar",
+      "Doohickey",
+    );
+
+    expect(tooltipModel?.rows.map((row) => row.name)).toEqual(["Doohickey"]);
+  });
+
+  it("keeps series with explicit null values in the default tooltip", () => {
+    const chartModel = createStepSeriesChartModel([
+      {
+        [X_AXIS_DATA_KEY]: "Doohickey",
+        [INDEX_KEY]: 0,
+        Doohickey: 3976,
+        Gadget: null,
+      },
+      { [X_AXIS_DATA_KEY]: "Gadget", [INDEX_KEY]: 1, Gadget: 4939 },
+    ]);
+
+    const tooltipModel = getTooltipModel(
+      chartModel,
+      createMockVisualizationSettings({ "graph.tooltip_type": "default" }),
+      0,
+      "bar",
+      "Doohickey",
+    );
+
+    expect(tooltipModel?.rows.map((row) => row.name)).toEqual([
+      "Doohickey",
+      "Gadget",
+    ]);
   });
 });

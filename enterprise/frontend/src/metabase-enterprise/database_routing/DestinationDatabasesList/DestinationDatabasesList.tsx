@@ -5,8 +5,8 @@ import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/component
 import { useListDatabasesQuery } from "metabase/api";
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Icon, Menu, Text, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database, DatabaseId } from "metabase-types/api";

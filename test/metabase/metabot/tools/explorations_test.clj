@@ -11,7 +11,8 @@
    [metabase.util.json :as json]))
 
 (def ^:private exploration-tool-vars
-  [#'tools.explorations/get-research-candidates-tool
+  [#'tools.explorations/list-research-metrics-tool
+   #'tools.explorations/get-research-candidates-tool
    #'tools.explorations/add-research-groups-tool
    #'tools.explorations/remove-from-research-plan-tool
    #'tools.explorations/set-exploration-name-tool
@@ -38,6 +39,23 @@
    `tool-output-available` stream event the FE consumes); decode it back to a map."
   [result]
   (json/decode+kw (:output result)))
+
+(deftest ^:parallel get-research-candidates-requires-a-filter-test
+  (testing "an argument-less call is rejected with an instructive error (the unfiltered catalog is
+            the unbounded payload this tool's contract exists to prevent)"
+    (doseq [args [{} {:q nil} {:q ""} {:metric_ids nil} {:metric_ids []} {:q "  " :metric_ids []}]]
+      (testing (pr-str args)
+        (let [{:keys [output]} (tools.explorations/get-research-candidates-tool args)]
+          (is (str/starts-with? output "Error:"))
+          (is (str/includes? output "list_research_metrics")))))))
+
+(deftest ^:parallel get-research-candidates-caps-metric-ids-test
+  (testing "more than the per-call cap of metric_ids is rejected, naming the cap and the count"
+    (let [{:keys [output]} (tools.explorations/get-research-candidates-tool
+                            {:metric_ids (vec (range 21))})]
+      (is (str/starts-with? output "Error:"))
+      (is (str/includes? output "at most 20"))
+      (is (str/includes? output "got 21")))))
 
 (deftest ^:parallel remove-from-research-plan-tool-test
   (testing "echoes the block ids the agent asked to remove (pure-echo; the FE applies them)"

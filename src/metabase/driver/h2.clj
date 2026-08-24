@@ -42,6 +42,13 @@
 
 (driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
+(defmethod driver/connection-hosts :h2
+  [_driver {:keys [db]}]
+  (if (and (string? db)
+           (re-find #"(?i)(?:^|:)(?:tcp|ssl)://" db))
+    (driver/hosts-from-details {:db db} [:db])
+    []))
+
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
 

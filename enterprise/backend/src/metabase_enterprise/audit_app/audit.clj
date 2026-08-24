@@ -95,19 +95,19 @@
                                        :from [[(t2/table-name :model/Table) :table]]
                                        :where [:and [:= :table.db_id audit-db-id]
                                                ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
-                                               [:not= :table.name [:inline "DATABASECHANGELOG"]]
-                                               [:not= :table.name [:inline "DATABASECHANGELOGLOCK"]] ;; new instances do not get this file, but existing instances may have it
-                                               [:not [:like :table.name [:inline "QRTZ_%"]]]
-                                               [:not [:exists {:select [1]
-                                                               :from [[(t2/table-name :model/Table) :self_table]]
-                                                               :where [:and
-                                                                       [:= :self_table.db_id :table.db_id]
-                                                                       [:or
-                                                                        [:= :self_table.schema [:lower :table.schema]]
-                                                                        [:and
-                                                                         [:= :self_table.schema [:inline "public"]]
-                                                                         [:= :table.schema nil]]]
-                                                                       [:= :self_table.name [:lower :table.name]]]}]]]})]
+                                               [:not= :table.name "DATABASECHANGELOG"]
+                                               [:not= :table.name "DATABASECHANGELOGLOCK"] ;; new instances do not get this file, but existing instances may have it
+                                               [:not [:like :table.name "QRTZ_%"]]
+                                               [:not [:exists ^:allow-subquery {:select [1]
+                                                                                :from [[(t2/table-name :model/Table) :self_table]]
+                                                                                :where [:and
+                                                                                        [:= :self_table.db_id :table.db_id]
+                                                                                        [:or
+                                                                                         [:= :self_table.schema [:lower :table.schema]]
+                                                                                         [:and
+                                                                                          [:= :self_table.schema "public"]
+                                                                                          [:= :table.schema nil]]]
+                                                                                        [:= :self_table.name [:lower :table.name]]]}]]]})]
     (when (seq table-ids-to-update)
       (t2/update! :model/Table :id [:in (map :id table-ids-to-update)]
                   {:schema "public" :name [:lower :name]})))
@@ -116,20 +116,20 @@
                                        :inner-join [[(t2/table-name :model/Table) :table]
                                                     [:= :table.id :field.table_id]]
                                        :where [:and [:= :table.db_id audit-db-id]
-                                               [:not= :table.name [:inline "DATABASECHANGELOG"]]
-                                               [:not [:like :table.name [:inline "QRTZ_%"]]]
-                                               [:not [:exists {:select [1]
-                                                               :from [[(t2/table-name :model/Field) :self_field]]
-                                                               :inner-join [[(t2/table-name :model/Table) :self_table]
-                                                                            [:= :self_table.id :self_field.table_id]]
-                                                               :where [:and
-                                                                       [:= :self_table.db_id :table.db_id]
-                                                                       [:or
-                                                                        [:= :self_table.schema [:lower :table.schema]]
-                                                                        [:and
-                                                                         [:= :self_table.schema [:inline "public"]]
-                                                                         [:= :table.schema nil]]]
-                                                                       [:= :self_field.name [:lower :field.name]]]}]]]})]
+                                               [:not= :table.name "DATABASECHANGELOG"]
+                                               [:not [:like :table.name "QRTZ_%"]]
+                                               [:not [:exists ^:allow-subquery {:select [1]
+                                                                                :from [[(t2/table-name :model/Field) :self_field]]
+                                                                                :inner-join [[(t2/table-name :model/Table) :self_table]
+                                                                                             [:= :self_table.id :self_field.table_id]]
+                                                                                :where [:and
+                                                                                        [:= :self_table.db_id :table.db_id]
+                                                                                        [:or
+                                                                                         [:= :self_table.schema [:lower :table.schema]]
+                                                                                         [:and
+                                                                                          [:= :self_table.schema "public"]
+                                                                                          [:= :table.schema nil]]]
+                                                                                        [:= :self_field.name [:lower :field.name]]]}]]]})]
     (when (seq field-ids-to-update)
       (t2/update! :model/Field :id [:in (map :id field-ids-to-update)]
                   {:name [:lower :name]})))
@@ -166,9 +166,9 @@
         (t2/update! :model/Field
                     {:table_id
                      [:in
-                      {:select [:id]
-                       :from   [(t2/table-name :model/Table)]
-                       :where  [:= :db_id audit-db-id]}]}
+                      ^:allow-subquery {:select [:id]
+                                        :from   [(t2/table-name :model/Table)]
+                                        :where  [:= :db_id audit-db-id]}]}
                     {:name [:upper :name]})
         (fix-h2-card-metadata! audit-db-id))
 
@@ -392,7 +392,7 @@
 
 (defn- remap-result-metadata-ref
   "Remap the Field ID of a single result-metadata `:field_ref` via `field-id-remap`. Handles legacy refs
-   (`[:field id opts]`, `[:field-id id]`, id second) and pMBQL refs (`[:field opts id]`, id last). Non-field refs and
+   (`[:field id opts]`, `[:field-id id]`, id second) and MBQL 5 refs (`[:field opts id]`, id last). Non-field refs and
    ids with no remapping are returned unchanged."
   [field-id-remap ref]
   (if (and (vector? ref) (#{:field :field-id} (first ref)))

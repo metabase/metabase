@@ -36,8 +36,9 @@ import {
   getSeriesClickData,
   getSeriesHovered,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
-import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
+
+import { getVisualizerSeriesCardIndex } from "../../lib/series";
 
 import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";
@@ -96,7 +97,8 @@ export const useChartEvents = (
   }: VisualizationProps,
   // The ECharts instance, mirrored into state by the caller. Used as a signal
   // to re-run chart-instance-dependent effects (e.g. brush) once it is ready,
-  // which matters because the lazily loaded renderer calls `onInit` late.
+  // which matters because the renderer calls `onInit` only after ExplicitSize
+  // has measured it.
   chartInstance?: EChartsType,
 ) => {
   const isBrushing = useRef<boolean>();

@@ -1,10 +1,14 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/utils/types";
-import { getDataFromClicked } from "metabase/visualizations/lib/formatting/click-data";
-import * as dateFormatUtils from "metabase/visualizations/lib/formatting/date";
+import { getDataFromClicked } from "metabase/value-formatting";
+import * as dateFormatUtils from "metabase/value-formatting";
 import Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
-import type { FieldId, TemplateTagType } from "metabase-types/api";
+import type {
+  ClickBehaviorTarget,
+  FieldId,
+  TemplateTagType,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -611,7 +615,10 @@ describe("metabase/dashboard/utils/click-behavior", () => {
         column: {
           some_date: {
             value: "2020-01-01T00:00:00+05:00",
-            column: createMockColumn({ effective_type: "type/DateTime" }),
+            column: createMockColumn({
+              effective_type: "type/DateTime",
+              unit: "day",
+            }),
           },
         },
       };
@@ -627,6 +634,146 @@ describe("metabase/dashboard/utils/click-behavior", () => {
         clickBehavior,
       });
       expect(value).toEqual("2020-01-01");
+    });
+
+    describe("unbinned date columns (metabase#72863)", () => {
+      const source = {
+        type: "column" as const,
+        id: "SOME_DATE",
+        name: "date",
+      };
+      const value = "2020-01-01T06:30:00+05:00";
+
+      it.each([
+        {
+          effectiveType: "type/DateTime" as const,
+          parameterType: "date/all-options" as const,
+          expected: "2020-01-01T06:30",
+        },
+        {
+          effectiveType: "type/Date" as const,
+          parameterType: "date/all-options" as const,
+          expected: "2020-01-01",
+        },
+        {
+          effectiveType: "type/DateTime" as const,
+          parameterType: "date/single" as const,
+          expected: "2020-01-01T06:30",
+        },
+        {
+          effectiveType: "type/Date" as const,
+          parameterType: "date/single" as const,
+          expected: "2020-01-01",
+        },
+      ])(
+        "should format unbinned $effectiveType for $parameterType parameters",
+        ({ effectiveType, parameterType, expected }) => {
+          const target = { type: "parameter" as const, id: "param123" };
+          const data = {
+            ...emptyData,
+            column: {
+              some_date: {
+                value,
+                column: createMockColumn({
+                  effective_type: effectiveType,
+                }),
+              },
+            },
+          };
+          const extraData = {
+            dashboard: createMockDashboard(),
+            parameters: [
+              createMockParameter({ id: "param123", type: parameterType }),
+            ],
+          };
+          const clickBehavior = { type: "crossfilter" as const };
+
+          expect(
+            formatSourceForTarget(source, target, {
+              data,
+              extraData,
+              clickBehavior,
+            }),
+          ).toEqual(expected);
+        },
+      );
+
+      it.each([
+        {
+          effectiveType: "type/DateTime" as const,
+          expected: "2020-01-01T06:30",
+        },
+        {
+          effectiveType: "type/Date" as const,
+          expected: "2020-01-01",
+        },
+      ])(
+        "should format unbinned $effectiveType for question dimension targets as a single value",
+        ({ effectiveType, expected }) => {
+          const target: ClickBehaviorTarget = {
+            type: "dimension" as const,
+            id: '["dimension",["field",1,null]]',
+            dimension: ["dimension" as const, ["field", 1, null]],
+          };
+          const data = {
+            ...emptyData,
+            column: {
+              some_date: {
+                value,
+                column: createMockColumn({
+                  effective_type: effectiveType,
+                }),
+              },
+            },
+          };
+          const clickBehavior = {
+            type: "link" as const,
+            linkType: "question" as const,
+            targetId: 123,
+          };
+
+          expect(
+            formatSourceForTarget(source, target, {
+              data,
+              extraData: {},
+              clickBehavior,
+            }),
+          ).toEqual(expected);
+        },
+      );
+
+      it("should still use a date range for binned month dimension targets", () => {
+        const target: ClickBehaviorTarget = {
+          type: "dimension" as const,
+          id: '["dimension",["field",1,null]]',
+          dimension: ["dimension" as const, ["field", 1, null]],
+        };
+        const data = {
+          ...emptyData,
+          column: {
+            some_date: {
+              value,
+              column: createMockColumn({
+                effective_type: "type/DateTime",
+                unit: "month",
+              }),
+            },
+          },
+        };
+        const clickBehavior = {
+          type: "link" as const,
+          linkType: "question" as const,
+          targetId: 123,
+        };
+
+        expect(
+          formatSourceForTarget(source, target, {
+            data,
+            extraData: {},
+            clickBehavior,
+          }),
+        ).toEqual("2020-01-01~2020-01-31");
+      });
     });
 
     it("should format number/between parameters with binning info as a range", () => {

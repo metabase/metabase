@@ -216,17 +216,6 @@ jobs:
             echo "No ./target/junit directory; nothing to process."
           fi
 
-      - name: Upload Test Results
-        uses: ./.github/actions/upload-test-results
-        if: always()
-        with:
-          input-path: ./target/junit
-          # Related to our custom upload to S3
-          output-name: e2e-${{ inputs.name }}
-          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
-          aws-region: ${{ vars.AWS_REGION }}
-
       - name: Quarantine gate
         # Only one of the two run steps executes; the other reports `skipped`. Only gate on actual failure.
         if: ${{ !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure') }}

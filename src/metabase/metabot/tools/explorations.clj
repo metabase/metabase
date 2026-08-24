@@ -68,19 +68,54 @@
   [context]
   {:research_plan (format-research-plan context)})
 
-(def ^:private get-research-candidates-schema
+(def ^:private list-research-metrics-schema
   [:map {:closed true}
    [:q {:optional true} [:maybe :string]]])
+
+(mu/defn ^{:tool-name "list_research_metrics"
+           :scope     scope/agent-explorations-read}
+  list-research-metrics-tool
+  "List the metrics available for research: one slim row per metric (id, name, description,
+   in_library — a quality signal), best first. Dimensions are not included; pass metric ids from
+   this index to `get_research_candidates` to see their candidate dimensions. Pass `q` to filter
+   by a case-insensitive substring of a metric or dimension name — e.g. `q: \"region\"` returns
+   the metrics that have a Region-like dimension. More than 500 matches are truncated to the top
+   500 with `truncated: true` — narrow with `q`."
+  [{:keys [q]} :- list-research-metrics-schema]
+  {:output (json/encode (explorations/research-metric-index {:q q}))})
+
+(def ^:private get-research-candidates-schema
+  [:map {:closed true}
+   [:q {:optional true} [:maybe :string]]
+   [:metric_ids {:optional true} [:maybe [:sequential :int]]]])
 
 (mu/defn ^{:tool-name "get_research_candidates"
            :scope     scope/agent-explorations-read}
   get-research-candidates-tool
-  "List the metrics and dimensions available for research. Each metric lists its candidate
-   dimensions (id, name, interestingness); each dimension group lists the dimension ids it bundles
-   and the metric ids it can slice. Use this to choose valid metric and dimension ids before
-   calling `add_research_groups`. Pass `q` to filter by a search term."
-  [{:keys [q]} :- get-research-candidates-schema]
-  {:output (json/encode (explorations/research-candidates {:q q}))})
+  "Get the candidate dimensions for chosen research metrics. Pass `metric_ids` (up to 20, from
+   `list_research_metrics`) and/or `q` (a case-insensitive substring of a metric or dimension
+   name) — at least one is required. Each metric lists the `dimensions` it can be sliced by: the
+   `id` to pass to `add_research_groups`, the `group` it belongs to, and a `name` only when this
+   metric calls it something other than the group name. Each entry in `dimension_groups` states
+   that group's types and interestingness once, plus the `metric_ids` it can slice. Every metric
+   and dimension id you pass to `add_research_groups` must come from this tool. Requested ids you
+   can't see come back as `missing_metric_ids`; a too-broad `q` returns the top matches with
+   `truncated: true` — narrow the search or pass explicit `metric_ids`."
+  [{:keys [q metric_ids]} :- get-research-candidates-schema]
+  (cond
+    (and (str/blank? q) (empty? metric_ids))
+    {:output (str "Error: pass metric_ids (up to " explorations/research-candidates-max-metrics
+                  ", from list_research_metrics) and/or q (a search term). This tool reports"
+                  " dimensions for metrics you have already chosen; use list_research_metrics or"
+                  " search to choose them.")}
+
+    (> (count metric_ids) explorations/research-candidates-max-metrics)
+    {:output (str "Error: pass at most " explorations/research-candidates-max-metrics
+                  " metric_ids per call (got " (count metric_ids)
+                  "). Split the request into multiple calls.")}
+
+    :else
+    {:output (json/encode (explorations/research-candidates {:metric-ids metric_ids :q q}))}))
 
 (def ^:private add-research-groups-schema
   [:map {:closed true}
