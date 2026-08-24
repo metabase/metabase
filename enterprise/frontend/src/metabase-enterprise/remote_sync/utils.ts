@@ -1,7 +1,12 @@
 import { t } from "ttag";
 
+import type { MovableItem } from "metabase/common/hooks/use-set-collection";
 import type { ColorName } from "metabase/ui/colors/types";
-import { dataStudioSnippet, modelToUrl } from "metabase/urls";
+import {
+  collection as collectionUrl,
+  dataStudioSnippet,
+  modelToUrl,
+} from "metabase/urls";
 import type {
   Collection,
   IconName,
@@ -189,6 +194,35 @@ export const getRequiredCollections = (
 
   return [...byId.values()];
 };
+
+/**
+ * Where to send an admin to see this dependency in context. Null when there is nowhere useful: the
+ * backend resolved no collection, or it's a snippet, whose folder isn't browsable as a collection.
+ */
+export const getDependencyCollectionUrl = ({
+  model,
+  collection,
+}: RemoteSyncIneligibleDependency): string | null =>
+  model === "snippet" || collection === undefined
+    ? null
+    : collectionUrl(collection);
+
+/**
+ * The collection an admin could switch on to cover this dependency. Null when there is nothing to
+ * switch on: personal collections can't be synced, and the Library carries no id of its own.
+ */
+export const getSyncableRemedyCollection = ({
+  remedy,
+}: RemoteSyncIneligibleDependency): RemoteSyncRemedyCollection | null =>
+  remedy.type === "collection" && !remedy.collection.personal
+    ? remedy.collection
+    : null;
+
+/** Every model a dependency can be is movable, and none of them need more than a model and id. */
+export const toMovableItem = ({
+  model,
+  id,
+}: RemoteSyncIneligibleDependency): MovableItem => ({ model, id });
 
 /** Identity for a dependency or one of its referrers — neither is unique on `id` alone. */
 export const getEntityKey = ({
