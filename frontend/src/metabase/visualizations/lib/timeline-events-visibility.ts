@@ -54,8 +54,6 @@ const getActiveEvents = (timeline: Timeline) =>
 const sortByTimestamp = (events: TimelineEvent[]) =>
   _.sortBy(events, (event) => dayjs(event.timestamp).valueOf());
 
-// Events are opt-in on dashboards: nothing is visible until a timeline (or a
-// single event of it) is explicitly shown.
 export const resolveVisibleTimelineEvents = ({
   timelines,
   visibility,

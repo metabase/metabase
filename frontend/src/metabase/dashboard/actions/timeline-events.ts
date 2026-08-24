@@ -39,10 +39,6 @@ export const openEventsSidebar =
   (props: EventsSidebarProps = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
-    // Opening the panel is the opt-in gesture: charts without any saved or
-    // session visibility preview the collection's timelines. The preview is
-    // transient even while editing, so opening never dirties the dashboard;
-    // it only persists once a toggle is made.
     const seed = getCollectionTimelinesVisibility(state);
     if (!isDefaultVisibility(seed)) {
       const dashcardIds =
