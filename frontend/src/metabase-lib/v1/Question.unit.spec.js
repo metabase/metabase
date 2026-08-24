@@ -3,6 +3,7 @@ import * as Lib from "metabase-lib";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockField,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
