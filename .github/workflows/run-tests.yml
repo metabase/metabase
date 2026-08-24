@@ -120,14 +120,16 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare-node-bun
       - name: Upload affected tests stats
         env:
           STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          API_KEY: ${{ secrets.STATS_API_KEY }}
-        run: node .github/scripts/upload-affected-tests-stats.js
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+        run: bun .github/scripts/upload-affected-tests-stats.ts
 
   uberjar:
     needs: [should-run, files-changed]

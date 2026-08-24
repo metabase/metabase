@@ -1,11 +1,11 @@
 // Appends the test-plan stats row produced by create-test-plan.ts to the
-// "FE Affected Tests" table on stats.metabase.com.
-// Reads STATS_JSON, PR_NUMBER, HEAD_SHA, BASE_SHA, API_KEY from env.
+// "FE Affected Tests" table in eng-stats-importer.
+// Reads STATS_JSON, TRIGGERED_BY, PR_NUMBER, HEAD_SHA, BASE_SHA, API_KEY from env.
 
-const { uploadCsvToMb } = require("./csv-to-mb.js");
+import type { TestPlanStats } from "./affected-tests";
+import { importStats } from "./stats-import";
 
-// "FE Affected Tests" uploaded table on stats.metabase.com.
-const TABLE_ID = 81818;
+const TABLE = "fe_affected_tests";
 
 async function main() {
   // create-test-plan doesn't always produce stats (e.g. on release branches
@@ -16,7 +16,7 @@ async function main() {
     return;
   }
 
-  const s = JSON.parse(raw);
+  const s = JSON.parse(raw) as TestPlanStats;
   console.log("stats", s);
 
   const row = {
@@ -43,17 +43,15 @@ async function main() {
     "Loki Stories All": s.loki_stories_all,
     "Loki Stories To Run (Rules)": s.loki_stories_to_run_rules,
     "Loki Stories To Run (Usage)": s.loki_stories_to_run_usage,
-    "E2E Specs All": s.e2e_specs_all,
-    "E2E Specs To Run (Rules)": s.e2e_specs_to_run_rules,
-    "E2E Specs To Run (Usage)": s.e2e_specs_to_run_usage,
+    // Spelled as the column name rather than a display name: the importer
+    // splits a digit-then-capital run, so "E2E Specs All" would normalize to
+    // `e2_e_specs_all` instead of `e2e_specs_all`.
+    e2e_specs_all: s.e2e_specs_all,
+    e2e_specs_to_run_rules: s.e2e_specs_to_run_rules,
+    e2e_specs_to_run_usage: s.e2e_specs_to_run_usage,
   };
 
-  await uploadCsvToMb({
-    baseUrl: "https://stats.metabase.com",
-    tableId: TABLE_ID,
-    jsonData: [row],
-    mode: "append",
-  });
+  await importStats({ table: TABLE, rows: [row] });
   console.log("Data uploaded successfully");
 }
 
