@@ -1037,7 +1037,7 @@ describe("Remote Sync", () => {
       cy.intercept("POST", "/api/ee/remote-sync/import").as("pullImport");
       cy.intercept("GET", "/api/transform*").as("getTransforms");
 
-      cy.visit("/data-studio/transforms");
+      H.DataStudio.Transforms.visit();
       cy.wait("@getTransforms");
 
       cy.findByRole("treegrid").within(() => {
