@@ -451,13 +451,18 @@
          (or (> major 4) (and (= major 4) (>= minor 8))))))
 
 (mu/defn claude-request-body
-  "Build the Anthropic Messages API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? fast? ai-proxy?]
+  "Build the Anthropic Messages API request body for an LLM request.
+
+  A caller-supplied `:reasoning-config` is this dialect's `thinking` block and wins outright: an
+  adapter re-hosting a non-Claude model here knows its own provider's thinking shape and
+  restrictions, which the model-id-derived config and the suppression rules below cannot describe."
+  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? reasoning-config fast? ai-proxy?]
     :or   {model "claude-haiku-4-5" reasoning? true}} :- core/LLMRequestOpts]
   (let [;; forced tool choice (structured output, or "required") is incompatible
         ;; with thinking — suppress it there.
-        thinking  (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
-                    (model-thinking-config model))
+        thinking  (or reasoning-config
+                      (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
+                        (model-thinking-config model)))
         ;; fast mode is premium-priced, so only honor it on BYOK connections;
         ;; proxied requests bill through Metabase Cloud.
         fast?     (and fast? (not ai-proxy?) (fast-mode-model? model))

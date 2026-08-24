@@ -72,6 +72,8 @@
               (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
       (is (=? {:provider "moonshot" :model "kimi-k3" :ai-proxy? false}
               (#'self/parse-provider-model "moonshot/kimi-k3")))
+      (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
     (testing "a vLLM served model is often a Hugging Face repo id, so the model segment keeps its slashes"
@@ -98,6 +100,7 @@
     (is (fn? (#'self/resolve-adapter "zai")))
     (is (fn? (#'self/resolve-adapter "mistral")))
     (is (fn? (#'self/resolve-adapter "moonshot")))
+    (is (fn? (#'self/resolve-adapter "deepseek")))
     (is (fn? (#'self/resolve-adapter "google")))
     (is (fn? (#'self/resolve-adapter "vllm"))))
   (testing "throws for unknown provider"

@@ -55,6 +55,12 @@
     :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
     :reasoning?       - When false, don't request thinking/reasoning and strip
                         :reasoning parts from the replayed input (defaults true)
+    :reasoning-config - Explicit reasoning directive for an adapter re-hosting a non-native
+                        model on another provider's dialect, where the model-derived config
+                        does not apply. Dialect-shaped, not portable: on the Anthropic dialect
+                        it is the `thinking` block, sent verbatim. When set it wins over both
+                        the derived config and the suppression rules, and :reasoning parts
+                        survive into the replayed input.
     :fast?            - When true, request the provider's fast mode where the model
                         supports it (Anthropic Opus fast mode); adapters without one
                         ignore it
@@ -72,6 +78,7 @@
    [:credentials      {:optional true} [:maybe :map]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
+   [:reasoning-config {:optional true} [:maybe :map]]
    [:fast?            {:optional true} [:maybe :boolean]]
    [:prompt-cache-key {:optional true} [:maybe :string]]])
 

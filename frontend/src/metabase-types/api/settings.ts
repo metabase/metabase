@@ -532,6 +532,7 @@ interface SettingsManagerSettings {
   "llm-zai-api-key"?: string | null;
   "llm-mistral-api-key"?: string | null;
   "llm-moonshot-api-key"?: string | null;
+  "llm-deepseek-api-key"?: string | null;
   "llm-azure-api-key"?: string | null;
   "llm-azure-api-base-url"?: string | null;
   "llm-google-service-account-key"?: string | null;
@@ -778,6 +779,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-zai-api-key"?: string | null;
   "llm-mistral-api-key"?: string | null;
   "llm-moonshot-api-key"?: string | null;
+  "llm-deepseek-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
