@@ -46,8 +46,6 @@ export const getTimelineEventsVisibilityContext = createSelector(
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
 
-// Opening the Events panel opts charts into the dashboard collection's
-// timelines when they have no saved or session state yet.
 export const getCollectionTimelinesVisibility = createSelector(
   [getTransformedTimelines, getDashboardCollectionId],
   (timelines, collectionId): TimelineEventsVisibility => {
