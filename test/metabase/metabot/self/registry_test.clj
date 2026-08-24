@@ -1,6 +1,7 @@
 (ns metabase.metabot.self.registry-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.llm.provider :as llm.provider]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.self.registry :as registry]
    [metabase.test :as mt]
@@ -36,3 +37,14 @@
       (is (= "claude-2" (registry/model-name "anthropic/claude-2"))))
     (testing "a named one shows its name"
       (is (= "Claude Sonnet 4.6" (registry/model-name "anthropic/claude-sonnet-4-6"))))))
+
+(deftest every-allow-list-backed-type-registers-its-models-test
+  (testing "a provider type whose models come from an allow-list must register it, or its models would silently
+            show as raw ids the moment Metabot switches to it. Types whose models the connection itself names
+            (Azure, vLLM) or that llm.provider fixes a catalog for (Google, the managed connection) are exempt:
+            the id is already the human-facing name."
+    (doseq [{:keys [type default-model model-fields models managed?]} (llm.provider/provider-types)
+            :when (and default-model (nil? model-fields) (nil? models) (not managed?))]
+      (testing type
+        (is (some? (get-in (registry/optional type :supported-models) [default-model :display-name]))
+            (str "the " type " provider registers no :supported-models entry naming " default-model))))))
