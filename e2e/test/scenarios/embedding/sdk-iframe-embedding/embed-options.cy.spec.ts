@@ -319,6 +319,8 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
   });
 
   it("renders the exploration template with isSaveEnabled=true, targetCollection, entityTypes", () => {
+    cy.intercept("GET", "/api/pulse/form_input").as("pulseFormInput");
+
     const frame = H.loadSdkIframeEmbedTestPage({
       elements: [
         {
@@ -336,19 +338,16 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
     frame.within(() => {
       cy.findByText("Pick your starting data").should("be.visible");
 
-      H.popover().within(() => {
-        cy.findByText("Orders").click();
-      });
-
-      cy.findByRole("button", { name: "Visualize" }).click();
+      H.popover().findByText("Orders").click();
+      H.visualize();
+      cy.wait("@pulseFormInput");
 
       cy.log("1. clicking on the filter should drill down");
-      cy.findAllByText("37.65").first().should("be.visible").click();
-      cy.findByText(/Filter by this value/).should("be.visible");
-      cy.findByTestId("click-actions-filter-section")
-        .find("button")
-        .first()
-        .click();
+      cy.findByText("37.65").should("be.visible").click();
+      H.popover().within(() => {
+        cy.findByText(/Filter by this value/).should("be.visible");
+        cy.button("<").click();
+      });
       cy.findAllByText("29.8").first().should("be.visible");
       cy.findByTestId("interactive-question-result-toolbar").should(
         "be.visible",
