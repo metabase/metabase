@@ -1267,7 +1267,9 @@
 
 (deftest updating-model-query-does-not-shift-metadata-overrides-test
   (testing "Metadata should not shift to another column with the same name when the query changes (#60930)"
-    (mt/with-model-cleanup [:model/Card]
+    ;; :model/Revision too -- the cleanup deletes rows directly, which skips the Card hook that would have
+    ;; taken the revisions this test's POST and PUTs create with it
+    (mt/with-model-cleanup [:model/Card :model/Revision]
       (let [mp                 (mt/metadata-provider)
             orders-table       (lib.metadata/table mp (mt/id :orders))
             products-table     (lib.metadata/table mp (mt/id :products))
