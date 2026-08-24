@@ -11,7 +11,6 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
-import { CacheDurationUnit } from "metabase-types/api";
 
 import { rootId } from "../constants/simple";
 import { useCacheConfigs } from "../hooks/useCacheConfigs";
@@ -78,16 +77,7 @@ export const StrategyEditorForDatabases: React.FC = () => {
     model_id: targetId ?? undefined,
   });
 
-  const savedStrategy = useMemo(() => {
-    const strategy = targetConfig?.strategy;
-    if (!strategy) {
-      return undefined;
-    }
-    if (strategy.type === "duration") {
-      return { ...strategy, unit: CacheDurationUnit.Hours };
-    }
-    return { ...strategy };
-  }, [targetConfig?.strategy]);
+  const savedStrategy = targetConfig?.strategy;
 
   const {
     askBeforeDiscardingChanges,

@@ -1,6 +1,5 @@
-import dayjs from "dayjs";
-
 import type { NativeQuestionDetails } from "e2e/support/helpers";
+import { dayjs } from "metabase/dayjs";
 import { createMockTask } from "metabase-types/api/mocks";
 
 const { H } = cy;
@@ -523,10 +522,10 @@ describe("monitor > tools", () => {
       name: "Erroring questions",
     }).should("be.visible");
 
-    cy.log("We should be able to switch to the model caching page");
+    cy.log("We should be able to switch to the model persistence log page");
 
-    cy.findByTestId("monitor-nav").findByText("Model caching log").click();
-    cy.location("pathname").should("eq", "/monitor/model-caching");
+    cy.findByTestId("monitor-nav").findByText("Model persistence log").click();
+    cy.location("pathname").should("eq", "/monitor/model-persistence-log");
 
     cy.log(
       "Once the audit_app feature flag is gone, tools should display an upsell",
@@ -648,11 +647,11 @@ describe("scenarios > monitor > tools > task runs", () => {
 
     cy.findByTestId("tasks-table").should("be.visible");
 
-    cy.findByRole("tab", { name: /Runs/i }).click();
+    cy.findByRole("link", { name: "Runs" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/runs");
     cy.findByTestId("task-runs-table").should("be.visible");
 
-    cy.findByRole("tab", { name: /Tasks/i }).click();
+    cy.findByRole("link", { name: "Tasks" }).click();
     cy.location("pathname").should("eq", "/monitor/tasks/list");
     cy.findByTestId("tasks-table").should("be.visible");
   });

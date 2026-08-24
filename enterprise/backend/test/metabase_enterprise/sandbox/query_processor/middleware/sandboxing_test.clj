@@ -62,12 +62,10 @@
      (qp.store/with-metadata-provider (mt/id)
        (sql.qp/->honeysql
         (or driver/*driver* :h2)
-        (sql.qp/mbql-clause-with-opts driver/*driver*
-                                      :field
-                                      {::add/source-table (mt/id table-key)
-                                       ::add/source-alias field-name
-                                       ::add/desired-alias field-name}
-                                      field-id))))))
+        [:field {::add/source-table (mt/id table-key)
+                 ::add/source-alias field-name
+                 ::add/desired-alias field-name}
+         field-id])))))
 
 (defn- venues-category-mbql-gtap-def []
   {:query (mt/mbql-query venues)
@@ -888,7 +886,7 @@
                                          :cache-strategy {:type :ttl
                                                           :multiplier 60
                                                           :avg-execution-ms 10
-                                                          :min-duration-ms 0})))]
+                                                          :min_duration_ms 0})))]
         (testing "Run the query, should not be cached"
           (let [result (run-query)]
             (is (= nil
@@ -1191,32 +1189,38 @@
                           :attributes {:user_id 1, :user_cat "Widget"}}
           (data-perms/set-table-permission! &group (mt/id :people) :perms/create-queries :query-builder)
           (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
-          (is (= (->> [["Twitter" nil 0 401.51]
-                       ["Twitter" "Widget" 0 498.59]
-                       [nil nil 1 401.51]
-                       [nil "Widget" 1 498.59]
-                       ["Twitter" nil 2 900.1]
-                       [nil nil 3 900.1]]
-                      (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
-                                     sort-str (fn [s]
-                                                (cond
-                                                  (some? s) s
-                                                  nil-first? "A"
-                                                  :else "Z"))]
-                                 (fn [[x y group]]
-                                   [group (sort-str x) (sort-str y)]))))
-                 (mt/formatted-rows
-                  [str str int 2.0]
-                  (qp.pivot/run-pivot-query
-                   (mt/mbql-query orders
-                     {:joins [{:source-table $$people
-                               :fields :all
-                               :condition [:= $user_id &P.people.id]
-                               :alias "P"}]
-                      :aggregation [[:sum $total]]
-                      :breakout [&P.people.source
-                                 $product_id->products.category]
-                      :limit 5}))))))))))
+          ;; The query carries `:limit 5`. The multi-query path applies the limit per sub-query (each
+          ;; grouping combination), so all six rows survive; the native `GROUPING SETS` path applies it
+          ;; across the union of grouping sets and truncates the pivot-grouping=3 grand-total row. This
+          ;; asymmetry is intentional (see `pivot-query-without-limit-test` below for the parity-checked
+          ;; version), so opt this test out of the default parity check.
+          (qp.pivot.test-util/without-pivot-parity-check
+           (is (= (->> [["Twitter" nil 0 401.51]
+                        ["Twitter" "Widget" 0 498.59]
+                        [nil nil 1 401.51]
+                        [nil "Widget" 1 498.59]
+                        ["Twitter" nil 2 900.1]
+                        [nil nil 3 900.1]]
+                       (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
+                                      sort-str (fn [s]
+                                                 (cond
+                                                   (some? s) s
+                                                   nil-first? "A"
+                                                   :else "Z"))]
+                                  (fn [[x y group]]
+                                    [group (sort-str x) (sort-str y)]))))
+                  (mt/formatted-rows
+                   [str str int 2.0]
+                   (qp.pivot/run-pivot-query
+                    (mt/mbql-query orders
+                      {:joins [{:source-table $$people
+                                :fields :all
+                                :condition [:= $user_id &P.people.id]
+                                :alias "P"}]
+                       :aggregation [[:sum $total]]
+                       :breakout [&P.people.source
+                                  $product_id->products.category]
+                       :limit 5})))))))))))
 
 (deftest pivot-query-without-limit-test
   (testing "Pivot table queries under sandboxing return identical results from the multi-query and native paths"
@@ -1238,9 +1242,8 @@
                          (lib.tu.notebook/add-breakout {:display-name #"(Test Data )?People"} "Source")
                          (lib.tu.notebook/add-breakout "Product" "Category")
                          (merge {:pivot-rows [0] :pivot-cols [1]}))]
-          (qp.pivot.test-util/with-pivot-parity-check
-            (is (=? {:status :completed}
-                    (qp.pivot/run-pivot-query query)))))))))
+          (is (=? {:status :completed}
+                  (qp.pivot/run-pivot-query query))))))))
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
@@ -1253,7 +1256,7 @@
                           (let [results (qp/process-query (assoc query :cache-strategy {:type :ttl
                                                                                         :multiplier 60
                                                                                         :avg-execution-ms 10
-                                                                                        :min-duration-ms 0}))]
+                                                                                        :min_duration_ms 0}))]
                             {:cached? (boolean (:cached (:cache/details results)))
                              :num-rows (count (mt/rows results))}))]
           (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
@@ -1322,6 +1325,42 @@
                     (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
                                             (:table_name persisted-info)))
                         "Erroneously used the persisted model cache")))))))))))
+
+(deftest model-metadata-overrides-preserved-for-sandboxed-users-test
+  (testing (str "Column metadata overrides on a Model (custom display_name, semantic_type set in the Edit Metadata "
+                "screen) should apply to queries sourced from that Model regardless of whether the user has a "
+                "sandbox on the underlying table (#79060)")
+    (met/with-gtaps! {:gtaps      {:people {:remappings {"state" [:dimension (mt/$ids people $state)]}}}
+                      :attributes {"state" "CA"}}
+      (let [mp            (mt/metadata-provider)
+            people-query  (lib/query mp (lib.metadata/table mp (mt/id :people)))
+            base-metadata (mt/with-test-user :crowberto
+                            (-> (qp/process-query people-query)
+                                (get-in [:data :results_metadata :columns])))
+            overrides     (mapv (fn [{col-name :name :as col}]
+                                  (case col-name
+                                    "ADDRESS"  (assoc col :display_name "Addr")
+                                    "PASSWORD" (assoc col :display_name "Pwd")
+                                    "NAME"     (assoc col :semantic_type :type/Title)
+                                    col))
+                                base-metadata)]
+        ;; the sandboxing path needs a real Card in the app DB; a mock MP wouldn't trigger the sandboxing middleware
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (mt/with-temp [:model/Card model {:type            :model
+                                          :dataset_query   people-query
+                                          :result_metadata overrides}]
+          (let [mp    (mt/metadata-provider)
+                query (lib/query mp (lib.metadata/card mp (:id model)))]
+            (letfn [(cols-by-name [user]
+                      (mt/with-test-user user
+                        (->> (qp/process-query query) :data :cols (m/index-by :name))))]
+              (doseq [[label user] [["admin (unsandboxed)" :crowberto]
+                                    ["sandboxed user"      :rasta]]]
+                (testing label
+                  (let [cols (cols-by-name user)]
+                    (is (= "Addr"      (get-in cols ["ADDRESS"  :display_name])))
+                    (is (= "Pwd"       (get-in cols ["PASSWORD" :display_name])))
+                    (is (= :type/Title (get-in cols ["NAME"     :semantic_type])))))))))))))
 
 (deftest is-sandboxed-success-test
   (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"
@@ -1534,7 +1573,7 @@
                                            :cache-strategy {:type :ttl
                                                             :multiplier 60
                                                             :avg-execution-ms 10
-                                                            :min-duration-ms 0})))]
+                                                            :min_duration_ms 0})))]
           (testing "Run query with login_attributes"
             (met/with-user-attributes! :rasta {"cat" 50}
               (mt/with-test-user :rasta

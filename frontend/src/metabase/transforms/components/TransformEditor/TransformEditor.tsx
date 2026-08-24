@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   QueryEditor,
   type QueryEditorUiOptions,
@@ -69,12 +68,7 @@ export function TransformEditor({
     [databases, isEditMode, uiOptions],
   );
 
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
-
-  const showEditButton =
-    !!transform && !readOnly && !isEditMode && !isRemoteSyncReadOnly;
+  const showEditButton = !!transform && !readOnly && !isEditMode;
 
   const handleQueryChange = (query: Lib.Query) => {
     const newSource: QueryTransformSource = {

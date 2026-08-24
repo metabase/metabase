@@ -55,7 +55,7 @@
                 (try
                   (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
                   (catch clojure.lang.ExceptionInfo e
-                    (log/error e "site-url is invalid; returning nil for now. Will be reset on next request."))))
+                    (log/errorf "site-url is invalid; returning nil for now. Will be reset on next request: %s" (ex-message e)))))
   :setter     (fn [new-value]
                 (let [new-value (some-> new-value normalize-site-url)
                       https?    (some-> new-value (str/starts-with?  "https:"))]

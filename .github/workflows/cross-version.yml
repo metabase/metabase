@@ -12,21 +12,23 @@ on:
         required: true
         type: string
 
-  pull_request:
-    paths:
-      - "cross-version/**"
-      - ".github/workflows/cross-version.yml"
-      - ".github/scripts/build-cross-version-matrix.js"
+  # NOTE: this workflow is temporarily disabled until the cross version tests are fixed.
+  # pull_request:
+  #   paths:
+  #     - "cross-version/**"
+  #     - ".github/workflows/cross-version.yml"
+  #     - ".github/scripts/build-cross-version-matrix.js"
 
-  schedule:
-    # Run nightly at 3 AM UTC
-    - cron: "0 3 * * *"
+  # schedule:
+  #   # Run nightly at 3 AM UTC
+  #   - cron: "0 3 * * *"
 
 jobs:
   # Generate matrix for scheduled/PR runs
   generate-matrix:
     if: github.event_name != 'workflow_dispatch' && github.repository == 'metabase/metabase'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -96,9 +98,12 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
-          cd cross-version
-          docker compose logs metabase || true
-          docker compose logs postgres || true
+          for f in cross-version/logs/*.log; do
+            [ -e "$f" ] || continue
+            echo "::group::$f"
+            cat "$f"
+            echo "::endgroup::"
+          done
 
   # Notify Slack on nightly failures
   notify-on-failure:
@@ -220,6 +225,9 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
-          cd cross-version
-          docker compose logs metabase || true
-          docker compose logs postgres || true
+          for f in cross-version/logs/*.log; do
+            [ -e "$f" ] || continue
+            echo "::group::$f"
+            cat "$f"
+            echo "::endgroup::"
+          done

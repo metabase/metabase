@@ -227,6 +227,7 @@ export const getCartesianChartModel = (
     transformedDataset,
     seriesModels,
     yAxisScaleTransforms,
+    cardsColumns,
     columnByDataKey,
     dimensionModel,
     xAxisModel,

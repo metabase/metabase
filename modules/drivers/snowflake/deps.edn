@@ -27,6 +27,6 @@
   com.fasterxml.jackson.core/jackson-databind {:mvn/version "2.21.5"}
   ;; pinned: AWS SDK (transitive via snowflake-jdbc-thin) pulls netty 4.1.126.Final
   ;; (SNYK-JAVA-IONETTY-16438930, SNYK-JAVA-IONETTY-16438322). Pin the full family to avoid mixed-version classpath.
-  io.netty/netty-codec                    {:mvn/version "4.1.135.Final"}
-  io.netty/netty-handler                  {:mvn/version "4.1.135.Final"}
-  io.netty/netty-transport-classes-epoll  {:mvn/version "4.1.135.Final"}}}
+  io.netty/netty-codec                    {:mvn/version "4.1.136.Final"}
+  io.netty/netty-handler                  {:mvn/version "4.1.136.Final"}
+  io.netty/netty-transport-classes-epoll  {:mvn/version "4.1.136.Final"}}}

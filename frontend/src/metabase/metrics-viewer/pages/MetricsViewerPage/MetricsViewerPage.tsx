@@ -12,17 +12,12 @@ import {
   useMetricsViewerContext,
 } from "metabase/metrics-viewer/context";
 import { useViewerState } from "metabase/metrics-viewer/hooks";
-import type { Location } from "metabase/router";
 import { Box, Center, Flex, Stack } from "metabase/ui";
 
 import S from "./MetricsViewerPage.module.css";
 
-export type MetricsViewerPageProps = {
-  location: Location;
-};
-
-export function MetricsViewerPage(props: MetricsViewerPageProps) {
-  const viewerState = useViewerState(props);
+export function MetricsViewerPage() {
+  const viewerState = useViewerState();
 
   if (!viewerState.initialLoadComplete) {
     // parsing formulas won't work until the initial set of definitions are loaded

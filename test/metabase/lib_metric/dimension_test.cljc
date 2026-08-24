@@ -56,6 +56,35 @@
     (is (lib-metric.dimension/targets-equal? target-a target-b)
         "effective-type and base-type are ignored")))
 
+;;; -------------------------------------------------- field-ref->key --------------------------------------------------
+
+(deftest ^:parallel field-ref->key-ignores-transient-opts-test
+  (testing ":lib/uuid and type hints are not part of the key"
+    (is (= (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :effective-type :type/Integer} 100])
+           (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" :base-type :type/BigInteger} 100])))))
+
+(deftest ^:parallel field-ref->key-distinguishes-source-field-test
+  (testing "the SAME field id reached via different FKs (:source-field) yields DISTINCT keys"
+    ;; This is the bug this function exists to prevent: field ids are not unique within a query when
+    ;; a table has multiple FKs to the same foreign table.
+    (is (not= (lib-metric.dimension/field-ref->key [:field {:source-field 1} 100])
+              (lib-metric.dimension/field-ref->key [:field {:source-field 2} 100]))))
+  (testing "the same field id + same :source-field yields the same key (regardless of :lib/uuid)"
+    (is (= (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" :source-field 1} 100])
+           (lib-metric.dimension/field-ref->key
+            [:field {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" :source-field 1} 100])))))
+
+(deftest ^:parallel field-ref->key-includes-bucketing-test
+  (testing "binning is part of the key"
+    (is (not= (lib-metric.dimension/field-ref->key [:field {:binning {:strategy :default}} 100])
+              (lib-metric.dimension/field-ref->key [:field {} 100]))))
+  (testing "temporal-unit is part of the key"
+    (is (not= (lib-metric.dimension/field-ref->key [:field {:temporal-unit :month} 100])
+              (lib-metric.dimension/field-ref->key [:field {:temporal-unit :day} 100])))))
+
 ;;; -------------------------------------------------- Reconciliation --------------------------------------------------
 
 (deftest ^:parallel reconcile-new-dimensions-get-random-uuids-test
@@ -81,7 +110,8 @@
 (deftest ^:parallel reconcile-matched-dimensions-preserve-modifications-test
   (let [computed-pairs [(make-computed-pair "col1" target-1)]
         persisted-dims [{:id uuid-1 :name "col1" :display-name "Custom Name"
-                         :semantic-type :type/Category :status :status/active}]
+                         :semantic-type :type/Category :default-temporal-unit :week
+                         :status :status/active}]
         persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
         {:keys [dimensions]}
         (lib-metric.dimension/reconcile-dimensions-and-mappings
@@ -89,6 +119,7 @@
         dim (first dimensions)]
     (is (= "Custom Name" (:display-name dim)))
     (is (= :type/Category (:semantic-type dim)))
+    (is (= :week (:default-temporal-unit dim)))
     (is (= :status/active (:status dim)))))
 
 (deftest ^:parallel reconcile-matching-ignores-lib-uuid-test
@@ -212,6 +243,11 @@
   (is (lib-metric.dimension/dimensions-changed?
        [{:id uuid-1 :name "col1" :status :status/active}]
        [{:id uuid-1 :name "col1" :status :status/orphaned}])))
+
+(deftest ^:parallel dimensions-changed?-true-when-default-temporal-unit-changes-test
+  (is (lib-metric.dimension/dimensions-changed?
+       [{:id uuid-1 :name "col1" :status :status/active :default-temporal-unit :month}]
+       [{:id uuid-1 :name "col1" :status :status/active :default-temporal-unit :week}])))
 
 (deftest ^:parallel dimensions-changed?-false-when-equal-test
   (is (not (lib-metric.dimension/dimensions-changed?
@@ -438,10 +474,12 @@
                       :name             "category"
                       :status           "status/active"
                       :has-field-values "search"
+                      :default-temporal-unit "week"
                       :sources          [{:type "field" :field-id 42}]}
           normalized (lib-metric.dimension/normalize-persisted-dimension raw)]
       (is (= :status/active (:status normalized)))
       (is (= :search (:has-field-values normalized)))
+      (is (= :week (:default-temporal-unit normalized)))
       (is (= :field (get-in normalized [:sources 0 :type])))))
   (testing "leaves already-keywordized values unchanged"
     (let [dim        {:id "dim-2" :name "col" :status :status/active :has-field-values :list}
@@ -451,3 +489,58 @@
   (testing "no-op when optional fields are absent"
     (let [dim {:id "dim-3" :name "col"}]
       (is (= dim (lib-metric.dimension/normalize-persisted-dimension dim))))))
+
+;;; -------------------------------------------------- group-by-source --------------------------------------------------
+
+(deftest ^:parallel group-by-source-empty-input-test
+  (is (= [] (lib-metric.dimension/group-by-source []))))
+
+(deftest ^:parallel group-by-source-single-dimension-test
+  (let [dim {:id "d1" :sources [{:type :field :field-id 1}]}]
+    (is (= [[dim]] (lib-metric.dimension/group-by-source [dim])))))
+
+(deftest ^:parallel group-by-source-shared-source-groups-together-test
+  (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}
+        dim-b {:id "b" :sources [{:type :field :field-id 1}]}]
+    (is (= [[dim-a dim-b]]
+           (lib-metric.dimension/group-by-source [dim-a dim-b])))))
+
+(deftest ^:parallel group-by-source-disjoint-sources-separate-test
+  (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}
+        dim-b {:id "b" :sources [{:type :field :field-id 2}]}]
+    (is (= #{#{"a"} #{"b"}}
+           (set (map (fn [g] (set (map :id g)))
+                     (lib-metric.dimension/group-by-source [dim-a dim-b])))))))
+
+(deftest ^:parallel group-by-source-transitive-grouping-test
+  (testing "A shares source 1 with B, B shares source 2 with C → all three in one group"
+    (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}
+          dim-b {:id "b" :sources [{:type :field :field-id 1} {:type :field :field-id 2}]}
+          dim-c {:id "c" :sources [{:type :field :field-id 2}]}]
+      (is (= #{#{"a" "b" "c"}}
+             (set (map (fn [g] (set (map :id g)))
+                       (lib-metric.dimension/group-by-source [dim-a dim-b dim-c]))))))))
+
+(deftest ^:parallel group-by-source-deduplicates-by-id-test
+  (let [dim-1a {:id "d1" :display-name "Version A" :sources [{:type :field :field-id 1}]}
+        dim-1b {:id "d1" :display-name "Version B" :sources [{:type :field :field-id 1}]}
+        groups (lib-metric.dimension/group-by-source [dim-1a dim-1b])]
+    (is (= 1 (count groups)))
+    (is (= 1 (count (first groups))))
+    (is (= "Version A" (:display-name (ffirst groups))))))
+
+(deftest ^:parallel group-by-source-no-sources-get-own-group-test
+  (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}
+        dim-b {:id "b"}
+        dim-c {:id "c" :sources []}
+        groups (lib-metric.dimension/group-by-source [dim-a dim-b dim-c])]
+    (is (= 3 (count groups)))))
+
+(deftest ^:parallel group-by-source-multiple-sources-test
+  (testing "dimension with multiple sources is grouped with all that share any source"
+    (let [dim-a {:id "a" :sources [{:type :field :field-id 1}]}
+          dim-b {:id "b" :sources [{:type :field :field-id 2}]}
+          dim-c {:id "c" :sources [{:type :field :field-id 1} {:type :field :field-id 2}]}]
+      (is (= #{#{"a" "b" "c"}}
+             (set (map (fn [g] (set (map :id g)))
+                       (lib-metric.dimension/group-by-source [dim-a dim-b dim-c]))))))))

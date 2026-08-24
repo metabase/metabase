@@ -38,6 +38,28 @@
                 (is (contains? snippets-from-api (select-keys snippet-1 test-snippet-fields)))
                 (is (contains? snippets-from-api (select-keys snippet-2 test-snippet-fields)))))))))))
 
+(deftest list-snippets-call-count-test
+  (testing "GET /api/native-query-snippet app-DB call count should not scale with the number of snippets"
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (letfn [(insert-snippets! [n]
+                (dotimes [_ n]
+                  (t2/insert! :model/NativeQuerySnippet
+                              {:name       (mt/random-name)
+                               :content    "1 = 1"
+                               :creator_id (mt/user->id :crowberto)})))
+              (warm-call-count! []
+                ;; first request pays one-time priming; measure the second. Use a non-admin so the
+                ;; per-snippet permission check does not short-circuit on superuser status.
+                (mt/user-http-request :rasta :get 200 (snippet-url))
+                (t2/with-call-count [call-count]
+                  (mt/user-http-request :rasta :get 200 (snippet-url))
+                  (call-count)))]
+        (insert-snippets! 2)
+        (let [calls-with-2  (warm-call-count!)
+              _             (insert-snippets! 8)
+              calls-with-10 (warm-call-count!)]
+          (is (<= calls-with-10 (+ calls-with-2 3))))))))
+
 (deftest read-snippet-api-test
   (mt/with-full-data-perms-for-all-users!
     (testing "GET /api/native-query-snippet/:id"

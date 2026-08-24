@@ -10,26 +10,27 @@ export type FilterDisplayParts = {
   value: string | null;
 };
 
+function getDimensionName(
+  definition: LibMetric.MetricDefinition,
+  dimension: LibMetric.DimensionMetadata,
+) {
+  return LibMetric.displayInfo(definition, dimension).displayName;
+}
+
 export function getFilterDisplayParts(
   definition: LibMetric.MetricDefinition,
   filter: LibMetric.FilterClause,
 ): FilterDisplayParts {
   const stringParts = LibMetric.stringFilterParts(definition, filter);
   if (stringParts) {
-    const dimName = LibMetric.displayInfo(
-      definition,
-      stringParts.dimension,
-    ).longDisplayName;
+    const dimName = getDimensionName(definition, stringParts.dimension);
     const op = Lib.describeFilterOperator(stringParts.operator).toLowerCase();
     return { label: `${dimName} ${op}:`, value: stringParts.values.join(", ") };
   }
 
   const booleanParts = LibMetric.booleanFilterParts(definition, filter);
   if (booleanParts) {
-    const dimName = LibMetric.displayInfo(
-      definition,
-      booleanParts.dimension,
-    ).longDisplayName;
+    const dimName = getDimensionName(definition, booleanParts.dimension);
     if (booleanParts.operator === "=") {
       return {
         label: `${dimName}:`,
@@ -44,10 +45,7 @@ export function getFilterDisplayParts(
 
   const timeParts = LibMetric.timeFilterParts(definition, filter);
   if (timeParts) {
-    const dimName = LibMetric.displayInfo(
-      definition,
-      timeParts.dimension,
-    ).longDisplayName;
+    const dimName = getDimensionName(definition, timeParts.dimension);
     const op = Lib.describeFilterOperator(timeParts.operator).toLowerCase();
     const formattedValues = timeParts.values
       .map((d) => d.toLocaleTimeString())
@@ -59,10 +57,7 @@ export function getFilterDisplayParts(
   if (dateValue) {
     const dateParts = LibMetric.filterParts(definition, filter);
     if (dateParts) {
-      const dimName = LibMetric.displayInfo(
-        definition,
-        dateParts.dimension,
-      ).longDisplayName;
+      const dimName = getDimensionName(definition, dateParts.dimension);
       return {
         label: `${dimName}:`,
         value: getDateFilterDisplayName(dateValue),
@@ -72,20 +67,14 @@ export function getFilterDisplayParts(
 
   const numberParts = LibMetric.numberFilterParts(definition, filter);
   if (numberParts) {
-    const dimName = LibMetric.displayInfo(
-      definition,
-      numberParts.dimension,
-    ).longDisplayName;
+    const dimName = getDimensionName(definition, numberParts.dimension);
     const op = Lib.describeFilterOperator(numberParts.operator).toLowerCase();
     return { label: `${dimName} ${op}:`, value: numberParts.values.join(", ") };
   }
 
   const coordParts = LibMetric.coordinateFilterParts(definition, filter);
   if (coordParts) {
-    const dimName = LibMetric.displayInfo(
-      definition,
-      coordParts.dimension,
-    ).longDisplayName;
+    const dimName = getDimensionName(definition, coordParts.dimension);
     const op = Lib.describeFilterOperator(coordParts.operator).toLowerCase();
     return { label: `${dimName} ${op}:`, value: coordParts.values.join(", ") };
   }
@@ -93,7 +82,7 @@ export function getFilterDisplayParts(
   const parts = LibMetric.filterParts(definition, filter);
   if (parts) {
     return {
-      label: LibMetric.displayInfo(definition, parts.dimension).longDisplayName,
+      label: getDimensionName(definition, parts.dimension),
       value: null,
     };
   }

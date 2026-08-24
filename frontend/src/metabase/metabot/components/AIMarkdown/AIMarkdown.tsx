@@ -1,5 +1,3 @@
-// TODO: consolidate this component w/ AIAnalysisContent
-
 import cx from "classnames";
 import {
   Children,
@@ -11,8 +9,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { parseMetabaseProtocolLink } from "metabase/metabot/utils/links";
 import { ActionIcon, CopyButton, Icon, Tooltip } from "metabase/ui";
+import { parseMetabaseProtocolLink } from "metabase/urls";
 
 import S from "./AIMarkdown.module.css";
 import { StreamingMarkdown } from "./StreamingMarkdown";

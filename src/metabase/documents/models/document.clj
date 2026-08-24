@@ -16,7 +16,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.instance :as t2.instance]))
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
 
@@ -101,7 +102,16 @@
                                    :archived archived
                                    :archived-directly archived_directly)
   (when-not mi/*deserializing?*
-    (events/publish-event! :event/document-update {:object instance}))
+    ;; Toucan2 hands `define-after-update` a `TransientRow` for each updated row,
+    ;; which is *not* a `mi/instance-of? :model/Document`. The revisions handler
+    ;; rejects non-instances with "object must be a model instance" — caught and
+    ;; logged at `revisions/events.clj:30`, but as a result no revision row is
+    ;; recorded for content updates. Promote it to a real instance here so the
+    ;; revisions push can complete cleanly.
+    (events/publish-event! :event/document-update
+                           {:object (if (t2/instance-of? :model/Document instance)
+                                      instance
+                                      (t2.instance/instance :model/Document instance))}))
   instance)
 
 (t2/define-after-select :model/Document
@@ -174,10 +184,10 @@
    "table"     "Table"})
 
 (defn- id->entity-id
-  [{{:keys [model] :or {model "card"} :as attrs} :attrs type :type :as node}]
+  [{{:keys [model] :or {model "card"}} :attrs type :type :as node}]
   (let [id-key (if (= prose-mirror/smart-link-type type) :entityId :id)
-        id (id-key attrs)]
-    (if-let [db-model (t2/select-one (ast-model->db-model model) :id id)]
+        id (prose-mirror/node-entity-id node)]
+    (if-let [db-model (and id (t2/select-one (ast-model->db-model model) :id id))]
       (assoc-in node [:attrs id-key] (mapv #(dissoc % :label) (serdes/generate-path (model->serdes-model model) db-model)))
       (u/prog1 node
         (log/warnf "entity_id not found for %s at id: %s" model id)))))
@@ -229,6 +239,9 @@
 (defn- document-deps
   [{:keys [content_type] :as document}]
   (when (= content_type prose-mirror/prose-mirror-content-type)
+    ;; NOTE: unlike the readers below, this feeds `deserialization-dependencies`, which runs on the already-serialized
+    ;; form where `:entityId` is a serdes path (a vector of {:model :id} maps), not a raw id — so it is not guarded
+    ;; with `node-entity-id` here.
     (set (prose-mirror/collect-ast document (fn document-deps [{:keys [type attrs]}]
                                               (cond
                                                 (and (= prose-mirror/smart-link-type type)
@@ -258,11 +271,11 @@
       (concat
        (for [embedded-card-id (prose-mirror/card-ids document)]
          [{:model "Card" :id embedded-card-id}])
-       (for [{model :model link-id :entityId}
+       (for [{{model :model} :attrs :as node}
              (prose-mirror/collect-ast document
-                                       #(when (= prose-mirror/smart-link-type (:type %))
-                                          (:attrs %)))
-             :when (contains? model->serdes-model model)]
+                                       #(when (= prose-mirror/smart-link-type (:type %)) %))
+             :let  [link-id (prose-mirror/node-entity-id node)]
+             :when (and link-id (contains? model->serdes-model model))]
          [{:model (model->serdes-model model) :id link-id}]))))))
 
 (defmethod serdes/descendants "Document"
@@ -274,10 +287,10 @@
              (for [embedded-card-id (prose-mirror/card-ids document)]
                {["Card" embedded-card-id] {"Document" id}}))
        (into {}
-             (for [{model :model link-id :entityId} (prose-mirror/collect-ast document
-                                                                              #(when (= prose-mirror/smart-link-type (:type %))
-                                                                                 (:attrs %)))
-                   :when (contains? model->serdes-model model)]
+             (for [{{model :model} :attrs :as node} (prose-mirror/collect-ast document
+                                                                              #(when (= prose-mirror/smart-link-type (:type %)) %))
+                   :let  [link-id (prose-mirror/node-entity-id node)]
+                   :when (and link-id (contains? model->serdes-model model))]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
 (t2/define-before-insert :model/Document [model]

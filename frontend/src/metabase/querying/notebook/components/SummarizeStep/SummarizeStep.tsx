@@ -17,7 +17,7 @@ export function SummarizeStep({
   const isMetric = step.question.type() === "metric";
 
   const hasBreakouts = Lib.breakouts(step.query, step.stageIndex).length > 0;
-  const showBreakouts = !readOnly || hasBreakouts;
+  const showBreakouts = !isMetric && (!readOnly || hasBreakouts);
 
   return (
     <Flex
@@ -25,7 +25,7 @@ export function SummarizeStep({
       direction={{ base: "column", md: "row" }}
       gap={{ base: "sm", md: isMetric ? "md" : "sm" }}
     >
-      <Box w={{ base: "100%", md: "50%" }} flex="1 1 auto">
+      <Box w={{ base: "100%", md: isMetric ? "100%" : "50%" }} flex="1 1 auto">
         <AggregateStep
           step={step}
           color={color}
@@ -34,13 +34,7 @@ export function SummarizeStep({
           {...props}
         />
       </Box>
-      {isMetric ? (
-        <Box display={{ md: "none" }} c={color} fw="bold">
-          {t`Default time dimension`}
-        </Box>
-      ) : (
-        showBreakouts && <Box c={color} fw="bold">{t`by`}</Box>
-      )}
+      {showBreakouts && <Box c={color} fw="bold">{t`by`}</Box>}
       {showBreakouts && (
         <Box w={{ base: "100%", md: "50%" }}>
           <BreakoutStep

@@ -1,5 +1,4 @@
 export interface DataAppManifestStatus {
-  checkedAt: number;
   name: string | null;
   bundlePath: string | null;
   bundlePathExists: boolean;

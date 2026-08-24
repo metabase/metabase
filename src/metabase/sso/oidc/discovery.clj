@@ -51,10 +51,10 @@
         (if (= 200 (:status response))
           (:body response)
           (do
-            (log/warnf "OIDC discovery failed with status %s: %s" (:status response) (:body response))
+            (log/warnf "OIDC discovery failed with status %s" (:status response))
             nil)))
       (catch Exception e
-        (log/warnf e "Failed to fetch OIDC discovery document from %s" url)
+        (log/warnf "Failed to fetch OIDC discovery document from %s: %s" url (ex-message e))
         nil))))
 
 (defn clear-cache!
@@ -109,7 +109,7 @@
   [config discovery-key manual-key]
   (when-let [url (or (get-in config [:discovery-document discovery-key])
                      (get config manual-key))]
-    (when-not (u.http/valid-host? (sso.settings/oidc-allowed-networks) url)
+    (when-not (u.http/host-allowed-for-network-policy? (sso.settings/oidc-allowed-networks) url)
       (throw (ex-info "OIDC endpoint blocked: address not allowed by network restrictions"
                       {:url url :endpoint-key discovery-key})))
     url))

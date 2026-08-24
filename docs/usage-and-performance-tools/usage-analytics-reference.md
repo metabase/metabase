@@ -633,6 +633,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - subscription-unsubscribe
 - subscription-unsubscribe-undo
 - subscription-update
+- table-data-edit
 - table-manual-scan
 - table-manual-sync
 - table-publish
@@ -675,6 +676,7 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - embedded-json-download
 - embedded-question
 - embedded-xlsx-download
+- exploration
 - json-download
 - map-tiles
 - metric
@@ -712,4 +714,5 @@ The Entity Type column on the [View log](#view-log) model takes one of:
 - card
 - collection
 - dashboard
+- document
 - table

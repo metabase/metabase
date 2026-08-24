@@ -10,6 +10,7 @@ export interface InstanceConnectionStatus {
 
 export interface DataAppDiagnosticEntry {
   time: number;
+  buildId: number | null;
   kind: string;
   summary: string;
   detail: string | null;
@@ -19,6 +20,8 @@ export interface DataAppDiagnosticEntry {
 
 export interface DataAppDiagnosticPayload extends DataAppDiagnosticEntry {
   eventId: number;
+  /** The page load that reported this entry (see `lib/dev-session`). */
+  sessionId: string;
 }
 
 export interface DataAppDiagnosticsMessage {
@@ -34,6 +37,9 @@ export interface DataAppDiagnosticsReport {
   clients: number;
   lastReportAt: number | null;
   lastRebuildAt: number | null;
+  buildId: number;
+  /** Entries the dev server withheld because an earlier build reported them. */
+  staleEntries: number;
   /** Cursor for the next poll (`?startEventId=`): the last event's id + 1. */
   nextEventId: number;
   sessionId: string | null;
@@ -42,5 +48,5 @@ export interface DataAppDiagnosticsReport {
 /** The part of the report the store owns; the rest comes from the dev server. */
 export type DiagnosticsStoreReport = Omit<
   DataAppDiagnosticsReport,
-  "manifest" | "clients" | "lastRebuildAt"
+  "manifest" | "clients" | "lastRebuildAt" | "buildId" | "staleEntries"
 >;

@@ -12,15 +12,11 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
+import { DataPermissionsPage } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-
-const RoutedDataPermissionsPage = withRouteProps(DataPermissionsPage);
-const RoutedGroupsPermissionsPage = withRouteProps(GroupsPermissionsPage);
-
 const TEST_DATABASE = createSampleDatabase();
 const TEST_TABLES = TEST_DATABASE.tables ?? [];
 
@@ -52,16 +48,9 @@ const setup = () => {
   );
 
   return renderWithProviders(
-    <Route
-      path="/admin/permissions/data"
-      element={<RoutedDataPermissionsPage />}
-    >
+    <Route path="/admin/permissions/data" element={<DataPermissionsPage />}>
       {GROUPS_PERMISSIONS_PATHS.map((path) => (
-        <Route
-          key={path}
-          path={path}
-          element={<RoutedGroupsPermissionsPage />}
-        />
+        <Route key={path} path={path} element={<GroupsPermissionsPage />} />
       ))}
     </Route>,
     {

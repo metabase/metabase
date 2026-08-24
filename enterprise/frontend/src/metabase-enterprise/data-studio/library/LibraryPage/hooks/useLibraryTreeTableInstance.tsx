@@ -4,11 +4,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isEmptyStateData } from "metabase/data-studio/common/utils";
 import { useSelector } from "metabase/redux";
-import { Link, useRouter } from "metabase/router";
+import { useSearchParams } from "metabase/router";
 import {
   EntityNameCell,
   Flex,
@@ -43,21 +44,20 @@ export function useLibraryTreeTableInstance({
   searchQuery,
   onPublishTableClick,
 }: Params) {
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const expandedIdsFromUrl = useMemo(() => {
-    const rawIds = location.query?.expandedId;
-    if (!rawIds) {
+    const ids = searchParams.getAll("expandedId");
+    if (ids.length === 0) {
       return null;
     }
 
-    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
     // Unjustified type cast. FIXME
     return _.object(
       ids.map((id) => [`collection:${id}`, true]),
     ) as ExpandedState;
-  }, [location.query?.expandedId]);
+  }, [searchParams]);
   const { libraryCollection, tableCollection, metricCollection } =
     useLibraryCollections(collections);
 

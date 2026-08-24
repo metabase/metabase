@@ -1,4 +1,5 @@
 import fetchMock, { type RouteResponse } from "fetch-mock";
+import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -17,8 +18,11 @@ import { createMockUser } from "metabase-types/api/mocks";
 
 import { FIXED_METABOT_IDS } from "../../constants";
 import { MetabotProvider } from "../../context";
-import { getMetabotConversationId, metabotReducer } from "../../state";
-import { getMetabotInitialState } from "../../state/reducer-utils";
+import { metabotReducer } from "../../state";
+import {
+  createConversation,
+  getMetabotInitialState,
+} from "../../state/reducer-utils";
 
 import {
   IN_PROGRESS_POLL_MS,
@@ -43,29 +47,23 @@ const mockConversationDetail = (response: RouteResponse, delay?: number) => {
   });
 };
 
-const createAskState = ({
+const stateWithConversation = ({
   conversationId = OTHER_CONVERSATION_ID,
   message,
 }: {
   conversationId?: string;
   message?: string;
-} = {}) => {
-  const state = getMetabotInitialState();
-  const ask = state.conversations.ask;
-  if (!ask) {
-    throw new Error("Expected ask conversation");
-  }
-  ask.conversationId = conversationId;
-  if (message) {
-    ask.messages.push({
-      id: "seed-message",
-      role: "user",
-      type: "text",
-      message,
-    });
-  }
-  return state;
-};
+} = {}) =>
+  assocIn(
+    getMetabotInitialState(),
+    ["conversations", conversationId],
+    createConversation({
+      conversationId,
+      messages: message
+        ? [{ id: "seed-message", role: "user", type: "text", message }]
+        : [],
+    }),
+  );
 
 const TestConversationPage = () => (
   <MetabotProvider>
@@ -148,7 +146,7 @@ describe("MetabotConversationPage", () => {
     );
 
     const { store } = setup({
-      metabotInitialState: createAskState(),
+      metabotInitialState: stateWithConversation(),
     });
 
     expect(
@@ -161,13 +159,13 @@ describe("MetabotConversationPage", () => {
       screen.queryByTestId("metabot-conversation-loading"),
     ).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(getMetabotConversationId(store.getState(), "ask")).toBe(
-        CONVERSATION_ID,
-      );
+      expect(
+        store.getState().metabot.conversations[CONVERSATION_ID],
+      ).toBeDefined();
     });
   });
 
-  it("does not load when the ask agent already holds the URL conversation", async () => {
+  it("does not load when the store already holds the URL conversation", async () => {
     setupGetMetabotConversationEndpoint(
       createMockMetabotConversationDetail({
         conversation_id: CONVERSATION_ID,
@@ -175,7 +173,7 @@ describe("MetabotConversationPage", () => {
     );
 
     setup({
-      metabotInitialState: createAskState({
+      metabotInitialState: stateWithConversation({
         conversationId: CONVERSATION_ID,
         message: "Existing question",
       }),
@@ -193,8 +191,8 @@ describe("MetabotConversationPage", () => {
   it("shows an error when the conversation cannot be loaded", async () => {
     mockConversationDetail(404);
 
-    const { history } = setup({
-      metabotInitialState: createAskState(),
+    const { router } = setup({
+      metabotInitialState: stateWithConversation(),
     });
 
     expect(
@@ -202,7 +200,7 @@ describe("MetabotConversationPage", () => {
         timeout: ASYNC_TIMEOUT,
       }),
     ).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe(
+    expect(router?.location.pathname).toBe(
       Urls.metabotConversation(CONVERSATION_ID),
     );
   });
@@ -211,13 +209,11 @@ describe("MetabotConversationPage", () => {
     mockConversationDetail(inProgressDetail());
 
     setup({
-      metabotInitialState: createAskState(),
+      metabotInitialState: stateWithConversation(),
     });
 
     expect(await screen.findByText("Loaded question")).toBeInTheDocument();
-    expect(
-      await screen.findByTestId("metabot-response-loader"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Thinking")).toBeInTheDocument();
     expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-send-message"),
@@ -234,21 +230,17 @@ describe("MetabotConversationPage", () => {
     });
 
     setup({
-      metabotInitialState: createAskState(),
+      metabotInitialState: stateWithConversation(),
     });
 
-    expect(
-      await screen.findByTestId("metabot-response-loader"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Thinking")).toBeInTheDocument();
 
     act(() => {
       jest.advanceTimersByTime(IN_PROGRESS_POLL_MS + 100);
     });
 
     expect(await screen.findByText("Here is the answer")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("metabot-response-loader"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Thinking")).not.toBeInTheDocument();
     expect(screen.getByTestId("metabot-send-message")).toBeInTheDocument();
   });
 });

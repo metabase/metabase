@@ -4,8 +4,14 @@ import {
   getUnmoduledFolders,
 } from "../module-boundaries-stats.mjs";
 
-function element({ type, pattern = "frontend/src/metabase/x/**", ...rest }) {
-  return { type, pattern, ...rest };
+// Mirrors createElement's enforceSharedTiers default in module-boundaries.mjs.
+function element({
+  type,
+  pattern = "frontend/src/metabase/x/**",
+  enforceSharedTiers = true,
+  ...rest
+}) {
+  return { type, pattern, enforceSharedTiers, ...rest };
 }
 
 describe("getNamedModules", () => {
@@ -56,6 +62,18 @@ describe("getEnforcedModules", () => {
       element({ type: "shared/nav", enforceOutgoing: true }),
     ];
     expect(getEnforcedModules(elements)).toEqual(new Set(["shared/nav"]));
+  });
+
+  it("excludes shared modules grandfathered out of the sub-tiers", () => {
+    const elements = [
+      element({
+        type: "shared/nav",
+        enforceOutgoing: true,
+        enforceSharedTiers: false,
+      }),
+      element({ type: "shared/palette", enforceOutgoing: true }),
+    ];
+    expect(getEnforcedModules(elements)).toEqual(new Set(["shared/palette"]));
   });
 
   it("is a subset of the named modules", () => {

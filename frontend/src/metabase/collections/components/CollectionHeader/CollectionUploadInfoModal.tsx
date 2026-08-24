@@ -3,14 +3,7 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Button, Modal } from "metabase/ui";
-
-import {
-  InfoModalBody,
-  InfoModalContainer,
-  InfoModalTitle,
-  NewBadge,
-} from "./CollectionUpload.styled";
+import { Box, Button, Modal, Stack, Text, Title } from "metabase/ui";
 
 export const UploadInfoModal = ({
   isAdmin,
@@ -28,19 +21,33 @@ export const UploadInfoModal = ({
       padding="2rem"
       styles={{ header: { marginBottom: "1rem" } }}
     >
-      <InfoModalContainer>
-        <NewBadge>{t`New`}</NewBadge>
-        <InfoModalTitle>{t`Upload CSVs to ${applicationName}`}</InfoModalTitle>
+      <Stack gap="md" align="center" justify="center">
+        <Text
+          component="div"
+          px="sm"
+          py="xs"
+          fz="md"
+          fw={700}
+          c="core-brand"
+          bg="background_surface-brand-subtle"
+          mx="auto"
+          bdrs="sm"
+        >
+          {t`New`}
+        </Text>
+        <Title order={2} ta="center" fz="xl">
+          {t`Upload CSVs to ${applicationName}`}
+        </Title>
         {isAdmin ? (
           <>
-            <InfoModalBody>
+            <Box c="text-secondary">
               <p>
                 {t`Team members will be able to upload CSV files and work with them just like any other data source.`}
               </p>
               <p>
                 {t`You'll be able to pick the default database where the data should be stored when enabling the feature.`}
               </p>
-            </InfoModalBody>
+            </Box>
             <Button
               component={Link}
               to="/admin/settings/uploads"
@@ -52,15 +59,15 @@ export const UploadInfoModal = ({
           </>
         ) : (
           <>
-            <InfoModalBody>
+            <Box c="text-secondary">
               <p>
                 {t`You'll need to ask your admin to enable this feature to get started. Then, you'll be able to upload CSV files and work with them just like any other data source.`}
               </p>
-            </InfoModalBody>
+            </Box>
             <Button onClick={onClose}>{t`Got it`}</Button>
           </>
         )}
-      </InfoModalContainer>
+      </Stack>
     </Modal>
   );
 };

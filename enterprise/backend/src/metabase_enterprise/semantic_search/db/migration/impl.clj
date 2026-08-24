@@ -1,10 +1,13 @@
 (ns metabase-enterprise.semantic-search.db.migration.impl
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.collections.curation :as collections.curation]
    [metabase.config.core :as config]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -14,7 +17,7 @@
 (def schema-version
   "Version to compare the [[metabase-enterprise.semantic-search.db.migration/db-version]] with. If this is higher,
   schema migration will be performed."
-  2)
+  3)
 
 (def ^:private app-db-sentinel-tables
   "Tables specific to a Metabase application database, chosen to avoid generic names (e.g. Liquibase's
@@ -22,13 +25,40 @@
   Their presence in a to-be-wiped dedicated database means MB_PGVECTOR_DB_URL was pointed at an app db."
   #{"core_user" "metabase_database"})
 
+(def ^:private dlq-table-pattern
+  "One dead-letter queue per index, `dlq_<index-id>`
+  (see [[metabase-enterprise.semantic-search.dlq/dlq-table-name-kw]])."
+  #"\Adlq_\d+\z")
+
+(def ^:private repair-table-pattern
+  "Repair's scratch tables, `repair_<millis>_<6 chars>`
+  (see [[metabase-enterprise.semantic-search.repair/repair-table-name]])."
+  #"\Arepair_\d+_[a-z0-9]{6}\z")
+
+(defn- semantic-search-table?
+  "Whether a bare table name is one this module creates: a control table, an index table, a DLQ, or a
+  repair scratch table.
+  Name *shapes*, not prefixes — a dedicated store's default schema is shared, and a cohabitant is free to
+  call something `index_history`. [[semantic.index/index-table-name?]] is the same contract orphan
+  cleanup uses to decide what it may drop."
+  [index-metadata {:keys [tablename]}]
+  (boolean
+   (or (contains? (into #{} (map #(semantic.util/table-name-part (index-metadata %)))
+                        [:metadata-table-name :control-table-name :gate-table-name])
+                  tablename)
+       (semantic.index/index-table-name? tablename)
+       (re-matches dlq-table-pattern tablename)
+       (re-matches repair-table-pattern tablename))))
+
 (defn- drop-all-but-migration-table
   "Destructive: clears out semantic-search storage ahead of recreating it from scratch.
   When index-metadata carries a `:schema` (shared app-db mode) ONLY tables inside that schema may be
   dropped — the application's tables live in other schemas and must never be touched here.
   Without a `:schema` the database is assumed dedicated to semantic search and its default schema is
-  wiped; refuses outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed at
-  the application database would otherwise destroy it here, on first init)."
+  swept, but only for tables [[semantic-search-table?]] recognizes — the schema is shared, and an index
+  library retrieval built before it had a schema of its own still sits there until adoption moves it.
+  Refuses outright when the database looks like a Metabase app db (MB_PGVECTOR_DB_URL pointed at the
+  application database would otherwise destroy it here, on first init)."
   [index-metadata tx]
   (let [schema (:schema index-metadata)
         tables (jdbc/execute! tx
@@ -38,33 +68,81 @@
                                 :where  (if schema
                                           [:and
                                            [:= :schemaname [:inline schema]]
-                                           [:<> :tablename [:inline "migration"]]]
+                                           [:<> :tablename ^:allow-raw-sql [:inline "migration"]]]
                                           ;; dedicated mode only ever creates tables in the default
                                           ;; schema, so the reset has no business outside it
                                           [:and
-                                           [:= :schemaname [:raw "current_schema()"]]
-                                           [:<> :tablename  [:inline "migration"]]])})
+                                           [:= :schemaname ^:allow-raw-sql [:raw "current_schema()"]]
+                                           [:<> :tablename  ^:allow-raw-sql [:inline "migration"]]])})
                               {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+    ;; the sentinel scan reads every table in scope, not just ours: an app db is recognized by tables we
+    ;; would never drop
     (when (and (nil? schema)
                (some (comp app-db-sentinel-tables :tablename) tables))
       (throw (ex-info (str "Refusing to reset the semantic search database: it contains Metabase application"
                            " tables. Point MB_PGVECTOR_DB_URL at a dedicated pgvector database, or unset it to"
                            " share the application database in the isolated semantic_search schema.")
                       {:type ::refused-app-db-wipe})))
-    (doseq [{:keys [schemaname tablename]} tables]
+    (doseq [{:keys [schemaname tablename]}
+            (cond->> tables
+              ;; the module's own schema holds nothing else, so a reset there is free to clear leftovers
+              ;; from older naming schemes. A dedicated store's default schema is shared.
+              (nil? schema) (filter (partial semantic-search-table? index-metadata)))]
       (jdbc/execute! tx
                      (sql/format
                       {:drop-table [[[:raw (str (semantic.util/quote-ident schemaname) "."
                                                 (semantic.util/quote-ident tablename))]]]})))))
 
+(defn- quoted-table-name
+  [table-name]
+  (->> (semantic.util/qualified-table-parts table-name)
+       (remove nil?)
+       (map semantic.util/quote-ident)
+       (str/join ".")))
+
+(defn- add-embedding-space-metadata!
+  "Migration 3: preserve existing semantic indexes and add immutable embedding-space metadata."
+  [tx index-metadata]
+  (let [table-name        (:metadata-table-name index-metadata)
+        control-table-name (:control-table-name index-metadata)
+        table             (keyword table-name)]
+    (jdbc/execute! tx [(format "ALTER TABLE %s ADD COLUMN IF NOT EXISTS embedding_space_id TEXT"
+                               (quoted-table-name table-name))])
+    ;; Legacy rows have no trustworthy revision provenance. Keep this nullable and let their backfilled
+    ;; embedding-space ID represent the old, explicitly unspecified revision.
+    (jdbc/execute! tx [(format "ALTER TABLE %s ADD COLUMN IF NOT EXISTS model_revision TEXT"
+                               (quoted-table-name table-name))])
+    (doseq [{:keys [id provider model_name vector_dimensions]}
+            (jdbc/execute! tx
+                           (sql/format {:select [:id :provider :model_name :vector_dimensions]
+                                        :from   [table]})
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+      (let [space-id (:embedding-space-id
+                      (embeddings.provider/legacy-resolved-model
+                       {:provider provider :model-name model_name :vector-dimensions vector_dimensions}))]
+        (jdbc/execute! tx
+                       (sql/format {:update table
+                                    :set    {:embedding_space_id space-id}
+                                    :where  [:= :id id]}))))
+    (jdbc/execute! tx [(format "ALTER TABLE %s ALTER COLUMN embedding_space_id SET NOT NULL"
+                               (quoted-table-name table-name))])
+    (jdbc/execute! tx
+                   (sql/format {:update (keyword control-table-name)
+                                :set    {:version (:version index-metadata)}
+                                :where  [:= :id 0]}
+                               :quoted true))))
+
 (defn migrate-schema!
   "Migrate schema (control, metadata, gate, ...). Migration author is responsible for removing leftovers if necessary
   and in general leaving schema in desired state."
-  [tx {:keys [index-metadata] :as _opts}]
-  ;; ideally index_table indexed are manipulated in dynamic schema part but for now it does not matter
-  (drop-all-but-migration-table index-metadata tx)
-  (semantic.index-metadata/create-tables-if-not-exists! tx index-metadata)
-  (semantic.index-metadata/ensure-control-row-exists! tx index-metadata))
+  [tx {:keys [index-metadata from-version] :as _opts}]
+  (if (= 2 from-version)
+    (add-embedding-space-metadata! tx index-metadata)
+    (do
+      ;; Older versions retain the existing reset migration. Only v2 has enough metadata to backfill safely.
+      (drop-all-but-migration-table index-metadata tx)
+      (semantic.index-metadata/create-tables-if-not-exists! tx index-metadata)
+      (semantic.index-metadata/ensure-control-row-exists! tx index-metadata))))
 
 (defn ensure-schema-compatibility!
   "Apply non-destructive additions that existing databases at the current schema version also need."
@@ -140,7 +218,7 @@
                                                          :location [:like (str "/" root-id "/%")]))]
       [coll-id root-type])
     (catch Exception e
-      (log/warn e "Skipping Library forest backfill — appdb lookup failed")
+      (log/warnf "Skipping Library forest backfill — appdb lookup failed: %s" (ex-message e))
       {})))
 
 (defn- add-root-collection-type-column!
@@ -161,8 +239,8 @@
              model-id-col       (semantic.util/column-keyword table-name "model_id")
              root-coll-type-col (semantic.util/column-keyword table-name "root_collection_type")
              gate-id            (semantic.util/column-keyword gate-table "id")
-             gate-doc-root      [:->> (semantic.util/column-keyword gate-table "document") [:inline "root_collection_type"]]
-             composite-gate-id  [:|| model-col [:inline "_"] model-id-col]]
+             gate-doc-root      [:->> (semantic.util/column-keyword gate-table "document") ^:allow-raw-sql [:inline "root_collection_type"]]
+             composite-gate-id  [:|| model-col ^:allow-raw-sql [:inline "_"] model-id-col]]
          (execute! {:alter-table [kw-tbl] :add-column [[:root_collection_type :text :if-not-exists]]})
          ;; Per-row backfill: take whatever the gate document says — authoritative when present.
          (execute! {:update kw-tbl
@@ -175,7 +253,7 @@
          ;; Forest backfill: one UPDATE per distinct root type, filling rows the gate doc missed.
          (doseq [[root-type entries] (group-by val root-type-by-coll-id)]
            (execute! {:update kw-tbl
-                      :set    {:root_collection_type [:inline root-type]}
+                      :set    {:root_collection_type ^:allow-raw-sql [:inline root-type]}
                       :where  [:and
                                [:= :root_collection_type nil]
                                [:in :collection_id (mapv key entries)]]})))))))
@@ -202,11 +280,11 @@
                           {:where [:and
                                    [:= :active true]
                                    [:or [:= :is_published true]
-                                    [:= :data_authority [:inline "authoritative"]]]]}))
+                                    [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]]}))
     (catch Exception e
       (when-not config/is-test?
         (throw e))
-      (log/warn e "Skipping semantic table curation backfill — appdb unavailable (test)")
+      (log/warnf "Skipping semantic table curation backfill — appdb unavailable (test): %s" (ex-message e))
       nil)))
 
 (defn- official-collection-dashboard-ids
@@ -226,7 +304,7 @@
     (catch Exception e
       (when-not config/is-test?
         (throw e))
-      (log/warn e "Skipping semantic dashboard curation backfill — appdb unavailable (test)")
+      (log/warnf "Skipping semantic dashboard curation backfill — appdb unavailable (test): %s" (ex-message e))
       nil)))
 
 (defn- index-empty?
@@ -243,7 +321,7 @@
   (doseq [chunk (partition-all 5000 model-ids)]
     (execute! {:update kw-tbl
                :set    set-map
-               :where  [:and [:= :model [:inline model]] [:in :model_id (vec chunk)]]})))
+               :where  [:and [:= :model ^:allow-raw-sql [:inline model]] [:in :model_id (vec chunk)]]})))
 
 (defn- add-data-authority-and-curated-columns!
   "Migration 5: add `data_authority` and the precomputed `curated` flag to index tables.
@@ -276,10 +354,10 @@
              ;; Non-table rows from index columns (cards accurate; official-only dashboards fixed below).
              (execute! {:update kw-tbl
                         :set   {:curated curated-expr}
-                        :where [:and [:= :curated nil] [:!= :model [:inline "table"]]]})
+                        :where [:and [:= :curated nil] [:!= :model ^:allow-raw-sql [:inline "table"]]]})
              ;; Tables: curated only from the appdb sweep. Authoritative rows also get data_authority.
              (update-model-rows-in-batches! execute! kw-tbl "table" authoritative
-                                            {:data_authority [:inline "authoritative"] :curated true})
+                                            {:data_authority ^:allow-raw-sql [:inline "authoritative"] :curated true})
              (update-model-rows-in-batches! execute! kw-tbl "table" published {:curated true})
              ;; Dashboards: official_collection is new on the spec, so backfill both it and curated for
              ;; official dashboards (curated alone would leave them scoring as non-official until reindex).

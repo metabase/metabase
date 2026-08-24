@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -29,7 +30,7 @@
   "Validate that an MBQL 5 segment definition has the correct structure."
   [definition]
   (when (seq definition)
-    (mu/validate-throw ::segments.schema/segment definition)
+    (mu/validate-throw ::segments.schema/definition definition)
     definition))
 
 (defn- normalize-segment-definition
@@ -42,14 +43,17 @@
   [definition table-id database-id]
   (if (seq definition)
     (u/prog1 (-> (case (lib/normalized-mbql-version definition)
-                   (:mbql-version/mbql5 :mbql-version/legacy)
+                   :mbql-version/mbql5
+                   (lib/normalize ::lib.schema/query definition)
+
+                   :mbql-version/legacy
                    definition
                    ;; default MBQL4 fragment
-                   (let [definition
+                   (let [definition (update-keys definition keyword)
+                         definition
                          (if (:aggregation definition)
                            (do
-                             (log/warn "Stripping :aggregation from MBQL4 segment definition during migration"
-                                       {:segment-definition definition})
+                             (log/warn "Stripping :aggregation from MBQL4 segment definition during migration")
                              (dissoc definition :aggregation))
                            definition)]
                      {:database database-id
@@ -63,7 +67,7 @@
   "Transform for segment definitions. Only handles JSON serialization/deserialization.
   Normalization and validation happen in before-insert and after-select hooks."
   {:in mi/json-in
-   :out mi/json-out-with-keywordization})
+   :out mi/json-out-without-keywordization})
 
 (t2/deftransforms :model/Segment
   {:definition transform-segment-definition})
@@ -188,7 +192,7 @@
   (try
     (migrated-segment-definition segment)
     (catch Throwable e
-      (log/error e "Error upgrading segment definition:" (ex-message e))
+      (log/errorf "Error upgrading segment definition: %s" (ex-message e))
       nil)))
 
 (t2/define-after-select :model/Segment
@@ -203,7 +207,7 @@
     (try
       (lib/describe-top-level-key definition :filters)
       (catch Throwable e
-        (log/error e "Error calculating Segment description:" (ex-message e))
+        (log/errorf "Error calculating Segment description: %s" (ex-message e))
         nil))))
 
 (methodical/defmethod t2.hydrate/batched-hydrate [:model/Segment :definition_description]

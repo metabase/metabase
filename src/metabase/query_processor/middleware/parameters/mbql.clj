@@ -163,14 +163,14 @@
 
         (not target)
         (do
-          (log/debugf "Ignoring parameter %s because it has no target" (pr-str param))
+          (log/debugf "Ignoring parameter %s because it has no target" (pr-str (:id param)))
           (recur stage more-params))
 
         (or (nil? param-value)
             (and (sequential? param-value)
                  (every? nil? param-value)))
         (do
-          (log/debugf "Ignoring parameter %s because it has no value" (pr-str param))
+          (log/debugf "Ignoring parameter %s because it has no value" (pr-str (:id param)))
           (recur stage more-params))
 
         (= (:type param) :temporal-unit)
@@ -179,6 +179,6 @@
 
         :else
         (let [filter-clause (or (build-filter-clause query stage-path (assoc param :value param-value))
-                                (log/warnf "build-filter-clause did not return a valid clause for param %s" (pr-str param)))
+                                (log/warnf "build-filter-clause did not return a valid clause for param %s" (pr-str (:id param))))
               stage'        (lib.filter/add-filter-to-stage stage filter-clause)]
           (recur stage' more-params))))))

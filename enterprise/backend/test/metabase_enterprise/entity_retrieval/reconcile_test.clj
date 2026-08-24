@@ -13,7 +13,9 @@
    [metabase.test.fixtures :as fixtures]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -84,19 +86,43 @@
   `(when semantic.db.datasource/db-url
      (let [suffix# (System/nanoTime)
            ~ds-sym (semantic.db.datasource/ensure-initialized-data-source!)]
-       (binding [index-table/*vectors-table* (str "library_entity_index_test_" suffix#)
-                 index-table/*meta-table*    (str "library_entity_index_meta_test_" suffix#)]
+       (binding [index-table/*tables* {:vectors (str "library_entity_index_test_" suffix#)
+                                       :meta    (str "library_entity_index_meta_test_" suffix#)}]
          (try
            ~@body
            (finally
              (jdbc/execute! ~ds-sym [(str "DROP TABLE IF EXISTS "
-                                          index-table/*vectors-table* ", "
-                                          index-table/*meta-table*)])))))))
+                                          (index-table/vectors-table) ", "
+                                          (index-table/meta-table))])))))))
+
+(deftest ^:synchronized with-index-read-lock-contention-integration-test
+  (when semantic.db.datasource/db-url
+    (let [ds       (semantic.db.datasource/ensure-initialized-data-source!)
+          lock-id  (var-get #'reconcile/reconcile-lock-id)
+          calls    (atom 0)
+          callback (fn [_]
+                     (swap! calls inc)
+                     ::called)]
+      (with-open [^Connection writer (jdbc/get-connection ds)]
+        (let [acquired? (:acquired
+                         (jdbc/execute-one!
+                          writer
+                          [(format "SELECT pg_try_advisory_lock(%d) AS acquired" lock-id)]
+                          {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+          (is acquired? "the exclusive test lock was acquired without blocking")
+          (when acquired?
+            (try
+              (is (nil? (reconcile/with-index-read-lock ds callback)))
+              (is (zero? @calls) "the read callback is skipped while reconcile owns the lock")
+              (finally
+                (jdbc/execute! writer [(format "SELECT pg_advisory_unlock(%d)" lock-id)])))
+            (is (= ::called (reconcile/with-index-read-lock ds callback)))
+            (is (= 1 @calls) "the callback runs after the exclusive lock is released")))))))
 
 (defn- index-rows [ds]
   (jdbc/execute! ds
                  [(format "SELECT doc_id, entity_type, entity_local_id, doc_type, doc_text FROM \"%s\""
-                          index-table/*vectors-table*)]
+                          (index-table/vectors-table))]
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- docs-for
@@ -107,10 +133,10 @@
 
 (defn- reconciled-at! [ds]
   (:reconciled_at (jdbc/execute-one! ds
-                                     [(format "SELECT reconciled_at FROM \"%s\" WHERE id = 1" index-table/*meta-table*)]
+                                     [(format "SELECT reconciled_at FROM \"%s\" WHERE id = 1" (index-table/meta-table))]
                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
-(deftest ^:sequential reconcile-lifecycle-test
+(deftest ^:synchronized reconcile-lifecycle-test
   ;; :library lets us publish a Table into a library-data collection; the reconcile enumerates the
   ;; library tree via collections/library-collection + descendant-ids, so we build a real library root.
   (mt/with-premium-features #{:library :library-retrieval}
@@ -166,7 +192,7 @@
             (is (empty? (docs-for ds "table" table-id)))
             (is (seq (docs-for ds "metric" metric-id)) "the metric is untouched")))))))
 
-(deftest ^:sequential reconcile!-runs-to-completion-test
+(deftest ^:synchronized reconcile!-runs-to-completion-test
   (testing "reconcile! blocks until the run completes and a second run is idempotent"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -186,7 +212,7 @@
               (testing "a second run writes nothing"
                 (is (=? {:inserted 0 :deleted 0} (reconcile/reconcile! ds (constantly model))))))))))))
 
-(deftest ^:sequential rebuild-on-model-change-test
+(deftest ^:synchronized rebuild-on-model-change-test
   (mt/with-premium-features #{:library :library-retrieval}
     (with-isolated-index [ds]
       (let [model semantic.tu/mock-embedding-model]
@@ -201,7 +227,7 @@
             (is (seq (docs-for ds "table" table-id)))
             (is (some? (reconciled-at! ds)) "a converged reconcile stamps reconciled_at"))
           (testing "a model-identity change drops the vectors table and the next run re-embeds everything"
-            (let [new-model (assoc model :model-name "model-v2")]
+            (let [new-model (semantic.tu/resolved-mock-embedding-model :model-name "model-v2")]
               (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
               (is (= [] (index-rows ds)))
               (is (nil? (reconciled-at! ds))
@@ -210,13 +236,79 @@
               (is (seq (docs-for ds "table" table-id)))
               (testing "a schema-version mismatch alone also triggers the rebuild"
                 (jdbc/execute! ds [(format "UPDATE \"%s\" SET schema_version = schema_version - 1"
-                                           index-table/*meta-table*)])
+                                           (index-table/meta-table))])
                 (is (= :rebuilt (index-table/ensure-tables! ds new-model)))
                 (is (= [] (index-rows ds))))
               (testing "the rebuild heals the meta row, so it doesn't recur on the next sync"
                 (is (= :ok (index-table/ensure-tables! ds new-model)))))))))))
 
-(deftest ^:sequential measures-and-segments-indexed-and-hydrated-test
+(deftest ^:synchronized embedding-space-change-rebuilds-test
+  (with-isolated-index [ds]
+    (let [model         semantic.tu/mock-embedding-model
+          changed-space (update model :embedding-space-id str "-changed")]
+      (is (= :created (index-table/ensure-tables! ds model)))
+      (jdbc/execute! ds [(format (str "INSERT INTO \"%s\" "
+                                      "(doc_id, entity_type, entity_local_id, doc_type, doc_text, doc_embedding) "
+                                      "VALUES ('sentinel', 'table', 1, 'name', 'sentinel', '[0,0,0,0]')")
+                                 (index-table/vectors-table))])
+      (testing "the same provider/name/dimensions with a different immutable space is incompatible"
+        (is (= :incompatible (index-table/index-status ds changed-space)))
+        (is (= :rebuilt (index-table/ensure-tables! ds changed-space)))
+        (is (empty? (index-rows ds))))
+      (testing "the rebuilt identity is stable"
+        (is (= :compatible (index-table/index-status ds changed-space)))
+        (is (= :ok (index-table/ensure-tables! ds changed-space)))))))
+
+(deftest ^:synchronized version-1-meta-upgrade-rebuilds-test
+  (with-isolated-index [ds]
+    (let [model semantic.tu/mock-embedding-model]
+      (jdbc/execute! ds [(format (str "CREATE TABLE \"%s\" ("
+                                      "id smallint PRIMARY KEY, provider text NOT NULL, model_name text NOT NULL, "
+                                      "vector_dimensions int NOT NULL, schema_version int NOT NULL, "
+                                      "updated_at timestamptz NOT NULL)")
+                                 (index-table/meta-table))])
+      (jdbc/execute! ds [(format (str "INSERT INTO \"%s\" "
+                                      "(id, provider, model_name, vector_dimensions, schema_version, updated_at) "
+                                      "VALUES (1, 'mock', 'model', 4, 1, NOW())")
+                                 (index-table/meta-table))])
+      (jdbc/execute! ds [(format "CREATE TABLE \"%s\" (sentinel int)" (index-table/vectors-table))])
+      (jdbc/execute! ds [(format "INSERT INTO \"%s\" VALUES (1)" (index-table/vectors-table))])
+      (testing "a legacy table is rebuilt once rather than relabeled as the resolved space"
+        (is (= :rebuilt (index-table/ensure-tables! ds model)))
+        (is (empty? (index-rows ds))))
+      (let [meta-row   (jdbc/execute-one! ds
+                                          [(format (str "SELECT embedding_space_id, schema_version "
+                                                        "FROM \"%s\" WHERE id = 1")
+                                                   (index-table/meta-table))]
+                                          {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+            column-row (jdbc/execute-one! ds
+                                          ["SELECT is_nullable FROM information_schema.columns WHERE table_name = ? AND column_name = 'embedding_space_id'"
+                                           (index-table/meta-table)]
+                                          {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+        (is (= {:embedding_space_id (:embedding-space-id model)
+                :schema_version     index-table/schema-version}
+               meta-row))
+        (is (= "NO" (:is_nullable column-row))))
+      (let [execute!    jdbc/execute!
+            statements (atom [])]
+        (with-redefs [jdbc/execute! (fn [connectable sql-params & opts]
+                                      (swap! statements conj (first sql-params))
+                                      (apply execute! connectable sql-params opts))]
+          (is (= :ok (index-table/ensure-tables! ds model))))
+        (is (not-any? #(re-find #"ALTER COLUMN embedding_space_id SET NOT NULL" (str %)) @statements)
+            "steady-state reconcile does not reacquire an ACCESS EXCLUSIVE lock"))
+      (testing "a manually nullable metadata column is healed once"
+        (jdbc/execute! ds [(format "ALTER TABLE \"%s\" ALTER COLUMN embedding_space_id DROP NOT NULL"
+                                   (index-table/meta-table))])
+        (is (= :ok (index-table/ensure-tables! ds model)))
+        (is (= "NO" (:is_nullable
+                     (jdbc/execute-one!
+                      ds
+                      ["SELECT is_nullable FROM information_schema.columns WHERE table_name = ? AND column_name = 'embedding_space_id'"
+                       (index-table/meta-table)]
+                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))))))
+
+(deftest ^:synchronized measures-and-segments-indexed-and-hydrated-test
   (testing "measures/segments on a published library table are indexed and hydrate with parent-table context"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -253,7 +345,7 @@
                              :database_id (mt/id) :base_table_id orders :portable_entity_id string?}
                             (get by-key ["segment" segment-id])))))))))))))
 
-(deftest ^:sequential failed-insert-spares-only-that-entitys-orphans-test
+(deftest ^:synchronized failed-insert-spares-only-that-entitys-orphans-test
   (testing "a failed insert spares that entity's orphans; an unrelated entity's orphans still GC"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -278,7 +370,7 @@
             (testing "the entity that left the library is still GC'd (no failed insert of its own)"
               (is (empty? (docs-for ds "table" leaving))))))))))
 
-(deftest ^:sequential reconcile-entity!-targets-one-slice-test
+(deftest ^:synchronized reconcile-entity!-targets-one-slice-test
   (testing "reconcile-entity! reconciles only the given entity's docs, leaving other entities untouched"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -301,7 +393,7 @@
                            (frequencies (map :doc_type (docs-for ds "table" a-id)))))
                     (is (= b-before (set (map :doc_id (docs-for ds "table" b-id)))) "B untouched")))))))))))
 
-(deftest ^:sequential reconcile-entity!-leaving-library-deletes-all-test
+(deftest ^:synchronized reconcile-entity!-leaving-library-deletes-all-test
   (testing "reconcile-entity! on an entity that has left the library GCs all of its docs"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -320,7 +412,7 @@
                   (is (empty? (docs-for ds "table" a-id)) "A (no longer a member) is GC'd")
                   (is (= b-before (set (map :doc_id (docs-for ds "table" b-id)))) "B untouched"))))))))))
 
-(deftest ^:sequential reconcile-entity!-ai-context-removal-keeps-name-test
+(deftest ^:synchronized reconcile-entity!-ai-context-removal-keeps-name-test
   (testing "removing an entity's ai_context and reconciling it GCs synonym/example docs but keeps name/description"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -340,7 +432,7 @@
               (is (= {"name" 1 "description" 1} (frequencies (map :doc_type (docs-for ds "table" a-id))))
                   "the synonym docs are GC'd; name + description remain"))))))))
 
-(deftest ^:sequential reconcile!-keeps-ai-context-across-a-card-type-flip-test
+(deftest ^:synchronized reconcile!-keeps-ai-context-across-a-card-type-flip-test
   (testing "a full reconcile matches ai_context by entity class, so relabelling a card keeps its synonyms"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -362,7 +454,7 @@
                   (is (= {"name" 1 "synonym" 2} (frequencies (map :doc_type (docs-for ds "model" card-id))))
                       "the ai_context (stored under metric) is matched by class and kept, re-keyed under model"))))))))))
 
-(deftest ^:sequential library-entity-matches-library-entities-test
+(deftest ^:synchronized library-entity-matches-library-entities-test
   (testing "library-entity (point lookup) agrees with library-entities (full scan) for members and non-members"
     (mt/with-premium-features #{:library :library-retrieval}
       (collections.tu/with-library [{data :data metrics :metrics}]
@@ -393,7 +485,7 @@
       (collections.tu/with-library [{library :library}]
         (is (contains? (set (#'reconcile/library-ids library)) (:id library)))))))
 
-(deftest ^:sequential reconcile-entity!-on-first-build-repopulates-whole-library-test
+(deftest ^:synchronized reconcile-entity!-on-first-build-repopulates-whole-library-test
   (testing "a targeted reconcile that creates the index (first caller, empty table) repopulates the whole library"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -411,7 +503,7 @@
               (is (seq (docs-for ds "table" b-id))
                   "B indexed too: the empty-index build escalated to a full repopulate"))))))))
 
-(deftest ^:sequential reconcile-entity!-on-rebuild-repopulates-whole-library-test
+(deftest ^:synchronized reconcile-entity!-on-rebuild-repopulates-whole-library-test
   (testing "a targeted reconcile that triggers a model/format rebuild repopulates the whole library, not just the one entity"
     (mt/with-premium-features #{:library :library-retrieval}
       (with-isolated-index [ds]
@@ -427,7 +519,7 @@
               (is (seq (docs-for ds "table" b-id)))
               ;; a targeted reconcile of A under a new model identity forces ensure-tables! to rebuild (empty);
               ;; it must repopulate B too, not leave it missing until the periodic backstop.
-              (let [new-model (assoc model :model-name "model-v2")]
+              (let [new-model (semantic.tu/resolved-mock-embedding-model :model-name "model-v2")]
                 (is (:rebuilt? (reconcile/reconcile-entity! ds (constantly new-model) "table" a-id)))
                 (is (seq (docs-for ds "table" a-id)) "A repopulated after the rebuild")
                 (is (seq (docs-for ds "table" b-id)) "B repopulated too (not dropped by the rebuild)")))))))))

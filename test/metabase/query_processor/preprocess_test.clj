@@ -33,7 +33,7 @@
                                     :cache-strategy {:type             :ttl
                                                      :multiplier       60
                                                      :avg-execution-ms 100
-                                                     :min-duration-ms  0})
+                                                     :min_duration_ms  0})
             run-query        (fn []
                                (let [results (qp/process-query query)]
                                  {:cached?  (boolean (:cached (:cache/details results)))
@@ -637,3 +637,8 @@
                     :lib/source-column-alias  "count"
                     :lib/desired-column-alias "count"}]
                   (qp.preprocess/query->expected-cols query))))))))
+
+(deftest ^:parallel remove-internal-keys-test
+  (testing "an internal namespaced key supplied in an incoming query does not survive preprocessing"
+    (is (not (contains? (qp.preprocess/preprocess (assoc (mt/mbql-query venues) :a/b 1))
+                        :a/b)))))

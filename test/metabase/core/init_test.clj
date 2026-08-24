@@ -20,7 +20,7 @@
 
 (mu/defn- ns->file :- [:maybe (ms/InstanceOfClass java.net.URL)]
   ^java.net.URL [ns-symb :- simple-symbol?]
-  (let [filename (-> ns-symb
+  (let [filename (-> (name ns-symb)
                      (str/replace #"\." "/")
                      (str/replace #"-" "_"))]
     (some (fn [extension]

@@ -134,8 +134,8 @@
     (catch InterruptedException e
       (throw e))
     (catch Exception e
-      (log/errorf e "Error counting stale orphans in index table %s against repair table %s"
-                  index-table-name repair-table-name)
+      (log/errorf "Error counting stale orphans in index table %s against repair table %s: %s"
+                  index-table-name repair-table-name (ex-message e))
       nil)))
 
 (defn- create-repair-table!
@@ -156,7 +156,7 @@
                                 (sql/format :quoted true)))
     (log/infof "Cleaned up repair table: %s" repair-table-name)
     (catch Exception e
-      (log/warnf e "Failed to drop repair table: %s" repair-table-name))))
+      (log/warnf "Failed to drop repair table %s: %s" repair-table-name (ex-message e)))))
 
 (defn- repair-table-name
   "Generates a unique name for a repair table with timestamp for cleanup, qualified like the index tables

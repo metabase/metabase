@@ -1,0 +1,11 @@
+/* These tables are read-only apart from the row menu, so rows shouldn't look clickable. */
+.staticRow {
+  cursor: default;
+}
+
+/* doubled selector to beat .content:hover's specificity regardless of bundle order */
+.staticRow.staticRow:hover,
+.staticRow.staticRow:focus,
+.staticRow.staticRow[data-keyboard-active] {
+  background-color: transparent;
+}

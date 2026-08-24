@@ -328,6 +328,7 @@ export interface TreeTableRowProps<
   renderRowLink?: RenderRowLink<TData>;
   renderSubRow?: RenderSubRow<TData>;
   hierarchical?: boolean;
+  isClickable?: boolean;
 }
 
 /**

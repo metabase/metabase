@@ -92,20 +92,26 @@
   This function should be executed under pulse's creator permissions (`with-current-user`)."
   [dashcard]
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
-  (let [link-card (get-in dashcard [:visualization_settings :link])]
-    (cond
-      (some? (:url link-card))
-      (link-card->text-part link-card)
+  ;; Degrade a single unrenderable link card to a missing part instead of aborting the whole dashboard's
+  ;; parts. `dashcards->part` realizes the sequence eagerly, so an uncaught throw here takes out every part.
+  (try
+    (let [link-card (get-in dashcard [:visualization_settings :link])]
+      (cond
+        (some? (:url link-card))
+        (link-card->text-part link-card)
 
-      ;; if link card link to an entity, update the setting because
-      ;; the info in viz-settings might be out-of-date
-      (some? (:entity link-card))
-      (let [{:keys [model id]} (:entity link-card)
-            instance           (t2/select-one
-                                (serdes/link-card-model->toucan-model model)
-                                (dashboard-card/link-card-info-query-for-model model id))]
-        (when (mi/can-read? instance)
-          (link-card->text-part (assoc link-card :entity instance)))))))
+        ;; if link card link to an entity, update the setting because
+        ;; the info in viz-settings might be out-of-date
+        (some? (:entity link-card))
+        (let [{:keys [model id]} (:entity link-card)
+              instance           (t2/select-one
+                                  (serdes/link-card-model->toucan-model model)
+                                  (dashboard-card/link-card-info-query-for-model model id))]
+          (when (mi/can-read? instance)
+            (link-card->text-part (assoc link-card :entity instance))))))
+    (catch Throwable e
+      (log/warn e "Error rendering link card; skipping it")
+      nil)))
 
 (defn- resolve-inline-parameters
   "Resolves the full parameter definitions for inline parameters on a dashcard, and adds them to the dashcard's
@@ -242,7 +248,7 @@
                           (is-card-empty? (assoc card :result (:result result))))
              (update result :dashcard assoc :series-results series-results))))
        (catch Throwable e
-         (log/warnf e "Error running query for Card %s" (:card_id dashcard)))))))
+         (log/warnf "Error running query for Card %s: %s" (:card_id dashcard) (ex-message e)))))))
 
 (defn- dashcard->part
   "Given a dashcard returns its part based on its type.
@@ -344,7 +350,7 @@
                should-render-tab? (< 1 (count tabs-with-cards))]
            (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                              (do
-                               (log/debugf "Rendering tab %s with %d cards" (:name tab) (count cards))
+                               (log/debugf "Rendering tab %s with %d cards" (:id tab) (count cards))
                                (concat
                                 (when should-render-tab?
                                   [(tab->part tab)])

@@ -1,7 +1,6 @@
 name: Basic Aggregations
 entity_id: h5F2EjHsRd73Dqqh8sAtd
 created_at: '2026-04-02T02:59:02.778668Z'
-last_used_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: table
 collection_id: cOlQuErIeS0ExAmPlE2x1
@@ -241,7 +240,7 @@ result_metadata:
   lib/source-column-alias: total_revenue
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: h5F2EjHsRd73Dqqh8sAtd
   label: basic_aggregations

@@ -244,6 +244,50 @@
                  (qp.preprocess/preprocess
                   query)))))))))
 
+(deftest ^:parallel query->resolved-source-table-ids-test
+  (testing "table-sourced queries behave like query->source-table-ids"
+    (is (= #{(mt/id :venues)}
+           (query-perms/query->resolved-source-table-ids (mt/mbql-query venues)))))
+  (testing "card-sourced queries resolve to the card's underlying source table"
+    (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :venues)}}}]
+      (is (= #{(mt/id :venues)}
+             (query-perms/query->resolved-source-table-ids (query-with-source-card card)))))))
+
+(deftest ^:parallel query->resolved-source-table-ids-nested-cards-test
+  (testing "card-on-card chains resolve recursively down to the physical table"
+    (mt/with-temp [:model/Card {card-a-id :id} {:dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :venues)}}}
+                   :model/Card card-b {:dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (str "card__" card-a-id)}}}]
+      (is (= #{(mt/id :venues)}
+             (query-perms/query->resolved-source-table-ids (query-with-source-card card-b)))))))
+
+(deftest ^:parallel query->resolved-source-table-ids-join-test
+  (testing "a card-sourced JOIN contributes the card's underlying table too"
+    (mt/with-temp [:model/Card {card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                              (mt/mbql-query venues
+                                                {:aggregation [[:count]]
+                                                 :breakout    [$id]}))]
+      (is (= #{(mt/id :checkins) (mt/id :venues)}
+             (query-perms/query->resolved-source-table-ids
+              (mt/mbql-query checkins
+                {:joins [{:fields       :all
+                          :alias        "v"
+                          :source-table (str "card__" card-id)
+                          :condition    [:= $venue_id [:field "ID" {:base-type :type/Integer, :join-alias "v"}]]}]})))))))
+
+(deftest ^:parallel query->resolved-source-table-ids-missing-card-test
+  (testing "an unresolvable source-card chain THROWS (fail closed) rather than yielding no tables"
+    (is (thrown? Exception
+                 (query-perms/query->resolved-source-table-ids
+                  {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table (str "card__" Integer/MAX_VALUE)}})))))
+
 (deftest ^:parallel mbql5-query-test
   (testing "Should be able to calculate permissions for a MBQL 5 query (#39024)"
     (let [metadata-provider (mt/metadata-provider)
@@ -272,6 +316,7 @@
       (testing "native query"
         (is (= {:perms/create-queries :query-builder-and-native
                 :perms/view-data      :unrestricted
+                :card-ids             #{card-1-id card-2-id}
                 :paths                #{(format "/collection/%d/read/" collection-1-id)
                                         (format "/collection/%d/read/" collection-2-id)}}
                (query-perms/required-perms-for-query
@@ -290,17 +335,20 @@
                                                        :condition    [:= true false]}]}}]
           (is (= {:perms/create-queries :query-builder-and-native
                   :perms/view-data      :unrestricted
+                  :card-ids             #{card-1-id card-2-id}
                   :paths                #{(format "/collection/%d/read/" collection-1-id)
                                           (format "/collection/%d/read/" collection-2-id)}}
-                 (query-perms/required-perms-for-query native-query)))
+                 (query-perms/required-perms-for-query native-query :already-preprocessed? true)))
           (testing "MBQL 5 query"
             (is (= {:perms/create-queries :query-builder-and-native
                     :perms/view-data      :unrestricted
+                    :card-ids             #{card-1-id card-2-id}
                     :paths                #{(format "/collection/%d/read/" collection-1-id)
                                             (format "/collection/%d/read/" collection-2-id)}}
                    (query-perms/required-perms-for-query
                     (lib/query (mt/metadata-provider)
-                               (lib/->mbql5 native-query)))))))))))
+                               (lib/->mbql5 native-query))
+                    :already-preprocessed? true)))))))))
 
 (deftest ^:parallel native-query-source-card-id-join-permissions-test
   (testing "MBQL query with native source card (#30077)"

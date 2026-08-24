@@ -16,11 +16,11 @@ import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import { QuestionLoader } from "metabase/common/components/QuestionLoader";
 import { QuestionName } from "metabase/common/components/QuestionName";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
+import { QuestionLoader } from "metabase/questions/components/QuestionLoader";
 import {
   ActionIcon,
   Box,

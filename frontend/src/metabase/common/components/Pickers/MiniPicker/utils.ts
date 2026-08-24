@@ -3,6 +3,7 @@ import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { cardApi, collectionApi, databaseApi, tableApi } from "metabase/api";
+import { getCollectionItemsOptions } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
 import { useDispatch } from "metabase/redux";
@@ -42,10 +43,12 @@ export function useGetPathFromValue({
   value,
   opened,
   libraryCollection,
+  models,
 }: {
   value?: DataPickerValue;
   opened: boolean;
   libraryCollection?: MiniPickerCollectionItem;
+  models: MiniPickerPickableItem["model"][];
 }) {
   const [path, setPath] = useState<MiniPickerFolderItem[]>([]);
   const [isLoadingPath, setIsLoadingPath] = useState(false);
@@ -57,11 +60,13 @@ export function useGetPathFromValue({
     }
     setIsLoadingPath(true);
 
-    getPathFromValue(value, dispatch, libraryCollection).then((newPath) => {
-      setPath(newPath);
-      setIsLoadingPath(false);
-    });
-  }, [value, opened, dispatch, libraryCollection]);
+    getPathFromValue(value, dispatch, libraryCollection, models).then(
+      (newPath) => {
+        setPath(newPath);
+        setIsLoadingPath(false);
+      },
+    );
+  }, [value, opened, dispatch, libraryCollection, models]);
 
   return [path, setPath, { isLoadingPath }] as const;
 }
@@ -69,10 +74,16 @@ export function useGetPathFromValue({
 async function getPathFromValue(
   value: DataPickerValue,
   dispatch: DispatchFn,
-  libraryCollection?: MiniPickerCollectionItem,
+  libraryCollection: MiniPickerCollectionItem | undefined,
+  models: MiniPickerPickableItem["model"][],
 ): Promise<MiniPickerFolderItem[]> {
   if (value.model !== "table") {
-    return getCollectionPathFromValue(value, dispatch, libraryCollection);
+    return getCollectionPathFromValue(
+      value,
+      dispatch,
+      libraryCollection,
+      models,
+    );
   }
 
   const table = await dispatch(
@@ -88,7 +99,7 @@ async function getPathFromValue(
         },
         dispatch,
       )
-    : getCollectionPathFromValue(value, dispatch, libraryCollection);
+    : getCollectionPathFromValue(value, dispatch, libraryCollection, models);
 }
 
 async function getTablePathFromValue(
@@ -129,7 +140,8 @@ async function getTablePathFromValue(
 async function getCollectionPathFromValue(
   value: DataPickerValue,
   dispatch: DispatchFn,
-  collectionItem?: MiniPickerCollectionItem,
+  collectionItem: MiniPickerCollectionItem | undefined,
+  models: MiniPickerPickableItem["model"][],
 ): Promise<MiniPickerFolderItem[]> {
   const table =
     value.model === "table"
@@ -177,6 +189,7 @@ async function getCollectionPathFromValue(
     const collectionItems = await dispatch(
       collectionApi.endpoints.listCollectionItems.initiate({
         id: collectionId,
+        ...getCollectionItemsOptions({ models }),
       }),
     ).unwrap();
 

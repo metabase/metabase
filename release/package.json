@@ -19,6 +19,7 @@
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
+    "@octokit/plugin-paginate-graphql": "^6.0.0",
     "@octokit/rest": "^21.1.1",
     "@slack/web-api": "^8.0.0",
     "dayjs": "^1.11.20",

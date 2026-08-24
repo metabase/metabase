@@ -1,5 +1,5 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { PublishedTableSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
@@ -11,15 +11,8 @@ type PublishedTableSegmentDetailPageParams = {
   segmentId: string;
 };
 
-type PublishedTableSegmentDetailPageProps = {
-  params: PublishedTableSegmentDetailPageParams;
-  route: Route;
-};
-
-export function PublishedTableSegmentDetailPage({
-  params,
-  route,
-}: PublishedTableSegmentDetailPageProps) {
+export function PublishedTableSegmentDetailPage() {
+  const params = useParams<PublishedTableSegmentDetailPageParams>();
   const { isLoading, error, segment, table, tabUrls, onRemove } =
     usePublishedTableSegmentPage(params);
 
@@ -33,7 +26,6 @@ export function PublishedTableSegmentDetailPage({
 
   return (
     <SegmentDetailPage
-      route={route}
       segment={segment}
       tabUrls={tabUrls}
       breadcrumbs={

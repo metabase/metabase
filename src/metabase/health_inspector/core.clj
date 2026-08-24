@@ -64,7 +64,7 @@
     (catch InterruptedException e
       (throw e))
     (catch Exception e
-      (log/error e "Health check errored" {:check check-name})
+      (log/error "Health check errored" {:check check-name} (ex-message e))
       {:health 0, :message (str "Health check errored: " (ex-message e))})))
 
 (defn report

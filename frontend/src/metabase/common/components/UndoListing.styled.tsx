@@ -18,23 +18,26 @@ export const UndoList = styled.ul`
 
 export const CardContent = styled.div`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
 `;
 
 // Unjustified type cast. FIXME
 export const CardContentSide = styled(Box)<BoxProps>`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   overflow: hidden;
 ` as unknown as typeof Box;
 
 // Unjustified type cast. FIXME
 export const ControlsCardContent = styled(CardContentSide)`
+  align-items: center;
   flex-shrink: 0;
 ` as unknown as typeof Box;
 
 export const CardIcon = styled(Icon)`
+  position: relative;
+  top: 1px;
   margin-right: var(--mantine-spacing-sm);
   flex-shrink: 0;
 `;
@@ -57,6 +60,8 @@ export const UndoButton = styled(Link)`
 `;
 
 export const DismissIcon = styled(Icon)<{ color?: string }>`
+  position: relative;
+  top: 1px;
   margin-left: var(--mantine-spacing-md);
   cursor: pointer;
 

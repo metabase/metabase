@@ -15,7 +15,12 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
-import type { DatabaseId, RecentItem, SearchResult } from "metabase-types/api";
+import type {
+  Database,
+  DatabaseId,
+  RecentItem,
+  SearchResult,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -32,6 +37,7 @@ type SetupOpts = {
   title?: string;
   value?: DataPickerValue;
   databaseId?: DatabaseId;
+  databases?: Database[];
   recentItems?: RecentItem[];
   searchItems?: SearchResult[];
 };
@@ -40,6 +46,7 @@ async function setup({
   title = "Pick your starting data",
   value,
   databaseId,
+  databases = [createMockDatabase({ id: 1, name: "DB 1" })],
   recentItems = [],
   searchItems = [],
 }: SetupOpts = {}) {
@@ -47,7 +54,7 @@ async function setup({
   const onChange = jest.fn();
   const onClose = jest.fn();
 
-  setupDatabasesEndpoints([createMockDatabase({ id: 1, name: "DB 1" })]);
+  setupDatabasesEndpoints(databases);
 
   const collections = [
     createMockCollection({ id: 2, name: "Collection A" }),
@@ -171,6 +178,46 @@ describe("DataPickerModal", () => {
       expect(url.searchParams.get("filter_items_in_personal_collection")).toBe(
         "exclude-others",
       );
+    });
+  });
+  describe("disabled databases", () => {
+    const databases = [
+      createMockDatabase({ id: 1, name: "DB 1" }),
+      createMockDatabase({ id: 2, name: "DB 2" }),
+    ];
+
+    it("explains why a database from another database is disabled when locked to one database", async () => {
+      await setup({ databaseId: 1, databases });
+
+      await userEvent.click(await screen.findByText("Databases"));
+
+      const disabledDatabase = await screen.findByRole("link", {
+        name: /DB 2/,
+      });
+      expect(disabledDatabase).toHaveAttribute("data-disabled", "true");
+
+      await userEvent.hover(disabledDatabase);
+
+      expect(
+        await screen.findByText(
+          "You can't combine data from different databases.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show a tooltip on the database the picker is locked to", async () => {
+      await setup({ databaseId: 1, databases });
+
+      await userEvent.click(await screen.findByText("Databases"));
+
+      const enabledDatabase = await screen.findByRole("link", { name: /DB 1/ });
+      expect(enabledDatabase).not.toHaveAttribute("data-disabled", "true");
+
+      await userEvent.hover(enabledDatabase);
+
+      expect(
+        screen.queryByText("You can't combine data from different databases."),
+      ).not.toBeInTheDocument();
     });
   });
 });

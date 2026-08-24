@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { useSetting } from "metabase/common/hooks";
-import { Link } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -62,6 +62,9 @@ export function JobHeader({
       py={0}
       breadcrumbs={
         <DataStudioBreadcrumbs>
+          <Link key="data-transformation" to={Urls.transformList()}>
+            {t`Data transformation`}
+          </Link>
           <Link key="transform-job-list" to={Urls.transformJobList()}>
             {t`Jobs`}
           </Link>

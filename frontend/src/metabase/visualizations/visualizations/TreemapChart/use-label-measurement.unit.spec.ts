@@ -4,8 +4,9 @@ import type { MutableRefObject } from "react";
 
 import type { TreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
 import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
+
+import { DEFAULT_VISUALIZATION_THEME } from "../../shared/utils/theme";
 
 import { useLabelMeasurement } from "./use-label-measurement";
 

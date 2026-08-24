@@ -2,7 +2,8 @@
 // eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import * as dataAppVirtualModules from "build-configs/embedding-sdk/constants/data-app-virtual-modules";
 
-const { DATA_APP_DEV_ENTRY_VIRTUAL_ID } = dataAppVirtualModules;
+const { DATA_APP_DEV_ENTRY_VIRTUAL_ID, DATA_APP_VIRTUAL_URL_PREFIX } =
+  dataAppVirtualModules;
 
 /** The preview shell. There is no index.html on disk; the dev server serves this. */
 export const INDEX_HTML = `<!doctype html>
@@ -14,9 +15,7 @@ export const INDEX_HTML = `<!doctype html>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module">
-      import ${JSON.stringify(DATA_APP_DEV_ENTRY_VIRTUAL_ID)};
-    </script>
+    <script type="module" src="${DATA_APP_VIRTUAL_URL_PREFIX}${DATA_APP_DEV_ENTRY_VIRTUAL_ID}"></script>
   </body>
 </html>
 `;

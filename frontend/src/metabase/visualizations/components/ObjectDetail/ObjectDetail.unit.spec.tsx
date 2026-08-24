@@ -12,6 +12,7 @@ import {
 } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
+import { loadVisualizationComponents } from "metabase/visualizations";
 import { ObjectDetail } from "metabase/visualizations/components/ObjectDetail/ObjectDetail";
 import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -19,6 +20,10 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { createProductsTable } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["object"]));
 
 const DATABASE_ID = 1;
 

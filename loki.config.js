@@ -22,6 +22,7 @@ module.exports = {
     "^App/Palette",
     "^viz/GridMapPdfExport",
     "ParameterValueWidget",
+    "^Explorations/ExplorationGroupVisualization",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

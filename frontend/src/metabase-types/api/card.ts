@@ -1,5 +1,3 @@
-import type { CurrencyStyle } from "metabase/utils/formatting";
-import type { TimeOnlyOptions } from "metabase/utils/formatting/types";
 import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
@@ -18,6 +16,7 @@ import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
+import type { CurrencyStyle, TimeOnlyOptions } from "./formatting";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
@@ -242,6 +241,7 @@ export type TableColumnOrderSetting = {
 
 export type StackType = "stacked" | "normalized" | null;
 export type StackValuesDisplay = "total" | "all" | "series";
+export type StackValueFormat = "value" | "percentage";
 
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];
@@ -314,6 +314,9 @@ export type VisualizationSettings = {
 
   /** Show aggregate labels for stacked chart segments. */
   "graph.show_stack_values"?: StackValuesDisplay;
+
+  /** Render stacked chart segment labels as raw values or as percentages of the stack. */
+  "graph.stack_value_format"?: StackValueFormat;
 
   /** Limit the number of categories before grouping the rest into an "Other" bucket. */
   "graph.max_categories_enabled"?: boolean;

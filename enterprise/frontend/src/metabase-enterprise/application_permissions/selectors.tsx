@@ -13,6 +13,7 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
 } from "metabase/common/utils/groups";
+import { getUser } from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { Group } from "metabase-types/api";
 
@@ -37,12 +38,12 @@ export function getPermissionWarning(
 }
 
 export const canManageSubscriptions = createSelector(
-  (state: ApplicationPermissionsState) => state.currentUser,
+  (state: ApplicationPermissionsState) => getUser(state),
   (user) => user?.permissions?.can_access_subscription ?? false,
 );
 
 export const canAccessSettings = createSelector(
-  (state: ApplicationPermissionsState) => state.currentUser,
+  (state: ApplicationPermissionsState) => getUser(state),
   (user) => user?.permissions?.can_access_setting ?? false,
 );
 

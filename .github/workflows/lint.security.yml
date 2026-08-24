@@ -1,0 +1,111 @@
+name: Lint Security
+
+on:
+  schedule:
+    - cron: "0 11 * * *" # Daily at 11:00 UTC
+  workflow_dispatch: # manually run security scans
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  codeql:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    env:
+      # disables overlay DB cache
+      CODEQL_OVERLAY_DATABASE_MODE: none
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript
+          config-file: ./.github/codeql/codeql-config.yml
+          # disable caching since this only runs daily and the CodeQL cache is large
+          trap-caching: false
+          dependency-caching: false
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+
+  trivy:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - edition: ee
+            repo: metabase/metabase-enterprise-head
+            tag: latest
+          - edition: oss
+            repo: metabase/metabase-head
+            tag: latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    name: Run Trivy for (${{ matrix.edition }})
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run Vulnerability Scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_OFFLINE_SCAN: true
+        with:
+          image-ref: docker.io/${{ matrix.repo }}:${{ matrix.tag }}
+          format: sarif
+          output: trivy-results-${{ matrix.edition }}.sarif
+          # disable caching since this only runs daily so rate limiting isn't an issue
+          cache: false
+
+      - name: Upload Results to Github Security
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results-${{ matrix.edition }}.sarif
+          category: trivy-${{ matrix.edition }}
+
+  notify:
+    needs: [codeql, trivy]
+    if: ${{ failure() && github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            release
+            .github
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Notify Slack of Failed Scans
+        uses: actions/github-script@v9
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const scans = [
+              ['CodeQL', '${{ needs.codeql.result }}'],
+              ['Trivy', '${{ needs.trivy.result }}'],
+            ];
+            const failed = scans.filter(([, result]) => result === 'failure').map(([name]) => name);
+
+            if (failed.length === 0) {
+              console.log('No scan reported a failure. Skipping Slack notification.');
+              return;
+            }
+
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const list = failed.map(name => `\`${name}\``).join(', ');
+
+            await sendSlackMessage({
+              channelName: 'engineering-ci',
+              message: `:rotating_light: Daily security scan failed (${list}) — see <${runUrl}|run logs>`,
+            }).catch(console.error);

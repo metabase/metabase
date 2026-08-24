@@ -34,3 +34,15 @@
   :audit      :never
   :doc        false
   :export?    false)
+
+(defsetting audit-db-dialect-sync-pending
+  "Whether the audit DB still owes a schema sync for the host dialect. Set (durably) before an
+  engine-changed sync is attempted and cleared only when one succeeds, so a sync that fails or is
+  interrupted after the analytics content checksum has already advanced is retried on the next boot
+  instead of waiting for the next release to change the checksum."
+  :type       :boolean
+  :default    false
+  :visibility :internal
+  :audit      :never
+  :doc        false
+  :export?    false)

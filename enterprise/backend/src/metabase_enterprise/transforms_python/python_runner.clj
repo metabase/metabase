@@ -255,8 +255,8 @@
   [server-url run-id]
   (python-runner-request server-url :post "/cancel" {:body   (json/encode {:request_id run-id})
                                                      :async? true}
-                         #_success #(log/debug %)
-                         #_failure #(log/error %)))
+                         #_success (fn [_] (log/debug "Python runner cancel request completed"))
+                         #_failure #(log/errorf "Python runner cancel request failed: %s" (ex-message %))))
 
 (defn- safe-delete
   "Safely delete a file."

@@ -1,4 +1,5 @@
 import { getMainStore } from "__support__/entities-store";
+import { setupFieldEndpoints } from "__support__/server-mocks";
 import { getParameters } from "metabase/dashboard/selectors";
 import type { State } from "metabase/redux/store";
 import {
@@ -9,11 +10,11 @@ import {
 import {
   createMockCard,
   createMockDashboardCard,
+  createMockField,
   createMockNativeDatasetQuery,
   createMockParameter,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import { createMockNormalizedField } from "metabase-types/api/mocks/schema";
 
 import {
   REMOVE_PARAMETER,
@@ -252,29 +253,14 @@ describe("setParameterMapping", () => {
             }),
           },
         }),
-        entities: {
-          collections: {},
-          dashboards: {},
-          databases: {},
-          schemas: {},
-          tables: {},
-          fields:
-            fieldId != null
-              ? {
-                  [String(fieldId)]: createMockNormalizedField({
-                    id: fieldId,
-                    uniqueId: String(fieldId),
-                    base_type: fieldBaseType,
-                  }),
-                }
-              : {},
-          segments: {},
-          measures: {},
-          metrics: {},
-          snippets: {},
-          questions: {},
-        },
       });
+
+      if (fieldId != null) {
+        setupFieldEndpoints(
+          createMockField({ id: fieldId, base_type: fieldBaseType }),
+        );
+      }
+
       const store = setup(state);
       return { store };
     }
@@ -368,25 +354,6 @@ describe("setParameterMapping", () => {
             }),
           },
         }),
-        entities: {
-          collections: {},
-          dashboards: {},
-          databases: {},
-          schemas: {},
-          tables: {},
-          fields: {
-            "42": createMockNormalizedField({
-              id: 42,
-              uniqueId: "42",
-              base_type: "type/Integer",
-            }),
-          },
-          segments: {},
-          measures: {},
-          metrics: {},
-          snippets: {},
-          questions: {},
-        },
       });
       const store = setup(state);
       await store.dispatch(

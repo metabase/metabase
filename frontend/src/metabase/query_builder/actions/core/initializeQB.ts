@@ -5,6 +5,7 @@ import {
   deserializeCard,
   parseHash,
 } from "metabase/common/utils/card";
+import { canUserCreateQueries, getUser } from "metabase/current-user";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
@@ -12,7 +13,7 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { fetchDatabaseMetadata, updateMetadata } from "metabase/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
@@ -20,12 +21,12 @@ import type {
   QueryBuilderUIControls,
 } from "metabase/redux/store";
 import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
-import type { LocationDescriptorObject } from "metabase/router";
-import { replace } from "metabase/router";
+import type { Location } from "metabase/router";
+import { navigate } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { canUserCreateQueries, getUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -280,7 +281,7 @@ async function handleQBInit(
     params,
     isStale,
   }: {
-    location: LocationDescriptorObject;
+    location: Location;
     params: QueryParams;
     isStale: () => boolean;
   },
@@ -302,7 +303,8 @@ async function handleQBInit(
     );
   });
 
-  const queryParams = location.query;
+  const searchParams = new URLSearchParams(location.search ?? "");
+  const queryParams = parseSearchQuery(location.search ?? "");
   const isTableRoute = location.pathname?.startsWith("/table");
   const slugEntityId = Urls.extractEntityId(params.slug);
   // On the /table/:slug route the slug identifies a table, not a saved card.
@@ -321,10 +323,6 @@ async function handleQBInit(
       dispatch(setErrorPage(NOT_FOUND_ERROR));
       return;
     }
-    await dispatch(fetchDatabaseMetadata(table.db_id));
-    if (isStale()) {
-      return;
-    }
     // The /table URL only carries the table id; resolve its db so the QB can
     // build the table's default ad-hoc question, just like `?db=&table=`.
     options = {
@@ -338,7 +336,7 @@ async function handleQBInit(
 
   if (uiControls.queryBuilderMode === "notebook") {
     if (!canUserCreateQueries(getState())) {
-      dispatch(replace(Urls.unauthorized()));
+      navigate(Urls.unauthorized(), { replace: true });
       return;
     }
   }
@@ -463,7 +461,8 @@ async function handleQBInit(
     metadata,
   });
 
-  const objectId = params?.objectId || queryParams?.objectId;
+  const objectId =
+    params?.objectId || (searchParams.get("objectId") ?? undefined);
 
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
@@ -507,7 +506,7 @@ async function handleQBInit(
 }
 
 export const initializeQB =
-  (location: LocationDescriptorObject, params: QueryParams) =>
+  (location: Location, params: QueryParams) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const version = ++latestInitializeQBVersion;
     const isStale = () => version !== latestInitializeQBVersion;

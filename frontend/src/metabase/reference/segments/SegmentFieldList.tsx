@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useFormik } from "formik";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -7,7 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { updateField } from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
@@ -26,10 +27,8 @@ import type {
 
 import type { ReferenceRouteProps, StateWithReference } from "../selectors";
 import {
-  getError,
   getFieldsBySegment,
   getIsEditing,
-  getLoading,
   getSegment,
   getUser,
 } from "../selectors";
@@ -56,15 +55,13 @@ const mapStateToProps = (
   return {
     segment: getSegment(state, props),
     entities: data,
-    loading: getLoading(state),
-    loadingError: getError(state),
     user: getUser(state),
     isEditing: getIsEditing(state),
   };
 };
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  updateField,
   ...actions,
   onSubmit: actions.rUpdateFields,
 };
@@ -103,6 +100,8 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
     onSubmit,
   } = props;
 
+  const [saveError, setSaveError] = useState<unknown>(null);
+
   const {
     isSubmitting,
     getFieldProps,
@@ -111,8 +110,17 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
     handleReset,
   } = useFormik<SegmentFieldListFormFields>({
     initialValues: {},
-    onSubmit: (fields): void => {
-      onSubmit?.(entities, fields, { ...props, resetForm: handleReset });
+    onSubmit: async (fields): Promise<void> => {
+      setSaveError(null);
+      try {
+        await onSubmit?.(entities, fields, {
+          ...props,
+          resetForm: handleReset,
+        });
+      } catch (error) {
+        console.error(error);
+        setSaveError(error);
+      }
     },
   });
 
@@ -148,8 +156,8 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
         startEditing={startEditing}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
+        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        error={saveError ?? loadingError}
       >
         {() =>
           Object.keys(entities).length > 0 ? (
@@ -211,9 +219,19 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
   );
 };
 
+// What the container has to supply: `params` feeds `mapStateToProps`, and
+// `table` is read here but selected by the container. Naming it keeps that
+// contract type-checked.
+type SegmentFieldListOwnProps = ReferenceRouteProps &
+  Pick<SegmentFieldListProps, "table" | "loading" | "loadingError">;
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-  // Unjustified type cast. FIXME
-)(SegmentFieldList as unknown as React.ComponentType);
+)(
+  // connect HOC tangle: the `metadataActions` / `actions` spreads in
+  // `mapDispatchToProps` are untyped, so the dispatch props can't be matched
+  // against the component's own props.
+  SegmentFieldList as unknown as React.ComponentType<SegmentFieldListOwnProps>,
+);

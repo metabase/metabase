@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.api.channel-test :as api.channel-test]
+   [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
@@ -160,7 +161,7 @@
       ;; like ::api-events, :metabase.audit-app.events.audit-log/remote-sync-event, etc. This was non-deterministic
       ;; for a long time
       (let [random-event (first (filter (comp #{"event"} namespace)
-                                        (descendants :metabase/event)))
+                                        (events/descendants :metabase/event)))
             sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
                                                                              :event_name      random-event
                                                                              :notification_id n-id})]

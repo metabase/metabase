@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 
 import S from "./NavbarPromoCard.module.css";

@@ -65,7 +65,8 @@
 (api.macros/defendpoint :post
   "/upload-dictionary"
   "Upload a CSV of content translations"
-  {:multipart true}
+  {:multipart {:max-file-size (long max-content-translation-dictionary-size-bytes)
+               :max-file-count 1}}
   [_route_params
    _query-params
    _body
@@ -75,6 +76,7 @@
                                                   ["file"
                                                    [:map
                                                     [:filename :string]
+                                                    [:size     :int]
                                                     [:tempfile (ms/InstanceOfClass java.io.File)]]]]]]]
   (api/check-superuser)
   (let [file (get-in multipart-params ["file" :tempfile])]

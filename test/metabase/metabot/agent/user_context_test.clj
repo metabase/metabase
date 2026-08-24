@@ -211,7 +211,7 @@
 
 (deftest ^:parallel format-viewing-context-test-2h
   (testing "handles multiple viewing items"
-    (let [context {:user_is_viewing [{:type "table" :id 1 :name "users"}
+    (let [context {:user_is_viewing [{:type "table" :id 321 :name "users"}
                                      {:type "question" :id 2 :name "Top Users"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -443,7 +443,7 @@
         "Formatting result should contain database id")))
 
 (deftest ^:parallel format-transform-source-mbql-renders-repr-json-test
-  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd pMBQL"
+  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd MBQL 5"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mp     (mt/metadata-provider)
@@ -454,7 +454,7 @@
                       (assoc source :transform-source-type :query))]
           (is (string? text))
           (is (re-find #"```json" text)
-              "output is a JSON code block (the portable representations form), not pprint'd pMBQL")
+              "output is a JSON code block (the portable representations form), not pprint'd MBQL 5")
           (is (re-find #"\"lib/type\"\s*:\s*\"mbql/query\"" text))
           (is (re-find #"\"source-table\"" text))
           (is (not (re-find #"lib/metadata" text))
@@ -501,3 +501,12 @@
             (let [out (user-context/format-viewing-context (viewing db-id))]
               (is (str/includes? out "notebook editor"))
               (is (not (str/includes? out "source-table"))))))))))
+
+(deftest ^:parallel enrich-context-omits-research-plan-test
+  (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not
+            leak into the generic user-message injection context. message_injection.selmer has no
+            {{research_plan}} placeholder; the plan is rendered into the system prompt instead (see
+            metabase.metabot.tools.explorations/research-plan-system-context)."
+    (let [plan {:name "Why was revenue down?" :groups [] :timelines []}
+          enriched (user-context/enrich-context-for-template {:research_plan plan})]
+      (is (not (contains? enriched :research_plan))))))

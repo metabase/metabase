@@ -2,6 +2,7 @@ import { createMockMediaQueryList } from "__support__/ui";
 import {
   isTouchDevice,
   parseHashOptions,
+  parseSearchQuery,
   stringifyHashOptions,
 } from "metabase/utils/browser";
 
@@ -110,6 +111,33 @@ describe("browser", () => {
       },
     ])("should parse $name", ({ input, expected }) => {
       expect(parseHashOptions(input)).toEqual(expected);
+    });
+  });
+
+  describe("parseSearchQuery", () => {
+    it.each([
+      { input: "", expected: {}, name: "an empty search" },
+      { input: "?foo=bar", expected: { foo: "bar" }, name: "with '?'" },
+      { input: "foo=bar", expected: { foo: "bar" }, name: "without '?'" },
+      { input: "?foo", expected: { foo: "" }, name: "a valueless key" },
+      { input: "?foo=", expected: { foo: "" }, name: "an empty value" },
+      {
+        input: "?foo=a&foo=b",
+        expected: { foo: ["a", "b"] },
+        name: "a repeated key as an array",
+      },
+      {
+        input: "?foo=a&bar=b",
+        expected: { foo: "a", bar: "b" },
+        name: "several keys",
+      },
+      {
+        input: "?foo=next30days~",
+        expected: { foo: "next30days~" },
+        name: "an encoded value",
+      },
+    ])("should parse $name", ({ input, expected }) => {
+      expect(parseSearchQuery(input)).toEqual(expected);
     });
   });
 

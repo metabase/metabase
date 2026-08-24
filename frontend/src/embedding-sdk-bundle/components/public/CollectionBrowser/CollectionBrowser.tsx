@@ -184,14 +184,14 @@ export const CollectionBrowserInner = ({
     <Stack w="100%" h="100%" gap="sm" className={className} style={style}>
       {!isGlobalBreadcrumbEnabled && (
         <CollectionBreadcrumbs
-          collectionId={internalCollectionId}
+          collectionId={internalCollectionId ?? undefined}
           onClick={(item) => setInternalCollectionId(item.id)}
           baseCollectionId={baseCollectionId}
         />
       )}
 
       <CollectionItemsTable
-        collectionId={effectiveCollectionId}
+        collectionId={effectiveCollectionId ?? undefined}
         onClick={onClickItem}
         pageSize={pageSize}
         models={collectionTypes}

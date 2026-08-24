@@ -167,7 +167,10 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
-        Omit<ListCollectionItemsRequest, "id"> & { id: DashboardId }
+        Omit<
+          ListCollectionItemsRequest,
+          "id" | "q" | "include_available_models"
+        > & { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({
           method: "GET",
@@ -218,6 +221,9 @@ export const dashboardApi = Api.injectEndpoints({
             tag("parameter-values"),
             listTag("revision"),
             listTag("subscription"),
+            // Archiving the dashboard the user has as their homepage clears the homepage server-side.
+            // getCurrentUser provides this tag, so invalidating it refetches the user.
+            idTag("user-homepage-dashboard", id),
           ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({

@@ -36,7 +36,8 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/AiUsageLog
+  #{:model/AgentApiCallLog
+    :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
@@ -60,6 +61,16 @@
     :model/Dependency
     :model/DependencyStatus
     :model/DocumentBookmark
+    :model/Exploration
+    :model/ExplorationBookmark
+    :model/ExplorationQuery
+    :model/ExplorationQueryResult
+    :model/ExplorationThread
+    :model/ExplorationBlock
+    :model/ExplorationPage
+    :model/ExplorationThreadTimeline
+    :model/StoredResult
+    :model/StoredResultUse
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
@@ -112,10 +123,6 @@
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
-    ;; Workspace remappings are runtime-only; they redirect QP queries against canonical
-    ;; tables to workspace-isolated copies. They aren't portable across instances and
-    ;; aren't included in serdes export/import.
-    :model/TableRemapping
     :model/Secret
     :model/Session
     :model/SourceDimensionDaily
@@ -147,12 +154,7 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction
-    ;; Workspace and WorkspaceDatabase are runtime-only -- per-instance workspace
-    ;; provisioning state, not portable content. Same rationale as TableRemapping above.
-    :model/Workspace
-    :model/WorkspaceDatabase
-    :model/WorkspaceInstance})
+    :model/CommentReaction})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (let [entity-id-models (->> (keys models.resolution/model->namespace)

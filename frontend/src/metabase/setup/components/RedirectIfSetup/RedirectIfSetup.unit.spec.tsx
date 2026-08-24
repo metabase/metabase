@@ -1,19 +1,14 @@
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { DispatchFn } from "metabase/redux/hooks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
+import { getSetting, settingsApi } from "metabase/settings";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { RedirectIfSetup } from "./RedirectIfSetup";
-
-// The `loadSettings` action, inlined: importing `metabase/redux/settings` pulls
-// in an import graph large enough to exhaust the jest heap.
-const loadSettings = (values: ReturnType<typeof createMockSettings>) => ({
-  type: "metabase/settings/LOAD_SETTINGS",
-  payload: values,
-});
 
 describe("RedirectIfSetup", () => {
   const setup = (hasUserSetup: boolean) =>
@@ -39,28 +34,34 @@ describe("RedirectIfSetup", () => {
   });
 
   it("redirects to the home page once the instance is set up", async () => {
-    const { history } = setup(true);
-    await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/"),
-    );
+    const { router } = setup(true);
+    await waitFor(() => expect(router?.location.pathname).toBe("/"));
     expect(screen.queryByText("setup page")).not.toBeInTheDocument();
   });
 
-  it("stays on setup when has-user-setup flips to true mid-wizard", () => {
-    const { history, store } = setup(false);
+  it("stays on setup when has-user-setup flips to true mid-wizard", async () => {
+    const { router, store } = setup(false);
     expect(screen.getByText("setup page")).toBeInTheDocument();
 
-    // The wizard's user step calls /api/setup, then reloads settings.
-    act(() => {
-      store.dispatch(
-        loadSettings(createMockSettings({ "has-user-setup": true })),
+    // The wizard's user step calls /api/setup, then reloads settings via
+    // `refetchSiteSettings`, flipping `has-user-setup` to true midway.
+    // Mirror that by writing the refreshed value into the session-properties cache.
+    await act(async () => {
+      // The store's test-harness dispatch type isn't thunk-aware,
+      // the app DispatchFn is.
+      await (store.dispatch as DispatchFn)(
+        settingsApi.util.upsertQueryData(
+          "getSessionProperties",
+          undefined,
+          createMockSettings({ "has-user-setup": true }),
+        ),
       );
     });
 
-    // Guards against the inlined action type drifting and voiding this test.
-    expect(store.getState().settings.values["has-user-setup"]).toBe(true);
+    // Guards against the setting not actually flipping and voiding this test.
+    expect(getSetting(store.getState(), "has-user-setup")).toBe(true);
 
-    expect(history?.getCurrentLocation().pathname).toBe("/setup");
+    expect(router?.location.pathname).toBe("/setup");
     expect(screen.getByText("setup page")).toBeInTheDocument();
   });
 });

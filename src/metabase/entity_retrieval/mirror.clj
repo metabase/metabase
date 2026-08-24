@@ -33,10 +33,14 @@
   []
   nil)
 
-(defenterprise search
+(defenterprise search-unfiltered
   "Similarity-search the library entity index for the documents nearest `user-search-prompt`.
   Returns up to `limit` matches shaped `{:entity {:model :id} :doc_type :doc_text :score}`,
-  best score first; [] in OSS or when no pgvector store is configured."
+  best score first; [] in OSS or when no pgvector store is configured.
+
+  The index is user-agnostic, so a hit's names, descriptions, synonyms, and examples may belong to an entity
+  the current user cannot read. Anything user-facing must first resolve each entity against the appdb, keep
+  only the readable ones, and drop hits that no longer resolve."
   metabase-enterprise.entity-retrieval.core
   [_user-search-prompt _limit]
   [])
