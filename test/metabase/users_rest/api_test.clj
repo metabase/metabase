@@ -1652,6 +1652,22 @@
         (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                                     :old_password "def"})))))))
 
+(deftest reset-password-invalidates-existing-sessions-test
+  (testing "PUT /api/user/:id/password invalidates the user's existing sessions"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "def")
+      (let [session (auth-identity/create-session-with-auth-tracking!
+                     user
+                     {:device_id "test-device" :embedded false :token_exchange false
+                      :device_description "Test" :ip_address "127.0.0.1"}
+                     :provider/password)]
+        (is (some? (t2/select-one :model/Session :id (:id session)))
+            "sanity check: the session exists before the password change")
+        (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user))
+                              {:password "abc123!!DEF", :old_password "def"})
+        (is (nil? (t2/select-one :model/Session :id (:id session)))
+            "the user's pre-existing session should be deleted after the password change")))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
