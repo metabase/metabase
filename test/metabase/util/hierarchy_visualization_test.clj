@@ -78,7 +78,15 @@
               "  n2 -> n1;\n"
               "}")
          (hierarchy.visualization/dot-str regular-hierarchy
-                                          {:direction "LR", :label-fn name}))))
+                                          {:direction "LR", :label-fn name})))
+  (testing "Windows and old-Mac newlines are normalized"
+    (is (= (str "digraph hierarchy {\n"
+                "  rankdir=TB;\n"
+                "  n0 [label=\"first\\nsecond\\nthird\"];\n"
+                "}")
+           (hierarchy.visualization/dot-str
+            (ordered-hierarchy/make-hierarchy [:root])
+            {:label-fn (constantly "first\r\nsecond\rthird")})))))
 
 (deftest mermaid-str-test
   (is (= (str "flowchart TD\n"
@@ -90,4 +98,10 @@
               "  n1 --> n3\n"
               "  n2 --> n0\n"
               "  n2 --> n1")
-         (hierarchy.visualization/mermaid-str regular-hierarchy {:label-fn name}))))
+         (hierarchy.visualization/mermaid-str regular-hierarchy {:label-fn name})))
+  (testing "Windows and old-Mac newlines are normalized"
+    (is (= (str "flowchart TD\n"
+                "  n0[\"first<br/>second<br/>third\"]")
+           (hierarchy.visualization/mermaid-str
+            (ordered-hierarchy/make-hierarchy [:root])
+            {:label-fn (constantly "first\r\nsecond\rthird")})))))

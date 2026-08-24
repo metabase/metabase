@@ -182,9 +182,13 @@
   [nodes]
   (zipmap nodes (map #(str "n" %) (range))))
 
+(defn- normalize-newlines
+  [s]
+  (str/replace (str s) #"\r\n?" "\n"))
+
 (defn- dot-escape
   [s]
-  (str/escape (str s) {\\ "\\\\", \" "\\\"", \newline "\\n", \return "\\r"}))
+  (str/escape (normalize-newlines s) {\\ "\\\\", \" "\\\"", \newline "\\n"}))
 
 (defn- validate-direction
   [requested allowed default]
@@ -223,7 +227,7 @@
 
 (defn- mermaid-escape
   [s]
-  (-> (str s)
+  (-> (normalize-newlines s)
       (str/replace "&" "&amp;")
       (str/replace "\"" "&quot;")
       (str/replace "<" "&lt;")
