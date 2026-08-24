@@ -185,9 +185,10 @@
         (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                    username (user->credentials username)))))))
 
-;; TODO (Chris 2026-08-18) -- unlike the user ids above, these are cached with no regard for transactions:
-;; a session created inside a `with-temp` is rolled back with it while its token stays here, and the
-;; retry in `client-fn` only papers over it. Same `created-globally` treatment would fix it.
+;; TODO (Chris 2026-08-24) -- the standard users get their sessions at initialization, where nothing has
+;; opened a transaction yet, so those survive. One gap left: if the first thing to trigger that
+;; initialization is itself inside a `with-temp`, the sessions roll back with it and everything after
+;; re-authenticates.
 (defn clear-cached-session-tokens!
   "Clear any cached session tokens, which may have expired or been removed. You should do this in the even you get a
   `401` unauthenticated response, and then retry the request."

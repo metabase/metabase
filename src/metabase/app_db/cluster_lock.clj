@@ -166,21 +166,19 @@
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (defn- insert-lock-row-out-of-band!
-  "Insert the lock's row on a connection of our own, so it is committed rather than tied to the caller's
-  transaction.
+  "Insert the lock's row on a connection of our own, so it commits instead of going away with the caller.
 
-  A lock row is written once and read forever after, and the usual insert leans on that: rival first-time
-  inserters block on the winner's uncommitted unique-index entry and retry once it commits. Inside a
-  `with-temp` that commit never comes -- the scope rolls back, the row is gone again, and the next
-  acquisition replays the race, on MariaDB until the lock-wait timeout expires.
+  A lock row is written once and read forever after, and acquisition counts on that. Rivals who arrive first
+  block on the winner's uncommitted row and carry on once it commits. Inside a `with-temp` no commit ever
+  comes, so the row vanishes and the next acquisition runs the same race again. On MariaDB each replay costs
+  the full lock wait.
 
-  This takes a second connection while the caller still holds theirs, which is worth knowing about -- but only
-  until the row exists: once it is committed the SELECT in [[acquire-lock-row!*]] finds it and this never runs
-  again for that name.
+  We hold two connections while this runs, but only until the row exists. After that the SELECT above finds it
+  and we never come back here for that name.
 
-  TODO (Chris 2026-08-21) -- this is reasoning, not measurement. The failures it targets are cross-connection
-  and only show up under MariaDB in CI, so it has not been reproduced locally. If the CI flakes it is aimed at
-  do not go away, this is the first thing to take back out."
+  TODO (Chris 2026-08-21) -- this is reasoning, not measurement. The failures it targets happen between
+  connections and only under MariaDB in CI, so there is no local repro. If those flakes stay, take this out
+  first."
   [lock-name-str timeout]
   (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
                                   :columns     [:lock_name]
@@ -192,11 +190,11 @@
                       (try
                         (.executeUpdate stmt)
                         (catch Exception e
-                          ;; someone else got there first, which is the outcome we wanted anyway
+                          ;; someone else got there first, which is what we wanted anyway
                           (when-not (duplicate-lock-row? e)
                             (throw e)))))]
-        ;; the timeout has to be bounded on *this* connection: the caller's is a different session, and a
-        ;; rival's uncommitted row would otherwise hold us here for the server's default lock wait
+        ;; bound the wait on this connection. The caller's is a different session, so a rival's uncommitted
+        ;; row could otherwise hold us here for the server's default.
         (u.connection/set-query-timeout! stmt timeout)
         (if (u.connection/server-rejects-query-timeout? conn)
           (do-with-lock-wait-timeout conn timeout insert!)
@@ -224,22 +222,20 @@
         (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
                     result-set (.executeQuery stmt)]
           (when-not (.next result-set)
-            ;; `config/is-test?` because this only matters where the ambient transaction may never commit:
-            ;; `with-temp` rolls back, so a row inserted inside it is gone again and the next acquisition
-            ;; replays a race meant to happen once. In production the caller's transaction commits the row
-            ;; the ordinary way, and `load-from-h2!` shows that production really does take cluster locks
-            ;; inside one -- so leave that path exactly as it was.
+            ;; Only in tests, where the surrounding transaction may never commit. A `with-temp` rolls back
+            ;; and takes the row with it, so the next acquisition runs a race that was meant to happen once.
+            ;; Production commits it the ordinary way, and `load-from-h2!` does take cluster locks inside a
+            ;; transaction, so leave that path alone.
             (if (and ambient-transaction? config/is-test?)
               (try
                 (insert-lock-row-out-of-band! lock-name-str timeout)
                 true
                 (catch Exception e
-                  ;; A lock-wait timeout here usually means the blocker is the ambient transaction itself:
-                  ;; on MySQL/MariaDB a SELECT ... FOR UPDATE it took earlier holds a next-key lock whose gap
-                  ;; covers this row's key, and our fresh connection can never outwait our own caller (e.g.
-                  ;; load-from-h2 inserts Databases -- and so takes the batch-permissions locks -- inside one
-                  ;; big load transaction). Fall back to inserting on the caller's connection, which cannot
-                  ;; block on its own locks.
+                  ;; The blocker is usually the caller. On MySQL and MariaDB a SELECT ... FOR UPDATE it
+                  ;; ran earlier holds a gap lock covering this row's key, and no connection can outwait its
+                  ;; own transaction. `load-from-h2!` does exactly this: it inserts Databases, and so takes
+                  ;; the batch-permissions locks, inside one long load. Insert on the caller's connection
+                  ;; instead, where its own locks cannot block us.
                   (if (lock-wait-timed-out? e)
                     (do (insert-lock-row-in-band! conn lock-name-str timeout)
                         false)
@@ -273,8 +269,8 @@
     (when (*detached-locks-held* lock-name-str)
       (throw (ex-info "Cluster lock is already held detached in this scope"
                       {:lock-name lock-name-str}))))
-  ;; captured before we open our own: what matters is whether the caller was already in one, since that is
-  ;; the transaction a rolled-back lock row would disappear with
+  ;; read before we open ours: what matters is whether the caller had one, since that is the transaction a
+  ;; lock row would disappear with
   (let [ambient-transaction? (mdb.connection/in-transaction?)]
     (t2/with-transaction [conn]
       (doseq [{:keys [lock-name-str mode]} locks]
