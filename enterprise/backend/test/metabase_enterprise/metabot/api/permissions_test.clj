@@ -207,6 +207,22 @@
                       "only the simple-mode groups keep their rows")
                   (is (=? {"permission/metabot-sql-generation" "no"} (group-perm-values response group-id))))))))))))
 
+(deftest mode-switch-is-atomic-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "a mode switch that fails part way through leaves both the mode and the rows alone"
+      (with-metabot-permissions-snapshot
+        (mt/with-temporary-setting-values [metabot-advanced-permissions true]
+          (mt/with-temp [:model/PermissionsGroup   {group-id :id} {:name "Specific Group"}
+                         :model/MetabotPermissions _              {:group_id   group-id
+                                                                   :perm_type  :permission/metabot
+                                                                   :perm_value :yes}]
+            (mt/with-dynamic-fn-redefs [metabot-settings/metabot-advanced-permissions!
+                                        (fn [_] (throw (ex-info "boom" {})))]
+              (mt/user-http-request :crowberto :delete 500 "ee/ai-controls/permissions/advanced"))
+            (is (true? (metabot-settings/metabot-advanced-permissions)))
+            (is (t2/exists? :model/MetabotPermissions :group_id group-id)
+                "the rows the switch would have deleted are rolled back with it")))))))
+
 (deftest mode-switch-rejected-under-env-var-test
   (mt/with-premium-features #{:ai-controls}
     (testing "the /advanced endpoints refuse to switch modes while an env var forces the setting"

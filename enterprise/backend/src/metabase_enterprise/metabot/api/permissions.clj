@@ -96,6 +96,14 @@
   []
   (conj (default-group-ids) (u/the-id (perms/admin-group))))
 
+(defn- switch-mode!
+  "Write the permission mode and drop the rows of the mode being left behind, in one transaction.
+  The setting write goes last, since it updates the settings cache in place and a rollback would not undo that."
+  [advanced? group-id-clause]
+  (t2/with-transaction [_conn]
+    (t2/delete! :model/MetabotPermissions :group_id group-id-clause)
+    (metabot-settings/metabot-advanced-permissions! advanced?)))
+
 (defn- check-mode-switchable!
   "Throw a 400 when `metabot-advanced-permissions` is forced by an env var, since writing the setting would then have no
   effect and the row deletions that go with the switch would leave the instance in a state neither mode describes."
@@ -109,10 +117,7 @@
   []
   (api/check-superuser)
   (check-mode-switchable!)
-  ;; Flip the mode before deleting: a failed delete then only leaves rows the new mode ignores, where a failed
-  ;; setting write would leave the old mode with its permissions already gone.
-  (metabot-settings/metabot-advanced-permissions! true)
-  (t2/delete! :model/MetabotPermissions :group_id [:in (default-group-ids)])
+  (switch-mode! true [:in (default-group-ids)])
   (permissions-response))
 
 (api.macros/defendpoint :delete "/advanced" :- permissions-response-schema
@@ -121,9 +126,7 @@
   []
   (api/check-superuser)
   (check-mode-switchable!)
-  ;; Flip the mode first, for the reason given on the POST above.
-  (metabot-settings/metabot-advanced-permissions! false)
-  (t2/delete! :model/MetabotPermissions :group_id [:not-in (simple-mode-group-ids)])
+  (switch-mode! false [:not-in (simple-mode-group-ids)])
   (permissions-response))
 
 (def ^{:arglists '([request respond raise])} routes
