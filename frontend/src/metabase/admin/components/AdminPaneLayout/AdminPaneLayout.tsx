@@ -22,8 +22,13 @@ export const AdminPaneLayout = ({
     <Box data-testid="admin-panel" px="md">
       <Stack component="section" mb="md" gap="lg">
         {(title || description || titleActions) && (
-          <Flex justify="space-between" align="flex-start" gap="md" wrap="wrap">
-            <Stack gap="md">
+          <Flex
+            justify="space-between"
+            align="flex-start"
+            gap="md"
+            wrap="nowrap"
+          >
+            <Stack gap="md" miw={0}>
               {title && (
                 <h2 data-testid="admin-pane-page-title" className={CS.m0}>
                   {title}
