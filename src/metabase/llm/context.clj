@@ -488,6 +488,25 @@
                                          :field_name (:field fk-info)}))))
         columns))
 
+(defn- drop-or-enrich-fingerprints
+  "For each of `tables-with-columns`: drop fingerprints from a table in `restricted-table-ids`
+   (see [[build-schema-context]]'s docstring), or merge in any on-demand fingerprints computed for
+   the columns of one that isn't."
+  [tables-with-columns restricted-table-ids]
+  (let [;; On-demand enrichment: trigger fingerprinting only for columns of tables the current
+        ;; user can see every row of -- a fingerprint covers every row of the field and is
+        ;; computed under the database's default role, with no per-user variant to fall back on.
+        unrestricted-columns (mapcat :columns (remove #(contains? restricted-table-ids (:id %))
+                                                      tables-with-columns))
+        enriched-fp-map (enrich-fingerprints-on-demand! unrestricted-columns)]
+    ;; For a restricted table the only honest answer is to say nothing about ranges or
+    ;; distinct counts.
+    (mapv (fn [table]
+            (if (contains? restricted-table-ids (:id table))
+              (drop-fingerprints table)
+              (update table :columns merge-enriched-fingerprints enriched-fp-map)))
+          tables-with-columns)))
+
 (defn build-schema-context
   "Fetch table metadata for mentioned tables and format as DDL for LLM context.
 
@@ -516,24 +535,7 @@
     (metabot.perms/with-cache
       (when-let [tables-with-columns (fetch-accessible-tables-with-columns database-id table-ids)]
         (let [restricted-table-ids (metabot.perms/row-restricted-table-ids (into #{} (map :id) tables-with-columns))
-
-              ;; On-demand enrichment: trigger fingerprinting only for columns of tables the current
-              ;; user can see every row of -- a fingerprint covers every row of the field and is
-              ;; computed under the database's default role, with no per-user variant to fall back on.
-              unrestricted-columns (mapcat :columns (remove #(contains? restricted-table-ids (:id %))
-                                                            tables-with-columns))
-              enriched-fp-map (enrich-fingerprints-on-demand! unrestricted-columns)
-
-              ;; For a restricted table the only honest answer is to say nothing about ranges or
-              ;; distinct counts.
-              tables-with-enriched-fps
-              (mapv (fn [table]
-                      (if (contains? restricted-table-ids (:id table))
-                        (drop-fingerprints table)
-                        (update table :columns merge-enriched-fingerprints enriched-fp-map)))
-                    tables-with-columns)
-
-              ;; Re-gather columns after fingerprint enrichment
+              tables-with-enriched-fps (drop-or-enrich-fingerprints tables-with-columns restricted-table-ids)
               all-enriched-columns (mapcat :columns tables-with-enriched-fps)
 
               ;; Batch fetch FieldValues (on-demand) and FK targets

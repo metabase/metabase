@@ -364,10 +364,16 @@
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database other-db {}
                    :model/Table    other-table {:db_id (:id other-db) :name "secret" :schema "public"}
-                   :model/Field    _of {:table_id (:id other-table) :name "id" :database_type "INTEGER" :base_type :type/Integer}
+                   :model/Field    _of {:table_id      (:id other-table)
+                                        :name          "id"
+                                        :database_type "INTEGER"
+                                        :base_type     :type/Integer}
                    :model/Database db {}
                    :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
-                   :model/Field    _f {:table_id (:id table) :name "id" :database_type "INTEGER" :base_type :type/Integer}]
+                   :model/Field    _f {:table_id      (:id table)
+                                       :name          "id"
+                                       :database_type "INTEGER"
+                                       :base_type     :type/Integer}]
       (testing "a table ID from a different database is not included in the DDL, even though the user can read it"
         (let [{:keys [ddl tables]} (context/build-schema-context (:id db) #{(:id table) (:id other-table)})]
           (is (str/includes? ddl "orders"))
@@ -379,7 +385,10 @@
 (deftest build-schema-context-requires-database-read-access-test
   (mt/with-temp [:model/Database db {}
                  :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
-                 :model/Field    _f {:table_id (:id table) :name "id" :database_type "INTEGER" :base_type :type/Integer}]
+                 :model/Field    _f {:table_id      (:id table)
+                                     :name          "id"
+                                     :database_type "INTEGER"
+                                     :base_type     :type/Integer}]
     (mt/with-no-data-perms-for-all-users!
       (mt/with-test-user :rasta
         (testing "a user with no access to the database is denied, rather than silently returning nil"
@@ -389,7 +398,10 @@
 (deftest get-tables-with-columns-requires-database-read-access-test
   (mt/with-temp [:model/Database db {}
                  :model/Table    table {:db_id (:id db) :name "orders" :schema "public"}
-                 :model/Field    _f {:table_id (:id table) :name "id" :database_type "INTEGER" :base_type :type/Integer}]
+                 :model/Field    _f {:table_id      (:id table)
+                                     :name          "id"
+                                     :database_type "INTEGER"
+                                     :base_type     :type/Integer}]
     (mt/with-no-data-perms-for-all-users!
       (mt/with-test-user :rasta
         (testing "a user with no access to the database is denied, rather than silently returning nil -- this

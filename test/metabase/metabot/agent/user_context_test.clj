@@ -457,9 +457,12 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Database {router-id :id}      {}
                      :model/Database {destination-id :id} {:router_database_id router-id}
-                     :model/Card     {model-id :id}       {:name "Destination Model" :type :model :database_id destination-id}
-                     :model/Card     {question-id :id}    {:name "Destination Question" :type :question :database_id destination-id}
-                     :model/Card     {metric-id :id}      {:name "Destination Metric" :type :metric :database_id destination-id}]
+                     :model/Card     {model-id :id}       {:name "Destination Model" :type :model
+                                                           :database_id destination-id}
+                     :model/Card     {question-id :id}    {:name "Destination Question" :type :question
+                                                           :database_id destination-id}
+                     :model/Card     {metric-id :id}      {:name "Destination Metric" :type :metric
+                                                           :database_id destination-id}]
         (with-redefs [mi/can-read? (constantly true)]
           (testing "model"
             (let [result (user-context/format-viewing-context
