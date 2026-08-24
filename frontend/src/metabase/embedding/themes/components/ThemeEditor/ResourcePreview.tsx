@@ -8,16 +8,9 @@ import {
 } from "react";
 import { match } from "ts-pattern";
 
-// Pre-existing debt inherited from admin/embedding (feature tier also
-// cannot import app/embedding-iframe-sdk, so this was already broken before
-// EMB-1526 moved the file, just never caught by a clean lint run). Out of
-// scope for this move -- needs its own follow-up to either expose these
-// through a shared-tier surface or restructure the preview to not need them.
-/* eslint-disable boundaries/element-types -- see comment above */
 import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-/* eslint-enable boundaries/element-types */
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { useSetting } from "metabase/settings";
 import { Box, Center, Loader } from "metabase/ui";

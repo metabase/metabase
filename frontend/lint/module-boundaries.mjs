@@ -148,6 +148,21 @@ const elements = [
     name: "mcp-app",
     pattern: "frontend/src/metabase/embedding/mcp/**",
   }),
+  // The theme editor previews the live embed through the app-tier EAJS
+  // runtime (embedding-iframe-sdk's setupConfigWatcher, which has real
+  // module-load side effects -- custom element registration, watching
+  // window.metabaseConfig -- so it can't be split into a shared-tier
+  // reusable piece without touching the live customer embed script). EMB-1526
+  // moved this out of admin/embedding into embedding/themes alongside its
+  // ThemeListing/hooks/utils siblings (those are genuinely shared-tier), but
+  // ThemeEditor itself stays app tier and its pattern must come before
+  // shared/embedding below (first match wins) -- same reason the SDK
+  // carve-outs above do.
+  createElement({
+    type: "app",
+    name: "theme-editor",
+    pattern: "frontend/src/metabase/embedding/themes/components/ThemeEditor/**",
+  }),
   ...[
     "frontend/src/metabase/app-embed-mcp.tsx",
     "frontend/src/metabase/app-embed-mcp-public-path.ts",
@@ -270,16 +285,6 @@ const elements = [
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
-  // The theme editor previews the live embed through the app-tier EAJS
-  // runtime, so the whole editor is an app-tier module. It still lives under
-  // the admin folder; the pattern must come before feature/admin (first match
-  // wins).
-  // TODO(embedding-modules): move the folder out of admin so module == folder.
-  createElement({
-    type: "app",
-    name: "theme-editor",
-    pattern: "frontend/src/metabase/admin/embedding/components/ThemeEditor/**",
-  }),
   // Route composition for the admin app. Must precede feature/admin.
   ...[
     "frontend/src/metabase/admin/routes.tsx",
