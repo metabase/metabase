@@ -1364,7 +1364,6 @@
   metabot
   {:team    "Metabot"
    :api     #{metabase.metabot.api
-              metabase.metabot.api.entity-analysis
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
@@ -3769,6 +3768,7 @@
            embedding
            premium-features
            request
+           server
            session
            settings
            sso

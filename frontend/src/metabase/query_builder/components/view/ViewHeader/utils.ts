@@ -1,3 +1,4 @@
+import { hasFeature } from "metabase/databases";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -8,7 +9,10 @@ import type Question from "metabase-lib/v1/Question";
  */
 export const canExploreResults = (question: Question): boolean => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
-  const canNest = Boolean(question.database()?.hasFeature("nested-queries"));
+  const canNest = Boolean(
+    question.database() != null &&
+    hasFeature(question.database()!, "nested-queries"),
+  );
 
   return (
     isNative &&

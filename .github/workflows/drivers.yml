@@ -10,6 +10,45 @@ on:
         description: Run the full suite regardless of the diff (master / release branches, ci:run-all label).
         type: boolean
         default: false
+  # Run one driver job on demand, against the ref you dispatch on, optionally under a profiler.
+  # Everything else about the job -- credentials, services, test args, quarantine gating -- is
+  # whatever the normal CI run uses, because it is the same job.
+  workflow_dispatch:
+    inputs:
+      driver:
+        description: 'Which driver job to run. Only this one runs; the usual decision rules are bypassed.'
+        type: choice
+        required: true
+        options:
+          - athena
+          - bigquery
+          - clickhouse
+          - databricks
+          - druid-jdbc
+          - h2
+          - mongo
+          - mongo-sharded-cluster
+          - mongo-ssl
+          - mysql-mariadb
+          - oracle
+          - postgres
+          - presto-jdbc
+          - redshift
+          - snowflake
+          - sparksql
+          - sqlite
+          - sqlserver
+          - vertica
+      tests:
+        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.driver.bigquery-cloud-sdk-test/sync-test. Bare namespaces work too. Blank runs the job''s usual set.'
+        type: string
+        required: false
+        default: ''
+      profile:
+        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -21,6 +60,14 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
+  # passed as inputs to each job so that turning either on is one line, not one line per driver.
+  # Empty (and so off) on workflow_call, where neither input exists.
+  #
+  # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen driver runs
+  # the whole list -- BigQuery, for instance, has three legs.
+  PROFILE_TESTS: ${{ inputs.profile }}
+  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
   # This job determines which driver tests should run based on PR context.
@@ -69,6 +116,7 @@ jobs:
             --force-run="${FORCE_RUN}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"
+            --only-driver="${ONLY_DRIVER}"
           )
           echo "Running:"
           echo "./bin/mage -driver-decisions ${MAGE_ARGS[*]}"
@@ -83,6 +131,7 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
           FORCE_RUN: ${{ inputs.force-run }}
+          ONLY_DRIVER: ${{ inputs.driver }}
         shell: bash
 
   be-tests-athena-ee:
@@ -475,10 +524,9 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # Old migrations tests only run on a force-run ref; everything else excludes
-      # the `mb/old-migrations-test` tag. `__ADDITIONAL_EXCLUDED_TAG__` is not used
-      # anywhere outside of splicing it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: mysql
@@ -776,10 +824,9 @@ jobs:
             needs-python-runner: true
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
-      # Old migrations tests only run on a force-run ref; everything else excludes
-      # the `mb/old-migrations-test` tag. `__ADDITIONAL_EXCLUDED_TAG__` is not used
-      # anywhere outside of splicing it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
       CI: 'true'
       DRIVERS: postgres

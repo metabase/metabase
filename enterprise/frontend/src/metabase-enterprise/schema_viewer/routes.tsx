@@ -1,8 +1,10 @@
 import { Route, registerPagePrefetch } from "metabase/router";
 import * as Urls from "metabase/urls";
 
+import { loadSchemaViewerPage } from "./lazy";
+
 const schemaViewerPage = () =>
-  import("./pages/SchemaViewerPage").then(({ SchemaViewerPage }) => ({
+  loadSchemaViewerPage().then(({ SchemaViewerPage }) => ({
     Component: SchemaViewerPage,
   }));
 

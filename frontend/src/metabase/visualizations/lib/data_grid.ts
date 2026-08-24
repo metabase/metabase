@@ -27,6 +27,12 @@ export function isPivotGroupColumn(
   return col?.name === "pivot-grouping";
 }
 
+// Detail rows (real data, not subtotals/totals) have a pivot-grouping of 0;
+// Number() so a string-typed value from some drivers still compares.
+export function isPivotDetailRow(row: RowValues, pivotGroupingIndex: number) {
+  return Number(row[pivotGroupingIndex]) === 0;
+}
+
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";

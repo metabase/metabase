@@ -58,18 +58,6 @@ export const editSummary = createAction(EDIT_SUMMARY);
 export const ON_CLOSE_SUMMARY = "metabase/qb/ON_CLOSE_SUMMARY";
 export const onCloseSummary = createAction(ON_CLOSE_SUMMARY);
 
-export const OPEN_AI_QUESTION_ANALYSIS_SIDEBAR =
-  "metabase/qb/OPEN_AI_QUESTION_ANALYSIS_SIDEBAR";
-export const onOpenAIQuestionAnalysisSidebar = createAction(
-  OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
-);
-
-export const CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR =
-  "metabase/qb/CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR";
-export const onCloseAIQuestionAnalysisSidebar = createAction(
-  CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
-);
-
 export const OPEN_CHART_SETTINGS = "metabase/qb/OPEN_CHART_SETTINGS";
 export const onOpenChartSettings = createAction(OPEN_CHART_SETTINGS);
 

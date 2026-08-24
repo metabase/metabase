@@ -396,6 +396,7 @@
               ["./bin/mage -driver-decisions --pr-labels=ci:run-all-cloud-drivers" "Run all cloud drivers via label"]
               ["./bin/mage -driver-decisions --pr-labels=ci:run-mysql-mariadb" "Force-run a specific driver via label"]
               ["./bin/mage -driver-decisions --pr-labels=ci:run-all-drivers" "Force-run all drivers via label"]
+              ["./bin/mage -driver-decisions --only-driver=bigquery" "Run only the BigQuery job, whatever the other rules say"]
               ["./bin/mage -driver-decisions --github-output-only" "Output only GITHUB_OUTPUT format (for CI)"]]
    :requires [[clojure.string :as str]
               [table.core :as table]
@@ -407,6 +408,7 @@
         "# How we decide to run a driver's tests. For each driver, we check these conditions in order (first match wins):\n"
         (with-out-str
           (table/table [["Priority" "Condition" "Result" "Reason"]
+                        ["0"    "--only-driver=DRIVER was passed"         "RUN/SKIP" "only that one driver runs"]
                         ["1"    "Global force-run"                        "RUN"  "master/release branch or ci:run-all label (skip list ignored)"]
                         ["2"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
                         ["3"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
@@ -445,6 +447,7 @@
              [nil "--force-run FORCE_RUN" "Run every driver regardless of the diff"]
              [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
              [nil "--skip SKIP"]
+             [nil "--only-driver DRIVER" "Run only this driver's job, ignoring every other rule"]
              [nil "--github-output-only" "Only output GITHUB_OUTPUT format (no human-readable output)"]]
 
    :task (task! (mage.modules/-main parsed))}
