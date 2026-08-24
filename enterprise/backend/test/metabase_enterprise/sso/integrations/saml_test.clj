@@ -70,6 +70,7 @@
                                          saml-keystore-path                 nil
                                          saml-keystore-password             nil
                                          saml-keystore-alias                nil
+                                         embedding-app-origins-sdk          "https://app.example.com"
                                          site-url                           "http://localhost:3000"]
         (mt/with-premium-features current-features
           (f))))))
@@ -885,6 +886,19 @@
                            response))
              (is (str/includes? (:body response) "SAML_AUTH_COMPLETE"))
              (is (str/includes? (:body response) "authData")))))))))
+
+(deftest saml-embedding-unapproved-origin-rejected-test
+  (testing "an embedding login rejects an unapproved popup origin"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [relay-state (str "http://localhost:3000/?token=" (token-utils/generate-token)
+                                  "&origin=" (codec/url-encode "https://evil.example"))
+                 req-options (saml-post-request-options (saml-test-response) relay-state)
+                 response    (client/client-real-response :post 400 "/auth/sso" req-options)]
+             (is (not (successful-login? response)))
+             (is (not (str/includes? (str (:body response)) "SAML_AUTH_COMPLETE"))))))))))
 
 (deftest non-string-saml-attributes-dropped-test
   (testing "SAML attributes with non-string values are dropped"
