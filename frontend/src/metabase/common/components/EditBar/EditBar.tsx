@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Group } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import { ButtonsContainer, EditIcon, Root, Title } from "./EditBar.styled";
 
@@ -8,7 +9,9 @@ type Props = {
   title: string;
   center?: ReactNode;
   buttons: ReactNode;
-  admin?: boolean;
+  /** Defaults to Metabase blue. Permissions passes its own accent color, see
+   * `selection-color.tsx`. */
+  accentColor?: ColorName;
   className?: string;
   "data-testid"?: string;
 };
@@ -17,14 +20,14 @@ export function EditBar({
   title,
   center,
   buttons,
-  admin = false,
+  accentColor = "core-brand",
   className,
   "data-testid": dataTestId,
 }: Props) {
   return (
     <Root
       className={className}
-      admin={admin}
+      accentColor={accentColor}
       data-testid={dataTestId ?? "edit-bar"}
     >
       <Group gap="sm" align="center" wrap="nowrap">
@@ -32,7 +35,7 @@ export function EditBar({
         <Title>{title}</Title>
       </Group>
       {center && <div>{center}</div>}
-      <ButtonsContainer admin={admin}>{buttons}</ButtonsContainer>
+      <ButtonsContainer accentColor={accentColor}>{buttons}</ButtonsContainer>
     </Root>
   );
 }

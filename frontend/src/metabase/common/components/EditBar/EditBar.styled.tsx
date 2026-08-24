@@ -5,19 +5,19 @@ import styled from "@emotion/styled";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Icon } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 export const Root = styled(FullWidthContainer, {
   shouldForwardProp: isPropValid,
-})<{ admin: boolean }>`
+})<{ accentColor: ColorName }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: relative;
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
-  background-color: ${(props) =>
-    alpha(props.admin ? "accent7" : "core-brand", 0.85)};
+  background-color: ${(props) => alpha(props.accentColor, 0.85)};
 `;
 
 export const EditIcon = styled(Icon)`
@@ -32,7 +32,7 @@ export const Title = styled.span`
 /* restyles metabase/ui buttons for the colored bar: filled = primary, subtle = secondary */
 export const ButtonsContainer = styled("div", {
   shouldForwardProp: isPropValid,
-})<{ admin: boolean }>`
+})<{ accentColor: ColorName }>`
   display: flex;
 
   button[data-variant] {
@@ -44,13 +44,12 @@ export const ButtonsContainer = styled("div", {
   }
 
   button[data-variant="filled"] {
-    color: ${(props) => color(props.admin ? "text-primary" : "core-brand")};
+    color: ${(props) => color(props.accentColor)};
     background-color: var(--mb-color-background_page-primary);
   }
 
   button[data-variant]:hover {
     color: var(--mb-color-text-primary-inverse);
-    background-color: ${(props) =>
-      color(props.admin ? "accent7" : "core-brand")};
+    background-color: ${(props) => color(props.accentColor)};
   }
 `;

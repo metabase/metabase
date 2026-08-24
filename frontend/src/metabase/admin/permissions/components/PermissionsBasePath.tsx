@@ -5,17 +5,15 @@ import {
   resetPermissionsBasePath,
   setPermissionsBasePath,
 } from "metabase/admin/permissions/utils/base-path";
-import {
-  PermissionsSelectionColorProvider,
-  type PermissionsSelectionColors,
-} from "metabase/admin/permissions/utils/selection-color";
+import { PermissionsAccentColorProvider } from "metabase/admin/permissions/utils/selection-color";
 import { Outlet } from "metabase/router";
+import type { ColorName } from "metabase/ui/colors/types";
 
 type PermissionsBasePathProps = {
   basePath?: string;
-  /** Overrides the selected-row and link colors, which default to admin's
+  /** Overrides the editor's single accent color, which defaults to admin's
    * purple. See `selection-color.tsx`. */
-  selectionColors?: PermissionsSelectionColors;
+  accentColor?: ColorName;
   children?: ReactNode;
 };
 
@@ -37,17 +35,17 @@ type PermissionsBasePathProps = {
  */
 export function PermissionsBasePath({
   basePath = ADMIN_PERMISSIONS_BASE_PATH,
-  selectionColors,
+  accentColor,
   children = <Outlet />,
 }: PermissionsBasePathProps) {
   setPermissionsBasePath(basePath);
 
   useEffect(() => resetPermissionsBasePath, []);
 
-  return selectionColors ? (
-    <PermissionsSelectionColorProvider value={selectionColors}>
+  return accentColor ? (
+    <PermissionsAccentColorProvider value={accentColor}>
       {children}
-    </PermissionsSelectionColorProvider>
+    </PermissionsAccentColorProvider>
   ) : (
     <>{children}</>
   );

@@ -2,7 +2,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { type CSSProperties, memo, useCallback, useRef, useState } from "react";
 
-import { usePermissionsSelectionColors } from "metabase/admin/permissions/utils/selection-color";
+import { usePermissionsAccentColor } from "metabase/admin/permissions/utils/selection-color";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
@@ -219,7 +219,7 @@ const EntityRow = memo(function EntityRow({
   onSelect,
   onAction,
 }: EntityRowProps) {
-  const { link } = usePermissionsSelectionColors();
+  const accentColor = usePermissionsAccentColor();
   const entityName = (
     <span className={cx(CS.flex, CS.alignCenter)}>
       <Ellipsified>{entity.name}</Ellipsified>
@@ -239,7 +239,7 @@ const EntityRow = memo(function EntityRow({
             style={
               // CSS custom properties aren't part of React's CSSProperties type.
               {
-                "--permissions-entity-link-color": color(link),
+                "--permissions-entity-link-color": color(accentColor),
               } as CSSProperties
             }
           >
