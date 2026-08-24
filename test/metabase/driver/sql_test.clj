@@ -33,3 +33,12 @@
         "SET ROLE NONE; DROP TABLE table"
         "SELECT set_config('role', 'none', false); DROP TABLE table"
         "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;"))))
+
+(deftest ^:parallel split-compound-table-spec-test
+  (are [spec expected] (= expected (#'driver.sql/split-compound-table-spec spec))
+    {:table "t1" :schema nil}         {:table "t1" :schema nil}
+    {:table "ds1.t1" :schema nil}     {:schema "ds1" :table "t1"}
+    {:table "p1.ds1.t1" :schema nil}  {:schema "ds1" :table "t1"}
+    ;; a name Macaw already split stays split, dots in it and all
+    {:table "a.b" :schema "ds1"}      {:table "a.b" :schema "ds1"}
+    {:table nil :schema nil}          {:table nil :schema nil}))

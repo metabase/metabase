@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [some mapv])
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    ;; TODO (Cam 10/1/25) -- Isn't having drivers use Macaw directly against the spirt of all the work we did to make a
    ;; Driver API namespace?
    [macaw.core :as macaw]
@@ -264,6 +265,19 @@
   {:table (sql.normalize/normalize-name driver table)
    :schema (some->> schema (sql.normalize/normalize-name driver))})
 
+(defn- split-compound-table-spec
+  "Split a `dataset.table` (or `project.dataset.table`) name that arrived as a single `:table` with no
+  `:schema` into its parts. BigQuery lets a qualified table be written as one quoted identifier, and Macaw
+  hands that back whole, so without this the spec matches no table and no transform target. A leading
+  project qualifier is dropped: it is not part of a Table's or a transform target's identity."
+  [{:keys [table schema] :as table-spec}]
+  (let [parts (when (and table (nil? schema))
+                (str/split table #"\."))]
+    (if (< (count parts) 2)
+      table-spec
+      {:schema (nth parts (- (count parts) 2))
+       :table  (peek parts)})))
+
 (defn- parsed-table-refs
   "Parse a native query and return a sequence of normalized table specs {:table ... :schema ...}."
   [driver query]
@@ -273,7 +287,9 @@
       (macaw/query->components {:strip-contexts? true})
       :tables
       (->> (map :component)
-           (map #(normalize-table-spec driver %)))))
+           ;; splitting after normalizing, so the quoting Macaw preserves is already gone
+           (map #(normalize-table-spec driver %))
+           (map split-compound-table-spec))))
 
 (mu/defmethod driver/native-query-table-refs :sql :- ::driver/native-query-table-refs
   [driver :- :keyword

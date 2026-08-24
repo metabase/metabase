@@ -1455,3 +1455,28 @@
   (testing "create-schema-if-needed! quotes the target :schema"
     (is (= "`zinj\\`; DROP SCHEMA victim; CREATE SCHEMA \\`zz`"
            (sql.u/quote-name :bigquery-cloud-sdk :table "zinj`; DROP SCHEMA victim; CREATE SCHEMA `zz")))))
+
+(deftest ^:parallel native-query-deps-qualified-table-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/with-temp [:model/Database db {:engine              "bigquery-cloud-sdk"
+                                       :name                "qualified-table-deps"
+                                       :initial_sync_status "complete"}
+                   :model/Table    table {:db_id  (:id db)
+                                          :schema "ds1"
+                                          :name   "t1"}]
+      (mt/with-db db
+        (let [mp      (mt/metadata-provider)
+              deps-of #(driver/native-query-deps :bigquery-cloud-sdk (lib/native-query mp %))]
+          (mt/with-temp [:model/Transform transform {:name   "writes t2"
+                                                     :source {:type  :query
+                                                              :query (lib/native-query mp "SELECT 1")}
+                                                     :target {:type "table" :schema "ds1" :name "t2"}}]
+            (testing "a table reference resolves however it is qualified"
+              (are [sql] (= #{{:table (:id table)}} (deps-of sql))
+                (format "SELECT * FROM %s" (sql.u/quote-name :bigquery-cloud-sdk :table "ds1" "t1"))
+                "SELECT * FROM `ds1.t1`"
+                "SELECT * FROM `proj1.ds1.t1`"))
+            (testing "so does a reference to a table another transform writes"
+              (are [sql] (= #{{:transform (:id transform)}} (deps-of sql))
+                (format "SELECT * FROM %s" (sql.u/quote-name :bigquery-cloud-sdk :table "ds1" "t2"))
+                "SELECT * FROM `ds1.t2`"))))))))
