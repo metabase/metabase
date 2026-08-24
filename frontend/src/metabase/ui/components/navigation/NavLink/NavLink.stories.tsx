@@ -24,7 +24,7 @@ type ContentColumn = {
 const COLUMNS: ContentColumn[] = [
   {
     key: "plain",
-    header: `<NavLink leftIcon="home" />`,
+    header: `<NavLink leftSection={<Icon />} />`,
     rightSection: null,
   },
   {
@@ -107,7 +107,7 @@ function VariantMatrix({ variant, title }: VariantMatrixProps) {
                 data-state-row={state.id}
                 variant={variant}
                 label={LABEL}
-                leftIcon="home"
+                leftSection={<Icon name="home" />}
                 rightSection={column.rightSection}
                 active={state.active ?? false}
                 disabled={state.disabled ?? false}
@@ -140,7 +140,7 @@ const args: Partial<NavLinkProps> = {
   label: LABEL,
   active: false,
   disabled: false,
-  leftIcon: "home",
+  leftSection: "icon",
   rightSection: "none",
 };
 
@@ -149,13 +149,12 @@ const argTypes = {
     control: "inline-radio",
     options: ["secondary", "primary"],
   },
-  leftIcon: {
+  leftSection: {
     control: "select",
-    options: ["none", "home", "folder"],
+    options: ["none", "icon"],
     mapping: {
-      none: undefined,
-      home: "home",
-      folder: "folder",
+      none: null,
+      icon: <Icon name="home" />,
     },
   },
   rightSection: {

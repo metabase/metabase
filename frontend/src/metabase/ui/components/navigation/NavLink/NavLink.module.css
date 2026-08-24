@@ -5,6 +5,10 @@
   &[data-variant="primary"] {
     border-radius: var(--mantine-radius-sm);
 
+    .NavLinkSection[data-position="left"] {
+      color: var(--mb-color-icon-brand);
+    }
+
     &:hover:not([data-active], :has([data-navlink-button]:hover)) {
       background-color: var(--mb-color-background_surface-primary-hover);
     }
@@ -49,6 +53,11 @@
 
     .NavLinkSection {
       color: var(--mb-color-icon-primary-inverse);
+    }
+
+    /* On the brand fill the leading icon uses the inverse brand tint. */
+    .NavLinkSection[data-position="left"] {
+      color: var(--mb-color-icon-brand-inverse);
     }
 
     .NavLinkChevron {
