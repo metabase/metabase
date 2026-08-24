@@ -1,4 +1,5 @@
-import { type KeyboardEventHandler, forwardRef } from "react";
+import cx from "classnames";
+import { type HTMLAttributes, forwardRef } from "react";
 import { t } from "ttag";
 
 import {
@@ -14,16 +15,14 @@ import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import type { ResolvedGoalValue } from "metabase/visualizations/lib/dynamic-goals";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 
-import { ICON_BUTTON_SIZE } from "../constants";
+import { ICON_BUTTON_SIZE } from "../../constants";
 
 import S from "./GoalValuePill.module.css";
 
-type Props = {
-  "aria-label"?: string;
+type Props = HTMLAttributes<HTMLDivElement> & {
   isMenuOpen: boolean;
   resolved: ResolvedGoalValue;
   tooltip: string | null;
-  onKeyDown: KeyboardEventHandler<HTMLDivElement>;
   onOpenMenu: () => void;
   onRemove: () => void;
 };
@@ -31,22 +30,21 @@ type Props = {
 export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
   function GoalValuePill(
     {
-      "aria-label": ariaLabel,
+      className,
       isMenuOpen,
       resolved,
       tooltip,
-      onKeyDown,
       onOpenMenu,
       onRemove,
+      ...props
     },
     ref,
   ) {
     return (
       <Group
-        aria-label={ariaLabel}
         bdrs="sm"
         bg="background_page-primary"
-        className={S.root}
+        className={cx(S.root, className)}
         gap="sm"
         h={40}
         px="sm"
@@ -54,7 +52,7 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
         role="group"
         tabIndex={0}
         wrap="nowrap"
-        onKeyDown={onKeyDown}
+        {...props}
       >
         <Tooltip disabled={tooltip == null} label={tooltip}>
           <UnstyledButton
@@ -66,7 +64,10 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
             pl="0.75rem"
             pr="0.5rem"
             py="0.25rem"
-            onClick={onOpenMenu}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenMenu();
+            }}
           >
             <Icon c="text-secondary" flex="0 0 auto" name="hexagon" size={12} />
             {resolved.isResolving ? (

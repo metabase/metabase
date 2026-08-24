@@ -320,6 +320,15 @@ describe("GoalValueInput", () => {
     expect(within(pill).getByText("—")).toBeInTheDocument();
   });
 
+  it("exposes the menu relationship on the pill for a11y", () => {
+    setup({ value: "sum" });
+
+    expect(screen.getByRole("group", { name: "Min" })).toHaveAttribute(
+      "aria-haspopup",
+      "menu",
+    );
+  });
+
   it("clears the reference with the remove button", async () => {
     const { onChange } = setup({ value: "sum" });
 
