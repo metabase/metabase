@@ -20,6 +20,16 @@
         (is (some? (get-in auth-identity [:credentials :password_salt])))
         (is (nil? (get-in auth-identity [:credentials :plaintext_password])))))))
 
+(deftest set-password!-clears-stale-expiry-test
+  (testing "a plain set-password! clears any :expires_at a prior support-access grant left on the credential"
+    (mt/with-temp [:model/User {user-id :id}]
+      (auth-identity/set-password! user-id "granted" {:expires-at (java.time.Instant/parse "2000-01-01T00:00:00Z")})
+      (is (some? (t2/select-one-fn :expires_at :model/AuthIdentity :user_id user-id :provider "password"))
+          "sanity: the grant set an expiry")
+      (auth-identity/set-password! user-id "new-password")
+      (is (nil? (t2/select-one-fn :expires_at :model/AuthIdentity :user_id user-id :provider "password"))
+          "setting a password without an expiry clears the stale one"))))
+
 (deftest plaintext-password-hashed-on-update-test
   (testing "Plaintext password is hashed on update"
     (mt/with-temp [:model/User {user-id :id}]

@@ -106,9 +106,10 @@
     opts     :- [:maybe
                  [:map
                   [:expires-at {:optional true} [:maybe (ms/InstanceOfClass java.time.temporal.Temporal)]]]]]
-   (let [expires-at (:expires-at opts)
-         attrs      (cond-> {:credentials {:plaintext_password password}}
-                      (some? expires-at) (assoc :expires_at expires-at))]
+   ;; always write :expires_at (nil unless an expiry was requested) so setting a password clears any stale expiry a
+   ;; prior support-access grant left behind — otherwise `authenticate` would reject the new password as expired
+   (let [attrs {:credentials {:plaintext_password password}
+                :expires_at  (:expires-at opts)}]
      (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
        (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
        (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs))))))
