@@ -1,6 +1,7 @@
 (ns metabase.auth-identity.models.auth-identity-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
@@ -23,7 +24,7 @@
 (deftest set-password!-clears-stale-expiry-test
   (testing "a plain set-password! clears any :expires_at a prior support-access grant left on the credential"
     (mt/with-temp [:model/User {user-id :id}]
-      (auth-identity/set-password! user-id "granted" {:expires-at (java.time.Instant/parse "2000-01-01T00:00:00Z")})
+      (auth-identity/set-password! user-id "granted" {:expires-at (t/instant "2000-01-01T00:00:00Z")})
       (is (some? (t2/select-one-fn :expires_at :model/AuthIdentity :user_id user-id :provider "password"))
           "sanity: the grant set an expiry")
       (auth-identity/set-password! user-id "new-password")
