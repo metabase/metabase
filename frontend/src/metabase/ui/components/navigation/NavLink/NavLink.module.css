@@ -72,6 +72,68 @@
       }
     }
   }
+
+  &[data-variant="secondary"],
+  &[data-variant="primary"] {
+    border-radius: var(--mantine-radius-sm);
+
+    &:hover:not([data-active], :has([data-navlink-button]:hover)) {
+      background-color: var(--mb-color-background_surface-primary-hover);
+    }
+
+    &:active:not([data-active], :has([data-navlink-button]:active)) {
+      background-color: var(--mb-color-background_surface-primary-pressed);
+    }
+
+    [data-navlink-button][data-variant="subtle"]:hover {
+      background-color: var(--mb-color-background_surface-primary-hover);
+    }
+
+    [data-navlink-button][data-variant="subtle"]:active {
+      background-color: var(--mb-color-background_surface-primary-pressed);
+    }
+  }
+
+  &[data-variant="secondary"][data-active] {
+    color: var(--mb-color-text-primary);
+
+    &,
+    &:hover {
+      background-color: var(--mb-color-background_surface-secondary);
+    }
+
+    .NavLinkLabel {
+      color: var(--mb-color-text-primary);
+    }
+  }
+
+  &[data-variant="primary"][data-active] {
+    color: var(--mb-color-text-primary-inverse);
+
+    &,
+    &:hover {
+      background-color: var(--mb-color-background_surface-brand-strong);
+    }
+
+    .NavLinkLabel {
+      color: var(--mb-color-text-primary-inverse);
+    }
+
+    .NavLinkSection {
+      color: var(--mb-color-icon-primary-inverse);
+    }
+
+    .NavLinkChevron {
+      color: var(--mb-color-text-primary-inverse);
+    }
+
+    [data-navlink-button] {
+      color: var(--mb-color-text-primary-inverse);
+    }
+
+    --navlink-badge-bg: var(--mb-color-background_surface-secondary-inverse);
+    --navlink-badge-color: var(--mb-color-text-primary-inverse);
+  }
 }
 
 .NavLinkLabel {

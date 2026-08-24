@@ -17,6 +17,7 @@ module.exports = {
     "^Components/Feedback/Alert",
     "^Components/Ask Before Using/Chip Overview",
     "^Components/Data display/Badge Sizes and variants",
+    "^Components/Navigation/NavLink Overview",
     "^Components/Data display/KeyboardShortcut Overview",
     "^Components/Table",
     "^App/Palette",
