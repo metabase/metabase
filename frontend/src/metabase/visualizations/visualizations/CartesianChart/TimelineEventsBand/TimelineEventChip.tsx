@@ -28,7 +28,6 @@ interface TimelineEventChipProps {
   popoverDisabled?: boolean;
   zIndex?: number;
   className?: string;
-  selected?: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
   onFocus?: () => void;
@@ -49,7 +48,6 @@ export const TimelineEventChip = ({
   popoverDisabled = false,
   zIndex,
   className,
-  selected,
   onMouseEnter,
   onMouseLeave,
   onFocus,
@@ -76,8 +74,9 @@ export const TimelineEventChip = ({
     ? events.slice(0, MAX_VISIBLE_EVENTS)
     : events;
 
-  const isSelected =
-    selected ?? events.some((event) => selectedEventIds.includes(event.id));
+  const isSelected = events.some((event) =>
+    selectedEventIds.includes(event.id),
+  );
   const areAllEventsSelected = events.every((event) =>
     selectedEventIds.includes(event.id),
   );

@@ -116,7 +116,7 @@ export const TimelineEventsBand = ({
   }
 
   return (
-    <div data-testid="timeline-events-band">
+    <div className={S.band} data-testid="timeline-events-band">
       <div
         className={S.track}
         style={{

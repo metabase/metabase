@@ -1,12 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import {
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
 
@@ -16,8 +9,6 @@ import { DataPointsVisiblePopover } from "metabase/visualizations/components/Dat
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import { getTimelineSelectionSeries } from "metabase/visualizations/echarts/cartesian/option";
-import { TIMELINE_EVENT_SELECTION_SERIES_ID } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import {
   useCartesianChartSeriesColorsClasses,
@@ -30,15 +21,13 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import type { CartesianHoveredObject } from "metabase/visualizations/visualizations/CartesianChart/types";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
-import type { TimelineEventId } from "metabase-types/api";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
+import { useTimelineEventsHover } from "./use-timeline-events-hover";
 import {
-  getClosestDatumIndex,
   getDashboardAdjustedSettings,
-  getDataSeriesEChartsIndices,
   getHoveredFromHighlighted,
 } from "./utils";
 
@@ -192,101 +181,17 @@ function CartesianChartInner(props: VisualizationProps) {
       ? chartModel.seriesModels.filter((series) => series.visible).length - 1
       : 0;
 
-  const selectedTimelineEventIdsRef = useRef(selectedTimelineEventIds);
-  selectedTimelineEventIdsRef.current = selectedTimelineEventIds;
-
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (chart == null || hoveredTimelineEventGroup == null) {
-      return;
-    }
-
-    const dataIndex = getClosestDatumIndex(
-      chartModel.transformedDataset,
-      hoveredTimelineEventGroup.date,
-    );
-    const seriesIndices = getDataSeriesEChartsIndices(
-      chartModel.seriesModels,
-      option,
-    );
-    const hasHighlight = dataIndex >= 0 && seriesIndices.length > 0;
-
-    if (hasHighlight) {
-      seriesIndices.forEach((seriesIndex) => {
-        chart.dispatchAction({
-          type: "highlight",
-          seriesIndex,
-          // ECharts quirk: with a scalar dataIndex the highlight action blurs
-          // the chart without emphasizing the datum
-          dataIndex: [dataIndex],
-        });
-      });
-    }
-
-    // Merging in just the marker line series keeps hover cheap: rebuilding the
-    // whole option would make ECharts redraw the entire chart on every chip
-    // hover. Bars occlude most of the line, so bar charts highlight only.
-    const showMarkerLine =
-      card.display !== "bar" && timelineEventsModel != null;
-    const applyMarkerLine = (eventIds: TimelineEventId[]) => {
-      const visibleSeriesCount = chartModel.seriesModels.filter(
-        (series) => series.visible,
-      ).length;
-      const series = getTimelineSelectionSeries(
-        timelineEventsModel,
-        eventIds,
-        chartLayout,
-        visibleSeriesCount,
-        chartLayout.panelHeight != null,
-        renderingContext,
-      );
-      chart.setOption({
-        series: [
-          series ?? {
-            id: TIMELINE_EVENT_SELECTION_SERIES_ID,
-            type: "line",
-            data: [],
-            markLine: { data: [] },
-          },
-        ],
-      });
-    };
-
-    if (showMarkerLine) {
-      const hoveredEventIds = hoveredTimelineEventGroup.events.map(
-        (event) => event.id,
-      );
-      applyMarkerLine([
-        ...new Set([
-          ...(selectedTimelineEventIdsRef.current ?? []),
-          ...hoveredEventIds,
-        ]),
-      ]);
-    }
-
-    return () => {
-      if (hasHighlight) {
-        seriesIndices.forEach((seriesIndex) => {
-          chart.dispatchAction({
-            type: "downplay",
-            seriesIndex,
-            dataIndex: [dataIndex],
-          });
-        });
-      }
-      if (showMarkerLine) {
-        applyMarkerLine(selectedTimelineEventIdsRef.current ?? []);
-      }
-    };
-  }, [
+  useTimelineEventsHover({
+    chartRef,
     hoveredTimelineEventGroup,
     chartModel,
+    chartLayout,
     option,
     timelineEventsModel,
-    chartLayout,
     renderingContext,
-    card.display,
-  ]);
+    display: card.display,
+    selectedTimelineEventIds,
+  });
 
   // We can't navigate a user to a particular card from a visualizer viz,
   // so title selection is disabled in this case

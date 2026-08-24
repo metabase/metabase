@@ -1,0 +1,161 @@
+import type { EChartsOption } from "echarts";
+import type { EChartsType } from "echarts/core";
+import debounce from "lodash.debounce";
+import { useEffect, useMemo, useRef } from "react";
+
+import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
+import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getTimelineSelectionSeries } from "metabase/visualizations/echarts/cartesian/option";
+import { TIMELINE_EVENT_SELECTION_SERIES_ID } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
+import type {
+  TimelineEventGroup,
+  TimelineEventsModel,
+} from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type { RenderingContext } from "metabase/visualizations/types";
+import type { TimelineEventId } from "metabase-types/api";
+
+import { getClosestDatumIndex, getDataSeriesEChartsIndices } from "./utils";
+
+const MARKER_LINE_UPDATE_DELAY_MS = 100;
+
+interface UseTimelineEventsHoverParams {
+  chartRef: React.MutableRefObject<EChartsType | undefined>;
+  hoveredTimelineEventGroup: TimelineEventGroup | null;
+  chartModel: BaseCartesianChartModel;
+  chartLayout: ChartLayout;
+  option: EChartsOption;
+  timelineEventsModel: TimelineEventsModel | null;
+  renderingContext: RenderingContext;
+  display: string;
+  selectedTimelineEventIds?: TimelineEventId[];
+}
+
+// Reflects the hovered timeline event group on the chart: highlights the
+// closest data point and draws the marker line at the group's date.
+export function useTimelineEventsHover({
+  chartRef,
+  hoveredTimelineEventGroup,
+  chartModel,
+  chartLayout,
+  option,
+  timelineEventsModel,
+  renderingContext,
+  display,
+  selectedTimelineEventIds,
+}: UseTimelineEventsHoverParams) {
+  const selectedTimelineEventIdsRef = useRef(selectedTimelineEventIds);
+  selectedTimelineEventIdsRef.current = selectedTimelineEventIds;
+
+  const applyMarkerLineDebounced = useMemo(
+    () =>
+      debounce(
+        (applyMarkerLine: () => void) => applyMarkerLine(),
+        MARKER_LINE_UPDATE_DELAY_MS,
+      ),
+    [],
+  );
+
+  useEffect(
+    () => () => applyMarkerLineDebounced.cancel(),
+    [applyMarkerLineDebounced],
+  );
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (chart == null || hoveredTimelineEventGroup == null) {
+      return;
+    }
+
+    const dataIndex = getClosestDatumIndex(
+      chartModel.transformedDataset,
+      hoveredTimelineEventGroup.date,
+    );
+    const seriesIndices = getDataSeriesEChartsIndices(
+      chartModel.seriesModels,
+      option,
+    );
+    const hasHighlight = dataIndex >= 0 && seriesIndices.length > 0;
+
+    if (hasHighlight) {
+      seriesIndices.forEach((seriesIndex) => {
+        chart.dispatchAction({
+          type: "highlight",
+          seriesIndex,
+          // ECharts quirk: with a scalar dataIndex the highlight action blurs
+          // the chart without emphasizing the datum
+          dataIndex: [dataIndex],
+        });
+      });
+    }
+
+    const showMarkerLine = display !== "bar" && timelineEventsModel != null;
+    const applyMarkerLine = (eventIds: TimelineEventId[]) => {
+      const visibleSeriesCount = chartModel.seriesModels.filter(
+        (series) => series.visible,
+      ).length;
+      const series = getTimelineSelectionSeries(
+        timelineEventsModel,
+        eventIds,
+        chartLayout,
+        visibleSeriesCount,
+        chartLayout.panelHeight != null,
+        renderingContext,
+      );
+      chart.setOption({
+        series: [
+          series ?? {
+            id: TIMELINE_EVENT_SELECTION_SERIES_ID,
+            type: "line",
+            data: [],
+            markLine: { data: [] },
+          },
+        ],
+      });
+    };
+
+    const scheduleMarkerLine = (eventIds: TimelineEventId[]) => {
+      applyMarkerLineDebounced(() => {
+        if (!chart.isDisposed()) {
+          applyMarkerLine(eventIds);
+        }
+      });
+    };
+
+    if (showMarkerLine) {
+      const hoveredEventIds = hoveredTimelineEventGroup.events.map(
+        (event) => event.id,
+      );
+      scheduleMarkerLine([
+        ...new Set([
+          ...(selectedTimelineEventIdsRef.current ?? []),
+          ...hoveredEventIds,
+        ]),
+      ]);
+    }
+
+    return () => {
+      if (hasHighlight) {
+        seriesIndices.forEach((seriesIndex) => {
+          chart.dispatchAction({
+            type: "downplay",
+            seriesIndex,
+            dataIndex: [dataIndex],
+          });
+        });
+      }
+      if (showMarkerLine) {
+        scheduleMarkerLine(selectedTimelineEventIdsRef.current ?? []);
+      }
+    };
+  }, [
+    chartRef,
+    hoveredTimelineEventGroup,
+    chartModel,
+    option,
+    timelineEventsModel,
+    chartLayout,
+    renderingContext,
+    display,
+    applyMarkerLineDebounced,
+  ]);
+}

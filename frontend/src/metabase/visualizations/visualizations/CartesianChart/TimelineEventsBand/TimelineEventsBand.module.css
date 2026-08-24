@@ -1,3 +1,10 @@
+.band {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
 .track {
   position: absolute;
   display: flex;
@@ -52,7 +59,7 @@
 }
 
 .chip:hover {
-  background-color: var(--mb-color-background_surface-primary-hover);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .chipSelected {
@@ -61,6 +68,14 @@
 }
 
 .chipHidden {
+  pointer-events: none;
+}
+
+.chipHidden:not(.stackMember) {
+  opacity: 0;
+}
+
+.stackHidden {
   opacity: 0;
   pointer-events: none;
 }
@@ -81,6 +96,10 @@
     transition:
       left 200ms ease,
       opacity 150ms ease;
+  }
+
+  .stackHidden {
+    transition: opacity 150ms ease;
   }
 }
 

@@ -57,7 +57,7 @@ export const getTimelineEventsSelectionSeries = (
       symbol: "none",
       lineStyle: {
         type: "solid",
-        color: getColor("core-brand"),
+        color: getColor("border-strong"),
         width: CHART_STYLE.timelineEvents.selectionLineWidth,
       },
       label: {

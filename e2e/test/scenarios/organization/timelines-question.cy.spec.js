@@ -556,13 +556,14 @@ describe("scenarios > organization > timelines > question", () => {
       H.timelineEventChip("Summer party").should("be.visible");
 
       cy.log("hovering the stack spreads it and hides unrelated chips");
-      H.timelineEventChip("Feb fix").realHover();
+      H.timelineEventChip("Feb fix").realHover({ position: "right" });
       cy.findByTestId("timeline-event-stack").should(
         "have.attr",
         "data-expanded",
         "true",
       );
       H.timelineEventChip("Summer party").should("not.be.visible");
+      H.timelineEventMarkerLine().should("exist");
 
       cy.log("a spread member behaves like a regular chip");
       H.timelineEventChip("Jan release").realHover();

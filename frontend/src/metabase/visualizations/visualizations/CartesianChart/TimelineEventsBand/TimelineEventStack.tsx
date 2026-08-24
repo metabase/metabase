@@ -130,20 +130,25 @@ export const TimelineEventStack = ({
 
   useEffect(() => cancelCollapse, []);
 
-  const spreadWidth = count * chipWidth + (count - 1) * chipGap;
+  const availableWidth = plotBounds.right - plotBounds.left;
+  const spreadStep =
+    count > 1
+      ? Math.min(
+          chipWidth + chipGap,
+          Math.max((availableWidth - chipWidth) / (count - 1), 0),
+        )
+      : 0;
+  const spreadWidth = chipWidth + (count - 1) * spreadStep;
   const spreadCenter = getSpreadCenter(x, spreadWidth, plotBounds);
   const getMemberX = (index: number) =>
     isExpanded
-      ? spreadCenter + (index - (count - 1) / 2) * (chipWidth + chipGap)
+      ? spreadCenter + (index - (count - 1) / 2) * spreadStep
       : x - (count - 1 - index) * stackCollapsedOffset;
-
-  const anyMemberSelected = groups.some(({ events }) =>
-    events.some((event) => selectedEventIds.includes(event.id)),
-  );
 
   return (
     <div
       ref={wrapperRef}
+      className={hidden ? S.stackHidden : undefined}
       data-testid="timeline-event-stack"
       data-expanded={isExpanded}
       onMouseEnter={hidden ? undefined : handlePointerEnter}
@@ -161,7 +166,6 @@ export const TimelineEventStack = ({
         />
       )}
       {groups.map((group, index) => {
-        const isTopmost = index === count - 1;
         return (
           <TimelineEventChip
             key={group.date}
@@ -171,14 +175,10 @@ export const TimelineEventStack = ({
             zIndex={index}
             className={S.stackMember}
             hidden={hidden}
-            popoverDisabled={!isExpanded}
-            selected={
-              !isExpanded && isTopmost && anyMemberSelected ? true : undefined
-            }
             selectedEventIds={selectedEventIds}
             onFocus={handleMemberFocus}
             onBlur={scheduleCollapse}
-            onGroupHover={isExpanded ? onGroupHover : undefined}
+            onGroupHover={onGroupHover}
             onOpenTimelines={onOpenTimelines}
             onSelectTimelineEvents={onSelectTimelineEvents}
             onDeselectTimelineEvents={onDeselectTimelineEvents}

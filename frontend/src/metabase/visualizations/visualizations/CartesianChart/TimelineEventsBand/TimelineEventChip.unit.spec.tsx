@@ -52,7 +52,6 @@ interface SetupOpts {
   withCallbacks?: boolean;
   hidden?: boolean;
   popoverDisabled?: boolean;
-  selected?: boolean;
   onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
@@ -62,7 +61,6 @@ const setup = ({
   withCallbacks = true,
   hidden,
   popoverDisabled,
-  selected,
   onSeeAllEvents,
 }: SetupOpts = {}) => {
   const onGroupHover = jest.fn();
@@ -78,7 +76,6 @@ const setup = ({
       selectedEventIds={selectedEventIds}
       hidden={hidden}
       popoverDisabled={popoverDisabled}
-      selected={selected}
       onGroupHover={onGroupHover}
       onOpenTimelines={withCallbacks ? onOpenTimelines : undefined}
       onSelectTimelineEvents={
@@ -280,14 +277,6 @@ describe("TimelineEventChip", () => {
     setup({ eventsGroup: singleGroup, hidden: true });
     expect(screen.getByTestId("timeline-event-chip")).toHaveAttribute(
       "data-hidden",
-      "true",
-    );
-  });
-
-  it("honors the selected override regardless of selected event ids", () => {
-    setup({ eventsGroup: singleGroup, selected: true });
-    expect(screen.getByTestId("timeline-event-chip")).toHaveAttribute(
-      "data-selected",
       "true",
     );
   });

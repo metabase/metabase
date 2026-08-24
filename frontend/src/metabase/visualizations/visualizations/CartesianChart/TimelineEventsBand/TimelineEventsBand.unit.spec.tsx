@@ -145,7 +145,7 @@ describe("TimelineEventsBand", () => {
       expect(screen.getByLabelText("Stack B")).toBeInTheDocument();
     });
 
-    it("expands on member hover, hides other chips, and reports no hover while collapsed", async () => {
+    it("expands on member hover, hides other chips, and reports the entered member", async () => {
       const { onGroupHover } = setup({
         timelineEventsModel: stackedTimelineEventsModel,
       });
@@ -160,7 +160,9 @@ describe("TimelineEventsBand", () => {
         "data-hidden",
         "true",
       );
-      expect(onGroupHover).not.toHaveBeenCalled();
+      expect(onGroupHover).toHaveBeenLastCalledWith(
+        stackedTimelineEventsModel[1].groups[1],
+      );
     });
 
     it("reports the hovered member group once the stack is spread", async () => {
@@ -218,15 +220,54 @@ describe("TimelineEventsBand", () => {
       });
     });
 
-    it("shows the selection ring on the collapsed top chip when a covered member is selected", () => {
+    it("compresses a spread that would overflow the plot to fit within it", async () => {
+      // 15 members at full spacing need 508px while the plot is 440px wide
+      const wideCluster: TimelineEventsModel = [
+        {
+          date: "2025-02-01T00:00:00Z",
+          groups: Array.from({ length: 15 }, (_, index) => ({
+            date: `2025-02-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
+            events: [
+              createMockTimelineEvent({ id: index + 1, name: `E${index + 1}` }),
+            ],
+          })),
+        },
+      ];
+
+      setup({ timelineEventsModel: wideCluster });
+
+      await userEvent.hover(screen.getByLabelText("E15"));
+      expect(screen.getByTestId("timeline-event-stack")).toHaveAttribute(
+        "data-expanded",
+        "true",
+      );
+
+      const memberCenters = screen
+        .getAllByTestId("timeline-event-chip")
+        .map((chip) => parseFloat(chip.style.left));
+      // plot spans padding.left (50) to chartSize.width - padding.right (490)
+      const chipHalfWidth = 16;
+      expect(Math.min(...memberCenters)).toBeGreaterThanOrEqual(
+        50 + chipHalfWidth,
+      );
+      expect(Math.max(...memberCenters)).toBeLessThanOrEqual(
+        490 - chipHalfWidth,
+      );
+    });
+
+    it("marks only the selected member of a collapsed stack, not the top chip", () => {
       setup({
         timelineEventsModel: stackedTimelineEventsModel,
         selectedTimelineEventIds: [2],
       });
 
-      expect(screen.getByLabelText("Stack B")).toHaveAttribute(
+      expect(screen.getByLabelText("Stack A")).toHaveAttribute(
         "data-selected",
         "true",
+      );
+      expect(screen.getByLabelText("Stack B")).toHaveAttribute(
+        "data-selected",
+        "false",
       );
     });
   });
