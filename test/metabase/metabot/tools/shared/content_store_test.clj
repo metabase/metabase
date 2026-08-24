@@ -1,7 +1,7 @@
 (ns metabase.metabot.tools.shared.content-store-test
   "Unit tests for the read-checked ContentStore wrapper.
 
-  These tests pin three properties:
+  These tests pin four properties:
 
   1. **Pass-through when no user is bound**: serdes import / background tasks / REPL runs
      must keep working without an authenticated user. The wrapper short-circuits the

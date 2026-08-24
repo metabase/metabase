@@ -753,8 +753,8 @@
                      "The document is empty.")})))
 
 (def ^:private query-withheld-message
-  "Names no particular grant: the body is withheld for an unreadable database and for a 403 on a
-  card, measure or segment inside the query, and a deleted database looks the same as either."
+  "Names no particular grant: the body is withheld both for an unreadable database and for a
+  403 on a card, measure or segment inside the query."
   "The query is hidden because it references content the user cannot read.")
 
 (defn- export-state-query
