@@ -87,11 +87,12 @@
                   "User with write permissions should see archived documents in accessible collections"))))))))
 
 (deftest document-view-tracking-integration-test
-  ;; the temp index table is created here, before `with-temp` opens its transaction: creating it inside
-  ;; would run DDL on the ambient connection, which on H2/MySQL implicitly commits the transaction, so
-  ;; its rollback could not take the rows back and they would leak to every later test that walks the
-  ;; app db. The nested index-table scope below reuses this one rather than creating its own.
-  (search.tu/with-temp-index-table
+  ;; Take the index table here, before `with-temp` opens its transaction. Creating it inside runs DDL on the
+  ;; ambient connection, which commits that transaction on H2 and MySQL -- the rollback then has nothing to
+  ;; take back and the rows leak to every later test that walks the app db. The nested scope below reuses this
+  ;; one. `-if-supported` because the rest of this test does not need an index, and would otherwise be skipped
+  ;; wholesale where the app db cannot have one.
+  (search.tu/with-temp-index-table-if-supported
     (testing "Document view tracking integrates with search"
       (mt/with-temp [:model/Document {doc-id :id} {:name "Viewed Document"
                                                    :document (documents.test-util/text->prose-mirror-ast "content")

@@ -14,6 +14,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -21,6 +22,10 @@
    (java.time.temporal ChronoUnit)))
 
 (set! *warn-on-reflection* true)
+
+;; initialize before any test runs: the index scopes below start writing search-index bookkeeping, and the
+;; first lazy `initialize` would otherwise recreate the H2 test db underneath them
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;; We act on a random localized table, making this thread-safe.
 (defmacro with-index-contents
