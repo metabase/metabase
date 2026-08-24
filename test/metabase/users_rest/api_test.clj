@@ -1581,13 +1581,12 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- user-can-reset-password? [superuser?]
+(defn- user-can-reset-password! [superuser?]
   (mt/with-temp [:model/User user {:is_superuser (boolean superuser?)}]
     (auth-identity/set-password! (:id user) "def")
     (let [creds {:username (:email user), :password "def"}
-          password-hash (fn [] (get-in (t2/select-one-fn :credentials :model/AuthIdentity
-                                                         :user_id (:id user), :provider "password")
-                                       [:password_hash]))
+          password-hash (fn [] (:password_hash (t2/select-one-fn :credentials :model/AuthIdentity
+                                                                 :user_id (:id user), :provider "password")))
           original-hash (password-hash)]
       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                         :old_password "def"})
@@ -1598,10 +1597,10 @@
     (testing "Test that we can reset our own password. If user is a"
       (testing "superuser"
         (is (true?
-             (user-can-reset-password? :superuser))))
+             (user-can-reset-password! :superuser))))
       (testing "non-superuser"
         (is (true?
-             (user-can-reset-password? (not :superuser))))))))
+             (user-can-reset-password! (not :superuser))))))))
 
 (deftest reset-password-permissions-test
   (testing "PUT /api/user/:id/password"
