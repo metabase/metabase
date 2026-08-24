@@ -20,6 +20,15 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     H.activateToken("pro-self-hosted");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
+    // Pre-accept the usage terms for both auth modes so the wizard never
+    // shows the "Agree and continue" card. Accepting it through the UI is
+    // racy — when embedModalEnableEmbedding()'s DOM snapshot misses the
+    // late-mounting card, the terms stay unaccepted and the preview iframe
+    // never loads (EMB-2308). The agree flow itself is covered by the
+    // embed-flow-enable-embed-js specs.
+    H.updateSetting("show-simple-embed-terms", false);
+    H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("show-static-embed-terms", false);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");

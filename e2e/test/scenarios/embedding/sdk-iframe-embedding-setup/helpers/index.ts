@@ -43,7 +43,9 @@ export const visitNewEmbedPage = (
 
       cy.wait("@dashboard");
 
-      cy.get("[data-iframe-loaded]", { timeout: 20000 }).should(
+      // Same 40s budget as waitForSimpleEmbedIframesToLoad — the preview
+      // iframe can be slow to load on CI.
+      cy.get("[data-iframe-loaded]", { timeout: 40_000 }).should(
         "have.length",
         1,
       );
