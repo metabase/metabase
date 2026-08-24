@@ -3636,6 +3636,14 @@
             (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                              (-> response :values set)))))))))
 
+(deftest param-fields-hydrated-test
+  (testing "GET /api/card/:id hydrates :param_fields with the fields referenced by the card's template tags"
+    (with-card-param-values-fixtures [{:keys [field-filter-card]}]
+      (is (=? {:name_param_id [{:id           (mt/id :venues :name)
+                                :table_id     (mt/id :venues)
+                                :display_name "Name"}]}
+              (:param_fields (mt/user-http-request :rasta :get 200 (format "card/%d" (:id field-filter-card)))))))))
+
 (deftest param-fields-excluded-without-view-data-permission-test
   (testing "param_fields should not include fields for tables where the user lacks view-data permission"
     (with-card-param-values-fixtures [{:keys [field-filter-card]}]
