@@ -1,4 +1,11 @@
-import type { CardId, DashboardCard, DashboardId } from "metabase-types/api";
+import type {
+  CardId,
+  Dashboard,
+  DashboardCard,
+  DashboardId,
+} from "metabase-types/api";
+
+import { updateDashboard } from "./updateDashboard";
 
 export const addQuestionToDashboard = ({
   dashboardId,
@@ -7,9 +14,11 @@ export const addQuestionToDashboard = ({
   dashboardId: DashboardId;
   cardId: CardId;
 }): Cypress.Chainable<Cypress.Response<DashboardCard>> =>
-  cy.request(`/api/dashboard/${dashboardId}`).then(({ body: { dashcards } }) =>
-    cy
-      .request("PUT", `/api/dashboard/${dashboardId}`, {
+  cy
+    .request<Dashboard>(`/api/dashboard/${dashboardId}`)
+    .then(({ body: { dashcards } }) =>
+      updateDashboard({
+        id: dashboardId,
         dashcards: [
           ...dashcards,
           {
@@ -22,9 +31,9 @@ export const addQuestionToDashboard = ({
             size_y: 8,
           },
         ],
-      })
-      .then((response) => ({
+      }).then((response) => ({
         ...response,
-        body: response.body.dashcards.at(-1),
+        // PUT returns the dashboard we just wrote, including the dashcard we appended
+        body: response.body.dashcards.at(-1) as DashboardCard,
       })),
-  );
+    );

@@ -302,6 +302,33 @@
        (str/replace #" " "-")
        (str/replace #":" ""))))
 
+(def ^:dynamic *reject-extra-keys?*
+  "When true, undeclared request keys are a 400 instead of being stripped. Default is on
+  outside prod, matching [[*enable-response-validation*]]."
+  (not config/is-prod?))
+
+(defn- throw-on-extra-keys!
+  [ks x]
+  (when-let [extras (seq (remove ks (keys x)))]
+    (throw (ex-info "Unexpected keys in request"
+                    {:status-code     400
+                     :errors          (zipmap extras (repeat "unexpected key"))
+                     :specific-errors (zipmap extras (repeat "unexpected key"))}))))
+
+(def ^:private reject-extra-keys-transformer
+  (mtx/transformer
+   {:decoders
+    {:map {:compile (fn [schema _]
+                      (let [default-schema (mc/default-schema schema)
+                            ks             (set (or (mc/explicit-keys schema) []))]
+                        (when-not (false? (:closed (mc/properties schema)))
+                          {:enter (fn [x]
+                                    (when (and *reject-extra-keys?*
+                                               (map? x)
+                                               (not default-schema))
+                                      (throw-on-extra-keys! ks x))
+                                    x)})))}}}))
+
 (def ^:private decode-transformer
   (mtx/transformer
    (mtx/string-transformer)
@@ -314,8 +341,11 @@
    ;; at every level of nesting. `ms/Map` (and any other `{:closed false}` map) opts out, for values we deliberately
    ;; pass through as they arrived: a query, viz settings, database details, a settings bag.
    ;;
-   ;; Runs last: `:normalize` renames keys into the ones the schema declares, so stripping any earlier would drop
-   ;; them before they are recognized.
+   ;; Outside prod, [[*reject-extra-keys?*]] makes those undeclared keys a 400 instead of dropping them, so FE/BE
+   ;; mismatches fail in dev and test rather than silently.
+   ;;
+   ;; Runs after `:normalize` so renamed keys are recognized before extras are stripped or rejected.
+   reject-extra-keys-transformer
    (mtx/strip-extra-keys-transformer)))
 
 (def ^:private encode-transformer

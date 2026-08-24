@@ -117,7 +117,6 @@ function GoogleSheetsConnectModal({
     trackSheetImportClick();
     await saveFolderLink({
       url: folderLink.trim(),
-      link_type: linkType,
     })
       .unwrap()
       .then(() => {

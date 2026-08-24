@@ -21,7 +21,6 @@ import {
   AUTO_IMPORT_KEY,
   BRANCH_KEY,
   COLLECTIONS_KEY,
-  REMOTE_SYNC_KEY,
   SYNC_LIBRARY_PENDING_KEY,
   TOKEN_KEY,
   TRANSFORMS_KEY,
@@ -96,10 +95,8 @@ export const useRemoteSyncSubmit = ({
       }
       const hasCollectionChanges = Object.keys(changedCollections).length > 0;
 
-      // Listed key by key so the sync-library-pending form field, which is not a setting, stays out.
       const isReadOnly = values[TYPE_KEY] === "read-only";
       const settingsToSave: RemoteSyncConfigurationSettings = {
-        [REMOTE_SYNC_KEY]: values[REMOTE_SYNC_KEY],
         [URL_KEY]: values[URL_KEY],
         [TOKEN_KEY]: values[TOKEN_KEY],
         [TYPE_KEY]: values[TYPE_KEY],

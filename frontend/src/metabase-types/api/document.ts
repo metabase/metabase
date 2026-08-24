@@ -32,14 +32,35 @@ export type Document = {
 
 export type GetDocumentRequest = { id: DocumentId };
 
+export type DocumentCardRequest = Pick<
+  Card,
+  | "name"
+  | "dataset_query"
+  | "display"
+  | "visualization_settings"
+  | "description"
+  | "parameters"
+  | "parameter_mappings"
+  | "result_metadata"
+  | "cache_ttl"
+>;
+
 export type CreateDocumentRequest = Pick<Document, "name"> & {
   document: DocumentContent;
   collection_id?: CollectionId;
-  cards?: Record<number, Card>;
+  collection_position?: number | null;
+  cards?: Record<number, DocumentCardRequest>;
 };
 
-export type UpdateDocumentRequest = Pick<Document, "id"> &
-  Partial<Omit<Document, "id">>;
+export type UpdateDocumentRequest = {
+  id: DocumentId;
+  name?: string;
+  document?: DocumentContent;
+  collection_id?: CollectionId | null;
+  collection_position?: number | null;
+  cards?: Record<number, DocumentCardRequest>;
+  archived?: boolean;
+};
 
 export type DeleteDocumentRequest = Pick<Document, "id">;
 

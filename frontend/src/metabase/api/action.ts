@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type {
   ActionExecutionResult,
   CreateActionRequest,
@@ -24,6 +22,7 @@ import {
   provideActionListTags,
   provideActionTags,
 } from "./tags";
+import { pick } from "./utils/pick";
 
 export const actionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -62,7 +61,7 @@ export const actionApi = Api.injectEndpoints({
         // (query_action / implicit_action / http_action), where those
         // columns don't exist and the request 500s. Whitelist only the
         // fields that the API endpoint actually accepts.
-        body: _.pick(body, [
+        body: pick(body, [
           "id",
           "archived",
           "body",
@@ -76,7 +75,6 @@ export const actionApi = Api.injectEndpoints({
           "name",
           "parameter_mappings",
           "parameters",
-          "public_uuid",
           "response_handle",
           "template",
           "url",
@@ -164,10 +162,10 @@ export const actionApi = Api.injectEndpoints({
       ActionExecutionResult,
       ExecuteDashcardActionRequest
     >({
-      query: ({ dashboardId, dashcardId, modelId, parameters }) => ({
+      query: ({ dashboardId, dashcardId, parameters }) => ({
         method: "POST",
         url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/execute`,
-        body: { modelId, parameters },
+        body: { parameters },
       }),
     }),
     prefetchDashcardValues: builder.query<

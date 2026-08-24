@@ -13,11 +13,8 @@ import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useNavigate, useParams } from "metabase/router";
-import type {
-  CreateSegmentRequest,
-  Segment,
-  UpdateSegmentRequest,
-} from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
+import type { Segment } from "metabase-types/api";
 
 import { SegmentForm } from "../components/SegmentForm";
 
@@ -49,9 +46,11 @@ function UpdateSegmentForm({ segmentId }: UpdateSegmentFormProps) {
     async (segmentValues: Partial<Segment>) => {
       setIsDirty(false);
 
-      const result = await updateSegment(
-        toUpdateSegmentRequest(segmentId, segmentValues),
-      );
+      const result = await updateSegment({
+        id: segmentId,
+        ...segmentValues,
+        revision_message: segmentValues.revision_message ?? "",
+      });
       if (result.error) {
         setIsDirty(isDirty);
         return;
@@ -98,8 +97,11 @@ function CreateSegmentForm() {
       setIsDirty(false);
 
       scheduleCallback(async () => {
-        // Unjustified type cast. FIXME
-        const result = await createSegment(segment as CreateSegmentRequest);
+        const result = await createSegment({
+          name: checkNotNull(segment.name),
+          definition: checkNotNull(segment.definition),
+          description: segment.description,
+        });
         if (result.error) {
           sendErrorToast(t`Failed to create segment`);
           trackSegmentCreated("failure", "admin_datamodel_segments");
@@ -135,18 +137,4 @@ export function SegmentApp() {
   }
 
   return <CreateSegmentForm />;
-}
-
-function toUpdateSegmentRequest(
-  id: number,
-  values: Partial<Segment>,
-): UpdateSegmentRequest {
-  return {
-    id,
-    name: values.name,
-    description: values.description,
-    definition: values.definition,
-    archived: values.archived,
-    revision_message: values.revision_message ?? "",
-  };
 }

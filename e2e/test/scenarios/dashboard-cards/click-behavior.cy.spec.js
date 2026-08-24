@@ -286,7 +286,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           idAlias: "targetDashboardId",
         },
       ).then((dashboardId) => {
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        H.updateDashboard({
+          id: dashboardId,
           dashcards: [
             createMockDashboardCard({
               card_id: ORDERS_QUESTION_ID,
@@ -340,7 +341,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           idAlias: "targetDashboardId",
         },
       ).then((dashboardId) => {
-        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        H.updateDashboard({
+          id: dashboardId,
           dashcards: [
             createMockDashboardCard({
               card_id: ORDERS_QUESTION_ID,
@@ -662,21 +664,20 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         },
       )
         .then((dashboardId) => {
-          return cy
-            .request("PUT", `/api/dashboard/${dashboardId}`, {
-              dashcards: [
-                createMockDashboardCard({
-                  card_id: ORDERS_QUESTION_ID,
-                  parameter_mappings: [
-                    createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
-                    createTextFilterWithDefaultMapping({
-                      card_id: ORDERS_QUESTION_ID,
-                    }),
-                  ],
-                }),
-              ],
-            })
-            .then(() => dashboardId);
+          return H.updateDashboard({
+            id: dashboardId,
+            dashcards: [
+              createMockDashboardCard({
+                card_id: ORDERS_QUESTION_ID,
+                parameter_mappings: [
+                  createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+                  createTextFilterWithDefaultMapping({
+                    card_id: ORDERS_QUESTION_ID,
+                  }),
+                ],
+              }),
+            ],
+          }).then(() => dashboardId);
         })
         .then((dashboardId) => {
           H.visitDashboard(dashboardId);
@@ -741,21 +742,20 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         },
       )
         .then((dashboardId) => {
-          return cy
-            .request("PUT", `/api/dashboard/${dashboardId}`, {
-              dashcards: [
-                createMockDashboardCard({
-                  card_id: ORDERS_QUESTION_ID,
-                  parameter_mappings: [
-                    createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
-                    createTextFilterWithDefaultMapping({
-                      card_id: ORDERS_QUESTION_ID,
-                    }),
-                  ],
-                }),
-              ],
-            })
-            .then(() => dashboardId);
+          return H.updateDashboard({
+            id: dashboardId,
+            dashcards: [
+              createMockDashboardCard({
+                card_id: ORDERS_QUESTION_ID,
+                parameter_mappings: [
+                  createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+                  createTextFilterWithDefaultMapping({
+                    card_id: ORDERS_QUESTION_ID,
+                  }),
+                ],
+              }),
+            ],
+          }).then(() => dashboardId);
         })
         .then((dashboardId) => {
           H.visitDashboard(dashboardId);
@@ -2663,7 +2663,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         idAlias: "targetDashboardId",
       },
     ).then((dashboardId) => {
-      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+      H.updateDashboard({
+        id: dashboardId,
         dashcards: [
           createMockDashboardCard({
             card_id: ORDERS_QUESTION_ID,
@@ -2968,18 +2969,16 @@ const createDashboardWithTabsLocal = ({
   dashcards = [],
   options,
 }) => {
-  H.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+  H.createDashboardWithTabs({
+    ...dashboardDetails,
+    dashcards,
+    tabs,
+  }).then((dashboard) => {
     if (options?.wrapId) {
       cy.wrap(dashboard.id).as(options.idAlias ?? "dashboardId");
     }
-    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-      ...dashboard,
-      dashcards,
-      tabs,
-    }).then(({ body: dashboard }) => {
-      dashboard.tabs.forEach((tab) => {
-        cy.wrap(tab.id).as(`${tab.name}-id`);
-      });
+    (dashboard.tabs ?? []).forEach((tab) => {
+      cy.wrap(tab.id).as(`${tab.name}-id`);
     });
   });
 };

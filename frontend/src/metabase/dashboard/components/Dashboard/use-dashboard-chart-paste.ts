@@ -8,6 +8,7 @@ import { addCardToDashboard } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { exact } from "metabase-types/guards";
 
 const PASTE_TOAST_ID = "dashboard-chart-paste";
 
@@ -38,15 +39,17 @@ export function useDashboardChartPaste() {
         }),
       );
       try {
-        const card = await createCard({
-          name: payload.name,
-          description: payload.description ?? null,
-          display: payload.display,
-          dataset_query: payload.dataset_query,
-          visualization_settings: payload.visualization_settings,
-          dashboard_id: dashboardId,
-          dashboard_tab_id: savedTabId,
-        }).unwrap();
+        const card = await createCard(
+          exact({
+            name: payload.name,
+            description: payload.description ?? null,
+            display: payload.display,
+            dataset_query: payload.dataset_query,
+            visualization_settings: payload.visualization_settings,
+            dashboard_id: dashboardId,
+            dashboard_tab_id: savedTabId,
+          }),
+        ).unwrap();
         await dispatch(
           addCardToDashboard({
             dashId: dashboardId,

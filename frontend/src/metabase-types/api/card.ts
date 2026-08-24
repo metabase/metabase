@@ -1,5 +1,6 @@
 import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
+import type { Exact } from "metabase-types/guards";
 
 import type { ClickBehavior } from "./click-behavior";
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
@@ -8,6 +9,7 @@ import type {
   Dashboard,
   DashboardCardSize,
   DashboardId,
+  DashboardParameterMapping,
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
@@ -81,6 +83,8 @@ export interface Card<
   metabot_chart_id?: string | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
+
+  parameter_mappings?: DashboardParameterMapping[] | null;
 
   result_metadata: Field[] | null;
   param_fields?: Record<ParameterId, Field[]>;
@@ -596,7 +600,7 @@ export interface GetCardRequest {
   ignore_error?: boolean;
 }
 
-export interface CreateCardRequest {
+export type CreateCardRequest = Exact<{
   name: string;
   dataset_query: DatasetQuery;
   display: string;
@@ -613,7 +617,7 @@ export interface CreateCardRequest {
   result_metadata?: Field[] | null;
   cache_ttl?: number | null;
   size?: DashboardCardSize;
-}
+}>;
 
 export interface CreateCardFromCsvRequest {
   collection_id?: CollectionId;

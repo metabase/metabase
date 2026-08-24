@@ -17,6 +17,7 @@ import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import * as Lib from "metabase-lib";
 import type { Card, CreateCardRequest } from "metabase-types/api";
+import { exact } from "metabase-types/guards";
 
 import type { NewMetricValues } from "../types";
 
@@ -137,7 +138,7 @@ function getCreateRequest(
   { name, description, collection_id, result_metadata }: NewMetricValues,
 ): CreateCardRequest {
   const { display, settings = {} } = Lib.defaultDisplay(query);
-  return {
+  return exact({
     name,
     description,
     collection_id,
@@ -146,5 +147,5 @@ function getCreateRequest(
     dataset_query: Lib.toJsQuery(query),
     display,
     visualization_settings: settings,
-  };
+  });
 }

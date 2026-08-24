@@ -10,6 +10,7 @@ import type {
   Membership,
   PermissionsGraph,
   UpdatePermissionsGraphRequest,
+  UpdatePermissionsGroupRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -89,11 +90,14 @@ export const permissionApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("permissions-group")]),
     }),
-    updatePermissionsGroup: builder.mutation<BaseGroupInfo, BaseGroupInfo>({
-      query: ({ id, ...body }) => ({
+    updatePermissionsGroup: builder.mutation<
+      BaseGroupInfo,
+      UpdatePermissionsGroupRequest
+    >({
+      query: ({ id, name }) => ({
         method: "PUT",
         url: `/api/permissions/group/${id}`,
-        body,
+        body: { name },
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
@@ -134,10 +138,10 @@ export const permissionApi = Api.injectEndpoints({
         ]),
     }),
     updateMembership: builder.mutation<void, Membership>({
-      query: (membership) => ({
+      query: ({ membership_id, is_group_manager }) => ({
         method: "PUT",
-        url: `/api/permissions/membership/${membership.membership_id}`,
-        body: membership,
+        url: `/api/permissions/membership/${membership_id}`,
+        body: { is_group_manager },
       }),
       invalidatesTags: (_, error, membership) =>
         invalidateTags(error, [

@@ -9,7 +9,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import type { Parameter } from "metabase-types/api";
+import type { Parameter, UpdateDashboardCardRequest } from "metabase-types/api";
 import {
   createMockActionParameter,
   createMockDashboardCard,
@@ -922,69 +922,69 @@ describe("scenarios > embedding-sdk > internal-navigation", () => {
                 (externalDashboardId) => {
                   cy.get<number>("@externalDashboardTab2Id").then(
                     (externalDashboardTab2Id) => {
-                      const updatedDashcards = (dashboard.dashcards ?? []).map(
-                        (dashcard) => {
-                          if (dashcard.dashboard_tab_id === resolvedTab1.id) {
-                            return {
-                              ...dashcard,
-                              visualization_settings: {
-                                column_settings: {
-                                  [`["ref",["field",${ORDERS.ID},null]]`]: {
-                                    click_behavior: {
-                                      type: "link",
-                                      linkType: "dashboard",
-                                      linkTextTemplate: "Go to Tab 2",
-                                      targetId: dashboard.id,
-                                      tabId: resolvedTab2.id,
-                                      parameterMapping: {
-                                        [ID_FILTER.id]: {
-                                          source: {
-                                            type: "column",
-                                            id: "ID",
-                                            name: "ID",
-                                          },
-                                          target: {
-                                            type: "parameter",
-                                            id: ID_FILTER.id,
-                                          },
+                      const updatedDashcards: UpdateDashboardCardRequest[] = (
+                        dashboard.dashcards ?? []
+                      ).map((dashcard) => {
+                        if (dashcard.dashboard_tab_id === resolvedTab1.id) {
+                          return {
+                            ...dashcard,
+                            visualization_settings: {
+                              column_settings: {
+                                [`["ref",["field",${ORDERS.ID},null]]`]: {
+                                  click_behavior: {
+                                    type: "link" as const,
+                                    linkType: "dashboard" as const,
+                                    linkTextTemplate: "Go to Tab 2",
+                                    targetId: dashboard.id,
+                                    tabId: resolvedTab2.id,
+                                    parameterMapping: {
+                                      [ID_FILTER.id]: {
+                                        source: {
+                                          type: "column",
+                                          id: "ID",
+                                          name: "ID",
+                                        },
+                                        target: {
+                                          type: "parameter",
                                           id: ID_FILTER.id,
                                         },
+                                        id: ID_FILTER.id,
                                       },
                                     },
                                   },
                                 },
                               },
-                            };
-                          }
-                          if (dashcard.dashboard_tab_id === resolvedTab3.id) {
-                            return {
-                              ...dashcard,
-                              visualization_settings: {
-                                column_settings: {
-                                  // ID column on Tab 3 links to Dashboard B's
-                                  // second tab (cross-dashboard push to a tabbed
-                                  // dashboard) — exercises the back-restore path
-                                  // where the destination's tab id must not
-                                  // clobber the source dashboard's remembered tab.
-                                  [`["ref",["field",${ORDERS.ID},null]]`]: {
-                                    click_behavior: {
-                                      type: "link",
-                                      linkType: "dashboard",
-                                      linkTextTemplate: "Go to Dashboard B",
-                                      targetId: externalDashboardId,
-                                      tabId: externalDashboardTab2Id,
-                                      parameterMapping: {},
-                                    },
+                            },
+                          };
+                        }
+                        if (dashcard.dashboard_tab_id === resolvedTab3.id) {
+                          return {
+                            ...dashcard,
+                            visualization_settings: {
+                              column_settings: {
+                                // ID column on Tab 3 links to Dashboard B's
+                                // second tab (cross-dashboard push to a tabbed
+                                // dashboard) — exercises the back-restore path
+                                // where the destination's tab id must not
+                                // clobber the source dashboard's remembered tab.
+                                [`["ref",["field",${ORDERS.ID},null]]`]: {
+                                  click_behavior: {
+                                    type: "link" as const,
+                                    linkType: "dashboard" as const,
+                                    linkTextTemplate: "Go to Dashboard B",
+                                    targetId: externalDashboardId,
+                                    tabId: externalDashboardTab2Id,
+                                    parameterMapping: {},
                                   },
                                 },
                               },
-                            };
-                          }
-                          return dashcard;
-                        },
-                      );
+                            },
+                          };
+                        }
+                        return dashcard;
+                      });
 
-                      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+                      H.updateDashboard({
                         ...dashboard,
                         dashcards: updatedDashcards,
                       });

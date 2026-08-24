@@ -27,8 +27,8 @@ import * as Urls from "metabase/urls";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type {
   BulkTableInfo,
-  BulkTableRequest,
   DatabaseId,
+  PublishTablesRequest,
   SchemaId,
   TableId,
 } from "metabase-types/api";
@@ -124,7 +124,7 @@ function ModalBody({
 
   const { selected_table, unpublished_upstream_tables } = data;
 
-  const handleSubmit = async ({ collection_id }: BulkTableRequest) => {
+  const handleSubmit = async ({ collection_id }: PublishTablesRequest) => {
     const { target_collection: collection } = await publishTables({
       database_ids: databaseIds,
       schema_ids: schemaIds,
@@ -148,7 +148,7 @@ function ModalBody({
   };
 
   return (
-    <FormProvider<BulkTableRequest>
+    <FormProvider<PublishTablesRequest>
       enableReinitialize
       initialValues={{ collection_id: dataCollection.id }}
       onSubmit={handleSubmit}

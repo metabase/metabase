@@ -31,6 +31,7 @@ import {
   tag,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
+import { pick } from "./utils/pick";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -90,7 +91,21 @@ export const tableApi = Api.injectEndpoints({
       query: ({ id, ...body }) => ({
         method: "PUT",
         url: `/api/table/${id}`,
-        body,
+        body: pick(body, [
+          "display_name",
+          "visibility_type",
+          "description",
+          "caveats",
+          "points_of_interest",
+          "show_in_getting_started",
+          "field_order",
+          "data_source",
+          "data_layer",
+          "entity_type",
+          "owner_email",
+          "owner_user_id",
+          "collection_id",
+        ]),
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [

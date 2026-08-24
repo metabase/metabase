@@ -179,21 +179,44 @@
 
 (deftest ^:parallel decode-strips-undeclared-keys-test
   (testing "request decoding drops keys the schema does not name, so an open map cannot carry values downstream"
-    (are [schema value expected] (= expected
-                                    ((#'api.macros/decoder schema) value))
-      [:map [:a {:optional true} :int]]
-      {:a 1, :b 2}
-      {:a 1}
+    (binding [api.macros/*reject-extra-keys?* false]
+      (are [schema value expected] (= expected
+                                      ((#'api.macros/decoder schema) value))
+        [:map [:a {:optional true} :int]]
+        {:a 1, :b 2}
+        {:a 1}
 
-      ;; `{:closed false}` opts out, for the values we deliberately pass through as they arrived -- a query, viz
-      ;; settings, database details, a settings bag
-      [:map {:closed false} [:a {:optional true} :int]]
-      {:a 1, :b 2}
-      {:a 1, :b 2}
+        ;; `{:closed false}` opts out, for the values we deliberately pass through as they arrived -- a query, viz
+        ;; settings, database details, a settings bag
+        [:map {:closed false} [:a {:optional true} :int]]
+        {:a 1, :b 2}
+        {:a 1, :b 2}
 
-      ;; stripping recurses. A parameter's `:options` are spliced into the filter clause the parameter becomes, so an
-      ;; option the schema does not name must not survive decoding. The schema stays open -- an unknown option is not
-      ;; a 400 -- so this is what keeps such a key from reaching the clause.
-      ::lib.schema.parameter/parameter
-      {:type :string/contains, :value ["A"], :options {:case-sensitive false, :lib/uuid "not-yours"}}
-      {:type :string/contains, :value ["A"], :options {:case-sensitive false}})))
+        ;; stripping recurses. A parameter's `:options` are spliced into the filter clause the parameter becomes, so an
+        ;; option the schema does not name must not survive decoding. The schema stays open -- an unknown option is not
+        ;; a 400 -- so this is what keeps such a key from reaching the clause.
+        ::lib.schema.parameter/parameter
+        {:type :string/contains, :value ["A"], :options {:case-sensitive false, :lib/uuid "not-yours"}}
+        {:type :string/contains, :value ["A"], :options {:case-sensitive false}}))))
+
+(deftest ^:parallel decode-rejects-undeclared-keys-test
+  (binding [api.macros/*reject-extra-keys?* true]
+    (testing "outside prod, undeclared keys are a 400 rather than stripped"
+      (let [decode (#'api.macros/decoder [:map [:a {:optional true} :int]])]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unexpected keys in request"
+                              (decode {:a 1, :b 2})))
+        (is (= {:status-code 400
+                :errors {:b "unexpected key"}
+                :specific-errors {:b "unexpected key"}}
+               (try
+                 (decode {:a 1, :b 2})
+                 (catch clojure.lang.ExceptionInfo e
+                   (select-keys (ex-data e) [:status-code :errors :specific-errors])))))))
+    (testing "rejection recurses into nested maps"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unexpected keys in request"
+                            ((#'api.macros/decoder [:map [:opts [:map [:a {:optional true} :int]]]])
+                             {:opts {:a 1, :b 2}}))))
+    (testing "`{:closed false}` still opts out"
+      (is (= {:a 1, :b 2}
+             ((#'api.macros/decoder [:map {:closed false} [:a {:optional true} :int]])
+              {:a 1, :b 2}))))))

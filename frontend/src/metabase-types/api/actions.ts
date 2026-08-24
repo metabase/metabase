@@ -225,7 +225,6 @@ export interface PrefetchActionValuesRequest {
 export interface ExecuteDashcardActionRequest {
   dashboardId: DashboardId;
   dashcardId: DashCardId;
-  modelId?: CardId | null;
   parameters: ParametersForActionExecution;
 }
 

@@ -4,6 +4,7 @@ import { registerSearchStarted, trackFulfilledSearch } from "./analytics";
 import { Api } from "./api";
 import { provideSearchItemListTags } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
+import { pick } from "./utils/pick";
 
 export const searchApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -11,7 +12,30 @@ export const searchApi = Api.injectEndpoints({
       query: (params) => ({
         method: "GET",
         url: "/api/search",
-        params,
+        params: pick(params, [
+          "q",
+          "archived",
+          "table_db_id",
+          "models",
+          "ids",
+          "filter_items_in_personal_collection",
+          "context",
+          "created_at",
+          "created_by",
+          "last_edited_at",
+          "last_edited_by",
+          "search_native_query",
+          "verified",
+          "model_ancestors",
+          "include_dashboard_questions",
+          "include_metadata",
+          "search_engine",
+          "display_type",
+          "collection",
+          "calculate_available_models",
+          "limit",
+          "offset",
+        ]),
       }),
       providesTags: (response, error, { models }) =>
         provideSearchItemListTags(response?.data ?? [], models),

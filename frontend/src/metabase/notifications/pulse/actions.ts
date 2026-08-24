@@ -6,11 +6,10 @@ import { createThunkAction } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { getResponseErrorMessage } from "metabase/utils/errors";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   ChannelApiResponse,
-  CreateSubscriptionRequest,
   DashboardSubscription,
-  UpdateSubscriptionRequest,
 } from "metabase-types/api";
 
 import { getEditingPulse } from "./selectors";
@@ -41,17 +40,18 @@ export const saveEditingPulse = createThunkAction(
       try {
         if (isEdit) {
           return await dispatch(
-            subscriptionApi.endpoints.updateSubscription.initiate(
-              // Unjustified type cast. FIXME
-              editingPulse as unknown as UpdateSubscriptionRequest,
-            ),
+            subscriptionApi.endpoints.updateSubscription.initiate({
+              ...editingPulse,
+              id: checkNotNull(editingPulse.id),
+              name: editingPulse.name ?? undefined,
+            }),
           ).unwrap();
         } else {
           return await dispatch(
-            subscriptionApi.endpoints.createSubscription.initiate(
-              // Unjustified type cast. FIXME
-              editingPulse as unknown as CreateSubscriptionRequest,
-            ),
+            subscriptionApi.endpoints.createSubscription.initiate({
+              ...editingPulse,
+              name: editingPulse.name ?? "",
+            }),
           ).unwrap();
         }
       } catch (error) {
@@ -80,7 +80,10 @@ export const testPulse = createThunkAction(
   function (pulse: DashboardSubscription | DraftDashboardSubscription) {
     return async function (dispatch) {
       return await dispatch(
-        subscriptionApi.endpoints.testSubscription.initiate(pulse),
+        subscriptionApi.endpoints.testSubscription.initiate({
+          ...pulse,
+          name: pulse.name ?? "",
+        }),
       ).unwrap();
     };
   },
