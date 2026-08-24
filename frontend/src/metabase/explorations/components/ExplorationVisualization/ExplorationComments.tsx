@@ -434,7 +434,9 @@ function CommentTags({
   const dispatch = useDispatch();
   const context = comment.context;
 
-  // `highlight_label` is derived by the server on read; it is not stored on the comment.
+  // `highlight_label` is formatted by the client that created the comment, since only it knows
+  // the chart's column settings; the server stores it verbatim and gates it with the rest of the
+  // context, so an absent context here means the viewer is not allowed the values it carried.
   const highlightLabel = context?.highlight_label;
   const highlighted = context?.highlighted;
   const explorationQueryIds = context?.exploration_query_ids ?? [];

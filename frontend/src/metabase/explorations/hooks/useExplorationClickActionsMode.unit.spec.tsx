@@ -240,7 +240,7 @@ describe("useExplorationClickActionsMode", () => {
     );
   });
 
-  it("creates a comment with highlighted context and closes on success", async () => {
+  it("creates a comment with highlighted context, highlight_label, and closes on success", async () => {
     const onClose = jest.fn();
     const { result } = renderMode();
     const Popover = getAddCommentPopover(
@@ -268,6 +268,7 @@ describe("useExplorationClickActionsMode", () => {
             dimensions: [{ columnName: "category", value: "Gadget" }],
           },
           exploration_query_ids: [101],
+          highlight_label: "Gadget",
         },
       }),
     );

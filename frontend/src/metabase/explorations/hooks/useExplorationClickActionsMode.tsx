@@ -18,6 +18,7 @@ import type {
   ClickActionPopoverProps,
   ClickActionsMode,
   ClickObject,
+  ComputedVisualizationSettings,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
 import type {
@@ -65,7 +66,10 @@ export function useExplorationClickActionsMode({
 
   const mode = useMemo(() => {
     return {
-      actionsForClick: (clicked: ClickObject) => {
+      actionsForClick: (
+        clicked: ClickObject,
+        settings?: ComputedVisualizationSettings,
+      ) => {
         const actions: ClickAction[] = [];
 
         if (explorationId == null || pageId == null) {
@@ -116,6 +120,7 @@ export function useExplorationClickActionsMode({
               clicked,
               seriesQueryIds,
               queriesById,
+              settings,
             );
             const { error } = await createComment({
               target_id: explorationId,

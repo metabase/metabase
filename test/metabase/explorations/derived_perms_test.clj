@@ -400,11 +400,13 @@
                                :target_id       expl-id
                                :child_target_id (str page-id)
                                :content         {:type "doc" :content []}
-                               :context         {:highlighted {:columnName "CATEGORY"
-                                                               :dimensions [{:columnName "CATEGORY"
-                                                                             :value "ACME Corp"}]}}})
+                               :context         {:highlighted     {:columnName "CATEGORY"
+                                                                   :dimensions [{:columnName "CATEGORY"
+                                                                                 :value "ACME Corp"}]}
+                                                 :highlight_label "ACME Corp"}})
         (testing "keeps its context for a superuser, who is exempt from the gate"
-          (is (=? [{:highlighted {:columnName "CATEGORY"}}]
+          (is (=? [{:highlighted     {:columnName "CATEGORY"}
+                    :highlight_label "ACME Corp"}]
                   (comment-contexts expl-id :crowberto))))
         (testing "is stripped of its context for a viewer whose data-access lens is incompatible —
                   the comment itself remains readable, only the warehouse values it carries are withheld"
