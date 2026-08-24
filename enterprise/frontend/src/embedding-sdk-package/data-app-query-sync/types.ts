@@ -22,11 +22,22 @@ export interface ModelLockEntry {
   actions: ActionLockEntry[];
 }
 
+export interface MetricLockEntry {
+  sourceMetricId: number;
+  copiedMetricId: number;
+  hash: string;
+}
+
 export interface ResourceLockfile {
   /** Where the copies were last synchronized, so a moved app reads apart from a moved copy. */
   collectionId?: number;
   queries: QueryLockEntry[];
   models: ModelLockEntry[];
+  metrics: MetricLockEntry[];
+}
+
+export interface DataAppMetric extends MetabaseCard {
+  type: "metric";
 }
 
 export interface DiscoveredQuery {

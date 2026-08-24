@@ -2,6 +2,7 @@
   "Typed schema generation for metrics and metric dimensions."
   (:require
    [medley.core :as m]
+   [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
@@ -209,6 +210,16 @@
                    second
                    parse-long)))))
 
+(defn- metric-dependency-ids
+  "Returns the ids of metrics referenced by the given metric queries."
+  [metrics]
+  (let [referenced-ids (into #{} (mapcat #(lib/all-source-card-ids (:dataset_query %))) metrics)]
+    (when (seq referenced-ids)
+      (t2/select-pks-set :model/Card
+                         {:where [:and
+                                  [:in :id referenced-ids]
+                                  [:= :type "metric"]]}))))
+
 (defn- fallback-metric-column
   "Returns a stable fallback column when metric result-column inference fails."
   [{:keys [name]}]
@@ -274,7 +285,11 @@
 (defn metric-schemas
   "Returns metric schemas, with optional database and collection scopes."
   [database-ids collection-ids]
-  (for [card (schema.common/select-schema-cards :metric database-ids collection-ids)
-        :let [details (metric-details card)]
-        :when details]
-    (metric-schema details card)))
+  (let [metrics        (remove source-card-id
+                               (schema.common/select-schema-cards :metric database-ids collection-ids))
+        dependency-ids (metric-dependency-ids metrics)]
+    (for [metric metrics
+          :when (not-any? dependency-ids (lib/all-source-card-ids (:dataset_query metric)))
+          :let [details (metric-details metric)]
+          :when details]
+      (metric-schema details metric))))

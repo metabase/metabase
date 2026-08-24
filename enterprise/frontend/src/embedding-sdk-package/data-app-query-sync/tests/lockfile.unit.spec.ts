@@ -41,6 +41,7 @@ describe("resource lockfile", () => {
     expect(readResourceLockfile(makeApp())).toEqual({
       queries: [],
       models: [],
+      metrics: [],
     });
   });
 
@@ -49,6 +50,7 @@ describe("resource lockfile", () => {
     const lockfile: ResourceLockfile = {
       queries: [query(40)],
       models: [model(5, 80, [[51, 91]])],
+      metrics: [],
     };
     write(appRoot, lockfile);
 
@@ -62,6 +64,7 @@ describe("resource lockfile", () => {
     expect(readResourceLockfile(appRoot)).toEqual({
       queries: [query(40)],
       models: [],
+      metrics: [],
     });
   });
 

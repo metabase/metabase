@@ -48,7 +48,7 @@ export function getPayloadFingerprint(value: unknown): string {
   return `v1:sha256:${hash}`;
 }
 
-/** Serializes a resolved query while removing generated Lib UUIDs. */
+/** Serializes a resolved query while removing generated Lib-only fields. */
 export function getCanonicalQueryJson(value: unknown): string {
   const canonical = canonicalize(value);
   const generatedIds = new Map<string, number>();
@@ -66,6 +66,9 @@ export function getCanonicalQueryJson(value: unknown): string {
 
   return JSON.stringify(canonical, (key, item) => {
     if (key === "lib/uuid") {
+      return undefined;
+    }
+    if (key === "lib/metadata" && item === null) {
       return undefined;
     }
     const generatedId =
