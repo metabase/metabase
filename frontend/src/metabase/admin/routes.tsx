@@ -6,6 +6,7 @@ import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
+import { PermissionsBasePath } from "metabase/admin/permissions/components/PermissionsBasePath";
 import { getRoutes as getAdminPermissionsRoutes } from "metabase/admin/permissions/routes";
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
@@ -408,7 +409,9 @@ export const getRoutes = (
         </Route>
         {/* PERMISSIONS */}
         <Route path="permissions" element={<IsAdmin />}>
-          {getAdminPermissionsRoutes()}
+          <Route element={<PermissionsBasePath />}>
+            {getAdminPermissionsRoutes()}
+          </Route>
         </Route>
 
         {/* PERFORMANCE */}
