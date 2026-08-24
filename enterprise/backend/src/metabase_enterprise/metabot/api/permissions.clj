@@ -98,11 +98,16 @@
 
 (defn- switch-mode!
   "Write the permission mode and drop the rows of the mode being left behind, in one transaction.
-  The setting write goes last, since it updates the settings cache in place and a rollback would not undo that."
+  The setting write goes last, and a failure reloads the settings cache, since writing the setting updates the
+  cache in place and this node would otherwise keep serving a mode the database rolled back."
   [advanced? group-id-clause]
-  (t2/with-transaction [_conn]
-    (t2/delete! :model/MetabotPermissions :group_id group-id-clause)
-    (metabot-settings/metabot-advanced-permissions! advanced?)))
+  (try
+    (t2/with-transaction [_conn]
+      (t2/delete! :model/MetabotPermissions :group_id group-id-clause)
+      (metabot-settings/metabot-advanced-permissions! advanced?))
+    (catch Throwable e
+      (setting/restore-cache!)
+      (throw e))))
 
 (defn- check-mode-switchable!
   "Throw a 400 when `metabot-advanced-permissions` is forced by an env var, since writing the setting would then have no
