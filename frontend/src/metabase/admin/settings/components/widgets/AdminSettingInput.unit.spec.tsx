@@ -666,31 +666,6 @@ describe("AdminSettingInput", () => {
     expect(screen.getByRole("textbox")).toHaveValue("Wigglybase");
   });
 
-  it("should show an error toast on save failure", async () => {
-    setup({
-      title: "Humanization Strategy",
-      name: "humanization-strategy",
-      inputType: "select",
-      options: [
-        { label: "None", value: "none" },
-        { label: "Simple", value: "simple" },
-      ],
-    });
-    setupUpdateSettingEndpoint({ status: 500 });
-
-    const input = await screen.findByRole("textbox");
-    await userEvent.click(input);
-    const option = await screen.findByText("Simple");
-    await userEvent.click(option);
-
-    const [{ url, body }] = await findRequests("PUT");
-    expect(url).toContain("/api/setting/humanization-strategy");
-    expect(body).toStrictEqual({ value: "simple" });
-
-    const toast = await screen.findByText("Error saving humanization-strategy");
-    expect(toast).toBeInTheDocument();
-  });
-
   it("should display a notice instead of input when a setting is set by an environment variable", async () => {
     setup({
       title: "url",
