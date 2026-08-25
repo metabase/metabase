@@ -13,7 +13,6 @@ interface HookProps {
 }
 
 jest.mock("metabase/visualizations/lib/sensibility", () => ({
-  ...jest.requireActual("metabase/visualizations/lib/sensibility"),
   getSensibleVisualizations: jest.fn(),
 }));
 
