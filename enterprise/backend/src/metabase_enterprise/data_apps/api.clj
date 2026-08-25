@@ -65,7 +65,7 @@
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
    [:resource_collection_id [:maybe ms/PositiveInt]]
-   [:permission_group_id     [:maybe ms/PositiveInt]]
+   [:permission_group_id    [:maybe ms/PositiveInt]]
    [:bundle_hash     [:maybe :string]]
    [:last_synced_sha [:maybe :string]]
    [:last_synced_at  [:maybe :any]]
@@ -116,12 +116,12 @@
   [:map
    [:database_id ms/PositiveInt]
    [:dataset_query ms/Map]
-   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]
+   [:table_ids [:sequential ms/PositiveInt]]
    [:metrics [:sequential MetricResponse]]])
 
 (def ^:private ResourcePermissionsRequest
   [:map
-   [:table_ids [:sequential {:distinct true} ms/PositiveInt]]])
+   [:table_ids [:sequential ms/PositiveInt]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -275,8 +275,8 @@
    {table-ids :table_ids} :- ResourcePermissionsRequest]
   (api/check-superuser)
   (let [app (api/check-404 (data-app/select-one-non-blob :name slug))]
-    (data-app.resources/reconcile-view-data! app (set table-ids)))
-  (data-app/select-one-non-blob :name slug))
+    (data-app.resources/reconcile-view-data! app (set table-ids))
+    (data-app/select-one-non-blob :id (:id app))))
 
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
