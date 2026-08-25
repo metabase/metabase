@@ -1,3 +1,4 @@
+import { tenantPeopleUrl } from "metabase/common/tenants";
 import type {
   BaseUser,
   CustomVizPluginId,
@@ -13,6 +14,46 @@ export const isInternalUser = (user: Pick<BaseUser, "tenant_id">) =>
 
 export function newUser() {
   return `/admin/people/new`;
+}
+
+export function newTenantUser() {
+  return `${tenantPeopleUrl()}/new`;
+}
+
+export function editUser(user: Pick<BaseUser, "id" | "tenant_id">) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/edit`
+    : `${tenantPeopleUrl()}/${user.id}/edit`;
+}
+
+export function resetPassword(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/reset`
+    : `${tenantPeopleUrl()}/${user.id}/reset`;
+}
+
+export function newUserSuccess(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/success`
+    : `${tenantPeopleUrl()}/${user.id}/success`;
+}
+
+export function deactivateUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/deactivate`
+    : `${tenantPeopleUrl()}/${user.id}/deactivate`;
+}
+
+export function reactivateUser(user: BaseUser) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/reactivate`
+    : `${tenantPeopleUrl()}/${user.id}/reactivate`;
+}
+
+export function unsubscribeUser(user: Pick<BaseUser, "id" | "tenant_id">) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/unsubscribe`
+    : `${tenantPeopleUrl()}/${user.id}/unsubscribe`;
 }
 
 // TODO: move to EE urls

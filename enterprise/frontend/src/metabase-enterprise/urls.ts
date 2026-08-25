@@ -1,6 +1,49 @@
-import type { DatabaseId } from "metabase-types/api";
+import {
+  getTenantsBasePath,
+  getTenantsPermissionsPath,
+  tenantPeopleUrl,
+} from "metabase/common/tenants";
+import type { DatabaseId, Tenant } from "metabase-types/api";
 
 export * as Urls from "metabase/urls";
+
+export function newTenant() {
+  return `${getTenantsBasePath()}/new`;
+}
+
+export function editTenant(tenantId: Tenant["id"]) {
+  return `${getTenantsBasePath()}/${tenantId}/edit`;
+}
+
+export function deactivateTenant(tenantId: Tenant["id"]) {
+  return `${getTenantsBasePath()}/${tenantId}/deactivate`;
+}
+
+export function reactivateTenant(tenantId: Tenant["id"]) {
+  return `${getTenantsBasePath()}/${tenantId}/reactivate`;
+}
+
+export function editUserStrategy(page: "people" | "tenants") {
+  return page === "tenants"
+    ? `${getTenantsBasePath()}/user-strategy`
+    : `/admin/people/user-strategy`;
+}
+
+export function tenants() {
+  return getTenantsBasePath();
+}
+
+export function tenantPeople() {
+  return tenantPeopleUrl();
+}
+
+export function tenantGroups() {
+  return `${getTenantsBasePath()}/groups`;
+}
+
+export function tenantsPermissions() {
+  return getTenantsPermissionsPath();
+}
 
 export function viewDestinationDatabases(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/destination-databases`;
