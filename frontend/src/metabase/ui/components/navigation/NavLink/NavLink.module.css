@@ -55,7 +55,6 @@
       color: var(--mb-color-icon-primary-inverse);
     }
 
-    /* On the brand fill the leading icon uses the inverse brand tint. */
     .NavLinkSection[data-position="left"] {
       color: var(--mb-color-icon-brand-inverse);
     }

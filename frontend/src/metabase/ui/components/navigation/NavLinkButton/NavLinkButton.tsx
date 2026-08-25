@@ -5,7 +5,7 @@ import { Button, type ButtonProps } from "metabase/ui";
 export type NavLinkButtonProps = ButtonProps;
 
 /**
- * A compact action button sized to sit in a `NavLink`'s right (or left) section.
+ * A compact action button sized to sit in a `NavLink`'s right section.
  */
 export const NavLinkButton = forwardRef<HTMLButtonElement, NavLinkButtonProps>(
   function NavLinkButton({ onClick, ...props }, ref) {
