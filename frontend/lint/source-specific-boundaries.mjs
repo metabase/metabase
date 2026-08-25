@@ -32,12 +32,11 @@ const policyMatchesSourceType = (policy, sourceType) =>
   policy.from.some((selector) =>
     micromatch.isMatch(sourceType, selector.element.type),
   );
-
 // Keeps only policies that can apply to `sourceType`, dropping their `from`
 // selectors. Policies without `from` apply to every source; policies with
 // selectors this helper does not understand are preserved verbatim so the
 // fallback path keeps the original semantics.
-const specializePolicies = (policies, sourceType) =>
+export const specializePolicies = (policies, sourceType) =>
   policies.flatMap(({ from, ...policy }) => {
     if (!from) {
       return [policy];
