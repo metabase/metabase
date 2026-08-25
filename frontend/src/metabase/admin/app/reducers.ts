@@ -1,7 +1,7 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { userApi } from "metabase/api";
+import { currentUserApi } from "metabase/current-user";
 import { PLUGIN_ADMIN_ALLOWED_PATH_GETTERS } from "metabase/plugins";
 import { combineReducers } from "metabase/redux";
 import type { AdminPath, AdminPathKey } from "metabase/redux/store";
@@ -61,7 +61,7 @@ export const getAdminPaths: () => AdminPath[] = () => {
 
 const paths = createReducer(getAdminPaths(), (builder) => {
   builder.addMatcher(
-    userApi.endpoints.getCurrentUser.matchFulfilled,
+    currentUserApi.endpoints.getCurrentUser.matchFulfilled,
     (state, { payload: user }) => {
       if (user?.is_superuser) {
         return state;

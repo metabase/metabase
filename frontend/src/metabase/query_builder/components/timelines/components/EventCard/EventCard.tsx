@@ -72,7 +72,6 @@ const EventCard = ({
     >
       <CardCheckboxContainer>
         <Checkbox
-          size="sm"
           checked={isVisible}
           onChange={handleChangeVisibility}
           onClick={handleAsideClick}

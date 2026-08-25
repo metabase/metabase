@@ -1,10 +1,6 @@
 import * as d3 from "d3";
 import type { Feature, Position } from "geojson";
 
-// getCanonicalRowKey lives in a Leaflet-free module so the static-viz bundle can use it; re-exported
-// here to keep existing import sites working.
-export { getCanonicalRowKey } from "./region-codes";
-
 export type BoundsCoordinates = {
   northEast: { lat: number; lng: number };
   southWest: { lat: number; lng: number };

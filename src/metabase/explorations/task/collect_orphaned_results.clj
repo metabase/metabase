@@ -52,9 +52,9 @@
          {:select   [:sr.id]
           :from     [[:stored_result :sr]]
           :where    [:and
-                     [:not [:exists {:select [1]
-                                     :from   [[:exploration_query_result :eqr]]
-                                     :where  [:= :eqr.stored_result_id :sr.id]}]]
+                     [:not [:exists ^:allow-subquery {:select [1]
+                                                      :from   [[:exploration_query_result :eqr]]
+                                                      :where  [:= :eqr.stored_result_id :sr.id]}]]
                      [:< :sr.created_at (t/minus (t/offset-date-time)
                                                  (t/minutes grace-period-minutes))]]
           :order-by [[:sr.id :asc]]

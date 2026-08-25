@@ -32,8 +32,6 @@ export interface ReferenceRouteProps {
 }
 
 interface ReferenceSliceState {
-  isLoading: boolean;
-  error: unknown;
   isEditing: boolean;
   isFormulaExpanded: boolean;
 }
@@ -47,7 +45,7 @@ export type StateWithReference = State & {
   revisions?: Record<string, Record<string | number, unknown>>;
 };
 
-export { getUser } from "metabase/selectors/user";
+export { getUser } from "metabase/current-user";
 
 export const getSegmentId = (_state: State, props: ReferenceRouteProps) =>
   Number.parseInt(props.params.segmentId ?? "");
@@ -132,14 +130,6 @@ export const getTableQuestions = createSelector(
     );
   },
 );
-
-export const getLoading = (state: State) =>
-  // Unjustified type cast. FIXME
-  (state as StateWithReference).reference.isLoading;
-
-export const getError = (state: State) =>
-  // Unjustified type cast. FIXME
-  (state as StateWithReference).reference.error;
 
 export const getHasSingleSchema = createSelector(
   [getTablesByDatabase],

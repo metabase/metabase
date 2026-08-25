@@ -131,7 +131,7 @@ export const LegendCaption = ({
       {hasInfoTooltip && description && !shouldHideDescription(width) && (
         <Tooltip
           label={
-            <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+            <Markdown dark compact disallowHeading unstyleLinks lineClamp={8}>
               {tc(description)}
             </Markdown>
           }

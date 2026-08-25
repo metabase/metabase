@@ -1,36 +1,25 @@
 (ns metabase.segments.schema
   (:require
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as common]
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.core :as lib]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::stage.segment
-  [:and
-   ::lib.schema/stage.mbql
-   [:fn
-    {:error/message "A segment stage must have exactly one of :source-table or :source-card"}
-    #(= (count (select-keys % [:source-table :source-card])) 1)]
-   [:fn
-    {:error/message "A segment stage must have filters"}
-    #(contains? % :filters)]
-   (common/disallowed-keys
-    {:joins       "Segments cannot use :joins"
-     :expressions "Segments cannot use :expressions"
-     :breakout    "Segments cannot use :breakout"
-     :aggregation "Segments cannot use :aggregation"
-     :fields      "Segments cannot use :fields"
-     :order-by    "Segments cannot use :order-by"
-     :page        "Segments cannot use :page"
-     :limit       "Segments cannot use :limit"})])
-
-(mr/def ::segment
-  [:and
-   ::lib.schema/query
-   [:fn
-    {:error/message "A segment must have exactly one stage"}
-    #(= (-> % :stages count) 1)]
-   ;; checked with `:fn` rather than a `[:map [:stages ...]]` conjunct: a map conjunct declares only the keys it names,
-   ;; so it would strip every other key of the query before the sibling `::lib.schema/query` saw it
-   [:fn
-    {:error/message "A segment's stages must be segment stages"}
-    #(mr/validate [:sequential [:ref ::stage.segment]] (:stages %))]])
+(mr/def ::definition
+  "Schema for a segment's `:definition`; accepts a full MBQL query, converting legacy MBQL on decode."
+  [:schema
+   {:description (deferred-tru "value must be a valid MBQL query with a source table and filters.")}
+   [:and
+    ::lib-be.schema/maybe-legacy-query
+    [:fn
+     {:error/message (deferred-tru "a segment definition must be a single-stage query with a source table and filters, and without joins, expressions, breakouts, aggregations, fields, order by, or limit")}
+     (fn [query]
+       (and (= (lib/stage-count query) 1)
+            (some? (lib/primary-source-table-id query))
+            (seq (lib/filters query))
+            (empty? (lib/joins query))
+            (empty? (lib/expressions query))
+            (empty? (lib/breakouts query))
+            (empty? (lib/aggregations query))
+            (empty? (lib/order-bys query))
+            (nil? (lib/current-limit query))))]]])

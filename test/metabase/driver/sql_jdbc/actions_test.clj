@@ -23,7 +23,7 @@
                       (mt/with-test-user :rasta
                         (thunk))))
 
-(mu/defn- cast-values :- ::actions.args/row
+(mu/defn- cast-values :- [:map-of :string :any]
   [driver        :- :keyword
    column->value :- ::actions.args/row
    table-id      :- ::lib.schema.id/table]

@@ -11,7 +11,7 @@ import type {
   QueryBuilderMode,
 } from "metabase/redux/store";
 import { settingsApi } from "metabase/settings";
-import type { Card } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 import { trackFirstNonTableChartGenerated } from "../analytics";
 
@@ -48,8 +48,10 @@ export const setQueryBuilderMode =
     }
   };
 
-export const setDidFirstNonTableChartRender = (card: Card) => {
-  trackFirstNonTableChartGenerated(card);
+export const setDidFirstNonTableChartRender = (
+  display: VisualizationDisplay,
+) => {
+  trackFirstNonTableChartGenerated(display);
   return settingsApi.endpoints.updateSetting.initiate({
     key: "non-table-chart-generated",
     value: true,

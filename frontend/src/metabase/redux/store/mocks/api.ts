@@ -1,7 +1,11 @@
 // Import the `metabase/api` index, not the bare `Api` from ./api.
 // The index injects every endpoint module, and an endpoint must be registered
-// before an upsert can build its cache entry.
+// before an upsert can build its cache entry. `getCurrentUser` and
+// `getSessionProperties` live outside that index, so pull in their modules for
+// the same reason rather than relying on a transitive import.
 import { Api } from "metabase/api";
+import "metabase/current-user";
+import "metabase/settings";
 import type { State } from "metabase/redux/store";
 import type { User } from "metabase-types/api";
 

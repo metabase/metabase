@@ -9,6 +9,74 @@ on:
 
 jobs:
 
+  files-changed:
+    name: Check which files changed
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    outputs:
+      embedder_plugin: ${{ steps.changes.outputs.embedder_plugin }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  test-embedder-plugin:
+    needs: files-changed
+    if: needs.files-changed.outputs.embedder_plugin == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+    steps:
+    - uses: actions/checkout@v6
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+    - name: Build embedder plugin
+      run: ./bin/build-embedder-plugin.sh
+    - name: Verify packaged plugin resources
+      run: |
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase/embedder/metabase-plugin.yaml
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase/embedder-model-catalog.edn
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase-embedder/snowflake-arctic-embed-xs-d8c86521100d3556476a063fc2342036d45c106f-arm64.zip
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase-embedder/snowflake-arctic-embed-xs-d8c86521100d3556476a063fc2342036d45c106f-avx2.zip
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase-embedder/all-minilm-l6-v2-1110a243fdf4706b3f48f1d95db1a4f5529b4d41-arm64.zip
+        jar tf modules/embedder/target/metabase-embedder-plugin.jar | grep -Fx metabase-embedder/all-minilm-l6-v2-1110a243fdf4706b3f48f1d95db1a4f5529b4d41-avx2.zip
+    - name: Run artifact-only plugin smoke test
+      env:
+        MB_EMBEDDER_ARTIFACT_TEST: "true"
+        MB_PLUGINS_DIR: modules/embedder/target
+      run: >-
+        ./bin/test-agent --oss :only
+        '[metabase.embeddings.embedder-plugin-artifact-test]'
+    - name: Run in-process semantic-search round trip
+      env:
+        MB_DB_TYPE: postgres
+        MB_DB_PORT: 5432
+        MB_DB_HOST: localhost
+        MB_DB_DBNAME: mb_test
+        MB_DB_USER: mb_test
+        MB_APPDB_PGVECTOR_MODE_TEST: "true"
+        MB_IN_PROCESS_EMBEDDER_SEMANTIC_SEARCH_TEST: "true"
+        MB_PLUGINS_DIR: modules/embedder/target
+      run: >-
+        ./bin/test-agent --drivers=postgres :only
+        '[metabase-enterprise.semantic-search.appdb-pgvector-mode-test/appdb-pgvector-in-process-embedder-round-trip-test]'
+
   test-build-scripts:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
@@ -23,4 +91,8 @@ jobs:
     - name: Run Liquibase migrations linter tests
       run: clojure -M:test
       working-directory: bin/lint-migrations-file
+      timeout-minutes: 15
+    - name: Run load-namespaces tests
+      run: clojure -M:test
+      working-directory: bin/load-namespaces
       timeout-minutes: 15

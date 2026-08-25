@@ -1,7 +1,5 @@
 export { FK_SYMBOL } from "./constants";
 export {
-  COMPACT_CURRENCY_OPTIONS,
-  type CompactCurrencyOptions,
   type Currency,
   type CurrencyOption,
   type CurrencyStyleOption,
@@ -28,7 +26,6 @@ export {
   formatNumber,
   formatPercent,
   numberFormatterForOptions,
-  roundFloat,
 } from "./numbers";
 export {
   capitalize,

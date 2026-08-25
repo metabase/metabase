@@ -1,5 +1,6 @@
 import { FileInput } from "@mantine/core";
 
+import Styles from "./FileInput.module.css";
 import { FileInputValue } from "./FileInputValue";
 
 export const fileInputOverrides = {
@@ -7,6 +8,10 @@ export const fileInputOverrides = {
     defaultProps: {
       size: "md",
       valueComponent: FileInputValue,
+    },
+    classNames: {
+      placeholder: Styles.FileInputPlaceholder,
+      section: Styles.FileInputSection,
     },
   }),
 };

@@ -43,16 +43,6 @@ export const userApi = Api.injectEndpoints({
       }),
       providesTags: (user) => (user ? provideUserTags(user) : []),
     }),
-    getCurrentUser: builder.query<User, void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/user/current",
-      }),
-      providesTags: (user) => (user ? [idTag("current-user", user.id)] : []),
-      // Don't garbage-collect the current user from the cache
-      // since it's used in many places and we don't want to refetch it unnecessarily.
-      keepUnusedDataFor: Infinity,
-    }),
     createUser: builder.mutation<User, CreateUserRequest>({
       query: (body) => ({
         method: "POST",
@@ -125,29 +115,13 @@ export const userApi = Api.injectEndpoints({
       query: () => "/api/mt/user/attributes",
       providesTags: (response) => (response ? [listTag("user")] : []),
     }),
-    updateUserModalQbnewb: builder.mutation<void, UserId>({
-      query: (id) => ({
-        method: "PUT",
-        url: `/api/user/${id}/modal/qbnewb`,
-      }),
-      invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("user", id), idTag("current-user", id)]),
-    }),
   }),
 });
-
-export const loadCurrentUser = () =>
-  userApi.endpoints.getCurrentUser.initiate();
-
-export const refetchCurrentUser = () =>
-  userApi.endpoints.getCurrentUser.initiate(undefined, { forceRefetch: true });
 
 export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
   useGetUserQuery,
-  useGetCurrentUserQuery,
-  useLazyGetCurrentUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
   useDeactivateUserMutation,
@@ -155,5 +129,4 @@ export const {
   useUpdateUserMutation,
   useGetPasswordResetUrlMutation,
   useListUserAttributesQuery,
-  useUpdateUserModalQbnewbMutation,
 } = userApi;

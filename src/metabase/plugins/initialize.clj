@@ -77,6 +77,12 @@
         :when info]
     plugin-name))
 
+(defn registered?
+  "Whether a plugin with `plugin-name` has been registered."
+  [plugin-name]
+  {:pre [(string? plugin-name)]}
+  (some? (registered-info plugin-name)))
+
 (defn- loaded? [plugin-name]
   (boolean (get-in @plugins [plugin-name :loaded?])))
 
@@ -169,8 +175,8 @@
         (register! plugin-info)))
     :ok))
 
-(defn- registered? [{{plugin-name :name} :info}]
-  (some? (registered-info plugin-name)))
+(defn- info-registered? [{{plugin-name :name} :info}]
+  (registered? plugin-name))
 
 (mu/defn register-plugin-with-info!
   "Register a plugin using parsed info from its manifest. Returns truthy if the plugin was successfully registered;
@@ -181,11 +187,11 @@
                     [:name    :string]
                     [:version :string]]]]]
   (validate-plugin-api-version! info)
-  (or (registered? info)
+  (or (info-registered? info)
       (do
         (.lock plugin-lock)
         (try
-          (or (registered? info)
+          (or (info-registered? info)
               (register! info))
           (finally
             (.unlock plugin-lock))))))

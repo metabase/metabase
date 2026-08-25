@@ -1,7 +1,7 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { createSeriesCard } from "metabase/common/utils/series";
+import { dayjs } from "metabase/dayjs";
 import { OTHER_BUCKET_LABEL } from "metabase/explorations/constants";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";

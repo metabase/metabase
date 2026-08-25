@@ -1,13 +1,14 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
 import * as d3 from "d3";
-import dayjs from "dayjs";
 import { merge, updateIn } from "icepick";
+import { shallowEqual } from "react-redux";
 import _ from "underscore";
 
 import { timelineApi } from "metabase/api";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { getSortedTimelines } from "metabase/common/utils/timelines";
+import { dayjs } from "metabase/dayjs";
 import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import {
   isQuestionDirty,
@@ -46,6 +47,8 @@ import {
 import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import type {
   Bookmark,
+  ColumnFormattingSetting,
+  ColumnSettings,
   Dataset,
   DatasetColumn,
   DatasetQuery,
@@ -104,7 +107,6 @@ const SIDEBARS = [
   "isShowingChartTypeSidebar",
   "isShowingChartSettingsSidebar",
   "isShowingTimelineSidebar",
-  "isShowingAIQuestionAnalysisSidebar",
 
   "isShowingSummarySidebar",
 
@@ -663,18 +665,65 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
   },
 );
 
+// the card's dataset_query is updated on every native query keystroke
+// but getRawSeries doesn't usually use the updated dataset_query (it prefers lastRunDatasetQuery)
+// so we use this equality check to avoid re-rendering the visualization on every keystroke
+function areRawSeriesEqual(a: Series | null, b: Series | null) {
+  if (a === b) {
+    return true;
+  }
+  if (a == null || b == null || a.length !== 1 || b.length !== 1) {
+    return false;
+  }
+  const {
+    card: {
+      visualization_settings: settingsA,
+      parameters: parametersA,
+      ...cardRestA
+    },
+    ...restA
+  } = a[0];
+  const {
+    card: {
+      visualization_settings: settingsB,
+      parameters: parametersB,
+      ...cardRestB
+    },
+    ...restB
+  } = b[0];
+  return (
+    shallowEqual(restA, restB) &&
+    // getRawSeries creates new cards and visualization_settings
+    shallowEqual(cardRestA, cardRestB) &&
+    shallowEqual(settingsA, settingsB) &&
+    // applyTemplateTagParameters creates completely new parameters - we need deep equality here
+    _.isEqual(parametersA, parametersB)
+  );
+}
+
+const EMPTY_COLUMN_FORMATTING: ColumnFormattingSetting[] = [];
+const EMPTY_COLUMN_SETTINGS: ColumnSettings = {};
+
 /**
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
   [getCard, getFirstQueryResult, getLastRunDatasetQuery, getIsShowingRawTable],
-  (card, queryResult, lastRunDatasetQuery, isShowingRawTable): Series => {
+  (
+    card,
+    queryResult,
+    lastRunDatasetQuery,
+    isShowingRawTable,
+  ): Series | null => {
+    if (card == null) {
+      return null;
+    }
     const rawSeries = createRawSeries({
-      card: card!,
+      card,
       queryResult,
       datasetQuery: lastRunDatasetQuery,
     });
-    if (isShowingRawTable && rawSeries?.length > 0) {
+    if (isShowingRawTable && rawSeries != null && rawSeries.length > 0) {
       const [{ card, ...rest }] = rawSeries;
       return [
         {
@@ -685,14 +734,19 @@ export const getRawSeries = createSelector(
             visualization_settings: {
               ...card.visualization_settings,
               "table.pivot": false,
-              "table.column_formatting": [],
-              column_settings: {},
+              "table.column_formatting": EMPTY_COLUMN_FORMATTING,
+              column_settings: EMPTY_COLUMN_SETTINGS,
             },
           },
         },
       ];
     }
     return rawSeries;
+  },
+  {
+    memoizeOptions: {
+      resultEqualityCheck: areRawSeriesEqual,
+    },
   },
 );
 
@@ -766,7 +820,7 @@ export const getTimeseriesDataInterval = createSelector(
     if (!isTimeseries || !xValues) {
       return null;
     }
-    const columns = series[0]?.data?.cols ?? [];
+    const columns = series?.[0]?.data?.cols ?? [];
     const dimensions = settings?.["graph.dimensions"] ?? [];
     const dimensionColumns = dimensions.map((dimension) =>
       columns.find((column) => column != null && column.name === dimension),
