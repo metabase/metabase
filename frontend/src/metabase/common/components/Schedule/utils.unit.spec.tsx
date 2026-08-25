@@ -188,6 +188,26 @@ describe("normalizeScheduleValue", () => {
     });
   });
 
+  it("should drop values the type does not use", () => {
+    expect(
+      normalizeScheduleValue(
+        {
+          schedule_type: "hourly",
+          schedule_day: "mon",
+          schedule_frame: "first",
+          schedule_hour: 8,
+        },
+        getScheduleDefaults,
+      ),
+    ).toEqual({
+      schedule_type: "hourly",
+      schedule_day: null,
+      schedule_frame: null,
+      schedule_hour: null,
+      schedule_minute: 0,
+    });
+  });
+
   it("should leave a raw cron expression untouched", () => {
     const value: ScheduleValue = {
       schedule_type: "cron",

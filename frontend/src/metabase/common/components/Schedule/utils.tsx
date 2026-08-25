@@ -5,7 +5,7 @@ import _ from "underscore";
 import type { SelectProps } from "metabase/ui";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { isNotNull, removeNullAndUndefinedValues } from "metabase/utils/types";
+import { isNotNull } from "metabase/utils/types";
 import type { ScheduleSettings } from "metabase-types/api";
 
 import { defaultDay, defaultHour } from "./constants";
@@ -251,13 +251,7 @@ export const isScheduleComplete = (value: ScheduleValue): boolean =>
 export const normalizeScheduleValue = (
   value: ScheduleValue,
   getDefaults: GetScheduleDefaults,
-): ScheduleValue => {
-  if (isScheduleCronValue(value)) {
-    return value;
-  }
-
-  return _.defaults(
-    removeNullAndUndefinedValues(value),
-    getDefaults(value.schedule_type),
-  );
-};
+): ScheduleValue =>
+  isScheduleCronValue(value)
+    ? value
+    : changeScheduleType(value, value.schedule_type, getDefaults);
