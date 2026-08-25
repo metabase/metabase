@@ -50,6 +50,7 @@
   (case provider
     "anthropic"  (claude/model-display-name model)
     "bedrock"    (bedrock/model-display-name model)
+    "deepseek"   (deepseek/model-display-name model)
     "mistral"    (mistral/model-display-name model)
     "moonshot"   (moonshot/model-display-name model)
     "openai"     (openai/model-display-name model)
