@@ -27,15 +27,21 @@
                (t2/select-one :model/PermissionsGroup :id))
       (create-permission-group! app)))
 
+(defn- database-level-permission?
+  "Whether `rows` (one `[group db perm-type]` entry of an [[perms/index-database-permissions]]
+   index) is exactly a database-wide permission of `value`, with no table-level rows."
+  [rows value]
+  (and (= 1 (count rows))
+       (let [{:keys [table_id perm_value]} (first rows)]
+         (and (nil? table_id)
+              (= perm_value value)))))
+
 (defn- restrict-query-creation! [group]
   (let [database-ids (t2/select-pks-set :model/Database :router_database_id nil)
         permissions  (or (perms/index-database-permissions [(:id group)] database-ids) {})]
     (doseq [database-id database-ids
-            :let [current-value (-> permissions
-                                    (get [(:id group) database-id :perms/create-queries])
-                                    first
-                                    :perm_value)]
-            :when (not= current-value :no)]
+            :let [rows (get permissions [(:id group) database-id :perms/create-queries])]
+            :when (not (database-level-permission? rows :no))]
       (perms/set-database-permission! permissions group database-id :perms/create-queries :no))))
 
 (defn- restore-trashed-collection!
@@ -181,10 +187,7 @@
   (let [current-permissions (get permissions [group-id database-id :perms/view-data])
         selected-table-ids  (into #{} (comp (map :id) (filter table-ids)) tables)]
     (if (empty? selected-table-ids)
-      (and (= 1 (count current-permissions))
-           (let [{:keys [table_id perm_value]} (first current-permissions)]
-             (and (nil? table_id)
-                  (= perm_value :blocked))))
+      (database-level-permission? current-permissions :blocked)
       (= (into {}
                (map (fn [{:keys [id]}]
                       [id (if (contains? selected-table-ids id)
