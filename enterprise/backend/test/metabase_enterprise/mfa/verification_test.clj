@@ -180,7 +180,7 @@
         (let [ai-id     (t2/select-one-fn :id :auth_identity :user_id user-id :provider "totp")
               raw       (t2/select-one-fn :credentials :auth_identity :id ai-id)
               plaintext (encryption-test/with-secret-key k1
-                          (encryption/maybe-decrypt-accepting-plaintext raw))
+                          (encryption/maybe-decrypt raw))
               rotated   (encryption-test/with-secret-key k2
                           (encryption/maybe-encrypt plaintext))]
           (is (encryption/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")

@@ -1739,7 +1739,7 @@
                                                           [:in :key (map setting-name settings)]
                                                           ;; these are *definitely* decrypted already, let's not bother looking
                                                           [:not [:in :value ["true" "false"]]]]})
-                :let [decrypted-v (encryption/maybe-decrypt-accepting-plaintext v)]
+                :let [decrypted-v (try (encryption/maybe-decrypt v) (catch Throwable _ v))]
                 :when (not= decrypted-v v)]
           (t2/update! :setting :key k {:value decrypted-v}))))))
 
@@ -1771,4 +1771,4 @@
   ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
   (if (= "encryption-check" (:key setting))
     setting
-    (update setting :value encryption/maybe-decrypt-accepting-plaintext)))
+    (update setting :value (fn [v] (try (encryption/maybe-decrypt v) (catch Throwable _ v))))))

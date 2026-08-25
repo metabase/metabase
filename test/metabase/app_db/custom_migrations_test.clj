@@ -1977,8 +1977,8 @@
                 (is (not-empty settings-after))
                 (is (every? encryption/possibly-encrypted-string?
                             (map :value settings-after)))
-                (is (= (set (map #(update % :value encryption/maybe-decrypt-accepting-plaintext) settings-before))
-                       (set (map #(update % :value encryption/maybe-decrypt-accepting-plaintext) settings-after))))))))))))
+                (is (= (set (map #(update % :value (fn [vv] (try (encryption/maybe-decrypt vv) (catch Throwable _ vv)))) settings-before))
+                       (set (map #(update % :value (fn [vv] (try (encryption/maybe-decrypt vv) (catch Throwable _ vv)))) settings-after))))))))))))
 
 (deftest ^:mb/old-migrations-test migrate-uploads-settings-test-2
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
@@ -2721,7 +2721,7 @@
           (testing "plaintext credentials are encrypted and decrypt to the original value"
             (is (encryption/possibly-encrypted-string? (raw-cred plain-id)))
             (is (= {:password_hash "h" :password_salt "s"}
-                   (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext (raw-cred plain-id))))))
+                   (json/decode+kw (encryption/maybe-decrypt (raw-cred plain-id))))))
           (testing "already-encrypted credentials row is left unchanged"
             (is (= enc-str (raw-cred enc-id)))))))))
 

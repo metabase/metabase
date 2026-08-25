@@ -56,9 +56,16 @@
   []
   (let [raw (t2/select-one-fn :value :setting :key "encryption-check")]
     (cond
-      (or (nil? raw) (= raw "unencrypted"))               :unknown
-      (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw)) :valid
-      :else                                               :invalid)))
+      (or (nil? raw) (= raw "unencrypted"))
+      :unknown
+
+      (try
+        (string/valid-uuid? (encryption/maybe-decrypt raw))
+        (catch Throwable _ false))
+      :valid
+
+      :else
+      :invalid)))
 
 (defn- reencrypt-encrypted-column!
   "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-columns`.
@@ -71,8 +78,12 @@
   [conn table column encrypt-str-fn clear-undecryptable?]
   (doseq [{:keys [id value]} (t2/select [table :id [column :value]])]
     (when (some? value)
-      (let [decrypted (encryption/maybe-decrypt-accepting-plaintext value)]
-        (if (encryption/possibly-encrypted-string? decrypted)
+      (let [decrypted (if (encryption/possibly-encrypted-string? value)
+                        (try
+                          (encryption/maybe-decrypt value)
+                          (catch Throwable _ ::undecryptable))
+                        value)]
+        (if (= decrypted ::undecryptable)
           (if clear-undecryptable?
             (do
               (log/warnf "Can't decrypt %s.%s for id %s with MB_ENCRYPTION_SECRET_KEY even though the key is correct for this database; resetting the value to {}. It was likely written with a different key and has been unreadable at runtime."
@@ -113,9 +124,15 @@
       ;; of whether they are the "current version" or not), should be updated with the new key
       (doseq [{:keys [id value]} (t2/select [:secret :id :value])]
         (when (some? value)
-          (t2/update! :conn conn :secret
-                      {:id id}
-                      {:value (encrypt-bytes-fn (encryption/maybe-decrypt-bytes-accepting-plaintext (maybe-blob->bytes value)))})))
+          (let [b         (maybe-blob->bytes value)
+                decrypted (if (encryption/possibly-encrypted-bytes? b)
+                            (try
+                              (encryption/maybe-decrypt-bytes b)
+                              (catch Throwable _ b))
+                            b)]
+            (t2/update! :conn conn :secret
+                        {:id id}
+                        {:value (encrypt-bytes-fn decrypted)}))))
       (t2/delete! :conn conn :model/QueryCache))))
 
 (defn encrypt-db
