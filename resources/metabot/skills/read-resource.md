@@ -21,6 +21,8 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **Use `search` when you don't know what or where** something lives — open-ended discovery by topic.
 
+> **If you have no `search` tool**, substitute whichever discovery tool you do have (e.g. `retrieve_library_entities`) everywhere this skill says `search` — the loop is the same, only the entry point differs. Its results carry the same URIs, so everything below about drilling in with `read_resource` still applies.
+
 **The exploration loop**:
 1. `search` for a topic → every result carries a `uri` attribute.
 2. If a top hit is a container — its element name is `<dashboard>` — `read_resource` on its URI to enumerate members instead of re-searching. (`search` never returns collections; reach those by navigating, e.g. `metabase://collection/{id}/items`.)
