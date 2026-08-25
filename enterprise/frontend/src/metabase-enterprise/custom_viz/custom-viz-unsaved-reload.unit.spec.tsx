@@ -7,8 +7,12 @@ import {
   PLUGIN_CUSTOM_VIZ,
 } from "metabase/plugins";
 import { getCard } from "metabase/query_builder";
-// The query builder's actions, harness and store selectors are not part of its
-// interface, so the spec reaches them by path.
+// DEBT: this spec drives the query builder and asserts on its store, so it
+// needs internals no app-code consumer of the module needs. It is really a
+// query builder test that uses a custom viz as its fixture, and it belongs in
+// the query builder. It cannot move as it stands, because a feature module may
+// not import metabase-enterprise, so moving it means faking the custom viz
+// through the plugin registry instead of importing custom_viz directly.
 /* eslint-disable metabase/enforce-module-public-api */
 import { cancelQuery } from "metabase/query_builder/actions";
 import { setup } from "metabase/query_builder/containers/test-utils";

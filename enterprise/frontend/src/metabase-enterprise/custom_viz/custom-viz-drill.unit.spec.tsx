@@ -3,7 +3,8 @@ import fetchMock from "fetch-mock";
 
 import { act, screen, waitFor, within } from "__support__/ui";
 import { getCard } from "metabase/query_builder";
-// The query builder's test harness is not part of its interface, so the spec reaches it by path.
+// DEBT: a spec outside the query builder driving its test harness. See the note
+// in custom-viz-unsaved-reload.unit.spec.tsx.
 // eslint-disable-next-line metabase/enforce-module-public-api
 import { setup } from "metabase/query_builder/containers/test-utils";
 import { checkNotNull } from "metabase/utils/types";
