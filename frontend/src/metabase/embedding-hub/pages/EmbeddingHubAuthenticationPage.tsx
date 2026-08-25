@@ -1,9 +1,12 @@
+import type { ComponentType } from "react";
+import { Suspense, lazy } from "react";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import type { SettingsJWTFormProps } from "metabase/plugins";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
 import { Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
@@ -11,6 +14,16 @@ import { Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import { AuthenticationUpsellPage } from "../upsells";
 
 const ADMIN_AUTHENTICATION_URL = "/admin/settings/authentication";
+
+// Loaded through the same route slot settingsRoutes.tsx uses, so the hub
+// shares the auth-jwt chunk instead of pulling the form back out of it.
+const SettingsJWTForm = lazy(() =>
+  PLUGIN_AUTH_PROVIDERS.settingsJWTForm().then(({ Component }) => ({
+    // PluginRoute's Component is untyped -- the loaded module always accepts
+    // SettingsJWTFormProps, since it's SettingsJWTForm itself.
+    default: Component as ComponentType<SettingsJWTFormProps>,
+  })),
+);
 
 /**
  * A JWT-only view of the authentication settings. The admin authentication
@@ -69,7 +82,9 @@ function AuthenticationSection({
 
   return (
     <>
-      <PLUGIN_AUTH_PROVIDERS.SettingsJWTForm title={null} />
+      <Suspense fallback={<LoadingAndErrorWrapper loading />}>
+        <SettingsJWTForm title={null} />
+      </Suspense>
       <OtherAuthMethodsBanner />
     </>
   );

@@ -40,7 +40,7 @@ function setup({
   setupUpdateSettingEndpoint();
   setupGroupsEndpoint([createMockGroup()]);
 
-  // Settings before plugins: PLUGIN_AUTH_PROVIDERS.SettingsJWTForm is only
+  // Settings before plugins: PLUGIN_AUTH_PROVIDERS.settingsJWTForm is only
   // registered when `hasPremiumFeature("sso_jwt")` is true, and that reads the
   // mocked settings.
   const storeSettings = mockSettings(settings);
