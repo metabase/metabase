@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import {
   findRequests,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
+  setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -31,8 +31,7 @@ const setup = ({
     [SETTING_NAME]: value,
   });
 
-  setupPropertiesEndpoints(settings);
-  setupUpdateSettingEndpoint();
+  setupStatefulSettingsEndpoints(settings);
   setupSettingsEndpoints([
     createMockSettingDefinition({
       key: SETTING_NAME,
@@ -49,6 +48,11 @@ const setup = ({
       <CollectUserDataInput />
       <UndoListing />
     </div>,
+    {
+      storeInitialState: {
+        settings: createMockSettingsState({ [SETTING_NAME]: value }),
+      },
+    },
   );
 };
 
@@ -74,6 +78,7 @@ describe("CollectUserDataInput", () => {
 
   it("should toggle the `analytics-pii-retention-enabled` setting off", async () => {
     setup({ value: true });
+    expect(screen.getByRole("switch")).toBeChecked();
     await userEvent.click(screen.getByRole("switch"));
     expect(trackSimpleEvent).toHaveBeenCalledWith({
       event: "analytics_pii_retention_changed",
@@ -90,6 +95,7 @@ describe("CollectUserDataInput", () => {
 
   it("should toggle the `analytics-pii-retention-enabled` setting on", async () => {
     setup({ value: false });
+    expect(screen.getByRole("switch")).not.toBeChecked();
     await userEvent.click(screen.getByRole("switch"));
 
     const [{ url, body }] = await findRequests("PUT");

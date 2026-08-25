@@ -9,9 +9,9 @@ import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
+import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsTenantUser } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
@@ -95,9 +95,8 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
     );
 
     const icon = getCollectionIcon(collection, { isTenantUser });
-    const isRegularCollection = PLUGIN_COLLECTIONS.isRegularCollection(
-      collection as unknown as Collection,
-    );
+    const isRegularCollection =
+      PLUGIN_COLLECTIONS.isRegularCollection(collection);
 
     const content = (
       <>
@@ -105,6 +104,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
           <SidebarIcon {...icon} isSelected={isSelected} />
         </TreeNode.IconContainer>
         <NameContainer>{collection.name}</NameContainer>
+        {/* Unjustified type cast. FIXME */}
         {rightSection?.(collection as unknown as ITreeNodeItem)}
       </>
     );
@@ -146,6 +146,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
     { item, ...props }: TreeNodeProps,
     ref,
   ) {
+    // Unjustified type cast. FIXME
     const collection = item as unknown as Collection;
 
     const link = (droppableProps?: DroppableProps) => (

@@ -31,7 +31,7 @@ type DataSelectorTablePickerProps = {
   isLoading?: boolean;
   minTablesToShowSearch?: number;
   schemas: Schema[];
-  selectedDatabase: Database;
+  selectedDatabase?: Database;
   selectedSchema?: Schema;
   selectedTable?: Table;
   tables: Table[];
@@ -41,8 +41,10 @@ type DataSelectorTablePickerProps = {
 
 type HeaderProps = Pick<
   DataSelectorTablePickerProps,
-  "schemas" | "selectedSchema" | "selectedDatabase" | "onBack"
->;
+  "schemas" | "selectedSchema" | "onBack"
+> & {
+  selectedDatabase: Database;
+};
 
 type Item = {
   name: string;

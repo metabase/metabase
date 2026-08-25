@@ -1,5 +1,6 @@
-import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
+import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -26,7 +27,12 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { MetabotProvider } from "../context";
 import { sendAgentRequest } from "../state/actions";
-import { getMetabotInitialState } from "../state/reducer-utils";
+
+import {
+  convoForAgent,
+  createTestMetabotState,
+  testConversationId,
+} from "./utils";
 
 jest.mock("metabase/api/ai-streaming", () => ({
   aiStreamingQuery: jest.fn(),
@@ -79,12 +85,11 @@ describe("query builder code edits from omnibot", () => {
     mockedAiStreamingQuery.mockImplementation(async (request, callbacks) => {
       requestBody = request.body;
 
-      callbacks?.onStartMessagePart?.({ messageId: "msg_test_code_edit" });
+      callbacks?.onStart?.({ type: "start", messageId: "msg_test_code_edit" });
       callbacks?.onTextPart?.("Reviewing the query.");
       callbacks?.onDataPart?.({
-        type: "code_edit",
-        version: 1,
-        value: {
+        type: "data-code_edit",
+        data: {
           buffer_id: "qb",
           mode: "rewrite",
           value: SUGGESTED_SQL,
@@ -95,12 +100,10 @@ describe("query builder code edits from omnibot", () => {
         aborted: false,
         toolCalls: [],
         data: [],
-        text: null,
-        parts: [],
-        history: [],
       };
     });
 
+    // Unjustified type cast. FIXME
     const storeInitialState = createMockState({
       currentUser: createMockUser(),
       settings: mockSettings({
@@ -110,7 +113,11 @@ describe("query builder code edits from omnibot", () => {
         databases: [TEST_DB],
         questions: [TEST_NATIVE_CARD],
       }),
-      metabot: getMetabotInitialState(),
+      metabot: assocIn(
+        createTestMetabotState(),
+        ["conversations", testConversationId("omnibot"), "title"],
+        "SQL edit",
+      ),
     } as any);
 
     const metadata = getMetadata(storeInitialState);
@@ -121,25 +128,24 @@ describe("query builder code edits from omnibot", () => {
         <QuerySuggestionProbe question={question} />
       </MetabotProvider>,
       {
-        storeInitialState: storeInitialState as any,
+        storeInitialState: storeInitialState,
       },
     );
+    // Unjustified type cast. FIXME
     const typedStore = store as Omit<typeof store, "dispatch" | "getState"> & {
-      dispatch: ThunkDispatch<State, void, AnyAction>;
+      dispatch: ThunkDispatch<State, void, UnknownAction>;
       getState: () => State;
     };
 
-    const conversationId =
-      typedStore.getState().metabot.conversations.omnibot?.conversationId;
-
-    expect(conversationId).toBeDefined();
+    const convo = convoForAgent(typedStore);
+    const { conversationId } = convo;
 
     await act(async () => {
       await typedStore.dispatch(
         sendAgentRequest({
-          agentId: "omnibot",
           message: "Please rewrite this query",
-          conversation_id: conversationId as string,
+          conversation_id: convo.conversationId,
+          isFullPageMetabot: false,
           context: {
             user_is_viewing: [
               {
@@ -160,8 +166,6 @@ describe("query builder code edits from omnibot", () => {
             current_time_with_timezone: "2026-03-04T00:00:00Z",
             capabilities: [],
           },
-          history: [],
-          state: {},
         }),
       );
     });
@@ -175,7 +179,7 @@ describe("query builder code edits from omnibot", () => {
     });
 
     expect(
-      typedStore.getState().metabot.conversations.omnibot?.messages,
+      typedStore.getState().metabot.conversations[conversationId]?.messages,
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -185,7 +189,7 @@ describe("query builder code edits from omnibot", () => {
         expect.objectContaining({
           type: "data_part",
           externalId: "msg_test_code_edit",
-          part: expect.objectContaining({ type: "code_edit" }),
+          part: expect.objectContaining({ type: "data-code_edit" }),
         }),
       ]),
     );

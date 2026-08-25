@@ -307,3 +307,15 @@
               (set-interval! :crowberto 204)
               (set-interval! user 204)
               (set-interval! :rasta 403))))))))
+
+(deftest generic-setting-write-test
+  (testing "PUT /api/setting/:key -- granting the :setting application permission lets a non-admin write a settings-manager-visible setting"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temporary-setting-values [site-name "Metabase"]
+          (mt/user-http-request user :put 403 "setting/site-name" {:value "Nope"})
+          (perms/grant-application-permissions! group :setting)
+          (mt/user-http-request user :put 204 "setting/site-name" {:value "NewName"})
+          (is (= "NewName" (mt/user-http-request :crowberto :get 200 "setting/site-name"))))))))

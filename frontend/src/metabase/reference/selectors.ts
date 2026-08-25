@@ -8,11 +8,7 @@ import {
   getShallowSegments as getSegments,
   getShallowTables as getTables,
 } from "metabase/selectors/metadata";
-import type {
-  Card,
-  NormalizedField,
-  NormalizedTable,
-} from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import type {
   StubbedDatabase,
@@ -22,20 +18,20 @@ import type {
 } from "./types";
 import { idsToObjectMap } from "./utils";
 
-export interface ReferenceRouteParams {
+// A `type`, not an `interface`, so `useParams<ReferenceRouteParams>()` accepts
+// it: the hook's constraint needs an implicit index signature.
+export type ReferenceRouteParams = {
   segmentId?: string;
   databaseId?: string;
   tableId?: string;
   fieldId?: string;
-}
+};
 
 export interface ReferenceRouteProps {
   params: ReferenceRouteParams;
 }
 
 interface ReferenceSliceState {
-  isLoading: boolean;
-  error: unknown;
   isEditing: boolean;
   isFormulaExpanded: boolean;
 }
@@ -49,22 +45,18 @@ export type StateWithReference = State & {
   revisions?: Record<string, Record<string | number, unknown>>;
 };
 
-export const getUser = (state: StateWithReference) => state.currentUser;
+export { getUser } from "metabase/current-user";
 
-export const getSegmentId = (
-  _state: StateWithReference,
-  props: ReferenceRouteProps,
-) => Number.parseInt(props.params.segmentId ?? "");
+export const getSegmentId = (_state: State, props: ReferenceRouteProps) =>
+  Number.parseInt(props.params.segmentId ?? "");
 export const getSegment = createSelector(
   [getSegmentId, getSegments],
   (segmentId, segments): StubbedSegment =>
     segments?.[segmentId] || { id: segmentId },
 );
 
-export const getDatabaseId = (
-  _state: StateWithReference,
-  props: ReferenceRouteProps,
-) => Number.parseInt(props.params.databaseId ?? "");
+export const getDatabaseId = (_state: State, props: ReferenceRouteProps) =>
+  Number.parseInt(props.params.databaseId ?? "");
 
 export const getDatabase = createSelector(
   [getDatabaseId, getDatabases],
@@ -72,17 +64,13 @@ export const getDatabase = createSelector(
     databases?.[databaseId] || { id: databaseId },
 );
 
-export const getTableId = (
-  _state: StateWithReference,
-  props: ReferenceRouteProps,
-) => Number.parseInt(props.params.tableId ?? "");
+export const getTableId = (_state: State, props: ReferenceRouteProps) =>
+  Number.parseInt(props.params.tableId ?? "");
 // export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
 export const getTablesByDatabase = createSelector(
   [getTables, getDatabase],
   (tables, database) =>
-    tables && database.tables
-      ? idsToObjectMap(database.tables, tables)
-      : ({} as Record<string, NormalizedTable>),
+    tables && database.tables ? idsToObjectMap(database.tables, tables) : {},
 );
 export const getTableBySegment = createSelector(
   [getSegment, getTables],
@@ -101,23 +89,15 @@ export const getTable = createSelector(
         : { id: 0 },
 );
 
-export const getFieldId = (
-  _state: StateWithReference,
-  props: ReferenceRouteProps,
-) => Number.parseInt(props.params.fieldId ?? "");
+export const getFieldId = (_state: State, props: ReferenceRouteProps) =>
+  Number.parseInt(props.params.fieldId ?? "");
 export const getFieldsByTable = createSelector(
   [getTable, getFields],
-  (table, fields) =>
-    table.fields
-      ? idsToObjectMap(table.fields, fields)
-      : ({} as Record<string, NormalizedField>),
+  (table, fields) => (table.fields ? idsToObjectMap(table.fields, fields) : {}),
 );
 export const getFieldsBySegment = createSelector(
   [getTableBySegment, getFields],
-  (table, fields) =>
-    table.fields
-      ? idsToObjectMap(table.fields, fields)
-      : ({} as Record<string, NormalizedField>),
+  (table, fields) => (table.fields ? idsToObjectMap(table.fields, fields) : {}),
 );
 export const getField = createSelector(
   [getFieldId, getFields],
@@ -128,10 +108,12 @@ export const getFieldBySegment = createSelector(
   (fieldId, fields): StubbedField => fields[fieldId] || { id: fieldId },
 );
 
-const getQuestions = (state: StateWithReference) =>
+const getQuestions = (state: State) =>
   getIn(state, ["entities", "questions"]) || {};
 
-const getRevisions = (state: StateWithReference) => state.revisions;
+const getRevisions = (state: State) =>
+  // Unjustified type cast. FIXME
+  (state as StateWithReference).revisions;
 
 export const getSegmentRevisions = createSelector(
   [getSegmentId, getRevisions],
@@ -142,17 +124,12 @@ export const getTableQuestions = createSelector(
   [getTable, getQuestions],
   (table, questions): Card[] => {
     const tableId = table.id;
+    // Unjustified type cast. FIXME
     return Object.values(questions as Record<string, Card>).filter(
       (question) => question.table_id === tableId,
     );
   },
 );
-
-export const getLoading = (state: State) =>
-  (state as StateWithReference).reference.isLoading;
-
-export const getError = (state: State) =>
-  (state as StateWithReference).reference.error;
 
 export const getHasSingleSchema = createSelector(
   [getTablesByDatabase],
@@ -168,7 +145,9 @@ export const getHasSingleSchema = createSelector(
 );
 
 export const getIsEditing = (state: State) =>
+  // Unjustified type cast. FIXME
   (state as StateWithReference).reference.isEditing;
 
-export const getIsFormulaExpanded = (state: StateWithReference) =>
-  state.reference.isFormulaExpanded;
+export const getIsFormulaExpanded = (state: State) =>
+  // Unjustified type cast. FIXME
+  (state as StateWithReference).reference.isFormulaExpanded;

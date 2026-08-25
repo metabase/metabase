@@ -1,9 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
-import { Link as RouterLink } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -104,7 +104,7 @@ function ModelActionListItem({
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Item
-              component={RouterLink}
+              component={ForwardRefLink}
               data-testid="entity-menu-link"
               leftSection={
                 <Icon name={canEdit ? "pencil" : "eye"} aria-hidden />

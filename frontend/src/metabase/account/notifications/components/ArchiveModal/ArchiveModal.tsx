@@ -7,7 +7,7 @@ import type { NotificationType } from "metabase/notifications/types";
 import { formatChannelRecipients } from "metabase/pulse";
 import { Box, Button, Stack } from "metabase/ui";
 import Settings from "metabase/utils/settings";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
+import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 type ArchiveModalProps = {
@@ -52,7 +52,7 @@ function ArchiveNotificationModal({
         <Button
           key="submit"
           variant="filled"
-          color="error"
+          color="feedback-negative"
           onClick={handleArchiveClick}
         >
           {getSubmitMessage(type, hasUnsubscribed)}

@@ -22,6 +22,7 @@ export const getSchemaEntityId = (schemaEntity: Schema) => ({
 export const getTableEntityId = (tableEntity: Table) => ({
   databaseId: tableEntity.db_id,
   schemaName: tableEntity.schema_name,
+  // Unjustified type cast. FIXME
   tableId: tableEntity.id as ConcreteTableId,
 });
 

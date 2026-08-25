@@ -1,13 +1,13 @@
 ::-webkit-input-placeholder {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 :-moz-placeholder {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 :-ms-input-placeholder {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .FormField {
@@ -16,13 +16,13 @@
 }
 
 .FormField.FormFieldError {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }
 
 .FormLabel {
   display: block;
   font-weight: 900;
-  font-size: 0.88em;
+  font-size: 0.75rem;
   color: inherit;
   margin-bottom: 0.5em;
 }
@@ -40,7 +40,7 @@
 }
 
 .FormField.FormFieldError .FormInput {
-  border-color: var(--mb-color-error);
+  border-color: var(--mb-color-feedback-negative);
 }
 
 .noFocus:focus {

@@ -18,7 +18,10 @@
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))
 
-(defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
+(defn visible-to?
+  "Whether the search-model described by `spec` may be returned to the user described by `search-ctx`, per the spec's
+  `:visibility`."
+  [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
     :all       true
     :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
@@ -33,15 +36,11 @@
              (dissoc search.config/filters :id)))
 
 (defn- spec-supported-attr-keys
-  "All attr keys a spec supports, including those provided by function attrs.
+  "All attr keys a spec supports.
   Keys with value false are excluded — false means 'not present' in the spec DSL."
   [spec]
   (into #{}
-        (mapcat (fn [[k v]]
-                  (cond
-                    (search.spec/function-attr? v) (conj (search.spec/function-attr-provides v) k)
-                    v [k]
-                    :else [])))
+        (keep (fn [[k v]] (when v k)))
         (:attrs spec)))
 
 (defn search-context->applicable-models
@@ -121,7 +120,7 @@
     (if (premium-features/has-feature? :library)
       collection-filter
       [:and
-       [:not= :search_index.model [:inline "table"]]
+       [:not= :search_index.model "table"]
        collection-filter])))
 
 (defn personal-collections-where-clause
@@ -149,13 +148,13 @@
     ;; query on instances with many users.
     ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
     (let [descendant-of-personal-collection
-          [:exists {:select [[[:inline 1]]]
-                    :from   [[:collection :pc]]
-                    :where  [:and
-                             [:not= :pc.personal_owner_id nil]
-                             [:= :pc.location "/"]
-                             [:like :collection.location
-                              [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
+          [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                     :from   [[:collection :pc]]
+                                     :where  [:and
+                                              [:not= :pc.personal_owner_id nil]
+                                              [:= :pc.location "/"]
+                                              [:like :collection.location
+                                               [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
       (case filter-type
         "only"
         [:or
@@ -184,7 +183,7 @@
        [:= [:inline 0] [:inline 1]])))
   ([search-context model-col source-type-col]
    [:or
-    [:!= model-col [:inline "transform"]]
+    [:!= model-col "transform"]
     (transform-source-type-where-clause search-context source-type-col)]))
 
 (defn filter-clauses

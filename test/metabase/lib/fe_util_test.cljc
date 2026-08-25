@@ -13,6 +13,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
@@ -218,9 +219,7 @@
                   (lib/expression expression-name
                                   (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2))
                   (lib/expression other-expression-name
-                                  [:expression {:base-type :type/Integer} expression-name]))
-        ;;
-
+                                  [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} expression-name]))
         stage-number -1]
     (testing "expression references"
       (mu/disable-enforcement
@@ -702,6 +701,17 @@
         (lib.filter/is-null column)
         (lib.filter/and (lib.filter/time-interval column -10 :month) true)))))
 
+(deftest ^:parallel relative-date-filter-parts-on-temporal-expression-test
+  (testing "QUE-2567 a relative-date filter over a temporal expression column round-trips to date-picker parts"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/expression "Foo" (lib/datetime-add (meta/field-metadata :orders :created-at) 5 :day)))
+          query (lib/filter query (lib/time-interval (lib/expression-ref query "Foo") -12 :month))
+          parts (lib.fe-util/relative-date-filter-parts query -1 (first (lib/filters query)))]
+      (is (some? parts))
+      (is (=? {:value -12
+               :unit  :month}
+              parts)))))
+
 (deftest ^:parallel exclude-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
         column (m/filter-vals some? (meta/field-metadata :checkins :date))]
@@ -870,6 +880,34 @@
                          :lib/source :source/aggregations
                          :lib/source-uuid string?}]}
             (lib.fe-util/expression-parts query (second (lib/aggregations query)))))))
+
+(deftest ^:parallel expression-parts-preserves-join-disambiguation-test
+  (testing (str "same-named aggregations from different joins keep their disambiguated long display names "
+                "when their :field refs are read back via expression-parts (#76986)")
+    (let [q0    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))])))
+          orders-id   (lib.tu.notebook/find-col-with-spec
+                       q0 (lib/orderable-columns q0) {:is-main-group true} {:display-name "ID"})
+          products-id (lib.tu.notebook/find-col-with-spec
+                       q0 (lib/orderable-columns q0) {:display-name "Products"} {:display-name "ID"})
+          q1    (-> q0
+                    (lib/aggregate (lib/distinct orders-id))
+                    (lib/aggregate (lib/distinct products-id))
+                    lib/append-stage)
+          agg1  (lib.tu.notebook/find-col-with-spec
+                 q1 (lib/expressionable-columns q1 1 nil)
+                 {:is-main-group true} {:long-display-name "Distinct values of ID"})
+          agg2  (lib.tu.notebook/find-col-with-spec
+                 q1 (lib/expressionable-columns q1 1 nil)
+                 {:is-main-group true} {:long-display-name "Distinct values of Products → ID"})
+          q2    (lib/expression q1 1 "diff" (lib/- agg2 agg1))
+          expr  (first (lib/expressions q2 1))
+          parts (lib.fe-util/expression-parts q2 1 expr)]
+      (is (= ["Distinct values of Products → ID" "Distinct values of ID"]
+             (mapv #(:long-display-name (lib/display-info q2 1 %))
+                   (:args parts)))))))
 
 (deftest ^:parallel join-condition-clause-test
   (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
@@ -1069,23 +1107,23 @@
 
 (deftest ^:parallel dependent-metadata-test-10
   (testing "Native query snippets should be included in dependent metadata"
-    (let [;; lib/native-query would try to look up the snippets:
+    (let [ ;; lib/native-query would try to look up the snippets:
           query {:lib/type :mbql/query
                  :database 1
-                 :stages [{:lib/type :mbql.stage/native
-                           :native "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
-                           :template-tags {"snippet: filter1" {:type :snippet
-                                                               :snippet-id 10
-                                                               :snippet-name "filter1"
-                                                               :name "snippet: filter1"
-                                                               :display-name "Filter 1"
-                                                               :id "def456"}
-                                           "snippet: filter2" {:type :snippet
-                                                               :snippet-id 20
-                                                               :snippet-name "filter2"
-                                                               :name "snippet: filter2"
-                                                               :display-name "Filter 2"
-                                                               :id "ghi789"}}}]}]
+                 :stages   [{:lib/type      :mbql.stage/native
+                             :native        "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
+                             :template-tags [{:type         :snippet
+                                              :snippet-id   10
+                                              :snippet-name "filter1"
+                                              :name         "snippet: filter1"
+                                              :display-name "Filter 1"
+                                              :id           "def456"}
+                                             {:type         :snippet
+                                              :snippet-id   20
+                                              :snippet-name "filter2"
+                                              :name         "snippet: filter2"
+                                              :display-name "Filter 2"
+                                              :id           "ghi789"}]}]}]
       (is (=? [{:type :database}
                {:type :schema}
                {:type :native-query-snippet :id 10}

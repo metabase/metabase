@@ -8,14 +8,15 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
+import { getValidCollectionItemModels } from "metabase/common/components/Pickers/utils";
 import {
   useGetPersonalCollection,
   useHasTokenFeature,
-  useSetting,
 } from "metabase/common/hooks";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import type {
   Collection,
   CollectionNamespace,
@@ -29,7 +30,6 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "../types";
-import { getValidCollectionItemModels } from "../utils";
 
 import { getRootCollectionItem } from "./utils";
 

@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { PLUGIN_NOTIFICATIONS_SDK } from "embedding-sdk-bundle/components/public/notifications";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -30,10 +29,13 @@ import { RefreshWidget } from "../RefreshWidget";
 
 import S from "./Dashboard.module.css";
 import { Grid, ParametersList } from "./components";
+import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
   const { dashboard, isEditing, isFullscreen, isSharing, selectedTabId } =
     useDashboardContext();
+
+  useDashboardChartPaste();
 
   const isHeaderVisible = useSelector(getIsHeaderVisible);
 
@@ -142,11 +144,11 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   ParametersList: typeof ParametersList;
   FullscreenButton: typeof FullscreenToggle;
   ExportAsPdfButton: typeof ExportAsPdfButton;
-  SubscriptionsButton: typeof PLUGIN_NOTIFICATIONS_SDK.DashboardSubscriptionsButton;
   InfoButton: typeof DashboardInfoButton;
   RefreshPeriod: typeof RefreshWidget;
 };
 
+// Unjustified type cast. FIXME
 const DashboardComponent = DashboardDefaultView as DashboardComponentType;
 DashboardComponent.Header = DashboardHeader;
 DashboardComponent.Grid = Grid;
@@ -155,8 +157,6 @@ DashboardComponent.Tabs = DashboardTabs;
 DashboardComponent.ParametersList = ParametersList;
 DashboardComponent.FullscreenButton = FullscreenToggle;
 DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
-DashboardComponent.SubscriptionsButton =
-  PLUGIN_NOTIFICATIONS_SDK.DashboardSubscriptionsButton;
 DashboardComponent.InfoButton = DashboardInfoButton;
 DashboardComponent.RefreshPeriod = RefreshWidget;
 

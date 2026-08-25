@@ -42,6 +42,10 @@
 
 (driver/register! :databricks, :parent :hive-like)
 
+(defmethod driver/host-carrying-parameters :databricks
+  [_driver]
+  ["ProxyHost" "OAuth2ConnAuthAuthorizationEndPoint" "OAuth2ConnAuthTokenEndpoint"])
+
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :database-routing                true
@@ -153,11 +157,12 @@
 (defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
   (when schema-names
     (if multi-level-schema
-      [:in [:composite catalog-column schema-column]
-       (map (comp (fn [catalog+schema]
-                    (into [:composite] catalog+schema))
-                  split-catalog+schema)
-            schema-names)]
+      ;; Use OR / AND because they are faster than IN for tuples on Databricks
+      (into [:or]
+            (map (fn [schema-name]
+                   (let [[catalog schema] (split-catalog+schema schema-name)]
+                     [:and [:= catalog-column catalog] [:= schema-column schema]])))
+            schema-names)
       [:in schema-column schema-names])))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
@@ -269,17 +274,15 @@
   (let [base-spec
         {:classname      "com.databricks.client.jdbc.Driver"
          :subprotocol    "databricks"
-         ;; Reading through the changelog revealed `EnableArrow=0` solves multiple problems. Including the exception logged
-         ;; during first `can-connect?` call. Ref:
-         ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
-         :subname        (str "//" host ":443/;EnableArrow=0"
+         :subname        (str "//" host ":443/"
                               ";ConnCatalog=" (codec/url-encode catalog)
                               (preprocess-additional-options additional-options))
          :transportMode  "http"
          :ssl            1
          :HttpPath       http-path
          :UserAgentEntry (format "Metabase/%s" (:tag driver-api/mb-version-info))
-         :UseNativeQuery 1}]
+         :UseNativeQuery 1
+         :UseThriftClient 0}]
     (merge base-spec
            (when log-level
              {:LogLevel log-level})
@@ -502,8 +505,8 @@
   (sql.qp/->integer-with-round driver value))
 
 (defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "string"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "string"]))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]

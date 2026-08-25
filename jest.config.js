@@ -36,12 +36,14 @@ const swcJestTransform = [
 
 const baseConfig = {
   transform: {
-    "^.+\\.[jt]sx?$": swcJestTransform,
+    "^.+\\.m?[jt]sx?$": swcJestTransform,
   },
   moduleNameMapper: {
     // Force jose to use Node.js runtime instead of browser runtime in jsdom environment.
     // The browser runtime expects CryptoKey to be globally available, which jsdom doesn't provide.
     "^jose$": "<rootDir>/node_modules/jose/dist/node/cjs/index.js",
+    // remend only declares an `import` export condition, so jest's CJS resolver can't find it.
+    "^remend$": "<rootDir>/node_modules/remend/dist/index.js",
     "^build-configs/(.*)$": "<rootDir>/frontend/build/$1",
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
@@ -66,6 +68,7 @@ const baseConfig = {
     "sdk-iframe-embedding-ee-plugins":
       "<rootDir>/frontend/src/metabase/utils/noop.ts",
     "ee-plugins": "<rootDir>/frontend/src/metabase/utils/noop.ts",
+    "ee-overrides": "<rootDir>/frontend/src/metabase/utils/noop.ts",
     /**
      * Imports which are only applicable to the embedding sdk.
      * As we use SDK components in new iframe embedding, we need to import them here.
@@ -91,10 +94,7 @@ const baseConfig = {
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
     "<rootDir>/release/.*",
   ],
-  testMatch: [
-    "<rootDir>/**/*.unit.spec.js",
-    "<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}",
-  ],
+  testMatch: ["<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}"],
   modulePaths: [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src",
@@ -127,7 +127,6 @@ const baseConfig = {
   ],
   coveragePathIgnorePatterns: [
     "/node_modules/",
-    "/frontend/src/metabase/visualizations/lib/errors.js",
     "/target/cljs_dev/",
     "/target/cljs_release/",
     "/frontend/test/",
@@ -137,7 +136,10 @@ const baseConfig = {
 
 /** @type {import('jest').Config} */
 const config = {
-  reporters: ["default", "jest-junit"],
+  // `addFileAttribute` makes jest-junit emit the source path as a `file`
+  // attribute on each <testcase>, which lets the ci-conductor reporter resolve a
+  // real source file. Output dir/name come from the JEST_JUNIT_OUTPUT_* env vars.
+  reporters: ["default", ["jest-junit", { addFileAttribute: "true" }]],
   coverageReporters: ["html", "lcov"],
   watchPlugins: [
     "jest-watch-typeahead/filename",
@@ -150,9 +152,9 @@ const config = {
       displayName: "sdk",
 
       testMatch: [
-        "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{js,jsx,ts,tsx}",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{js,jsx,ts,tsx}",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/frontend/src/embedding-sdk-{bundle,shared}/**/*.unit.spec.{ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/**/*.unit.spec.{ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-ee/**/*.unit.spec.{ts,tsx}",
       ],
 
       setupFiles: [
@@ -169,6 +171,10 @@ const config = {
     {
       ...baseConfig,
       displayName: "core",
+      setupFilesAfterEnv: [
+        ...baseConfig.setupFilesAfterEnv,
+        "<rootDir>/frontend/test/jest-setup-env-core.js",
+      ],
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
         "<rootDir>/frontend/src/embedding-sdk-bundle",

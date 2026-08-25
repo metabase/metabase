@@ -2,9 +2,10 @@ import userEvent from "@testing-library/user-event";
 
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { NumberColumn } from "__support__/visualizations";
+import { loadVisualizationComponents } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import registerVisualizations from "metabase/visualizations/register";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
@@ -16,6 +17,10 @@ import {
 } from "./test-mocks";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["smartscalar"]));
 
 const createMockInsights = (insights: Partial<Insight>[]) => insights;
 
@@ -346,6 +351,7 @@ describe("SmartScalar", () => {
         series({
           rows,
           insights,
+          // Unjustified type cast. FIXME
           comparisonType: getPeriodsAgoComparison("hi" as unknown as number),
         }),
       );

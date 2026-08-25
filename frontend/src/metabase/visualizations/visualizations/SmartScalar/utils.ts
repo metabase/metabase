@@ -1,11 +1,12 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { formatNumber } from "metabase/utils/formatting/numbers";
+import { dayjs } from "metabase/dayjs";
+import { formatNumber } from "metabase/utils/formatting";
 import { measureText } from "metabase/utils/measure-text";
 import { uuid } from "metabase/utils/uuid";
 import { isEmpty } from "metabase/utils/validate";
+import type { ComparisonMenuOption } from "metabase/visualizations/types";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DateTimeAbsoluteUnit,
@@ -28,7 +29,6 @@ import {
   SPACING,
   VALUE_MIN_HEIGHT,
 } from "./constants";
-import type { ComparisonMenuOption } from "./types";
 
 export const isPeriodVisible = (height: number) =>
   height > PERIOD_HIDE_HEIGHT_THRESHOLD;
@@ -330,7 +330,9 @@ function getMaxPeriodsAgo({
     return null;
   }
 
+  // Unjustified type cast. FIXME
   const latestNonEmptyDate = latestNonEmptyRow[dimensionIndex] as string;
+  // Unjustified type cast. FIXME
   const earliestNonEmptyDate = earliestNonEmptyRow[dimensionIndex] as string;
 
   if (latestNonEmptyDate === null || earliestNonEmptyDate === null) {

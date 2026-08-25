@@ -100,7 +100,7 @@
   "Output-token ceiling for a single generation. The answer itself is tiny, but reasoning models spend output tokens
   reasoning *before* emitting the forced structured_output tool call, so the cap must leave room for that or the call
   returns no tool call.  Non-reasoning providers stop well under this, so the higher ceiling costs them nothing."
-  2048)
+  4096)
 
 (defn- call-llm
   "Make a structured LLM call for example question generation.
@@ -113,10 +113,11 @@
    questions-json-schema
    temperature
    max-tokens
-   {:request-id (str (random-uuid))
+   {:request-id          (str (random-uuid))
     ;; example_question_generation_batch was the name of the old ai-service api endpoint
-    :source     "example_question_generation_batch"
-    :tag        "example-question-generation"}))
+    :source              "example_question_generation_batch"
+    :tag                 "example-question-generation"
+    :required-permission :permission/metabot-other-tools}))
 
 ;;; Per-item generation (mirrors Python generate_table_example_questions / generate_metric_example_questions)
 
@@ -165,7 +166,8 @@
                               (try
                                 {:ok (generate-fn item)}
                                 (catch Throwable e
-                                  (log/warn e "Example question generation failed for one item")
+                                  (when-not (= :api-key-missing (:error-code (ex-data e)))
+                                    (log/warnf "Example question generation failed for one item: %s" (ex-message e)))
                                   {:error e}))))
                           batch)]
         (mapv deref futures)))

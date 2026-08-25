@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
 import { render, renderWithProviders, screen, within } from "__support__/ui";
-import { registerVisualization } from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
@@ -16,6 +16,7 @@ import {
 import { Scalar } from "./Scalar";
 
 const series = (value: number | null = 1.23) =>
+  // Unjustified type cast. FIXME
   [
     {
       card: createMockCard({ display: "scalar" }),
@@ -23,6 +24,7 @@ const series = (value: number | null = 1.23) =>
     },
   ] as Series;
 
+// Unjustified type cast. FIXME
 const mockedProps = {} as ComponentProps<typeof Scalar>;
 
 const settings = {
@@ -108,12 +110,51 @@ describe("Scalar", () => {
       overflowY: "visible",
     });
   });
+
+  it("should call onVisualizationClick with the clicked element when clickable", async () => {
+    const onVisualizationClick = jest.fn();
+    render(
+      <Scalar
+        {...mockedProps}
+        series={series(12345)}
+        rawSeries={series(12345)}
+        settings={settings}
+        visualizationIsClickable={() => true}
+        onVisualizationClick={onVisualizationClick}
+        width={230}
+      />,
+    );
+
+    await userEvent.click(screen.getByText("12,345"));
+
+    expect(onVisualizationClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: 12345,
+        column: expect.objectContaining({ name: "count" }),
+        element: expect.any(HTMLElement),
+      }),
+    );
+  });
+
+  it("should fall back to the first column when scalar.field matches no column", () => {
+    render(
+      <Scalar
+        {...mockedProps}
+        series={series(12345)}
+        rawSeries={series(12345)}
+        settings={{ ...settings, "scalar.field": "not-a-column" }}
+        visualizationIsClickable={() => false}
+        width={230}
+      />,
+    );
+
+    expect(screen.getByText("12,345")).toBeInTheDocument();
+  });
 });
 
 describe("scalar viz settings", () => {
   beforeAll(() => {
-    // @ts-expect-error: incompatible prop types with registerVisualization
-    registerVisualization(Scalar);
+    registerVisualizations();
   });
 
   it("should render the field to show input in the formatting section if there are 2 or more columns", async () => {
@@ -141,8 +182,8 @@ describe("scalar viz settings", () => {
     renderWithProviders(<QuestionChartSettings series={series} />);
 
     expect(
-      await screen.findByRole("radio", { name: "Formatting" }),
-    ).toBeChecked();
+      await screen.findByRole("tab", { name: "Formatting" }),
+    ).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByText("Field to show")).toBeInTheDocument();
 
     const getFieldSelect = async () =>
@@ -177,8 +218,8 @@ describe("scalar viz settings", () => {
     renderWithProviders(<QuestionChartSettings series={series} />);
 
     expect(
-      await screen.findByRole("radio", { name: "Formatting" }),
-    ).toBeChecked();
+      await screen.findByRole("tab", { name: "Formatting" }),
+    ).toHaveAttribute("aria-selected", "true");
 
     expect(
       screen.queryByTestId("chart-settings-widget-scalar.field"),

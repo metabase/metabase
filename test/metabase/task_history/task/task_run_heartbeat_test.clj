@@ -32,7 +32,8 @@
 (deftest send-heartbeat-ignores-other-processes-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "send-heartbeat! does NOT update runs belonging to other processes"
-      (let [old-time      (t/minus (t/offset-date-time) (t/hours 3))
+      ;; millisecond-clean so app-DB storage rounding can't shift it (truncation below can't undo rounding-up)
+      (let [old-time      (t/truncate-to (t/minus (t/offset-date-time) (t/hours 3)) :millis)
             other-uuid    "other-process-uuid"]
         (mt/with-temp [:model/TaskRun {run-id :id} {:run_type     :sync
                                                     :entity_type  :database

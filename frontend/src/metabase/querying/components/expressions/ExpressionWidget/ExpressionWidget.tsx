@@ -60,6 +60,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
   } = props;
 
   const [name, setName] = useState(initialName || "");
+  // Unjustified type cast. FIXME
   const [clause, setClause] = useState<Lib.ExpressionClause | null>(
     (initialClause ?? null) as Lib.ExpressionClause | null,
   );

@@ -1,13 +1,12 @@
 import cx from "classnames";
-import type { LocationDescriptorObject } from "history";
 import type { AnchorHTMLAttributes, HTMLAttributes, MouseEvent } from "react";
 import { forwardRef, useCallback } from "react";
-import { push } from "react-router-redux";
 
 import { Markdown } from "metabase/common/components/Markdown";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
+import type { To } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import type { AnchorProps, BoxProps, StackProps } from "metabase/ui";
 import {
   Anchor,
@@ -113,13 +112,11 @@ export function SearchResult({
 
   const isActive = isItemActive(result);
   const isLoading = isItemLoading(result);
-
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) =>
-      dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation: To) => navigate(nextLocation),
+    [navigate],
   );
 
   const onXRayClick = (e: MouseEvent<HTMLButtonElement>) => {
@@ -225,7 +222,7 @@ export function SearchResult({
             <Group wrap="nowrap" gap="sm" data-testid="result-description">
               <Divider
                 size="md"
-                color="focus"
+                color="input-focus"
                 orientation="vertical"
                 bdrs="xs"
               />
@@ -244,7 +241,7 @@ export function SearchResult({
       </ResultNameSection>
       {isLoading && (
         <LoadingSection px="xs">
-          <Loader />
+          <Loader data-testid="search-result-sync-loading-indicator" />
         </LoadingSection>
       )}
       {showXRayButton && (

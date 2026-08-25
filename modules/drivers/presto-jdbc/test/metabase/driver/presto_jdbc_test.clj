@@ -287,3 +287,18 @@
 (deftest bytes-to-varbinary-test
   (is (= ["FROM_BASE64(?)" "YSBzdHJpbmc="]
          (sql/format (sql.qp/->honeysql :presto-jdbc (.getBytes "a string"))))))
+
+(deftest column->field-test
+  (testing "no field comment with blank column"
+    (is (= {:name "foo"
+            :database-type "integer"
+            :base-type :type/Integer
+            :database-position 0}
+           (#'presto-jdbc/column->field 0 {:column "foo" :type "integer" :comment ""}))))
+  (testing "field comment included with non-blank column"
+    (is (= {:name "foo"
+            :database-type "integer"
+            :base-type :type/Integer
+            :database-position 0
+            :field-comment "foo comment"}
+           (#'presto-jdbc/column->field 0 {:column "foo" :type "integer" :comment "foo comment"})))))

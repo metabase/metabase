@@ -48,7 +48,9 @@ export const isObjectWithModel = (
     item !== null &&
     "model" in item &&
     "id" in item &&
+    // Unjustified type cast. FIXME
     typeof (item as any).model === "string" &&
+    // Unjustified type cast. FIXME
     typeof (item as any).id === "number"
   );
 };

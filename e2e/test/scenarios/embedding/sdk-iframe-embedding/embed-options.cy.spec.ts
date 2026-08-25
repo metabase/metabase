@@ -114,10 +114,11 @@ describe("EE", () => {
 
             cy.log("set up the second subscription");
             cy.button("Set up a new schedule").click();
-            cy.findByDisplayValue("Hourly").click();
+            cy.findByTestId("select-frequency").click();
           });
 
-          H.popover().findByRole("option", { name: "Daily" }).click();
+          H.popover().findByRole("option", { name: "daily" }).click();
+          H.selectScheduleTime();
           cy.findByRole("button", { name: "Done" }).click();
 
           dashboardSidebar().within(() => {

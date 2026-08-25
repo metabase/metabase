@@ -37,6 +37,13 @@
   :visibility :settings-manager
   :encryption :when-encryption-key-set)
 
+(defsetting test-api-setting-premium-feature
+  (deferred-tru "Setting gated behind a premium feature. This only shows up in dev.")
+  :visibility :admin
+  :type       :boolean
+  :default    false
+  :feature    :test-feature)
+
 (defsetting test-admin-write-authed-read-visibility
   (deferred-tru "Setting to test the `:admin-write-authed-read` visibility level. This only shows up in dev.")
   :visibility :admin-write-authed-read
@@ -198,6 +205,21 @@
     (testing "Check that a generic 403 error is returned if a non-superuser tries to set a Setting that doesn't exist"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting/bad-setting" {:value "NICE!"}))))))
+
+(deftest update-setting-without-premium-feature-test
+  (testing "PUT /api/setting/:key for a setting whose premium feature is unavailable returns a 402, not a 500"
+    (mt/with-premium-features #{}
+      (doseq [[endpoint body] [["setting/test-api-setting-premium-feature" {:value true}]
+                               ["setting"                                  {:test-api-setting-premium-feature true}]]]
+        (testing (str "PUT /api/" endpoint)
+          (let [response (mt/user-http-request :crowberto :put 402 endpoint body)]
+            (is (= "Setting test-api-setting-premium-feature is not enabled because feature :test-feature is not available"
+                   (:message response)))
+            (testing "the setting definition is not leaked into the response body"
+              (is (not-any? (set (keys response)) [:description :getter :setter :default])))))))
+    (testing "turning the setting off is rejected the same way, rather than 500ing"
+      (mt/with-premium-features #{}
+        (mt/user-http-request :crowberto :put 402 "setting/test-api-setting-premium-feature" {:value false})))))
 
 (deftest fetch-sensitive-setting-test
   (testing "Sensitive settings should always come back obfuscated"
@@ -395,3 +417,11 @@
     (test-deprecated-setting! "hello")
     (is (re-find #"Setting test-deprecated-setting is deprecated as of Metabase 0.51.0"
                  (str/join " " (map :message (warnings)))))))
+
+(deftest site-name-description-reflects-application-name-test
+  (testing "GET /api/setting returns the site-name description interpolated with a whitelabel application-name (#17043)"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-name "New Test Co"]
+        (let [site-name-setting (some #(when (= "site-name" (:key %)) %)
+                                      (mt/user-http-request :crowberto :get 200 "setting"))]
+          (is (str/includes? (:description site-name-setting) "New Test Co")))))))

@@ -4,23 +4,27 @@
   (:refer-clojure :exclude [empty? mapv])
   (:require
    [medley.core :as m]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf :refer [empty? mapv]]))
 
-(def ^:private pivot-column-gropuing-metadata
-  {:name                     "pivot-grouping"
-   :display_name             "pivot-grouping"
-   :lib/desired-column-alias "pivot-grouping"
-   :base_type                :type/Integer
-   :effective_type           :type/Integer})
+(def ^:private pivot-grouping-column-metadata
+  "Result-metadata-shape column entry spliced into `:cols` of pivot query results. Extends
+  [[lib.pivot/pivot-grouping-column-metadata]] with the snake_case mirrors and explicit `:lib/desired-column-alias`
+  the result-metadata layer expects."
+  (merge lib.pivot/pivot-grouping-column-metadata
+         {:display_name             lib.pivot/pivot-grouping-column-name
+          :lib/desired-column-alias lib.pivot/pivot-grouping-column-name
+          :base_type                :type/Integer
+          :effective_type           :type/Integer}))
 
 (defn- add-column-grouping-metadata [cols num-breakouts]
   (vec
    (concat
     (take num-breakouts cols)
-    [pivot-column-gropuing-metadata]
+    [pivot-grouping-column-metadata]
     (drop num-breakouts cols))))
 
 (defn add-pivot-grouping

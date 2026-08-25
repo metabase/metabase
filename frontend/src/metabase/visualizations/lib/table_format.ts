@@ -1,5 +1,6 @@
 // NOTE: this file is used on the frontend and backend and there are some
-// limitations. See frontend/src/metabase-shared/color_selector for details
+// limitations. On the backend it is bundled into the static-viz bundle and
+// called via getCellBackgroundColors; see frontend/src/metabase/static-viz/index.tsx.
 
 import Color from "color";
 
@@ -143,6 +144,7 @@ export function compileFormatter(
   columnName: string | null = null,
   columnExtents: ColumnExtents | null = null,
   isRowFormatter: boolean = false,
+  matchOnlyWithinRange: boolean = false,
 ): Formatter {
   if (format.type === "single") {
     let { operator, value, color } = format;
@@ -199,7 +201,10 @@ export function compileFormatter(
       }),
     ).clamp(true);
     return (value) => {
-      if (!isNumber(value) || value < lowerBound || value > upperBound) {
+      if (!isNumber(value)) {
+        return null;
+      }
+      if (matchOnlyWithinRange && (value < lowerBound || value > upperBound)) {
         return null;
       }
       const colorValue = scale(value);
@@ -272,11 +277,27 @@ function compileFormatters(
   columnExtents: ColumnExtents,
 ): Formatters {
   const formatters: Formatters = {};
+  const rangeFormatterCounts: Record<string, number> = {};
+  formats.forEach((format) => {
+    if (format.type === "range") {
+      format.columns.forEach((columnName) => {
+        rangeFormatterCounts[columnName] =
+          (rangeFormatterCounts[columnName] ?? 0) + 1;
+      });
+    }
+  });
+
   formats.forEach((format) => {
     format.columns.forEach((columnName) => {
       formatters[columnName] = formatters[columnName] || [];
       formatters[columnName].push(
-        compileFormatter(format, columnName, columnExtents, false),
+        compileFormatter(
+          format,
+          columnName,
+          columnExtents,
+          false,
+          rangeFormatterCounts[columnName] > 1,
+        ),
       );
     });
   });

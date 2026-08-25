@@ -87,7 +87,7 @@ visualization_settings:
   pie.show_total: true
   pie.slice_threshold: 2.5
   version: 2
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: dYD1j3pQtJdctg8duByUL
   label: orders_by_category__pie_

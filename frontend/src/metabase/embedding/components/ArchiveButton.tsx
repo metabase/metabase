@@ -21,6 +21,7 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
   const archive = useSetArchive();
 
   const handleArchive = () => {
+    // Unjustified type cast. FIXME
     archive(item as ArchivableItem, true);
     dropdownActions.close();
   };

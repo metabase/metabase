@@ -9,6 +9,8 @@ summary: Route queries to different databases based on who's viewing them. Great
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
+![Database routing diagram](./images/database-routing-diagram.png)
+
 Database routing is useful for:
 
 - Managing modular and full app embedding setups where each customer has their own database with identical schemas.

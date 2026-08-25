@@ -2,16 +2,11 @@ import { t } from "ttag";
 
 import { FIELD_VISIBILITY_TYPES } from "metabase/common/utils/fields";
 import {
-  Flex,
-  Icon,
   Select,
-  SelectItem,
+  SelectItemWithDescription,
   type SelectProps,
-  Text,
 } from "metabase/ui";
 import type { FieldVisibilityType } from "metabase-types/api";
-
-import S from "./FieldVisibilityPicker.module.css";
 
 const DATA = getData();
 
@@ -49,27 +44,16 @@ export const FieldVisibilityPicker = ({
       data={DATA}
       placeholder={t`Select a field visibility`}
       renderOption={(item) => {
-        const selected = item.option.value === value;
         const option = DATA.find(
           (option) => option.value === item.option.value,
         );
 
         return (
-          <SelectItem selected={selected}>
-            <Icon name={selected ? "check" : "empty"} />
-
-            <Flex direction="column" flex="1" gap="xs">
-              <Text c="inherit" fw="bold" lh="1rem">
-                {item.option.label}
-              </Text>
-
-              {option?.description && (
-                <Text c="text-tertiary" className={S.description} lh="1rem">
-                  {option.description}
-                </Text>
-              )}
-            </Flex>
-          </SelectItem>
+          <SelectItemWithDescription
+            selected={item.option.value === value}
+            label={item.option.label}
+            description={option?.description}
+          />
         );
       }}
       value={value}

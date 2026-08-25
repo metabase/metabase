@@ -1,0 +1,23 @@
+.list {
+  padding: 0;
+}
+
+.tab.tab {
+  background-color: transparent;
+  color: var(--mb-color-text-primary);
+  gap: var(--mantine-spacing-sm);
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+
+  &[data-active="true"] {
+    background-color: var(--mb-color-background_surface-selected);
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.tabSection[data-position="left"],
+.tabSection[data-position="right"] {
+  margin-inline: 0;
+}

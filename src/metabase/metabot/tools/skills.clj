@@ -19,7 +19,7 @@
   (let [skill (skills/get-skill-by-id-string id)]
     (cond
       (nil? skill)
-      (do (log/info "Unknown skill requested by load_skill" {:id id})
+      (do (log/info "Unknown skill requested by load_skill")
           (format "Unknown skill: \"%s\". Load only ids listed under \"Available skills\"." id))
 
       (not (skills/skill-loadable? skill))
@@ -40,5 +40,5 @@
   (try
     {:output (str/join "\n\n" (map load-one ids))}
     (catch Exception e
-      (log/error e "Failed to load skill(s)" {:ids ids})
+      (log/errorf "Failed to load skill(s): %s" (ex-message e))
       {:output (str "Failed to load skill(s): " (or (ex-message e) "Unknown error"))})))

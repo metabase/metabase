@@ -1,6 +1,4 @@
-import type { Dayjs } from "dayjs";
-import dayjs from "dayjs";
-
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
 import type { ChartLayout } from "../layout/types";
@@ -37,6 +35,7 @@ export const getTicksOptions = (
   let minInterval: number | undefined;
   let maxInterval: number | undefined;
 
+  // Unjustified type cast. FIXME
   const xDomain = range.map((day) => {
     const adjustedDate = dayjs(toEChartsAxisValue(day.toISOString()));
     if (!adjustedDate) {
@@ -117,6 +116,15 @@ export const getTicksOptions = (
       count: 1,
       unit: effectiveTicksUnit,
     });
+  }
+
+  // HACK: ECharts 6.1.0 emits intermediate (mid-year) ticks within the padded
+  // single-point year domain. Unlike week/month/quarter, the year path had no
+  // boundary guard, so two ticks in the same year both format as that year and
+  // duplicate the label (metabase#63671). Filter to start-of-year ticks only.
+  if (largestInterval.unit === "year") {
+    canRender = (date: Dayjs) =>
+      isWithinRange(date) && date.month() === 0 && date.date() === 1;
   }
 
   if (!maxInterval) {

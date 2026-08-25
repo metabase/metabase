@@ -5,6 +5,12 @@ export const embedModalEnableEmbeddingCard = () =>
   cy.findByTestId("enable-embedding-card");
 
 export const embedModalEnableEmbedding = () => {
+  // Wait for the modal before reading the DOM below. That read is a snapshot
+  // and does not retry, so on an empty body it takes the early return and the
+  // terms are never accepted. The modal is code-split, so it mounts a moment
+  // after it is opened rather than in the same tick.
+  embedModalContent().should("exist");
+
   cy.get("body").then(($body) => {
     // No card mounted — terms were accepted in the test setup, the section
     // bails early via `showSection` (see EnableModularEmbeddingSection /

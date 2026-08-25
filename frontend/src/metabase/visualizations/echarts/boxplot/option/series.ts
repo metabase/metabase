@@ -235,7 +235,9 @@ export const buildEChartsPointsSeries = (
             ),
             textBorderWidth: BOXPLOT_DATA_LABEL_STYLE.textBorderWidth,
             formatter: (params) => {
+              // Unjustified type cast. FIXME
               const data = params.data as Record<string, unknown> | undefined;
+              // Unjustified type cast. FIXME
               const y = data?.[dataKey] as number | null | undefined;
               if (y == null || !Number.isFinite(y)) {
                 return "";
@@ -408,7 +410,9 @@ export const buildEChartsBoxPlotLabelsSeries = (
             ),
             textBorderWidth: BOXPLOT_DATA_LABEL_STYLE.textBorderWidth,
             formatter: (params) => {
+              // Unjustified type cast. FIXME
               const data = params.data as Record<string, unknown>;
+              // Unjustified type cast. FIXME
               const yValue = data[statKey] as number | null;
               if (yValue == null || !Number.isFinite(yValue)) {
                 return "";

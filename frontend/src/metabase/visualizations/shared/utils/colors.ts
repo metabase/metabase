@@ -17,6 +17,7 @@ export const getSeriesColors = <TDatum, TSeriesInfo>(
 
       return mapping;
     },
+    // Unjustified type cast. FIXME
     {} as Record<string, string>,
   );
 

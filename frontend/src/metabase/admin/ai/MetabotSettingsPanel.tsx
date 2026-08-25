@@ -4,19 +4,16 @@ import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import {
-  skipToken,
-  useGetCollectionQuery,
-  useUpdateMetabotMutation,
-} from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils/settings";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { useUpdateMetabotMutation } from "metabase/metabot";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { useAdminSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -212,6 +209,7 @@ function MetabotCollectionConfigurationPane({
             model: "collection",
           }}
           onChange={(item) =>
+            // Unjustified type cast. FIXME
             handleUpdateCollectionId(item as Pick<MetabotInfo, "id" | "name">)
           }
           onClose={close}
@@ -237,11 +235,11 @@ function CollectionInfo({ collection }: { collection: Collection }) {
   const parent = collectionInfo?.effective_ancestors?.slice(-1)?.[0];
 
   return (
-    <Flex align="center" gap="sm" c="text-tertiary" mb="sm">
+    <Flex align="center" gap="sm" c="text-disabled" mb="sm">
       {parent && (
         <>
           <CollectionDisplay collection={parent} />
-          <Text c="text-tertiary" fw="bold">
+          <Text c="text-disabled" fw="bold">
             /
           </Text>
         </>

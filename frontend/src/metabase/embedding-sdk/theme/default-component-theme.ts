@@ -4,7 +4,7 @@ import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/con
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
 import type { MantineThemeOverride } from "metabase/ui";
 import { OVERLAY_Z_INDEX } from "metabase/ui/component-theme";
-import type { DeepPartial } from "metabase/utils/types";
+import type { DeepPartial } from "metabase-types/utils/types";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
 
@@ -78,7 +78,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
     rowToggle: {
       textColor: "text-primary-inverse",
-      backgroundColor: "text-tertiary", // TODO: should it be "background_page-tertiary-inverse" ?
+      backgroundColor: "text-disabled", // TODO: should it be "background_page-tertiary-inverse" ?
     },
   },
   cartesian: {

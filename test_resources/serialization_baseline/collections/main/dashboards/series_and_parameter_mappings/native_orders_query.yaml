@@ -11,8 +11,7 @@ dataset_query:
   stages:
   - native: SELECT * FROM ORDERS WHERE TOTAL > {{min_total}}
     template-tags:
-      min_total:
-        default: 50
+      - default: 50
         display-name: Minimum Total
         id: ee000001-0000-0000-0000-000000000001
         name: min_total
@@ -22,7 +21,7 @@ dataset_query:
   lib/type: mbql/query
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: dShCrdNatveOrders0005
   label: native_orders_query

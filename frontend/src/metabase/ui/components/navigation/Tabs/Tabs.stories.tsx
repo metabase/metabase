@@ -1,13 +1,22 @@
 import { Icon, Tabs, type TabsProps } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 const args = {
   orientation: "horizontal",
+  listBorder: true,
 };
 
 const argTypes = {
   orientation: {
     options: ["horizontal", "vertical"],
     control: { type: "inline-radio" },
+  },
+  variant: {
+    options: ["default", "pills"],
+    control: { type: "inline-radio" },
+  },
+  listBorder: {
+    control: { type: "boolean" },
   },
 };
 
@@ -17,7 +26,12 @@ const tabs = [
   { value: "segments", label: "Segments", icon: "segment" },
   { value: "actions", label: "Actions", icon: "bolt", disabled: true },
   { value: "filters", label: "Filters", icon: "filter" },
-];
+] satisfies {
+  value: string;
+  label: string;
+  icon: IconName;
+  disabled?: boolean;
+}[];
 
 const DefaultTemplate = (args: TabsProps) => (
   <Tabs {...args}>
@@ -44,7 +58,7 @@ const IconsTemplate = (args: TabsProps) => (
           key={tab.value}
           value={tab.value}
           disabled={tab.disabled}
-          leftSection={<Icon name={tab.icon as keyof typeof Icon} />}
+          leftSection={<Icon name={tab.icon} />}
         >
           {tab.label}
         </Tabs.Tab>
@@ -86,5 +100,28 @@ export const VerticalOrientationIcons = {
   name: "Vertical orientation, icons",
   args: {
     orientation: "vertical",
+  },
+};
+
+export const NoListBorder = {
+  render: DefaultTemplate,
+  name: "Without list border",
+  args: {
+    listBorder: false,
+  },
+};
+
+export const Pills = {
+  render: DefaultTemplate,
+  args: {
+    variant: "pills",
+  },
+};
+
+export const PillsIcons = {
+  render: IconsTemplate,
+  name: "Pills, icons",
+  args: {
+    variant: "pills",
   },
 };

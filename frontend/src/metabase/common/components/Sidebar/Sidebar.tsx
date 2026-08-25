@@ -55,7 +55,7 @@ export function Sidebar({
                 <Button
                   leftSection={<Icon name="trash" />}
                   variant="subtle"
-                  color="error"
+                  color="feedback-negative"
                   disabled={isRemoveDisabled}
                   onClick={onRemove}
                   style={{ paddingLeft: 0, paddingRight: 0 }}

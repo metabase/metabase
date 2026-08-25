@@ -269,7 +269,7 @@
 }
 
 .QuestionTooltipTarget {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   border: 2px solid currentColor;
   border-radius: 99px;
   width: 20px;

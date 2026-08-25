@@ -3,6 +3,8 @@
   (:require
    [clojure.test :refer [deftest testing is use-fixtures]]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -274,7 +276,9 @@
             response (mt/user-http-request :crowberto :post 400 "ee/tenant/" tenant-data)]
         (is (contains? (:errors response) :attributes))
         (is (contains? (:specific-errors response) :attributes))
-        (is (contains? (get-in response [:specific-errors :attributes]) (keyword "@system")))))))
+        (is (re-find #"must not start with `@`" (get-in response [:errors :attributes])))
+        (testing "nothing is written"
+          (is (nil? (t2/select-one :model/Tenant :name "Invalid Tenant"))))))))
 
 (deftest can-update-tenant-attributes-via-put-test
   (testing "Can update tenant attributes via PUT"
@@ -325,7 +329,7 @@
                                            {:attributes invalid-attrs})]
         (is (contains? (:errors response) :attributes))
         (is (contains? (:specific-errors response) :attributes))
-        (is (contains? (get-in response [:specific-errors :attributes]) (keyword "@system")))
+        (is (re-find #"must not start with `@`" (get-in response [:errors :attributes])))
         ;; Original attributes should remain unchanged
         (is (= {"valid" "value"} (:attributes (t2/select-one :model/Tenant :id id))))))))
 
@@ -775,3 +779,48 @@
                   :attributes {:department "engineering"
                                :region "us-west"}}
                  (:details audit-entry))))))))
+
+(deftest cannot-move-regular-collection-into-shared-tenant-collection-test
+  (testing "PUT /api/collection/:id cannot move a regular collection into a shared-tenant-namespace parent"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {shared-id :id}  {:namespace collection/shared-tenant-ns}
+                       :model/Collection {regular-id :id} {}]
+          (mt/user-http-request :crowberto :put 400 (str "collection/" regular-id) {:parent_id shared-id}))))))
+
+(deftest can-create-dashboards-in-shared-tenant-collections-test
+  (testing "POST /api/dashboard can save a dashboard to a shared-tenant-namespace collection"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {coll-id :id} {:namespace collection/shared-tenant-ns}]
+          (is (= coll-id
+                 (:collection_id (mt/user-http-request :crowberto :post 200 "dashboard"
+                                                       {:name "Tenant Dash" :collection_id coll-id})))))))))
+
+(deftest can-create-cards-in-shared-tenant-collections-test
+  (testing "POST /api/card can save a question to a shared-tenant-namespace collection"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {coll-id :id} {:namespace collection/shared-tenant-ns}]
+          (let [query (lib/query (mt/metadata-provider)
+                                 (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))]
+            (is (= coll-id
+                   (:collection_id (mt/user-http-request :crowberto :post 200 "card"
+                                                         {:name                   "Tenant Card"
+                                                          :collection_id          coll-id
+                                                          :display                "table"
+                                                          :visualization_settings {}
+                                                          :dataset_query          query}))))))))))
+
+(deftest official-authority-level-in-shared-tenant-namespace-not-enforced-test
+  (testing "the backend does not block :authority_level \"official\" for shared-tenant-namespace collections (enforcement is FE-only)"
+    (mt/with-premium-features #{:tenants :official-collections}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {shared-id :id} {:namespace collection/shared-tenant-ns}]
+          (mt/with-model-cleanup [:model/Collection]
+            (is (=? {:authority_level "official"
+                     :namespace       (name collection/shared-tenant-ns)}
+                    (mt/user-http-request :crowberto :post 200 "collection/"
+                                          {:name            (mt/random-name)
+                                           :parent_id       shared-id
+                                           :authority_level "official"})))))))))

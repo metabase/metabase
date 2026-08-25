@@ -206,6 +206,7 @@ describe("DataSourceSelector", () => {
         isJoinStep: true,
         databases: [sampleDatabase, manyTablesDatabase],
         selectedTable: {
+          // Unjustified type cast. FIXME
           id: (manyTablesDatabase.tables as Table[])[0].id as number,
           databaseId: manyTablesDatabase.id,
         },
@@ -246,6 +247,21 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Our analytics")).toBeInTheDocument();
       expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+    });
+
+    it("should return to the bucket step when closing the saved entity picker via its back button", async () => {
+      setup(setupOpts);
+
+      await userEvent.click(await screen.findByText("Saved Questions"));
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId("saved-entity-back-navigation"));
+
+      expect(await screen.findByText("Raw Data")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("saved-entity-back-navigation"),
+      ).not.toBeInTheDocument();
     });
   });
 

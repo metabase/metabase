@@ -34,7 +34,7 @@
            ;; Our connection may be killed due to timeout, [[kill!]] will throw an appropriate exception
            nil)
          (catch Exception e
-           (log/warn e)
+           (log/warn (ex-message e))
            e))))))
 
 (defn- kill! [conn pid]
@@ -97,7 +97,7 @@
        (try
          (sql.ddl/execute! conn [(sql.ddl/drop-table-sql database (:table_name persisted-info))])
          (catch Exception e
-           (log/warn e)
+           (log/warn (ex-message e))
            (throw e)))))))
 
 (defmethod ddl.i/check-can-persist :mysql
@@ -162,13 +162,13 @@
        (loop [[[step stepfn undofn] & remaining] steps
               undo-steps []]
          (let [result (try (stepfn conn)
-                           (log/infof "Step %s was successful for db %s" step (:name database))
+                           (log/infof "Step %s was successful for db %s" step (:id database))
                            ::valid
                            (catch Exception e
-                             (log/warnf e "Error in `%s` while checking for model persistence permissions." step)
+                             (log/warnf "Error in `%s` while checking for model persistence permissions: %s" step (ex-message e))
                              (try
                                (doseq [[undo-step undofn] (reverse undo-steps)]
-                                 (log/warnf "Undoing step `%s` for db %s" undo-step (:name database))
+                                 (log/warnf "Undoing step `%s` for db %s" undo-step (:id database))
                                  (undofn conn))
                                (catch Exception _e
                                  (log/warn "Unable to rollback database check for model persistence")))

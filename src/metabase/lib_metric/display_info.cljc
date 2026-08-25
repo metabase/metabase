@@ -29,14 +29,18 @@
 
 (defn default-display-info
   "Default implementation that extracts common fields from an entity.
-   Used as the base for type-specific implementations."
+   Used as the base for type-specific implementations. `:long-display-name` defaults
+   to `:display-name`."
   [_definition x]
-  (let [display-name (or (:display-name x) (:name x))]
+  (let [display-name   (or (:display-name x) (:name x))
+        effective-type (:effective-type x)
+        semantic-type  (:semantic-type x)]
     (cond-> {}
-      display-name              (assoc :display-name display-name)
+      display-name              (assoc :display-name display-name
+                                       :long-display-name display-name)
       (:name x)                 (assoc :name (:name x))
-      (:effective-type x)       (assoc :effective-type (:effective-type x))
-      (:semantic-type x)        (assoc :semantic-type (:semantic-type x))
+      effective-type            (assoc :effective-type effective-type)
+      semantic-type             (assoc :semantic-type semantic-type)
       (:description x)          (assoc :description (:description x))
       ;; Support both :selected? (from lib/) and :selected (from lib-metric/) naming conventions
       (some? (:selected? x))    (assoc :selected (:selected? x))
@@ -62,9 +66,15 @@
 (defmethod display-info-method :metadata/metric
   [definition metric]
   (let [display-name (or (:display-name metric)
-                         (:name metric))]
+                         (:name metric))
+        shown-name   (or display-name (i18n/tru "Metric"))]
     (merge (default-display-info definition metric)
-           {:display-name (or display-name (i18n/tru "Metric"))}
+           ;; Metrics have no group prefix, so the long display name is just the display name.
+           ;; Both keys are overridden together because this method supplies a fallback
+           ;; `:display-name` — `default-display-info` sets neither when the metric has no name
+           ;; at all, and they must not disagree.
+           {:display-name      shown-name
+            :long-display-name shown-name}
            (when-let [col-name (or (:result-column-name metric)
                                    (some-> display-name aggregation-column-name))]
              {:column-name col-name}))))
@@ -74,9 +84,12 @@
 (defmethod display-info-method :metadata/measure
   [definition measure]
   (let [display-name (or (:display-name measure)
-                         (:name measure))]
+                         (:name measure))
+        shown-name   (or display-name (i18n/tru "Measure"))]
     (merge (default-display-info definition measure)
-           {:display-name (or display-name (i18n/tru "Measure"))}
+           ;; see the :metadata/metric method for why :long-display-name is overridden too
+           {:display-name      shown-name
+            :long-display-name shown-name}
            (when-let [col-name (or (:result-column-name measure)
                                    (some-> display-name aggregation-column-name))]
              {:column-name col-name}))))
@@ -89,6 +102,8 @@
                          (:name dimension)
                          (i18n/tru "Dimension"))
         group        (:group dimension)
+        ;; the only display info whose :long-display-name diverges from :display-name — dimensions
+        ;; from a connected table are prefixed with the group name
         long-name    (if (and group (not= "main" (:type group)))
                        (str (:display-name group) " → " display-name)
                        display-name)]

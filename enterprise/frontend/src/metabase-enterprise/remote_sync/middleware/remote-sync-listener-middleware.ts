@@ -41,6 +41,8 @@ const ALL_INVALIDATION_TAGS = [
   tag("collection"),
   tag("collection-tree"),
   tag("content-translation"),
+  // data apps are materialized as part of the import, so refresh their list too
+  tag("data-app"),
   tag("dashboard"),
   tag("dashboard-question-candidates"),
   tag("document"),

@@ -188,7 +188,7 @@
                (appdb.scoring-test/search-results* "card")))))))
 
 (deftest transforms-user-recency-test
-  (mt/with-premium-features #{:transforms-basic}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (let [user-id (mt/user->id :crowberto)
           now     (Instant/now)
           recent-view (fn [model-id timestamp]

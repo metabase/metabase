@@ -57,8 +57,7 @@
             (throttle/check email-throttler true))
           (catch Exception _e
             (log/warn "Email throttling is enabled and the number of recipients exceeds the rate limit per second. Skip throttling."
-                      {:email-subject  (:subject email)
-                       :recipients     (count recipients)
+                      {:recipients     (count recipients)
                        :max-recipients throttle-threshold})))))))
 
 (defn partition-recipients
@@ -186,7 +185,7 @@
 (mu/defn send-email-retrying!
   "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."
   [email :- EmailMessage]
-  (retry/with-retry (retry/retry-configuration)
+  (retry/with-retry (channel.settings/retry-configuration)
     (send-message-or-throw! email)))
 
 (def ^:private SMTPStatus
@@ -212,7 +211,7 @@
   (try
     (send-email-retrying! msg-args)
     (catch Throwable e
-      (log/warn e "Failed to send email")
+      (log/warnf "Failed to send email: %s" (ex-message e))
       {::error e})))
 
 (def ^:private SMTPSettings
@@ -245,7 +244,7 @@
         (.connect transport host port user pass)))
     {::error nil}
     (catch Throwable e
-      (log/error e "Error testing SMTP connection")
+      (log/errorf "Error testing SMTP connection: %s" (ex-message e))
       {::error e})))
 
 (def ^:private email-security-order [:tls :starttls :ssl])

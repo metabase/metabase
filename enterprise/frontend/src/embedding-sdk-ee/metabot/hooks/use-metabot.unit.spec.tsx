@@ -4,16 +4,53 @@ import { useState } from "react";
 
 import { act, screen, waitFor } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { metabotActions } from "metabase/metabot/state";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
+  createTestMetabotState,
   lastReqBody,
   mockAgentEndpoint,
   setup,
+  testConversationId,
   whoIsYourFavoriteResponse,
 } from "metabase/metabot/tests/utils";
+import * as Urls from "metabase/urls";
 
 import { useMetabot } from "./use-metabot";
+
+const makeCard = (id: string, sourceTable = 1): GeneratedCard => ({
+  type: "card",
+  id,
+  title: "Chart",
+  query: {
+    id: `q-${id}`,
+    query: {
+      database: 1,
+      type: "query",
+      query: { "source-table": sourceTable },
+    },
+  },
+  display: "table",
+});
+
+const conversationId = testConversationId("omnibot");
+
+const cardMessage = (id: string, sourceTable = 1) =>
+  // `addAgentMessage` types its payload with a non-distributive `Omit` that
+  // collapses the message union to common keys, so the branch-specific `part`
+  // field fails excess-property checks (see the fuller note in the
+  // "maps agent.text passthrough" test below).
+  ({
+    conversationId,
+    type: "data_part",
+    part: {
+      type: "data-generated_entity",
+      data: makeCard(id, sourceTable),
+    },
+  }) as any;
+
+const cardPath = (id: string, sourceTable = 1) =>
+  Urls.generatedCard(makeCard(id, sourceTable));
 
 /**
  * Covers `useMetabot()` non-passthrough wiring: `CurrentChart`,
@@ -59,7 +96,7 @@ describe("useMetabot", () => {
       return CurrentChart ? <CurrentChart drills={drills} /> : null;
     };
 
-    it("renders nothing before navigate_to fires", () => {
+    it("renders nothing before a chart path is set", () => {
       setup({ ui: <TestCurrentChart /> });
 
       expect(
@@ -67,7 +104,7 @@ describe("useMetabot", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("renders a chart after navigate_to fires", async () => {
+    it("renders a chart after a chart path is set", async () => {
       const { store } = setup({ ui: <TestCurrentChart /> });
 
       expect(
@@ -151,7 +188,7 @@ describe("useMetabot", () => {
       expect(identityChanges).toBe(0);
     });
 
-    it("updates when a second navigate_to fires", async () => {
+    it("updates when a second chart path is set", async () => {
       const { store } = setup({ ui: <TestCurrentChart /> });
 
       act(() => {
@@ -198,7 +235,7 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u1",
             type: "text",
             message: "hi",
@@ -226,7 +263,7 @@ describe("useMetabot", () => {
           // reducer.ts). Keeping `as any` for now — applies to every dispatch
           // below.
           metabotActions.addAgentMessage({
-            agentId: "omnibot",
+            conversationId,
             type: "text",
             message: "ok",
           } as any),
@@ -242,21 +279,11 @@ describe("useMetabot", () => {
       });
     });
 
-    it("projects a navigate_to data_part into a chart message with questionPath", async () => {
+    it("projects a generated_entity card data_part into a chart message with questionPath", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
-        store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: {
-              type: "navigate_to",
-              version: 1,
-              value: "/question#base64",
-            },
-          } as any),
-        );
+        store.dispatch(metabotActions.addAgentMessage(cardMessage("card-1")));
       });
 
       const [message] = await readMessages();
@@ -268,7 +295,7 @@ describe("useMetabot", () => {
         id: expect.any(String),
         role: "agent",
         type: "chart",
-        questionPath: "/question#base64",
+        questionPath: cardPath("card-1"),
       });
     });
 
@@ -278,16 +305,18 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(metabotActions.setDebugMode(true));
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
-            agentId: "omnibot",
+            conversationId,
             type: "tool_call",
             name: "fn",
             status: "started",
           } as any),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
-            agentId: "omnibot",
+            conversationId,
             type: "edit_suggestion",
             model: "transform",
             payload: {
@@ -304,8 +333,9 @@ describe("useMetabot", () => {
           } as any),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
-            agentId: "omnibot",
+            conversationId,
             type: "todo_list",
             payload: [
               {
@@ -318,8 +348,9 @@ describe("useMetabot", () => {
           } as any),
         );
         store.dispatch(
+          // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
-            agentId: "omnibot",
+            conversationId,
             type: "text",
             message: "ok",
           } as any),
@@ -336,54 +367,42 @@ describe("useMetabot", () => {
       });
     });
 
-    it("keeps only the last navigate_to per turn, across multiple turns", async () => {
+    it("keeps only the last chart per turn, across multiple turns", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u1",
             type: "text",
             message: "first",
           }),
         );
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#1a" },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("card-1A", 1)),
         );
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#1b" },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("card-1B", 2)),
         );
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u2",
             type: "text",
             message: "second",
           }),
         );
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#2" },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("card-2", 3)),
         );
       });
 
       const messages = await readMessages();
       const charts = messages.filter((m) => m.type === "chart");
       expect(charts).toHaveLength(2);
-      expect(charts[0].questionPath).toBe("/question#1b");
-      expect(charts[1].questionPath).toBe("/question#2");
+      expect(charts[0].questionPath).toBe(cardPath("card-1B", 2));
+      expect(charts[1].questionPath).toBe(cardPath("card-2", 3));
     });
   });
 
@@ -407,7 +426,7 @@ describe("useMetabot", () => {
 
     it("forwards the message to the underlying agent request", async () => {
       const agentSpy = mockAgentEndpoint({
-        textChunks: whoIsYourFavoriteResponse,
+        events: whoIsYourFavoriteResponse,
       });
       setup({ ui: <TestSubmit /> });
 
@@ -418,36 +437,34 @@ describe("useMetabot", () => {
     });
 
     it("does not open the metabot sidebar (preventOpenSidebar)", async () => {
-      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
       // default setup() forces omnibot.visible = true; override so we can
       // observe whether submitMessage would flip it back on.
       const { store } = setup({
         ui: <TestSubmit />,
-        metabotInitialState: getMetabotInitialState(),
+        metabotInitialState: createTestMetabotState(),
       });
 
       expect(
-        store.getState().metabot?.conversations?.omnibot?.messages.length,
+        store.getState().metabot?.conversations?.[conversationId]?.messages
+          .length,
       ).toBe(0);
-      expect(store.getState().metabot?.conversations?.omnibot?.visible).toBe(
-        false,
-      );
+      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
 
       await userEvent.click(screen.getByTestId("submit-btn"));
 
       await waitFor(() => {
         expect(
-          store.getState().metabot?.conversations?.omnibot?.messages.length,
+          store.getState().metabot?.conversations?.[conversationId]?.messages
+            .length,
         ).toBeGreaterThan(0);
       });
 
-      expect(store.getState().metabot?.conversations?.omnibot?.visible).toBe(
-        false,
-      );
+      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
     });
 
     it("resolves to undefined even though agent.submitInput returns an action", async () => {
-      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
       const onResolved = jest.fn();
       setup({ ui: <TestSubmit onResolved={onResolved} /> });
 
@@ -473,17 +490,7 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestChart /> });
 
       act(() => {
-        store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: {
-              type: "navigate_to",
-              version: 1,
-              value: "/question#base64",
-            },
-          } as any),
-        );
+        store.dispatch(metabotActions.addAgentMessage(cardMessage("card-1")));
       });
 
       expect(await screen.findByTestId("mock-static-question")).toBeVisible();
@@ -493,17 +500,7 @@ describe("useMetabot", () => {
       const { store } = setup({ ui: <TestChart drills /> });
 
       act(() => {
-        store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: {
-              type: "navigate_to",
-              version: 1,
-              value: "/question#base64",
-            },
-          } as any),
-        );
+        store.dispatch(metabotActions.addAgentMessage(cardMessage("card-1")));
       });
 
       expect(
@@ -530,18 +527,14 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u1",
             type: "text",
             message: "first",
           }),
         );
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#abc" },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("card-abc", 1)),
         );
       });
 
@@ -551,22 +544,18 @@ describe("useMetabot", () => {
       const capturedChart = firstChart;
       expect(capturedChart).not.toBeNull();
 
-      // Open a second turn so both navigate_tos survive the per-turn filter.
+      // Open a second turn so both charts survive the per-turn filter.
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u2",
             type: "text",
             message: "second",
           }),
         );
         store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "data_part",
-            part: { type: "navigate_to", version: 1, value: "/question#xyz" },
-          } as any),
+          metabotActions.addAgentMessage(cardMessage("card-xyz", 2)),
         );
       });
 

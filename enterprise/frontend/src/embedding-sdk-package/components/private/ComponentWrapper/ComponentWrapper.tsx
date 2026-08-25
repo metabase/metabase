@@ -23,11 +23,13 @@ import {
   SDK_NOT_LOADED_YET_MESSAGE,
   SDK_NOT_STARTED_LOADING_MESSAGE,
 } from "embedding-sdk-package/constants/error-messages";
+import {
+  ensureMetabaseProviderPropsStore,
+  useMetabaseProviderPropsStore,
+} from "embedding-sdk-package/lib/provider-props-store";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import {
   SdkLoadingError,
@@ -183,6 +185,7 @@ const ComponentWrapperInner = <TComponentProps,>({
   const adjustedTheme = useMemo(() => applyThemePreset(theme), [theme]);
 
   const { height, width } =
+    // Unjustified type cast. FIXME
     (componentProps as {
       height?: CSSProperties["height"];
       width?: CSSProperties["width"];
@@ -245,6 +248,7 @@ const ComponentWrapperInner = <TComponentProps,>({
       reduxStore={metabaseProviderInternalProps.reduxStore}
     >
       <RenderComponentWithValidation
+        // Unjustified type cast. FIXME
         $component={Component as InternalComponent<JSXElementConstructor<any>>}
         {...componentProps}
       />
@@ -266,6 +270,7 @@ export const createComponent = <
     | null
     | undefined,
 ): ComponentWrapperFunction<TComponentProps> => {
+  // Unjustified type cast. FIXME
   return function ComponentWrapper(props: TComponentProps) {
     const ensureSingleInstanceId = useId();
 

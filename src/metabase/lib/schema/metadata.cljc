@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.metadata
-  (:refer-clojure :exclude [get-in])
+  (:refer-clojure :exclude [empty? get-in])
   (:require
    #?@(:clj
        ([metabase.util.regex :as u.regex]))
@@ -10,9 +10,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [get-in]]))
+   [metabase.util.performance :refer [empty? get-in]]))
 
 ;;; Column vs Field?
 ;;;
@@ -69,7 +70,10 @@
    ;; Introduced by `:expressions` IN THE CURRENT STAGE; not necessarily ultimately returned.
    :source/expressions
    ;; Not even introduced, but 'visible' because this column is implicitly joinable.
-   :source/implicitly-joinable])
+   :source/implicitly-joinable
+   ;; The synthetic `pivot-grouping` column emitted by the SQL compiler from `GROUPING(...)` when the query carries a
+   ;; top-level `:pivot` clause. Treated like an aggregation/native column for alias-info purposes.
+   :source/pivot-grouping])
 
 ;;; The way FieldValues/remapping works is hella confusing, because it involves the FieldValues table and Dimension
 ;;; table, and the `has_field_values` column, nobody knows why life is like this TBH. The docstrings
@@ -276,6 +280,7 @@
 (mr/def ::column.validate-for-source-joins               (column-validate-for-source-schema :source/joins))
 (mr/def ::column.validate-for-source-expressions         (column-validate-for-source-schema :source/expressions))
 (mr/def ::column.validate-for-source-implicitly-joinable (column-validate-for-source-schema :source/implicitly-joinable))
+(mr/def ::column.validate-for-source-pivot-grouping      (column-validate-for-source-schema :source/pivot-grouping))
 
 (mr/def ::column.validate-for-source
   "Do additional validation for column metadata based on `:lib/source`."
@@ -289,6 +294,7 @@
    [:source/joins               [:ref ::column.validate-for-source-joins]]
    [:source/expressions         [:ref ::column.validate-for-source-expressions]]
    [:source/implicitly-joinable [:ref ::column.validate-for-source-implicitly-joinable]]
+   [:source/pivot-grouping      [:ref ::column.validate-for-source-pivot-grouping]]
    [nil                         :any]])
 
 (def column-visibility-types
@@ -529,7 +535,7 @@
     ;; `:coercion-strategy`, along with `:qp/native-sandbox-column.propagate-coercion? true` (see below). Lib will
     ;; propagate the coercion strategy through *exactly one* stage boundary, so it can get from the SQL first stage to
     ;; the earliest MBQL stage, where the coercion will get applied correctly. See QUE2-376 or #69867 for more details.
-    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} :keyword]
+    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} [:ref ::lib.schema.common/coercion-strategy]]
     ;;
     ;; See above about `:qp/native-sandbox-column.force-coercion-strategy`.
     [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]]
@@ -631,8 +637,21 @@
 (mr/def ::card.query
   "Saved query. This is possibly still a legacy query, but should already be normalized.
   Call [[metabase.lib.convert/->mbql5]] on it as needed."
-  [:map
-   {:decode/normalize normalize-card-query}])
+  ;; dispatched rather than written as a keyless `[:map {:decode/normalize ...}]`, which declares no keys and so
+  ;; would strip the whole query while decoding
+  [:multi {:dispatch (fn [query]
+                       (cond
+                         (empty? query)              :empty
+                         (:lib/type query)           :mbql5
+                         :else                       :legacy))}
+   ;; Cards may be saved with an empty query -- see `:metabase.queries.schema/query`
+   [:empty  [:= {} {}]]
+   [:mbql5  [:schema
+             {:decode/normalize normalize-card-query}
+             [:ref :metabase.lib.schema/query]]]
+   [:legacy [:schema
+             {:decode/normalize normalize-card-query}
+             [:ref :metabase.legacy-mbql.schema/Query]]]])
 
 (defn- normalize-card [card]
   (when card
@@ -719,8 +738,11 @@
 (mr/def ::measure.definition
   "Measure definition query. This should be an MBQL5 query with a single stage and one aggregation.
    Strict validation via :metabase.lib.schema.measure/definition happens in metabase.measures.models.measure."
-  [:map
-   {:decode/normalize normalize-measure-definition}])
+  ;; wrapped in `[:schema ...]` rather than written as a keyless `[:map {:decode/normalize ...}]`, which declares no
+  ;; keys and so would strip the whole definition while decoding
+  [:schema
+   {:decode/normalize normalize-measure-definition}
+   [:ref :metabase.lib.schema/query]])
 
 (defn- mock-measure [measure]
   (cond-> measure
@@ -754,10 +776,9 @@
 
 (mr/def ::native-query-snippet
   [:map
-   [:lib/type [:= :metadata/native-query-snippet]]
-   [:id       ::lib.schema.id/native-query-snippet]])
-;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
-
+   [:lib/type      [:= :metadata/native-query-snippet]]
+   [:id            ::lib.schema.id/native-query-snippet]
+   [:template-tags {:optional true} [:maybe [:ref ::lib.schema.template-tag/template-tag-map]]]])
 ;;; TODO (Cam 8/8/25) -- description, content, archived, collection-id
 
 (mr/def ::table
@@ -771,9 +792,8 @@
    [:display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:schema       {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    ;; Optional `:db` AST slot for cross-DB references (BigQuery `project.dataset.table`,
-   ;; SQL Server / Snowflake `db.schema.table`, MySQL workspace-remapped tables routing
-   ;; to a different database). Sync doesn't populate it on standard reads — only
-   ;; workspace remap and other cross-DB rewriters fill it.
+   ;; SQL Server / Snowflake `db.schema.table`). Sync doesn't populate it on standard
+   ;; reads — only cross-DB rewriters fill it.
    [:db           {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::database

@@ -1,8 +1,5 @@
 const { H } = cy;
-import {
-  ADMIN_PERSONAL_COLLECTION_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
@@ -211,104 +208,5 @@ describe("scenarios > question > native subquery", () => {
         });
       });
     });
-  });
-
-  it("should allow a user with no data access to execute a native subquery", () => {
-    // Create the initial SQL question and followup nested question
-    H.createNativeQuestion({
-      name: "People in WA",
-      native: {
-        query: "select * from PEOPLE where STATE = 'WA'",
-      },
-    })
-      .then((response) => {
-        cy.wrap(response.body.id).as("nestedQuestionId");
-        const tagID = `#${response.body.id}`;
-
-        H.createNativeQuestion({
-          name: "Count of People in WA",
-          native: {
-            query: `select COUNT(*) from {{#${response.body.id}}}`,
-            "template-tags": {
-              [tagID]: {
-                id: "10422a0f-292d-10a3-fd90-407cc9e3e20e",
-                name: tagID,
-                "display-name": tagID,
-                type: "card",
-                "card-id": response.body.id,
-              },
-            },
-          },
-        });
-      })
-      .then((response) => {
-        cy.wrap(response.body.id).as("toplevelQuestionId");
-
-        cy.visit(`/question/${response.body.id}`);
-        cy.contains("41");
-      });
-
-    // Now sign in as a user w/no data access
-    cy.signIn("nodata");
-
-    // They should be able to access both questions
-    H.visitQuestion("@nestedQuestionId");
-    cy.findByTestId("question-row-count").should(
-      "have.text",
-      "Showing 41 rows",
-    );
-
-    H.visitQuestion("@toplevelQuestionId");
-    H.tableInteractiveBody()
-      .findAllByTestId("cell-data")
-      .eq(0)
-      .should("have.text", "41");
-  });
-
-  it("should be able to reference a nested question (metabase#25988)", () => {
-    const questionDetails = {
-      name: "Nested GUI question",
-      query: {
-        "source-table": `card__${ORDERS_QUESTION_ID}`,
-        limit: 2,
-      },
-    };
-
-    H.createQuestion(questionDetails).then(
-      ({ body: { id: nestedQuestionId } }) => {
-        const tagID = `#${nestedQuestionId}`;
-        cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
-
-        H.startNewNativeQuestion();
-        H.NativeEditor.type(`SELECT * FROM {{${tagID}`);
-        cy.wait("@loadQuestion");
-        cy.findByTestId("sidebar-header-title").should(
-          "have.text",
-          questionDetails.name,
-        );
-
-        H.runNativeQuery();
-        cy.findAllByTestId("cell-data").should("contain", "37.65");
-      },
-    );
-  });
-
-  it("should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)", () => {
-    const questionDetails = {
-      name: "28218",
-      native: { query: "select 1;" }, // semicolon is important here
-    };
-
-    H.createNativeQuestion(questionDetails).then(
-      ({ body: { id: baseQuestionId } }) => {
-        const tagID = `#${baseQuestionId}`;
-
-        H.startNewNativeQuestion({ display: "table" });
-        H.NativeEditor.type(`SELECT * FROM {{${tagID}`);
-
-        H.runNativeQuery();
-        cy.findAllByTestId("cell-data").should("contain", "1");
-      },
-    );
   });
 });

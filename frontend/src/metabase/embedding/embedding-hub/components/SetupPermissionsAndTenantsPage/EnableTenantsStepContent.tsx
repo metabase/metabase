@@ -6,10 +6,10 @@ import { t } from "ttag";
 import {
   useCreateCollectionMutation,
   useListCollectionsTreeQuery,
-  useUpdateSettingMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
+import { useUpdateSettingMutation } from "metabase/settings";
 import { Button, Group, Stack, Text } from "metabase/ui";
 
 import S from "./SetupPermissionsAndTenantsPage.module.css";
@@ -53,7 +53,7 @@ export const EnableTenantsStepContent = ({
     } catch (error) {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: getErrorMessage(
           error,
           t`Failed to enable tenants and create shared collection`,

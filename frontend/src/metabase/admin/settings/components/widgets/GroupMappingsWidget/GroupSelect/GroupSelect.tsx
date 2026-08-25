@@ -8,7 +8,7 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/admin/utils/groups";
+} from "metabase/common/utils/groups";
 import {
   Box,
   Checkbox,
@@ -98,7 +98,7 @@ export const GroupSelect = ({
               groups={groups}
               selectedGroupIds={selectedGroupIds}
             />
-            <Icon c="text-tertiary" name="chevrondown" size={10} />
+            <Icon c="text-disabled" name="chevrondown" size={10} />
           </Flex>
         </UnstyledButton>
       </Combobox.Target>

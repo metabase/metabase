@@ -1,5 +1,3 @@
-import { push } from "react-router-redux";
-
 import {
   skipToken,
   useDeleteTimelineEventMutation,
@@ -7,14 +5,14 @@ import {
   useGetTimelineQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
-import { useDispatch } from "metabase/redux";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { useNavigate } from "metabase/router";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const timelineId = Urls.extractEntityId(params.timelineId);
   const eventId = Urls.extractEntityId(params.timelineEventId);
   const {
@@ -33,7 +31,7 @@ function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
 
   const onSubmit = async (event: TimelineEvent, timeline: Timeline) => {
     await deleteTimelineEvent(event.id).unwrap();
-    dispatch(push(Urls.timelineArchiveInCollection(timeline)));
+    navigate(Urls.timelineArchiveInCollection(timeline));
   };
 
   const isLoading = isTimelineLoading || isEventLoading;

@@ -1,9 +1,10 @@
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { getActionItems } from "metabase/actions/utils";
 import {
   actionApi,
   skipToken,
@@ -13,6 +14,7 @@ import {
 } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   DetailsGroup,
@@ -37,11 +39,10 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import type { OptionsType } from "metabase/utils/formatting/types";
-import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   ForeignKey,
   RowValues,
@@ -51,12 +52,12 @@ import type {
 } from "metabase-types/api";
 
 import { Sidesheet } from "./Sidesheet";
-import { extractData, getActionItems, getModelId } from "./utils";
+import { extractData, getModelId } from "./utils";
 
 interface Props {
   columnSettings: TableColumnOrderSetting[] | undefined;
   columns: DatasetColumn[];
-  columnsSettings: (OptionsType | undefined)[];
+  columnsSettings: (ColumnSettings | undefined)[];
   query: Lib.Query | undefined;
   row: RowValues | undefined;
   rowId: string | number;

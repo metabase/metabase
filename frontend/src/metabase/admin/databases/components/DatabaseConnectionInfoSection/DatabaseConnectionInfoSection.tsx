@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -15,6 +14,7 @@ import {
   isDbModifiable,
 } from "metabase/common/utils/database";
 import { useDispatch } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { Button, Flex, Tooltip } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";
@@ -35,6 +35,7 @@ export const DatabaseConnectionInfoSection = ({
   const isSynced = isSyncCompleted(database);
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [syncDatabaseSchema] = useSyncDatabaseSchemaMutation();
   const [rescanDatabaseFieldValues] = useRescanDatabaseFieldValuesMutation();
   const [dismissSyncSpinner] = useDismissDatabaseSyncSpinnerMutation();
@@ -51,8 +52,8 @@ export const DatabaseConnectionInfoSection = ({
   );
 
   const openDbDetailsModal = useCallback(() => {
-    dispatch(push(`/admin/databases/${database.id}/edit`));
-  }, [database.id, dispatch]);
+    navigate(`/admin/databases/${database.id}/edit`);
+  }, [database.id, navigate]);
 
   return (
     <DatabaseInfoSection

@@ -408,7 +408,10 @@
         (words->lines base-pt heading? content-w)
         (lines-height base-pt))))
 
-(defn- markdown-total-height [blocks cell-w scale]
+(defn markdown-total-height
+  "Total vertical points the `blocks` consume when laid out at `scale` within `cell-w` (mirrors the reduce in
+  `draw-markdown-in-cell!`, including the 4pt inter-block gap). Used to fit the text and to vertically align it."
+  [blocks cell-w scale]
   (transduce (map #(+ (block-height % cell-w scale) (* 4.0 scale)))
              + 0.0
              blocks))

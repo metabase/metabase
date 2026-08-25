@@ -70,6 +70,7 @@ export function hasPermissionValueInSubgraph(
           {
             databaseId: entityId.databaseId,
             schemaName: schema.name,
+            // Unjustified type cast. FIXME
             tableId: table.id as ConcreteTableId,
           },
           permission,

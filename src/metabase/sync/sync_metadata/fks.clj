@@ -22,6 +22,7 @@
                  pk-table-schema
                  pk-column-name]}]
   (let [field-id-query (fn [db-id table-schema table-name column-name]
+                         ^:allow-subquery
                          {:select [[[:min :f.id] :id]]
                           ;; Cal 2024-03-04: We use `min` to limit this subquery to one result (limit 1 isn't allowed
                           ;; in subqueries in MySQL) because it's possible for schema, table, or column names to be
@@ -131,7 +132,7 @@
                (transduce (map (fn [x]
                                  (let [[updated failed] (try [(mark-fk! database x) 0]
                                                              (catch Exception e
-                                                               (log/error e)
+                                                               (log/error (ex-message e))
                                                                [0 1]))]
                                    {:total-fks    1
                                     :updated-fks  updated

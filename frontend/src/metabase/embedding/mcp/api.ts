@@ -1,10 +1,11 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { SubmitMcpAppsFeedbackRequest } from "metabase-types/api";
 
 type StoreDrillQueryRequest = {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
   mcpSessionId: string;
   encodedQuery: string;
 };
@@ -15,7 +16,7 @@ type StoreDrillQueryResponse = {
 
 type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
 };
 
 /**
@@ -27,7 +28,7 @@ type SubmitMcpFeedbackPayload = SubmitMcpAppsFeedbackRequest & {
  */
 export async function storeDrillQuery({
   instanceUrl,
-  sessionToken,
+  uiCredential,
   mcpSessionId,
   encodedQuery,
 }: StoreDrillQueryRequest): Promise<StoreDrillQueryResponse> {
@@ -35,8 +36,8 @@ export async function storeDrillQuery({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Metabase-Client": "mcp-apps",
-      "X-Metabase-Session": sessionToken,
+      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      "X-Metabase-Mcp-Ui-Auth": uiCredential,
       "Mcp-Session-Id": mcpSessionId,
     },
     body: JSON.stringify({ encodedQuery }),
@@ -53,7 +54,7 @@ export async function storeDrillQuery({
 
 export async function submitMcpFeedback({
   instanceUrl,
-  sessionToken,
+  uiCredential,
   mcpSessionId,
   payload,
 }: SubmitMcpFeedbackPayload): Promise<void> {
@@ -61,8 +62,8 @@ export async function submitMcpFeedback({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Metabase-Client": "mcp-apps",
-      "X-Metabase-Session": sessionToken,
+      "X-Metabase-Client": EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+      "X-Metabase-Mcp-Ui-Auth": uiCredential,
       "Mcp-Session-Id": mcpSessionId,
     },
     body: JSON.stringify(payload),

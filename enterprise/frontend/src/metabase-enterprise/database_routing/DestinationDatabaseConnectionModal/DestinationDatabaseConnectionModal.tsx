@@ -1,6 +1,4 @@
 import { useMemo } from "react";
-import type { Route } from "react-router";
-import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
@@ -11,6 +9,7 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { useNavigate, useParams } from "metabase/router";
 import { Flex, Icon, Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
@@ -21,14 +20,13 @@ import { paramIdToGetQuery } from "../utils";
 import S from "./DestinationDatabaseConnectionModal.module.css";
 import { pickPrefillFieldsFromPrimaryDb } from "./utils";
 
-export const DestinationDatabaseConnectionModal = ({
-  params: { databaseId, destinationDatabaseId },
-  route,
-}: {
-  params: { databaseId: string; destinationDatabaseId?: string };
-  route: Route;
-}) => {
+export const DestinationDatabaseConnectionModal = () => {
+  const { databaseId = "", destinationDatabaseId } = useParams<{
+    databaseId: string;
+    destinationDatabaseId: string;
+  }>();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
   const { url: docsUrl } = useDocsUrl("permissions/database-routing");
@@ -59,9 +57,9 @@ export const DestinationDatabaseConnectionModal = ({
   const handleCloseModal = (method = "push") => {
     const dbId = parseInt(databaseId, 10);
     if (method === "push") {
-      dispatch(push(Urls.viewDatabase(dbId)));
+      navigate(Urls.viewDatabase(dbId));
     } else {
-      dispatch(replace(Urls.viewDatabase(dbId)));
+      navigate(Urls.viewDatabase(dbId), { replace: true });
     }
   };
 
@@ -142,7 +140,6 @@ export const DestinationDatabaseConnectionModal = ({
             handleSaveDb={handleSaveDatabase}
             onSubmitted={handleOnSubmit}
             onCancel={handleCloseModal}
-            route={route}
             config={{
               name: { isSlug: true },
               engine: { fieldState: "hidden" },

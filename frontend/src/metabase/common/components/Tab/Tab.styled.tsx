@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { focusOutlineStyle } from "metabase/common/style/input";
+import { focusOutlineStyle } from "metabase/common/style/focus-outline";
 import { Icon } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";

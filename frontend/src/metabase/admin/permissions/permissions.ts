@@ -5,7 +5,6 @@ import {
   current, // immer and icepick don't play nicely together
 } from "@reduxjs/toolkit";
 import { assocIn, merge } from "icepick";
-import { push } from "react-router-redux";
 import { isBoolean } from "underscore";
 
 import {
@@ -30,6 +29,7 @@ import {
   createAction,
   createThunkAction,
 } from "metabase/redux";
+import { navigate } from "metabase/router";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -186,18 +186,14 @@ export const limitDatabasePermission = createThunkAction(
       );
     }
 
-    dispatch(navigateToGranularPermissions(groupId, entityId));
+    navigateToGranularPermissions(groupId, entityId);
   },
 );
 
-export const NAVIGATE_TO_GRANULAR_PERMISSIONS =
-  "metabase/admin/permissions/NAVIGATE_TO_GRANULAR_PERMISSIONS";
-export const navigateToGranularPermissions = createThunkAction(
-  NAVIGATE_TO_GRANULAR_PERMISSIONS,
-  (groupId, entityId) => (dispatch) => {
-    dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
-  },
-);
+export const navigateToGranularPermissions = (
+  groupId: GroupId,
+  entityId: PermissionEntityId,
+) => navigate(getGroupFocusPermissionsUrl(groupId, entityId));
 
 export interface UpdateDataPermissionParams {
   groupId: GroupId;
@@ -209,7 +205,7 @@ export interface UpdateDataPermissionParams {
   entityId: PermissionEntityId;
   view: "database" | "group";
 }
-interface UpdateDataPermissionPayload {
+export interface UpdateDataPermissionPayload {
   groupId: GroupId;
   permissionInfo: Pick<
     PermissionSectionConfig,
@@ -249,18 +245,15 @@ export const updateDataPermission = createThunkAction(
       }
 
       const metadata = getMetadataWithHiddenTables(getState());
-      if (permissionInfo.postActions) {
-        const action = permissionInfo.postActions?.[value]?.(
-          entityId,
-          groupId,
-          view,
-          value,
-          getState,
-        );
+      const postAction = permissionInfo.postActions?.[value];
+      if (postAction) {
+        // A post action takes the change over: it sends the admin to where this
+        // value is configured, so the permission is not applied here.
+        const action = postAction(entityId, groupId, view, value, getState);
         if (action) {
           dispatch(action);
-          return;
         }
+        return;
       }
 
       return { groupId, permissionInfo, value, metadata, entityId };
@@ -289,7 +282,7 @@ export const saveDataPermissions = createThunkAction(
     const advancedPermissions =
       PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce<{
         modifiedGroupIds: string[];
-        permissions: Record<string, undefined | { group_id: string }[]>;
+        permissions: Record<string, undefined | { group_id: number }[]>;
       }>(
         (data, selector) => {
           const [extraData, modifiedGroupIds] = selector(state);

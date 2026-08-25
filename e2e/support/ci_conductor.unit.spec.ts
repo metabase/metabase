@@ -51,6 +51,7 @@ const spec = {
 const makeResults = (
   overrides: Partial<CypressCommandLine.RunResult>,
 ): CypressCommandLine.RunResult =>
+  // Unjustified type cast. FIXME
   ({
     error: null,
     tests: [],
@@ -76,6 +77,7 @@ const test = (
 // Build a `results.screenshots`-shaped array from bare paths (the only field we
 // read). Cypress leaves `name` null for automatic failure shots.
 const screenshotsFromPaths = (...paths: string[]) =>
+  // Unjustified type cast. FIXME
   paths.map((path) => ({
     path,
   })) as unknown as CypressCommandLine.RunResult["screenshots"];
@@ -386,6 +388,10 @@ describe("reportFailedTestsToConductor", () => {
       REPO_ID: "123",
       GITHUB_RUN_ID: "456",
       GITHUB_RUN_ATTEMPT: "2",
+      // Cleared explicitly: the resolve-job-id action exports a real JOB_ID to
+      // $GITHUB_ENV, so on CI this var is present in the ambient process env.
+      // This case asserts the null-job_id path, so it must not inherit it.
+      JOB_ID: undefined,
       CYPRESS_RETRIES: "1",
       COMMIT_SHA: "abc123",
       TARGET_BRANCH: "master",
@@ -530,6 +536,7 @@ describe("reportFailedTestsToConductor", () => {
       reportFailedTestsToConductor(oneTest),
     ).resolves.toBeUndefined();
     expect(console.error).toHaveBeenCalled();
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 
@@ -581,6 +588,7 @@ describe("reportFailedTestsToConductor", () => {
 
     await reportFailedTestsToConductor(oneTest);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("500"));
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 
@@ -644,6 +652,7 @@ describe("reportFailedTestsToConductor", () => {
       reportFailedTestsToConductor(oneTest),
     ).resolves.toBeUndefined();
     expect(console.error).toHaveBeenCalled();
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 });
@@ -734,6 +743,7 @@ describe("recordFailedTestsForQuarantine", () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() =>
+      // Unjustified type cast. FIXME
       recordFailedTestsForQuarantine([
         {
           name: "n",
@@ -745,6 +755,7 @@ describe("recordFailedTestsForQuarantine", () => {
       ] as Parameters<typeof recordFailedTestsForQuarantine>[0]),
     ).not.toThrow();
 
+    // Unjustified type cast. FIXME
     (console.error as jest.Mock).mockRestore();
   });
 });

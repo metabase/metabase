@@ -2,26 +2,33 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { Schedule } from "metabase/common/components/Schedule/Schedule";
+import type {
+  ScheduleChangeProp,
+  ScheduleValue,
+} from "metabase/common/components/Schedule/types";
 import {
-  type ScheduleChangeProp,
-  SchedulePicker,
-} from "metabase/common/components/SchedulePicker";
+  getScheduleDefaultsWithoutHour,
+  toScheduleSettings,
+} from "metabase/common/components/Schedule/utils";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { dashboardPulseIsValid } from "metabase/pulse";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
+import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/settings";
 import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,
   type ChannelApiResponse,
   type ChannelSpec,
-  type ChannelSpecs,
   type Dashboard,
   DataPermissionValue,
+  type DraftDashboardSubscription,
   type ScheduleSettings,
 } from "metabase-types/api";
 
@@ -29,7 +36,7 @@ import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
-import { CHANNEL_NOUN_PLURAL } from "./constants";
+import { getSubscriptionScheduleDescription } from "./utils";
 
 interface AddEditSlackSidebarProps {
   pulse: DraftDashboardSubscription;
@@ -70,10 +77,22 @@ export const AddEditSlackSidebar = ({
   handleArchive,
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
-  const isValid = dashboardPulseIsValid(
-    pulse,
-    formInput.channels as ChannelSpecs,
+  const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const hasValidTarget = channelTargetIsValid(channel, channelSpec);
+  const applicationName = useSelector(getApplicationName);
+  const timezone = useSelector((state) =>
+    getSetting(state, "report-timezone-short"),
   );
+
+  const renderScheduleDescription = (value: ScheduleValue) => {
+    const description = getSubscriptionScheduleDescription({
+      schedule: toScheduleSettings(value),
+      channelSpec,
+      applicationName,
+      timezone,
+    });
+    return description ? <Text c="text-secondary">{description}</Text> : null;
+  };
 
   // Return true if the results of all cards can be downloaded
   const allowDownload = pulse.cards?.every(
@@ -111,8 +130,9 @@ export const AddEditSlackSidebar = ({
             onChannelPropertyChange={onChannelPropertyChange}
           />
         )}
-        <SchedulePicker
-          schedule={_.pick(
+        <Schedule
+          mt="md"
+          value={_.pick(
             channel,
             "schedule_day",
             "schedule_frame",
@@ -120,13 +140,14 @@ export const AddEditSlackSidebar = ({
             "schedule_type",
           )}
           scheduleOptions={channelSpec.schedules}
-          textBeforeInterval={t`Send`}
-          textBeforeSendTime={t`${
-            (channelSpec?.type && CHANNEL_NOUN_PLURAL[channelSpec.type]) ??
-            t`Messages`
-          } will be sent at`}
-          onScheduleChange={(newSchedule, changedProp) =>
-            onChannelScheduleChange(newSchedule, changedProp)
+          verb={t`Send`}
+          getDefaults={getScheduleDefaultsWithoutHour}
+          renderScheduleDescription={renderScheduleDescription}
+          onScheduleChange={({ value }) =>
+            onChannelScheduleChange(toScheduleSettings(value), {
+              name: "schedule_type",
+              value: value.schedule_type,
+            })
           }
         />
         <div className={cx(CS.pt2, CS.pb1)}>
@@ -137,7 +158,7 @@ export const AddEditSlackSidebar = ({
             testPulse={testPulse}
             normalText={t`Send to Slack now`}
             successText={t`Slack sent`}
-            disabled={!isValid}
+            disabled={!hasValidTarget}
           />
         </div>
 

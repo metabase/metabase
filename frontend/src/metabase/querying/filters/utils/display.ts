@@ -1,4 +1,4 @@
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 

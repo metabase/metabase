@@ -10,4 +10,5 @@
 
 (p/import-vars
  [metabase.documents.api.document
+  add-card-to-document!
   get-document])

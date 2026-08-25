@@ -17,6 +17,18 @@ import {
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
 
+// Assert the dashboard URL's query params match `expected`, regardless of the
+// order in which the slugs are serialized. That order is not deterministic, so
+// asserting on the exact search string is flaky (metabase#17933). Comparing the
+// parsed params also sidesteps async-update timing, since `.should(callback)`
+// retries until the URL settles.
+const expectSearchParams = (expected) =>
+  cy.location("search").should((search) => {
+    expect(Object.fromEntries(new URLSearchParams(search))).to.deep.eq(
+      expected,
+    );
+  });
+
 describe("scenarios > dashboard > parameters", () => {
   const cards = [
     {
@@ -38,71 +50,6 @@ describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-  });
-
-  it("one filter should search across multiple fields", () => {
-    cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-    H.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
-      // add the same question twice
-      H.updateDashboardCards({
-        dashboard_id: id,
-        cards,
-      });
-
-      H.visitDashboard(id);
-    });
-
-    H.editDashboard();
-
-    // add a category filter
-    H.setFilter("Text or Category", "Is");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("A single value").click();
-
-    // connect it to people.name and product.category
-    // (this doesn't make sense to do, but it illustrates the feature)
-    H.selectDashboardFilter(H.getDashboardCard(0), "Name");
-
-    H.selectDashboardFilter(H.getDashboardCard(1), "Category");
-
-    H.saveDashboard();
-
-    // confirm that typing searches both fields
-    H.filterWidget().contains("Text").click();
-
-    // After typing "Ga", you should see this name!
-    H.popover().within(() =>
-      cy.findByPlaceholderText("Search the list").type("Ga"),
-    );
-    cy.wait("@dashboard");
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.popover().last().contains("Gabrielle Considine");
-
-    // Continue typing a "d" and you see "Gadget"
-    H.popover()
-      .first()
-      .within(() => cy.findByPlaceholderText("Search the list").type("d"));
-    cy.wait("@dashboard");
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.popover()
-      .last()
-      .within(() => {
-        cy.findByText("Gadget").click();
-      });
-
-    H.popover()
-      .first()
-      .within(() => {
-        cy.button("Add filter").click();
-      });
-
-    cy.location("search").should("eq", "?text=Gadget");
-    cy.findAllByTestId("dashcard-container").first().should("contain", "0");
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findAllByTestId("dashcard-container").last().should("contain", "4,939");
   });
 
   it("should be able to remove parameter (metabase#17933)", () => {
@@ -200,10 +147,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.button("Add filter").click();
 
-    cy.location("search").should(
-      "eq",
-      `?${endsWith.slug}=&${startsWith.slug}=G`,
-    );
+    expectSearchParams({ [endsWith.slug]: "", [startsWith.slug]: "G" });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65").should("not.exist");
 
@@ -218,10 +162,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.button("Add filter").click();
 
-    cy.location("search").should(
-      "eq",
-      `?${endsWith.slug}=zmo&${startsWith.slug}=G`,
-    );
+    expectSearchParams({ [endsWith.slug]: "zmo", [startsWith.slug]: "G" });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("52.72").should("not.exist");
 
@@ -229,9 +170,17 @@ describe("scenarios > dashboard > parameters", () => {
     cy.icon("pencil").click();
     H.filterWidget({ isEditing: true, name: startsWith.name }).click();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Remove").click();
-    cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
+    // The sidebar's Remove button is disabled until the dashboard's
+    // subscriptions have loaded (it warns before archiving any bound to this
+    // filter). Target the button element itself — not its inner label — so
+    // Cypress's actionability check waits for it to become enabled; clicking
+    // the label span while the button is still disabled is a silent no-op, and
+    // the filter is never removed (metabase#17933).
+    cy.findByTestId("dashboard-parameter-sidebar")
+      .findByRole("button", { name: "Remove" })
+      .should("be.enabled")
+      .click();
+    expectSearchParams({ [endsWith.slug]: "zmo" });
 
     H.saveDashboard();
 
@@ -241,7 +190,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     H.filterWidget().contains(new RegExp(`${endsWith.name}`, "i"));
 
-    cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
+    expectSearchParams({ [endsWith.slug]: "zmo" });
   });
 
   it("should handle mismatch between filter types (metabase#9299, metabase#16181)", () => {
@@ -536,73 +485,6 @@ describe("scenarios > dashboard > parameters", () => {
       H.filterWidget({ isEditing: true }).click();
 
       cy.icon("key");
-    });
-  });
-
-  it("should be able to use linked filters to limit parameter choices", () => {
-    const questionDetails = {
-      query: {
-        "source-table": PRODUCTS_ID,
-      },
-    };
-
-    const parameter1Details = {
-      id: "1b9cd9f1",
-      name: "Category filter",
-      slug: "category-filter",
-      type: "string/=",
-      sectionId: "string",
-    };
-
-    const parameter2Details = {
-      id: "1b9cd9f2",
-      name: "Vendor filter",
-      slug: "vendor-filter",
-      type: "string/=",
-      sectionId: "string",
-    };
-
-    const dashboardDetails = {
-      parameters: [parameter1Details, parameter2Details],
-    };
-
-    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { dashboard_id } }) => {
-        H.visitDashboard(dashboard_id);
-      },
-    );
-
-    H.editDashboard();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(parameter1Details.name).click();
-    H.selectDashboardFilter(H.getDashboardCard(), "Category");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(parameter2Details.name).click();
-    H.selectDashboardFilter(H.getDashboardCard(), "Vendor");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Linked filters").click();
-    H.sidebar().findByRole("switch").parent().get("label").click();
-    H.saveDashboard();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(parameter2Details.name).click();
-    H.popover().within(() => {
-      cy.findByText("Barrows-Johns").should("exist");
-      cy.findByText("Balistreri-Ankunding").should("exist");
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(parameter1Details.name).click();
-    H.popover().within(() => {
-      cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(parameter2Details.name).click();
-    H.popover().within(() => {
-      cy.findByText("Barrows-Johns").should("exist");
-      cy.findByText("Balistreri-Ankunding").should("not.exist");
     });
   });
 

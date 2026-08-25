@@ -12,7 +12,7 @@
 }
 
 .overlay {
-  background-color: var(--mb-color-overlay);
+  background-color: var(--mb-color-modal-overlay);
   padding: 11px;
 }
 
@@ -26,7 +26,7 @@
 }
 
 .ModalCloseButton {
-  color: var(--mb-color-text-tertiary) !important;
+  color: var(--mb-color-text-disabled) !important;
   padding: 0;
   width: rem(18px);
   height: rem(18px);

@@ -3,6 +3,8 @@ import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 
+import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
+
 import { wrapPluginWidget } from "../widget-mount";
 
 import { CustomVizSettingWidget } from "./CustomVizSettingWidget";
@@ -48,7 +50,10 @@ function prepareWidget(pluginId = 1) {
     widgetContainer = container;
     return pluginMount(container, initialProps);
   };
-  const mount = wrapPluginWidget(widgetMount, pluginId);
+  const mount = wrapPluginWidget(
+    widgetMount,
+    createMockCustomVizPluginRuntime({ id: pluginId }),
+  );
   return {
     mount,
     getMountCalls: () => mountCalls,

@@ -1,12 +1,19 @@
 (ns metabase.revisions.api-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.revisions.api-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
@@ -34,6 +41,14 @@
    {:object       (t2/select-one :model/Dashboard :id dash-id)
     :entity       :model/Dashboard
     :id           dash-id
+    :user-id      (mt/user->id user)
+    :is-creation? is-creation?}))
+
+(defn- create-transform-revision! [transform-id is-creation? user]
+  (revision/push-revision!
+   {:object       (t2/select-one :model/Transform :id transform-id)
+    :entity       :model/Transform
+    :id           transform-id
     :user-id      (mt/user->id user)
     :is-creation? is-creation?}))
 
@@ -131,6 +146,57 @@
                 :description          "created this."
                 :has_multiple_changes false}]
               (get-revisions :card id))))))
+
+(deftest transform-revisions-guard-prior-source-per-entitlement-test
+  (testing "a Transform's revision history is authorized per snapshot: a prior :source is served only to callers
+            entitled to the database it read from"
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (mt/with-temp [:model/Database {x-db-id :id} {}
+                     :model/Database {y-db-id :id} {}
+                     :model/Transform {transform-id :id}
+                     {:name   "Repointed Transform"
+                      :source {:type  "query"
+                               :query {:database x-db-id
+                                       :type     "native"
+                                       :native   {:query "SELECT 2 --comment"}}}}]
+        (create-transform-revision! transform-id true :crowberto)
+        (t2/update! :model/Transform transform-id
+                    {:source {:type  "query"
+                              :query {:database y-db-id
+                                      :type     "native"
+                                      :native   {:query "SELECT 1"}}}})
+        (create-transform-revision! transform-id false :crowberto)
+        (letfn [(contains-x? [revisions]
+                  (letfn [(x-source? [m]
+                            (or (= x-db-id (:source_database_id m))
+                                (= x-db-id (get-in m [:source :query :database]))))]
+                    (or (str/includes? (json/encode revisions) "--comment")
+                        (some (fn [{:keys [diff]}] (some x-source? [(:before diff) (:after diff)]))
+                              revisions))))]
+          (doseq [[label list-fn]
+                  [["GET /api/revision"
+                    #(mt/user-http-request %1 :get %2 "revision" :entity "transform" :id transform-id)]
+                   ["GET /api/revision/transform/:id"
+                    #(mt/user-http-request %1 :get %2 (format "revision/transform/%d" transform-id))]]]
+            (testing label
+              (testing "an admin, entitled to every source, sees the full history including the prior source"
+                (let [revisions (list-fn :crowberto 200)]
+                  (is (contains-x? revisions))
+                  (is (some #(= "changed the source." (:description %)) revisions))))
+              (mt/with-data-analyst-role! (mt/user->id :rasta)
+                (mt/with-restored-data-perms!
+                  ;; rasta may query the transform's current source database but not its previous one
+                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/view-data :unrestricted)
+                  (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :query-builder)
+                  (data-perms/set-database-permission! (perms-group/all-users) x-db-id :perms/create-queries :no)
+                  (testing "an analyst entitled only to the current source can still read the transform"
+                    (let [revisions (list-fn :rasta 200)]
+                      (is (seq revisions))
+                      (testing "but the prior source read from a database they cannot query is withheld"
+                        (is (not (contains-x? revisions))))))
+                  (testing "an analyst entitled to neither source cannot read the revision history at all"
+                    (data-perms/set-database-permission! (perms-group/all-users) y-db-id :perms/create-queries :no)
+                    (list-fn :rasta 403)))))))))))
 
 ;;; # POST /revision/revert
 
@@ -275,7 +341,7 @@
       (t2/update! :model/Dashboard :id dashboard-id {:collection_id coll-id})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 7. revert to an earlier revision
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]})]
         (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version."
                :has_multiple_changes false}
@@ -345,7 +411,7 @@
       (t2/update! :model/Card :id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
       ;; 6. revert to an earlier revision
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
         (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version.",
                :has_multiple_changes false}
@@ -389,7 +455,7 @@
       (t2/update! :model/Card :id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
       ;; 5. revert to an earlier revision
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
         (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version.",
                :has_multiple_changes false}
@@ -429,7 +495,7 @@
                                                :name        "New name"})
           (create-card-revision! card-id false :crowberto)
           ;; 2. revert to an earlier revision
-          (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+          (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
             (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
           (is (= [{:description          "est revenu à une version antérieure."
                    :has_multiple_changes false}
@@ -459,7 +525,7 @@
                                                        :col          1
                                                        :row          1}])
       (create-dashboard-revision! dashboard-id false :crowberto)
-      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
+      (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]})]
         (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
       (is (= [{:description          "reverted to an earlier version."
                :has_multiple_changes false}
@@ -485,7 +551,7 @@
         ;; Update the card to a new version
         (t2/update! :model/Card {:name "A card with a new name"})
         ;; Revert to the saved revision and check that the revert succeeded despite the extra field
-        (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+        (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
           (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
         (is (= "A card" (t2/select-one-fn :name :model/Card :id card-id))))
       (testing "Reverting a dashboard..."
@@ -499,7 +565,7 @@
         ;; Update the dashboard to a new version
         (t2/update! :model/Dashboard {:name "A dashboard with a new name"})
         ;; Revert to the saved revision and check that the revert succeeded despite the extra field
-        (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
+        (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]})]
           (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
         (is (= "A dashboard" (t2/select-one-fn :name :model/Dashboard :id dashboard-id)))))))
 
@@ -835,3 +901,182 @@
                                                          :database database-id}}}
                     :description  "created this."}]
                   (mt/user-http-request :crowberto :get 200 (format "revision/segment/%d" id)))))))))
+
+(defn- segment-definition
+  "Build an MBQL 5 segment definition (a single-stage filtered query on `table-id`) via lib."
+  [table-id filter-field-id]
+  (let [mp (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/> (lib.metadata/field mp filter-field-id) 0)))))
+
+(defn- measure-definition
+  "Build an MBQL 5 measure definition (a count aggregation on `table-id`) via lib."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
+
+(deftest segment-revert-definition-table-permissions-test
+  (testing "POST /api/revision/revert <Segment>"
+    (mt/with-temp
+      [:model/Segment  {:keys [id]}             {:table_id   (mt/id :venues)
+                                                 :definition (segment-definition (mt/id :venues) (mt/id :venues :price))}
+       :model/Revision {users-revision-id :id}  {:model    "Segment"
+                                                 :model_id id
+                                                 :object   {:name       "Users segment"
+                                                            :table_id   (mt/id :venues)
+                                                            :definition (segment-definition (mt/id :users) (mt/id :users :id))}}
+       :model/Revision {no-def-revision-id :id} {:model    "Segment"
+                                                 :model_id id
+                                                 :object   {:name     "No definition"
+                                                            :table_id (mt/id :users)}}]
+      (mt/with-data-analyst-role! (mt/user->id :rasta)
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-perm-for-group-and-table! (u/the-id (perms-group/all-users)) (mt/id :venues) :perms/view-data :unrestricted
+            (testing "write perms are checked against the table of the restored revision's definition, not its stored :table_id"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "revision/revert"
+                                           {:id id, :entity "segment", :revision_id users-revision-id}))))
+            (testing "when the restored revision has no definition, perms fall back to its stored :table_id"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "revision/revert"
+                                           {:id id, :entity "segment", :revision_id no-def-revision-id}))))))))))
+
+(deftest measure-revert-definition-table-permissions-test
+  (testing "POST /api/revision/revert <Measure>"
+    (mt/with-temp
+      [:model/Measure  {:keys [id]}             {:name       "Venue count"
+                                                 :table_id   (mt/id :venues)
+                                                 :definition (measure-definition (mt/id :venues))}
+       :model/Revision {users-revision-id :id}  {:model    "Measure"
+                                                 :model_id id
+                                                 :object   {:name       "Users count"
+                                                            :table_id   (mt/id :venues)
+                                                            :definition (measure-definition (mt/id :users))}}
+       :model/Revision {no-def-revision-id :id} {:model    "Measure"
+                                                 :model_id id
+                                                 :object   {:name     "No definition"
+                                                            :table_id (mt/id :users)}}]
+      (mt/with-data-analyst-role! (mt/user->id :rasta)
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-perm-for-group-and-table! (u/the-id (perms-group/all-users)) (mt/id :venues) :perms/view-data :unrestricted
+            (testing "write perms are checked against the table of the restored revision's definition, not its stored :table_id"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "revision/revert"
+                                           {:id id, :entity "measure", :revision_id users-revision-id}))))
+            (testing "when the restored revision has no definition, perms fall back to its stored :table_id"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "revision/revert"
+                                           {:id id, :entity "measure", :revision_id no-def-revision-id}))))))))))
+
+(deftest dashboard-double-revert-test
+  (testing "Reverting past an add/delete-card boundary then reverting forward again both succeed (#15237)"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Card      {card-id :id}      {}]
+      (create-dashboard-revision! dashboard-id true :rasta)
+      (let [dashcard (first (t2/insert-returning-instances! :model/DashboardCard
+                                                            :dashboard_id dashboard-id
+                                                            :card_id card-id
+                                                            :size_x 4 :size_y 4 :row 0 :col 0))]
+        (create-dashboard-revision! dashboard-id false :rasta)
+        (t2/delete! (t2/table-name :model/DashboardCard) :id (:id dashcard)))
+      (create-dashboard-revision! dashboard-id false :rasta)
+      (let [revisions         (revision/revisions+details :model/Dashboard dashboard-id)
+            created-rev-id    (:id (some #(when (= "created this." (:description %)) %) revisions))
+            added-card-rev-id (:id (some #(when (= "added a card." (:description %)) %) revisions))
+            revert-back       (mt/user-http-request :rasta :post 200 "revision/revert"
+                                                    {:entity :dashboard :id dashboard-id :revision_id created-rev-id})]
+        (is (not (contains? revert-back :cause)))
+        (is (zero? (t2/count :model/DashboardCard :dashboard_id dashboard-id)))
+        (testing "revert forward again past that boundary"
+          (let [revert-forward (mt/user-http-request :rasta :post 200 "revision/revert"
+                                                     {:entity :dashboard :id dashboard-id :revision_id added-card-rev-id})]
+            (is (not (contains? revert-forward :cause)))
+            (is (= 1 (t2/count :model/DashboardCard :dashboard_id dashboard-id)))))))))
+
+(deftest revert-card-test
+  (testing "Reverting a Card through the API works"
+    (mt/with-temp [:model/Card {card-id :id} {:name "revert test"}]
+      (create-card-revision! card-id true :crowberto)
+      (t2/update! :model/Card card-id {:description "hi"})
+      (create-card-revision! card-id false :crowberto)
+      (let [[_ {prev-id :id}] (revision/revisions :model/Card card-id)]
+        (is (=? {:description "reverted to an earlier version."}
+                (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                      {:entity :card :id card-id :revision_id prev-id})))
+        (is (nil? (t2/select-one-fn :description :model/Card :id card-id)))))))
+
+(deftest permission-check-on-card-revert-test
+  (testing "Are permissions enforced by the revert action in the revision api for Cards? (#13229)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       card {:collection_id (u/the-id collection) :name "Q1"}]
+        (create-card-revision! (:id card) true :crowberto)
+        (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:name "Q1 renamed"})
+        (let [[_ {prev-rev-id :id}] (revision/revisions :model/Card (:id card))]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post "revision/revert"
+                                       {:entity :card :id (:id card) :revision_id prev-rev-id}))))))))
+
+(deftest revert-model-restores-metadata-and-viz-settings-test
+  (testing "Reverting a model restores result_metadata and visualization_settings together (#45926)"
+    (mt/with-temp [:model/Card {card-id :id} (assoc (mt/card-with-metadata
+                                                     {:dataset_query (let [mp (mt/metadata-provider)]
+                                                                       (lib/query mp (lib.metadata/table mp (mt/id :venues))))})
+                                                    :type :model
+                                                    :visualization_settings {})]
+      (let [original-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
+            original-names    (map :display_name original-metadata)]
+        (create-card-revision! card-id true :crowberto)
+        (t2/update! :model/Card card-id
+                    {:result_metadata        (mapv #(assoc % :display_name "EDITED") original-metadata)
+                     :visualization_settings {:some_setting true}})
+        (create-card-revision! card-id false :crowberto)
+        ;; order by :id (monotonic), not :timestamp -- on Postgres `now()` is frozen for the whole test
+        ;; transaction, so consecutive revisions here can tie on :timestamp and pick the wrong revision.
+        (let [earlier-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
+          (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                {:entity :card :id card-id :revision_id earlier-id})
+          (is (=? {:result_metadata        (mapv (fn [name] {:display_name name}) original-names)
+                   :visualization_settings {}}
+                  (t2/select-one :model/Card :id card-id))))))))
+
+(deftest revert-restores-card-type-test
+  (testing "Reverting a Card revision restores a previous :type (e.g. model <-> question)"
+    (mt/with-temp [:model/Card {card-id :id} {:type :question}]
+      (create-card-revision! card-id true :crowberto)
+      (t2/update! :model/Card :id card-id {:type :model})
+      (create-card-revision! card-id false :crowberto)
+      ;; order by :id (monotonic), not :timestamp -- see comment above in
+      ;; revert-model-restores-metadata-and-viz-settings-test.
+      (let [earlier-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
+        (mt/user-http-request :crowberto :post 200 "revision/revert"
+                              {:entity :card :id card-id :revision_id earlier-id})
+        (is (= :question (t2/select-one-fn :type :model/Card :id card-id)))))))
+
+(deftest revert-card-preserves-dashcard-parameter-mappings-test
+  (testing "POST /revision/revert on a card keeps dashcard parameter_mappings referencing its template tags (#35954)"
+    (let [mp             (mt/metadata-provider)
+          reviews-rating (lib.metadata/field mp (mt/id :reviews :rating))]
+      (mt/with-temp [:model/Card          {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :reviews)))}
+                     :model/Dashboard     {dash-id :id} {:parameters [{:id "num" :name "Number" :slug "number" :type :number/=}]}
+                     :model/DashboardCard {dc-id :id}   {:dashboard_id       dash-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:parameter_id "num"
+                                                                               :card_id      card-id
+                                                                               :target       [:dimension [:template-tag "RATING"]]}]}]
+        (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                              {:dataset_query
+                               (lib/with-template-tags
+                                 (lib/native-query mp "SELECT * FROM REVIEWS WHERE {{RATING}}")
+                                 {"RATING" {:name         "RATING"
+                                            :display-name "R"
+                                            :id           "x"
+                                            :type         :dimension
+                                            :widget-type  :number/=
+                                            :dimension    (lib/ref reviews-rating)}})})
+        (let [first-rev-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:id :asc]]})]
+          (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                {:entity :card :id card-id :revision_id first-rev-id})
+          (is (=? [{:target [:dimension [:template-tag "RATING"]]}]
+                  (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dc-id))))))))

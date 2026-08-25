@@ -2,11 +2,12 @@
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -182,7 +183,7 @@
           (t2/with-transaction [_conn]
             (insert-query-entries! new-entry))
           (catch Throwable e
-            (log/tracef e "Error inserting concurrently created Query entries: %s" (ex-message e))))))))
+            (log/tracef "Error inserting concurrently created Query entries: %s" (ex-message e))))))))
 
 (mr/def ::database-and-table-ids
   [:map
@@ -193,7 +194,7 @@
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
 
   Expects MBQL 5 queries."
-  [{database-id :database, :as query} :- ::queries.schema/query]
+  [{database-id :database, :as query} :- [:or ::lib.schema/query ::lib-be.schema/empty-query]]
   (when (seq query)
     (if-let [source-card-id (lib/primary-source-card-id query)]
       (let [card (or (lib.metadata/card query source-card-id)
@@ -207,5 +208,5 @@
 (mu/defn query-is-native? :- :boolean
   "Whether this query (MBQL 5 or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
   regardless of whether the Card has a native query or not."
-  [query :- [:maybe ::queries.schema/query]]
+  [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
   (boolean (some-> query not-empty lib/native-only-query?)))

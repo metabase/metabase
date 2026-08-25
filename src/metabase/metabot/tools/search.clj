@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.search-models :as metabot.search-models]
@@ -24,11 +25,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private metabot-search-models
-  (sorted-set "card" "dashboard" "database" "dataset" "metric" "table" "transform"))
+  (sorted-set "card" "dashboard" "database" "dataset" "document" "metric" "table" "transform"))
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [{:keys [verified moderated_status collection data_authority curated data_layer] :as result}]
+  [{:keys [verified moderated_status collection data_authority curated data_layer can_write] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
         collection-info (select-keys collection [:id :name :authority_level])
@@ -46,6 +47,12 @@
       "database"
       common-fields
 
+      "collection"
+      ;; A collection has no database/base-table; surface its own curation level and parent location.
+      (-> common-fields
+          (merge {:official official?})
+          (m/assoc-some :location (:location result)))
+
       "table"
       (-> common-fields
           (merge {:name            (:table_name result)
@@ -61,7 +68,15 @@
           (merge {:verified   verified?
                   :official   official?
                   :collection collection-info})
-          (m/assoc-some :curated curated))
+          (m/assoc-some :curated curated
+                        :can_write can_write))
+
+      "document"
+      (-> common-fields
+          (merge {:official   official?
+                  :collection collection-info})
+          (m/assoc-some :curated curated
+                        :can_write can_write))
 
       "transform"
       (merge common-fields
@@ -73,7 +88,9 @@
                   :verified    verified?
                   :official    official?
                   :collection  collection-info})
-          (m/assoc-some :curated curated)))))
+          (m/assoc-some :curated curated
+                        :display (:display result)
+                        :moderated_status moderated_status)))))
 
 (defn- enrich-with-collection-descriptions
   "Fetch and merge collection descriptions for all search results that have collection IDs."
@@ -90,7 +107,7 @@
   "Fetch and merge database engine + name info for search results that have database IDs.
   `:database_name` is the human-readable name the LLM needs as the first slot of every
   portable FK in `construct_notebook_query`; surfacing it on every table/model search
-  result means the LLM doesn't need a separate `entity_details` round-trip just to learn
+  result means the LLM doesn't need a separate `read_resource` round-trip just to learn
   the DB name."
   [results]
   (let [db-ids (->> results (keep :database_id) distinct)
@@ -107,7 +124,7 @@
   "Attach `:portable_entity_id` (the card's `entity_id` NanoID) to saved-question, model,
   and metric search results so the LLM can use it verbatim as `source-card:` (for
   questions/models) or inside a `[metric, {}, <entity_id>]` aggregation clause (for
-  metrics) without a follow-up `entity_details` / `read_resource` round-trip."
+  metrics) without a follow-up `read_resource` round-trip."
   [results]
   (let [carded-types #{"question" "model" "metric"}
         card-ids (->> results
@@ -131,9 +148,11 @@
   table's portable FK as the `source-table:` when it wants to use the metric. Without this
   enrichment the LLM sees the metric's `portable_entity_id` in search but has to either
   hallucinate the base table (observed failure mode: `[<db>, public, customers]`) or do an
-  extra `entity_details` round-trip. We read the two columns directly from
+  extra `read_resource` round-trip. We read the two columns directly from
   `report_card.table_id` + `metabase_table.{schema,name}` to keep the lookup O(1) extra
-  query per search call, regardless of number of metrics in the result set.
+  query per search call, regardless of number of metrics in the result set. Base-table
+  metadata is attached only when the current user can read that Table; collection access
+  to the metric Card does not imply access to its physical source.
 
   Requires `:database_name` to already be set on each metric result (done earlier by
   [[enrich-with-database-engines]]) so we can assemble the full portable FK
@@ -144,21 +163,32 @@
                             (t2/select-pk->fn :table_id :model/Card :id [:in metric-ids]))
         table-ids (->> card-id->table-id vals (remove nil?) distinct)
         table-id->info (when (seq table-ids)
-                         (t2/select-pk->fn (juxt :schema :name) :model/Table :id [:in table-ids]))]
+                         (into {}
+                               (comp (filter mi/can-read?)
+                                     (map (juxt :id (juxt :schema :name))))
+                               (t2/select [:model/Table :id :schema :name :db_id]
+                                          :id [:in table-ids])))
+        metric-id->table-info
+        (into {}
+              (keep (fn [[metric-id table-id]]
+                      (when-let [[schema table-name] (get table-id->info table-id)]
+                        [metric-id {:table-id   table-id
+                                    :schema     schema
+                                    :table-name table-name}])))
+              card-id->table-id)]
     (cond->> results
       (seq card-id->table-id)
-      (mapv (fn [r]
-              (if (= "metric" (:type r))
-                (if-let [table-id (get card-id->table-id (:id r))]
-                  (let [[schema table-name] (get table-id->info table-id)
-                        db-name (:database_name r)]
-                    (cond-> (assoc r :base_table_id table-id)
-                      table-name (assoc :base_table_name table-name
-                                        :base_table_schema schema)
-                      (and db-name table-name)
-                      (assoc :base_table_portable_fk [db-name schema table-name])))
-                  r)
-                r))))))
+      (mapv (fn [{:keys [id type database_name] :as result}]
+              (if-let [{:keys [table-id schema table-name]}
+                       (when (= "metric" type)
+                         (get metric-id->table-info id))]
+                (cond-> (assoc result
+                               :base_table_id table-id
+                               :base_table_name table-name
+                               :base_table_schema schema)
+                  database_name
+                  (assoc :base_table_portable_fk [database_name schema table-name]))
+                result))))))
 
 (defn- remove-unreadable-transforms
   "Remove transforms from search results that the user cannot read.
@@ -175,6 +205,31 @@
       (seq transform-ids) (filterv (fn [result]
                                      (or (not= "transform" (:type result))
                                          (contains? readable-ids (:id result))))))))
+
+(defn- validate-and-enrich-documents
+  "Remove stale or unreadable document hits and attach live write permission.
+
+  Search indexes are updated asynchronously, so a deleted document can briefly remain
+  searchable. Destination discovery must validate hits against the live model before the
+  agent attempts to save into them."
+  [results]
+  (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
+        id->document (when (seq document-ids)
+                       (->> (t2/select :model/Document
+                                       :id [:in document-ids]
+                                       :archived false)
+                            (filter mi/can-read?)
+                            (map (juxt :id identity))
+                            (into {})))]
+    (if (seq document-ids)
+      (into []
+            (keep (fn [result]
+                    (if (= "document" (:type result))
+                      (when-let [document (get id->document (:id result))]
+                        (assoc result :can_write (boolean (mi/can-write? document))))
+                      result)))
+            results)
+      results)))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -235,17 +290,15 @@
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot-id profile-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
-             {:term-queries        term-queries
-              :semantic-queries    semantic-queries
-              :database-id         database-id
-              :created-at          created-at
-              :last-edited-at      last-edited-at
-              :entity-types        entity-types
-              :limit               limit
-              :metabot-id          metabot-id
-              :profile-id          profile-id
-              :search-native-query search-native-query
-              :weights             weights})
+             {:term-query-count     (count term-queries)
+              :semantic-query-count (count semantic-queries)
+              :database-id          database-id
+              :entity-types         entity-types
+              :limit                limit
+              :metabot-id           metabot-id
+              :profile-id           profile-id
+              :search-native-query  search-native-query
+              :weights              weights})
   (let [search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
@@ -287,12 +340,12 @@
                                                   (assoc :search-engine (name search-engine))
                                                   collection-id
                                                   (assoc :collection collection-id)))
-                                _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
-                                                          search-string (:models search-context))
+                                _              (log/infof "[METABOT-SEARCH] Search context models: %s"
+                                                          (:models search-context))
                                 search-results (search/search search-context)
                                 data           (:data search-results)
                                 result-models  (frequencies (map :model data))]
-                            (log/infof "[METABOT-SEARCH] Query '%s' returned entity types: %s" search-string result-models)
+                            (log/infof "[METABOT-SEARCH] Query returned entity types: %s" result-models)
                             data))
         search-fn*      (fn [search-engine queries]
                           (let [queries (search.engine/disjunction search-engine queries)]
@@ -301,7 +354,7 @@
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
-                          (u/seek (comp not semantic?) (search.engine/supported-engines)))
+                          (search.engine/fallback-engine semantic-engine))
         fused-results   (if semantic-engine
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
                           (reciprocal-rank-fusion
@@ -317,6 +370,7 @@
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-metric-base-tables
+         validate-and-enrich-documents
          remove-unreadable-transforms)))
 
 (defn- table-refs->results
@@ -335,15 +389,16 @@
 
 (defn- card-refs->results
   "Build post-processed search-result records for card-backed refs (`{:id .. :type \"model\"|\"metric\"|\"question\"}`).
-  Emits one record per ref, so the same card registered under two type strings yields a record for each
-  (rather than collapsing to one and silently dropping the other)."
+  Emits one record per distinct card id, carrying the card's *current* type — so the same card registered
+  under two (possibly stale) type strings collapses to a single record rather than duplicating."
   [refs]
   (let [ids       (distinct (map :id refs))
         ;; only surface cards the current user can read (collection perms) — see table-refs->results
         id->card  (when (seq ids)
                     (into {} (map (juxt :id identity))
                           (filter mi/can-read?
-                                  (t2/select [:model/Card :id :name :description :database_id :collection_id :card_schema]
+                                  (t2/select [:model/Card :id :name :description :database_id :collection_id
+                                              :card_schema :type]
                                              :id [:in ids]))))
         coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
@@ -354,17 +409,59 @@
                     (t2/select-fn-set :moderated_item_id :model/ModerationReview
                                       :moderated_item_id [:in ids] :moderated_item_type "card"
                                       :most_recent true :status "verified"))]
-    (for [{:keys [id type]} refs
+    (for [id ids
           :let [c (id->card id)]
           :when c]
       (let [coll (get id->coll (:collection_id c))]
         {:id          id
-         :type        type
+         ;; the Card's *current* type, not the caller's ref type — a stale index hit kept across a
+         ;; metric<->model relabel must not describe the entity with its old shape. Card's :type is a
+         ;; keyword; emit the agent-facing string so downstream string checks and entity-class still match.
+         :type        (some-> (:type c) name)
          :name        (:name c)
          :description (:description c)
          :database_id (:database_id c)
          :verified    (contains? verified id)
          :collection  (when coll (select-keys coll [:id :name :authority_level]))}))))
+
+(defn- measure-segment-refs->results
+  "Build search-result records for measure/segment refs (`{:id .. :type \"measure\"|\"segment\"}`),
+  carrying parent-table context (database + base table). Only surfaces those whose parent Table the
+  current user can read (perms delegate to the table)."
+  [refs]
+  (when (seq refs)
+    (let [by-type (group-by :type refs)
+          fetch   (fn [model ids]
+                    (when-let [ids (not-empty (distinct ids))]
+                      (filter mi/can-read?
+                              (t2/select [model :id :name :description :table_id :entity_id] :id [:in ids]))))
+          rows    (concat (map #(assoc % :type "measure") (fetch :model/Measure (map :id (get by-type "measure"))))
+                          (map #(assoc % :type "segment") (fetch :model/Segment (map :id (get by-type "segment")))))
+          tbl-ids (not-empty (distinct (keep :table_id rows)))
+          id->tbl (when tbl-ids
+                    (into {} (map (juxt :id identity))
+                          (t2/select [:model/Table :id :name :schema :db_id] :id [:in tbl-ids])))]
+      (for [{:keys [id type name description table_id entity_id]} rows
+            :let [t (get id->tbl table_id)]]
+        (cond-> {:id id :type type :name name :description description}
+          ;; the measure/segment's NanoID — used in a [measure|segment, {}, <id>] clause the way a metric
+          ;; uses its portable_entity_id (carded types get theirs in enrich-with-portable-entity-ids).
+          entity_id (assoc :portable_entity_id entity_id)
+          t         (assoc :database_id       (:db_id t)
+                           :base_table_id      (:id t)
+                           :base_table_name    (:name t)
+                           :base_table_schema  (:schema t)))))))
+
+(defn- enrich-with-measure-segment-base-tables
+  "Assemble `:base_table_portable_fk [database_name schema table]` for measure/segment results once
+  `:database_name` is set (by [[enrich-with-database-engines]]), giving the agent the table to query a
+  measure/segment against — the same affordance metrics get from [[enrich-with-metric-base-tables]]."
+  [results]
+  (mapv (fn [{:keys [type database_name base_table_schema base_table_name] :as r}]
+          (if (and (#{"measure" "segment"} type) database_name base_table_name)
+            (assoc r :base_table_portable_fk [database_name base_table_schema base_table_name])
+            r))
+        results))
 
 (defn ref-model->entity-type
   "Normalize an entity ref's `:model` string to the agent-facing entity type: plain cards are
@@ -377,21 +474,24 @@
   [[metabase.metabot.tools.shared.llm-shape/search-results->xml]] and the `search` tool consume.
 
   `refs` is a seq of `{:model <entity-type> :id <id>}` where `<entity-type>` is `\"table\"`, `\"model\"`,
-  `\"metric\"`, or `\"question\"` (the names the agent uses with `read_resource`); `\"card\"` is accepted
-  and normalized to `\"question\"`.
-  Returns records carrying `:portable_entity_id`, `:database_name`, fully-qualified names, metric base
-  tables, etc. — everything the LLM needs to build a query without an extra round-trip.
+  `\"metric\"`, `\"question\"`, `\"measure\"`, or `\"segment\"` (the names the agent uses with
+  `read_resource`); `\"card\"` is accepted and normalized to `\"question\"`.
+  Returns records carrying `:portable_entity_id`, `:database_name`, fully-qualified names, metric/measure/
+  segment base tables, etc. — everything the LLM needs to build a query without an extra round-trip.
   Refs whose entity no longer exists are dropped."
   [refs]
   (let [by-model  (group-by (comp ref-model->entity-type :model) refs)
         table-ids (distinct (map :id (get by-model "table")))
-        card-refs (for [m ["model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})]
+        card-refs (for [m ["model" "metric" "question"], r (get by-model m)] {:id (:id r) :type m})
+        ms-refs   (for [m ["measure" "segment"], r (get by-model m)] {:id (:id r) :type m})]
     (->> (concat (table-refs->results table-ids)
-                 (card-refs->results (distinct card-refs)))
+                 (card-refs->results (distinct card-refs))
+                 (measure-segment-refs->results (distinct ms-refs)))
          enrich-with-collection-descriptions
          enrich-with-database-engines
          enrich-with-portable-entity-ids
          enrich-with-metric-base-tables
+         enrich-with-measure-segment-base-tables
          remove-unreadable-transforms)))
 
 (defn- format-search-output
@@ -436,6 +536,16 @@
   (str "Maximum number of results (default " default-search-limit ", max " max-search-limit "). "
        "Use a larger value (20–50) for broad or generic queries; keep the default for narrow, specific ones."))
 
+(defn- search-result->item
+  "Trim a search result to the fields the chain-of-thought results card renders.
+  `:display` (a question's viz type) and `:moderated_status` let the client pick the
+  exact entity icon, matching the app's search/command-palette icons."
+  [r]
+  (-> (select-keys r [:id :type :name :display_name :database_id :database_schema :database_name])
+      (m/assoc-some :display (some-> (:display r) name)
+                    :moderated_status (:moderated_status r)
+                    :collection (some-> (:collection r) (select-keys [:id :name])))))
+
 (defn- do-search
   [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types limit] :as _args}]
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
@@ -452,9 +562,12 @@
         {:output (format-search-output results)
          :structured-output {:result-type :search
                              :data results
-                             :total_count (count results)}})
+                             :total_count (count results)}
+         :data-parts [(streaming/search-results-part
+                       {:total_count (count results)
+                        :results (mapv search-result->item results)})]})
       (catch Exception e
-        (log/error e (str "Error in " label))
+        (log/error (str "Error in " label ": " (ex-message e)))
         {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
 
 (def ^:private search-schema
@@ -462,15 +575,24 @@
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
    [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "question"]]]]
+    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "dashboard" "document" "question"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(defn- search-display
+  [{:keys [keyword_queries semantic_queries]}]
+  (let [queries (distinct (concat keyword_queries semantic_queries))]
+    (when (seq queries)
+      ;; just the object (the queries) — the client wraps it in the verb + tense
+      ;; ("Searching for …" while active, "Searched for …" once finished)
+      (str/join ", " queries))))
+
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   search-tool
-  "Find tables, models, metrics, dashboards, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
+  "Find tables, models, metrics, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
   [args :- search-schema]
-  (do-search "search" (sorted-set "dashboard" "metric" "model" "question" "table") {} args))
+  (do-search "search" (sorted-set "dashboard" "document" "metric" "model" "question" "table") {} args))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
@@ -481,8 +603,9 @@
     [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   sql-search-tool
   "Find SQL-queryable data sources (tables and models) within a specific database by topic."
   [{:keys [database_id] :as args} :- sql-search-schema]
@@ -493,15 +616,21 @@
    [:semantic_queries {:optional true :feature :semantic-search} [:sequential [:string {:description semantic-query-desc}]]]
    [:keyword_queries {:optional true} [:sequential [:string {:description keyword-query-desc}]]]
    [:entity_types {:optional true}
-    [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "metric" "question"]]]]
+    [:maybe [:sequential [:enum {:description entity-types-desc}
+                          "table" "model" "metric" "question" "dashboard" "document"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   nlq-search-tool
-  "Find NLQ-queryable data sources (tables, models, metrics, saved questions) by topic, to build a visualization from."
-  [args :- nlq-search-schema]
-  (do-search "NLQ search" (sorted-set "metric" "model" "question" "table") {:profile-id "nlq"} args))
+  "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
+  [{:keys [entity_types] :as args} :- nlq-search-schema]
+  (let [allowed-types (sorted-set "dashboard" "document" "metric" "model" "question" "table")
+        args          (cond-> args
+                        (not (seq entity_types))
+                        (assoc :entity_types ["metric" "model" "question" "table"]))]
+    (do-search "NLQ search" allowed-types {:profile-id "nlq"} args)))
 
 (def ^:private transform-search-schema
   [:map {:closed true}
@@ -512,8 +641,9 @@
     [:maybe [:sequential [:enum {:description entity-types-desc} "table" "model" "transform"]]]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]]]])
 
-(mu/defn ^{:tool-name "search"
-           :scope     scope/agent-search}
+(mu/defn ^{:tool-name  "search"
+           :scope      scope/agent-search
+           :title-fn   search-display}
   transform-search-tool
   "Find transforms, plus the tables and models around them, by topic."
   [{:keys [search_native_query] :as args} :- transform-search-schema]

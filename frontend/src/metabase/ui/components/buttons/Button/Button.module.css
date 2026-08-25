@@ -50,7 +50,7 @@
 
     &[aria-pressed="true"],
     &:hover {
-      color: var(--mb-color-text-hover);
+      color: var(--mb-color-text-brand-hover);
       background-color: var(--mb-color-background_surface-hover);
     }
   }
@@ -72,12 +72,12 @@
 
     &:disabled,
     &[data-disabled="true"] {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
       border-color: transparent;
       background-color: transparent;
 
       &:hover {
-        color: var(--mb-color-text-tertiary);
+        color: var(--mb-color-text-disabled);
         border-color: transparent;
         background-color: transparent;
       }
@@ -145,12 +145,12 @@
 
     &:disabled,
     &[data-disabled="true"] {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
       border-color: transparent;
       background-color: transparent;
 
       &:hover {
-        color: var(--mb-color-text-tertiary);
+        color: var(--mb-color-text-disabled);
         border-color: transparent;
         background-color: transparent;
       }
@@ -159,7 +159,7 @@
 
   &:disabled,
   &:disabled:hover {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
     border-color: var(--mb-color-border-neutral);
     background-color: var(--mb-color-background_surface-disabled);
   }

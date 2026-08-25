@@ -1,20 +1,18 @@
-import type { ReactNode } from "react";
-import type { Route } from "react-router";
 import { useAsync } from "react-use";
 
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import {
   skipToken,
   useGetDatabaseMetadataQuery,
   useListDatabasesQuery,
   useListPermissionsGroupsQuery,
 } from "metabase/api";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Outlet, useParams } from "metabase/router";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId, GroupInfo } from "metabase-types/api";
+import type { GroupInfo } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
@@ -25,27 +23,15 @@ import {
 } from "../../permissions";
 import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
-type DataPermissionsPageProps = {
-  children: ReactNode;
-  route: typeof Route;
-  params: {
-    databaseId: DatabaseId;
-  };
-};
-
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
 const EMPTY_DATABASE_LIST: Database[] = [];
 
-function DataPermissionsPage({
-  children,
-  route,
-  params,
-}: DataPermissionsPageProps) {
+export function DataPermissionsPage() {
+  const params = useParams<{ databaseId: string }>();
   const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
   const databases = useSelector(
     (state) =>
-      (getMetadataUnfiltered(state).databasesList() as Database[]) ??
-      EMPTY_DATABASE_LIST,
+      getMetadataUnfiltered(state).databasesList() ?? EMPTY_DATABASE_LIST,
   );
   const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
     {},
@@ -53,9 +39,6 @@ function DataPermissionsPage({
   const groups = data ?? EMPTY_GROUP_LIST;
   const isDirty = useSelector(getIsDirty);
   const diff = useSelector((state) => getDiff(state, { databases, groups }));
-  const showSplitPermsModal = useSelector((state) =>
-    getSetting(state, "show-updated-permission-modal"),
-  );
   const dispatch = useDispatch();
 
   const resetPermissions = () => dispatch(restoreLoadedPermissions());
@@ -80,7 +63,7 @@ function DataPermissionsPage({
   const { isLoading: isLoadingTables } = useGetDatabaseMetadataQuery(
     params.databaseId !== undefined
       ? {
-          id: params.databaseId,
+          id: Number(params.databaseId),
           include_hidden: true,
           remove_inactive: true,
           skip_fields: true,
@@ -109,14 +92,10 @@ function DataPermissionsPage({
       onSave={savePermissions}
       diff={diff}
       isDirty={isDirty}
-      route={route}
       helpContent={<DataPermissionsHelp />}
-      showSplitPermsModal={showSplitPermsModal}
+      canShowSplitPermsModal
     >
-      {children}
+      <Outlet />
     </PermissionsPageLayout>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataPermissionsPage;

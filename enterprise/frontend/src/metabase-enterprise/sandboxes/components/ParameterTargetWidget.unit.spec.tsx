@@ -4,8 +4,10 @@ import type { ParameterTarget } from "metabase-types/api";
 
 import { ParameterTargetWidget } from "./ParameterTargetWidget";
 
+// Unjustified type cast. FIXME
 const TARGET = ["variable", ["template-tag", "foo"]] as ParameterTarget;
 
+// Unjustified type cast. FIXME
 const OPTION = {
   name: "Foo column",
   target: TARGET,

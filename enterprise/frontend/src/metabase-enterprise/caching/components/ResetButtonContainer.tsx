@@ -49,12 +49,12 @@ const ResetAllToDefaultButtonFormBody = () => {
                 h="1rem"
                 lh="1"
                 fw="normal"
-                color="error"
+                color="feedback-negative"
               >{t`Reset all to default`}</Text>
             }
             activeLabel={<Loader size="xs" />}
             successLabel={
-              <Text fw="bold" lh="1" color="success">
+              <Text fw="bold" lh="1" color="feedback-positive">
                 <Group gap="xs">
                   <Icon name="check" /> {t`Success`}
                 </Group>

@@ -2,7 +2,11 @@
   "Tests for /api/timeline-event endpoints"
   (:require
    [clojure.test :refer :all]
+   [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.response :as api.response]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -63,6 +67,41 @@
           (is (true?
                (->> (mt/user-http-request :rasta :put 200 (str "timeline-event/" (u/the-id event)) {:archived true})
                     :archived))))))))
+
+(deftest move-timeline-event-test
+  (testing "PUT /api/timeline-event/:id can move an event to another timeline"
+    (mt/with-temp [:model/Collection    {coll-id :id} {:name "Important Data"}
+                   :model/Timeline      {tl-a :id}    {:name "Timeline A" :collection_id coll-id}
+                   :model/Timeline      {tl-b :id}    {:name "Timeline B" :collection_id coll-id}
+                   :model/TimelineEvent {ev-id :id}   {:name "Event" :timeline_id tl-a}]
+      (is (= tl-b
+             (:timeline_id (mt/user-http-request :rasta :put 200 (str "timeline-event/" ev-id)
+                                                 {:timeline_id tl-b}))))
+      (is (= tl-b (t2/select-one-fn :timeline_id :model/TimelineEvent :id ev-id))))))
+
+(deftest timeline-event-permissions-test
+  (testing "read-only users cannot create or edit timeline events"
+    (mt/with-temp [:model/Collection    {coll-id :id} {}
+                   :model/Timeline      {tl-id :id}   {:collection_id coll-id}
+                   :model/TimelineEvent {ev-id :id}   {:timeline_id tl-id}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "timeline-event"
+                                   {:name "nope" :timestamp "2027-10-20" :timezone "UTC" :timeline_id tl-id})))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (str "timeline-event/" ev-id) {:name "nope"}))))))
+
+(deftest create-timeline-event-tracks-snowplow-test
+  (testing "POST /api/timeline-event fires a snowplow new_event_created event"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Timeline   {tl-id :id}   {:collection_id coll-id}]
+        (mt/user-http-request :crowberto :post 200 "timeline-event"
+                              {:name "RC1" :timestamp "2027-10-20" :timezone "UTC"
+                               :time_matters false :timeline_id tl-id})
+        (is (some #(nil? (hawk.approx/=?-diff* {:data {"event" "new_event_created"}} %))
+                  (snowplow-test/pop-event-data-and-user-id!)))))))
 
 (deftest delete-timeline-event-test
   (testing "DELETE /api/timeline-event/:id"

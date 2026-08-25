@@ -1,8 +1,8 @@
 import cx from "classnames";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -210,7 +210,7 @@ function TransformLink({ table }: { table: Table }) {
   if (!transform) {
     return (
       <Box
-        c="error"
+        c="feedback-negative"
         className={S.transformLink}
         fz="sm"
       >{t`Transform does not exist anymore`}</Box>

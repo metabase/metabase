@@ -54,8 +54,8 @@ export function tokenizeJsx(code: string): JsxToken[] {
 const TOKEN_COLOR: Record<JsxTokenType, string> = {
   punctuation: "var(--mb-color-text-secondary)",
   tag: "var(--mb-color-text-primary)",
-  attribute: "var(--mb-color-text-syntax-variable)",
-  value: "var(--mb-color-text-syntax-string)",
+  attribute: "var(--mb-color-core-blue-saturated)",
+  value: "var(--mb-color-core-green-saturated)",
   plain: "var(--mb-color-text-primary)",
 };
 

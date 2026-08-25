@@ -182,7 +182,7 @@ Create `ComponentName.module.css` alongside the component file:
 }
 
 .disabled {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   pointer-events: none;
 }
 
@@ -255,9 +255,9 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 **Colors** (`c`, `bg`):
 
-- Text: `"text-primary"`, `"text-secondary"`, `"text-tertiary"`
+- Text: `"text-primary"`, `"text-secondary"`, `"text-disabled"`
 - Background: `"background_page-primary"`, `"background_page-secondary"`, `"background_surface-hover"`
-- Brand: `"core-brand"`, `"error"`, `"success"`, `"warning"`
+- Brand: `"core-brand"`, `"feedback-negative"`, `"feedback-positive"`, `"feedback-warning"`
 
 **Typography** (`fz`, `fw`, `lh`, `ta`, `ff`):
 
@@ -279,11 +279,11 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 **Colors** — `var(--mb-color-<name>)`:
 
-- `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-tertiary`
+- `--mb-color-text-primary`, `--mb-color-text-secondary`, `--mb-color-text-disabled`
 - `--mb-color-background_page-primary`, `--mb-color-background_page-secondary`, `--mb-color-background_surface-hover`
 - `--mb-color-border`, `--mb-color-border-strong`, `--mb-color-border-subtle`
 - `--mb-color-core-brand`, `--mb-color-core-brand-hover`
-- `--mb-color-error`, `--mb-color-success`, `--mb-color-warning`
+- `--mb-color-feedback-negative`, `--mb-color-feedback-positive`, `--mb-color-feedback-warning`
 - `--mb-color-shadow`, `--mb-color-focus`
 - `--mb-color-accent0` through `--mb-color-accent7`
 
@@ -398,7 +398,7 @@ export const Wrapper = styled.div`
 ```tsx
 export const Item = styled.div<{ isSelected: boolean; disabled: boolean }>`
   color: ${(props) =>
-    props.disabled ? color("text-tertiary") : color("text-primary")};
+    props.disabled ? color("text-disabled") : color("text-primary")};
   background-color: ${(props) =>
     props.isSelected ? color("core-brand") : "transparent"};
   cursor: ${(props) => (props.disabled ? "default" : "pointer")};
@@ -427,11 +427,11 @@ export const Item = styled.div<{ isSelected: boolean; disabled: boolean }>`
 }
 
 .disabled {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   cursor: default;
 
   &:hover {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 }
 ```

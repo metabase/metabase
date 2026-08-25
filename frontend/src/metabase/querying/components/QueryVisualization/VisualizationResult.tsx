@@ -68,7 +68,7 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       <Flex className={className}>
         <ErrorMessage
           type="noRows"
-          title={t`No results!`}
+          title={t`No results`}
           message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
           action={
             <div>

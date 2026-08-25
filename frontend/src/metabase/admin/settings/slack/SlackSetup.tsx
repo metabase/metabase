@@ -3,17 +3,14 @@ import { useMemo } from "react";
 import { jt, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  useGetSlackManifestQuery,
-  useUpdateSlackSettingsMutation,
-} from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   ButtonLink,
   ExternalLink,
 } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import {
   Badge,
   Box,
@@ -25,6 +22,11 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+
+import {
+  useGetSlackManifestQuery,
+  useUpdateSlackSettingsMutation,
+} from "../api/slack";
 
 import { SlackConfiguration } from "./SlackConfiguration";
 import { SlackSetupForm } from "./SlackSetupForm";
@@ -52,10 +54,9 @@ const SlackConnectionStatus = ({
       <Flex justify="space-between" align="center">
         <Flex align="center" gap="sm">
           <Badge
-            circle
-            size="12"
-            bg={isValid ? "success" : "error"}
-            style={{ flexShrink: 0 }}
+            color={isValid ? "positive" : "negative"}
+            flex="0 0 auto"
+            indicator
           />
           <Text>
             {isValid ? t`Slack app is working` : t`Slack app is not working.`}
@@ -85,7 +86,10 @@ const SlackConnectionStatus = ({
           )}
         </Flex>
 
-        <Button c="danger" onClick={handleOpen}>{t`Disconnect`}</Button>
+        <Button
+          c="feedback-negative"
+          onClick={handleOpen}
+        >{t`Disconnect`}</Button>
       </Flex>
       <ConfirmModal
         opened={isOpened}

@@ -1,10 +1,9 @@
-import type { Location } from "history";
 import { useEffect, useRef } from "react";
-import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
+import type { Location } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
@@ -42,7 +41,7 @@ export function useViewerUrl(
   ) => void,
   setInitialLoadComplete: (initialLoadComplete: boolean) => void,
 ): void {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
   const lastHashRef = useRef<string | null>(null);
 
@@ -145,13 +144,12 @@ export function useViewerUrl(
       setInitialLoadComplete(true);
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`There was a problem restoring the page state`,
       });
     }
   }, [
     location,
-    dispatch,
     initialize,
     onLoadSources,
     setFormulaEntities,
@@ -189,10 +187,10 @@ export function useViewerUrl(
       lastHashRef.current = hash;
       const url = Urls.metricsViewer(hash);
       if (!window.location.hash) {
-        dispatch(replace(url));
+        navigate(url, { replace: true });
       } else {
-        dispatch(push(url));
+        navigate(url);
       }
     }
-  }, [state, dispatch]);
+  }, [state, navigate]);
 }

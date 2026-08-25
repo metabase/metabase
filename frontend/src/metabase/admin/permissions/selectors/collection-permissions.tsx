@@ -3,12 +3,6 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  getGroupNameLocalized,
-  getGroupSortOrder,
-  getSpecialGroupType,
-  isDefaultGroup,
-} from "metabase/admin/utils/groups";
 import { collectionApi } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
@@ -17,6 +11,12 @@ import {
   isLibraryCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/common/collections/utils";
+import {
+  getGroupNameLocalized,
+  getGroupSortOrder,
+  getSpecialGroupType,
+  isDefaultGroup,
+} from "metabase/common/utils/groups";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionTreeItem,
@@ -61,7 +61,8 @@ export const getIsDirty = createSelector(
 );
 
 export type CollectionIdProps = {
-  params: { collectionId: CollectionId };
+  // Either an extracted `CollectionId` or a raw route param, which is a string.
+  params: { collectionId?: CollectionId | string };
   namespace?: CollectionNamespace;
 };
 
@@ -342,6 +343,7 @@ export const getCollectionsPermissionEditor = createSelector(
               ),
               warning: getCollectionWarning(
                 group.id,
+                // Unjustified type cast. FIXME
                 collection as ExpandedCollection,
                 permissions,
               ),

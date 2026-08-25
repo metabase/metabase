@@ -1,16 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
-  setupDashboardQuestionCandidatesEndpoint,
   setupDatabasesEndpoints,
   setupNullGetUserKeyValueEndpoints,
-  setupSearchEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
@@ -24,6 +21,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import { FileUploadStatus } from "metabase/status/components/FileUploadStatus/FileUploadStatus";
 import {
   createMockCollection,
@@ -69,10 +67,8 @@ const uploadedModel2 = createMockCollectionItem({
 async function setupCollectionContent(overrides = {}) {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([createMockDatabase({ can_upload: true })]);
-  setupSearchEndpoints([]);
   setupBookmarksEndpoints([]);
   setupNullGetUserKeyValueEndpoints();
-  setupDashboardQuestionCandidatesEndpoint([]);
 
   const settings = createMockSettingsState({
     "uploads-settings": {
@@ -85,17 +81,12 @@ async function setupCollectionContent(overrides = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={() => {
-        return (
-          <>
-            <CollectionContent
-              collectionId={firstCollectionId}
-              {...overrides}
-            />
-            <FileUploadStatus />
-          </>
-        );
-      }}
+      element={
+        <>
+          <CollectionContent collectionId={firstCollectionId} {...overrides} />
+          <FileUploadStatus />
+        </>
+      }
     />,
     {
       withRouter: true,

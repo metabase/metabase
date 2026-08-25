@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
@@ -20,6 +21,13 @@
           (is (string? (:tool-name m)))
           (is (some? (:schema m))))))))
 
+(deftest wrap-tools-with-state-carries-title-fn-test
+  (testing "a tool var's :title-fn metadata reaches the tool-def map"
+    (let [wrapped (agent-tools/wrap-tools-with-state
+                   {"search" #'agent-tools/search-tool}
+                   (atom {}) nil nil)]
+      (is (fn? (get-in wrapped ["search" :title-fn]))))))
+
 (deftest filter-by-capabilities-test
   (testing "returns tools with no capability requirements when capabilities empty"
     (let [tool-vars [#'agent-tools/search-tool #'agent-tools/read-resource-tool]]
@@ -27,13 +35,13 @@
              (#'profiles/filter-by-capabilities tool-vars #{})))))
   (testing "filters out tools that require missing capabilities"
     (let [tool-vars [#'agent-tools/search-tool
-                     #'agent-tools/navigate-user-tool]
+                     #'agent-tools/create-sql-query-tool]
           capabilities #{}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
       (is (= ["search"] (mapv #(:tool-name (meta %)) result)))))
   (testing "includes tools when capabilities are provided"
-    (let [tool-vars [#'agent-tools/search-tool #'agent-tools/navigate-user-tool #'agent-tools/create-chart-tool]
-          capabilities #{:frontend-navigate-user-v1}
+    (let [tool-vars [#'agent-tools/search-tool #'agent-tools/create-sql-query-tool #'agent-tools/create-chart-tool]
+          capabilities #{:permission-write-sql-queries}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
       (is (= tool-vars result)))))
 
@@ -68,16 +76,22 @@
     (is (contains? tools "ask_for_sql_clarification"))))
 
 (deftest get-tools-for-nlq-profile-test
-  (testing "the general search is always available; the curated search tool only with the semantic-search feature"
-    (mt/with-premium-features #{}
+  (testing "nlq discovers data through the curated library tool when it can serve queries, else general search"
+    ;; Entity retrieval unavailable (no pgvector / OSS): the general `search` fallback is the discovery tool,
+    ;; so the agent is never left with zero ways to find data. The library tool is filtered out.
+    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
       (let [tools (tools-for-profile :nlq)]
         (is (map? tools))
         (is (contains? tools "search"))
         (is (contains? tools "construct_notebook_query"))
         (is (contains? tools "create_chart"))
-        (is (not (contains? tools "search_curated")))))
-    (mt/with-premium-features #{:semantic-search}
-      (is (contains? (tools-for-profile :nlq) "search_curated")))))
+        (is (not (contains? tools "retrieve_library_entities")))))
+    ;; Entity retrieval available (pgvector configured + library-retrieval licensed): the curated library tool
+    ;; replaces general search. Exactly one discovery tool survives capability filtering.
+    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
+      (let [tools (tools-for-profile :nlq)]
+        (is (contains? tools "retrieve_library_entities"))
+        (is (not (contains? tools "search")))))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
   (let [tools (tools-for-profile :document-generate-content)]
@@ -142,16 +156,43 @@
                            :stages   [{:lib/type     "mbql.stage/mbql"
                                        :source-table ["Sample" "PUBLIC" "ORDERS"]
                                        :aggregation  [["count" {}]]}]}
-              result (agent-tools/construct-notebook-query-tool
-                      {:reasoning     "check seats"
-                       :query         query-input
-                       :title         "Seat check"
-                       :visualization {:chart_type "table"}})]
+              result (binding [shared/*profile-id* :nlq]
+                       (agent-tools/construct-notebook-query-tool
+                        {:reasoning     "check seats"
+                         :query         query-input
+                         :title         "Seat check"
+                         :description   "Total order count."
+                         :visualization {:chart_type "table"}}))]
           (is (= query-input @query-captured))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
           (is (= :table (get @chart-called :chart-type)))
-          (is (seq (:data-parts result))))))))
+          (is (seq (:data-parts result)))
+          (is (= "Total order count."
+                 (get-in result [:data-parts 0 :data :description]))))))))
+
+(defn- construct-tool-output-for-thrown
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return
+  the `:output` the LLM would see."
+  [e]
+  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_] (throw e))]
+    (:output (binding [shared/*profile-id* :nlq]
+               (agent-tools/construct-notebook-query-tool
+                {:query       {:lib/type "mbql/query" :stages []}
+                 :title       "Seat check"
+                 :description "Total order count."})))))
+
+(deftest construct-notebook-query-tool-permission-error-test
+  (testing (str "a 403 reaches the LLM as the permission message itself: `api/read-check` throws "
+                "a bare one with no `:agent-error?`, and the user not being allowed the card they "
+                "named is not a failure to report as one")
+    (is (= "You don't have permissions to do that."
+           (construct-tool-output-for-thrown
+            (ex-info "You don't have permissions to do that." {:status-code 403})))))
+  (testing "anything else without `:agent-error?` still gets the generic wrapper"
+    (is (= "Failed to construct notebook query: something went sideways"
+           (construct-tool-output-for-thrown
+            (ex-info "something went sideways" {:status-code 400}))))))
 
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"
@@ -163,7 +204,6 @@
     (is (contains? @#'agent-tools/state-dependent-tools "construct_notebook_query"))
     (is (contains? @#'agent-tools/state-dependent-tools "todo_write"))
     (is (contains? @#'agent-tools/state-dependent-tools "todo_read"))
-    (is (contains? @#'agent-tools/state-dependent-tools "navigate_user"))
     (is (contains? @#'agent-tools/state-dependent-tools "write_transform_sql"))
     (is (contains? @#'agent-tools/state-dependent-tools "write_transform_python"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_autogenerated_dashboard"))
@@ -172,7 +212,8 @@
     (is (contains? @#'agent-tools/state-dependent-tools "document_construct_model_chart"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_alert"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_dashboard_subscription"))
-    (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))))
+    (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))
+    (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))))
 
 (deftest wrap-tools-with-state-test
   (testing "wraps state-dependent tools with state injection"
@@ -212,13 +253,6 @@
       (is (fn? (:fn (get wrapped-tools "search"))))
       (is (map? (get wrapped-tools "construct_notebook_query")))
       (is (fn? (:fn (get wrapped-tools "construct_notebook_query")))))))
-
-(deftest inline-viz-capable-test
-  (testing "only the nlq profile emits inline visualizations"
-    (binding [shared/*profile-id* :nlq]
-      (is (true? (shared/inline-viz-capable?))))
-    (binding [shared/*profile-id* :sql]
-      (is (false? (shared/inline-viz-capable?))))))
 
 (deftest tool-schemas-exclude-state-keys-test
   (testing "create_chart schema does not expose state keys"

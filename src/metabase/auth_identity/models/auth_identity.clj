@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
@@ -35,14 +34,15 @@
                  (update 1 t/instant))))
         credentials))
 
+;; `credentials` is encrypted at rest (whole column) so secrets stored in it — e.g. the TOTP
+;; shared secret — survive `rotate-encryption-key`, which re-encrypts whole columns and cannot
+;; reach fields nested inside JSON. The column is listed in
+;; `metabase.app-db.encryption/encrypted-json-columns`. Rows written before encryption was
+;; introduced are plaintext JSON; `maybe-decrypt` passes them through unchanged.
 (t2/deftransforms :model/AuthIdentity
-  {:credentials {:in mi/json-in
-                 :out (comp parse-credentials-timestamps-out mi/json-out-with-keywordization)}
+  {:credentials {:in mi/encrypted-json-in
+                 :out (comp parse-credentials-timestamps-out mi/encrypted-json-out)}
    :metadata mi/transform-json})
-
-(defmethod serdes/hash-fields :model/AuthIdentity
-  [_auth-identity]
-  [:user_id :provider :created_at])
 
 ;;; ------------------------------------------------ Password Hashing ------------------------------------------------
 

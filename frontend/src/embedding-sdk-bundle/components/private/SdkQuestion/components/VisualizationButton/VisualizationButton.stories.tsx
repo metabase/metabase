@@ -8,6 +8,7 @@ import { useRunVisualization } from "../../hooks/use-run-visualization";
 
 import { VisualizationButton } from "./VisualizationButton";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {

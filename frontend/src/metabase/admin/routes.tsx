@@ -1,88 +1,225 @@
 import type { Store } from "@reduxjs/toolkit";
-import { Fragment } from "react";
-import {
-  IndexRedirect,
-  IndexRoute,
-  Redirect,
-  Route,
-  type RouteComponent,
-} from "react-router";
+import { type ComponentProps, Fragment, createElement } from "react";
 
-import AdminApp from "metabase/admin/app/components/AdminApp";
-import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
-import { DatabaseListApp } from "metabase/admin/databases/containers/DatabaseListApp";
-import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
-import { RevisionHistoryApp } from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import { SegmentApp } from "metabase/admin/datamodel/containers/SegmentApp";
-import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListApp";
-import { EmbeddingThemeEditorApp } from "metabase/admin/embedding/components/ThemeEditor";
-import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
-import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
-import { EmbeddingHubAdminSettingsPage } from "metabase/admin/embedding/embedding-hub";
-import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
-import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
-import { GroupsListingApp } from "metabase/admin/people/containers/GroupsListingApp";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
-import { PeopleListingApp } from "metabase/admin/people/containers/PeopleListingApp";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
-import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import { getRoutes as getAdminPermissionsRoutes } from "metabase/admin/permissions/routes";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
-  EmbeddingSecuritySettings,
-  EmbeddingSettings,
-  GuestEmbedsSettings,
-} from "metabase/admin/settings/components/EmbeddingSettings";
-import { Help } from "metabase/admin/tools/components/Help";
-import { JobInfoApp } from "metabase/admin/tools/components/JobInfoApp";
-import { JobTriggersModal } from "metabase/admin/tools/components/JobTriggersModal";
-import { LogLevelsModal } from "metabase/admin/tools/components/LogLevelsModal";
-import { Logs } from "metabase/admin/tools/components/Logs";
-import {
-  ModelCachePage,
-  ModelCacheRefreshJobModal,
-} from "metabase/admin/tools/components/ModelCacheRefreshJobs";
-import {
-  SetupPermissionsAndTenantsPage,
-  SetupSsoPage,
-} from "metabase/embedding/embedding-hub";
-import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
-import {
-  PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_AI_CONTROLS,
-  PLUGIN_AUDIT,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
-  PLUGIN_DEPENDENCIES,
   PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
-  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
   PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getTokenFeature } from "metabase/selectors/settings";
+import { Route, type RouteComponent, redirect } from "metabase/router";
+import { getTokenFeature } from "metabase/settings";
 
-import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
-import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
-import { OAuthAuthorizationsPage } from "./ai/OAuthAuthorizationsPage";
-import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
-import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
+import type { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { getSettingsRoutes } from "./settingsRoutes";
-import { ToolsApp } from "./tools/components/ToolsApp";
-import { ToolsUpsell } from "./tools/components/ToolsUpsell";
-import { getNotificationsRoutes, getTasksRoutes } from "./tools/routes";
-import { UpsellTenants } from "./upsells/UpsellTenants";
 import {
   RedirectToAllowedSettings,
   createAdminRouteGuard,
   createTenantsRouteGuard,
 } from "./utils";
+
+/**
+ * The admin pages, in one chunk. Every loader names it, so the section arrives
+ * in a single request rather than one per page.
+ *
+ * Route guards, the redirects and the modal routes stay eager: they are small,
+ * and a guard has to decide before there is anything to show. The pages behind
+ * them are fetched the first time one of these routes is matched.
+ */
+const adminApp = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/app/components/AdminApp"
+  ).then(({ AdminApp }) => ({ Component: AdminApp }));
+
+const databaseList = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/databases/containers/DatabaseListApp"
+  ).then(({ DatabaseListApp }) => ({ Component: DatabaseListApp }));
+
+const databasePage = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/databases/containers/DatabasePage"
+  ).then(({ DatabasePage }) => ({ Component: DatabasePage }));
+
+const databaseEdit = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/databases/containers/DatabaseEditApp"
+  ).then(({ DatabaseEditApp }) => ({ Component: DatabaseEditApp }));
+
+const dataModel = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/metadata/pages/DataModelV1"
+  ).then(({ DataModelV1 }) => ({
+    Component: DataModelV1,
+  }));
+
+const segmentList = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/datamodel/containers/SegmentListApp"
+  ).then(({ SegmentListApp }) => ({ Component: SegmentListApp }));
+
+const segmentEdit = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/datamodel/containers/SegmentApp"
+  ).then(({ SegmentApp }) => ({ Component: SegmentApp }));
+
+const segmentRevisions = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/datamodel/containers/RevisionHistoryApp"
+  ).then(({ RevisionHistoryApp }) => ({ Component: RevisionHistoryApp }));
+
+const peopleApp = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/people/containers/AdminPeopleApp"
+  ).then(({ AdminPeopleApp }) => ({ Component: AdminPeopleApp }));
+
+const peopleListing = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/people/containers/PeopleListingApp"
+  ).then(({ PeopleListingApp }) => ({ Component: PeopleListingApp }));
+
+const groupsListing = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/people/containers/GroupsListingApp"
+  ).then(({ GroupsListingApp }) => ({ Component: GroupsListingApp }));
+
+const groupDetail = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/people/containers/GroupDetailApp"
+  ).then(({ GroupDetailApp }) => ({ Component: GroupDetailApp }));
+
+const upsellTenants = () =>
+  import(/* webpackChunkName: "admin" */ "./upsells/UpsellTenants").then(
+    ({ UpsellTenants }) => ({
+      Component: UpsellTenants,
+    }),
+  );
+
+const embeddingApp = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/embedding/containers/AdminEmbeddingApp"
+  ).then(({ AdminEmbeddingApp }) => ({ Component: AdminEmbeddingApp }));
+
+const embeddingSettings = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/settings/components/EmbeddingSettings"
+  ).then(({ EmbeddingSettings }) => ({ Component: EmbeddingSettings }));
+
+const embeddingSecuritySettings = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/settings/components/EmbeddingSettings"
+  ).then(({ EmbeddingSecuritySettings }) => ({
+    Component: EmbeddingSecuritySettings,
+  }));
+
+const guestEmbedsSettings = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/settings/components/EmbeddingSettings"
+  ).then(({ GuestEmbedsSettings }) => ({ Component: GuestEmbedsSettings }));
+
+const embeddingHub = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/embedding/embedding-hub"
+  ).then(({ EmbeddingHubAdminSettingsPage }) => ({
+    Component: EmbeddingHubAdminSettingsPage,
+  }));
+
+const setupPermissions = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/embedding/embedding-hub"
+  ).then(({ SetupPermissionsAndTenantsPage }) => ({
+    Component: SetupPermissionsAndTenantsPage,
+  }));
+
+const setupSso = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/embedding/embedding-hub"
+  ).then(({ SetupSsoPage }) => ({
+    Component: SetupSsoPage,
+  }));
+
+const themeListing = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/embedding/components/ThemeListing"
+  ).then(({ EmbeddingThemeListingApp }) => ({
+    Component: EmbeddingThemeListingApp,
+  }));
+
+const themeEditor = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/embedding/components/ThemeEditor"
+  ).then(({ EmbeddingThemeEditorApp }) => ({
+    Component: EmbeddingThemeEditorApp,
+  }));
+
+const performanceApp = () =>
+  import(
+    /* webpackChunkName: "admin" */ "metabase/admin/performance/components/PerformanceApp"
+  ).then(({ PerformanceApp }) => ({ Component: PerformanceApp }));
+
+const strategyEditorForDatabases = () =>
+  import(
+    /* webpackChunkName: "admin" */ "./performance/components/StrategyEditorForDatabases"
+  ).then(({ StrategyEditorForDatabases }) => ({
+    Component: StrategyEditorForDatabases,
+  }));
+
+const modelPersistence = () =>
+  import(
+    /* webpackChunkName: "admin" */ "./performance/components/ModelPersistenceConfiguration"
+  ).then(({ ModelPersistenceConfiguration }) => ({
+    Component: ModelPersistenceConfiguration,
+  }));
+
+// `route.lazy` supplies a component and no props, so the three routes that
+// share this layout bind theirs here.
+const metabotLayout =
+  (props: ComponentProps<typeof MetabotAdminLayout> = {}) =>
+  () =>
+    import(/* webpackChunkName: "admin" */ "./ai/MetabotAdminLayout").then(
+      ({ MetabotAdminLayout }) => ({
+        Component: function MetabotAdminLayoutRoute() {
+          return <MetabotAdminLayout {...props} />;
+        },
+      }),
+    );
+
+const aiSettings = () =>
+  import(/* webpackChunkName: "admin" */ "./ai/AISettingsPage").then(
+    ({ AISettingsPage }) => ({
+      Component: AISettingsPage,
+    }),
+  );
+
+const mcpSettings = () =>
+  import(/* webpackChunkName: "admin" */ "./ai/AISettingsPage").then(
+    ({ McpSettingsPage }) => ({
+      Component: McpSettingsPage,
+    }),
+  );
+
+const oauthAuthorizations = () =>
+  import(/* webpackChunkName: "admin" */ "./ai/OAuthAuthorizationsPage").then(
+    ({ OAuthAuthorizationsPage }) => ({ Component: OAuthAuthorizationsPage }),
+  );
+
+const help = () =>
+  import(/* webpackChunkName: "admin" */ "metabase/admin/help").then(
+    ({ Help }) => ({ Component: Help }),
+  );
 
 export const getRoutes = (
   store: Store<State>,
@@ -93,103 +230,107 @@ export const getRoutes = (
   const hasSimpleEmbedding = getTokenFeature(state, "embedding_simple");
 
   return (
-    <Route path="/admin" component={CanAccessSettings}>
-      <Route component={AdminApp}>
-        <IndexRoute component={RedirectToAllowedSettings} />
-        <Route path="databases" component={createAdminRouteGuard("databases")}>
-          <IndexRoute component={DatabaseListApp} />
-          <Route component={IsAdmin}>
-            <Route path="create" component={DatabasePage} />
+    <Route path="/admin" element={<CanAccessSettings />}>
+      <Route lazy={adminApp}>
+        <Route index element={<RedirectToAllowedSettings />} />
+        <Route
+          path="databases"
+          element={createElement(createAdminRouteGuard("databases"))}
+        >
+          <Route index lazy={databaseList} />
+          <Route element={<IsAdmin />}>
+            <Route path="create" lazy={databasePage} />
           </Route>
-          <Route path=":databaseId/edit" component={DatabasePage} />
+          <Route path=":databaseId/edit" lazy={databasePage} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
-          {PLUGIN_WORKSPACES.getWorkspaceDatabaseRoutes(IsAdmin)}
-          <Route path=":databaseId" component={DatabaseEditApp}>
+          <Route path=":databaseId" lazy={databaseEdit}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
         </Route>
-        <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
+        <Route
+          path="datamodel"
+          element={createElement(createAdminRouteGuard("data-model"))}
+        >
           <Route>
-            <IndexRedirect to="database" />
-            <Route path="database" component={DataModelV1} />
-            <Route path="database/:databaseId" component={DataModelV1} />
+            <Route index element={redirect("database")} />
+            <Route path="database" lazy={dataModel} />
+            <Route path="database/:databaseId" lazy={dataModel} />
             <Route
               path="database/:databaseId/schema/:schemaId"
-              component={DataModelV1}
+              lazy={dataModel}
             />
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId"
-              component={DataModelV1}
+              lazy={dataModel}
             />
             <Route
               path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-              component={DataModelV1}
+              lazy={dataModel}
             />
-            <Route component={DataModelV1}>
-              <Route path="segments" component={SegmentListApp} />
-              <Route path="segment/create" component={IsAdmin}>
-                <IndexRoute component={SegmentApp} />
+            <Route lazy={dataModel}>
+              <Route path="segments" lazy={segmentList} />
+              <Route path="segment/create" element={<IsAdmin />}>
+                <Route index lazy={segmentEdit} />
               </Route>
-              <Route path="segment/:id" component={IsAdmin}>
-                <IndexRoute component={SegmentApp} />
+              <Route path="segment/:id" element={<IsAdmin />}>
+                <Route index lazy={segmentEdit} />
               </Route>
-              <Route
-                path="segment/:id/revisions"
-                component={RevisionHistoryApp}
-              />
+              <Route path="segment/:id/revisions" lazy={segmentRevisions} />
             </Route>
-            <Redirect
-              from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-              to="database/:databaseId/schema/:schemaId/table/:tableId"
+            <Route
+              path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
+              element={redirect(
+                "../database/:databaseId/schema/:schemaId/table/:tableId",
+              )}
             />
-            <Redirect
-              from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-              to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+            <Route
+              path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
+              element={redirect(
+                "../database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId",
+              )}
             />
           </Route>
         </Route>
         {/* PEOPLE */}
-        <Route path="people" component={createAdminRouteGuard("people")}>
-          <Route component={AdminPeopleApp}>
-            <IndexRoute component={PeopleListingApp} />
+        <Route
+          path="people"
+          element={createElement(createAdminRouteGuard("people"))}
+        >
+          <Route lazy={peopleApp}>
+            <Route index lazy={peopleListing} />
 
             {/*NOTE: this must come before the other routes otherwise it will be masked by them*/}
             <Route path="groups">
-              <IndexRoute component={GroupsListingApp} />
-              <Route path=":groupId" component={GroupDetailApp} />
+              <Route index lazy={groupsListing} />
+              <Route path=":groupId" lazy={groupDetail} />
             </Route>
 
             {/* Tenants */}
-            <Route path="tenants" component={createTenantsRouteGuard()}>
+            <Route
+              path="tenants"
+              element={createElement(createTenantsRouteGuard())}
+            >
               {PLUGIN_TENANTS.tenantsRoutes ?? (
                 <>
-                  <IndexRoute component={UpsellTenants} />
-                  <Route path="groups" component={UpsellTenants} />
-                  <Route path="people" component={UpsellTenants} />
+                  <Route index lazy={upsellTenants} />
+                  <Route path="groups" lazy={upsellTenants} />
+                  <Route path="people" lazy={upsellTenants} />
                 </>
               )}
             </Route>
 
-            <Route path="" component={PeopleListingApp}>
-              <ModalRoute path="new" modal={NewUserModal} noWrap />
+            <Route path="" lazy={peopleListing}>
+              {modalRoute("new", NewUserModal, { noWrap: true })}
               {PLUGIN_TENANTS.userStrategyRoute}
             </Route>
 
-            <Route path=":userId" component={PeopleListingApp}>
-              <IndexRedirect to="/admin/people" />
-              <ModalRoute path="edit" modal={EditUserModal} noWrap />
-              <ModalRoute path="success" modal={UserSuccessModal} noWrap />
-              <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
-              <ModalRoute
-                path="deactivate"
-                modal={UserActivationModal}
-                noWrap
-              />
-              <ModalRoute
-                path="reactivate"
-                modal={UserActivationModal}
-                noWrap
-              />
+            <Route path=":userId" lazy={peopleListing}>
+              <Route index element={redirect("/admin/people")} />
+              {modalRoute("edit", EditUserModal, { noWrap: true })}
+              {modalRoute("success", UserSuccessModal, { noWrap: true })}
+              {modalRoute("reset", UserPasswordResetModal, { noWrap: true })}
+              {modalRoute("deactivate", UserActivationModal, { noWrap: true })}
+              {modalRoute("reactivate", UserActivationModal, { noWrap: true })}
               {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
                 <Fragment key={index}>{getRoutes()}</Fragment>
               ))}
@@ -198,116 +339,123 @@ export const getRoutes = (
         </Route>
 
         {/* EMBEDDING */}
-        <Route path="embedding" component={createAdminRouteGuard("embedding")}>
-          <Route component={AdminEmbeddingApp}>
-            <IndexRoute component={EmbeddingSettings} />
+        <Route
+          path="embedding"
+          element={createElement(createAdminRouteGuard("embedding"))}
+        >
+          <Route lazy={embeddingApp}>
+            <Route index lazy={embeddingSettings} />
 
             <Route path="setup-guide">
-              <IndexRoute component={EmbeddingHubAdminSettingsPage} />
+              <Route index lazy={embeddingHub} />
 
-              <Route
-                path="permissions"
-                component={SetupPermissionsAndTenantsPage}
-              />
+              <Route path="permissions" lazy={setupPermissions} />
 
-              <Route path="sso" component={SetupSsoPage} />
+              <Route path="sso" lazy={setupSso} />
             </Route>
 
             {/* EE with non-starter plan has embedding settings on different pages */}
             {hasSimpleEmbedding && (
-              <Route path="guest" component={GuestEmbedsSettings} />
+              <Route path="guest" lazy={guestEmbedsSettings} />
             )}
 
-            <Route path="security" component={EmbeddingSecuritySettings} />
-            <Route path="themes" component={EmbeddingThemeListingApp} />
-            <Route path="themes/:themeId" component={EmbeddingThemeEditorApp} />
+            <Route path="security" lazy={embeddingSecuritySettings} />
+            <Route path="themes" lazy={themeListing} />
+            <Route path="themes/:themeId" lazy={themeEditor} />
           </Route>
         </Route>
 
         {/* OSS/Starter has all embedding settings on the same page */}
         {!hasSimpleEmbedding && (
-          <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
+          <Route
+            path="/admin/embedding/guest"
+            element={redirect("/admin/embedding")}
+          />
         )}
 
         {/* Backwards compatibility for embedding settings */}
-        <Redirect from="/admin/embedding/modular" to="/admin/embedding" />
-        <Redirect from="/admin/embedding/interactive" to="/admin/embedding" />
-        <Redirect
-          from="/admin/settings/embedding-in-other-applications"
-          to="/admin/embedding"
+        <Route
+          path="/admin/embedding/modular"
+          element={redirect("/admin/embedding")}
         />
-        <Redirect
-          from="/admin/settings/embedding-in-other-applications/full-app"
-          to="/admin/embedding"
+        <Route
+          path="/admin/embedding/interactive"
+          element={redirect("/admin/embedding")}
         />
-        <Redirect
-          from="/admin/settings/embedding-in-other-applications/standalone"
-          to="/admin/embedding/guest"
+        <Route
+          path="/admin/settings/embedding-in-other-applications"
+          element={redirect("/admin/embedding")}
         />
-        <Redirect
-          from="/admin/settings/embedding-in-other-applications/sdk"
-          to="/admin/embedding"
+        <Route
+          path="/admin/settings/embedding-in-other-applications/full-app"
+          element={redirect("/admin/embedding")}
+        />
+        <Route
+          path="/admin/settings/embedding-in-other-applications/standalone"
+          element={redirect("/admin/embedding/guest")}
+        />
+        <Route
+          path="/admin/settings/embedding-in-other-applications/sdk"
+          element={redirect("/admin/embedding")}
         />
 
         {/* SETTINGS */}
-        <Route path="settings" component={createAdminRouteGuard("settings")}>
+        <Route
+          path="settings"
+          element={createElement(createAdminRouteGuard("settings"))}
+        >
           {getSettingsRoutes(store, IsAdmin)}
         </Route>
         {/* PERMISSIONS */}
-        <Route path="permissions" component={IsAdmin}>
+        <Route path="permissions" element={<IsAdmin />}>
           {getAdminPermissionsRoutes()}
         </Route>
 
         {/* PERFORMANCE */}
         <Route
           path="performance"
-          component={createAdminRouteGuard("performance")}
+          element={createElement(createAdminRouteGuard("performance"))}
         >
-          <Route component={PerformanceApp}>
-            <IndexRedirect to={PerformanceTabId.Databases} />
-            <Route path="databases" component={StrategyEditorForDatabases} />
-            <Route path="models" component={ModelPersistenceConfiguration} />
+          <Route lazy={performanceApp}>
+            <Route index element={redirect(PerformanceTabId.Databases)} />
+            <Route path="databases" lazy={strategyEditorForDatabases} />
+            <Route path="models" lazy={modelPersistence} />
             <Route
               path="dashboards-and-questions"
-              component={PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards}
+              element={
+                <PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards />
+              }
             />
           </Route>
         </Route>
 
         {/* Metabot */}
-        <Route path="metabot" component={createAdminRouteGuard("metabot")}>
-          {PLUGIN_AUDIT.getAiAnalyticsRoutes()}
-          <Route key="index-layout" component={MetabotAdminLayout}>
-            <IndexRoute key="index" component={AISettingsPage} />
-            <Route key="mcp" path="mcp" component={McpSettingsPage} />
+        <Route
+          path="metabot"
+          element={createElement(createAdminRouteGuard("metabot"))}
+        >
+          <Route key="index-layout" lazy={metabotLayout()}>
+            <Route index key="index" lazy={aiSettings} />
+            <Route key="mcp" path="mcp" lazy={mcpSettings} />
           </Route>
           <Route
             key="mcp-authorizations-layout"
-            component={(props) => (
-              <MetabotAdminLayout
-                {...props}
-                fullWidth
-                innerContentProps={{ fullWidth: true, fullHeight: true }}
-              />
-            )}
+            lazy={metabotLayout({
+              fullWidth: true,
+              innerContentProps: { fullWidth: true, fullHeight: true },
+            })}
           >
-            <Route
-              path="mcp/authorizations"
-              component={OAuthAuthorizationsPage}
-            />
+            <Route path="mcp/authorizations" lazy={oauthAuthorizations} />
           </Route>
           <Route
             key="layout"
-            component={(props) => (
-              <MetabotAdminLayout
-                {...props}
-                fullWidth={!PLUGIN_AI_CONTROLS.isEnabled}
-                innerContentProps={{
-                  fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
-                  fullHeight: !PLUGIN_AI_CONTROLS.isEnabled,
-                }}
-              />
-            )}
+            lazy={metabotLayout({
+              fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
+              innerContentProps: {
+                fullWidth: !PLUGIN_AI_CONTROLS.isEnabled,
+                fullHeight: !PLUGIN_AI_CONTROLS.isEnabled,
+              },
+            })}
           >
             {PLUGIN_AI_CONTROLS.getAiControlsRoutes()}
           </Route>
@@ -316,49 +464,14 @@ export const getRoutes = (
         {PLUGIN_SECURITY_CENTER.isEnabled && (
           <Route
             path="security-center"
-            component={PLUGIN_SECURITY_CENTER.SecurityCenterPage}
+            lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
           />
         )}
 
-        <Route path="tools" component={createAdminRouteGuard("tools")}>
-          <Route component={ToolsApp}>
-            <IndexRedirect to="help" />
-            <Route
-              key="error-overview"
-              path="errors"
-              // If the audit_app feature flag is present, our enterprise plugin system kicks in and we render the
-              // appropriate enterprise component. The upsell component is shown in all other cases.
-              component={PLUGIN_ADMIN_TOOLS.COMPONENT || ToolsUpsell}
-            />
-            <Route path="model-caching" component={ModelCachePage}>
-              <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
-            </Route>
-            <Route path="help" component={Help}>
-              {PLUGIN_SUPPORT.isEnabled && (
-                <ModalRoute
-                  modal={PLUGIN_SUPPORT.GrantAccessModal}
-                  path="grant-access"
-                />
-              )}
-            </Route>
-            <Route path="tasks">{getTasksRoutes()}</Route>
-            <Route path="notifications">{getNotificationsRoutes()}</Route>
-            <Route path="jobs" component={JobInfoApp}>
-              <ModalRoute
-                path=":jobKey"
-                modal={JobTriggersModal}
-                modalProps={{ size: "85%" }}
-              />
-            </Route>
-            <Route path="logs" component={Logs}>
-              <ModalRoute path="levels" modal={LogLevelsModal} />
-            </Route>
-            {PLUGIN_DEPENDENCIES.isEnabled && (
-              <Route
-                path="dependencies"
-                component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
-              />
-            )}
+        <Route element={createElement(createAdminRouteGuard("help"))}>
+          <Route path="help" lazy={help}>
+            {PLUGIN_SUPPORT.isEnabled &&
+              modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
           </Route>
         </Route>
       </Route>

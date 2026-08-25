@@ -6,25 +6,24 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
 import { isPublicCollection } from "metabase/common/collections/utils";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
-import { Input } from "metabase/common/components/Input";
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getCollectionBreadCrumbs } from "metabase/common/utils/collections";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+  getUserPersonalCollectionId,
+} from "metabase/current-user";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import {
-  canUserCreateNativeQueries,
-  canUserCreateQueries,
-  getUserPersonalCollectionId,
-} from "metabase/selectors/user";
-import { Button, Flex, Icon } from "metabase/ui";
+import { Button, Flex, Icon, Input, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
@@ -44,10 +43,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
   const baseCollectionsById = useMemo(
     () =>
-      getExpandedCollectionsById(
-        allCollectionsList,
-        userPersonalCollectionId,
-      ) as Record<CollectionId, Collection>,
+      getExpandedCollectionsById(allCollectionsList, userPersonalCollectionId),
     [allCollectionsList, userPersonalCollectionId],
   );
   const getIcon = useGetIcon();
@@ -92,14 +88,21 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
   const onNewNativeQuestion = () => dispatch(addDashboardQuestion("native"));
   return (
     <div className={S.questionPickerRoot}>
-      <Input
+      <TextInput
         className={S.searchInput}
-        fullWidth
         autoFocus
         data-autofocus
         placeholder={t`Search…`}
         value={searchText}
-        onResetClick={() => setSearchText("")}
+        rightSectionPointerEvents="all"
+        rightSection={
+          searchText.length > 0 ? (
+            <Input.ClearButton
+              c="text-secondary"
+              onClick={() => setSearchText("")}
+            />
+          ) : null
+        }
         onChange={handleSearchTextChange}
       />
 
@@ -139,7 +142,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
                 const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
                   collection,
                 )
-                  ? "text-tertiary"
+                  ? "text-disabled"
                   : icon.color;
                 return (
                   <SelectList.Item
@@ -152,7 +155,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
                     }}
                     rightIcon="chevronright"
                     onSelect={(collectionId) =>
-                      setCurrentCollectionId(collectionId as CollectionId)
+                      setCurrentCollectionId(collectionId)
                     }
                   />
                 );

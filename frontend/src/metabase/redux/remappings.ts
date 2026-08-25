@@ -77,8 +77,8 @@ export const fetchRemapping = createThunkAction(
           {
             ...(entityIdentifier
               ? { entityIdentifier }
-              : { dashboard_id: dashboardId }),
-            parameter_id: parameter.id,
+              : { dashId: dashboardId }),
+            paramId: parameter.id,
             value,
           },
           dispatch,
@@ -88,8 +88,8 @@ export const fetchRemapping = createThunkAction(
       } else if (cardId != null) {
         remapping = await runRtkEndpoint(
           {
-            ...(entityIdentifier ? { entityIdentifier } : { card_id: cardId }),
-            parameter_id: parameter.id,
+            ...(entityIdentifier ? { entityIdentifier } : { cardId }),
+            paramId: parameter.id,
             value,
           },
           dispatch,

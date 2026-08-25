@@ -23,7 +23,7 @@
   [:enum "critical" "high" "medium" "low"])
 
 (mr/def ::affected-version
-  [:map {:closed true}
+  [:map
    [:min ::security-center.schema/semver]
    [:fixed ::security-center.schema/semver]])
 
@@ -44,6 +44,7 @@
    [:updated_at ms/TemporalString]
    [:advisory_url [:maybe :string]]
    [:affected_versions [:vector {:min 1} ::affected-version]]
+   [:download_jar_urls {:optional true} [:maybe ::security-center.schema/download-jar-urls]]
    [:matching_query [:maybe ::matching-query]]
    [:remediation [:string {:min 1}]]])
 
@@ -99,6 +100,7 @@
    :advisory_url      (:advisory_url advisory)
    :remediation       (:remediation advisory)
    :affected_versions (:affected_versions advisory)
+   :download_jar_urls (:download_jar_urls advisory)
    :matching_query    (parse-matching-query (:matching_query advisory))
    :published_at      (t/offset-date-time (:published_at advisory))
    :updated_at        (t/offset-date-time (:updated_at advisory))})
@@ -143,7 +145,7 @@
   (let [advisories (try
                      (fetch-advisories-from-store)
                      (catch Exception e
-                       (log/warn e "Error fetching advisories from MetaStore")))]
+                       (log/warnf "Error fetching advisories from MetaStore: %s" (ex-message e))))]
     (if (seq advisories)
       (let [total    (count advisories)
             failures (reduce (fn [n advisory]
@@ -151,7 +153,7 @@
                                  (upsert-advisory! advisory)
                                  n
                                  (catch Exception e
-                                   (log/warnf e "Error upserting advisory %s" (:advisory_id advisory))
+                                   (log/warnf "Error upserting advisory %s: %s" (:advisory_id advisory) (ex-message e))
                                    (inc n))))
                              0
                              advisories)

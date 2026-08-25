@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { remoteSyncApi } from "metabase-enterprise/api";
 
 import { initialState } from "./sync-task-slice";
@@ -38,6 +38,16 @@ export const getProgress = createSelector(
 export const getIsError = createSelector(
   getCurrentTask,
   (currentTask) => currentTask?.status === "errored",
+);
+
+export const getIsStalled = createSelector(
+  getCurrentTask,
+  (currentTask) => currentTask?.status === "timed-out",
+);
+
+export const getLastProgressReportAt = createSelector(
+  getCurrentTask,
+  (currentTask) => currentTask?.last_progress_report_at ?? null,
 );
 
 export const getIsSuccess = createSelector(

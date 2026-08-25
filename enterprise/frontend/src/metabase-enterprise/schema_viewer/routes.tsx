@@ -1,7 +1,15 @@
-import { IndexRoute } from "react-router";
+import { Route, registerPagePrefetch } from "metabase/router";
+import * as Urls from "metabase/urls";
 
-import { SchemaViewerPage } from "./pages/SchemaViewerPage";
+import { loadSchemaViewerPage } from "./lazy";
+
+const schemaViewerPage = () =>
+  loadSchemaViewerPage().then(({ SchemaViewerPage }) => ({
+    Component: SchemaViewerPage,
+  }));
+
+registerPagePrefetch(Urls.dataStudioSchemaViewer(), schemaViewerPage);
 
 export function getDataStudioSchemaViewerRoutes() {
-  return <IndexRoute component={SchemaViewerPage} />;
+  return <Route index lazy={schemaViewerPage} />;
 }

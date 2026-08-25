@@ -233,20 +233,6 @@
          :limit  (request/limit)
          :offset (request/offset)}))))
 
-(defn- same-groups-user-ids
-  "Return a list of all user-ids in the same group with the user with id `user-id`.
-  Ignore the All-user groups."
-  [user-id]
-  (map :user_id
-       (t2/query {:select-distinct [:permissions_group_membership.user_id]
-                  :from [:permissions_group_membership]
-                  :where [:in :permissions_group_membership.group_id
-                          ;; get all the groups ids that the current user is in
-                          {:select-distinct [:permissions_group_membership.group_id]
-                           :from  [:permissions_group_membership]
-                           :where [:and [:= :permissions_group_membership.user_id user-id]
-                                   [:not= :permissions_group_membership.group_id (:id (perms/all-users-group))]]}]})))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -267,7 +253,7 @@
                      :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
-          (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
+          (within-group [] (let [user-ids (user/same-groups-user-ids api/*current-user-id*)
                                  clauses  (cond-> (user/filter-clauses {})
                                             (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
@@ -417,15 +403,21 @@
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
+            ;; `invite-user!` passes this through to `create-and-invite-user!`; without it the new user gets a random
+            ;; password and can never log in. Deliberately not `ms/ValidPassword`: admins provisioning accounts here
+            ;; have never been held to the complexity rules that `PUT /api/user/:id/password` enforces.
+            [:password               {:optional true} [:maybe ms/NonBlankString]]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
             [:source                 {:optional true, :default :admin} [:maybe keyword?]]
-            [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
+            [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]
+            [:invite_target          {:optional true} [:maybe users.schema/InviteTarget]]]]
   (users/invite-user! (set/rename-keys body {:first_name             :first-name
                                              :last_name              :last-name
                                              :user_group_memberships :user-group-memberships
                                              :login_attributes       :login-attributes
-                                             :tenant_id              :tenant-id})))
+                                             :tenant_id              :tenant-id
+                                             :invite_target          :invite-target})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
@@ -589,7 +581,8 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [password old_password]} :- [:map
-                                       [:password ms/ValidPassword]]
+                                       [:password     ms/ValidPassword]
+                                       [:old_password {:optional true} [:maybe :string]]]
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],

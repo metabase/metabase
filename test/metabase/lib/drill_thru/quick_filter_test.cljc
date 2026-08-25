@@ -343,6 +343,62 @@
                                     "2023-03-01T00:00:00Z"]]}]}
               (lib/drill-thru base-query -1 nil drill "="))))))
 
+(deftest ^:parallel quick-filter-bigint-value-test
+  (testing "quick-filter '=' on a bigint numeric cell wraps the value in a :value clause at full precision"
+    (let [big "9223372036854775807"]
+      (lib.drill-thru.tu/test-drill-application
+       {:click-type     :cell
+        :query-type     :unaggregated
+        :query-kinds    [:mbql]
+        :column-name    "QUANTITY"
+        :drill-type     :drill-thru/quick-filter
+        :custom-row     (assoc (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row])
+                               "QUANTITY" big)
+        :expected       {:type :drill-thru/quick-filter}
+        :drill-args     ["="]
+        ;; the emitted filter keeps the full bigint precision (stored as a string in the :value clause)
+        :expected-query {:stages [{:filters [[:= {}
+                                              [:field {} (meta/id :orders :quantity)]
+                                              [:value {:base-type :type/BigInteger} big]]]}]}}))))
+
+(deftest ^:parallel quick-filter-drill-on-expression-column-test
+  (testing "quick-filter on an expression column value produces a filter referencing the expression (#32032)"
+    (lib.drill-thru.tu/test-drill-application
+     {:click-type     :cell
+      :query-type     :unaggregated
+      :query-kinds    [:mbql]
+      :column-name    "Custom Reviewer"
+      :drill-type     :drill-thru/quick-filter
+      :custom-query   (-> (lib/query meta/metadata-provider (meta/table-metadata :reviews))
+                          (lib/expression "Custom Reviewer" (meta/field-metadata :reviews :reviewer)))
+      :custom-row     {"Custom Reviewer" "xavier"}
+      :expected       {:type      :drill-thru/quick-filter
+                       :operators [{:name "="} {:name "≠"}]}
+      :drill-args     ["="]
+      :expected-query {:stages [{:filters [[:= {} [:expression {} "Custom Reviewer"] "xavier"]]}]}})))
+
+(deftest ^:parallel quick-filter-null-numeric-cell-test
+  (testing "quick-filter '='/'≠' on a null numeric (Discount) cell produce is-null / not-null filters (#29082)"
+    (let [field-key (lib.drill-thru.tu/field-key= (meta/id :orders :discount) "DISCOUNT")
+          base      {:drill-type  :drill-thru/quick-filter
+                     :click-type  :cell
+                     :query-type  :unaggregated
+                     :column-name "DISCOUNT"
+                     :expected    {:type      :drill-thru/quick-filter
+                                   :value     :null
+                                   :operators [{:name "=", :filter [:is-null {} [:field {} field-key]]}
+                                               {:name "≠", :filter [:not-null {} [:field {} field-key]]}]}}]
+      (testing "= applies an is-null filter"
+        (lib.drill-thru.tu/test-drill-application
+         (assoc base
+                :drill-args     ["="]
+                :expected-query {:stages [{:filters [[:is-null {} [:field {} field-key]]]}]})))
+      (testing "≠ applies a not-null filter"
+        (lib.drill-thru.tu/test-drill-application
+         (assoc base
+                :drill-args     ["≠"]
+                :expected-query {:stages [{:filters [[:not-null {} [:field {} field-key]]]}]}))))))
+
 (deftest ^:parallel quick-filter-on-binned-column-keeps-binning-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/aggregate (lib/count))

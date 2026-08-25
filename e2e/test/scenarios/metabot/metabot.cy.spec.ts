@@ -10,7 +10,7 @@ describe("Metabot UI", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
     cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
       "xrayCandidates",
@@ -68,8 +68,7 @@ describe("Metabot UI", () => {
       cy.log("test on message shorter than prompt");
       H.mockMetabotResponse({
         statusCode: 200,
-        body: `0:"${loremIpsum.repeat(5)}"
-d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        body: H.createMetabotSSEBody(H.metabotTextPart(loremIpsum.repeat(5))),
       });
       H.sendMetabotMessage("You really mean that?");
       cy.log("scroll new prompt to top of the scroll area");
@@ -87,8 +86,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
 
       H.mockMetabotResponse({
         statusCode: 200,
-        body: `0:"${loremIpsum.repeat(50)}"
-d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        body: H.createMetabotSSEBody(H.metabotTextPart(loremIpsum.repeat(50))),
       });
       H.sendMetabotMessage("Keep going...");
 
@@ -103,8 +101,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
     it("should open metabot to the bottom of the conversation when reopened with message history", () => {
       H.mockMetabotResponse({
         statusCode: 200,
-        body: `0:"${loremIpsum.repeat(5)}"
-d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        body: H.createMetabotSSEBody(H.metabotTextPart(loremIpsum.repeat(5))),
       });
       H.openMetabotViaSearchButton();
       H.sendMetabotMessage("Who is your favorite?");
@@ -126,20 +123,11 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
       cy.signInAsAdmin();
       H.enableTracking();
       H.activateToken("pro-self-hosted");
-      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+      H.setupAnthropicLlmProvider();
     });
 
     afterEach(() => {
       H.expectNoBadSnowplowEvents();
-    });
-
-    it("should track Metabot chart explainer", () => {
-      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      cy.findByLabelText("Explain this chart").should("be.visible").click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "metabot_explain_chart_clicked",
-      });
     });
 
     describe("Metabot chat", () => {
@@ -220,7 +208,7 @@ describe("Metabot in full-app embedding", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
   });
 
   it("should show the metabot button when embedded-metabot-enabled? is true", () => {
@@ -232,7 +220,6 @@ describe("Metabot in full-app embedding", () => {
     });
 
     H.appBar().icon("metabot").should("be.visible");
-    cy.findByLabelText("Explain this chart").should("not.exist");
   });
 
   it("should not show the metabot button when embedded-metabot-enabled? is false", () => {
@@ -248,13 +235,18 @@ describe("Metabot in full-app embedding", () => {
 
     cy.log("Assert metabot buttons are not rendered");
     H.appBar().icon("metabot").should("not.exist");
-    cy.findByLabelText("Explain this chart").should("not.exist");
   });
 });
 
-const whoIsYourFavoriteResponse = `0:"You, but don't tell anyone."
-2:{"type":"state","version":1,"value":{"queries":{}}}
-d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+const whoIsYourFavoriteResponse = H.createMetabotSSEBody(
+  H.metabotTextPart("You, but don't tell anyone."),
+  H.metabotDataPart("state", { queries: {} }),
+  H.metabotFinishPart("stop", {
+    usage: { inputTokens: 4916, outputTokens: 8, totalTokens: 4924 },
+  }),
+);
 
-const apiKeyInvalidResponse = `3:"Anthropic API key expired or invalid"
-d:{"finishReason":"error","usage":{}}`;
+const apiKeyInvalidResponse = H.createMetabotSSEBody(
+  H.metabotErrorPart("Anthropic API key expired or invalid"),
+  H.metabotFinishPart("error"),
+);

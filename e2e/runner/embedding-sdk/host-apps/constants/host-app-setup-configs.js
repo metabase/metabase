@@ -24,6 +24,10 @@ export const HOST_APP_SETUP_CONFIGS = {
       VITE_MB_PORT: BASE_ENV.MB_PORT,
     },
   },
+  "vite-6-data-app-host-app-e2e": {
+    ...BASE_SETUP_CONFIG,
+    appName: "vite-6-data-app-host-app",
+  },
   "next-15-app-router-host-app-e2e": {
     ...BASE_SETUP_CONFIG,
     appName: "next-15-app-router-host-app",

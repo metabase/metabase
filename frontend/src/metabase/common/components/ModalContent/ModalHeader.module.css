@@ -1,9 +1,9 @@
 .HeaderText {
-  font-weight: 700;
-  flex-grow: 1;
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-primary);
+
+  /* kept in CSS so .clickable:hover can override it (style props render inline) */
+  color: var(--modal-header-text-color, var(--mb-color-text-primary));
 
   &.HeaderTextCentered {
     justify-content: center;
@@ -16,7 +16,6 @@
 }
 
 .HeaderTextContainer {
-  flex-grow: 1;
   overflow: hidden;
 
   &.clickable:hover > * {
@@ -25,6 +24,19 @@
   }
 }
 
-.HeaderContainer {
-  flex-shrink: 0;
+.actionIcon {
+  color: var(--mb-color-text-disabled);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-text-secondary);
+  }
+}
+
+.backButton {
+  color: var(--mb-color-text-disabled);
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
 }

@@ -1,8 +1,7 @@
-import { Route } from "react-router";
-
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { DatabaseData } from "metabase-types/api";
 import { createMockEngines } from "metabase-types/api/mocks";
 
@@ -21,16 +20,15 @@ function setup({ database, isAttachedDWH = false }: SetupOpts = {}) {
   renderWithProviders(
     <Route
       path="/"
-      component={(routerProps) => (
+      element={
         <DatabaseEditConnectionForm
-          {...routerProps}
           database={database}
           isAttachedDWH={isAttachedDWH}
           onSubmitted={jest.fn()}
           onCancel={jest.fn()}
           formLocation="admin"
         />
-      )}
+      }
     />,
     { withRouter: true, storeInitialState },
   );

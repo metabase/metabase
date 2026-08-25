@@ -195,7 +195,8 @@
      :source/card)                ::source
     (:source/expressions
      :source/aggregations
-     :source/native)              ::none))
+     :source/native
+     :source/pivot-grouping)      ::none))
 
 (defn- add-source-to-field-ref [query path field-ref col]
   (lib/update-options

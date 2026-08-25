@@ -21,14 +21,21 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
+   [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
    (java.time LocalDate)))
 
-(def ^:private true-clause [:inline [:= 1 1]])
-(def ^:private false-clause [:inline [:= 0 1]])
+(def ^:private true-clause [:= [:inline 1] [:inline 1]])
+(def ^:private false-clause [:= [:inline 0] [:inline 1]])
+
+(def ^:private max-document-search-length
+  "Cap the number of characters of a document's prose-mirror body that the legacy engine LIKE-scans.
+  A leading-wildcard LIKE can't use an index, so this bounds the worst case for pathologically large
+  documents. Mirrors the appdb engine's `metabase.search.ingestion/max-searchable-value-length`."
+  500000)
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;
@@ -86,6 +93,10 @@
               (= column (search.config/column-with-model-alias model :dataset_query)))
          [:like [:lower :query_action.dataset_query] wildcarded-token]
 
+         (and (= model "document")
+              (= column (search.config/column-with-model-alias "document" :document)))
+         [:like [:lower [:left column [:inline max-document-search-length]]] wildcarded-token]
+
          :else
          [:like [:lower column] wildcarded-token])))))
 
@@ -111,7 +122,7 @@
     [:= (search.config/column-with-model-alias model :creator_id) (first creator-ids)]
     [:in (search.config/column-with-model-alias model :creator_id) creator-ids]))
 
-(doseq [model ["card" "dataset" "metric" "dashboard" "action" "document" "measure"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "action" "document" "measure" "exploration"]]
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
@@ -232,7 +243,7 @@
       [:and [:>= dt-col start] [:< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"
-               "transform" "measure"]]
+               "transform" "measure" "exploration"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
     (sql.helpers/where query (date-range-filter-clause
@@ -289,19 +300,6 @@
       ;; to be consistent we use revision.timestamp to do the filtering
       (sql.helpers/where (date-range-filter-clause :revision.timestamp last-edited-at)))))
 
-;; These filters are really only supported by the :appdb engine as they require a search index.
-;; By building this no-op filter definition for the in-place engine we can at least appropriately
-;; reduce the intended supported models that are searched. See PR 60912
-(doseq [model ["card" "dataset" "metric"]]
-  (defmethod build-optional-filter-query [:non-temporal-dim-ids model]
-    [_filter _model query _non-temporal-dim-ids]
-    query))
-
-(doseq [model ["card" "dataset" "metric"]]
-  (defmethod build-optional-filter-query [:has-temporal-dim model]
-    [_filter _model query _has-temporal-dim]
-    query))
-
 ;; TODO: once we record revision for actions, we should update this to use the same approach with dashboard/card
 (defmethod build-optional-filter-query [:last-edited-at "action"]
   [_filter model query last-edited-at]
@@ -316,7 +314,7 @@
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :display) display-types])))
 
 ;; Collection filter - filters by collection and all descendants
-(doseq [model ["card" "dataset" "metric" "dashboard" "collection" "document"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "collection" "document" "exploration"]]
   (defmethod build-optional-filter-query [:collection model]
     [_filter model query collection-id]
     (let [collection-col (search.config/column-with-model-alias model :collection_id)]
@@ -395,13 +393,15 @@
                 search-native-query
                 verified
                 curated?
-                non-temporal-dim-ids
-                has-temporal-dim
                 display-type
                 is-superuser?]} search-context
         enabled-types (:enabled-transform-source-types search-context)
-        feature->supported-models (feature->supported-models)]
+        feature->supported-models (feature->supported-models)
+        hidden-by-visibility (into #{}
+                                   (remove #(search.filter/visible-to? search-context (search.spec/spec %)))
+                                   models)]
     (cond-> models
+      (seq hidden-by-visibility)   (set/difference hidden-by-visibility)
       (not   is-superuser?)        (disj "transform")
       (empty? enabled-types)       (disj "transform")
       (some? collection)           (set/intersection (:collection feature->supported-models))
@@ -412,8 +412,6 @@
       (true? search-native-query)  (set/intersection (:search-native-query feature->supported-models))
       (true? verified)             (set/intersection (:verified feature->supported-models))
       (true? curated?)             (set/intersection (:curated feature->supported-models))
-      (some? non-temporal-dim-ids) (set/intersection (:non-temporal-dim-ids feature->supported-models))
-      (some? has-temporal-dim)     (set/intersection (:has-temporal-dim feature->supported-models))
       (seq   display-type)         (set/intersection (:display-type feature->supported-models)))))
 
 (mu/defn build-filters :- :map
@@ -433,8 +431,6 @@
                 verified
                 curated?
                 ids
-                non-temporal-dim-ids
-                has-temporal-dim
                 display-type]} search-context]
     (cond-> honeysql-query
       (= model "transform")
@@ -470,12 +466,6 @@
       (and (some? ids)
            (contains? models model))
       (#(build-optional-filter-query :id model % ids))
-
-      (some? non-temporal-dim-ids)
-      (#(build-optional-filter-query :non-temporal-dim-ids model % non-temporal-dim-ids))
-
-      (some? has-temporal-dim)
-      (#(build-optional-filter-query :has-temporal-dim model % has-temporal-dim))
 
       (seq display-type)
       (#(build-optional-filter-query :display-type model % display-type))

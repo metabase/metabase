@@ -14,6 +14,7 @@ import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api/card";
 import type { EntityToken } from "metabase-types/api/entity";
 
 type LoadQuestionSdkParams = LoadSdkQuestionParams & {
@@ -53,7 +54,7 @@ export const loadQuestionSdk =
       questionType: isNativeQuestion ? "native" : "gui",
     });
 
-    const card = isNewQuestion
+    const card: Card = isNewQuestion
       ? { ...resolvedCard, creationType: "custom_question" }
       : resolvedCard;
 

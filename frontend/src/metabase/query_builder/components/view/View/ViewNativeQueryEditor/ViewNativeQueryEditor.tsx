@@ -103,6 +103,8 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         proposedQuestion={inlineSQLPrompt?.proposedQuestion}
         onAcceptProposed={inlineSQLPrompt?.handleAcceptProposed}
         onRejectProposed={inlineSQLPrompt?.handleRejectProposed}
+        isPromptInputOpen={inlineSQLPrompt?.isPromptOpen}
+        onTogglePromptInput={inlineSQLPrompt?.togglePrompt}
       >
         <NativeQueryEditor.TopBar>
           <NativeQueryEditor.ParametersList />

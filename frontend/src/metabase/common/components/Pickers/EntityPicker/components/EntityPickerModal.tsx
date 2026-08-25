@@ -164,6 +164,13 @@ export function EntityPickerModal({
       w="100vw"
       closeOnEscape={false} // we're doing this manually in useWindowEvent
       yOffset="10dvh"
+      /**
+       * react-remove-scroll (used by Mantine's scroll lock) treats Shift+wheel as a
+       * vertical gesture and preventDefault()s it once the hovered column can't scroll
+       * vertically, which blocks the picker's native horizontal Shift+scroll. This modal
+       * fills the viewport and never scrolls the page, so the lock is unnecessary here. (#66456)
+       */
+      lockScroll={false}
     >
       <Modal.Overlay />
       <Modal.Content

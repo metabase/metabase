@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -18,6 +19,7 @@ import { useSdkControlledSqlParameters } from "embedding-sdk-bundle/hooks/privat
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
 import { useWarnConflictingParameterProps } from "embedding-sdk-bundle/hooks/private/use-warn-conflicting-parameter-props";
 import { getEffectiveParameterValues } from "embedding-sdk-bundle/lib/controlled-parameters";
+import { EmbeddingSdkMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkMode";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -38,7 +40,6 @@ import {
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -225,6 +226,7 @@ export const SdkQuestionProvider = ({
         getEmbeddingMode({
           question,
           queryMode: EmbeddingSdkMode,
+          // Unjustified type cast. FIXME
           plugins: plugins as InternalMetabasePluginsConfig,
         })
       );
@@ -292,6 +294,19 @@ export const SdkQuestionProvider = ({
     [updateQuestion],
   );
 
+  // How the user's `navigateToNewCard` prop maps to the context value:
+  //   - null      → navigation disabled (e.g. StaticQuestion / ad-hoc questions).
+  //                 Passed through as null; `Visualization` turns it into
+  //                 `undefined`, so the chart never wires `onChangeCardAndRun`
+  //                 (which would load a card by its undefined id → `/card/undefined`).
+  //   - undefined → the SDK's internal navigation (the default).
+  //   - a handler → run through the drill-through wrapper.
+  const contextNavigateToNewCard: SdkQuestionContextType["navigateToNewCard"] =
+    match(userNavigateToNewCard)
+      .with(null, () => null)
+      .with(undefined, () => navigateToNewCardWithSdkInternalNavigation)
+      .otherwise(() => navigateToNewCardWithDrillThrough);
+
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
     lastVisibleStageIndex,
@@ -306,10 +321,7 @@ export const SdkQuestionProvider = ({
     updateQuestion,
     updateAndNormalizeQuestion,
     updateParameterValues,
-    navigateToNewCard:
-      userNavigateToNewCard !== undefined
-        ? navigateToNewCardWithDrillThrough
-        : navigateToNewCardWithSdkInternalNavigation,
+    navigateToNewCard: contextNavigateToNewCard,
     plugins,
     question,
     originalQuestion,

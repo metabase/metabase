@@ -1,6 +1,5 @@
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
+import type { ComponentProps } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -20,12 +19,14 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { dayjs } from "metabase/dayjs";
 import type { DashboardState, StoreDashboard } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route, useLocation, useParams } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Card,
@@ -42,6 +43,15 @@ import {
 } from "metabase-types/api/mocks";
 
 import { MainNavbar } from "../MainNavbar";
+
+/** Feeds `MainNavbar` its route props the way `Navbar` does in the app. */
+function RoutedMainNavbar(
+  props: Omit<ComponentProps<typeof MainNavbar>, "location" | "params">,
+) {
+  const location = useLocation();
+  const params = useParams();
+  return <MainNavbar {...props} location={location} params={params} />;
+}
 
 export type SetupOpts = {
   pathname?: string;
@@ -225,9 +235,7 @@ export async function setup({
   renderWithProviders(
     <Route
       path={route}
-      component={(props) => (
-        <MainNavbar {...props} isOpen dashboard={storeDashboard} />
-      )}
+      element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
     />,
     {
       storeInitialState,

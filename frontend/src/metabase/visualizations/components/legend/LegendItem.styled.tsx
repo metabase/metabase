@@ -27,12 +27,14 @@ export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
 
 const LEGEND_ITEM_TITLE_MARGIN = 4;
 
+export const LEGEND_ITEM_FONT_SIZE = "0.928em";
+
 export const LegendItemTitle = styled.div<{
   dotSize: string;
   isInsidePopover?: boolean;
 }>`
   color: var(--mb-color-text-primary);
-  font-size: 0.928em;
+  font-size: ${LEGEND_ITEM_FONT_SIZE};
   font-weight: 700;
   margin-left: ${LEGEND_ITEM_TITLE_MARGIN}px;
   overflow: hidden;

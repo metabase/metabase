@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Location } from "history";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
@@ -9,13 +8,14 @@ import { useListSegmentsQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
+import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
+import { useLocation } from "metabase/router";
 import { getShallowTables } from "metabase/selectors/metadata";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
@@ -94,11 +94,8 @@ function SegmentListAppInner({ segments, tableSelector }: Props) {
 
 const FilteredSegmentList = FilteredToUrlTable(SegmentListAppInner);
 
-type SegmentListAppProps = {
-  location: Location<{ table?: string }>;
-};
-
-export function SegmentListApp({ location }: SegmentListAppProps) {
+export function SegmentListApp() {
+  const location = useLocation();
   const { data: segments, isLoading, error } = useListSegmentsQuery();
 
   if (isLoading || error || !segments) {

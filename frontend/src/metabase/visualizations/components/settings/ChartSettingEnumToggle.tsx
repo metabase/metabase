@@ -1,12 +1,6 @@
 import { Switch } from "metabase/ui";
 
-export type ChartSettingEnumToggleProps<T extends string> = {
-  value: T | undefined;
-  onChange: (value: T) => void;
-  id?: string;
-  checkedValue: T;
-  uncheckedValue: T;
-};
+import type { ChartSettingEnumToggleProps } from "../../types/widget-props";
 
 export const ChartSettingEnumToggle = <T extends string>({
   value,

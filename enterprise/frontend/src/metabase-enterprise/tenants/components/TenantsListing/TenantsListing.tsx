@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
@@ -11,7 +10,7 @@ import {
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Button,
@@ -47,12 +46,12 @@ export const TenantsListing = ({
   children,
   hasNoTenants,
 }: TenantsListingProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const openNewTenantModal = () => {
     const param = hasNoTenants ? "?onboarding=true" : "";
 
-    dispatch(push(Urls.newTenant() + param));
+    navigate(Urls.newTenant() + param);
   };
 
   const filteredTenants = useMemo(() => {
@@ -100,7 +99,7 @@ export const TenantsListing = ({
                 gap="md"
               >
                 <UserAvatar
-                  user={{ first_name: tenant.name }}
+                  user={{ name: tenant.name }}
                   bg={tenantIdToColor(tenant.id)}
                 />
                 <Box component="span" fw={700} c="core-brand">
@@ -119,13 +118,13 @@ export const TenantsListing = ({
 
       {((tenants.length !== 0 && filteredTenants.length === 0) ||
         (tenants.length === 0 && status === ACTIVE_STATUS.deactivated)) && (
-        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-tertiary">
+        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-disabled">
           {t`No matching tenants found.`}
         </Text>
       )}
 
       {tenants.length === 0 && status === ACTIVE_STATUS.active && (
-        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-tertiary">
+        <Text size="lg" fw="700" ta="center" mt="xl" py="xl" c="text-disabled">
           {t`Add your first tenant to get started.`}
         </Text>
       )}
@@ -144,7 +143,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
     <Menu shadow="md" width={200} position="bottom-end">
       <Menu.Target>
         <UnstyledButton>
-          <Icon c="text-tertiary" name="ellipsis" />
+          <Icon c="text-disabled" name="ellipsis" />
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
@@ -153,7 +152,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
         </Menu.Item>
         {tenant.is_active ? (
           <Menu.Item
-            c="danger"
+            c="feedback-negative"
             component={ForwardRefLink}
             to={Urls.deactivateTenant(tenant.id)}
           >
@@ -161,7 +160,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
           </Menu.Item>
         ) : (
           <Menu.Item
-            c="danger"
+            c="feedback-negative"
             component={ForwardRefLink}
             to={Urls.reactivateTenant(tenant.id)}
           >

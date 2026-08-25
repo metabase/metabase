@@ -15,6 +15,7 @@ export const getDatabase = (metadata: Metadata, databaseId: number) => {
 export const metadataTableToTableEntityId = (table: Table) => ({
   databaseId: table.db_id,
   schemaName: table.schema_name || "",
+  // Unjustified type cast. FIXME
   tableId: table.id as ConcreteTableId,
 });
 

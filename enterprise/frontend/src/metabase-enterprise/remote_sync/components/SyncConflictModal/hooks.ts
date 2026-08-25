@@ -45,6 +45,7 @@ export const usePushChangesAction = () => {
           });
           closeModal();
         } catch (error) {
+          // Unjustified type cast. FIXME
           const { errorMessage } = parseSyncError(error as SyncError);
           sendToast({
             message: errorMessage || t`Failed to push changes`,
@@ -84,6 +85,7 @@ export const useMergeChangesAction = () => {
           });
           closeModal();
         } catch (error) {
+          // Unjustified type cast. FIXME
           const { errorMessage } = parseSyncError(error as SyncError);
           sendToast({
             message: errorMessage || t`Failed to merge changes`,
@@ -120,6 +122,7 @@ export const useMergeImportAction = () => {
           });
           closeModal();
         } catch (error) {
+          // Unjustified type cast. FIXME
           const { errorMessage } = parseSyncError(error as SyncError);
           sendToast({
             message: errorMessage || t`Failed to merge changes`,
@@ -218,6 +221,7 @@ export const useDiscardChangesAndImportAction = () => {
           }).unwrap();
           closeModal();
         } catch (error) {
+          // Unjustified type cast. FIXME
           const { errorMessage } = parseSyncError(error as SyncError);
           sendToast({
             message:

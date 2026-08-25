@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import {
   type ColumnListItem,
   QueryColumnPicker,
-} from "metabase/common/components/QueryColumnPicker";
+} from "metabase/querying/common/components/QueryColumnPicker";
 import * as Lib from "metabase-lib";
 
 import {

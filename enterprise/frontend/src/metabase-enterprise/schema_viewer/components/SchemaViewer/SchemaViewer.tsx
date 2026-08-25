@@ -1,3 +1,8 @@
+// Deliberate import-time side effect: xyflow's stylesheet must load with this
+// chunk. If this module is ever declared side-effect free, the bundler would
+// drop this import and the graph would render unstyled.
+import "@xyflow/react/dist/style.css";
+
 import {
   Background,
   Panel,
@@ -362,7 +367,7 @@ export function SchemaViewer({
               pt="xl"
               data-testid="schema-viewer-empty-state"
             >
-              <Text c="text-tertiary">{t`No schema selected`}</Text>
+              <Text c="text-disabled">{t`No schema selected`}</Text>
             </Stack>
           </Panel>
         )}

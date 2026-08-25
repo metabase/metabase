@@ -1,13 +1,12 @@
 /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import { t } from "ttag";
 
-import { useCancelCloudMigrationMutation } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import type { Plan } from "metabase/common/utils/plan";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import type { Plan } from "metabase/settings";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -18,6 +17,8 @@ import {
   Progress,
   Text,
 } from "metabase/ui";
+
+import { useCancelCloudMigrationMutation } from "../../api/cloud-migration";
 
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
@@ -98,7 +99,7 @@ export const MigrationInProgress = ({
               <Button
                 mt="md"
                 onClick={openModal}
-                c="error"
+                c="feedback-negative"
               >{t`Cancel migration`}</Button>
               <Button
                 mt="md"
@@ -123,7 +124,7 @@ export const MigrationInProgress = ({
         <Flex justify="end" mt="3.5rem">
           <Button
             variant="filled"
-            color="error"
+            color="feedback-negative"
             onClick={handleCancelMigration}
           >{t`Cancel migration`}</Button>
         </Flex>

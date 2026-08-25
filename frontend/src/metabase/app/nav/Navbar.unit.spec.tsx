@@ -1,6 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCollectionItemsEndpoint,
@@ -29,6 +28,7 @@ import {
   createMockEmbedState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { User } from "metabase-types/api";
 import {
@@ -80,7 +80,7 @@ async function setup({
   });
 
   const { store } = renderWithProviders(
-    <Route path={route} component={Navbar} />,
+    <Route path={route} element={<Navbar />} />,
     {
       storeInitialState,
       initialRoute: pathname,
@@ -89,7 +89,7 @@ async function setup({
     },
   );
 
-  // manually dispatch the location event that would otherwise be done for us with react-router-redux
+  // manually dispatch the location event that the router history sync would otherwise dispatch for us
   dispatchLocationChange({ store, initialRoute: true, pathname });
 
   await waitForLoaderToBeRemoved();

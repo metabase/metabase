@@ -86,6 +86,7 @@ export function GridLayout<T extends { id: number | null }>(
   const theme = useMantineTheme();
 
   const [currentBreakpoint, setCurrentBreakpoint] = useState(
+    // Unjustified type cast. FIXME
     (ReactGridLayout as any).utils.getBreakpointFromWidth(
       breakpoints,
       gridWidth,

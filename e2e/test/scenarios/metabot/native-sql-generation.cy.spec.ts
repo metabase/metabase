@@ -40,9 +40,7 @@ describe("Native SQL generation", () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
-      cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
-        value: "sk-ant-api03-test-token",
-      });
+      H.setupAnthropicLlmProvider({ apiKey: "sk-ant-api03-test-token" });
       cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 
@@ -128,9 +126,7 @@ describe("Native SQL generation", () => {
       H.restore("postgres-12");
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
-      cy.request("PUT", "/api/setting/llm-anthropic-api-key", {
-        value: "sk-ant-api03-test-token",
-      });
+      H.setupAnthropicLlmProvider({ apiKey: "sk-ant-api03-test-token" });
       cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
     });
 
@@ -166,7 +162,7 @@ describe("Native SQL generation", () => {
       });
       generateButton().click();
       cy.wait("@metabotAgent").then(({ request }) => {
-        expect(request.body.history).to.have.length.greaterThan(0);
+        expect(request.body.parent_message_id).to.be.a("string");
         expect(request.body.message).to.include(
           "User rejected the following suggestion:\n\nSELECT * FROM users",
         );
@@ -180,7 +176,7 @@ describe("Native SQL generation", () => {
       H.NativeEditor.selectDataSource("QA Postgres12");
       inlinePrompt().should("be.visible");
 
-      // send a prompt, req.body.history should be empty
+      // changing the database starts a fresh conversation, so there's no parent
       inlinePromptInput().click();
       cy.realType("select something", { pressDelay: 10 });
       H.mockMetabotResponse({
@@ -188,7 +184,7 @@ describe("Native SQL generation", () => {
       });
       generateButton().click();
       cy.wait("@metabotAgent").then(({ request }) => {
-        expect(request.body.history).to.have.length(0);
+        expect(request.body.parent_message_id).to.be.undefined;
       });
 
       // should get a valid response back
@@ -208,7 +204,7 @@ describe("Native SQL generation", () => {
       });
       generateButton().click();
       cy.wait("@metabotAgent").then(({ request }) => {
-        expect(request.body.history).to.have.length(0);
+        expect(request.body.parent_message_id).to.be.undefined;
       });
       acceptButton().should("be.visible");
 
@@ -241,9 +237,13 @@ describe("Native SQL generation", () => {
 
 // Response helpers
 const mockCodeEditResponse = (sql: string) =>
-  `2:{"type":"code_edit","version":1,"value":{"buffer_id":"qb","mode":"rewrite","value":"${sql}"}}
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+  H.createMetabotSSEBody(
+    H.metabotDataPart("code_edit", {
+      buffer_id: "qb",
+      mode: "rewrite",
+      value: sql,
+    }),
+  );
 
 const mockTextOnlyResponse = (text: string) =>
-  `0:"${text}"
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+  H.createMetabotSSEBody(H.metabotTextPart(text));

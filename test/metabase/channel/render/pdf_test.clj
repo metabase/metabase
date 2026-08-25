@@ -15,7 +15,11 @@
    [metabase.channel.render.pdf :as pdf]
    [metabase.channel.render.pdf.font :as font]
    [metabase.channel.render.pdf.typeset :as typeset]
-   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [metabase.channel.shared :as channel.shared]
+   [metabase.notification.payload.temp-storage :as temp-storage]
+   [metabase.notification.settings :as notification.settings]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.test :as mt]
    [metabase.util.memoize :as memo])
   (:import
    (java.awt Color)
@@ -56,7 +60,7 @@
               md "[docs](https://metabase.com) [mail](mailto:a@b.com) [rel](/x) [js](javascript:1)"]
           (binding [font/*fonts*     (#'font/load-fonts! doc)
                     pdf/*link-rects* (atom [])]
-            (#'pdf/draw-markdown-in-cell! doc cs 40.0 800.0 500.0 100.0 md)
+            (#'pdf/draw-markdown-in-cell! doc cs 40.0 800.0 500.0 100.0 nil :top md)
             (.close cs)
             (#'pdf/add-link-annotations! page @pdf/*link-rects*)))
         ;; "rel" (relative) and "js" (javascript:) must not be clickable
@@ -105,6 +109,31 @@
           (let [baos (ByteArrayOutputStream.)]
             (.save doc baos)
             (is (pos? (count (.toByteArray baos))))))))))
+
+(deftest ^:synchronized include-branding?-test
+  (testing "the 'Made with Metabase' badge is included only for OSS instances (no :whitelabel feature)"
+    (with-redefs [premium-features/enable-whitelabeling? (constantly false)]
+      (is (true? (#'pdf/include-branding?)) "OSS: branding included"))
+    (with-redefs [premium-features/enable-whitelabeling? (constantly true)]
+      (is (false? (#'pdf/include-branding?)) "Pro/EE (whitelabel): no branding"))))
+
+;; not ^:parallel: exercises the real PDFBox content-stream + font registry, which the deftest linter treats as
+;; side-effecting
+(deftest ^:synchronized header-branding-gated-on-whitelabel-test
+  (testing "draw-header! draws the branding badge only when the instance lacks the :whitelabel feature"
+    (doseq [[whitelabel? expected-badge?] [[false true] [true false]]]
+      (let [badge-drawn? (atom false)]
+        (with-redefs [premium-features/enable-whitelabeling? (constantly whitelabel?)
+                      pdf/draw-brand-badge!                  (fn [& _] (reset! badge-drawn? true))]
+          (with-open [doc (PDDocument.)]
+            (binding [font/*fonts*     (#'font/load-fonts! doc)
+                      pdf/*link-rects* (atom [])]
+              (let [page (PDPage. PDRectangle/A4)]
+                (.addPage doc page)
+                (with-open [cs (PDPageContentStream. doc page)]
+                  (#'pdf/draw-header! cs 841.89 500.0 {:dashboard-title "Dash"}))))))
+        (is (= expected-badge? @badge-drawn?)
+            (str "whitelabel=" whitelabel? " => badge " (if expected-badge? "drawn" "skipped")))))))
 
 (defn- last-non-stroking-color
   "The operands of the last non-stroking colour operator (`r g b sc`) in a page's content stream, as a vector of
@@ -259,7 +288,7 @@
                                     :size_y                 1
                                     :visualization_settings {:virtual_card {:display "link"}
                                                              :link         {:url "https://example.com"}}}
-                                   []))))))
+                                   [] nil))))))
 
 (def ^:private iframe-html
   "<iframe width=\"560\" src=\"https://www.youtube.com/embed/x\" allowfullscreen></iframe>")
@@ -295,7 +324,7 @@
                                   :size_y                 3
                                   :visualization_settings {:virtual_card {:display "iframe"}
                                                            :iframe       "https://youtu.be/abc"}}
-                                 [])))))
+                                 [] nil)))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Parameter name-column sizing (min-column-width)
@@ -498,12 +527,12 @@
   {:font <face-id> :pt :x :y :text} with coordinates rounded to 0.1pt."
   [render!]
   (let [calls (atom [])]
-    (dynamic-redefs/with-dynamic-fn-redefs [pdf/draw-line! (fn [_cs face font-pt x y text]
-                                                             (swap! calls conj {:font (:id face)
-                                                                                :pt   (round1 font-pt)
-                                                                                :x    (round1 x)
-                                                                                :y    (round1 y)
-                                                                                :text text}))]
+    (mt/with-dynamic-fn-redefs [pdf/draw-line! (fn [_cs face font-pt x y text]
+                                                 (swap! calls conj {:font (:id face)
+                                                                    :pt   (round1 font-pt)
+                                                                    :x    (round1 x)
+                                                                    :y    (round1 y)
+                                                                    :text text}))]
       (render!))
     @calls))
 
@@ -518,7 +547,7 @@
               bold (#'font/face :bold)
               ;; draw-text-block! (plain text path) and draw-markdown-in-cell! (markdown path)
               dtb  (fn [face pt x y w h text] #(#'pdf/draw-text-block! cs face pt nil x y w h text))
-              dmic (fn [x y w h text] #(#'pdf/draw-markdown-in-cell! doc cs x y w h text))]
+              dmic (fn [x y w h text] #(#'pdf/draw-markdown-in-cell! doc cs x y w h nil :top text))]
           (doseq [[nm render expected]
                   ;; Plain text flows through the same item pipeline as Markdown, and it draws one
                   ;; record per word (not per line).
@@ -596,6 +625,61 @@
                 nm))
           (.close cs))))))
 
+(deftest ^:parallel text-card-align-settings-test
+  (testing "text card alignment settings map to keywords (UXW-4703)"
+    (let [mk (fn [vs] {:visualization_settings vs})]
+      (testing "explicit horizontal/vertical settings"
+        (is (= :left   (#'pdf/text-card-align-h (mk {:text.align_horizontal "left"}))))
+        (is (= :center (#'pdf/text-card-align-h (mk {:text.align_horizontal "center"}))))
+        (is (= :right  (#'pdf/text-card-align-h (mk {:text.align_horizontal "right"}))))
+        (is (= :middle (#'pdf/text-card-align-v (mk {:text.align_vertical "middle"}))))
+        (is (= :bottom (#'pdf/text-card-align-v (mk {:text.align_vertical "bottom"})))))
+      (testing "unset horizontal -> nil (keeps base-direction default, so RTL text isn't forced left); vertical -> :top"
+        (is (nil? (#'pdf/text-card-align-h (mk {}))))
+        (is (= :top (#'pdf/text-card-align-v (mk {}))))))))
+
+(deftest ^:synchronized text-card-alignment-render-test
+  (testing "horizontal & vertical alignment position text within the cell (UXW-4703)"
+    (with-open [doc (PDDocument.)]
+      (let [page (PDPage. PDRectangle/A4)
+            _    (.addPage doc page)
+            cs   (PDPageContentStream. doc page)]
+        (binding [font/*fonts*     (#'font/load-fonts! doc)
+                  pdf/*link-rects* (atom [])]
+          (let [x0 40.0 top 800.0 w 400.0 h 200.0
+                cap-x (fn [ah] (:x (first (capture-line-draws!
+                                           #(#'pdf/draw-markdown-in-cell! doc cs x0 top w h ah :top "Hi")))))
+                cap-y (fn [av] (:y (first (capture-line-draws!
+                                           #(#'pdf/draw-markdown-in-cell! doc cs x0 top w h :left av "Hi")))))]
+            (testing "horizontal: left flush < center < right flush"
+              (is (< (cap-x :left) (cap-x :center) (cap-x :right)))
+              (is (= x0 (cap-x :left)) "left flush starts at the cell's left edge"))
+            (testing "vertical: top is higher on the page (larger y) than middle, and middle than bottom"
+              (is (> (cap-y :top) (cap-y :middle) (cap-y :bottom))))))
+        (.close cs)))))
+
+(deftest ^:parallel normalize-ws-strips-variation-selectors-test
+  (testing "variation selectors are dropped so they don't fall back to '?' (UXW-4704)"
+    (let [vs16  (char 0xFE0F)   ; emoji-presentation selector (as in ❤️)
+          vs15  (char 0xFE0E)   ; text-presentation selector
+          heart (char 0x2764)]
+      (is (= (str heart) (#'font/normalize-ws (str heart vs16))) "VS16 dropped, base char kept")
+      (is (= "A" (#'font/normalize-ws (str \A vs15))) "VS15 dropped")
+      (is (= "" (#'font/normalize-ws (str vs16))) "a lone selector leaves nothing")
+      (is (= "a b" (#'font/normalize-ws "a\tb")) "control chars still normalize to a space"))))
+
+(deftest ^:synchronized emoji-font-fallback-test
+  (testing "emoji codepoints resolve to a font glyph instead of the '?' placeholder (UXW-4704)"
+    (with-open [doc (PDDocument.)]
+      (binding [font/*fonts* (#'font/load-fonts! doc)]
+        ;; grinning face, party popper, rocket, thumbs-up, fire, heavy-black-heart
+        (let [emoji "😀🎉🚀👍🔥❤"
+              runs  (#'font/font-runs (#'font/face :regular) (#'font/normalize-ws emoji))
+              drawn (apply str (map second runs))]
+          (is (= emoji drawn)
+              "every emoji survived font resolution (none replaced by '?')")
+          (is (not (str/includes? drawn "?"))))))))
+
 (deftest ^:synchronized em-width-memoization-test
   (with-open [doc (PDDocument.)]
     (binding [font/*fonts* (#'font/load-fonts! doc)]
@@ -653,22 +737,27 @@
         ;; render-table-head splices the header cells into the :tr as a seq, like `for` output.
         table [:table {:style "border: 1px solid #F0F0F0; border-radius: 6px; margin: 16px;"}
                [:thead [:tr {} (list (th "a") (th "b") (th "c"))]]
-               [:tbody [:tr {} [:td {:style "x"} "1"]]]]
-        [_table attrs
-         [_thead
-          [_tr _tr-attrs
-           th-a th-b th-c]]
-         tbody]              (#'pdf/restyle-table table)]
-    (testing "the <table> fills its frame and drops its own border/radius/margin"
-      (is (str/includes? (:style attrs) "width:100%"))
-      (is (str/includes? (:style attrs) "border:none")))
-    (testing "header cells get a divider, except the last"
-      (is (divider? th-a))
-      (is (divider? th-b))
-      (is (not (divider? th-c))))
-    (testing "body rows pass through untouched"
-      (is (= [:tbody [:tr {} [:td {:style "x"} "1"]]]
-             tbody)))))
+               [:tbody [:tr {} [:td {:style "x"} "1"]]]]]
+    (testing "the native :table (add-dividers? true) fills its frame, drops its own border/radius/margin, and gets header dividers"
+      (let [[_table attrs
+             [_thead
+              [_tr _tr-attrs
+               th-a th-b th-c]]
+             tbody] (#'pdf/restyle-table table true)]
+        (is (str/includes? (:style attrs) "width:100%"))
+        (is (str/includes? (:style attrs) "border:none"))
+        (is (divider? th-a))
+        (is (divider? th-b))
+        (is (not (divider? th-c)))
+        (testing "body rows pass through untouched"
+          (is (= [:tbody [:tr {} [:td {:style "x"} "1"]]]
+                 tbody)))))
+    (testing "pivot/object-detail (add-dividers? false) also fill the frame but add no header dividers"
+      (let [restyled (#'pdf/restyle-table table false)
+            attrs    (second restyled)]
+        (is (str/includes? (:style attrs) "width:100%"))
+        (is (str/includes? (:style attrs) "border:none"))
+        (is (not (str/includes? (pr-str restyled) "border-right")))))))
 
 (deftest ^:parallel add-header-dividers-test
   (testing "spliced seqs are flattened and all header cells but the last get the divider"
@@ -683,6 +772,17 @@
               [:th {:style ""} "last"]]]
       (is (= tr (#'pdf/add-header-dividers tr))))))
 
+(def ^:private cell-fill-slack-px
+  "Logical px a width-filling table image may fall short of the cell (CSSBox rounding)."
+  8)
+
+(defn- fills-cell-width?
+  "Whether a table image's device-pixel `width` fills its `px-w` cell at the supersample scale (within
+  [[cell-fill-slack-px]]) without overflowing past it."
+  [width px-w]
+  (let [ss (long @#'pdf/table-supersample)]
+    (<= (* ss (- px-w cell-fill-slack-px)) width (* ss px-w))))
+
 ;; not ^:parallel: exercises the real CSSBox HTML rendering path
 (deftest ^:synchronized table-body-png-sizing-test
   (let [data               {:cols [{:name         "n"
@@ -695,13 +795,66 @@
         px-w               400
         px-h               300
         ss                 (long @#'pdf/table-supersample)
-        ^BufferedImage img (ImageIO/read (io/input-stream (#'pdf/table-body-png nil part px-w px-h)))]
+        ^BufferedImage img (ImageIO/read (io/input-stream (#'pdf/table-body-png nil part :table px-w px-h)))]
     (testing "width fills the cell at the supersampled scale"
-      (is (<= (* ss (- px-w 8))
-              (.getWidth img)
-              (* ss px-w))))
+      (is (fills-cell-width? (.getWidth img) px-w)))
     (testing "height is capped to the cell even though 50 rows don't fit"
       (is (<= 1 (.getHeight img) (* ss px-h))))))
+
+;; not ^:parallel: exercises the real CSSBox HTML rendering path for object-detail through the framed table path
+(deftest ^:synchronized object-detail-body-png-test
+  (testing "an object-detail card renders through the framed table path: width-filled and height-bounded"
+    (let [data               {:cols [{:name "id" :display_name "ID" :base_type :type/Integer}
+                                     {:name "name" :display_name "Name" :base_type :type/Text}]
+                              :rows [[1401 "Carmela"]]}
+          part               {:card     {:name "Most recent subscription"}
+                              :dashcard nil
+                              :result   {:data data}}
+          px-w               400
+          px-h               300
+          ss                 (long @#'pdf/table-supersample)
+          ^BufferedImage img (ImageIO/read (io/input-stream (#'pdf/table-body-png nil part :object px-w px-h)))]
+      (is (fills-cell-width? (.getWidth img) px-w))
+      (is (<= 1 (.getHeight img) (* ss px-h))))))
+
+;; not ^:parallel: exercises the real CSSBox HTML rendering path for the pivot's fill-the-cell framing
+(deftest ^:synchronized pivot-body-png-test
+  (let [px-h      400
+        assembled {:card     {:display                :pivot
+                              :visualization_settings {:pivot_table.column_split {:rows ["R"] :columns ["C"] :values ["m"]}}}
+                   :dashcard nil
+                   :result   {:data {:cols                 [{:name "R" :base_type :type/Text}
+                                                            {:name "C" :base_type :type/Text}
+                                                            {:name "pivot-grouping" :base_type :type/Integer}
+                                                            {:name "m" :base_type :type/Integer}]
+                                     :rows                 [["a" "x" 0 10]
+                                                            ["a" "y" 0 20]
+                                                            ["b" "x" 0 30]
+                                                            ["b" "y" 0 40]]
+                                     :format-rows?         true
+                                     :pivot-export-options {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2]}}}}
+        width     (fn [part px-w] (.getWidth ^BufferedImage
+                                   (ImageIO/read (io/input-stream (#'pdf/table-body-png nil part :pivot px-w px-h)))))]
+    (testing "an assembled pivot fills a roomy cell -- columns stretch to use the space, like the dashboard"
+      (is (fills-cell-width? (width assembled 1000) 1000)))
+    (testing "a pivot wider than the cell is clipped at the cell edge, not rendered past it"
+      (is (fills-cell-width? (width assembled 100) 100)))
+    (testing "a :pivot that can't be assembled falls back to a flat table and also fills the cell (no collapse)"
+      (let [fallback {:card     {:display :pivot}
+                      :dashcard nil
+                      :result   {:data {:cols [{:name "a" :display_name "A" :base_type :type/Text}
+                                               {:name "b" :display_name "B" :base_type :type/Text}]
+                                        :rows [["x" "y"]]}}}]
+        (is (fills-cell-width? (width fallback 1000) 1000))))))
+
+(deftest ^:parallel table-like-chart-types-test
+  (testing "native table, pivot, and object-detail cards all classify into the framed table path"
+    (let [data {:cols [{:name "n" :display_name "N" :base_type :type/Integer}]
+                :rows [[1] [2]]}]
+      (doseq [display [:table :pivot :object]]
+        (is (contains? @#'pdf/table-like-chart-types
+                       (render.card/detect-pulse-chart-type {:display display} nil data))
+            (format "display %s should route through the framed table path" display))))))
 
 ;; not ^:parallel: exercises the real CSSBox/PDFBox rendering path (font loading + the no-results HTML->PNG asset)
 (deftest ^:synchronized no-results-card-render-test
@@ -728,3 +881,101 @@
               (let [baos (ByteArrayOutputStream.)]
                 (.save doc baos)
                 (is (pos? (count (.toByteArray baos))))))))))))
+
+(defn- ->disk-spilled-rows
+  "Reduce `rows` through the notification rff with a 1-cell budget so they immediately spill to disk, returning the
+  `StreamingTempFileStorage` handle a large subscription query produces (see
+  [[metabase.notification.payload.temp-storage]])."
+  [cols rows]
+  (let [budget (temp-storage/make-resident-budget {:per-card 1 :resident-cap 1 :floor 1})
+        rf     ((temp-storage/notification-rff {:budget budget}) {:cols cols})]
+    (get-in (rf (reduce rf (rf) rows)) [:data :rows])))
+
+(deftest ^:synchronized disk-spilled-rows-realized-test
+  (testing "a card whose large result spilled to disk is realized before rendering, instead of crashing on the handle"
+    ;; UXW-4614 regression: large subscription queries stream rows to a StreamingTempFileStorage; the PDF path must
+    ;; realize them (like the email/Slack/HTTP channels) so the renderer sees an ordinary `:rows` collection.
+    (let [cols    [{:name         "x"
+                    :display_name "X"
+                    :base_type    :type/Integer}]
+          rows    [[1] [2] [3]]
+          storage (->disk-spilled-rows cols rows)]
+      (is (temp-storage/streaming-temp-file? storage)
+          "sanity check: the helper produced a disk-backed handle")
+      (testing "the un-realized handle is exactly what used to blow up detect-pulse-chart-type"
+        (is (thrown? IllegalArgumentException
+                     (render.card/detect-pulse-chart-type {:display "table" :name "t"} nil
+                                                          {:cols cols :rows storage}))))
+      (testing "dashcard->cell reuses the pre-executed part from the index, deferring realization (rows stay on disk)"
+        (let [part     {:card     {:display "table"
+                                   :name    "t"}
+                        :dashcard {:id 99}
+                        :type     :card
+                        :result   {:data {:cols cols
+                                          :rows storage}}}
+              dashcard {:id      99
+                        :card_id 1
+                        :row     0
+                        :col     0
+                        :size_x  6
+                        :size_y  4}
+              cell     (#'pdf/dashcard->cell dashcard [] {99 part})]
+          (is (= :card (:kind cell)))
+          (is (temp-storage/streaming-temp-file? (get-in cell [:part :result :data :rows]))
+              "the disk-backed handle is NOT realized in dashcard->cell -- realization is deferred to draw time")
+          (is (nil? (#'pdf/dashcard->cell dashcard [] {}))
+              "a dashcard with no part in the index (hidden-empty / failed card) is omitted")))
+      (testing "render-card-cell! realizes the disk-backed rows at draw time and draws without throwing"
+        (let [part {:card     {:display "table"
+                               :name    "t"}
+                    :dashcard nil
+                    :result   {:data {:cols cols
+                                      :rows storage}}}]
+          (with-open [doc (PDDocument.)]
+            (binding [font/*fonts* (#'font/load-fonts! doc)]
+              (let [page (PDPage. PDRectangle/A4)]
+                (.addPage doc page)
+                (with-open [cs (PDPageContentStream. doc page)]
+                  (#'pdf/render-card-cell! doc cs nil part 36.0 760.0 480.0 360.0))
+                (let [baos (ByteArrayOutputStream.)]
+                  (.save doc baos)
+                  (is (pos? (count (.toByteArray baos)))))))))))))
+
+(deftest ^:parallel too-large-result-marked-test
+  (testing "maybe-realize-data-rows marks an oversized disk-spilled result :render/too-large? instead of loading it"
+    ;; UXW-4614: when the spill file exceeds the size cap, the rows must NOT be read into memory; the part is tagged
+    ;; with a localized :error and :render/too-large? so the renderer can show a message rather than crash or OOM.
+    (let [storage (->disk-spilled-rows [{:name "x"}] [[1] [2] [3]])
+          part    {:card   {:display "table"}
+                   :result {:data {:cols [{:name "x"}]
+                                   :rows storage}}}]
+      ;; force "too large": cap the loadable size at 1 byte so even this tiny spill is refused
+      (mt/with-dynamic-fn-redefs [notification.settings/notification-temp-file-size-max-bytes (constantly 1)]
+        (let [realized (channel.shared/maybe-realize-data-rows part)]
+          (is (true? (get-in realized [:result :render/too-large?])))
+          (is (string? (get-in realized [:result :error]))))))))
+
+(deftest ^:parallel too-large-card-render-test
+  (testing "a card whose result was too large to load shows its message, not the misleading no-results placeholder"
+    ;; UXW-4614: a :render/too-large? part carries no :data, so it would otherwise detect as :empty; render-card-cell!
+    ;; must take the too-large branch and surface the localized :error instead.
+    (let [part {:card {:display "table" :name "Big table"} :dashcard nil
+                :result {:error "Results too large to display. The query returned too much data to show in this notification."
+                         :render/too-large? true
+                         :max-size-human-readable "10.0 mb"}}
+          too-large-msg     (atom nil)
+          no-results-called (atom false)]
+      (mt/with-dynamic-fn-redefs [pdf/draw-too-large!  (fn [_cs _x _bt _cw _bh message]
+                                                         (reset! too-large-msg message))
+                                  pdf/draw-no-results! (fn [& _]
+                                                         (reset! no-results-called true))]
+        (with-open [doc (PDDocument.)]
+          (binding [font/*fonts* (#'font/load-fonts! doc)]
+            (let [page (PDPage. PDRectangle/A4)]
+              (.addPage doc page)
+              (with-open [cs (PDPageContentStream. doc page)]
+                (#'pdf/render-card-cell! doc cs nil part 36.0 760.0 480.0 360.0))))))
+      (testing "the too-large branch fired with the part's error message"
+        (is (= (get-in part [:result :error]) @too-large-msg)))
+      (testing "and the no-results placeholder was not used"
+        (is (false? @no-results-called))))))

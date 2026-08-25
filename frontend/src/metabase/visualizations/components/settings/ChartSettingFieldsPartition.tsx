@@ -90,6 +90,7 @@ const ChartSettingFieldsPartitionInternal = ({
       {Object.keys(items).map((partitionName) => (
         <PartitionContainer
           key={partitionName}
+          // Unjustified type cast. FIXME
           partitionName={partitionName as keyof ColumnNameColumnSplitSetting}
           partitions={partitions}
           items={items}

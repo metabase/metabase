@@ -8,6 +8,7 @@ import { extractRemappedColumns } from "metabase/visualizations";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
+import { getStaticChartTheme } from "metabase/visualizations/shared/components/RowChart/theme";
 import {
   getGroupedDataset,
   trimData,
@@ -30,8 +31,6 @@ import {
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
-
-import { getStaticChartTheme } from "./theme";
 
 const CHART_PADDING = 16;
 const LEGEND_FONT = {
@@ -62,6 +61,7 @@ export const StaticRowChart = ({
   hasDevWatermark = false,
   fitWithinBounds = false,
 }: StaticChartProps) => {
+  // Unjustified type cast. FIXME
   const data = extractRemappedColumns(
     rawSeries[0].data,
   ) as RemappingHydratedChartData;

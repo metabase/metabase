@@ -119,10 +119,10 @@
       (if <>
         (log/debugf "Found match %s"
                     (pr-str (select-keys <> [:id :lib/desired-column-alias :lib/deduplicated-name])))
-        (log/debugf "Failed to find match for %s. Found:\n%s"
+        (log/debugf "Failed to find match for %s. Found: %s"
                     (pr-str id-or-name)
-                    (u/pprint-to-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
-                                          previous-stage-cols)))))))
+                    (pr-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
+                                 previous-stage-cols)))))))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."
@@ -515,10 +515,10 @@
                    (m/find-first #(= (:id %) id-or-name) current-stage-metadata-columns))
           (if <>
             (log/debugf "Found match: %s" (pr-str (select-keys <> [:id :lib/source-column-alias :lib/deduplicated-name])))
-            (log/debugf "Failed to find match for %s. Found:\n%s"
+            (log/debugf "Failed to find match for %s. Found: %s"
                         (pr-str id-or-name)
-                        (u/pprint-to-str (map #(select-keys % [:id :lib/source-column-alias :lib/deduplicated-name])
-                                              current-stage-metadata-columns)))))))))
+                        (pr-str (map #(select-keys % [:id :lib/source-column-alias :lib/deduplicated-name])
+                                     current-stage-metadata-columns)))))))))
 
 (mu/defn- resolve-in-source-card-metadata :- [:maybe ::lib.metadata.calculation/visible-column]
   [query        :- ::lib.schema/query

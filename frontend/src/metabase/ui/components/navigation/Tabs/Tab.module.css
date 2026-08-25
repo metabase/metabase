@@ -14,6 +14,20 @@
       text-align: left; /* "start" for some reason doesn't work properly */
     }
   }
+
+  &[data-variant="pills"] .tab {
+    border-radius: 999px;
+    padding: 0.6rem 1rem;
+
+    &[data-active="true"] {
+      background-color: var(--mb-color-background_surface-selected);
+      color: var(--mb-color-core-brand);
+    }
+  }
+}
+
+[data-list-border-hidden] .list::before {
+  border-width: 0;
 }
 
 .tab {
@@ -26,12 +40,12 @@
     background-color: var(--mb-color-background_surface-hover);
   }
 
-  &:focus:not([data-css-specificity-hack]) {
-    outline: none;
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:disabled {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
     opacity: 1;
   }
 

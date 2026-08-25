@@ -1,4 +1,4 @@
-import visualizations from "metabase/visualizations";
+import { visualizations } from "metabase/visualizations";
 import type { CardDisplayType, IconName } from "metabase-types/api";
 
 // Default visualization can be any sensible visualization, so the
@@ -22,6 +22,7 @@ const MCP_CHART_TYPE_ICONS: Record<CardDisplayType, IconName> = {
   scatter: "bubble",
   smartscalar: "smartscalar",
   table: "table2",
+  treemap: "treemap",
   waterfall: "waterfall",
   list: "table2",
 };

@@ -187,7 +187,6 @@
   "Impl for log message capturing for [[metabase.util.log/logf]]."
   [f & args]
   (let [{e :e, [format-string & args] :args} (parse-args args)]
-    #_{:clj-kondo/ignore [:unresolved-namespace]}
     (f e (apply #?(:clj format
                    :cljs gstring/format)
                 format-string args))))

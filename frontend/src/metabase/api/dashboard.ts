@@ -1,4 +1,3 @@
-import { PLUGIN_API } from "metabase/plugins";
 import { DashboardSchema, QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
@@ -28,7 +27,7 @@ import type {
   UpdateDashboardRequest,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { Api, type RtkCacheKeyed } from "./api";
 import {
   idTag,
   invalidateTags,
@@ -104,17 +103,9 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       getDashboardCardQuery: builder.query<
         Dataset,
-        DashboardCardQueryRequest & { _refetchDeps?: unknown }
+        DashboardCardQueryRequest & RtkCacheKeyed
       >({
-        // `_refetchDeps` is part of the RTK cache key (so imperative runners can
-        // force a unique key per call) but must not be sent to the server.
-        query: ({
-          dashboardId,
-          dashcardId,
-          cardId,
-          _refetchDeps,
-          ...body
-        }) => ({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
           method: "POST",
           url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
           body,
@@ -124,15 +115,9 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       getDashboardCardQueryPivot: builder.query<
         Dataset,
-        DashboardCardQueryRequest & { _refetchDeps?: unknown }
+        DashboardCardQueryRequest & RtkCacheKeyed
       >({
-        query: ({
-          dashboardId,
-          dashcardId,
-          cardId,
-          _refetchDeps,
-          ...body
-        }) => ({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
           method: "POST",
           url: `/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
           body,
@@ -144,16 +129,17 @@ export const dashboardApi = Api.injectEndpoints({
         FieldValue,
         GetRemappedDashboardParameterValueRequest
       >({
-        query: ({ dashboard_id, parameter_id, ...params }) => ({
+        query: ({ entityIdentifier, ...params }) => ({
           method: "GET",
-          url: PLUGIN_API.getRemappedDashboardParameterValueUrl(
-            dashboard_id,
-            parameter_id,
-          ),
-          params,
+          url: "/api/dashboard/:dashId/params/:paramId/remapping",
+          // In an embed the override rewrites `:dashId` → `:entityIdentifier` and
+          // drops the real `dashId` from the params (see
+          // override-requests-for-embeds); a null `entityIdentifier` is omitted
+          // so it never reaches the querystring.
+          params: { ...params, ...(entityIdentifier && { entityIdentifier }) },
         }),
-        providesTags: (_response, _error, { parameter_id }) =>
-          provideParameterValuesTags(parameter_id),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
       }),
       getDashboardParameterValues: builder.query<
         ParameterValues,
@@ -181,7 +167,10 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
-        Omit<ListCollectionItemsRequest, "id"> & { id: DashboardId }
+        Omit<
+          ListCollectionItemsRequest,
+          "id" | "q" | "include_available_models"
+        > & { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({
           method: "GET",
@@ -232,6 +221,9 @@ export const dashboardApi = Api.injectEndpoints({
             tag("parameter-values"),
             listTag("revision"),
             listTag("subscription"),
+            // Archiving the dashboard the user has as their homepage clears the homepage server-side.
+            // getCurrentUser provides this tag, so invalidating it refetches the user.
+            idTag("user-homepage-dashboard", id),
           ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({

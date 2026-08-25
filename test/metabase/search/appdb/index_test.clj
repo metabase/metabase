@@ -43,7 +43,6 @@
      nil))
 
 ;; These helpers only mutate the temp local AppDb.
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 ;; TODO make this a :once fixture so that we avoid so much setup and tear down
 (defmacro with-index
   "Ensure a clean, small index."
@@ -538,13 +537,13 @@
 
 (def ^:private model->deleted-descendants
   ;; Note that these refer to the table names, not the search-model names.
-  {"core_user"         #{"action" "collection" "document" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
-   "model_index"       #{"model_index_value"}
-   "metabase_database" #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
-   "metabase_table"    #{"action" "measure" "model_index_value" "report_card" "segment"}
-   "document"          #{"action" "model_index_value" "report_card"}
-   "report_card"       #{"action" "model_index_value"}
-   "report_dashboard"  #{"action" "model_index_value" "report_card"}})
+  {"core_user"          #{"action" "collection" "document" "exploration" "measure" "model_index_value" "report_card" "report_dashboard" "segment" "transform"}
+   "model_index"        #{"model_index_value"}
+   "metabase_database"  #{"action" "measure" "metabase_table" "model_index_value" "report_card" "segment"}
+   "metabase_table"     #{"action" "measure" "model_index_value" "report_card" "segment"}
+   "document"           #{"action" "model_index_value" "report_card"}
+   "report_card"        #{"action" "model_index_value"}
+   "report_dashboard"   #{"action" "model_index_value" "report_card"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants

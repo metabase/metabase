@@ -16,6 +16,11 @@
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]))
 
+(def SlackDetails
+  "Schema for the connection `:details` of a `:channel/slack` channel."
+  [:map {:closed true}
+   [:channel :string]])
+
 (defn- notification-recipient->channel
   "Returns the Slack channel target for a raw-value notification recipient.
   Prefers the immutable `:channel_id` (e.g. \"C0ABC123\") over the display `:value`
@@ -50,26 +55,34 @@
 (def ^:private attachment-text-length-limit                  2000)
 
 (defn- parameter-markdown
+  "mrkdwn for one dashboard filter, or nil if it fails to render (a broken filter shouldn't fail the send)."
   [parameter]
-  (truncate
-   (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
-   attachment-text-length-limit))
+  (try
+    (truncate
+     (format "*%s*\n%s" (:name parameter) (shared.params/value-string parameter (system/site-locale)))
+     attachment-text-length-limit)
+    (catch Throwable e
+      (log/errorf "Error rendering filter %s; skipping it: %s" (:id parameter) (ex-message e)))))
+
+(defn- parameter-fields
+  [parameters]
+  (for [parameter parameters
+        :let [markdown (parameter-markdown parameter)]
+        :when markdown]
+    {:type "mrkdwn"
+     :text markdown}))
 
 (defn- maybe-append-params-block
   "Appends an inline parameters block to a collection of blocks if parameters exist."
   [blocks inline-parameters]
-  (if (seq inline-parameters)
-    (conj blocks {:type "section"
-                  :fields (mapv
-                           (fn [parameter]
-                             {:type "mrkdwn"
-                              :text (parameter-markdown parameter)})
-                           inline-parameters)})
-    blocks))
+  (let [fields (parameter-fields inline-parameters)]
+    (cond-> blocks
+      (seq fields) (conj {:type "section"
+                          :fields (vec fields)}))))
 
 (defn- text->markdown-section
   [text]
-  (let [mrkdwn (markdown/process-markdown text :slack)]
+  (let [mrkdwn (markdown/process-markdown text :slack (system/site-url))]
     (when (not (str/blank? mrkdwn))
       {:type "section"
        :text {:type "mrkdwn"
@@ -153,9 +166,9 @@
     (try
       (slack/upload-file-to-channel! (:bytes pdf) (:filename pdf) channel (:comment pdf))
       (catch Throwable e
-        (log/error e "Error sharing dashboard subscription PDF to Slack; posting summary without the PDF")
-        (when-let [comment (:comment pdf)]
-          (slack/post-chat-message! {:channel channel :text comment}))))))
+        (log/errorf "Error sharing dashboard subscription PDF to Slack; posting summary without the PDF: %s" (ex-message e))
+        (when (:comment pdf)
+          (slack/post-chat-message! {:channel channel :text (:comment pdf)}))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    System Event Notifications                                   ;;
@@ -237,9 +250,7 @@
                                    (conj
                                     {:type "mrkdwn"
                                      :text  "Made with Metabase :blue_heart:"}))}
-        filter-fields   (for [parameter top-level-params]
-                          {:type "mrkdwn"
-                           :text (parameter-markdown parameter)})
+        filter-fields   (parameter-fields top-level-params)
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
@@ -254,14 +265,14 @@
              [(format "*%s*" (:name dashboard))
               (mkdwn-link-text (urls/dashboard-url (:id dashboard) all-params)
                                (format "Sent from %s by %s" (appearance/site-name) creator-name))]
-             (for [parameter top-level-params]
-               (parameter-markdown parameter)))))
+             (keep parameter-markdown top-level-params))))
 
 (defn- dashboard-pdf
-  "Render the whole dashboard to a PDF for Slack, returning `{:bytes ... :filename ...}` or `nil` if rendering fails."
-  [dashboard creator-id parameters]
+  "Render the whole dashboard to a PDF for Slack, returning `{:bytes ... :filename ...}` or `nil` if rendering fails.
+  `parts` are the dashboard's already-executed parts, reused so the PDF generation doesn't re-run every query."
+  [dashboard creator-id parameters parts]
   (try
-    (let [pdf-bytes (channel.render/render-dashboard-to-pdf (:id dashboard) creator-id (vec parameters))]
+    (let [pdf-bytes (channel.render/render-dashboard-to-pdf (:id dashboard) creator-id (vec parameters) :a4 parts)]
       {:bytes    pdf-bytes
        :filename (-> dashboard
                      (some-> :name str/trim)
@@ -269,7 +280,7 @@
                      (or "dashboard")
                      (str ".pdf"))})
     (catch Throwable e
-      (log/error e "Error rendering dashboard subscription PDF for Slack; skipping PDF attachment")
+      (log/errorf "Error rendering dashboard subscription PDF for Slack; skipping PDF attachment: %s" (ex-message e))
       nil)))
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
@@ -277,7 +288,8 @@
   (let [all-params       (:parameters payload)
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard        (:dashboard payload)
-        pdf              (some-> (when include_pdf (dashboard-pdf dashboard creator_id all-params))
+        pdf              (some-> (when include_pdf
+                                   (dashboard-pdf dashboard creator_id all-params (:dashboard_parts payload)))
                                  (assoc :comment (slack-dashboard-caption dashboard (:common_name creator)
                                                                           all-params top-level-params)))
         blocks           (if pdf
@@ -291,7 +303,7 @@
                                            (try
                                              (part->sections! all-params part)
                                              (catch Throwable e
-                                               (log/error e "Error rendering dashboard subscription part for Slack; substituting error placeholder")
+                                               (log/errorf "Error rendering dashboard subscription part for Slack; substituting error placeholder: %s" (ex-message e))
                                                [(text->markdown-section (str (tru "An error occurred while displaying this card.")))])))
                                          (:dashboard_parts payload))]
                                 flatten

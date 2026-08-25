@@ -30,6 +30,7 @@ describe("admin > MCP apps settings > Cursor install link", () => {
             /^cursor:\/\/anysphere\.cursor-deeplink\/mcp\/install\?/,
           );
 
+          // Unjustified type cast. FIXME
           const query = (href as string).split("?", 2)[1];
           const params = new URLSearchParams(query);
 
@@ -38,6 +39,7 @@ describe("admin > MCP apps settings > Cursor install link", () => {
 
           expect(config).to.be.a("string");
 
+          // Unjustified type cast. FIXME
           const decoded = JSON.parse(atob(config as string));
 
           expect(decoded.url).to.eq(

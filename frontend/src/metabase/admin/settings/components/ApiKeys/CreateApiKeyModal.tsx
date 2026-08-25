@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useCreateApiKeyMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -12,6 +11,8 @@ import {
 } from "metabase/forms";
 import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
 import type { CreateApiKeyRequest } from "metabase-types/api";
+
+import { useCreateApiKeyMutation } from "../../api/api-key";
 
 import S from "./CreateApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";
@@ -24,6 +25,7 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
   const handleSubmit = useCallback(
     async (vals: { group_id: number | null; name: string }) => {
       if (vals.group_id !== null) {
+        // Unjustified type cast. FIXME
         await createApiKey(vals as CreateApiKeyRequest).unwrap();
       }
     },

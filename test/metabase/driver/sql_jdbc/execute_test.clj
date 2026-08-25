@@ -85,6 +85,7 @@
 
 (deftest try-ensure-open-conn-sets-non-recursive-options-test
   (testing "try-ensure-open-conn! sets connection options as non-recursive"
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
     #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-drivers (disj (descendants driver/hierarchy :sql-jdbc)
                            ;; too tricky to stub the connection
@@ -232,3 +233,59 @@
                         :native   {:query "SELECT 1"}}
               response (mt/user-http-request :crowberto :post 400 "dataset" query)]
           (is (= "unable-to-acquire-connection" (:error_type response))))))))
+
+(deftest connection-pool-checkout-timeout-returns-503-test
+  (testing "A c3p0 checkout timeout (saturated pool) surfaces to the frontend as a retriable HTTP 503"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
+                                             :engine  driver/*driver*}]
+        (with-redefs [h2/check-read-only-statements (fn [_query] nil)
+                      sql-jdbc.execute/do-with-resolved-connection-data-source
+                      (fn [_driver _db-or-id-or-spec _options]
+                        (reify javax.sql.DataSource
+                          (getConnection [_]
+                            (throw (java.sql.SQLException.
+                                    "An attempt by a client to checkout a Connection has timed out."
+                                    (com.mchange.v2.resourcepool.TimeoutException. "timed out"))))))]
+          (let [query    {:database (:id tmp-db)
+                          :type     :native
+                          :native   {:query "SELECT 1"}}
+                response (mt/user-http-request :crowberto :post 503 "dataset" query)]
+            (is (= "connection-pool-checkout-timeout" (:error_type response)))))))))
+
+(deftest checkout-queue-full?-test
+  (let [full? #'sql-jdbc.execute/checkout-queue-full?]
+    (testing "a limit of 0 (the default) disables the check even when many queries are waiting"
+      (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 0]
+        (is (false? (full? (reify com.mchange.v2.c3p0.PooledDataSource
+                             (getNumThreadsAwaitingCheckoutDefaultUser [_] 100)))))))
+    (testing "non-pooled data sources are never considered full"
+      (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 1]
+        (is (false? (full? (reify javax.sql.DataSource
+                             (getConnection [_] nil)))))))
+    (testing "full only once the waiting count reaches the limit"
+      (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 3]
+        (is (false? (full? (reify com.mchange.v2.c3p0.PooledDataSource
+                             (getNumThreadsAwaitingCheckoutDefaultUser [_] 2)))))
+        (is (true? (full? (reify com.mchange.v2.c3p0.PooledDataSource
+                            (getNumThreadsAwaitingCheckoutDefaultUser [_] 3)))))))))
+
+(deftest connection-pool-full-checkout-queue-returns-503-test
+  (testing "When the checkout queue is full, additional queries fail fast with a retriable HTTP 503"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
+                                             :engine  driver/*driver*}]
+        (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 1]
+          (with-redefs [h2/check-read-only-statements (fn [_query] nil)
+                        sql-jdbc.execute/do-with-resolved-connection-data-source
+                        (fn [_driver _db-or-id-or-spec _options]
+                          ;; a pool that already has more queries waiting than the configured max
+                          (reify com.mchange.v2.c3p0.PooledDataSource
+                            (getNumThreadsAwaitingCheckoutDefaultUser [_] 5)))]
+            (let [query    {:database (:id tmp-db)
+                            :type     :native
+                            :native   {:query "SELECT 1"}}
+                  response (mt/user-http-request :crowberto :post 503 "dataset" query)]
+              (is (= "connection-pool-checkout-queue-full" (:error_type response))))))))))

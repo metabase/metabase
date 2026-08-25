@@ -35,6 +35,8 @@
       engine SQL filter
     - metabase.metabot.tools.util/metabot-metrics-and-models-query — suggested-prompt source filter
     - metabase.metabot.curation/curated-ids — source-of-truth check for recent views
+    - metabase-enterprise.data-complexity-score.complexity/enumerate-catalogs — set-membership mirror
+      for the `:metabot` catalog's Cards (Tables call [[curated?]] directly)
     - metabase-enterprise.semantic-search.db.migration.impl/add-data-authority-and-curated-columns! —
       recomputes the precomputed `curated` column for existing index rows
 
@@ -68,7 +70,7 @@
     [:and
      [:or [:is (col :is_published) true]
       [:in (col :root_collection_type) (vec library-root-collection-types)]]
-     [:or [:not= (col :model) [:inline "table"]]
-      [:= (col :data_layer) [:inline "final"]]]]
-    [:= (col :data_authority) [:inline "authoritative"]]]
+     [:or [:not= (col :model) "table"]
+      [:= (col :data_layer) "final"]]]
+    [:= (col :data_authority) "authoritative"]]
    false])

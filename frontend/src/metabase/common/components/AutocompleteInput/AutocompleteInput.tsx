@@ -1,17 +1,18 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { ChangeEventHandler } from "react";
 import { useMemo, useRef } from "react";
 
 import { SelectList } from "metabase/common/components/SelectList";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
-import { Popover } from "metabase/ui";
+import { Popover, TextInput, type TextInputProps } from "metabase/ui";
 import type { VisualizationSettings } from "metabase-types/api";
-
-import type { InputProps } from "../Input";
-import { Input } from "../Input";
 
 import { OptionsList } from "./AutocompleteInput.styled";
 
-export interface AutocompleteInputProps extends Omit<InputProps, "onChange"> {
+export interface AutocompleteInputProps extends Omit<
+  TextInputProps,
+  "onChange"
+> {
   options?: string[];
   filterOptions?: (value: string | undefined, options: string[]) => string[];
   onOptionSelect?: (value: string) => void;
@@ -46,13 +47,13 @@ export const AutocompleteInput = ({
   ...rest
 }: AutocompleteInputProps) => {
   const optionsListRef = useRef<HTMLUListElement>(null);
-  const inputRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [isOpened, { open, close }] = useDisclosure(false);
   const filteredOptions = useMemo(() => {
     return filterOptions(String(value), options);
   }, [value, options, filterOptions]);
 
-  const { cursorIndex } = useListKeyboardNavigation<string, HTMLDivElement>({
+  const { cursorIndex } = useListKeyboardNavigation<string, HTMLInputElement>({
     list: filteredOptions,
     onEnter: (item: string) => handleOptionSelect(item),
     resetOnListChange: true,
@@ -60,6 +61,7 @@ export const AutocompleteInput = ({
   });
 
   const handleListMouseDown = (event: React.MouseEvent<HTMLElement>) => {
+    // Unjustified type cast. FIXME
     if (optionsListRef.current?.contains(event.target as Node)) {
       event.preventDefault();
       // also stops the native event before it reaches document, where the
@@ -77,7 +79,7 @@ export const AutocompleteInput = ({
     }
   };
 
-  const handleChange: InputProps["onChange"] = (e) => {
+  const handleChange: ChangeEventHandler<HTMLInputElement> = (e) => {
     onChange(e.target.value);
   };
 
@@ -93,7 +95,7 @@ export const AutocompleteInput = ({
       withRoles={false}
     >
       <Popover.Target>
-        <Input
+        <TextInput
           ref={inputRef}
           role="combobox"
           aria-autocomplete="list"

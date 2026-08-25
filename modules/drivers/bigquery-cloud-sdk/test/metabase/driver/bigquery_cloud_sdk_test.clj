@@ -11,9 +11,9 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-   [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
@@ -53,6 +53,42 @@
   [table-name]
   (bigquery.tx/execute! (format "DROP TABLE IF EXISTS `%s`;" (fmt-table-name table-name))))
 
+(deftest ^:parallel exactly-named-datasets-agrees-with-scan-test
+  (testing "a filter of plain names selects exactly the datasets a scan of the whole project would keep"
+    (let [universe ["orders" "orders_v2" "ORDERS" "public" "public_archive" "a_b" "x1"]]
+      (doseq [patterns ["orders" "ORDERS" "orders,public" "  orders , public  " "a_b" "x1,orders_v2"
+                        ;; naming something absent is fine -- it just selects nothing
+                        "not_a_dataset" "orders,not_a_dataset"]]
+        (testing (pr-str patterns)
+          (let [named (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                                          :dataset-filters-patterns patterns})]
+            (is (some? named)
+                "should be recognized as naming its datasets outright")
+            ;; only names that exist can come back from a lookup, so compare within the universe
+            (is (= (set (filter #(driver.s/include-schema? patterns nil %) universe))
+                   (set (filter (set universe) named)))))))))
+  (testing "a dataset named twice is looked up once, as a scan would yield it once"
+    (is (= ["orders" "public"]
+           (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                               :dataset-filters-patterns "orders,public,orders"}))))
+  (testing "filters that a name lookup cannot answer fall through to a scan"
+    (doseq [[patterns why] {"orders*"        "wildcard"
+                            "*"              "wildcard"
+                            "a,b*"           "wildcard in one segment"
+                            "crazy\\*schema" "escaped asterisk is not a legal dataset ID"
+                            "_hidden"        "leading underscore means hidden; a scan never lists it"
+                            "orders,_hidden" "one hidden name is enough to need a scan"
+                            ""               "blank means include everything"
+                            nil              "blank means include everything"}]
+      (testing why
+        (is (nil? (#'bigquery/exactly-named-datasets {:dataset-filters-type     "inclusion"
+                                                      :dataset-filters-patterns patterns}))))))
+  (testing "only inclusion filters name datasets; anything else needs a scan"
+    (doseq [filters-type ["exclusion" "all" nil]]
+      (testing (pr-str filters-type)
+        (is (nil? (#'bigquery/exactly-named-datasets {:dataset-filters-type     filters-type
+                                                      :dataset-filters-patterns "orders"})))))))
+
 (deftest ^:parallel sanity-check-test
   (mt/test-driver
     :bigquery-cloud-sdk
@@ -60,6 +96,44 @@
       test-data
       (is (seq (mt/rows
                 (mt/run-mbql-query orders {:limit 1})))))))
+
+(defn- service-account-json
+  [& {:as extra}]
+  (json/encode (merge {:type         "service_account"
+                       :project_id   "test-project"
+                       :client_email "test@test-project.iam.gserviceaccount.com"}
+                      extra)))
+
+(deftest ^:parallel connection-hosts-test
+  (testing "the fixed vendor endpoints are reported even when nothing is configured"
+    (is (= #{"bigquery.googleapis.com" "oauth2.googleapis.com"}
+           (set (driver/connection-hosts :bigquery-cloud-sdk
+                                         {:service-account-json (service-account-json)})))))
+  (testing "the alternate hostname replaces the API endpoint (it is a URL, not a bare host)"
+    (is (= #{"bq.internal" "oauth2.googleapis.com"}
+           (set (driver/connection-hosts :bigquery-cloud-sdk
+                                         {:host                 "https://bq.internal:9999"
+                                          :service-account-json (service-account-json)})))))
+  (testing "`token_uri` from the service account JSON is fetched by Metabase, so it counts as a connection host"
+    ;; `ServiceAccountCredentials/fromStream` honors `token_uri`, so the credentials blob -- not just `:host` --
+    ;; decides where Metabase POSTs a signed JWT.
+    (is (= #{"bigquery.googleapis.com" "sts.internal"}
+           (set (driver/connection-hosts
+                 :bigquery-cloud-sdk
+                 {:service-account-json (service-account-json :token_uri "http://sts.internal/token")})))))
+  (testing "credentials we cannot read fail closed rather than reporting only the endpoints we can see"
+    (is (thrown? Exception
+                 (driver/connection-hosts :bigquery-cloud-sdk {:service-account-json "{not json"})))))
+
+(deftest client-honors-network-policy-test
+  (testing "the network policy is enforced when the client is built, not only when the database is saved"
+    ;; BigQuery is not a `:sql-jdbc` driver, so it has no connection pool to re-check the details on the way out.
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Cannot connect to a private or internal network address"
+           (#'bigquery/database-details->client {:host                 "https://169.254.169.254"
+                                                 :service-account-json (service-account-json)}))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -227,7 +301,6 @@
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
-             #_:clj-kondo/ignore
              (calculate-bird-scarcity $count))))))
 
 (deftest ^:parallel nulls-and-zeroes-test-2
@@ -334,6 +407,24 @@
                               (apply orig-describe-dataset-fields-reducible args))]
                 (is (<= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
                 (is (<= 20 @invocation-count))))))))))
+
+(deftest ^:parallel describe-fields-truncates-data-type-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "describe-fields truncates data_type in SQL: a STRUCT's data_type spells out its whole nested schema and
+              the COLUMN_FIELD_PATHS join repeats it on every nested-leaf row, which OOMs sync on dynamic-key schemas"
+      (let [captured-sql    (atom nil)
+            captured-params (atom nil)]
+        (binding [bigquery/*process-native* (fn [respond _database sql params _cancel-chan]
+                                              (reset! captured-sql sql)
+                                              (reset! captured-params params)
+                                              (respond {:cols []} []))]
+          (is (= [] (into [] (#'bigquery/describe-dataset-fields-reducible
+                              :bigquery-cloud-sdk nil "some-project" "some_dataset" ["some_table"]))))
+          (let [sql (-> @captured-sql u/lower-case-en (str/replace "`" ""))]
+            (is (str/includes? sql "substr(c.data_type, ?, ?)"))
+            (is (str/includes? sql "substr(p.data_type, ?, ?)"))
+            ;; the "YES" between the pairs is the is_partitioning_column comparison
+            (is (= [1 200 "YES" 1 200] (take 5 @captured-params)))))))))
 
 (def ^:private native-dataset
   (tx/native-dataset-definition
@@ -830,8 +921,12 @@
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should be able to query a Table that has a :type/Integer column marked as a PK or FK"
-      (is (= [[1 "Plato Yeshua" "2014-04-01T08:30:00Z"]]
-             (mt/rows (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query users {:limit 1, :order-by [[:asc $id]]}))))))))
+      (let [mp (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                      (lib/order-by (lib.metadata/field mp (mt/id :users :id)) :asc)
+                      (lib/limit 1))]
+        (is (= [[1 "Plato Yeshua" "2014-04-01T08:30:00Z"]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset" query))))))))
 
 (deftest return-errors-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -873,6 +968,17 @@
               "synchronous BigQueryException should be classified as :invalid-query")
           (is (re-find #"Too many query parameters" (ex-message ex))
               "the underlying BigQuery error message should be preserved"))))))
+
+(deftest validate-query-length-test
+  (let [limit @#'bigquery/max-sql-query-length-chars]
+    (testing "at the limit, the query is allowed"
+      (is (nil? (#'bigquery/validate-query-length! (str/join (repeat limit "x")) nil))))
+    (testing "over the limit, it throws :invalid-query"
+      (let [ex (try
+                 (#'bigquery/validate-query-length! (str/join (repeat (inc limit) "x")) nil)
+                 nil
+                 (catch Throwable t t))]
+        (is (= :invalid-query (some-> ex ex-data :type)))))))
 
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1162,20 +1268,15 @@
 
 (deftest later-page-fetch-returns-nil-test
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "BigQuery queries which fail on later pages are caught properly"
+    (testing "BigQuery query whose later page fetch returns nil is caught, not silently truncated"
+      ;; The query path pages via `query-results-page` (`.getQueryResults`), so simulate BigQuery returning nil
+      ;; for a later page even though the page token reported there was more.
       (let [page-counter (atom 3)
-            orig-exec    (mt/original-fn #'bigquery/reducible-bigquery-results)
-            wrap-result  (fn wrap-result [^TableResult result]
-                           (proxy [TableResult] []
-                             (getSchema [] (.getSchema result))
-                             (getValues [] (.getValues result))
-                             (hasNextPage [] (.hasNextPage result))
-                             (getNextPage []
-                               (if (zero? @page-counter)
-                                 nil
-                                 (wrap-result (.getNextPage result))))))]
-        (mt/with-dynamic-fn-redefs [bigquery/reducible-bigquery-results (fn [page & args]
-                                                                          (apply orig-exec (wrap-result page) args))]
+            orig-fetch   (mt/original-fn #'bigquery/query-results-page)]
+        (mt/with-dynamic-fn-redefs [bigquery/query-results-page (fn [job options]
+                                                                  (if (zero? @page-counter)
+                                                                    nil
+                                                                    (orig-fetch job options)))]
           (binding [bigquery/*page-size*     10 ; small pages so there are several
                     bigquery/*page-callback* (fn []
                                                (let [pages (swap! page-counter #(max (dec %) 0))]
@@ -1188,21 +1289,14 @@
 
 (deftest later-page-fetch-throws-test
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "BigQuery queries which fail on later pages are caught properly"
+    (testing "BigQuery query whose later page fetch throws is caught, with no thread leaks"
       (let [count-before (count (future-thread-names))
             page-counter (atom 3)
-            orig-exec    (mt/original-fn #'bigquery/reducible-bigquery-results)
-            wrap-result  (fn wrap-result [^TableResult result]
-                           (proxy [TableResult] []
-                             (getSchema [] (.getSchema result))
-                             (getValues [] (.getValues result))
-                             (hasNextPage [] (.hasNextPage result))
-                             (getNextPage []
-                               (if (zero? @page-counter)
-                                 (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
-                                 (wrap-result (.getNextPage result))))))]
-        (mt/with-dynamic-fn-redefs [bigquery/reducible-bigquery-results (fn [page & args]
-                                                                          (apply orig-exec (wrap-result page) args))]
+            orig-fetch   (mt/original-fn #'bigquery/query-results-page)]
+        (mt/with-dynamic-fn-redefs [bigquery/query-results-page (fn [job options]
+                                                                  (if (zero? @page-counter)
+                                                                    (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
+                                                                    (orig-fetch job options)))]
           (dotimes [_ 10]
             (reset! page-counter 3)
             (binding [bigquery/*page-size*     100 ; small pages so there are several
@@ -1515,35 +1609,13 @@
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
 
-(deftest ^:parallel ws-sa-description-roundtrip-test
-  (testing "ws-sa-description and ws-sa-description->created-at are exact inverses"
-    ;; This is a contract test. The SA description is the only place the
-    ;; created-at marker is stored, so the writer in
-    ;; `ws-create-service-account!` and the reader used by CI cleanup
-    ;; (`metabase.test.data.bigquery-cloud-sdk/delete-old-isolation-service-accounts!`)
-    ;; must agree on format. If this test fails, orphan SA cleanup will
-    ;; silently break -- expired SAs will accumulate because their created-at
-    ;; can no longer be parsed.
-    (doseq [instant [(java.time.Instant/parse "2026-01-15T10:30:45.123456789Z")
-                     (java.time.Instant/parse "2026-12-31T23:59:59Z")
-                     (java.time.Instant/parse "2020-06-15T00:00:00Z")
-                     (java.time.Instant/now)]]
-      (is (= instant
-             (bigquery.ws/ws-sa-description->created-at (bigquery.ws/ws-sa-description instant)))
-          (str "round-trip failed for " instant))))
-  (testing "ws-sa-description->created-at returns nil for non-conforming inputs"
-    (is (nil? (bigquery.ws/ws-sa-description->created-at nil)))
-    (is (nil? (bigquery.ws/ws-sa-description->created-at "")))
-    (is (nil? (bigquery.ws/ws-sa-description->created-at "some other description")))
-    (is (nil? (bigquery.ws/ws-sa-description->created-at "created-at:not-an-instant")))))
-
 (deftest ^:parallel bigquery-field-filter-alias-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [mp    (mt/metadata-provider)
-          sql   "SELECT title as title, category AS category
-                 FROM sha_c1baee7db240aa419104c2d925a07a4d4faeeb24_test_data.products p
-                 WHERE 1=1 [[ AND {{category}} ]]
-                 ORDER BY p.title ASC;"
+          sql   (format "SELECT title as title, category AS category
+                         FROM %s.products p
+                         WHERE 1=1 [[ AND {{category}} ]]
+                         ORDER BY p.title ASC;" (get-test-data-name))
           product-category (lib/ref (lib.metadata/field mp (mt/id :products :category)))
           query (-> (lib/native-query mp sql)
                     (lib/with-template-tags {"category" {:name "category"
@@ -1557,3 +1629,13 @@
                                          :value "Gadget"}]))]
       (is (= ["Aerodynamic Leather Computer" "Gadget"]
              (mt/first-row (qp/process-query query)))))))
+
+(deftest ^:parallel clustering-clause-test
+  (testing "clustering renders an inline CLUSTER BY with backtick-quoted columns, in order"
+    (is (= "CLUSTER BY `category`, `price`"
+           (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "category"} {:name "price"}]}]))))
+  (testing "no clustering index -> no clause"
+    (is (nil? (#'bigquery/clustering-clause [{:kind :btree :columns [{:name "category"}]}]))))
+  (testing "a SQL-injection payload in a clustering column is backtick-escaped, so it can only ever be an identifier"
+    (is (= "CLUSTER BY `c\\`; DROP TABLE x; --`"
+           (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "c`; DROP TABLE x; --"}]}])))))

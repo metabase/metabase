@@ -22,6 +22,7 @@ export const useBreakoutData = (): SDKBreakoutItem[] => {
     lastVisibleStageIndex: stageIndex,
     ...interactiveQuestionContext
   } = useSdkQuestionContext();
+  // Unjustified type cast. FIXME
   const question = interactiveQuestionContext.question as Question;
   const query = question?.query();
 

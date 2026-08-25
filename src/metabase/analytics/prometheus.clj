@@ -199,7 +199,7 @@
                       (swap! pull-collector-last-runs assoc id now)
                       (f)))
                   (catch Throwable e
-                    (log/warn e "Error running pull collector" id)))))
+                    (log/warn "Error running pull collector" id (ex-message e))))))
             [])]
     (delay
       (collector/named
@@ -331,6 +331,21 @@
    (prometheus/counter :metabase-remote-sync/git-operations-failed
                        {:description "Number of failed git operations"
                         :labels [:operation :remote]})
+   ;; Shared: semantic search and entity retrieval each provision their own tables in it, as more may later.
+   ;; At most one is available at a time: a dedicated MB_PGVECTOR_DB_URL always wins over the app db.
+   (prometheus/gauge :metabase-pgvector/store-available
+                     {:description "Whether the given pgvector storage is available to this instance."
+                      :labels      [:storage]})
+   ;; Probed hourly, so an outage takes up to that long to show up. The dedicated probe opens its own
+   ;; connection, so a store that is up but whose pool is saturated still reads as connected --
+   ;; metabase_database_c3p0_* covers that. The app-db probe shares the application pool, and does not.
+   (prometheus/gauge :metabase-pgvector/store-connected
+                     {:description "Whether the last connection probe to the given pgvector storage succeeded."
+                      :labels      [:storage]})
+   ;; Absent until a probe succeeds, and reset when the instance changes which backing it uses.
+   (prometheus/gauge :metabase-pgvector/store-last-success-timestamp-seconds
+                     {:description "Unix timestamp of the last successful probe to the given pgvector storage."
+                      :labels      [:storage]})
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
                         :labels      [:model]})
@@ -400,6 +415,19 @@
    (prometheus/counter :metabase-search/semantic-db-query-ms
                        {:description "Total number of ms spent querying the search index"
                         :labels [:embedding-model]})
+   ;; the four semantic-vector-* diagnostics are emitted only while the semantic-search-explain setting is on
+   (prometheus/counter :metabase-search/semantic-vector-inner-ms
+                       {:description "Total ms spent in the inner vector subquery (diagnostic, off by default)"
+                        :labels [:strategy]})
+   (prometheus/counter :metabase-search/semantic-vector-tuples-scanned
+                       {:description "Total tuples the vector scan visited, returned plus filter-removed (diagnostic, off by default)"
+                        :labels [:strategy]})
+   (prometheus/counter :metabase-search/semantic-prefilter-pool-size
+                       {:description "Total rows a filter-first (brute-force) scan would have computed distances over (diagnostic, off by default)"
+                        :labels [:strategy]})
+   (prometheus/counter :metabase-search/semantic-vector-scan-used-index
+                       {:description "Count of vector searches by strategy and the plan node chosen for the index-table scan (diagnostic, off by default)"
+                        :labels [:strategy :plan-node]})
    (prometheus/counter :metabase-search/semantic-appdb-scores-ms
                        {:description "Total number of ms spent adding appdb-based scores"})
    (prometheus/counter :metabase-search/semantic-fallback-triggered
@@ -447,6 +475,39 @@
                        {:description "Number of successful semantic search DLQ retries"})
    (prometheus/counter :metabase-search/semantic-indexer-dlq-failures
                        {:description "Number of failed semantic search DLQ retries"})
+   ;; library entity index (entity-retrieval) reconciliation
+   (prometheus/histogram :metabase-entity-retrieval/reconcile-duration-ms
+                         {:description "Duration (ms) of a library entity index reconcile run, labelled :scope full | targeted."
+                          :labels      [:scope]
+                          ;; One shared bucket set has to resolve both scopes, which differ by orders of
+                          ;; magnitude: a `targeted` slice reconcile is typically sub-second, a `full` run
+                          ;; seconds-to-minutes. Fine low-end buckets keep targeted from collapsing into one
+                          ;; bucket; the high end still covers a full run. (~1ms -> 10min)
+                          :buckets     [1 10 50 100 250 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-entity-retrieval/docs-inserted
+                       {:description "Number of documents embedded and inserted into the library entity index."})
+   (prometheus/counter :metabase-entity-retrieval/docs-deleted
+                       {:description "Number of documents garbage-collected from the library entity index."})
+   (prometheus/counter :metabase-entity-retrieval/search-failed
+                       {:description "Number of library entity index searches that errored and returned no results (e.g. a dimension mismatch before the next reconcile heals it). The nlq profile has no in-profile fallback once the curated tool is offered, so this is a real failure."})
+   (prometheus/gauge :metabase-entity-retrieval/index-documents
+                     {:description "Number of documents in the library entity index, as of the last full reconcile."})
+   (prometheus/gauge :metabase-entity-retrieval/index-entities
+                     {:description "Number of distinct entities in the library entity index, as of the last full reconcile."})
+   ;; Search-index health, one series per logical index. Implementations publish these through
+   ;; metabase.search.index-health; labels identify stable logical indexes, never physical table names.
+   (prometheus/gauge :metabase-search/index-coverage-ratio
+                     {:description (str "Fraction (0-1) of the items that should be indexed that actually are, "
+                                        "per search index.")
+                      :labels      [:index]})
+   (prometheus/gauge :metabase-search/index-garbage-count
+                     {:description (str "Absolute number of indexed items that should not be indexed "
+                                        "(orphaned or no longer a candidate), per search index.")
+                      :labels      [:index]})
+   (prometheus/gauge :metabase-search/index-staleness-seconds
+                     {:description (str "Age in seconds of the oldest known-pending change not yet reflected "
+                                        "in the index (indexer/reconcile backlog), per search index.")
+                      :labels      [:index]})
    ;; data-complexity-score timing
    ;; 1ms → 1min buckets; widen later if real-world runs push past a minute.
    (prometheus/histogram :metabase-data-complexity/scoring-duration-ms
@@ -456,6 +517,14 @@
                          {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
+   ;; explorations
+   (prometheus/gauge :metabase-explorations/pending-queue-depth
+                     {:description "Number of exploration_query rows currently in 'pending' status (awaiting execution by the explorations background runner)."})
+   (prometheus/gauge :metabase-explorations/oldest-pending-age-seconds
+                     {:description "Age in seconds of the oldest still-pending exploration_query (0 when the queue is empty)."})
+   (prometheus/counter :metabase-explorations/queries-processed
+                       {:description "Exploration queries processed."
+                        :labels [:status]})
    ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
@@ -499,6 +568,10 @@
    (prometheus/counter :metabase-notification/template-update
                        {:description "Number of notification templates updated."
                         :labels [:channel-type]})
+   (prometheus/counter :metabase-notification/image-buffer-pooled
+                       {:description "Number of chart rasterization images backed by a pooled buffer."})
+   (prometheus/counter :metabase-notification/image-buffer-unpooled
+                       {:description "Number of chart rasterization images too large for the pool, allocated fresh."})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
@@ -620,7 +693,7 @@
                        {:description "JDBC connection pool acquisitions by connection type (default, write-data, or admin)."
                         :labels [:connection-type]})
    (prometheus/counter :metabase-db-connection/type-resolved
-                       {:description "Non-default connection details resolved by effective-details (driver-agnostic). Only incremented when an overlay (write-data or admin details) is genuinely used, not on fallback or workspace swap."
+                       {:description "Non-default connection details resolved by effective-details (driver-agnostic). Only incremented when an overlay (write-data or admin details) is genuinely used, not on fallback."
                         :labels [:connection-type]})
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts
@@ -659,6 +732,15 @@
    (prometheus/counter :metabase-slackbot/file-uploads
                        {:description "Number of file uploads via the Slack bot."
                         :labels [:result]})
+   (prometheus/counter :metabase-slackbot/responses-truncated
+                       {:description (str "Number of Slack bot responses truncated because they exceeded "
+                                          "Slack's message limits.")})
+   (prometheus/counter :metabase-slackbot/viz-links-dropped
+                       {:description (str "Number of visualization query links dropped from Slack bot messages "
+                                          "because the linked title exceeded Slack's block limits.")})
+   (prometheus/counter :metabase-slackbot/responses-undeliverable
+                       {:description (str "Number of Slack bot responses that reached the user as nothing at all, "
+                                          "because the plain-text fallback failed too.")})
    ;; metabot / LLM agent metrics
    (prometheus/counter :metabase-metabot/llm-requests
                        {:description "LLM provider API requests"
@@ -728,6 +810,41 @@
                          {:description "Duration in milliseconds of used-tables extraction."
                           ;; 1ms -> 30s
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+   ;; messaging metrics
+   (prometheus/gauge :metabase-mq/queue-depth
+                     {:description "Batch count per queue by status, across all queue backends."
+                      :labels [:backend :channel :status]})
+   (prometheus/counter :metabase-mq/queue-poll-results
+                       {:description "Queue poll results by outcome, across all queue backends."
+                        :labels [:backend :result]})
+   (prometheus/counter :metabase-mq/batch-stale-recoveries
+                       {:description "Batches recovered from stale processing state."
+                        :labels [:backend :transport :channel]})
+   (prometheus/counter :metabase-mq/batches-handled
+                       {:description "Batches handled by status."
+                        :labels [:transport :channel :status]})
+   (prometheus/counter :metabase-mq/dedup-messages-dropped
+                       {:description "Messages dropped by dedup before publishing."
+                        :labels [:channel]})
+   (prometheus/histogram :metabase-mq/handle-duration-ms
+                         {:description "Duration in milliseconds to process a batch."
+                          :labels [:transport :channel]
+                          :buckets [1 5 10 50 100 500 1000 5000 10000 30000]})
+   (prometheus/counter :metabase-mq/messages-published
+                       {:description "Total messages published."
+                        :labels [:transport :channel]})
+   (prometheus/gauge :metabase-mq/publish-buffer-depth
+                     {:description "Messages sitting in the publish buffer awaiting flush."
+                      :labels [:channel]})
+   (prometheus/counter :metabase-mq/messages-received
+                       {:description "Individual messages delivered to handlers."
+                        :labels [:transport :channel]})
+   (prometheus/counter :metabase-mq/batches-retried
+                       {:description "Queue batches that will be re-attempted, by `reason`"
+                        :labels [:channel :reason]})
+   (prometheus/counter :metabase-mq/batches-dropped
+                       {:description "Queue batches permanently dropped by `reason`"
+                        :labels [:channel :reason]})
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures
                        {:description "Number of sync operation failures."
@@ -906,7 +1023,7 @@
              (alter-var-root #'system (constantly nil))
              (log/info "Prometheus web-server shut down")
              (catch Exception e
-               (log/warn e "Error stopping prometheus web-server")))))))
+               (log/warnf "Error stopping prometheus web-server: %s" (ex-message e))))))))
 
 (defn observe!
   "Call iapetos.core/observe on the metric in the global registry.

@@ -120,7 +120,11 @@ export function UploadManagementTable() {
               selectedItems.length,
             );
 
-            sendToast({ message, toastColor: "error", icon: "warning" });
+            sendToast({
+              message,
+              toastColor: "feedback-negative",
+              icon: "warning",
+            });
           } else if (result.length > 0) {
             const message = ngettext(
               msgid`1 table deleted`,
@@ -192,6 +196,7 @@ const UploadTableRow = ({
         <Link
           to={
             Urls.modelToUrl({
+              // Unjustified type cast. FIXME
               id: item.id as number,
               name: item.name,
               model: "table",

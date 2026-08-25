@@ -62,9 +62,9 @@ function DiffIcon({ before, after }: { before: unknown; after: unknown }) {
     return <Icon name="pencil" size={12} c="text-secondary" />;
   }
   if (before != null) {
-    return <Icon name="dash" size={12} c="error" />;
+    return <Icon name="dash" size={12} c="feedback-negative" />;
   }
-  return <Icon name="add" size={12} c="success" />;
+  return <Icon name="add" size={12} c="feedback-positive" />;
 }
 
 function getPropertyLabel(property: string, definitionLabel: string): string {
@@ -94,7 +94,7 @@ function TextDiff({ before, after }: FieldDiff) {
             span
             fw={part.added ? 600 : undefined}
             td={part.removed ? "line-through" : undefined}
-            c={part.removed ? "text-tertiary" : undefined}
+            c={part.removed ? "text-disabled" : undefined}
           >
             {part.value}
           </Text>
@@ -105,7 +105,7 @@ function TextDiff({ before, after }: FieldDiff) {
 
   if (beforeStr != null) {
     return (
-      <Text size="sm" td="line-through" c="text-tertiary">
+      <Text size="sm" td="line-through" c="text-disabled">
         {beforeStr}
       </Text>
     );

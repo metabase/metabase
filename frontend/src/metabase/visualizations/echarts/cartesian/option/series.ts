@@ -9,6 +9,7 @@ import _ from "underscore";
 
 import { getTextColorForBackground } from "metabase/ui/colors/palette";
 import { isNotNull } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
 import {
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
@@ -31,16 +32,23 @@ import type {
   NumericAxisScaleTransforms,
   NumericXAxisModel,
   SeriesModel,
+  StackModel,
   StackTotalDataKey,
   TimeSeriesXAxisModel,
   XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
+import { getPercent } from "metabase/visualizations/echarts/tooltip/utils";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RowValue, SeriesSettings, XAxisScale } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RowValue,
+  SeriesSettings,
+  XAxisScale,
+} from "metabase-types/api";
 
 import type { ChartLayout, TicksRotation } from "../layout/types";
 import {
@@ -58,6 +66,7 @@ import { getPadding } from "./ticks";
 import { getSeriesYAxisIndex } from "./utils";
 
 const MIN_LABEL_SPACING_PX = 40;
+const STACK_PERCENTAGE_DECIMALS = 2;
 
 const getBlurLabelStyle = (
   settings: ComputedVisualizationSettings,
@@ -167,6 +176,7 @@ export function getDataLabelFormatter(
   );
 
   return (params: CallbackDataParams) => {
+    // Unjustified type cast. FIXME
     const datum = params.data as Datum;
     const value = accessor != null ? accessor(datum) : datum[dataKey];
 
@@ -374,15 +384,87 @@ export const computeBarWidth = (
   return barWidth;
 };
 
+export const getStackValuePercentage = (
+  datum: Datum,
+  stackSeriesKeys: DataKey[],
+  value: number,
+) => {
+  const isNonNegative = (num: number) => num >= 0;
+  const stackTotal = stackSeriesKeys.reduce((total, dataKey) => {
+    const seriesValue = datum[dataKey];
+    const hasSameSign =
+      typeof seriesValue === "number" &&
+      isNonNegative(value) === isNonNegative(seriesValue);
+
+    return hasSameSign ? total + seriesValue : total;
+  }, 0);
+
+  return stackTotal === 0 ? undefined : getPercent(stackTotal, value);
+};
+
+export const formatStackValuePercentage = (
+  percentage: number,
+  column: DatasetColumn | undefined,
+  settings: ComputedVisualizationSettings,
+) => {
+  const displayedPercentage = Number(
+    (percentage * 100).toFixed(STACK_PERCENTAGE_DECIMALS),
+  );
+  const minimumFractionDigits = Number.isInteger(displayedPercentage)
+    ? 0
+    : STACK_PERCENTAGE_DECIMALS;
+  const columnSettings = column ? settings.column?.(column) : undefined;
+
+  return String(
+    formatValue(percentage, {
+      column,
+      number_separators: columnSettings?.number_separators,
+      number_style: "percent",
+      minimumFractionDigits,
+      maximumFractionDigits: STACK_PERCENTAGE_DECIMALS,
+    }),
+  );
+};
+
+export const formatStackTotalLabel = (
+  stackValue: number,
+  transformedStackValue: number,
+  column: DatasetColumn | undefined,
+  formatter: LabelFormatter,
+  settings: ComputedVisualizationSettings,
+) => {
+  const showPercentages =
+    settings["graph.show_stack_values"] === "all" &&
+    settings["graph.stack_value_format"] === "percentage";
+
+  if (!showPercentages) {
+    return formatter(transformedStackValue);
+  }
+
+  if (stackValue === 0) {
+    return "";
+  }
+
+  const percentage = getPercent(stackValue, stackValue);
+  return percentage === undefined
+    ? ""
+    : formatStackValuePercentage(percentage, column, settings);
+};
+
 export const buildEChartsStackLabelOptions = (
   seriesModel: SeriesModel,
   formatter: LabelFormatter | undefined,
   originalDataset: ChartDataset,
   renderingContext: RenderingContext,
+  settings: ComputedVisualizationSettings,
+  stackModel: StackModel | undefined,
 ): SeriesLabelOption | undefined => {
   if (!formatter) {
     return;
   }
+
+  const showPercentages =
+    settings["graph.stack_value_format"] === "percentage" && stackModel != null;
 
   return {
     silent: true,
@@ -397,6 +479,7 @@ export const buildEChartsStackLabelOptions = (
       renderingContext.getColor,
     ),
     formatter: (params: CallbackDataParams) => {
+      // Unjustified type cast. FIXME
       const transformedDatum = params.data as Datum;
       const originalIndex = transformedDatum[INDEX_KEY] ?? params.dataIndex;
       const datum = originalDataset[originalIndex];
@@ -405,6 +488,23 @@ export const buildEChartsStackLabelOptions = (
       if (typeof value !== "number") {
         return "";
       }
+
+      if (showPercentages) {
+        const percentage = getStackValuePercentage(
+          datum,
+          stackModel.seriesKeys,
+          value,
+        );
+        if (percentage === undefined) {
+          return "";
+        }
+        return formatStackValuePercentage(
+          percentage,
+          seriesModel.column,
+          settings,
+        );
+      }
+
       return formatter(value);
     },
   };
@@ -481,6 +581,7 @@ const buildEChartsBarSeries = (
   chartWidth: number,
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
+  stackModel: StackModel | undefined,
   xAxisIndex?: number,
 ): BarSeriesOption | BarSeriesOption[] => {
   const stack = stackName ?? `bar_${seriesModel.dataKey}`;
@@ -493,6 +594,7 @@ const buildEChartsBarSeries = (
       itemStyle: {
         color: seriesModel.color,
       },
+      blurScope: "global",
     },
     blur: {
       label: getBlurLabelStyle(settings, hasMultipleSeries),
@@ -524,6 +626,8 @@ const buildEChartsBarSeries = (
           labelFormatter,
           originalDataset,
           renderingContext,
+          settings,
+          stackModel,
         )
       : buildEChartsLabelOptions(
           seriesModel,
@@ -628,6 +732,7 @@ const buildEChartsLineAreaSeries = (
     chartDataDensity,
     chartWidth,
     seriesSettings,
+    seriesModel.dataKey,
   );
 
   const blurOpacity = hasMultipleSeries ? CHART_STYLE.opacity.blur : 1;
@@ -645,6 +750,7 @@ const buildEChartsLineAreaSeries = (
       areaStyle: {
         opacity: CHART_STYLE.opacity.areaFocused,
       },
+      blurScope: "global",
     },
     blur: {
       itemStyle: {
@@ -707,12 +813,13 @@ const buildEChartsLineAreaSeries = (
   };
 };
 
-function getShowSymbol(
+export function getShowSymbol(
   chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
   seriesSettings: SeriesSettings,
+  seriesDataKey: DataKey,
 ): boolean {
-  const { totalNumberOfDots } = chartDataDensity;
+  const { numberOfDotsBySeriesKey } = chartDataDensity;
   const maxNumberOfDots = chartWidth / (2 * CHART_STYLE.symbolSize);
 
   if (chartWidth <= 0) {
@@ -727,13 +834,21 @@ function getShowSymbol(
     return true;
   }
 
-  return totalNumberOfDots <= maxNumberOfDots;
+  const hasSinglePoint = numberOfDotsBySeriesKey[seriesDataKey] === 1;
+  const drawsNullsAsZeros = seriesSettings["line.missing"] === "zero";
+
+  if (hasSinglePoint && !drawsNullsAsZeros) {
+    return true;
+  }
+
+  return Math.max(...Object.values(numberOfDotsBySeriesKey)) <= maxNumberOfDots;
 }
 
 function getStackedDataLabelFormatter(
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   signKey: StackTotalDataKey,
   stackDataKeys: DataKey[],
+  stackColumn: DatasetColumn | undefined,
   stackName: string | undefined,
   formatter: LabelFormatter,
   chartDataDensity: ComboChartDataDensity,
@@ -753,6 +868,7 @@ function getStackedDataLabelFormatter(
     }
 
     const stackValue = getStackTotalValue(
+      // Unjustified type cast. FIXME
       params.data as Datum,
       stackDataKeys,
       signKey,
@@ -762,7 +878,13 @@ function getStackedDataLabelFormatter(
       return "";
     }
 
-    return formatter(yAxisScaleTransforms.fromEChartsAxisValue(stackValue));
+    return formatStackTotalLabel(
+      stackValue,
+      yAxisScaleTransforms.fromEChartsAxisValue(stackValue),
+      stackColumn,
+      formatter,
+      settings,
+    );
   };
 }
 
@@ -853,13 +975,16 @@ export const getStackTotalsSeries = (
   );
 
   return Object.values(seriesByStackName).flatMap((seriesOptions) => {
+    // Unjustified type cast. FIXME
     const stackDataKeys = seriesOptions // we set string dataKeys as series IDs
       .map((s) => s.id)
       .filter(isNotNull) as string[];
     const firstSeriesInStack = seriesOptions[0];
+    const stackColumn = chartModel.columnByDataKey[stackDataKeys[0]];
 
     const labelFormatter = firstSeriesInStack.stack
       ? chartModel.stackedLabelsFormatters?.[
+          // Unjustified type cast. FIXME
           firstSeriesInStack.stack as "bar" | "area"
         ]
       : undefined;
@@ -878,6 +1003,7 @@ export const getStackTotalsSeries = (
             yAxisScaleTransforms,
             POSITIVE_STACK_TOTAL_DATA_KEY,
             stackDataKeys,
+            stackColumn,
             firstSeriesInStack.stack,
             labelFormatter,
             chartModel.dataDensity,
@@ -896,6 +1022,7 @@ export const getStackTotalsSeries = (
             yAxisScaleTransforms,
             NEGATIVE_STACK_TOTAL_DATA_KEY,
             stackDataKeys,
+            stackColumn,
             firstSeriesInStack.stack,
             labelFormatter,
             chartModel.dataDensity,
@@ -932,6 +1059,7 @@ export const buildEChartsSeries = (
       );
       return acc;
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, number>,
   );
 
@@ -982,7 +1110,13 @@ export const buildEChartsSeries = (
             renderingContext,
             panelIndex,
           );
-        case "bar":
+        case "bar": {
+          const stackModel =
+            chartModel.stackModels == null
+              ? undefined
+              : chartModel.stackModels.find((stackModel) =>
+                  stackModel.seriesKeys.includes(seriesModel.dataKey),
+                );
           return buildEChartsBarSeries(
             chartModel.transformedDataset,
             chartModel.dataset,
@@ -999,8 +1133,10 @@ export const buildEChartsSeries = (
             chartWidth,
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
+            stackModel,
             panelIndex,
           );
+        }
       }
     })
     .flat()

@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.api.common :refer [*is-superuser?*]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -172,32 +173,36 @@
   [x]
   (first (find-metric-ids x)))
 
+(defn- fetch-metric
+  [query card-metadata]
+  (let [metric-query (->> (:dataset-query card-metadata)
+                          (lib/query query)
+                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
+                          (lib/query query)
+                          metric-query-filters->aggregation)]
+    (if-let [aggregation (first (lib/aggregations metric-query))]
+      [(:id card-metadata)
+       {:query metric-query
+        ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original name is added
+        ;; in `preprocess` above if metric is defined using unnamed aggregation.
+        :aggregation aggregation
+        :name (:name card-metadata)}]
+      (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))
+
 (defn- fetch-metrics
+  "Preprocess the definitions of `metric-ids`, keyed by metric ID.
+
+  Preprocessing happens as admin so user-context middleware leaves the definitions alone; the consuming query goes
+  through those passes itself and sandboxes the spliced result (#76044). Sandboxing and impersonation both stand down
+  for superusers, which is what `as-admin` makes us, so being one already — whether for real or inside the context an
+  enclosing metric established — means there is nothing to elevate. Entering it again would only re-read the current
+  user and hand out empty request-scoped caches."
   [query metric-ids]
-  (->> metric-ids
-       (lib.metadata/bulk-metadata-or-throw query :metadata/card)
-       (into {}
-             (map (fn [card-metadata]
-                    ;; Preprocess the metric query as admin so user-context middleware (sandboxing,
-                    ;; impersonation) leaves it untouched. The outer query still goes through those passes
-                    ;; normally, and will sandbox the spliced result. This matches how the sandboxing
-                    ;; middleware preprocesses its own source query (#76044).
-                    (let [metric-query (request/as-admin
-                                         (->> (:dataset-query card-metadata)
-                                              (lib/query query)
-                                              ((requiring-resolve 'metabase.query-processor.preprocess/preprocess))
-                                              (lib/query query)
-                                              metric-query-filters->aggregation))
-                          metric-name (:name card-metadata)]
-                      (if-let [aggregation (first (lib/aggregations metric-query))]
-                        [(:id card-metadata)
-                         {:query metric-query
-                          ;; Aggregation inherits `:name` of original aggregation used in a metric query. The original
-                          ;; name is added in `preprocess` above if metric is defined using unnamed aggregation.
-                          :aggregation aggregation
-                          :name metric-name}]
-                        (throw (ex-info "Source metric missing aggregation" {:source metric-query})))))))
-       not-empty))
+  (let [cards (lib.metadata/bulk-metadata-or-throw query :metadata/card metric-ids)
+        fetch #(not-empty (into {} (map (fn [card] (fetch-metric query card))) cards))]
+    (if *is-superuser?*
+      (fetch)
+      (request/as-admin (fetch)))))
 
 (defn- fetch-referenced-metrics
   [query stage]

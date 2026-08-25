@@ -77,6 +77,7 @@ export const MultipleDates = {
 export const DatesRange = {
   name: "Dates range",
   args: {
+    // Unjustified type cast. FIXME
     type: "range" as DatePickerProps["type"],
     defaultValue: [sampleArgs.date1, sampleArgs.date2],
     defaultDate: sampleArgs.date1,

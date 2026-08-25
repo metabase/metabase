@@ -56,7 +56,7 @@ export const useBuildRecentsMenuItems = () => {
           iconUrl: iconData.iconUrl,
           label: getName(recent),
           id: recent.id,
-          model: recent.model as SuggestionModel,
+          model: recent.model,
           href: href || undefined,
           action: () => onSelect(recent),
         };

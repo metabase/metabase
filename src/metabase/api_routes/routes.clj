@@ -4,6 +4,7 @@
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
+   [metabase.ai-tracing.api]
    [metabase.analytics.api]
    [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
@@ -21,17 +22,18 @@
    [metabase.collections-rest.api]
    [metabase.comments.api]
    [metabase.config.core :as config]
-   [metabase.curated-search.api]
    [metabase.dashboards-rest.api]
    [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
+   [metabase.explorations.api]
    [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.health-inspector.api]
    [metabase.indexed-entities.api]
+   [metabase.indexes-rest.api]
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
@@ -39,12 +41,12 @@
    [metabase.mcp.callback-api]
    [metabase.measures.api]
    [metabase.metabot.api]
-   [metabase.metabot.api.entity-analysis]
    [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
    [metabase.oauth-server.api.admin]
+   [metabase.osi.ai-context.api]
    [metabase.permissions-rest.api]
    [metabase.premium-features.api]
    [metabase.product-feedback.api]
@@ -68,6 +70,7 @@
    [metabase.transforms-rest.api.transform]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
+   [metabase.typed-schemas-rest.api]
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.users-rest.api]
@@ -79,6 +82,7 @@
 (comment metabase.actions-rest.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
+         metabase.ai-tracing.api/keep-me
          metabase.analytics.api/keep-me
          metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
@@ -89,20 +93,22 @@
          metabase.cloud-migration.api/keep-me
          metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
-         metabase.curated-search.api/keep-me
          metabase.dashboards-rest.api/keep-me
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
+         metabase.explorations.api/keep-me
          metabase.frontend-errors.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
          metabase.indexed-entities.api/keep-me
+         metabase.indexes-rest.api/keep-me
          metabase.logger.api/keep-me
          metabase.login-history.api/keep-me
          metabase.mcp.api/keep-me
          metabase.mcp.callback-api/keep-me
          metabase.oauth-server.api.admin/keep-me
+         metabase.osi.ai-context.api/keep-me
          metabase.measures.api/keep-me
          metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
@@ -121,6 +127,7 @@
          metabase.transforms-rest.api.transform/keep-me
          metabase.transforms-rest.api.transform-job/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me
+         metabase.typed-schemas-rest.api/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
          metabase.users-rest.api/keep-me
@@ -165,7 +172,6 @@
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
-   "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
@@ -180,7 +186,6 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
-   "/curated-search"       (+auth 'metabase.curated-search.api)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
@@ -188,16 +193,19 @@
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
-   "/email"                metabase.channel.api/email-routes
+   "/email"                (+auth metabase.channel.api/email-routes)
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
+   "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
+   "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/health-inspector"     (+auth 'metabase.health-inspector.api)
+   "/index"                (+auth 'metabase.indexes-rest.api)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
@@ -214,6 +222,7 @@
    "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
    "/oauth"                (+auth 'metabase.oauth-server.api.admin)
+   "/osi"                  {"/ai-context" (+auth 'metabase.osi.ai-context.api)}
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.api/routes)
@@ -235,8 +244,10 @@
    "/timeline"             (+auth metabase.timeline.api/timeline-routes)
    "/timeline-event"       (+auth metabase.timeline.api/timeline-event-routes)
    "/transform"            (+auth metabase.transforms-rest.api.transform/routes)
+   "/transform-dag-run"    (+auth metabase.transforms-rest.api.transform/transform-dag-run-routes)
    "/transform-job"        (+auth metabase.transforms-rest.api.transform/transform-job-routes)
    "/transform-tag"        (+auth metabase.transforms-rest.api.transform/transform-tag-routes)
+   "/typed-schemas"        (+auth 'metabase.typed-schemas-rest.api)
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)

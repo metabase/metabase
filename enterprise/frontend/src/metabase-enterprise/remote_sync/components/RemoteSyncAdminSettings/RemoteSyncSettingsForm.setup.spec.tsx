@@ -46,8 +46,11 @@ const setupEndpoints = ({
   remoteSyncBranch = "main",
   remoteSyncAutoImport = false,
   remoteSyncTransforms = false,
+  // Unjustified type cast. FIXME
   libraryCollection = null as Collection | null,
+  // Unjustified type cast. FIXME
   dirty = [] as any[],
+  // Unjustified type cast. FIXME
   rootCollectionItems = [] as CollectionItem[],
   settingsError,
   testConnectionError,
@@ -88,7 +91,7 @@ const setupEndpoints = ({
       value: settings[key],
       is_env_setting: true,
       env_name: `MB_${key.toUpperCase().replace(/-/g, "_")}`,
-    } as SettingDefinition),
+    }),
   );
 
   setupPropertiesEndpoints(settings);

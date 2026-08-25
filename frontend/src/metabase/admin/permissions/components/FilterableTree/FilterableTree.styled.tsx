@@ -34,12 +34,12 @@ export const AdminTreeNode = styled(Tree.Node)`
     // user whitelabelling, this is somewhat safe (and consistent with what is in the admin header nav)
     props.isSelected ? "var(--mantine-color-white)" : color("text-secondary")};
   background-color: ${(props) =>
-    props.isSelected ? color("admin-navbar") : "unset"};
+    props.isSelected ? color("navbar-admin") : "unset"};
 
   &:hover {
     background-color: ${(props) =>
       props.isSelected
-        ? color("admin-navbar")
-        : color("admin-navbar-secondary")};
+        ? color("navbar-admin")
+        : color("navbar-admin-secondary")};
   }
 `;

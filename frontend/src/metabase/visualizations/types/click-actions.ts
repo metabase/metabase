@@ -19,9 +19,13 @@ export type ClickActionModeGetter = (data: {
 }) => QueryClickActionsMode | ClickActionsMode;
 
 export type {
+  BrushClickObject,
+  BrushRange,
   ClickActionProps,
   ClickObject,
 } from "metabase-lib/v1/queries/drills/types";
+
+export { isBrushClickObject } from "metabase-lib/v1/queries/drills/types";
 
 type Dispatcher = (dispatch: Dispatch, getState: GetState) => void;
 
@@ -40,6 +44,7 @@ export type ClickActionSection =
   | "breakout-popover"
   | "combine"
   | "combine-popover"
+  | "copy"
   | "details"
   | "extract"
   | "extract-popover"
@@ -219,6 +224,7 @@ export function isClickActionsMode(value: unknown): value is ClickActionsMode {
     value != null &&
     typeof value === "object" &&
     "actionsForClick" in value &&
+    // Unjustified type cast. FIXME
     typeof (value as any).actionsForClick === "function"
   );
 }
@@ -240,11 +246,13 @@ export type QueryClickActionsMode = {
 export const isCustomClickAction = (
   clickAction: ClickAction,
 ): clickAction is CustomClickAction =>
+  // Unjustified type cast. FIXME
   (clickAction as CustomClickAction).type === "custom" &&
   !("view" in clickAction);
 
 export const isCustomClickActionWithView = (
   action: ClickAction,
 ): action is CustomClickActionWithCustomView =>
+  // Unjustified type cast. FIXME
   (action as CustomClickActionWithCustomView).type === "custom" &&
   "view" in action;

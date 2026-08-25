@@ -6,7 +6,6 @@ import SidebarContentS from "metabase/common/components/SidebarContent/SidebarCo
 export const ActionCreatorBodyContainer = styled.div`
   display: grid;
   grid-template-columns: 4fr 3fr;
-  border-top: 1px solid var(--mb-color-border-neutral);
 
   .react-resizable-handle {
     display: none;
@@ -38,7 +37,11 @@ export const ModalActions = styled.div`
 export const ModalRoot = styled.div`
   display: flex;
   flex-direction: column;
-  height: 90vh;
+  /**
+   * Compensate 2px for border on .Modal-module__content
+   * Otherwise vertical scrollbar is shown even though there is no overflow.
+   **/
+  height: calc(90dvh - 2px);
 `;
 
 export const ModalLeft = styled.div`

@@ -2,7 +2,7 @@ import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import {
   Box,
   Divider,
@@ -224,7 +224,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
       </Paper>
       {hasRemovals && (
         <Text
-          c="error"
+          c="feedback-negative"
           fz="sm"
           lh="sm"
           mt="sm"

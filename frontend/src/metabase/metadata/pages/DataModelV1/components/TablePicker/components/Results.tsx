@@ -239,7 +239,7 @@ export function Results({
                       <Icon
                         name="chevronright"
                         size={10}
-                        c="text-tertiary"
+                        c="text-disabled"
                         className={cx(S.chevron, {
                           [S.expanded]: isExpanded,
                         })}

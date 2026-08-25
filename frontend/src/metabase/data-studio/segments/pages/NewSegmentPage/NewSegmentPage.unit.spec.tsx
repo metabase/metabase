@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { Table } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -60,17 +60,19 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
   const getSuccessUrl = (segment: { id: number }) =>
     `${successUrl}/${segment.id}`;
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
+    // Catch-all so the page stays mounted after a successful save navigates to
+    // the deep success URL; the test asserts the form survived the save.
     <Route
-      path="/"
-      component={() => (
+      path="*"
+      element={
         <NewSegmentPage
-          route={{ path: "/" } as never}
+          // Unjustified type cast. FIXME
           table={table}
           breadcrumbs={<DataModelSegmentBreadcrumbs table={table} />}
           getSuccessUrl={getSuccessUrl}
         />
-      )}
+      }
     />,
     {
       withRouter: true,
@@ -83,7 +85,7 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
     },
   );
 
-  return { history, successUrl };
+  return { router, successUrl };
 }
 
 async function addFilter() {
@@ -222,7 +224,7 @@ describe("NewSegmentPage", () => {
 
     fetchMock.post("path:/api/segment", createdSegment);
 
-    const { history, successUrl } = setup();
+    const { router, successUrl } = setup();
 
     await userEvent.type(
       screen.getByPlaceholderText("New segment"),
@@ -242,7 +244,7 @@ describe("NewSegmentPage", () => {
     });
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         `${successUrl}/${createdSegment.id}`,
       );
     });
@@ -262,7 +264,7 @@ describe("NewSegmentPage", () => {
 
     fetchMock.post("path:/api/segment", createdSegment);
 
-    const { history, successUrl } = setup();
+    const { router, successUrl } = setup();
 
     await userEvent.type(
       screen.getByPlaceholderText("New segment"),
@@ -275,7 +277,7 @@ describe("NewSegmentPage", () => {
     await userEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         `${successUrl}/${createdSegment.id}`,
       );
     });

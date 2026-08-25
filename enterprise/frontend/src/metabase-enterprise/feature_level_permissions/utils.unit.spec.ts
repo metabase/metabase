@@ -1,6 +1,13 @@
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import {
+  createMockUser,
+  createMockUserPermissions,
+} from "metabase-types/api/mocks";
 
-import { getDataColumns } from "./utils";
+import {
+  databaseManagementPermissionAllowedPathGetter,
+  getDataColumns,
+} from "./utils";
 
 describe("getDataColumns", () => {
   const originalIsEnabled = PLUGIN_TRANSFORMS.isEnabled;
@@ -26,8 +33,31 @@ describe("getDataColumns", () => {
         },
         { name: "Manage table metadata" },
         { name: "Manage database" },
-        { name: "Transforms", hint: null },
+        {
+          name: "Transforms",
+          hint: "This lets users see, edit, and run transforms based on this database.",
+        },
       ]);
+    });
+
+    it("explains the Transforms permission and notes the Data Analysts requirement for non-analyst groups", () => {
+      PLUGIN_TRANSFORMS.isEnabled = true;
+
+      const columns = getDataColumns({
+        subject: "schemas",
+        showTransformPermissions: true,
+      });
+      const transformsColumn = columns.find(
+        ({ name }) => name === "Transforms",
+      );
+
+      expect(transformsColumn?.hint).not.toBeNull();
+      // `jt` returns an array of nodes; the description is the leading string.
+      expect(transformsColumn?.hint).toEqual(
+        expect.arrayContaining([
+          "This lets users see, edit, and run transforms based on this database.",
+        ]),
+      );
     });
 
     it("returns 3 permissions when the transform token feature is disabled", () => {
@@ -84,5 +114,33 @@ describe("getDataColumns", () => {
         expectedColumns,
       );
     });
+  });
+});
+
+describe("databaseManagementPermissionAllowedPathGetter", () => {
+  it("grants the databases admin path when the user has database management permission", () => {
+    const user = createMockUser({
+      is_superuser: false,
+      permissions: createMockUserPermissions({ can_access_db_details: true }),
+    });
+
+    expect(databaseManagementPermissionAllowedPathGetter(user)).toEqual([
+      "databases",
+    ]);
+  });
+
+  it("grants no path when the user lacks database management permission", () => {
+    const user = createMockUser({
+      is_superuser: false,
+      permissions: createMockUserPermissions({ can_access_db_details: false }),
+    });
+
+    expect(databaseManagementPermissionAllowedPathGetter(user)).toEqual([]);
+  });
+
+  it("grants no path when there is no user", () => {
+    expect(databaseManagementPermissionAllowedPathGetter(undefined)).toEqual(
+      [],
+    );
   });
 });

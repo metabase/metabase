@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import { trackDataStudioLibraryCreated } from "metabase/data-studio/analytics";
+import { trackDataStudioLibraryCreated } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Button,
@@ -56,7 +56,7 @@ export function LibraryEmptyState() {
                 loading={isLoading}
               >{t`Create my Library`}</Button>
             </Group>
-            {error && <Text c="error">{error}</Text>}
+            {error && <Text c="feedback-negative">{error}</Text>}
           </Stack>
         </Stack>
         <SimpleGrid cols={2} spacing="sm">

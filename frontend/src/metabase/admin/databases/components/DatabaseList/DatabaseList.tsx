@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { FormMessage } from "metabase/forms";

@@ -13,12 +13,12 @@
   background-color: var(--mb-color-background_page-primary);
 
   &::placeholder {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 
   &:disabled {
     background-color: var(--mb-color-background_surface-disabled);
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-disabled);
   }
 
   &[data-size="xs"] {
@@ -43,16 +43,16 @@
     }
 
     &[data-error] {
-      border-color: var(--mb-color-error);
+      border-color: var(--mb-color-feedback-negative);
     }
   }
 
   &[data-error] {
-    color: var(--mb-color-error);
-    border-color: var(--mb-color-error);
+    color: var(--mb-color-feedback-negative);
+    border-color: var(--mb-color-feedback-negative);
 
     &::placeholder {
-      color: var(--mb-color-error);
+      color: var(--mb-color-feedback-negative);
     }
   }
 }
@@ -77,7 +77,7 @@
 }
 
 .error {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-sm);
   margin-top: var(--mantine-spacing-sm);
@@ -88,5 +88,5 @@
 }
 
 .required {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }

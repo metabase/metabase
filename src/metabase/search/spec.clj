@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -24,10 +25,11 @@
    "database"
    "action"
    "document"
+   "exploration"
    "transform"
    ;; The following come last as they can be slow to index due to:
    ;; - cardinality (table, indexed-entity),
-   ;; - cost (e.g. computing has_temporal_dim for cards)
+   ;; - cost (e.g. large text payloads and native-query parsing for cards)
    "table"
    "metric"
    "card"
@@ -60,19 +62,12 @@
   [:union :boolean :keyword vector? :map
    [:map
     [:fn fn?]
-    [:fields {:optional true} [:vector :keyword]]
-    [:provides {:optional true} [:vector :keyword]]]])
+    [:fields {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
   "Attributes populate by clojure functions"
   [attr-def]
   (and (map? attr-def) (:fn attr-def)))
-
-(defn function-attr-provides
-  "Returns the attr keys that a function attr provides when it returns a map.
-  Used to determine which filters a function attr satisfies."
-  [attr-def]
-  (:provides attr-def []))
 
 (defn collect-fn-attr-req-fields
   "Return set of required appdb fields declared in a spec's function attrs"
@@ -92,8 +87,10 @@
   ;; - `metabase.search.impl/add-dataset-collection-hierarchy` reads `:collection_location` to hydrate
   ;;   `:collection_effective_ancestors`, and the collection-result hydration path reads `:location` from
   ;;   the toucan instance (which the render-term keeps populated).
+  ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
+  ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query})
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -115,9 +112,6 @@
    :updated-at              :timestamp
    :verified                :boolean
    :view-count              :int
-   :non-temporal-dim-ids    :text
-   :has-temporal-dim        :boolean
-   :temporal-info           nil
    :display-type            :text
    :is-published            :boolean
    :source-type             :text
@@ -150,7 +144,6 @@
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
          :updated-at
-         :temporal-info
          :is-published
          :source-type
          :collection-type                                   ;;  surfaced for downstream consumers (metabase.search.impl/serialize)
@@ -202,6 +195,7 @@
    [:search-terms [:or
                    [:sequential {:min 1} :keyword]
                    [:map-of :keyword [:or fn? true?]]]]
+   [:embedding-exclude {:optional true} [:set :keyword]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
@@ -403,7 +397,12 @@
    Spec keys:
    - `:model` - Toucan model keyword (required)
    - `:attrs` - Map of search index attributes (required)
-   - `:search-terms` - Vector of searchable text fields (required)
+   - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
+     column keyword to either `true` (use the raw value) or a transform fn applied for
+     full-text search (required)
+   - `:embedding-exclude` - Set of `:search-terms` keys to omit from the semantic-search
+     embedding text (they remain in full-text search). Use for fields whose raw value is
+     not suitable for semantic search.
    - `:render-terms` - Additional attributes needed for display (required)
    - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
    - `:where` - HoneySQL where clause to filter indexed records
@@ -413,7 +412,8 @@
    Attribute value formats:
    - `true` - Use column with same name (snake_case)
    - `:column_name` - Use specified database column
-   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time with the given fields"
+   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time; its scalar
+     return value is written to the column named after the attr key (snake_case)."
   [search-model spec]
   `(do
      ;; Capture raw form before evaluation (symbols stay as symbols, not function objects)
@@ -426,14 +426,24 @@
        (derive (:model spec#) :hook/search-index)
        (defmethod spec* ~search-model [~'_] spec#))))
 
-;; TODO we should memoize this for production (based on spec values)
+(def ^:private model-hooks*
+  ;; Specs are immutable in production, and keying on the methods map also does the useful thing after a
+  ;; REPL/test reload.
+  ;; The key is only an invalidation token: the value comes from the static search-models list, so the first
+  ;; call builds a complete map even though resolving those models registers more methods while it runs.
+  ;; Its key is stale by then, which costs one recompute and nothing else.
+  (memoize/fifo
+   (fn [_spec-methods]
+     (->> (specifications)
+          vals
+          (map search-model-hooks)
+          merge-hooks))
+   :fifo/threshold 1))
+
 (defn model-hooks
   "Return an inverted map of data dependencies to search models, used for updating them based on underlying models."
   []
-  (->> (specifications)
-       vals
-       (map search-model-hooks)
-       merge-hooks))
+  (model-hooks* (methods spec*)))
 
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."

@@ -24,11 +24,20 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :druid-jdbc :parent :sql-jdbc)
+(driver/register! :druid-jdbc :parent #{:sql-jdbc})
+
+(defmethod driver/host-carrying-parameters :druid-jdbc
+  [_driver]
+  ["url" "LB_URLS"])
+
+(defmethod driver/non-host-parameters :druid-jdbc
+  [_driver]
+  ["HOSTNAME_VERIFICATION"])
 
 (doseq [[feature supported?] {:set-timezone            true
                               :expression-aggregations true
-                              :expression-literals     true}]
+                              :expression-literals     true
+                              :native-pivot-tables     true}]
   (defmethod driver/database-supports? [:druid-jdbc feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.conn/connection-details->spec :druid-jdbc
@@ -162,7 +171,7 @@
   [:length [:to_json_string json-field-identifier]])
 
 (defmethod sql.qp/->honeysql [:druid-jdbc :field]
-  [driver [_ id-or-name opts :as clause]]
+  [driver [_ opts id-or-name :as clause]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])

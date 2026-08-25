@@ -23,7 +23,6 @@
 (set! *warn-on-reflection* true)
 
 ;; We act on a random localized table, making this thread-safe.
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-index-contents
   "Populate the index with the given appdb agnostic entity shapes."
   {:style/indent :defn}

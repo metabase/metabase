@@ -10,16 +10,20 @@ export const getItemId = (
   item: CacheableDashboard | Question,
 ) =>
   model === "dashboard"
-    ? (item as CacheableDashboard).id
-    : (item as Question).id();
+    ? // Unjustified type cast. FIXME
+      (item as CacheableDashboard).id
+    : // Unjustified type cast. FIXME
+      (item as Question).id();
 
 export const getItemName = (
   model: CacheableModel,
   item: CacheableDashboard | Question,
 ) =>
   model === "dashboard"
-    ? (item as CacheableDashboard).name
-    : ((item as Question).displayName() ?? t`Untitled question`);
+    ? // Unjustified type cast. FIXME
+      (item as CacheableDashboard).name
+    : // Unjustified type cast. FIXME
+      ((item as Question).displayName() ?? t`Untitled question`);
 
 export const getItemUrl = (
   model: CacheableModel,
