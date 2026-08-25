@@ -104,7 +104,6 @@ class TableList extends Component<TableListProps> {
       <div data-testid="table-list">
         <ReferenceHeader
           name={t`Tables in ${database.name}`}
-          type="tables"
           headerIcon="database"
         />
         <LoadingAndErrorWrapper
