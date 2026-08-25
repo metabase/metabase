@@ -76,6 +76,7 @@
   background-color: var(--mb-color-background_surface-primary);
   box-shadow: var(--mantine-shadow-xs);
   text-align: left;
+  overflow-wrap: anywhere;
 
   &:hover {
     background-color: var(--mb-color-background_surface-primary-hover);
@@ -85,11 +86,6 @@
     cursor: not-allowed;
     border-color: transparent;
     background-color: var(--mb-color-background_surface-disabled);
-
-    .cardLabel,
-    .cardDescription {
-      color: var(--mb-color-text-disabled);
-    }
   }
 }
 
@@ -116,25 +112,4 @@
       color: var(--mb-color-text-disabled);
     }
   }
-}
-
-.cardBody {
-  display: flex;
-  flex-direction: column;
-  gap: rem(4px);
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.cardLabel {
-  color: var(--mb-color-text-primary);
-  font-size: var(--mantine-font-size-md);
-  font-weight: 700;
-  line-height: rem(18px);
-}
-
-.cardDescription {
-  color: var(--mb-color-text-secondary);
-  font-size: var(--mantine-font-size-sm);
-  line-height: var(--mantine-line-height-sm);
 }

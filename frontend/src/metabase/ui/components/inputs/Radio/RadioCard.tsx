@@ -2,10 +2,11 @@ import {
   RadioCard as MantineRadioCard,
   type RadioCardProps as MantineRadioCardProps,
   RadioIndicator as MantineRadioIndicator,
+  Stack,
+  Text,
+  rem,
 } from "@mantine/core";
 import type { ReactNode } from "react";
-
-import S from "./Radio.module.css";
 
 export type RadioCardProps = Omit<MantineRadioCardProps, "children"> & {
   label?: ReactNode;
@@ -26,9 +27,26 @@ export const RadioCard = ({
   <MantineRadioCard disabled={disabled} {...props}>
     {withIndicator && <MantineRadioIndicator disabled={disabled} />}
     {leftSection}
-    <div className={S.cardBody}>
-      {label && <div className={S.cardLabel}>{label}</div>}
-      {description && <div className={S.cardDescription}>{description}</div>}
-    </div>
+    <Stack component="span" gap={rem(4)} miw={0}>
+      {label && (
+        <Text
+          component="span"
+          c={disabled ? "text-disabled" : "text-primary"}
+          fw={700}
+          lh={rem(18)}
+        >
+          {label}
+        </Text>
+      )}
+      {description && (
+        <Text
+          component="span"
+          size="sm"
+          c={disabled ? "text-disabled" : "text-secondary"}
+        >
+          {description}
+        </Text>
+      )}
+    </Stack>
   </MantineRadioCard>
 );
