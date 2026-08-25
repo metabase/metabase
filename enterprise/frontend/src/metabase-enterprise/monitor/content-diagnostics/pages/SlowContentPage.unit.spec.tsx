@@ -185,26 +185,6 @@ describe("SlowContentPage", () => {
     expect(sidebarRegion).toHaveTextContent("7");
   });
 
-  it("sends table sort changes to the server and URL", async () => {
-    const { router } = setup({ findings: FINDINGS });
-    await waitForListToLoad();
-
-    await userEvent.click(
-      screen.getByRole("columnheader", { name: /^Duration/ }),
-    );
-
-    await waitFor(() => {
-      expect(getLastRequestUrl().searchParams.get("sort-column")).toBe(
-        "duration-ms",
-      );
-    });
-    expect(getLastRequestUrl().searchParams.get("sort-direction")).toBe("asc");
-    expect(getUrlQuery(router)).toEqual({
-      "sort-column": "duration-ms",
-      "sort-direction": "asc",
-    });
-  });
-
   it("sends the minimum duration filter to the server and reflects it in the Filter popover", async () => {
     setup({ findings: FINDINGS, urlParams: { minDurationMs: 30000 } });
     await waitForListToLoad();
@@ -381,5 +361,72 @@ describe("SlowContentPage", () => {
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
       "model",
     ]);
+  });
+  describe("sorting", () => {
+    it.each([
+      ["Name", "name"],
+      ["Type", "entity-type"],
+      ["Created by", "created-by"],
+      ["Created at", "created-at"],
+      ["Duration", "duration-ms"],
+    ])("sorts by %s", async (header, sortColumn) => {
+      const { router } = setup({ findings: FINDINGS });
+      await waitForListToLoad();
+
+      await userEvent.click(
+        screen.getByRole("columnheader", { name: new RegExp(`^${header}`) }),
+      );
+
+      await waitFor(() => {
+        expect(getUrlQuery(router)).toEqual({
+          "sort-column": sortColumn,
+          "sort-direction": "asc",
+        });
+      });
+      expect(getLastRequestUrl().searchParams.get("sort-column")).toBe(
+        sortColumn,
+      );
+    });
+
+    it("cycles a column through ascending, descending and unsorted", async () => {
+      const { router } = setup({ findings: FINDINGS });
+      await waitForListToLoad();
+
+      const header = () =>
+        screen.getByRole("columnheader", { name: /^Created at/ });
+
+      await userEvent.click(header());
+      await waitFor(() => {
+        expect(header()).toHaveAttribute("aria-sort", "ascending");
+      });
+      expect(getUrlQuery(router)).toEqual({
+        "sort-column": "created-at",
+        "sort-direction": "asc",
+      });
+
+      await userEvent.click(header());
+      await waitFor(() => {
+        expect(header()).toHaveAttribute("aria-sort", "descending");
+      });
+      expect(getUrlQuery(router)).toEqual({
+        "sort-column": "created-at",
+        "sort-direction": "desc",
+      });
+
+      await userEvent.click(header());
+      await waitFor(() => {
+        expect(getUrlQuery(router)).toEqual({});
+      });
+      expect(header()).not.toHaveAttribute("aria-sort");
+    });
+
+    it("does not offer sorting by Location", async () => {
+      setup({ findings: FINDINGS });
+      await waitForListToLoad();
+
+      expect(
+        screen.getByRole("columnheader", { name: /^Location/ }),
+      ).not.toHaveAttribute("tabindex");
+    });
   });
 });
