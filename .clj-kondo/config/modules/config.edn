@@ -792,6 +792,7 @@
            metabase.driver.util}
    :uses #{app-db
            appearance
+           audit-app
            auth-provider
            classloader
            config

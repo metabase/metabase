@@ -4,6 +4,8 @@
   (:refer-clojure :exclude [get-in some select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.audit-app.core :as audit-app]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.settings :as driver.settings]
@@ -281,7 +283,9 @@
                             ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
                             ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
                             ;; not in [[database-id->connection-pool]].
-                            (or (:is-audit db) (get-in db [:details :is-audit-dev]))
+                            (or (:is-audit db)
+                                (and (audit-app/analytics-dev-mode)
+                                     (get-in db [:details :is-audit-dev])))
                             {:datasource (driver-api/data-source)}
 
                             (= ::not-found details)
