@@ -49,7 +49,7 @@ Top level:
 
 Stage (`"lib/type": "mbql.stage/mbql"` — required marker):
 - `source-table` **or** `source-card` — exactly one, **first stage only**. Later stages take the previous stage's output implicitly.
-- Optional: `filters`, `aggregation`, `breakout`, `expressions`, `fields`, `joins`, `order-by`, `limit`, `page`.
+- Optional: `filters`, `aggregation`, `breakout`, `expressions`, `fields`, `joins`, `order-by`, `limit`.
 
 There is no top-level `database:` field in the LLM contract — the database is derived from the source.
 
