@@ -22,8 +22,6 @@ import { InsightsMenuItem } from "./components/InsightsMenuItem";
 import { getUserMenuRoutes } from "./routes";
 import { isAuditDb } from "./utils";
 
-// A component rather than an element: the menu items are built at module load,
-// where there is no route context to read `useTenantUrls` from.
 function UnsubscribeUserMenuItem({ user }: { user: User }) {
   const tenantUrls = useTenantUrls();
 
