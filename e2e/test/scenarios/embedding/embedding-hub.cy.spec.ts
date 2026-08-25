@@ -490,7 +490,7 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
     });
   });
 
-  describe("unlicensed", { tags: "@EE" }, () => {
+  describe("oss", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
