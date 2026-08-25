@@ -1,5 +1,4 @@
 import type {
-  ContentDiagnosticsScanResult,
   ListDuplicatedFindingsRequest,
   ListDuplicatedFindingsResponse,
   ListImbalancedFindingsRequest,
@@ -11,7 +10,7 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, listTag } from "./tags";
+import { listTag } from "./tags";
 
 export const contentDiagnosticsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -59,17 +58,6 @@ export const contentDiagnosticsApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [listTag("content-diagnostics-finding")],
     }),
-    runContentDiagnosticsScan: builder.mutation<
-      ContentDiagnosticsScanResult,
-      void
-    >({
-      query: () => ({
-        method: "POST",
-        url: "/api/ee/content-diagnostics/scan",
-      }),
-      invalidatesTags: (_result, error) =>
-        invalidateTags(error, [listTag("content-diagnostics-finding")]),
-    }),
   }),
 });
 
@@ -78,5 +66,4 @@ export const {
   useListSlowFindingsQuery,
   useListDuplicatedFindingsQuery,
   useListImbalancedFindingsQuery,
-  useRunContentDiagnosticsScanMutation,
 } = contentDiagnosticsApi;

@@ -1,4 +1,4 @@
-import { type ReactNode, memo } from "react";
+import { memo } from "react";
 
 import { Group } from "metabase/ui";
 
@@ -16,7 +16,6 @@ type SlowContentFilterBarProps = {
   isLoading: boolean;
   onQueryChange: (query: string | undefined) => void;
   onFilterOptionsChange: (filterOptions: SlowContentFilterOptions) => void;
-  actions?: ReactNode;
 };
 
 export const SlowContentFilterBar = memo(function SlowContentFilterBar({
@@ -25,7 +24,6 @@ export const SlowContentFilterBar = memo(function SlowContentFilterBar({
   isLoading,
   onQueryChange,
   onFilterOptionsChange,
-  actions,
 }: SlowContentFilterBarProps) {
   const hasDefaultFilterOptions = areSlowFilterOptionsEqual(
     filterOptions,
@@ -41,7 +39,6 @@ export const SlowContentFilterBar = memo(function SlowContentFilterBar({
         hasDefaultOptions={hasDefaultFilterOptions}
         onFilterOptionsChange={onFilterOptionsChange}
       />
-      {actions}
     </Group>
   );
 });

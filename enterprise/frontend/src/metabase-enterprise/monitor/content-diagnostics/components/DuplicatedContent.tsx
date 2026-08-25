@@ -15,7 +15,6 @@ import type { ContentDiagnosticsDuplicatedSortColumn } from "metabase-types/api"
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
-import { DiagnosticsScanButton } from "./DiagnosticsScanButton";
 import { DuplicatedContentFilterBar } from "./DuplicatedContentFilterBar";
 import { DuplicatedContentSidebar } from "./DuplicatedContentSidebar";
 import { DuplicatedContentTable } from "./DuplicatedContentTable";
@@ -151,7 +150,6 @@ export function DuplicatedContent({
             isLoading={isLoading}
             onQueryChange={handleQueryChange}
             onFilterOptionsChange={handleFilterOptionsChange}
-            actions={<DiagnosticsScanButton />}
           />
           {error != null ? (
             <Center flex={1}>

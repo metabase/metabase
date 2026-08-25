@@ -1,4 +1,4 @@
-import { type ReactNode, memo } from "react";
+import { memo } from "react";
 
 import { Group } from "metabase/ui";
 
@@ -18,7 +18,6 @@ type ImbalancedContentFilterBarProps = {
   onFilterOptionsChange: (
     filterOptions: ImbalancedContentFilterOptions,
   ) => void;
-  actions?: ReactNode;
 };
 
 export const ImbalancedContentFilterBar = memo(
@@ -28,7 +27,6 @@ export const ImbalancedContentFilterBar = memo(
     isLoading,
     onQueryChange,
     onFilterOptionsChange,
-    actions,
   }: ImbalancedContentFilterBarProps) {
     const hasDefaultFilterOptions = areImbalancedFilterOptionsEqual(
       filterOptions,
@@ -44,7 +42,6 @@ export const ImbalancedContentFilterBar = memo(
           hasDefaultOptions={hasDefaultFilterOptions}
           onFilterOptionsChange={onFilterOptionsChange}
         />
-        {actions}
       </Group>
     );
   },

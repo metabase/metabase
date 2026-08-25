@@ -18,7 +18,6 @@ import type {
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
-import { DiagnosticsScanButton } from "./DiagnosticsScanButton";
 import { ImbalancedContentFilterBar } from "./ImbalancedContentFilterBar";
 import { ImbalancedContentSidebar } from "./ImbalancedContentSidebar";
 import { ImbalancedContentTable } from "./ImbalancedContentTable";
@@ -159,7 +158,6 @@ export function ImbalancedContent({
             isLoading={isLoading}
             onQueryChange={handleQueryChange}
             onFilterOptionsChange={handleFilterOptionsChange}
-            actions={<DiagnosticsScanButton />}
           />
           {error != null ? (
             <Center flex={1}>

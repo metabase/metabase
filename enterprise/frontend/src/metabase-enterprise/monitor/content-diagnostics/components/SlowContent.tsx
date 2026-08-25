@@ -18,7 +18,6 @@ import type {
 import { ContentDiagnosticsBulkTrashBar } from "./ContentDiagnosticsBulkTrashBar";
 import { DiagnosticsHeader } from "./DiagnosticsHeader";
 import { DiagnosticsPagination } from "./DiagnosticsPagination";
-import { DiagnosticsScanButton } from "./DiagnosticsScanButton";
 import { SlowContentFilterBar } from "./SlowContentFilterBar";
 import { SlowContentSidebar } from "./SlowContentSidebar";
 import { SlowContentTable } from "./SlowContentTable";
@@ -153,7 +152,6 @@ export function SlowContent({
             isLoading={isLoading}
             onQueryChange={handleQueryChange}
             onFilterOptionsChange={handleFilterOptionsChange}
-            actions={<DiagnosticsScanButton />}
           />
           {error != null ? (
             <Center flex={1}>

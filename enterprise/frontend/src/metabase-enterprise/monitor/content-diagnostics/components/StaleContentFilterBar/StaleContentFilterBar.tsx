@@ -1,4 +1,4 @@
-import { type ReactNode, memo } from "react";
+import { memo } from "react";
 
 import { Group } from "metabase/ui";
 
@@ -16,7 +16,6 @@ type StaleContentFilterBarProps = {
   isLoading: boolean;
   onQueryChange: (query: string | undefined) => void;
   onFilterOptionsChange: (filterOptions: StaleContentFilterOptions) => void;
-  actions?: ReactNode;
 };
 
 export const StaleContentFilterBar = memo(function StaleContentFilterBar({
@@ -25,7 +24,6 @@ export const StaleContentFilterBar = memo(function StaleContentFilterBar({
   isLoading,
   onQueryChange,
   onFilterOptionsChange,
-  actions,
 }: StaleContentFilterBarProps) {
   const hasDefaultFilterOptions = areStaleFilterOptionsEqual(
     filterOptions,
@@ -41,7 +39,6 @@ export const StaleContentFilterBar = memo(function StaleContentFilterBar({
         hasDefaultOptions={hasDefaultFilterOptions}
         onFilterOptionsChange={onFilterOptionsChange}
       />
-      {actions}
     </Group>
   );
 });

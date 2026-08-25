@@ -168,12 +168,6 @@ export type ContentDiagnosticsStaleFinding = ContentDiagnosticsBaseFinding & {
   details: ContentDiagnosticsStaleFindingDetails;
 };
 
-export type ContentDiagnosticsScanResult = {
-  scan_id: string;
-  finding_count: number;
-  duration_ms: number;
-};
-
 export type ListStaleFindingsRequest = {
   query?: string;
   "entity-types"?: ContentDiagnosticsNonCollectionFilterType[];
