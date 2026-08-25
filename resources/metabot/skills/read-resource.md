@@ -79,7 +79,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - `metabase://table/{id}` — basic table info
 - `metabase://table/{id}/fields` — table with fields
 - `metabase://table/{id}/fields/{field_id}` — specific field with sample values and stats
-- `metabase://table/{id}/derived` — cards (questions/models) and transforms built on this table
+- `metabase://table/{id}/derived` — cards (questions/models) built on this table, plus the transforms that declare it as a source. Only `python` transforms declare their source tables, so a SQL/`query` transform reading this table will **not** appear here.
 
 **Examples:**
 - Want table structure (fields without value information)? → `metabase://table/123/fields`
@@ -124,19 +124,21 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 ## Transform resources
 
-- `metabase://transform/{id}` — transform details and configuration
-- `metabase://transform/{id}/sources` — source database and tables this transform reads from
+- `metabase://transform/{id}` — transform details and configuration, including the source query for a `query` transform. Python transforms report `type="python"` but their script body is **not** included.
+- `metabase://transform/{id}/sources` — the source database, plus source tables for `python` transforms only (see below)
 - `metabase://transform/{id}/target` — target database and table this transform writes to
 
 **Examples:**
-- Want to inspect a transform's SQL or Python source before editing it? → `metabase://transform/42`
+- Want to inspect a `query` transform's SQL/MBQL before editing it? → `metabase://transform/42`
 - "What does this transform read?" → `metabase://transform/42/sources`
 - "Where does this transform write?" → `metabase://transform/42/target`
 
 **Best Practices:**
-- Fetch a transform's details before modifying it so you have the current source query and target configuration.
-- Use the returned source type (`query` or `python`) to understand how the transform is implemented before recommending changes to it.
-- Walk `/sources` and `/target` to understand lineage before recommending downstream changes.
+- Fetch a transform's details before modifying it so you have the current target configuration and — for `query` transforms — the current source query.
+- Check the returned source type (`query` or `python`) first: it decides both how the transform is implemented and how much lineage you can see.
+- **Lineage is asymmetric between the two source types.** A `python` transform declares its inputs explicitly, so `/sources` lists its source tables and those tables' `/derived` lists it back. A `query` transform's inputs live inside its query, which is not walked — so `/sources` returns only its database with no tables, and it never shows up under any table's `/derived`, even when its SQL plainly reads that table.
+- Because of that asymmetry, a table's `/derived` is not proof that nothing reads it. When it matters whether a `query` transform touches a table, fetch the candidate transforms' details and read their source queries rather than trusting `/derived` to be complete.
+- Walk `/sources` and `/target` to understand lineage before recommending downstream changes, keeping the gap above in mind.
 
 ## Dashboard resources
 
