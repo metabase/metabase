@@ -4,7 +4,7 @@ import {
   QA_POSTGRES_PORT,
   USER_GROUPS,
 } from "e2e/support/cypress_data";
-import type { DatabaseData, User } from "metabase-types/api";
+import type { Database, DatabaseData, User } from "metabase-types/api";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
@@ -22,6 +22,35 @@ export function configureDbRoutingViaAPI({
   );
 }
 
+/**
+ * Grants a group database management permission, which the graph API exposes as
+ * `details` and stores as `:perms/manage-database`. Permissions that aren't named
+ * in the payload are left as they are.
+ */
+export function grantDatabaseManagementViaAPI({
+  groupId,
+  databaseId,
+}: {
+  groupId: number;
+  databaseId: number;
+}) {
+  cy.request("GET", "/api/permissions/graph").then(
+    ({ body: { groups, revision } }) => {
+      cy.request("PUT", "/api/permissions/graph", {
+        revision,
+        groups: {
+          ...groups,
+          [groupId]: {
+            ...groups[groupId],
+            [databaseId]: { details: "yes" },
+          },
+        },
+      });
+    },
+  );
+}
+
+/** Responds with the created destination databases, in the order they were passed in. */
 export function createDestinationDatabasesViaAPI({
   router_database_id,
   databases,
@@ -29,10 +58,14 @@ export function createDestinationDatabasesViaAPI({
   router_database_id: number;
   databases: DatabaseData[];
 }) {
-  cy.request("POST", "/api/ee/database-routing/destination-database", {
-    router_database_id,
-    destinations: databases,
-  });
+  return cy.request<Database[]>(
+    "POST",
+    "/api/ee/database-routing/destination-database",
+    {
+      router_database_id,
+      destinations: databases,
+    },
+  );
 }
 
 export const BASE_POSTGRES_DESTINATION_DB_INFO = {
