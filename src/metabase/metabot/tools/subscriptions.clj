@@ -90,14 +90,15 @@
 (mu/defn ^{:tool-name "create_dashboard_subscription"
            :scope     scope/agent-dashboard-subscribe}
   create-dashboard-subscription-tool
-  "Create a dashboard subscription to send regular updates via email or Slack.
+  "Create a dashboard subscription that sends regular updates to a Slack channel.
 
   Use when a user wants to receive or send regular updates on a dashboard's contents.
-  Requires a valid dashboard ID, either an email address or a Slack channel name, and a schedule.
+  Requires a valid `dashboard_id`, a `slack_channel` name, and a `schedule`.
 
-  Do NOT infer email addresses from usernames or other information.
-  If the email address is incomplete or missing a part like the TLD,
-  ask the user for clarification before proceeding."
+  Delivery is Slack-only: the `email` argument is not implemented and is ignored, and Slack must
+  be connected in Metabase settings. A call without `slack_channel` fails, so if the user asks to
+  be emailed a dashboard, tell them this tool can only deliver to Slack rather than accepting an
+  email address."
   [{:keys [dashboard_id email slack_channel schedule]} :- subscription-schema]
   (try
     (create-dashboard-subscription
