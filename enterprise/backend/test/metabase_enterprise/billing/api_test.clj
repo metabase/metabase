@@ -12,9 +12,12 @@
   []
   (memoize/memo-clear! @#'billing.api/fetch-billing-status*))
 
+(use-fixtures :each (fn [thunk]
+                      (clear-billing-status-cache!)
+                      (thunk)))
+
 (deftest fetch-billing-status-test
   (testing "Passes through billing status fetched from server"
-    (clear-billing-status-cache!)
     (mt/with-temporary-setting-values [premium-embedding-token nil]
       (binding [http/request (fn [& _]
                                {:status 200
@@ -48,7 +51,6 @@
 
 (deftest fetch-billing-status-error-test
   (testing "When receiving a non json result consume the error and return an empty content blob"
-    (clear-billing-status-cache!)
     (mt/with-temporary-setting-values [premium-embedding-token nil]
       (binding [http/request (fn [& _]
                                {:status 404
