@@ -384,9 +384,13 @@
       (let [routes-to-app-db? (fn []
                                 (= {:datasource (mdb/data-source)}
                                    (sql-jdbc.conn/db->pooled-connection-spec (:id db))))]
-        (testing "dev mode off: the flag is ignored, so it does NOT route to the app DB"
+        (testing "dev mode off: reaching the connection layer with an :is-audit-dev db is an invariant violation, so
+                  it throws rather than silently building a connection against the wrong host"
           (mt/with-temporary-setting-values [analytics-dev-mode false]
-            (is (not (routes-to-app-db?)))))
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Cannot open a connection for an analytics-dev database"
+                 (routes-to-app-db?)))))
         (testing "dev mode on: the flag is honored (the legitimate local-dev path still works)"
           (mt/with-temporary-setting-values [analytics-dev-mode true]
             (is (routes-to-app-db?))))))))
