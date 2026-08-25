@@ -143,7 +143,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 ## Dashboard resources
 
 - `metabase://dashboard/{id}` — dashboard details
-- `metabase://dashboard/{id}/items` — everything on the dashboard in layout order: question cards (each rendered as a `metabase://question/{id}` URI you can drill into) plus headings, text cards, and action buttons
+- `metabase://dashboard/{id}/items` — everything on the dashboard in layout order: card-backed dashcards (each with a URI you can drill into, matching the backing card's own type — `metabase://question/{id}`, `metabase://model/{id}`, or `metabase://metric/{id}`) plus headings, text cards, and action buttons
 
 **Examples:**
 - Want to understand what a dashboard contains before recommending it? → `metabase://dashboard/158`
