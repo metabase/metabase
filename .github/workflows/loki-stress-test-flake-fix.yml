@@ -177,7 +177,6 @@ jobs:
               --verboseRenderer 2>&1 | tee .loki-run.log; then
               echo "✅ Run $i passed"
             elif grep -q 'No stories were found' .loki-run.log; then
-              # Loki applies every kind of skip while loading the built storybook, so this is the one reliable signal.
               echo "::notice::Every story in the changed files is loki-skipped, nothing to stress test"
               exit 0
             else
