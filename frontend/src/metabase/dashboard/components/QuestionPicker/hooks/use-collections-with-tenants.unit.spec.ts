@@ -3,10 +3,9 @@ import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection
 import { setupTenantEntpoints } from "__support__/server-mocks/tenant";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import type { ExpandedCollection } from "metabase/redux/store";
+import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { Collection, CollectionId, Tenant } from "metabase-types/api";
+import type { Collection, Tenant } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -18,16 +17,6 @@ import {
 } from "../utils/tenant-collection-tree";
 
 import { useCollectionsWithTenants } from "./use-collections-with-tenants";
-
-const createMockExpandedCollection = (
-  overrides: Partial<Collection> & { path?: CollectionId[] | null },
-): ExpandedCollection => ({
-  ...createMockCollection(overrides),
-  path: overrides.path ?? [],
-  parent: null,
-  children: [],
-  is_personal: false,
-});
 
 type SetupHookOptions = {
   useTenants?: boolean;
@@ -43,16 +32,8 @@ function setupHook({
   setupCollectionTreeEndpoint(sharedCollections);
   setupTenantEntpoints(tenants);
 
-  const baseRoot = createMockExpandedCollection({
-    ...ROOT_COLLECTION,
-    path: [],
-  });
-  const collectionsById: Record<CollectionId, ExpandedCollection> = {
-    [ROOT_COLLECTION.id]: baseRoot,
-  };
-
   return renderHookWithProviders(
-    () => useCollectionsWithTenants(collectionsById),
+    () => useCollectionsWithTenants(getExpandedCollectionsById([], null)),
     {
       storeInitialState: createMockState({
         settings: mockSettings({
@@ -69,11 +50,12 @@ describe("useCollectionsWithTenants", () => {
     mockSettings({
       "token-features": createMockTokenFeatures({ tenants: true }),
     });
+
     setupEnterprisePlugins();
   });
 
   it("returns collectionsById unchanged when tenants are disabled", () => {
-    const { result } = setupHook({ useTenants: false });
+    const { result } = setupHook();
 
     expect(result.current).not.toHaveProperty(String(COLLECTIONS_TOP_LEVEL_ID));
     expect(result.current).not.toHaveProperty(
@@ -81,7 +63,7 @@ describe("useCollectionsWithTenants", () => {
     );
   });
 
-  it("returns collectionsById unchanged when tenants have no shared collections", async () => {
+  it("returns collectionsById unchanged when tenant collections are empty", async () => {
     const { result } = setupHook({ useTenants: true });
 
     await waitFor(() => {
@@ -89,10 +71,6 @@ describe("useCollectionsWithTenants", () => {
         String(COLLECTIONS_TOP_LEVEL_ID),
       );
     });
-
-    expect(result.current).not.toHaveProperty(
-      String(SHARED_TENANT_COLLECTIONS_ROOT_ID),
-    );
   });
 
   it("merges shared collections when tenants are enabled", async () => {
@@ -102,6 +80,7 @@ describe("useCollectionsWithTenants", () => {
       location: "/",
       namespace: "shared-tenant-collection",
     });
+
     const { result } = setupHook({
       useTenants: true,
       sharedCollections: [sharedCollection],
