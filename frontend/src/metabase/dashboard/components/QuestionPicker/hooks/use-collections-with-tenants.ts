@@ -26,10 +26,10 @@ import {
  * The tree structure becomes:
  *   Collections (top level)
  *   ├── Our analytics (root collection)
- *   ├── Shared collections (synthetic root for shared collections)
+ *   ├── Shared collections (synthetic collection)
  *       ├── Shared collection A
  *       └── Shared collection B
- *   └── Tenant collections (synthetic root for tenant-specific collections)
+ *   └── Tenant collections (synthetic collection)
  *       ├── Tenant collection A
  *       └── Tenant collection B
  */

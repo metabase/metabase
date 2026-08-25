@@ -71,7 +71,7 @@ describe("mergeCollectionNamespaceChildren", () => {
 
     const syntheticTopLevel = createSyntheticTopLevel();
 
-    const syntheticRoot: ExpandedCollection = {
+    const syntheticCollection: ExpandedCollection = {
       ...syntheticTopLevel,
       id: SHARED_TENANT_COLLECTIONS_ROOT_ID,
       name: "Shared collections",
@@ -87,14 +87,14 @@ describe("mergeCollectionNamespaceChildren", () => {
         tenantCollection,
         subCollection,
       ]),
-      parent: syntheticRoot,
-      pathPrefix: [COLLECTIONS_TOP_LEVEL_ID, syntheticRoot.id],
+      parent: syntheticCollection,
+      pathPrefix: [COLLECTIONS_TOP_LEVEL_ID, syntheticCollection.id],
     });
 
     const mergedTenantCollection = collectionsById[tenantCollection.id];
     const mergedSubCollection = collectionsById[subCollection.id];
 
-    expect(mergedTenantCollection.parent).toBe(syntheticRoot);
+    expect(mergedTenantCollection.parent).toBe(syntheticCollection);
 
     expect(mergedTenantCollection.path).toEqual([
       COLLECTIONS_TOP_LEVEL_ID,

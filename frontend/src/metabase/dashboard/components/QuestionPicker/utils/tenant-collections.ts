@@ -24,7 +24,7 @@ interface TenantCollectionTrees {
 }
 
 /**
- * Input to populate the question picker's synthetic root
+ * Input to populate the question picker's synthetic collections
  * for non-tenant users, including admins.
  */
 interface MergeTenantCollectionsArgs extends TenantCollectionTrees {
@@ -33,9 +33,9 @@ interface MergeTenantCollectionsArgs extends TenantCollectionTrees {
 }
 
 /**
- * Represents the synthetic `Collections` root for tenant-aware users.
+ * Describes one synthetic collection below `Collections`.
  */
-interface TenantCollectionSyntheticRoot {
+interface SyntheticCollectionConfig {
   id: CollectionId;
   name: string;
   namespace: Collection["namespace"];
@@ -54,16 +54,16 @@ interface TenantCollectionSyntheticRoot {
  */
 function addSyntheticCollectionToRoot({
   topLevel,
-  syntheticRoot: { id, name, namespace, collectionNamesById },
+  syntheticCollection: { id, name, namespace, collectionNamesById },
   collectionsById,
   namespaceCollectionsById,
 }: {
   topLevel: ExpandedCollection;
-  syntheticRoot: TenantCollectionSyntheticRoot;
+  syntheticCollection: SyntheticCollectionConfig;
   collectionsById: Record<CollectionId, ExpandedCollection>;
   namespaceCollectionsById: Record<CollectionId, ExpandedCollection>;
 }): ExpandedCollection | null {
-  const syntheticRoot: ExpandedCollection = {
+  const syntheticCollection: ExpandedCollection = {
     id,
     name,
     description: null,
@@ -80,8 +80,8 @@ function addSyntheticCollectionToRoot({
   const children = mergeCollectionNamespaceChildren({
     collectionsById,
     namespaceCollectionsById,
-    parent: syntheticRoot,
-    pathPrefix: [COLLECTIONS_TOP_LEVEL_ID, syntheticRoot.id],
+    parent: syntheticCollection,
+    pathPrefix: [COLLECTIONS_TOP_LEVEL_ID, syntheticCollection.id],
     getCollectionName: (collection) =>
       collectionNamesById?.get(collection.id) ?? collection.name,
   });
@@ -90,9 +90,9 @@ function addSyntheticCollectionToRoot({
     return null;
   }
 
-  syntheticRoot.children = children;
+  syntheticCollection.children = children;
 
-  return syntheticRoot;
+  return syntheticCollection;
 }
 
 /**
@@ -116,22 +116,22 @@ export function mergeTenantCollections({
     syntheticTopLevel,
   });
 
-  const sharedSyntheticRoot = addSyntheticCollectionToRoot({
+  const sharedSyntheticCollection = addSyntheticCollectionToRoot({
     collectionsById: mergedCollectionsById,
     namespaceCollectionsById: sharedCollectionsById,
     topLevel: syntheticTopLevel,
-    syntheticRoot: {
+    syntheticCollection: {
       id: SHARED_TENANT_COLLECTIONS_ROOT_ID,
       name: sharedCollectionsName,
       namespace: PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
     },
   });
 
-  const tenantSpecificSyntheticRoot = addSyntheticCollectionToRoot({
+  const tenantSpecificSyntheticCollection = addSyntheticCollectionToRoot({
     collectionsById: mergedCollectionsById,
     namespaceCollectionsById: tenantSpecificCollectionsById,
     topLevel: syntheticTopLevel,
-    syntheticRoot: {
+    syntheticCollection: {
       id: TENANT_SPECIFIC_COLLECTIONS_ROOT_ID,
       name: t`Tenant collections`,
       namespace: PLUGIN_TENANTS.TENANT_SPECIFIC_NAMESPACE,
@@ -141,18 +141,18 @@ export function mergeTenantCollections({
 
   syntheticTopLevel.children = [
     mergedRoot,
-    sharedSyntheticRoot,
-    tenantSpecificSyntheticRoot,
+    sharedSyntheticCollection,
+    tenantSpecificSyntheticCollection,
   ].filter(
     (collection): collection is ExpandedCollection => collection != null,
   );
 
-  for (const syntheticRoot of [
-    sharedSyntheticRoot,
-    tenantSpecificSyntheticRoot,
+  for (const syntheticCollection of [
+    sharedSyntheticCollection,
+    tenantSpecificSyntheticCollection,
   ]) {
-    if (syntheticRoot) {
-      mergedCollectionsById[syntheticRoot.id] = syntheticRoot;
+    if (syntheticCollection) {
+      mergedCollectionsById[syntheticCollection.id] = syntheticCollection;
     }
   }
 
