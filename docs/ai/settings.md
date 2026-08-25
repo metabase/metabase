@@ -131,7 +131,7 @@ If you're embedding the Metabot component in an app, you can point embedded Meta
 
 Picking **Our analytics** is the same as picking no collection at all, so pick something narrower if you want the scoping to do anything.
 
-This setting narrows where embedded Metabot searches; it's not a permission boundary. Embedded Metabot can still read and query anything the person using it has permissions for. Embedded Metabot can also see the items that person viewed recently, whichever collection those live in (unless you've restricted it to [verified content](#verified-content)). To control what people can get to in an embed, set [data permissions](../permissions/embedding.md). See also [Set up AI chat in Metabase](../embedding/ai-chat.md#set-up-ai-chat-in-metabase).
+This setting narrows where embedded Metabot searches; it's not a permission boundary. Embedded Metabot can still read and query anything the person using it has permissions for. Embedded Metabot can also see the items that person viewed recently, whichever collection those live in. Restricting Metabot to [verified content](#verified-content) narrows those recent items to verified, official, and Library content, but it doesn't confine them to the collection you picked. To control what people can get to in an embed, set [data permissions](../permissions/embedding.md). See also [Set up AI chat in Metabase](../embedding/ai-chat.md#set-up-ai-chat-in-metabase).
 
 ### Prompt suggestions
 

@@ -30,21 +30,30 @@ Then turn on embedded Metabot and tell Metabase which collection it should searc
 3. Click the **AI** tab.
 4. In the left sidebar, click **AI Settings**.
 5. In the **Metabot settings** card, click the **Embedded** tab.
-6. Turn on **Enable Embedded Metabot**. With that toggle off, your chat component won't work.
+6. Turn on **Enable Embedded Metabot**.
 7. Under **Collection Embedded Metabot can use**, click **Pick a different collection** and choose the collection that holds the models and metrics embedded Metabot should query.
 
 The collection you pick here just narrows the chat's search scope. The AI can still query anything the person using the chat has [permissions to query](../permissions/embedding.md).
 
-The **Embedded** tab configures embedded Metabot separately from the Metabot in your own Metabase, which lives on the **Internal** tab. For the rest of the settings for embedded Metabot, see [Metabot settings](../ai/settings.md#configure-metabot).
+The **Embedded** tab configures Metabot in embedded context, which is separate from the [Metabot](../ai/settings.md) in your own Metabase (which lives on the **Internal** tab).
 
 With embedded Metabot set up, there are two ways to add the chat to your app:
 
 - **[Web component](#web-component-ai-chat)**: the whole chat interface, chart and all, from a single tag.
-- **[React SDK](#react-sdk-ai-chat)**: the same interface from the `MetabotQuestion` component, or the [`useMetabot`](#build-a-custom-ai-chat-ui-with-usemetabot) hook if you'd rather build the interface yourself.
+- **[React SDK](#react-sdk-ai-chat)**: the same interface from the `MetabotQuestion` component, or the [`useMetabot`](#build-a-custom-ai-chat-ui-with-usemetabot-react-sdk-only) hook if you'd rather build the interface yourself.
 
-Either way, you [set where the chart appears](#set-where-the-chart-appears) and [let people save questions](#let-people-save-questions-metabot-creates) the same way.
+Both the web component and `MetabotQuestion` let you [set where the chart appears](#set-where-the-chart-appears) and [whether people can save questions](#let-people-save-questions-metabot-creates). If you build your own interface with [`useMetabot`](#build-a-custom-ai-chat-ui-with-usemetabot-react-sdk-only), those are yours to handle.
 
 ## Web component AI chat
+
+You can use the in-app wizard to generate the code:
+
+1. Go to **Admin > Embedding > Setup guide > Embed in your code**.
+2. For the experience, select **Metabot**.
+3. Pick a [layout](#set-where-the-chart-appears) and decide whether people can [save questions](#let-people-save-questions-metabot-creates).
+4. Click **Get code** and paste the snippet into your app.
+
+The **Metabot** option only shows up once an admin has turned on embedded Metabot, and only for SSO authentication. See [modular embedding](./modular-embedding.md) for what the rest of the generated snippet does.
 
 To render the AI chat interface:
 
@@ -58,7 +67,7 @@ To render the AI chat interface:
 
 Depending on the framework you're using, you may need to stringify attributes before passing them to the component. And if you surround an attribute's value with double quotes, use single quotes inside it.
 
-For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md). Metabot's own text isn't translated; see [The AI chat component isn't translated](./translations.md#the-ai-chat-component-isnt-translated).
+For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md). But [Metabot's own text isn't translated](./translations.md#the-ai-chat-component-isnt-translated).
 
 ## React SDK AI chat
 
@@ -79,17 +88,45 @@ To embed an AI chat with the [SDK](./sdk/introduction.md), use the `MetabotQuest
 
 ## Set where the chart appears
 
-Use the `layout` attribute (web component) or the `layout` prop (SDK) to position the chart relative to the chat interface:
+- [Web component](#web-component-chart-layout)
+- [React SDK](#react-sdk-chart-layout)
+
+The `layout` setting positions the chart relative to the chat interface:
 
 - `auto` (default): Metabot uses the `stacked` layout on mobile screens, and a `sidebar` layout on larger screens.
 - `stacked`: the chart stacks on top of the chat interface.
 - `sidebar`: the chart appears to the left of the chat interface, which sits in a sidebar on the right.
 
+`layout` only applies to the built-in chat component. If you're building your own interface with [`useMetabot`](#build-a-custom-ai-chat-ui-with-usemetabot-react-sdk-only), you position the chart yourself.
+
+### Web component chart layout
+
+Set the `layout` attribute:
+
+```html
+<metabase-metabot layout="stacked"></metabase-metabot>
+```
+
+### React SDK chart layout
+
+Set the `layout` prop on `MetabotQuestion`:
+
+```tsx
+<MetabotQuestion layout="stacked" />
+```
+
 ## Let people save questions Metabot creates
 
-Metabot answers with ad-hoc questions, so nothing lands in your Metabase unless you say so. Turning on the save button lets people keep a question Metabot built.
+- [Web component](#web-component-question-saving)
+- [React SDK](#react-sdk-question-saving)
 
-With a web component, saving is off by default. Turn it on with `is-save-enabled="true"`. `target-collection` is optional, but it's worth setting: it picks the collection that new questions land in, so people's work doesn't scatter across your Metabase. Setting a target collection also hides the collection picker in the save modal, so nobody has to decide where their question goes.
+Turning on the chat's save button lets people keep a question Metabot built. Saving is off by default.
+
+Setting a target collection is optional, but it's worth doing: it picks the collection that new questions land in, so people's work doesn't scatter across your Metabase. It also hides the collection picker in the save modal, so nobody has to decide where their question goes.
+
+### Web component question saving
+
+Turn saving on with `is-save-enabled="true"`, and set the collection with `target-collection`:
 
 ```html
 <metabase-metabot
@@ -98,9 +135,15 @@ With a web component, saving is off by default. Turn it on with `is-save-enabled
 ></metabase-metabot>
 ```
 
-With the SDK, the equivalent props on `MetabotQuestion` are `isSaveEnabled` and `targetCollection`.
+### React SDK question saving
 
-## Build a custom AI chat UI with `useMetabot`
+The equivalent props on `MetabotQuestion` are `isSaveEnabled` and `targetCollection`:
+
+```tsx
+<MetabotQuestion isSaveEnabled targetCollection={123} />
+```
+
+## Build a custom AI chat UI with `useMetabot` (React SDK only)
 
 If `MetabotQuestion`'s built-in layouts don't fit your app, use the `useMetabot` hook to read Metabot's conversation state directly and render your own UI. The hook gives you the messages, the chart the agent most recently produced, processing and error state, and actions to submit, cancel, retry, or reset the conversation.
 
@@ -154,4 +197,5 @@ Agent text can include links pointing back to the Metabase it's running against,
 - [Embed a dashboard](./dashboard.md)
 - [Appearance](./appearance.md)
 - [Authentication](./authentication.md)
+- [Modular embedding](./modular-embedding.md)
 - [Modular embedding SDK](./sdk/introduction.md)
