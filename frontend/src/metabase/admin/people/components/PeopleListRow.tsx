@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { useUserUrls } from "metabase/common/tenants";
 import { dayjs } from "metabase/dayjs";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -17,6 +16,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { getFullName } from "metabase/utils/user";
 import type {
   GroupId,
@@ -58,7 +58,6 @@ export const PeopleListRow = ({
   onChange,
   isConfirmModalOpen,
 }: PeopleListRowProps) => {
-  const userUrls = useUserUrls();
   const isExternal = !!user.tenant_id;
   const membershipsByGroupId = useMemo(
     () =>
@@ -141,7 +140,7 @@ export const PeopleListRow = ({
                 <Menu.Dropdown>
                   <Menu.Item
                     component={ForwardRefLink}
-                    to={userUrls.editUser(user)}
+                    to={Urls.editUser(user)}
                   >
                     {t`Edit user`}
                   </Menu.Item>
@@ -149,7 +148,7 @@ export const PeopleListRow = ({
                   {isPasswordLoginEnabled && (
                     <Menu.Item
                       component={ForwardRefLink}
-                      to={userUrls.resetPassword(user)}
+                      to={Urls.resetPassword(user)}
                     >
                       {t`Reset password`}
                     </Menu.Item>
@@ -162,7 +161,7 @@ export const PeopleListRow = ({
                   {!isCurrentUser && (
                     <Menu.Item
                       component={ForwardRefLink}
-                      to={userUrls.deactivateUser(user)}
+                      to={Urls.deactivateUser(user)}
                       c="feedback-negative"
                     >
                       {t`Deactivate user`}

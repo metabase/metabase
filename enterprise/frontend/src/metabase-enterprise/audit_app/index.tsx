@@ -1,14 +1,13 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useTenantUrls } from "metabase/common/tenants";
 import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_AUDIT,
 } from "metabase/plugins";
 import { Menu } from "metabase/ui";
-import { isInternalUser } from "metabase/urls";
+import * as Urls from "metabase/urls";
 import { handleMetabotSlashCommand } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/slash-commands";
 import {
   getAiAuditingRoutes,
@@ -22,25 +21,14 @@ import { InsightsMenuItem } from "./components/InsightsMenuItem";
 import { getUserMenuRoutes } from "./routes";
 import { isAuditDb } from "./utils";
 
-function UnsubscribeUserMenuItem({ user }: { user: User }) {
-  const tenantUrls = useTenantUrls();
-
-  return (
-    <Menu.Item
-      component={ForwardRefLink}
-      to={
-        isInternalUser(user)
-          ? `/admin/people/${user.id}/unsubscribe`
-          : tenantUrls.unsubscribeUser(user.id)
-      }
-    >
-      {t`Unsubscribe from all subscriptions / alerts`}
-    </Menu.Item>
-  );
-}
-
 const getUserMenuItems = (user: User): React.ReactNode => [
-  <UnsubscribeUserMenuItem user={user} key="unsubscribe" />,
+  <Menu.Item
+    component={ForwardRefLink}
+    to={Urls.unsubscribeUser(user)}
+    key="unsubscribe"
+  >
+    {t`Unsubscribe from all subscriptions / alerts`}
+  </Menu.Item>,
 ];
 
 /**

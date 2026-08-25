@@ -7,11 +7,11 @@ import {
 import { isEmailAlreadyInUse } from "metabase/api/utils/errors";
 import { trackUserInvited } from "metabase/common/analytics";
 import { UserForm } from "metabase/common/components/UserForm";
-import { useUserUrls } from "metabase/common/tenants";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { Modal } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { generatePassword } from "metabase/utils/password";
 import MetabaseSettings from "metabase/utils/settings";
 import type { User as UserType } from "metabase-types/api";
@@ -29,7 +29,6 @@ export const NewUserModal = ({
 }: NewUserModalProps) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const userUrls = useUserUrls();
 
   const [createUser] = useCreateUserMutation();
   const { data: groups } = useListPermissionsGroupsQuery({
@@ -62,7 +61,7 @@ export const NewUserModal = ({
       if (password) {
         dispatch(storeTemporaryPassword({ id: user.id, password }));
       }
-      navigate(userUrls.newUserSuccess(user));
+      navigate(Urls.newUserSuccess(user));
     } catch (error) {
       if (!external) {
         trackUserInvited({

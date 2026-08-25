@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { UpsellTenants } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
-import { TenantUrlsProvider } from "metabase/common/tenants";
+import {
+  resetTenantsBasePath,
+  setTenantsBasePath,
+} from "metabase/common/tenants";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Outlet, useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -40,29 +43,32 @@ export function EmbeddingHubTenancyPage() {
   const hasTenants = useHasTokenFeature("tenants");
   const isUsingTenants = useSetting("use-tenants");
 
+  // Declares the hub as the tenant URL builders' host, the same way
+  // EmbeddingHubPermissionsBasePath does for the permissions editor.
+  setTenantsBasePath(Urls.embeddingHubTenancy(), {
+    permissionsPath: Urls.embeddingHubPermissions(),
+  });
+  useEffect(() => resetTenantsBasePath, []);
+
   return (
     <Stack gap="xl">
       <Title order={1} c="text-primary">{t`Tenancy`}</Title>
 
-      {/* The provider rebases the tenant URLs onto the hub, so the listing's
-          links and the modal's post-save navigation stay inside it. */}
-      <TenantUrlsProvider basePath={Urls.embeddingHubTenancy()}>
-        {!hasTenants && <UpsellTenants />}
+      {!hasTenants && <UpsellTenants />}
 
-        {hasTenants && !isUsingTenants && <EnableTenancyCard />}
+      {hasTenants && !isUsingTenants && <EnableTenancyCard />}
 
-        {hasTenants && isUsingTenants && (
-          <>
-            <TenancyTabs />
+      {hasTenants && isUsingTenants && (
+        <>
+          <TenancyTabs />
 
-            {/* The listing centres itself with `mx="auto"`, which as a flex
-                item collapses it to its content width. */}
-            <Box w="100%">
-              <Outlet />
-            </Box>
-          </>
-        )}
-      </TenantUrlsProvider>
+          {/* The listing centres itself with `mx="auto"`, which as a flex
+              item collapses it to its content width. */}
+          <Box w="100%">
+            <Outlet />
+          </Box>
+        </>
+      )}
     </Stack>
   );
 }

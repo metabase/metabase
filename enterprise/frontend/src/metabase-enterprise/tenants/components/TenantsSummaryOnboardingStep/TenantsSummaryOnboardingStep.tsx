@@ -3,11 +3,11 @@ import { useMemo } from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import { RelatedSettingCard } from "metabase/admin/components/RelatedSettingsSection";
-import { useTenantUrls } from "metabase/common/tenants";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import { useNavigate } from "metabase/router";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 import { conjunct } from "metabase/utils/formatting/strings";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { useListTenantsQuery } from "../../../api/tenants";
@@ -120,37 +120,33 @@ export const TenantsSummaryOnboardingStep = ({
   );
 };
 
-const RelatedSettingsSection = () => {
-  const tenantUrls = useTenantUrls();
+const RelatedSettingsSection = () => (
+  <SimpleGrid cols={2} spacing="lg">
+    <RelatedSettingCard
+      name={t`Tenants`}
+      icon="globe"
+      to={EnterpriseUrls.tenants()}
+    />
 
-  return (
-    <SimpleGrid cols={2} spacing="lg">
-      <RelatedSettingCard
-        name={t`Tenants`}
-        icon="globe"
-        to={tenantUrls.root()}
-      />
+    <RelatedSettingCard
+      name={t`People`}
+      icon="person"
+      to={EnterpriseUrls.tenantPeople()}
+    />
 
-      <RelatedSettingCard
-        name={t`People`}
-        icon="person"
-        to={tenantUrls.people()}
-      />
+    <RelatedSettingCard
+      name={t`Authentication`}
+      icon="lock"
+      to="/admin/settings/authentication"
+    />
 
-      <RelatedSettingCard
-        name={t`Authentication`}
-        icon="lock"
-        to="/admin/settings/authentication"
-      />
-
-      <RelatedSettingCard
-        name={t`Permissions`}
-        icon="group"
-        to="/admin/permissions"
-      />
-    </SimpleGrid>
-  );
-};
+    <RelatedSettingCard
+      name={t`Permissions`}
+      icon="group"
+      to={EnterpriseUrls.tenantsPermissions()}
+    />
+  </SimpleGrid>
+);
 
 export function getDataPermissionsDescription({
   strategy,
