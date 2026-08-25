@@ -1301,17 +1301,44 @@ jobs:
             test-args: >-
               :only-tags [:mb/upload-tests]
               :fail-fast? true
-          - name: Redshift (Excluding Upload Tests) Part 1
+          # `:partition/*` balances on test-var count, so it cannot break up a block of namespaces that is
+          # cheap in vars and expensive in seconds. The `metabase-enterprise.*` driver tests are exactly that:
+          # ~10% of the vars and ~40% of the wall clock, and they sort ahead of `metabase.*`, so a plain 2-way
+          # split hands one job the whole block and times out. Splitting on the namespace pattern first puts
+          # them in their own pair of jobs, and each pair then partitions by count within a comparable cost.
+          # The two patterns are exhaustive over the default `:namespace-pattern` -- every namespace lands in
+          # exactly one of them -- so nothing stops running when a namespace is added.
+          - name: Redshift EE (Excluding Upload Tests) Part 1
             skip: false
             test-args: >-
+              :namespace-pattern '"^metabase-enterprise[.].*"'
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
               :partition/total 2
               :partition/index 0
-          - name: Redshift (Excluding Upload Tests) Part 2
+          - name: Redshift EE (Excluding Upload Tests) Part 2
             skip: false
             test-args: >-
+              :namespace-pattern '"^metabase-enterprise[.].*"'
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 1
+          - name: Redshift OSS (Excluding Upload Tests) Part 1
+            skip: false
+            test-args: >-
+              :namespace-pattern '"^(?:metabase[.]|hooks[.]).*"'
+              :only-tags [:mb/driver-tests]
+              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 0
+          - name: Redshift OSS (Excluding Upload Tests) Part 2
+            skip: false
+            test-args: >-
+              :namespace-pattern '"^(?:metabase[.]|hooks[.]).*"'
               :only-tags [:mb/driver-tests]
               :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
               :fail-fast? true
