@@ -113,6 +113,14 @@
           (hiccup.util/escape-html file)
           (if (str/ends-with? file ".css") "style" "script")))
 
+(def ^:private signed-out-preload-paths
+  "Paths a signed-out user renders, rather than being bounced to the login page.
+
+  Every other page redirects, so hints for them would fetch a chunk the visitor
+  never reaches. Setup runs before any user exists, which is exactly when there
+  is no session to check."
+  #{"/setup"})
+
 (defn- route-preload-tags
   "Preload hints for the page this URI renders.
 
@@ -121,10 +129,11 @@
   parsed and run. These hints start that fetch while the app is still arriving.
   The manifest is built from the route files, in the order its patterns are to be
   tried; see `frontend/build/shared/rspack/route-preloads.js`."
-  [uri]
+  [uri signed-in?]
   (let [path (strip-base-path (or uri "/"))]
-    (when-let [entry (first (filter (partial matches-route? path) (load-route-preloads)))]
-      (str/join (map preload-tag (:files entry))))))
+    (when (or signed-in? (contains? signed-out-preload-paths path))
+      (when-let [entry (first (filter (partial matches-route? path) (load-route-preloads)))]
+        (str/join (map preload-tag (:files entry)))))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
@@ -140,7 +149,7 @@
         (throw (Exception. message e))))))
 
 (defn- template-parameters
-  [embeddable? {:keys [uri params nonce]}]
+  [embeddable? {:keys [uri params nonce metabase-user-id]}]
   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
         ;; We disable `locale` parameter on static embeds/public links (metabase#50313)
         should-load-locale-params? (not embeddable?)]
@@ -159,7 +168,8 @@
                                                           custom-favicon)))
      :applicationName        (hiccup.util/escape-html (appearance/application-name))
      :uri                    (hiccup.util/escape-html uri)
-     :routePreloads          (when-not embeddable? (route-preload-tags uri))
+     :routePreloads          (when-not embeddable?
+                               (route-preload-tags uri (boolean metabase-user-id)))
      :baseHref               (hiccup.util/escape-html (base-href))
      :embedCode              (when embeddable? (embed/head (system/site-url) uri))
      :enableGoogleAuth       (boolean google-auth-client-id)

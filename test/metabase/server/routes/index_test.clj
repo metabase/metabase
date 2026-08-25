@@ -90,11 +90,14 @@
                   {:patterns ["/question" "/question/*"] :files ["app/dist/query-builder.js"]}
                   {:patterns ["/dashboard/*"] :files ["app/dist/dashboard.js" "app/dist/dashboard.css"]}
                   {:patterns ["/metric/*"] :files ["app/dist/metrics.js"]}
+                  {:patterns ["/setup"] :files ["app/dist/setup.js"]}
                   {:patterns ["/"] :files ["app/dist/home.js"]}]
-        tags-for (fn [uri]
-                   (with-redefs-fn {#'index/load-route-preloads
-                                    (constantly (mapv #'index/compile-entry manifest))}
-                     (fn [] (#'index/route-preload-tags uri))))]
+        tags-for (fn tags-for
+                   ([uri] (tags-for uri true))
+                   ([uri signed-in?]
+                    (with-redefs-fn {#'index/load-route-preloads
+                                     (constantly (mapv #'index/compile-entry manifest))}
+                      (fn [] (#'index/route-preload-tags uri signed-in?)))))]
     (testing "a wildcard covers the section below it"
       (is (= (str "<link rel=\"preload\" href=\"app/dist/dashboard.js\" as=\"script\" fetchpriority=\"low\">"
                   "<link rel=\"preload\" href=\"app/dist/dashboard.css\" as=\"style\" fetchpriority=\"low\">")
@@ -109,7 +112,13 @@
              (tags-for "/")))
       (is (nil? (tags-for "/xyzzy"))))
     (testing "a section does not claim a URL that merely starts with its name"
-      (is (nil? (tags-for "/metrics/1")))))
+      (is (nil? (tags-for "/metrics/1"))))
+    (testing "a signed-out visitor is redirected to the login page, so gets no hints"
+      (is (nil? (tags-for "/dashboard/42" false)))
+      (is (nil? (tags-for "/" false))))
+    (testing "except on setup, which runs before any user exists"
+      (is (= "<link rel=\"preload\" href=\"app/dist/setup.js\" as=\"script\" fetchpriority=\"low\">"
+             (tags-for "/setup" false)))))
   (testing "no manifest, no hints"
     (is (nil? (with-redefs-fn {#'index/load-route-preloads (constantly nil)}
-                (fn [] (#'index/route-preload-tags "/")))))))
+                (fn [] (#'index/route-preload-tags "/" true)))))))
