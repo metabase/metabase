@@ -50,8 +50,6 @@ describe("createTenantUrls", () => {
 
 describe("TenantUrlsProvider", () => {
   it("defaults to admin outside a provider", () => {
-    // Admin People's own list and Monitor's deep links render with no hub
-    // subtree above them, so the default has to be admin or they break.
     render(<ShowUrls />);
 
     expect(screen.getByTestId("root")).toHaveTextContent(

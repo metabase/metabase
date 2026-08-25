@@ -6,8 +6,7 @@ import {
   createTenantUrls,
 } from "./tenant-urls";
 
-// Defaults to admin so every component that builds a tenant URL keeps working
-// outside a provider — admin People's own list has no hub subtree above it.
+// Defaults to admin: admin People's own list has no provider above it.
 const TenantUrlsContext = createContext<TenantUrls>(adminTenantUrls);
 
 type TenantUrlsProviderProps = {

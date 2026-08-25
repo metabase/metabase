@@ -16,7 +16,7 @@ export function useUserUrls() {
 
   return useMemo(
     () => ({
-      newUser: () => `/admin/people/new`,
+      newUser: () => "/admin/people/new",
       newTenantUser: () => tenantUrls.newUser(),
 
       editUser: (user: Pick<BaseUser, "id" | "tenant_id">) =>
