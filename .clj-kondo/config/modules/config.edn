@@ -878,6 +878,7 @@
    :uses #{analytics-interface
            app-db
            appearance
+           audit-app
            auth-provider
            classloader
            config
