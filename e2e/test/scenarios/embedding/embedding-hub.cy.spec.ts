@@ -475,9 +475,21 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
     });
 
     it("carries the tenant surfaces once the strategy is on", () => {
-      H.updateSetting("use-tenants", true);
+      H.updateSetting("use-tenants", false);
 
       cy.visit("/embedding/tenancy");
+
+      cy.log("Enable multi-tenancy from the enable card, not the API");
+      cy.findByTestId("embedding-hub-main")
+        .findByRole("button", { name: "Enable multi-tenancy" })
+        .click();
+
+      cy.findByRole("dialog", { name: "Pick a user strategy" }).within(() => {
+        cy.findByText("Multi tenant").click();
+        cy.findByRole("button", { name: "Apply" }).click();
+      });
+
+      H.undoToast().findByText("Changes saved").should("be.visible");
 
       cy.findByTestId("embedding-hub-main").within(() => {
         cy.findByRole("tab", { name: "Tenants" }).should("be.visible");
