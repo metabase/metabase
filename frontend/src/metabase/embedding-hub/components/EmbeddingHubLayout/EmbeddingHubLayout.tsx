@@ -125,7 +125,7 @@ function isTabSelected(tab: EmbeddingHubTab, pathname: string) {
 
 // Matches a whole path segment, never a string prefix, so a tab claims its own
 // sub-routes without claiming a sibling whose path merely starts the same way.
-function isUnder(pathname: string, base: string) {
+export function isUnder(pathname: string, base: string) {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
