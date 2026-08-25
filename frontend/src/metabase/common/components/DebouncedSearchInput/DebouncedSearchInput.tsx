@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useLatest } from "react-use";
-import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { Icon, Input, TextInput } from "metabase/ui";
+import { Icon, Input, TextInput, type TextInputProps } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
-};
+} & Omit<TextInputProps, "value" | "onChange">;
 
-export const NotificationsSearchInput = ({ value, onChange }: Props) => {
+export const DebouncedSearchInput = ({
+  value,
+  onChange,
+  ...textInputProps
+}: Props) => {
   const [query, setQuery] = useState(value);
   const debounced = useDebouncedValue(query, SEARCH_DEBOUNCE_DURATION);
   const onChangeRef = useLatest(onChange);
@@ -47,13 +50,13 @@ export const NotificationsSearchInput = ({ value, onChange }: Props) => {
   return (
     <TextInput
       flex={1}
-      placeholder={t`Search by question or owner…`}
       value={query}
       radius="md"
       onChange={(event) => setQuery(event.currentTarget.value)}
       leftSection={<Icon c="text-secondary" name="search" size={16} />}
       rightSectionPointerEvents="all"
       rightSection={renderRightSection()}
+      {...textInputProps}
     />
   );
 };
