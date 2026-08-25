@@ -1,7 +1,5 @@
 (ns mage.modules
   (:require
-   ^:clj-kondo/ignore
-   [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -214,16 +212,16 @@
     (u/exit 0)))
 
 (defn- changes-important-file-for-drivers?
-  "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like
+  "Whether we should always run driver tests because `updated-files` touches something important like
   `deps.edn`."
-  [git-ref]
+  [updated-files]
   (some (fn [filename]
           (when (or (str/includes? filename "deps.edn")
                     (str/includes? filename "modules/drivers/"))
             (when-not *github-output-only?*
               (println (str "Running driver tests because " (pr-str filename) " was changed")))
             filename))
-        (u/updated-files (or git-ref "master"))))
+        updated-files))
 
 (defn driver-deps-affected?
   "Returns true if any of `trigger-modules` are affected by the changed modules.
@@ -253,7 +251,7 @@
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
     (print-updated-and-unaffected-modules deps updated drivers-affected?)
     (u/exit (cond
-              (changes-important-file-for-drivers? git-ref) 1
+              (changes-important-file-for-drivers? updated-files) 1
               drivers-affected? 1
               :else 0))))
 
@@ -331,75 +329,30 @@
 
 (defn- drivers-with-file-changes
   "Returns a set of driver keywords that have file changes in modules/drivers/<driver>/."
-  [git-ref]
-  (let [updated-files (u/updated-files (or git-ref "master"))]
-    (into #{}
-          (mapcat (fn [filename]
-                    (when-let [[_ dir-name] (re-matches #"modules/drivers/([^/]+)/.*" filename)]
-                      (get driver-directory->drivers dir-name))))
-          updated-files)))
-
-;;; driver status
-
-(def ^:private ci-test-config-url
-  "https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json")
-
-(defn- read-ci-test-config []
-  (json/parse-string (slurp ci-test-config-url) keyword))
-
-(defn- config-name->drivers
-  "Translate a ci-test-config driver `name` (e.g. \"snowflake\") into the internal driver
-   keyword(s) it targets. Most names map straight to a single keyword; a few (e.g. \"mongo\")
-   fan out to several jobs via [[driver-directory->drivers]]."
-  [driver-name]
-  (or (seq (get driver-directory->drivers driver-name))
-      [(keyword driver-name)]))
-
-(defn- skip-drivers
-  "Set of driver keywords listed with status `\"skip\"` in the top-level `drivers` array of
-   ci-test-config.json. Each entry identifies a driver by its short `name` (e.g. \"snowflake\");
-   a few names fan out to several jobs. `skip` means: do not run the driver at all, unless the run
-   changes files under the driver's own `modules/drivers/*` directory or carries the
-   ci:run-<driver> label -- either of those overrides the `skip` keyword and runs the driver.
-
-   Drivers absent from the config run and gate as usual.
-
-   Whether a driver's failures GATE is a separate question, answered by ci-conductor's
-   suite-level quarantine rules at the end of the job -- not by this config.
-
-   This MUST NOT break CI: any failure to read or parse the config (network error,
-   malformed JSON, etc.) is swallowed and yields an empty set, so every driver runs and
-   gates -- the safe default."
-  []
-  (try
-    (into #{}
-          (comp (filter (fn [{status :status}] (= "skip" status)))
-                (mapcat (fn [{driver-name :name}] (config-name->drivers driver-name))))
-          (get (read-ci-test-config) :drivers []))
-    (catch Throwable e
-      ;; stderr, not stdout: in --github-output-only mode stdout is redirected into $GITHUB_OUTPUT.
-      (binding [*out* *err*]
-        (println (c/yellow (str "WARNING: could not read skipped drivers from ci-test-config ("
-                                (.getMessage e) "); treating all drivers as required."))))
-      #{})))
-
-(defn- effective-skipped-drivers
-  "Set of skipped drivers to actually enforce for this run.
-
-   The skip list is fetched on the fly from a remote file (ci-test-config.json, see
-   [[skip-drivers]]) and can change at any time. We intentionally IGNORE it on `master` and
-   `release-*` branches: there, every driver must run and gate, so a stray remote skip entry
-   can't silently disable a driver's tests. On PR/feature branches the skip list is honored,
-   subject to changes to the driver's own files and the ci:run-<driver> label."
-  [skipped is-master-or-release]
-  (if is-master-or-release
-    #{}
-    skipped))
+  [updated-files]
+  (into #{}
+        (mapcat (fn [filename]
+                  (when-let [[_ dir-name] (re-matches #"modules/drivers/([^/]+)/.*" filename)]
+                    (get driver-directory->drivers dir-name))))
+        updated-files))
 
 (defn- parse-bool
   "Parse a string boolean from CLI args. Returns true for 'true', false otherwise."
   [s]
   (= (str/lower-case (str s)) "true"))
+
+(defn- parse-only-driver
+  "Parse the `--only-driver` CLI arg into a driver keyword, or nil when unset.
+
+  Throws on an unknown driver: a typo would otherwise read as `nil` and quietly run the normal decisions
+  instead of the one job that was asked for."
+  [s]
+  (when-not (str/blank? s)
+    (let [driver (keyword (str/trim s))]
+      (when-not (contains? (set all-drivers) driver)
+        (throw (ex-info (str "Unknown driver: " (str/trim s))
+                        {:driver driver, :known-drivers (mapv name all-drivers)})))
+      driver)))
 
 (defn- parse-labels
   "Parse comma-separated labels string into a set of label strings."
@@ -427,22 +380,36 @@
    - deps.edn is changed (triggers all drivers)
    - Clojure modules that the 'driver' module depends on are changed"
   [driver
-   {:keys [is-master-or-release pr-labels skip particular-driver-changed?]}
+   {:keys [force-run pr-labels skip particular-driver-changed? only-driver]}
    driver-deps-affected?
-   skipped-drivers
    updated]
   (cond
-    ;; Priority 1: Global skip (no backend changes)
+    ;; Priority 0: a request for one named driver job (workflow_dispatch on drivers.yml). Runs exactly
+    ;; that driver and nothing else -- not even H2/Postgres, since asking for a job by name is a
+    ;; stronger signal than any rule below.
+    only-driver
+    (if (= driver only-driver)
+      {:should-run true
+       :reason     (str "requested via --only-driver=" (name only-driver))}
+      {:should-run false
+       :reason     (str "--only-driver=" (name only-driver) " requested instead")})
+
+    ;; Priority 1: Global force-run. Every driver runs.
+    force-run
+    {:should-run true
+     :reason "force-run (master/release branch or ci:run-all label)"}
+
+    ;; Priority 2: Global skip (no backend changes)
     skip
     {:should-run false
      :reason "workflow skip (no backend changes)"}
 
-    ;; Priority 2: H2 and Postgres always run when backend tests run
+    ;; Priority 3: H2 and Postgres always run when backend tests run
     (#{:h2 :postgres} driver)
     {:should-run true
      :reason "H2/Postgres always run"}
 
-    ;; Priority 3: ci:run-all-drivers or ci:run-<driver> label
+    ;; Priority 4: ci:run-all-drivers or ci:run-<driver> label
     (or (contains? pr-labels "ci:run-all-drivers")
         (contains? pr-labels (run-driver-label driver)))
     {:should-run true
@@ -450,53 +417,40 @@
                "ci:run-all-drivers label"
                (str (run-driver-label driver) " label"))}
 
-    ;; Priority 4: The driver's own source changed - run it even when the CI config skips it,
-    ;; since the change is exactly what needs testing.
+    ;; Priority 5: The driver's own source changed - the change is exactly what needs testing.
     (contains? particular-driver-changed? driver)
     {:should-run true
      :reason "driver files changed"}
 
-    ;; Priority 5: Drivers the CI config marks `skip`; Priorities 3 and 4 are the ways to force
-    ;; one to run. On master/release this set is empty (see [[effective-skipped-drivers]]), so the
-    ;; skip list is ignored there and we fall through to Priority 6.
-    (contains? skipped-drivers driver)
-    {:should-run false
-     :reason "driver is skipped by CI config"}
-
-    ;; Priority 6: Master/release branch - every driver the CI config does not skip runs
-    is-master-or-release
-    {:should-run true
-     :reason "master/release branch"}
-
-    ;; Priority 7: Cloud driver + ci:run-all-cloud-drivers label
+    ;; Priority 6: Cloud driver + ci:run-all-cloud-drivers label
     (and (contains? cloud-drivers driver)
          (contains? pr-labels "ci:run-all-cloud-drivers"))
     {:should-run true
      :reason "ci:run-all-cloud-drivers label"}
 
-    ;; Priority 8: Cloud driver + module triggering cloud dbs updated → run it
+    ;; Priority 7: Cloud driver + module triggering cloud dbs updated → run it
     (and (contains? cloud-drivers driver)
          (seq (set/intersection updated modules-triggering-cloud-drivers)))
     {:should-run true
      :reason "Module updated which explicitly triggers cloud drivers"}
 
-    ;; Priority 9: Cloud driver + driver deps affected (e.g., deps.edn changed)
+    ;; Priority 8: Cloud driver + driver deps affected (e.g., deps.edn changed)
     (and (contains? cloud-drivers driver)
          driver-deps-affected?)
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 10: Cloud driver, no relevant changes → skip
+    ;; Priority 9: Cloud driver, no relevant changes → skip
     (contains? cloud-drivers driver)
     {:should-run false
      :reason "no relevant changes for cloud driver"}
 
-    ;; Priority 11: Driver deps affected by shared code changes
+    ;; Priority 10: Driver deps affected by shared code changes
     driver-deps-affected?
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 12: Self-hosted driver, not affected
+    ;; Priority 11: Self-hosted driver, not affected
     :else
     {:should-run false
      :reason "driver module not affected"}))
@@ -510,31 +464,39 @@
    Usage:
      ./bin/mage -driver-decisions \\
        --git-ref=master \\
-       --is-master-or-release=false \\
+       --force-run=false \\
        --pr-labels=ci:run-all-cloud-drivers,other-label \\
-       --skip=false"
+       --skip=false \\
+       --only-driver=bigquery"
   [{:keys [options] :as _parsed}]
   (let [github-output-only? (some? (:github-output-only options))
         git-ref (get options :git-ref "master")
-        is-master-or-release (parse-bool (:is-master-or-release options))
-        ;; Detect file changes for ALL drivers via git diff
-        particular-driver-changed? (drivers-with-file-changes git-ref)
+        force-run (parse-bool (:force-run options))
+        only-driver (parse-only-driver (:only-driver options))
+        ;; force-run and --only-driver each decide every driver on their own, so the change
+        ;; analysis is not consulted there.
+        analysis (when-not (or force-run only-driver)
+                   (let [updated-files (u/updated-files git-ref)
+                         updated (updated-files->updated-modules updated-files)
+                         driver-affected? (driver-deps-affected? updated)
+                         important-file-changed? (changes-important-file-for-drivers? updated-files)]
+                     {:particular-driver-changed? (drivers-with-file-changes updated-files)
+                      :updated updated
+                      :driver-affected? driver-affected?
+                      :important-file-changed? important-file-changed?}))
+        {:keys [particular-driver-changed? updated driver-affected? important-file-changed?]} analysis
         ctx {:git-ref git-ref
-             :is-master-or-release is-master-or-release
+             :force-run force-run
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
-             :particular-driver-changed? particular-driver-changed?}
-        ;; On master/release we drop the remote skip list entirely (see
-        ;; [[effective-skipped-drivers]]) so every driver runs and gates.
-        skipped (effective-skipped-drivers (skip-drivers) is-master-or-release)
-        updated-files (u/updated-files git-ref)
-        updated (updated-files->updated-modules updated-files)
-        driver-affected? (driver-deps-affected? updated)
-        important-file-changed? (changes-important-file-for-drivers? git-ref)
-        ;; For module dependency check, combine both conditions
-        effective-driver-affected? (or driver-affected? important-file-changed?)
+             :particular-driver-changed? (or particular-driver-changed? #{})
+             :only-driver only-driver}
         decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver ctx effective-driver-affected? skipped updated)
+                          (assoc (driver-decision driver
+                                                  ctx
+                                                  ;; module dependency check combines both conditions
+                                                  (boolean (or driver-affected? important-file-changed?))
+                                                  (or updated #{}))
                                  :driver driver))
                         all-drivers)]
     (if github-output-only?
@@ -543,12 +505,13 @@
         (println (str (name driver) "-should-run=" should-run)))
       (do
         ;; Print module analysis summary
-        (println "")
-        (println "=== Module Analysis ===")
-        (println "Changed modules:" (pr-str updated))
-        (println "Driver module affected:" driver-affected?)
-        (println "Important file changed:" (boolean important-file-changed?))
-        (println "Drivers with file changes:" (pr-str particular-driver-changed?))
+        (when analysis
+          (println "")
+          (println "=== Module Analysis ===")
+          (println "Changed modules:" (pr-str updated))
+          (println "Driver module affected:" driver-affected?)
+          (println "Important file changed:" (boolean important-file-changed?))
+          (println "Drivers with file changes:" (pr-str particular-driver-changed?)))
         (println "")
         ;; Print human-readable decision summary
         (println "=== Driver Decisions ===")

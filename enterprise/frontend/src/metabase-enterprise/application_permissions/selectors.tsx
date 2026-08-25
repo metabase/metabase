@@ -13,8 +13,8 @@ import {
   getGroupNameLocalized,
   isAdminGroup,
 } from "metabase/common/utils/groups";
+import { getUser } from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { getUser } from "metabase/selectors/user";
 import type { Group } from "metabase-types/api";
 
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";

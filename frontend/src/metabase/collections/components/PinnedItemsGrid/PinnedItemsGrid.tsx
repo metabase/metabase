@@ -14,12 +14,12 @@ import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import { Box, SimpleGrid, rem } from "metabase/ui";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
   Collection,
   CollectionId,
   CollectionItem,
+  Database,
 } from "metabase-types/api";
 
 import { useIsShiftPressed } from "./use-is-shift-pressed";

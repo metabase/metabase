@@ -11,42 +11,77 @@
    [metabase.metabot.tools.transforms :as agent-transforms]
    [metabase.metabot.tools.transforms.write :as transforms-write]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 ;;; ----------------------------------- read tool integration tests ---------------------------------------------------
 
-(deftest get-transform-details-tool-test
+(def ^:private gadget-sql
+  "SELECT * FROM products WHERE price < 100 AND category <> 'Widget'")
+
+(deftest get-transform-details-native-query-test
   (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (mt/with-current-user (mt/user->id :crowberto)
-      (testing "query source renders as verbatim SQL text, unescaped"
-        (mt/with-temp [:model/Transform {transform-id :id}
-                       {:name   "Gadget Products"
-                        :source {:type  "query"
-                                 :query (lib/native-query (mt/metadata-provider)
-                                                          "SELECT * FROM products WHERE price < 100 AND category <> 'Widget'")}}]
-          (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
-            (is (str/includes? output "name=\"Gadget Products\""))
-            (is (str/includes? output "<source type=\"query\">"))
-            (is (str/includes? output "<query>SELECT * FROM products WHERE price < 100 AND category <> 'Widget'</query>")))))
-      (testing "notebook-built source falls back to EDN with the metadata provider stripped"
-        (mt/with-temp [:model/Transform {transform-id :id}
-                       {:name   "Notebook Products"
-                        :source {:type  "query"
-                                 :query (lib/query (mt/metadata-provider)
-                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}]
-          (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
-            (is (str/includes? output ":lib/type"))
-            (is (not (str/includes? output ":lib/metadata"))))))
-      (testing "python source renders its body and source database"
-        (mt/with-temp [:model/Transform {transform-id :id}
-                       {:name   "Gadget Metrics"
-                        :source {:type            "python"
-                                 :source-database (mt/id)
-                                 :body            "import pandas as pd"}}]
-          (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
-            (is (str/includes? output "<source type=\"python\">"))
-            (is (str/includes? output "<body>import pandas as pd</body>"))
-            (is (str/includes? output (str "<database>" (mt/id) "</database>")))))))))
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:name   "Gadget Products"
+                      :source {:type  "query"
+                               :query (lib/native-query (mt/metadata-provider) gadget-sql)}}]
+        (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+          (is (str/includes? output "name=\"Gadget Products\""))
+          (is (str/includes? output "<source type=\"query\">"))
+          (is (str/includes? output (str "<query>" gadget-sql "</query>"))))))))
+
+(deftest get-transform-details-notebook-query-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:name   "Notebook Products"
+                      :source {:type  "query"
+                               :query (lib/query (mt/metadata-provider)
+                                                 (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}]
+        (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+          (is (str/includes? output "<query>\n```json"))
+          (is (str/includes? output "```\n</query>"))
+          (let [exported (json/decode (second (re-find #"(?s)```json\n(.*)\n```" output)))]
+            (is (= [(:name (lib.metadata/database (mt/metadata-provider))) "PUBLIC" "PRODUCTS"]
+                   (get-in exported ["stages" 0 "source-table"])))
+            (is (not-any? #(and (map? %) (contains? % "lib/metadata"))
+                          (tree-seq coll? seq exported)))))))))
+
+(deftest get-transform-details-python-source-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:name   "Gadget Metrics"
+                      :source {:type            "python"
+                               :source-database (mt/id)
+                               :body            "import pandas as pd"}}]
+        (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+          (is (str/includes? output "<source type=\"python\">"))
+          (is (str/includes? output "<body>import pandas as pd</body>"))
+          (is (str/includes? output (str "<database>" (mt/id) "</database>"))))))))
+
+(deftest get-transform-details-source-card-permission-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-data-analyst-role! (mt/user->id :rasta)
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Card       {card-id :id, entity-id :entity_id}
+                         {:collection_id collection-id
+                          :database_id   (mt/id)
+                          :dataset_query (lib/query (mt/metadata-provider)
+                                                    (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}
+                         :model/Transform {transform-id :id}
+                         {:name   "Private source Card"
+                          :source {:type  "query"
+                                   :query (lib/query (mt/metadata-provider)
+                                                     (lib.metadata/card (mt/metadata-provider) card-id))}}]
+            (mt/with-current-user (mt/user->id :rasta)
+              (let [{:keys [output]} (agent-transforms/get-transform-details-tool {:transform_id transform-id})]
+                (is (str/includes? output "name=\"Private source Card\""))
+                (is (not (str/includes? output entity-id)))
+                (is (not (str/includes? output "<query>")))))))))))
 
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------
 

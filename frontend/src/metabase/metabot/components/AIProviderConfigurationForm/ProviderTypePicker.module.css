@@ -1,0 +1,31 @@
+.option {
+  display: block;
+  width: 100%;
+  min-height: 4.5rem;
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-md);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.option:hover:not(:disabled) {
+  background-color: var(--mb-color-background-secondary);
+  border-color: var(--mb-color-border-brand);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--mb-color-focus);
+  outline-offset: 2px;
+}
+
+.option:disabled {
+  color: var(--mb-color-text-disabled);
+  cursor: not-allowed;
+  background-color: var(--mb-color-background-secondary);
+}
+
+.option:disabled .content {
+  opacity: 0.6;
+}

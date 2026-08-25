@@ -227,7 +227,7 @@ export function ActionToolbar({
       parent_comment_id: null,
       content,
       context: {
-        timeline_id: selectedTimelineId,
+        timeline_id: selectedTimelineId ?? undefined,
       },
     });
 

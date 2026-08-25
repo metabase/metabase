@@ -13,6 +13,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
+   [metabase.search.hierarchy :as search.hierarchy]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
@@ -37,7 +38,7 @@
 (set! *warn-on-reflection* true)
 
 ;; Make sure the legacy cookies still work.
-(derive :search.engine/fulltext :search.engine/appdb)
+(search.hierarchy/derive! :search.engine/fulltext :search.engine/appdb)
 
 (def supported-db?
   "All the databases which we have implemented fulltext search for."
@@ -84,9 +85,9 @@
       true       (sql.helpers/where
                   [:or
                    [:= :search_index.model nil]
-                   [:!= :search_index.model [:inline "table"]]
+                   [:!= :search_index.model "table"]
                    [:and
-                    [:= :search_index.model [:inline "table"]]
+                    [:= :search_index.model "table"]
                     clause]]))))
 
 (defn add-collection-join-and-where-clauses

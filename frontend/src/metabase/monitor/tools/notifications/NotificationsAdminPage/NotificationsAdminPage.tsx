@@ -11,7 +11,6 @@ import {
 import {
   BulkActionBar,
   BulkActionButton,
-  BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -405,12 +404,13 @@ export const NotificationsAdminPage = () => {
             : t`${selectedCount} alerts selected`
         }
       >
-        <BulkActionDangerButton
+        <BulkActionButton
+          danger
           onClick={handleDeleteBulk}
           disabled={isBulkLoading}
         >
           {t`Delete`}
-        </BulkActionDangerButton>
+        </BulkActionButton>
         <BulkActionButton
           onClick={() => setIsChangeOwnerOpened(true)}
           disabled={isBulkLoading}

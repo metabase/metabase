@@ -2,11 +2,6 @@
 import { css } from "@emotion/react";
 
 import GlobalDashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/embedding/theme.module.css";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isStorybookActive } from "metabase/env";
-import { utf8_to_b64 } from "metabase/utils/encoding";
-import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 
 import { getCardKey } from "./utils";
 
@@ -18,7 +13,7 @@ export const SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS =
   "saving-dom-image-overflow-visible";
 export const PARAMETERS_MARGIN_BOTTOM = 12;
 
-export const saveDomImageStyles = css`
+export const getSaveDomImageStyles = (allowTextOverflow: boolean) => css`
   .${SAVING_DOM_IMAGE_CLASS} {
     .${SAVING_DOM_IMAGE_HIDDEN_CLASS} {
       visibility: hidden;
@@ -37,10 +32,9 @@ export const saveDomImageStyles = css`
       border: 1px solid var(--mb-color-border-neutral);
     }
 
-    /* the renderer for saving to image/pdf does not support text overflow
-     with line height in custom themes in the embedding sdk.
-     this is a workaround to make sure the text is not clipped vertically */
-    ${isEmbeddingSdk() &&
+    /* The export renderer clips text vertically when a custom theme changes the line height.
+       The flag works around that by capturing with overflow visible. */
+    ${allowTextOverflow &&
     css`
       [data-dashcard-key].${GlobalDashboardS.Card} * {
         overflow: visible !important;
@@ -220,28 +214,6 @@ export const getDashboardImage = async (
   return canvas.toDataURL("image/png").split(",")[1];
 };
 
-export const getVisualizationSvgDataUri = (
-  selector: string,
-): string | undefined => {
-  const element = document.querySelector(selector)?.cloneNode(true);
-  if (element && !(element instanceof SVGElement)) {
-    throw new Error("Selector did not provide an SVG element");
-  }
-
-  const backgroundColor = getComputedStyle(document.documentElement)
-    .getPropertyValue("--mb-color-bg-dashboard")
-    .trim();
-  if (backgroundColor && element instanceof SVGElement) {
-    element.style.backgroundColor = backgroundColor;
-  }
-  if (!element) {
-    return undefined;
-  }
-
-  const svgString = new XMLSerializer().serializeToString(element);
-  return `data:image/svg+xml;base64,${utf8_to_b64(svgString)}`;
-};
-
 export const getChartSelector = (
   input: { dashcardId: number | undefined } | { cardId: number | undefined },
 ) => {
@@ -249,71 +221,5 @@ export const getChartSelector = (
     return `[data-dashcard-key='${input.dashcardId}']`;
   } else {
     return `[data-card-key='${getCardKey(input.cardId)}']`;
-  }
-};
-
-export const getChartSvgSelector = (
-  input: { dashcardId: number | undefined } | { cardId: number | undefined },
-) => {
-  // :not selector shouldn't be needed, but just an extra check to make sure
-  // we don't accidentally get some kind of svg icon
-  return `${getChartSelector(input)} svg:not([role="img"])`;
-};
-
-export const getChartImagePngDataUri = async (
-  selector: string,
-): Promise<string | undefined> => {
-  const chartRoot = document.querySelector(selector);
-
-  if (!chartRoot || !(chartRoot instanceof HTMLElement)) {
-    console.warn("No chart element found", selector);
-    return undefined;
-  }
-
-  const canvas = await getDomToCanvas(chartRoot, {
-    onclone: (_doc: Document, node: HTMLElement) => {
-      node.classList.add(SAVING_DOM_IMAGE_CLASS);
-    },
-  });
-
-  return canvas.toDataURL("image/png");
-};
-
-export const saveChartImage = async (selector: string, fileName: string) => {
-  const node = document.querySelector(selector);
-
-  if (!node || !(node instanceof HTMLElement)) {
-    console.warn("No node found for selector", selector);
-    return;
-  }
-
-  const canvas = await getDomToCanvas(node, {
-    scale: 2,
-    onclone: (_doc: Document, node: HTMLElement) => {
-      node.classList.add(SAVING_DOM_IMAGE_CLASS);
-      node.classList.add(EmbedFrameS.WithThemeBackground);
-
-      node.style.borderRadius = "0px";
-      node.style.border = "none";
-    },
-  });
-
-  const blob = await canvasToBlob(canvas);
-
-  if (blob) {
-    if (isStorybookActive) {
-      // if we're running storybook we open the image in place
-      // so we can test the export result with loki
-      openImageBlobOnStorybook({ canvas, blob });
-    } else {
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.rel = "noopener";
-      link.download = fileName;
-      link.href = url;
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    }
   }
 };

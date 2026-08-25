@@ -45,7 +45,7 @@
    [:map
     [:dimensions           [:sequential ::metrics.dimension/dimension]]
     [:dimension_mappings   [:sequential ::metrics.dimension/dimension-mapping]]
-    [:dataset_query        {:optional true} ms/Map]
+    [:dataset_query        {:optional true} [:maybe ms/Map]]
     [:database_id          {:optional true} [:maybe ms/PositiveInt]]
     [:result_column_name   {:optional true} [:maybe :string]]]])
 

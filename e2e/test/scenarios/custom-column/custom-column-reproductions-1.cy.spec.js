@@ -486,7 +486,10 @@ describe("issue 20229", () => {
   }
 
   function unselectColumn(column) {
-    cy.findByText(column).siblings().find(".Icon-check").click({ force: true });
+    cy.findByText(column)
+      .siblings()
+      .find('input[type="checkbox"]')
+      .click({ force: true });
   }
 
   beforeEach(() => {
@@ -637,9 +640,12 @@ describe("issue 24922", () => {
     name: "OrdersSegment",
     description: "All orders with a total under $100.",
     definition: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+      },
     },
   };
 

@@ -35,7 +35,7 @@ env:
   # Consumed by the report-failures-to-ci-conductor step in fe-tests-unit. Absent
   # (e.g. fork PRs without secret access) the reporter no-ops. Matches the other
   # suite workflows (backend, drivers, e2e, app-db, semantic-search).
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
 
 jobs:
@@ -50,14 +50,17 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
-      - name: Get Eslint cache key
-        uses: ./.github/actions/get-cache-keys
-        id: get-cache-keys
-      - name: Restore ESLint cache
-        uses: actions/cache/restore@v5
+      - name: Cache spec
+        id: cache-spec
+        run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
+      # Small enough, and written by few enough jobs, that this one reads and writes its own cache
+      # rather than waiting on cache-warm.
+      - name: ESLint cache
+        uses: actions/cache@v5
         with:
-          path: ${{ github.workspace}}/.eslintcache
-          key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
+          path: ${{ steps.cache-spec.outputs.eslint-path }}
+          key: ${{ steps.cache-spec.outputs.eslint-key }}
+          restore-keys: ${{ steps.cache-spec.outputs.eslint-restore-key }}
 
       - name: Compile CLJS
         run: bun run build-pure:cljs
@@ -113,7 +116,7 @@ jobs:
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
       - name: Report failed tests to ci-conductor
-        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+        if: ${{ !cancelled() && ( steps.fe-tests.outcome == 'failure' || github.run_attempt != '1' ) }}
         # This step should NEVER fail the job!
         continue-on-error: true
         uses: ./.github/actions/report-failures-to-ci-conductor
@@ -173,7 +176,7 @@ jobs:
       - fe-tests-timezones
       - fe-custom-viz
     if: always() && !cancelled()
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}

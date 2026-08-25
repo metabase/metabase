@@ -241,6 +241,7 @@ export type TableColumnOrderSetting = {
 
 export type StackType = "stacked" | "normalized" | null;
 export type StackValuesDisplay = "total" | "all" | "series";
+export type StackValueFormat = "value" | "percentage";
 
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];
@@ -313,6 +314,9 @@ export type VisualizationSettings = {
 
   /** Show aggregate labels for stacked chart segments. */
   "graph.show_stack_values"?: StackValuesDisplay;
+
+  /** Render stacked chart segment labels as raw values or as percentages of the stack. */
+  "graph.stack_value_format"?: StackValueFormat;
 
   /** Limit the number of categories before grouping the rest into an "Other" bucket. */
   "graph.max_categories_enabled"?: boolean;

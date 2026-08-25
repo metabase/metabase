@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.curation :as curation]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -201,13 +202,15 @@
   which is too restrictive for MBQL viewing context enrichment."
   [[database-id table-ids]]
   (try
-    (let [raw-tables (t2/select [:model/Table :id :name :schema :description]
-                                :db_id database-id
-                                :id [:in table-ids]
-                                :active true
-                                :visibility_type nil)]
+    (let [raw-tables    (t2/select [:model/Table :id :name :schema :description]
+                                   :db_id database-id
+                                   :id [:in table-ids]
+                                   :active true
+                                   :visibility_type nil)
+          queryable-ids (metabot.perms/queryable-table-ids (map :id raw-tables))]
       (into []
-            (comp (m/distinct-by :id)
+            (comp (filter (comp queryable-ids :id))
+                  (m/distinct-by :id)
                   (map table-stub))
             raw-tables))
     (catch Exception e
@@ -338,8 +341,9 @@
    (create-context context nil))
   ([context :- ::context
     opts    :- [:maybe [:map-of :keyword :any]]]
-   (-> context
-       enhance-context-with-schema
-       annotate-transform-source-types
-       (add-recent-views (or opts {}))
-       (set-user-time opts))))
+   (metabot.perms/with-cache
+     (-> context
+         enhance-context-with-schema
+         annotate-transform-source-types
+         (add-recent-views (or opts {}))
+         (set-user-time opts)))))

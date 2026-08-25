@@ -6,7 +6,7 @@ import { checkNotNull } from "metabase/utils/types";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
-import DataSelectorTablePicker from "./DataSelectorTablePicker";
+import { DataSelectorTablePicker } from "./DataSelectorTablePicker";
 
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 

@@ -287,19 +287,19 @@
   [db-id]
   (t2/select-fn-set :table_id :model/AnalysisFinding
                     {:select    [:field_updates/table_id]
-                     :from      [[{:select    [[:table/id :table_id]
-                                               [:table/updated_at :last_table_update]
-                                               [[:max :field/updated_at] :last_field_update]]
-                                   :from      [[(t2/table-name :model/Table) :table]]
-                                   :left-join [[(t2/table-name :model/Field) :field]
-                                               [:= :field/table_id :table/id]]
-                                   :where     [:= :table/db_id db-id]
-                                   :group-by  [:table/id
-                                               :table/updated_at]}
+                     :from      [[^:allow-subquery {:select    [[:table/id :table_id]
+                                                                [:table/updated_at :last_table_update]
+                                                                [[:max :field/updated_at] :last_field_update]]
+                                                    :from      [[(t2/table-name :model/Table) :table]]
+                                                    :left-join [[(t2/table-name :model/Field) :field]
+                                                                [:= :field/table_id :table/id]]
+                                                    :where     [:= :table/db_id db-id]
+                                                    :group-by  [:table/id
+                                                                :table/updated_at]}
                                   :field_updates]]
                      :inner-join [[(t2/table-name :model/Dependency) :dep]
                                   [:and
-                                   [:= :dep/to_entity_type [:inline "table"]]
+                                   [:= :dep/to_entity_type "table"]
                                    [:= :field_updates/table_id :dep/to_entity_id]]
                                   [(t2/table-name :model/AnalysisFinding) :finding]
                                   [:and

@@ -15,6 +15,7 @@ import {
   useHasTokenFeature,
   useStoreUrl,
 } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import {
   CONTENT_MAX_WIDTH,
   ContactAdminAlert,
@@ -23,7 +24,6 @@ import {
   getStorageNotProvisionedSubtitle,
 } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
   Anchor,

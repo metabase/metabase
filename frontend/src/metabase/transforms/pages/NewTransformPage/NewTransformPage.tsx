@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
@@ -15,7 +15,10 @@ import {
   PaneHeaderInput,
 } from "metabase/common/data-studio/components/PaneHeader";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import {
+  getInitialUiState,
+  loadQueryEditor,
+} from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { type Location, useNavigate, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -52,9 +55,12 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
   const {
     transformsDatabases,
     remoteSyncReadOnly,
-    isLoadingDatabases: isLoading,
+    isLoadingDatabases,
     databasesError: error,
   } = useTransformPermissions();
+
+  const isEditorLoaded = useQueryEditorChunk();
+  const isLoading = isLoadingDatabases || !isEditorLoaded;
 
   if (isLoading || error != null || transformsDatabases == null) {
     return (
@@ -71,7 +77,7 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
           breadcrumbs={
             <DataStudioBreadcrumbs>
               <Link key="transform-list" to={Urls.transformList()}>
-                {t`Transforms`}
+                {t`Data transformation`}
               </Link>
             </DataStudioBreadcrumbs>
           }
@@ -164,7 +170,7 @@ function NewTransformPageBody({
           breadcrumbs={
             <DataStudioBreadcrumbs>
               <Link key="transform-list" to={Urls.transformList()}>
-                {t`Transforms`}
+                {t`Data transformation`}
               </Link>
               {t`New transform`}
             </DataStudioBreadcrumbs>
@@ -272,3 +278,21 @@ export function NewCardTransformPage() {
 
   return <NewTransformPage initialSource={initialSource} />;
 }
+
+// The editor is a separate chunk. Folding it into the wait this page already
+// does for its own data means one wait rather than two in a row.
+const useQueryEditorChunk = () => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    loadQueryEditor().then(() => {
+      if (!cancelled) {
+        setIsLoaded(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return isLoaded;
+};

@@ -44,11 +44,10 @@ const ChartSettingsWidget = ({
   return (
     <Box
       hidden={hidden}
-      className={cx({
+      className={cx(S.root, {
         [FormS.FormField]: isFormField,
         [S.inline]: inline && !hidden,
       })}
-      mx="lg"
       mb="lg"
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
       data-field-title={title}
@@ -59,7 +58,7 @@ const ChartSettingsWidget = ({
           <Text
             component="label"
             fw="bold"
-            fz={isFormField ? "0.88em" : undefined}
+            fz={isFormField ? "0.75rem" : undefined}
             lh={variant === "default" ? "normal" : "0.875rem"}
             htmlFor={extraWidgetProps.id}
           >

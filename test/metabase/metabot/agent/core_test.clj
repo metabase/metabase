@@ -8,8 +8,10 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -106,7 +108,8 @@
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "runs agent loop with mocked LLM returning text"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
@@ -117,10 +120,10 @@
                                   :profile-id :embedding_next
                                   :context    {}}))]
             ;; Should get parts + state data
-            ;; Note: :finish is not emitted as a part; it's handled by aisdk-line-xf completion
             (is (pos? (count result)))
-            ;; Should have state data (final part)
-            (is (some #(= :data (:type %)) result)))))
+            ;; Should have state data
+            (is (some #(= :data (:type %)) result))
+            (is (= {:type :finish :finish-reason :stop} (last result))))))
       (testing "sql profile requests required tool choice"
         (let [captured (atom nil)]
           (mt/with-dynamic-fn-redefs [self/call-llm (fn [_model _system _parts _tools _tracking-opts llm-opts]
@@ -194,6 +197,40 @@
             ;; Should get error message
             (is (some #(= :error (:type %)) result))))))))
 
+(deftest max-iterations-finish-reason-test
+  (mt/as-admin
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (let [get-profile profiles/get-profile
+            call-count  (atom 0)
+            tool-call   (fn [n]
+                          [{:type      :tool-input
+                            :id        (str "t" n)
+                            :function  "search"
+                            :arguments {}}])
+            run-loop    (fn [responses]
+                          (reset! call-count 0)
+                          (mt/with-dynamic-fn-redefs [profiles/get-profile  (comp #(assoc % :max-iterations 2) get-profile)
+                                                      openrouter/openrouter (fn [_]
+                                                                              (let [n (swap! call-count inc)]
+                                                                                (mut/mock-llm-response
+                                                                                 ((nth responses (dec n)) n))))
+                                                      metabot-search/search (constantly [])]
+                            (mt/with-log-level [metabase.metabot.agent.core :warn]
+                              (->> (agent/run-agent-loop {:messages [{:role :user :content "Hi"}]
+                                                          :profile-id :embedding_next})
+                                   (into [])
+                                   last))))]
+        (testing "still calling tools at the cap"
+          (let [finish (run-loop [tool-call tool-call])]
+            (is (= 2 @call-count)
+                "stops calling the LLM once the iteration cap is reached")
+            (is (= {:type :finish :finish-reason :max-iterations} finish))))
+        (testing "plain answer on the last allowed iteration is a normal stop"
+          (let [finish (run-loop [tool-call (constantly [{:type :text :text "Done"}])])]
+            (is (= 2 @call-count))
+            (is (= {:type :finish :finish-reason :stop} finish))))))))
+
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj
 
@@ -222,7 +259,8 @@
 
 (deftest integration-run-agent-loop-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "runs full agent loop without external calls"
         (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
                                                             (mut/mock-llm-response
@@ -236,7 +274,7 @@
             (is (pos? (count result)))
             ;; Should have text part
             (is (some #(= :text (:type %)) result))
-            ;; Should have state data part (finish is handled by aisdk-line-xf, not emitted as part)
+            ;; Should have state data part
             (is (some #(and (= :data (:type %))
                             (map? (:data %)))
                       result))))))))
@@ -323,7 +361,8 @@
 
 (deftest integration-search-query-chart-flow-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "Scenario 1: Search → Query → Chart (multi-turn happy path)"
         ;; User asks: "Show me the first 10 orders"
         ;; - Iteration 1: LLM calls search tool to find orders table
@@ -412,7 +451,8 @@
                          {:type      :data
                           :data-type "state"
                           :data      {:queries map?
-                                      :charts  map?}}]
+                                      :charts  map?}}
+                         {:type :finish :finish-reason :stop}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
                           (into [] (metabot.persistence/combine-text-parts-xf)
                                 (agent/run-agent-loop
@@ -434,7 +474,8 @@
     ;; real. `capture-reducible` binds the capture unconditionally (ignores MB_AI_EVAL_CAPTURE), and
     ;; we redef `emit!` to a no-op so the test never writes a per-session JSONL file.
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
         (let [llm-call-count (atom 0)
               llm-responses  [;; Iteration 1: call the search tool (produces a real tool span)
                               [{:type :start :id "msg-1"}
@@ -499,7 +540,8 @@
 
 (deftest cumulative-usage-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "usage parts are cumulative across agent loop iterations"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter
@@ -573,7 +615,8 @@
 
 (deftest run-agent-loop-retries-on-rate-limit-test
   (mt/as-admin
-    (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
       (testing "agent loop retries when LLM returns 429 and then succeeds"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
@@ -584,7 +627,8 @@
                                                                 (mut/mock-llm-response
                                                                  [{:type :text :text "Hello after retry"}])))]
             (is (=? [{:type :text :text "Hello after retry"}
-                     {:type :data :data-type "state"}]
+                     {:type :data :data-type "state"}
+                     {:type :finish :finish-reason :stop}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
                       (into [] (metabot.persistence/combine-text-parts-xf)
                             (agent/run-agent-loop
@@ -599,7 +643,8 @@
 ;;; ===================== Prometheus Metrics Tests =====================
 
 (deftest run-agent-loop-prometheus-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (mt/with-prometheus-system! [_ system]
       (testing "records agent-requests, agent-iterations, and llm-requests metrics"
         (let [call-count (atom 0)]
@@ -662,7 +707,8 @@
 ;;; ===================== Snowplow Analytics Tests =====================
 
 (deftest agent-used-tool-snowplow-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (testing "fires :snowplow/ai_service_event 'agent_used_tool' per tool call"
       (let [call-count (atom 0)
             rasta-id   (mt/user->id :rasta)]
@@ -745,7 +791,8 @@
                           tool-events)))))))))))
 
 (deftest token-usage-snowplow-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
     (testing "fires :snowplow/token_usage event per LLM call"
       (let [call-count (atom 0)
             rasta-id   (mt/user->id :rasta)]
@@ -805,7 +852,6 @@
   (let [query (lib/native-query (mt/metadata-provider) "select 1")
         chart-config {:display_type "pie"
                       :query query
-                      :image_base_64 "asdf"
                       :series {}
                       :timeline_events []}
         memory (-> (#'agent/init-agent {:profile-id :internal

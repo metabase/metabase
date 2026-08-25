@@ -32,6 +32,7 @@ const elements = [
   // lib
   createElement({ type: "lib", name: "analytics", enforcePublicApi: true }),
   createElement({ type: "lib", name: "css" }),
+  createElement({ type: "lib", name: "dayjs", enforcePublicApi: true }),
   createElement({
     type: "lib",
     name: "env",
@@ -101,6 +102,11 @@ const elements = [
   createElement({ type: "shared", name: "common" }),
   createElement({
     type: "shared",
+    name: "current-user",
+    enforcePublicApi: true,
+  }),
+  createElement({
+    type: "shared",
     name: "custom-viz",
     pattern: "enterprise/frontend/src/custom-viz/**",
   }),
@@ -159,8 +165,8 @@ const elements = [
     pattern: "enterprise/frontend/src/embedding-sdk-package/**",
   }),
   // Window-global bridges between the SDK bundle and the npm package. They
-  // stay shared tier (both artifacts compile them in), but their payload
-  // types are owned by the bundle, hence the type-only allow rule below.
+  // stay shared tier (both artifacts compile them in) and carry their payloads
+  // as opaque types; each artifact pins the concrete bundle types on its side.
   ...[
     "frontend/src/embedding-sdk-shared/lib/ensure-metabase-provider-props-store.ts",
     "frontend/src/embedding-sdk-shared/lib/metabot-state-channel.ts",
@@ -172,6 +178,17 @@ const elements = [
       mode: "full",
     }),
   ),
+  // Storybook config is a composition root: preview wires app-tier decorators.
+  // Needs its own pattern because ** doesn't match dot-folders in the lint,
+  // and must come before shared/embedding-sdk-shared: the affected-tests
+  // tooling matches with `dot: true` and first-element-wins, so a later
+  // position would hand these files to the shared module in the test graph.
+  createElement({
+    type: "app",
+    name: "misc",
+    pattern: "frontend/src/embedding-sdk-shared/.storybook/**",
+    mode: "full",
+  }),
   createElement({
     type: "shared",
     name: "embedding-sdk-shared",
@@ -183,11 +200,7 @@ const elements = [
   createElement({ type: "shared", name: "hooks", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "content-translation" }),
   createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
-  createElement({
-    type: "shared",
-    name: "metadata",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "feature", name: "monitor" }),
   createElement({ type: "shared", name: "nav", enforceSharedTiers: false }),
@@ -223,11 +236,7 @@ const elements = [
     enforceSharedTiers: false,
   }),
   createElement({ type: "shared", name: "timelines" }),
-  createElement({
-    type: "shared",
-    name: "transforms",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "transforms" }),
   createElement({
     type: "shared",
     name: "types",
@@ -242,15 +251,23 @@ const elements = [
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
-  // The theme editor preview renders the live embed via the app-tier EAJS
-  // runtime; the edge is whitelisted via the allow rules below.
+  // The theme editor previews the live embed through the app-tier EAJS
+  // runtime, so the whole editor is an app-tier module. It still lives under
+  // the admin folder; the pattern must come before feature/admin (first match
+  // wins).
+  // TODO(embedding-modules): move the folder out of admin so module == folder.
   createElement({
-    type: "feature",
-    name: "admin-theme-preview",
-    pattern:
-      "frontend/src/metabase/admin/embedding/components/ThemeEditor/ResourcePreview.tsx",
-    mode: "full",
+    type: "app",
+    name: "theme-editor",
+    pattern: "frontend/src/metabase/admin/embedding/components/ThemeEditor/**",
   }),
+  // Route composition for the admin app. Must precede feature/admin.
+  ...[
+    "frontend/src/metabase/admin/routes.tsx",
+    "frontend/src/metabase/admin/routes.unit.spec.tsx",
+  ].map((pattern) =>
+    createElement({ type: "app", name: "admin-routes", pattern, mode: "full" }),
+  ),
   createElement({ type: "feature", name: "admin" }),
   createElement({ type: "feature", name: "dashboard" }),
   createElement({ type: "feature", name: "data-studio" }),
@@ -318,6 +335,13 @@ const elements = [
   createElement({ type: "feature", name: "search" }),
 
   // app
+  // Composition/barrel file for reducers shared among the embedding sdk and the core app
+  createElement({
+    type: "app",
+    name: "reducers-common",
+    pattern: "frontend/src/metabase/reducers-common.ts",
+    mode: "full",
+  }),
   ...[
     "frontend/src/metabase/app.tsx",
     "frontend/src/metabase/app-embed-sdk.tsx",
@@ -331,7 +355,6 @@ const elements = [
     "frontend/src/metabase/app/selectors.ts",
     "frontend/src/metabase/app/selectors.unit.spec.ts",
     "frontend/src/metabase/reducers-main.ts",
-    "frontend/src/metabase/reducers-common.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
     "frontend/src/metabase/routes.unit.spec.tsx",
@@ -345,9 +368,6 @@ const elements = [
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
     "frontend/src/metabase/static-viz/index.tsx",
-    // Storybook config is a composition root: preview wires app-tier decorators.
-    // Needs its own pattern because ** doesn't match dot-folders.
-    "frontend/src/embedding-sdk-shared/.storybook/**",
   ].map((path) =>
     createElement({
       type: "app",
@@ -441,25 +461,6 @@ const baseRules = [
   {
     from: ["app/*"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
-  },
-  // Whitelisted cross-tier edges. Keep this list short; every entry should
-  // eventually be removed.
-  // Window-bridge ABI: the payload shapes are owned by the bundle.
-  // TODO(embedding-modules): decouple with shared contracts.
-  {
-    from: ["shared/embedding-sdk-window-bridge"],
-    allow: ["app/embedding-sdk-bundle"],
-    importKind: "type",
-  },
-  // Admin theme preview drives the live embed through the EAJS runtime.
-  // Remove once the preview is lifted out of admin.
-  {
-    from: ["feature/admin-theme-preview"],
-    allow: ["feature/admin", "app/embedding-iframe-sdk"],
-  },
-  {
-    from: ["feature/admin"],
-    allow: ["feature/admin-theme-preview"],
   },
 ];
 

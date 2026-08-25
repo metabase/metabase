@@ -1,4 +1,6 @@
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useUserKeyValue } from "metabase/current-user";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -19,6 +21,7 @@ import * as Urls from "metabase/urls";
 
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
+import { GuidePage } from "./guide/pages/GuidePage/GuidePage";
 import { CanAccessDataModel, CanAccessDataStudio } from "./route-guards";
 import { getDataStudioSettingsRoutes } from "./settings/routes";
 
@@ -82,6 +85,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
       <Route element={<CanAccessDataStudio />}>
         <Route path="data-studio" lazy={dataStudioLayout}>
           <Route index element={<DataStudioIndexRedirect />} />
+          <Route path="guide" element={<GuidePage />} />
           <Route path="data" element={<CanAccessDataModel />}>
             <Route lazy={dataSectionLayout}>
               {getDataStudioMetadataRoutes(IsAdmin)}
@@ -137,9 +141,21 @@ export function getDataStudioDependencyDiagnosticsRedirects() {
   );
 }
 
-function DataStudioIndexRedirect() {
+export function DataStudioIndexRedirect() {
   const indexPath = useSelector(getIndexPath);
-  return <Navigate to={indexPath} replace />;
+  const { value: hasSeenGuide, isLoading } = useUserKeyValue({
+    namespace: "data_studio",
+    key: "hasSeenGuide",
+    defaultValue: false,
+  });
+
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  return (
+    <Navigate to={hasSeenGuide ? indexPath : Urls.dataStudioGuide()} replace />
+  );
 }
 
 function getIndexPath(state: State) {

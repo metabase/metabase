@@ -1,7 +1,7 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { serializeCardForUrl } from "metabase/common/utils/card";
+import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
