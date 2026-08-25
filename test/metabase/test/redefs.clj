@@ -14,6 +14,10 @@
   "Used to detect whether we're in a nested [[with-temp]]. Default is false."
   false)
 
+(defonce ^:private prewarm-failures-logged
+  ;; Messages already reported by the dataset pre-warm below, so a repeated failure is logged once.
+  (atom #{}))
+
 (methodical/defmethod toucan2.tools.with-temp/do-with-temp* :around :default
   "Initialize the DB before doing the other with-temp stuff.
   Make sure metabase.test.util is loaded.
@@ -36,7 +40,11 @@
         (try
           ((resolve 'metabase.test.data.impl/db-id))
           (catch Throwable e
-            (log/debugf "Could not materialise the test dataset before with-temp: %s" (ex-message e)))))
+            ;; This failure resurfaces much later as a Database that does not exist. Log each message once, since a
+            ;; warehouse that is down would otherwise produce a warning for every top-level `with-temp`.
+            (let [message (ex-message e)]
+              (when-not (contains? (first (swap-vals! prewarm-failures-logged conj message)) message)
+                (log/warnf "Could not materialize the test dataset before with-temp: %s" message))))))
       (binding [*in-with-temp* true]
         (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
           (next-method model attributes f))))
