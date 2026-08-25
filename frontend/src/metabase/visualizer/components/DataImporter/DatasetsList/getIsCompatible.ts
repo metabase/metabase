@@ -1,5 +1,5 @@
 import { groupColumnsBySuitableVizSettings } from "metabase/visualizer/visualizations/compat";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type {
   Dataset,
   DatasetColumn,

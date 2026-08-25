@@ -1,13 +1,10 @@
 import type { ScaleContinuousNumeric } from "d3-scale";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
-import type { Margin } from "metabase/viz-core/shared/types/layout";
-import type { ChartGoal } from "metabase/viz-core/shared/types/settings";
-import type {
-  ChartFont,
-  GoalStyle,
-} from "metabase/viz-core/shared/types/style";
 
+import type { Margin } from "../../../types/layout";
+import type { ChartGoal } from "../../../types/settings";
+import type { ChartFont, GoalStyle } from "../../../types/style";
 import { LABEL_PADDING } from "../constants";
 import type { SeriesData } from "../types";
 

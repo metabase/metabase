@@ -1,24 +1,18 @@
 import { t } from "ttag";
 
-import type {
-  EChartsTooltipModel,
-  EChartsTooltipRow,
-} from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
-import {
-  INDEX_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import { getDatasetKey } from "metabase/viz-core/echarts/cartesian/model/dataset";
-import type { DataKey } from "metabase/viz-core/echarts/cartesian/model/types";
-import type { EChartsSeriesMouseEvent } from "metabase/viz-core/echarts/types";
-import type {
-  ComputedVisualizationSettings,
-  DataPoint,
-} from "metabase/viz-core/types";
 import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 
+import type {
+  EChartsTooltipModel,
+  EChartsTooltipRow,
+} from "../../components/ChartTooltip/EChartsTooltip";
+import type { ComputedVisualizationSettings, DataPoint } from "../../types";
+import { INDEX_KEY, X_AXIS_DATA_KEY } from "../cartesian/constants/dataset";
+import { getDatasetKey } from "../cartesian/model/dataset";
+import type { DataKey } from "../cartesian/model/types";
 import { formatValueForTooltip } from "../tooltip/format";
+import type { EChartsSeriesMouseEvent } from "../types";
 
 import type {
   BoxPlotChartModel,

@@ -1,5 +1,4 @@
 import { type Dayjs, dayjs } from "metabase/dayjs";
-import { getXValues, parseXValue } from "metabase/viz-core/lib/renderer_utils";
 import type {
   RowValues,
   Series,
@@ -11,6 +10,8 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 import { isObject } from "metabase-types/guards";
+
+import { getXValues, parseXValue } from "./renderer_utils";
 
 describe("getXValues", () => {
   function getXValuesForRows(

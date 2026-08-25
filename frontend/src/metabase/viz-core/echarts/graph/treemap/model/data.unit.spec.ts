@@ -1,5 +1,4 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { getNodesFromPath } from "metabase/viz-core/echarts/graph/treemap/model/tree";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
@@ -8,6 +7,7 @@ import {
 } from "metabase-types/api/mocks/dataset";
 
 import { getTreemapChartColumns, getTreemapData } from "./data";
+import { getNodesFromPath } from "./tree";
 import type { TreemapChartColumns, TreemapTree } from "./types";
 
 const columns: DatasetColumn[] = [

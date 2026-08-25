@@ -5,10 +5,10 @@ import _ from "underscore";
 
 import { getCspNonce } from "metabase/utils/csp";
 import { isNotNull } from "metabase/utils/types";
-import TooltipStyles from "metabase/viz-core/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { ClickObject } from "metabase-lib";
 
+import TooltipStyles from "../../components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
+import type { ComputedVisualizationSettings } from "../../types";
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
 import type { SankeyChartModel } from "../graph/sankey/model/types";
 import type { PieChartModel, SliceTreeNode } from "../pie/model/types";

@@ -1,7 +1,8 @@
 import _ from "underscore";
 
 import { getObjectKeys } from "metabase/utils/objects";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+
+import type { ComputedVisualizationSettings } from "../../../types";
 
 import type { SeriesModel, StackModel } from "./types";
 

@@ -1,8 +1,7 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { visualizations } from "metabase/viz-core/lib/registry";
-import { DEFAULT_VIZ_ORDER } from "metabase/viz-core/lib/viz-order";
+import { DEFAULT_VIZ_ORDER, visualizations } from "metabase/viz-core";
 
 import { ChartTypeList, type ChartTypeListProps } from "./ChartTypeList";
 

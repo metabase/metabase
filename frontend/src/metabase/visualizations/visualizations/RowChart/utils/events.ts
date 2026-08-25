@@ -3,29 +3,23 @@ import _ from "underscore";
 
 import { formatNullable } from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
-import { sumMetric } from "metabase/viz-core/lib/dataset";
-import type {
-  CartesianChartColumns,
-  ColumnDescriptor,
-} from "metabase/viz-core/lib/graph/columns";
-import { getColumnDescriptors } from "metabase/viz-core/lib/graph/columns";
-import { getStackOffset } from "metabase/viz-core/lib/settings/stacking";
-import { formatValueForTooltipWithoutScaling } from "metabase/viz-core/lib/tooltip";
-import type {
-  BarData,
-  Series,
-} from "metabase/viz-core/shared/components/RowChart/types";
-import type {
-  GroupedDataset,
-  GroupedDatum,
-  MetricDatum,
-  SeriesInfo,
-} from "metabase/viz-core/shared/types/data";
-import type {
-  DataPoint,
-  StackedTooltipModel,
-  TooltipRowModel,
-} from "metabase/viz-core/types";
+import {
+  type BarData,
+  type CartesianChartColumns,
+  type ColumnDescriptor,
+  type DataPoint,
+  type GroupedDataset,
+  type GroupedDatum,
+  type MetricDatum,
+  type Series,
+  type SeriesInfo,
+  type StackedTooltipModel,
+  type TooltipRowModel,
+  formatValueForTooltipWithoutScaling,
+  getColumnDescriptors,
+  getStackOffset,
+  sumMetric,
+} from "metabase/viz-core";
 import type {
   ClickObject,
   ClickObjectDimension,

@@ -1,46 +1,43 @@
 import type { EChartsCoreOption } from "echarts/core";
 import type { LabelLayoutOptionCallback } from "echarts/types/src/util/types";
 
-import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import {
-  CHART_STYLE,
-  Z_INDEXES,
-} from "metabase/viz-core/echarts/cartesian/constants/style";
+import type { TimelineEventId } from "metabase-types/api";
+
+import { getNumberOr } from "../../../../lib/settings/row-values";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "../../../../types";
+import type { WaterfallSeriesOption } from "../../../types";
+import { X_AXIS_DATA_KEY } from "../../constants/dataset";
+import { CHART_STYLE, Z_INDEXES } from "../../constants/style";
+import type { ChartLayout } from "../../layout/types";
+import { isCategoryAxis } from "../../model/guards";
 import type {
   ChartDataset,
   LabelFormatter,
   WaterfallChartModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import {
-  buildEChartsLabelOptions,
-  computeContinuousScaleBarWidth,
-  getDataLabelFormatter,
-} from "metabase/viz-core/echarts/cartesian/option/series";
-import {
-  WATERFALL_END_KEY,
-  WATERFALL_LABELS_SERIES_ID,
-  WATERFALL_START_KEY,
-  WATERFALL_TOTAL_KEY,
-  WATERFALL_VALUE_KEY,
-} from "metabase/viz-core/echarts/cartesian/waterfall/constants";
-import type { WaterfallSeriesOption } from "metabase/viz-core/echarts/types";
-import { getNumberOr } from "metabase/viz-core/lib/settings/row-values";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core/types";
-import type { TimelineEventId } from "metabase-types/api";
-
-import type { ChartLayout } from "../../layout/types";
-import { isCategoryAxis } from "../../model/guards";
+} from "../../model/types";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
 import {
   getGoalLineParams,
   getGoalLineSeriesOption,
 } from "../../option/goal-line";
+import {
+  buildEChartsLabelOptions,
+  computeContinuousScaleBarWidth,
+  getDataLabelFormatter,
+} from "../../option/series";
 import { getTimelineEventsSelectionSeries } from "../../timeline-events/option";
 import type { TimelineEventsModel } from "../../timeline-events/types";
+import {
+  WATERFALL_END_KEY,
+  WATERFALL_LABELS_SERIES_ID,
+  WATERFALL_START_KEY,
+  WATERFALL_TOTAL_KEY,
+  WATERFALL_VALUE_KEY,
+} from "../constants";
 
 const getLabelLayoutFn = (
   dataset: ChartDataset,

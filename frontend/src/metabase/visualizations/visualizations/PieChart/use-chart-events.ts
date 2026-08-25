@@ -8,28 +8,22 @@ import type {
   ClickObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type {
-  EChartsTooltipModel,
-  EChartsTooltipRow,
-} from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
-import type { PieChartFormatters } from "metabase/viz-core/echarts/pie/format";
-import type {
-  PieChartModel,
-  SliceTreeNode,
-} from "metabase/viz-core/echarts/pie/model/types";
-import type { EChartsSunburstSeriesMouseEvent } from "metabase/viz-core/echarts/pie/types";
 import {
+  type EChartsEventHandler,
+  type EChartsSunburstSeriesMouseEvent,
+  type EChartsTooltipModel,
+  type EChartsTooltipRow,
+  type PieChartFormatters,
+  type PieChartModel,
+  type SliceTreeNode,
   getArrayFromMapValues,
+  getMarkerColorClass,
   getSliceKeyPath,
   getSliceTreeNodesFromPath,
-} from "metabase/viz-core/echarts/pie/util";
-import {
-  getMarkerColorClass,
+  getTotalValue,
+  getValueFromDimensionKey,
   useClickedStateTooltipSync,
-} from "metabase/viz-core/echarts/tooltip";
-import { getTotalValue } from "metabase/viz-core/echarts/tooltip/utils";
-import { getValueFromDimensionKey } from "metabase/viz-core/shared/settings/pie";
-import type { EChartsEventHandler } from "metabase/viz-core/types/echarts";
+} from "metabase/viz-core";
 import type { ClickObjectDimension } from "metabase-lib";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 

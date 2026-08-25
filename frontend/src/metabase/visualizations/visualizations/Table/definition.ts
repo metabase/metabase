@@ -8,23 +8,19 @@ import {
 } from "metabase/visualizations/analytics";
 import * as DataGrid from "metabase/visualizations/lib/data_grid";
 import {
+  type ColumnSettingDefinition,
+  type ComputedVisualizationSettings,
+  type FormattableColumn,
+  type VisualizationDefinition,
   columnSettings,
-  isPivoted,
-  tableColumnSettings,
-} from "metabase/viz-core/lib/settings/column";
-import { getOptionFromColumn } from "metabase/viz-core/lib/settings/utils";
-import { makeCellBackgroundGetter } from "metabase/viz-core/lib/table_format";
-import { getDefaultPivotColumn } from "metabase/viz-core/lib/utils";
-import {
+  getDefaultPivotColumn,
   getDefaultSize,
   getMinSize,
-} from "metabase/viz-core/shared/utils/sizes";
-import type {
-  ColumnSettingDefinition,
-  ComputedVisualizationSettings,
-  FormattableColumn,
-  VisualizationDefinition,
-} from "metabase/viz-core/types";
+  getOptionFromColumn,
+  isPivoted,
+  makeCellBackgroundGetter,
+  tableColumnSettings,
+} from "metabase/viz-core";
 import {
   isAvatarURL,
   isCoordinate,

@@ -1,4 +1,4 @@
-import type { Padding } from "metabase/viz-core/types";
+import type { Padding } from "../../../../types";
 
 export type SankeyChartLayout = {
   padding: Padding;

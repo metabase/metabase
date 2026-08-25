@@ -1,7 +1,9 @@
 import testAcrossTimezones from "__support__/timezones";
 import { dayjs } from "metabase/dayjs";
-import type { TimeSeriesInterval } from "metabase/viz-core/echarts/cartesian/model/types";
-import { computeTimeseriesDataInterval } from "metabase/viz-core/echarts/cartesian/utils/timeseries";
+
+import type { TimeSeriesInterval } from "../model/types";
+
+import { computeTimeseriesDataInterval } from "./timeseries";
 
 testAcrossTimezones((reportTz: string) => {
   describe("computeTimeseriesDataIntervalIndex", () => {

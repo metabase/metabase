@@ -2,25 +2,36 @@ import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
 import {
+  type DatasetColumn,
+  type RawSeries,
+  type RowValue,
+  type XAxisScale,
+  getRowsForStableKeys,
+} from "metabase-types/api";
+
+import type { CartesianChartColumns } from "../../../lib/graph/columns";
+import { getCartesianChartColumns } from "../../../lib/graph/columns";
+import type { ComputedVisualizationSettings, Extent } from "../../../types";
+import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
+} from "../../cartesian/constants/dataset";
 import {
   computeSplit,
   getYAxisModel,
   shouldAutoSplitYAxis,
-} from "metabase/viz-core/echarts/cartesian/model/axis";
+} from "../../cartesian/model/axis";
 import {
   getCardsColumnByDataKeyMap,
   getDatasetKey,
   getSortedSeriesModels,
   sortDataset,
-} from "metabase/viz-core/echarts/cartesian/model/dataset";
+} from "../../cartesian/model/dataset";
 import {
   getCardSeriesModels,
   getDimensionModel,
-} from "metabase/viz-core/echarts/cartesian/model/series";
-import { getAxisTransforms } from "metabase/viz-core/echarts/cartesian/model/transforms";
+} from "../../cartesian/model/series";
+import { getAxisTransforms } from "../../cartesian/model/transforms";
 import type {
   CategoryXAxisModel,
   ChartDataset,
@@ -30,21 +41,8 @@ import type {
   SeriesExtents,
   SeriesFormatters,
   YAxisModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import type { ShowWarning } from "metabase/viz-core/echarts/types";
-import type { CartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
-import { getCartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
-import type {
-  ComputedVisualizationSettings,
-  Extent,
-} from "metabase/viz-core/types";
-import {
-  type DatasetColumn,
-  type RawSeries,
-  type RowValue,
-  type XAxisScale,
-  getRowsForStableKeys,
-} from "metabase-types/api";
+} from "../../cartesian/model/types";
+import type { ShowWarning } from "../../types";
 
 import { computeMultiSeriesBoxPlotData } from "./dataset";
 import type {

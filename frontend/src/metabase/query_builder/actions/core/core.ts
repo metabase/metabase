@@ -34,8 +34,10 @@ import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
 import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
-import { getRegisteredDefaultSize } from "metabase/viz-core/lib/registry";
-import { getCardAfterVisualizationClick } from "metabase/viz-core/lib/utils";
+import {
+  getCardAfterVisualizationClick,
+  getRegisteredDefaultSize,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";

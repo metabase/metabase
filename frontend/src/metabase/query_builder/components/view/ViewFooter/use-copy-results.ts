@@ -23,12 +23,14 @@ import {
   getClassicPivotColumnIndexes,
   getVisibleTableData,
 } from "metabase/visualizations/lib/visible-table-data";
-import { getChartSelector } from "metabase/viz-core/lib/image-exports";
-import { canSavePng } from "metabase/viz-core/lib/registry";
-import { extractRemappedColumns } from "metabase/viz-core/lib/remapping";
-import { isPivoted } from "metabase/viz-core/lib/settings/column";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import {
+  type ComputedVisualizationSettings,
+  canSavePng,
+  extractRemappedColumns,
+  getChartSelector,
+  getComputedSettingsForSeries,
+  isPivoted,
+} from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type {

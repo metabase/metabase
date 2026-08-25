@@ -6,7 +6,7 @@ import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn } from "__support__/visualizations";
 import { Box, SimpleGrid } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { registerVisualization } from "metabase/viz-core/lib/registry";
+import { registerVisualization } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,

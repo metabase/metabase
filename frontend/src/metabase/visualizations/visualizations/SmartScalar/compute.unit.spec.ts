@@ -7,7 +7,7 @@ import {
   type Trend,
   computeTrend as _computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
-import { computeChange } from "metabase/viz-core/lib/numeric";
+import { computeChange } from "metabase/viz-core";
 import type {
   DatasetColumn,
   RowValue,

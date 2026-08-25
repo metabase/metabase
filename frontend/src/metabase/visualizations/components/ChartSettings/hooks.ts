@@ -2,12 +2,15 @@ import { assocIn } from "icepick";
 import { useCallback, useMemo } from "react";
 
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
-import { getVisualizationTransformed } from "metabase/viz-core/lib/registry";
-import { extractRemappings } from "metabase/viz-core/lib/remapping";
-import { updateSettings } from "metabase/viz-core/lib/settings";
-import { getSettingsWidgetsForSeries } from "metabase/viz-core/lib/widgets";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
-import type { SettingsExtra, Widget } from "metabase/viz-core/types/definition";
+import {
+  type ComputedVisualizationSettings,
+  type SettingsExtra,
+  type Widget,
+  extractRemappings,
+  getSettingsWidgetsForSeries,
+  getVisualizationTransformed,
+  updateSettings,
+} from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   RawSeries,

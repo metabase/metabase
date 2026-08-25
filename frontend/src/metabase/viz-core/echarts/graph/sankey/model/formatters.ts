@@ -1,6 +1,7 @@
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+
+import type { ComputedVisualizationSettings } from "../../../../types";
 
 import type { SankeyChartColumns, SankeyFormatters, SankeyNode } from "./types";
 

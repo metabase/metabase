@@ -1,15 +1,15 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { Series, VisualizationSettings } from "metabase-types/api";
+
 import type {
   ComputedVisualizationSettings,
   SeriesSettingDefinition,
   SettingsExtra,
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
-} from "metabase/viz-core/types";
-import type { Series, VisualizationSettings } from "metabase-types/api";
-
+} from "../../types";
 import { getComputedSettings } from "../settings";
 
 export type NestedSettingsOptions<

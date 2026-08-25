@@ -3,17 +3,14 @@ import { t } from "ttag";
 
 import { formatPercent } from "metabase/utils/formatting";
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+
 import {
   EChartsTooltip,
   type EChartsTooltipRow,
-} from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
-import {
-  getMarkerColorClass,
-  getTooltipBaseOption,
-} from "metabase/viz-core/echarts/tooltip";
-import { getNumberOr } from "metabase/viz-core/lib/settings/row-values";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-
+} from "../../../../components/ChartTooltip/EChartsTooltip";
+import { getNumberOr } from "../../../../lib/settings/row-values";
+import { getMarkerColorClass, getTooltipBaseOption } from "../../../tooltip";
 import { getPercent } from "../../../tooltip/utils";
 import type { SankeyChartModel } from "../model/types";
 

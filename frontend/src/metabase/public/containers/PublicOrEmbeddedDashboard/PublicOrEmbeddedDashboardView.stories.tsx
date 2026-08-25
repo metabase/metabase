@@ -25,7 +25,7 @@ import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
-import { registerVisualization } from "metabase/viz-core/lib/registry";
+import { registerVisualization } from "metabase/viz-core";
 import type {
   Dashboard,
   DashboardCard,

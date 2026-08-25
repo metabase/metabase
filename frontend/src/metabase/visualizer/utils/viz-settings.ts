@@ -1,5 +1,7 @@
-import { getVisualization } from "metabase/viz-core/lib/registry";
-import type { VisualizationSettingDefinition } from "metabase/viz-core/types";
+import {
+  type VisualizationSettingDefinition,
+  getVisualization,
+} from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import {

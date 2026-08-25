@@ -10,7 +10,7 @@ import {
   extractReferencedColumns,
   isDraggedColumnItem,
 } from "metabase/visualizer/utils";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import {
   isDimension,
   isMetric,

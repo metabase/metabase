@@ -12,7 +12,7 @@ import {
 } from "metabase/ui";
 import { ColumnItem } from "metabase/visualizations/components/settings/ColumnItem";
 import { useListColumns } from "metabase/visualizations/visualizations/List/components/ListView";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatasetColumn } from "metabase-types/api";
 
 import styles from "./ListViewColumnsSidebar.module.css";

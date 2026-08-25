@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import {
+  type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
-} from "metabase/viz-core/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/viz-core/types";
+} from "metabase/viz-core";
 
 import { _columnSettings as columnSettings, settings } from "./settings";
 import { checkRenderable, isSensible } from "./utils";

@@ -1,10 +1,11 @@
+import type { RowValues } from "metabase-types/api";
+
 import {
   computeChange,
   computeNumericDataInterval,
   isMultipleOf,
   precision,
-} from "metabase/viz-core/lib/numeric";
-import type { RowValues } from "metabase-types/api";
+} from "./numeric";
 
 describe("visualization.lib.numeric", () => {
   describe("precision", () => {

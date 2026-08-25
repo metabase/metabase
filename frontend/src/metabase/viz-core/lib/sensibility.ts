@@ -1,8 +1,5 @@
 import _ from "underscore";
 
-import { getSeriesWithDisplay } from "metabase/viz-core/lib/series";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
-import { sanitizeResultData } from "metabase/viz-core/shared/utils/data";
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
@@ -24,7 +21,11 @@ import {
 } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import { sanitizeResultData } from "../shared/utils/data";
+
 import { type RegisteredVisualization, visualizations } from "./registry";
+import { getSeriesWithDisplay } from "./series";
+import { getComputedSettingsForSeries } from "./settings/visualization";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 const MAX_RECOMMENDED = 12;

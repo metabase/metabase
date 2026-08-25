@@ -5,8 +5,7 @@ import _ from "underscore";
 
 import { useLocale } from "metabase/common/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
-import { isCartesianChart } from "metabase/viz-core/lib/registry";
-import type { HoveredObject } from "metabase/viz-core/types";
+import { type HoveredObject, isCartesianChart } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type {
   DictionaryArray,

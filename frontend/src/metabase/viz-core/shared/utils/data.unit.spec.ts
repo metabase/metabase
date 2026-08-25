@@ -1,13 +1,14 @@
-import type {
-  BreakoutChartColumns,
-  MultipleMetricsChartColumns,
-} from "metabase/viz-core/lib/graph/columns";
-import type { ColumnFormatter } from "metabase/viz-core/shared/types/format";
 import {
   createMockColumn,
   createMockDatasetData,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+
+import type {
+  BreakoutChartColumns,
+  MultipleMetricsChartColumns,
+} from "../../lib/graph/columns";
+import type { ColumnFormatter } from "../types/format";
 
 import { getGroupedDataset, getSeries } from "./data";
 

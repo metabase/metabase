@@ -5,16 +5,12 @@ import type {
   ScatterSeriesOption,
 } from "echarts/charts";
 
-import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import {
-  CHART_STYLE,
-  Z_INDEXES,
-} from "metabase/viz-core/echarts/cartesian/constants/style";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/viz-core/types";
-
+} from "../../../types";
+import { X_AXIS_DATA_KEY } from "../../cartesian/constants/dataset";
+import { CHART_STYLE, Z_INDEXES } from "../../cartesian/constants/style";
 import {
   BLUR_OPACITY,
   BOXPLOT_DATA_LABEL_STYLE,

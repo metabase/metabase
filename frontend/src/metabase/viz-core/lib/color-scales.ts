@@ -1,6 +1,6 @@
 import { scaleLinear, scaleQuantile } from "d3-scale";
 
-import type { Extent } from "metabase/viz-core/types";
+import type { Extent } from "../types";
 
 export const getColorScale = (
   extent: Extent,

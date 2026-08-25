@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { TooltipRowModel } from "metabase/viz-core/types";
+import type { TooltipRowModel } from "../../types";
 
 export const getTotalValue = (
   headerRows: TooltipRowModel[] = [],

@@ -1,12 +1,13 @@
 import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
-import type { RemappingHydratedDatasetColumn } from "metabase/viz-core/types";
 import type {
   DatasetColumn,
   DatasetData,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import type { RemappingHydratedDatasetColumn } from "../../types";
 
 export type ColumnDescriptor = {
   index: number;

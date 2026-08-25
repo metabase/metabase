@@ -31,8 +31,10 @@ import {
   getInitialStateForMultipleSeries,
   getInitialStateForVisualizerCard,
 } from "metabase/visualizer/utils";
-import { getVisualizationRaw } from "metabase/viz-core/lib/registry";
-import { extendCardWithDashcardSettings } from "metabase/viz-core/lib/settings/typed-utils";
+import {
+  extendCardWithDashcardSettings,
+  getVisualizationRaw,
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,

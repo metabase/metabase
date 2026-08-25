@@ -9,12 +9,12 @@ import { Box, Checkbox, Icon } from "metabase/ui";
 import { displayNameForColumn, formatValue } from "metabase/value-formatting";
 import type { AuditTableSorting } from "metabase/visualizations/types";
 import { TABLE_DEFINITION } from "metabase/visualizations/visualizations/Table/definition";
-import { registerVisualization } from "metabase/viz-core/lib/registry";
-import { isColumnRightAligned } from "metabase/viz-core/lib/table";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-} from "metabase/viz-core/types";
+import {
+  type ComputedVisualizationSettings,
+  type VisualizationDefinition,
+  isColumnRightAligned,
+  registerVisualization,
+} from "metabase/viz-core";
 import type { ClickObject } from "metabase-lib";
 import type { DatasetColumn, RowValues, Series } from "metabase-types/api";
 

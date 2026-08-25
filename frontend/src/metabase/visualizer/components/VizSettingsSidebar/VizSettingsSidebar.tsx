@@ -11,7 +11,7 @@ import {
   getVisualizerTransformedSeries,
 } from "metabase/visualizer/selectors";
 import { updateSettings } from "metabase/visualizer/visualizer.slice";
-import { getSettingsWidgetsForSeries } from "metabase/viz-core/lib/widgets";
+import { getSettingsWidgetsForSeries } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 
 const HIDDEN_SETTING_WIDGETS = ["card.title"];

@@ -2,8 +2,8 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import {
   getClickBehaviorSettings,
   getComputedSettings,
-} from "metabase/viz-core/lib/settings";
-import { getSettingsWidgets } from "metabase/viz-core/lib/widgets";
+  getSettingsWidgets,
+} from "metabase/viz-core";
 
 registerVisualizations();
 

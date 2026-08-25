@@ -8,7 +8,7 @@ import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-br
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
-import { groupRawSeriesMetrics } from "metabase/viz-core/lib/dataset";
+import { groupRawSeriesMetrics } from "metabase/viz-core";
 
 import { FunnelNormal } from "../../components/FunnelNormal";
 

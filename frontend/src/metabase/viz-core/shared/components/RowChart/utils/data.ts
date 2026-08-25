@@ -4,9 +4,9 @@ import { stack, stackOffsetDiverging, stackOffsetExpand } from "d3";
 import _ from "underscore";
 
 import { formatNullable } from "metabase/utils/formatting";
-import type { SeriesInfo } from "metabase/viz-core/shared/types/data";
-import type { ContinuousScaleType } from "metabase/viz-core/shared/types/scale";
 
+import type { SeriesInfo } from "../../../types/data";
+import type { ContinuousScaleType } from "../../../types/scale";
 import type { BarData, Series, SeriesData, StackOffset } from "../types";
 
 export const StackOffsetFn = {

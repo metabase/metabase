@@ -1,12 +1,12 @@
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
-import { runWithinExportGrant } from "metabase/viz-core/lib/chart-export-iframe-grant";
 import {
   canvasToBlob,
   resolveSvgVarPaint,
   restoreNestedSvgOverflow,
-} from "metabase/viz-core/lib/image-exports";
+  runWithinExportGrant,
+} from "metabase/viz-core";
 
 import {
   createBrandingElement,

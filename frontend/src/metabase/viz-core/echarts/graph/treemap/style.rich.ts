@@ -1,4 +1,4 @@
-import type { RenderingContext } from "metabase/viz-core/types";
+import type { RenderingContext } from "../../../types";
 
 import { PARENT_HEADER_VALUE_PERCENT_GAP } from "./model/labels";
 import { groupHeader, leafBlock } from "./style";

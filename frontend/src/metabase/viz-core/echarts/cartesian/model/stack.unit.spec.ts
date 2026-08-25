@@ -1,5 +1,6 @@
 import { createMockSeriesModel } from "__support__/echarts";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+
+import type { ComputedVisualizationSettings } from "../../../types";
 
 import { getStackModels } from "./stack";
 

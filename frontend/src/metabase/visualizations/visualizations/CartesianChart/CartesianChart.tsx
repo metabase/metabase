@@ -22,12 +22,12 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import type { CartesianHoveredObject } from "metabase/visualizations/visualizations/CartesianChart/types";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
-import { getLegendItems } from "metabase/viz-core/echarts/cartesian/model/legend";
-import type { TimelineEventGroup } from "metabase/viz-core/echarts/cartesian/timeline-events/types";
 import {
+  type TimelineEventGroup,
+  getLegendItems,
   useCartesianChartSeriesColorsClasses,
   useCloseTooltipOnScroll,
-} from "metabase/viz-core/echarts/tooltip";
+} from "metabase/viz-core";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
 import { useChartDebug } from "./use-chart-debug";

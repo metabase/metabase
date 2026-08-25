@@ -1,9 +1,3 @@
-import {
-  getDefaultBoxplotDimensions,
-  getDefaultColumns,
-  getDefaultDimensions,
-  getDefaultMetrics,
-} from "metabase/viz-core/shared/settings/cartesian-chart";
 import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
 import {
   createMockCard,
@@ -11,6 +5,13 @@ import {
   createMockDatasetData,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+
+import {
+  getDefaultBoxplotDimensions,
+  getDefaultColumns,
+  getDefaultDimensions,
+  getDefaultMetrics,
+} from "./cartesian-chart";
 
 const createSeries = ({
   display,

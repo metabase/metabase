@@ -1,7 +1,4 @@
-import {
-  isTimezoneNaiveWallClock,
-  isValidIso8601,
-} from "metabase/viz-core/lib/date-validation";
+import { isTimezoneNaiveWallClock, isValidIso8601 } from "./date-validation";
 
 describe("isTimezoneNaiveWallClock", () => {
   it.each([

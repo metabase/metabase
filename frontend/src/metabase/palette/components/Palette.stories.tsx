@@ -17,7 +17,7 @@ import { ComboChart } from "metabase/visualizations/visualizations/ComboChart";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
-import { registerVisualization } from "metabase/viz-core/lib/registry";
+import { registerVisualization } from "metabase/viz-core";
 
 import { PaletteContainer } from "./Palette";
 import { recents, search } from "./test_data.json";

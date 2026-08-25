@@ -1,8 +1,10 @@
 import _ from "underscore";
 
-import { getBreakoutSeriesName } from "metabase/viz-core/echarts/cartesian/model/series";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
-import { MAX_SERIES } from "metabase/viz-core/lib/utils";
+import {
+  MAX_SERIES,
+  getBreakoutSeriesName,
+  getComputedSettingsForSeries,
+} from "metabase/viz-core";
 import type {
   DatasetColumn,
   RawSeries,

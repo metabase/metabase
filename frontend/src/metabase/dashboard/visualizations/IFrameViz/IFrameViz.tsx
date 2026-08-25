@@ -14,7 +14,7 @@ import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   getAllowedIframeAttributes,
   isAllowedIframeUrl,
-} from "metabase/viz-core/lib/iframe";
+} from "metabase/viz-core";
 import type {
   Dashboard,
   VirtualDashboardCard,

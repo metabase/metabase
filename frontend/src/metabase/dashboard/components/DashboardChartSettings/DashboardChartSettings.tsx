@@ -9,9 +9,11 @@ import {
   useChartSettingsState,
   useSettingsWidgets,
 } from "metabase/visualizations/components/ChartSettings/hooks";
-import { getVisualizationRaw } from "metabase/viz-core/lib/registry";
-import { getClickBehaviorSettings } from "metabase/viz-core/lib/settings";
-import { sanitizeDashcardSettings } from "metabase/viz-core/lib/settings/typed-utils";
+import {
+  getClickBehaviorSettings,
+  getVisualizationRaw,
+  sanitizeDashcardSettings,
+} from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type { DashboardChartSettingsProps } from "./types";

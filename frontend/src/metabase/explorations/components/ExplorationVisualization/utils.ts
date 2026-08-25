@@ -17,12 +17,12 @@ import type {
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
 import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
-import { getSeriesVizSettingsKey } from "metabase/viz-core/echarts/cartesian/model/series";
-import { isCartesianChart } from "metabase/viz-core/lib/registry";
-import type {
-  ComputedVisualizationSettings,
-  HighlightedObject,
-} from "metabase/viz-core/types";
+import {
+  type ComputedVisualizationSettings,
+  type HighlightedObject,
+  getSeriesVizSettingsKey,
+  isCartesianChart,
+} from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCountry,

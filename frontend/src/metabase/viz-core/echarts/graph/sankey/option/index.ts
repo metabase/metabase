@@ -1,12 +1,11 @@
 import type { SankeySeriesOption } from "echarts/charts";
 import type { EChartsCoreOption } from "echarts/core";
 
-import { truncateText } from "metabase/viz-core/lib/text";
+import { truncateText } from "../../../../lib/text";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/viz-core/types";
-
+} from "../../../../types";
 import { SANKEY_CHART_STYLE } from "../constants/style";
 import type { SankeyChartLayout } from "../layout/types";
 import type { SankeyChartModel } from "../model/types";

@@ -2,12 +2,6 @@ import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
-import { trackCardSetToHideWhenNoResults } from "metabase/viz-core/lib/settings/analytics";
-import type {
-  ComputedVisualizationSettings,
-  SettingsExtra,
-  VisualizationSettingsDefinitions,
-} from "metabase/viz-core/types";
 import type {
   ColumnSettings,
   DimensionReference,
@@ -15,11 +9,18 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import type {
+  ComputedVisualizationSettings,
+  SettingsExtra,
+  VisualizationSettingsDefinitions,
+} from "../../types";
 import { getVisualizationRaw } from "../registry";
 import {
   getComputedSettings,
   getPersistableDefaultSettings,
 } from "../settings";
+
+import { trackCardSetToHideWhenNoResults } from "./analytics";
 
 const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
   "card.title": {

@@ -1,11 +1,12 @@
 import { dayjs } from "metabase/dayjs";
-import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
 import type { RowValue } from "metabase-types/api";
 import {
   createMockDatetimeColumn,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
 
 import {
   computeSplit,

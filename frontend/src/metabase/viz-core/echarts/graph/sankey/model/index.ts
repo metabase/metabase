@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { RawSeries } from "metabase-types/api";
+
+import type { ComputedVisualizationSettings } from "../../../../types";
 
 import { getSankeyChartColumns, getSankeyData } from "./dataset";
 import { getSankeyFormatters } from "./formatters";

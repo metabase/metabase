@@ -1,28 +1,28 @@
-import { getYAxisModel } from "metabase/viz-core/echarts/cartesian/model/axis";
+import type { RawSeries } from "metabase-types/api";
+
+import { getCartesianChartColumns } from "../../../../lib/graph/columns";
+import { getNumberOr } from "../../../../lib/settings/row-values";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "../../../../types";
+import type { ShowWarning } from "../../../types";
+import { getYAxisModel } from "../../model/axis";
 import {
   filterNullDimensionValues,
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
   scaleDataset,
   sortDataset,
-} from "metabase/viz-core/echarts/cartesian/model/dataset";
+} from "../../model/dataset";
 import {
   getCardSeriesModels,
   getDimensionModel,
   getWaterfallChartDataDensity,
   getWaterfallLabelFormatter,
-} from "metabase/viz-core/echarts/cartesian/model/series";
-import type { WaterfallChartModel } from "metabase/viz-core/echarts/cartesian/model/types";
-import type { ShowWarning } from "metabase/viz-core/echarts/types";
-import { getCartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
-import { getNumberOr } from "metabase/viz-core/lib/settings/row-values";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core/types";
-import type { RawSeries } from "metabase-types/api";
-
+} from "../../model/series";
 import { getAxisTransforms } from "../../model/transforms";
+import type { WaterfallChartModel } from "../../model/types";
 import { WATERFALL_END_KEY, WATERFALL_TOTAL_KEY } from "../constants";
 
 import { getWaterfallXAxisModel } from "./axis";

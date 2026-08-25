@@ -10,7 +10,7 @@ import {
 } from "__support__/ui";
 import { ChartSettingsWidgetPopover } from "metabase/visualizations/components/ChartSettingsWidgetPopover";
 import { SliceNameWidget } from "metabase/visualizations/visualizations/PieChart/SliceNameWidget";
-import type { Widget } from "metabase/viz-core/types";
+import type { Widget } from "metabase/viz-core";
 
 import { ChartSettingSelect } from "./settings/ChartSettingSelect";
 

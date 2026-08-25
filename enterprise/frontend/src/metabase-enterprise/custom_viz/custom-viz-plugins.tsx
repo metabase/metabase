@@ -28,10 +28,7 @@ import {
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
-import {
-  registerVisualization,
-  visualizations,
-} from "metabase/viz-core/lib/registry";
+import { registerVisualization, visualizations } from "metabase/viz-core";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
 import type {

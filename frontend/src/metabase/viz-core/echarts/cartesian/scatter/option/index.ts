@@ -2,12 +2,12 @@ import type { EChartsCoreOption } from "echarts/core";
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
+import type { TimelineEventId } from "metabase-types/api";
+
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/viz-core/types";
-import type { TimelineEventId } from "metabase-types/api";
-
+} from "../../../../types";
 import { X_AXIS_DATA_KEY } from "../../constants/dataset";
 import type { ChartLayout } from "../../layout/types";
 import type { ScatterPlotModel } from "../../model/types";

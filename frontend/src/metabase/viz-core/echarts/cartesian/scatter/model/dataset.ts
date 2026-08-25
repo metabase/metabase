@@ -1,10 +1,7 @@
-import {
-  INDEX_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import type { CartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
 import type { RawSeries } from "metabase-types/api";
 
+import type { CartesianChartColumns } from "../../../../lib/graph/columns";
+import { INDEX_KEY, X_AXIS_DATA_KEY } from "../../constants/dataset";
 import { getDatasetKey } from "../../model/dataset";
 import type { ChartDataset, Datum } from "../../model/types";
 

@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import { color } from "metabase/ui/colors";
-import { columnSettings } from "metabase/viz-core/lib/settings/column";
-import { fieldSetting } from "metabase/viz-core/lib/settings/utils";
 import {
+  type VisualizationDefinition,
+  columnSettings,
+  fieldSetting,
   getDefaultSize,
   getMinSize,
-} from "metabase/viz-core/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/viz-core/types";
+} from "metabase/viz-core";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { findProgressColumn } from "./utils";

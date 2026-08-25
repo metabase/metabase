@@ -2,15 +2,13 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconProps } from "metabase/ui";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types/computed-settings";
 import type {
-  VisualizationDefinition,
-  VisualizationGridSize,
-} from "metabase/viz-core/types/definition";
-import type {
+  ComputedVisualizationSettings,
   HighlightedObject,
   HoveredObject,
-} from "metabase/viz-core/types/hover";
+  VisualizationDefinition,
+  VisualizationGridSize,
+} from "metabase/viz-core";
 import type { BrushClickObject } from "metabase-lib/query/types";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

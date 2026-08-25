@@ -1,10 +1,11 @@
+import { createMockVisualizationSettings } from "metabase-types/api/mocks";
+
+import type { ComputedVisualizationSettings } from "../../../../types";
 import {
   IS_WATERFALL_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import type { ChartDataset } from "metabase/viz-core/echarts/cartesian/model/types";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
-import { createMockVisualizationSettings } from "metabase-types/api/mocks";
+} from "../../constants/dataset";
+import type { ChartDataset } from "../../model/types";
 
 import { extendOriginalDatasetWithTotalDatum } from "./dataset";
 

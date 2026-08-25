@@ -1,11 +1,11 @@
 import type { CustomSeriesOption } from "echarts/charts";
 
+import type { RowValue } from "metabase-types/api";
+
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/viz-core/types";
-import type { RowValue } from "metabase-types/api";
-
+} from "../../../types";
 import type { EChartsCartesianCoordinateSystem } from "../../types";
 import { GOAL_LINE_SERIES_ID, X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../constants/style";

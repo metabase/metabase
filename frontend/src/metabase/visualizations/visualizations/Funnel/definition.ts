@@ -2,20 +2,17 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { formatNullable } from "metabase/utils/formatting";
-import { ChartSettingsError, MinRowsError } from "metabase/viz-core/lib/errors";
-import { columnSettings } from "metabase/viz-core/lib/settings/column";
 import {
+  ChartSettingsError,
+  type ComputedVisualizationSettings,
+  MinRowsError,
+  type VisualizationDefinition,
+  columnSettings,
   dimensionSetting,
-  metricSetting,
-} from "metabase/viz-core/lib/settings/utils";
-import {
   getDefaultSize,
   getMinSize,
-} from "metabase/viz-core/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-} from "metabase/viz-core/types";
+  metricSetting,
+} from "metabase/viz-core";
 import {
   type DatasetData,
   type RawSeries,

@@ -12,17 +12,15 @@ import {
   getTopHeaderRowIndex,
   getTopHeaderRowsCount,
 } from "metabase/visualizations/visualizations/PivotTable/utils";
-import { extractRemappedColumns } from "metabase/viz-core/lib/remapping";
 import {
-  getTitleForColumn,
-  isPivoted,
-} from "metabase/viz-core/lib/settings/column";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
-import {
+  type ComputedVisualizationSettings,
+  extractRemappedColumns,
+  getComputedSettingsForSeries,
   getTableCellClickedObject,
   getTableClickedObjectRowData,
-} from "metabase/viz-core/lib/table";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+  getTitleForColumn,
+  isPivoted,
+} from "metabase/viz-core";
 import type {
   Card,
   ColumnSettings,

@@ -1,5 +1,4 @@
-import type { RenderingContext } from "metabase/viz-core/types";
-
+import type { RenderingContext } from "../../../../types";
 import { groupHeader, leafBlock } from "../style";
 
 import {

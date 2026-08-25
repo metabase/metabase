@@ -9,10 +9,7 @@ import {
   type VisibleTableData,
   getVisibleTableData,
 } from "metabase/visualizations/lib/visible-table-data";
-import {
-  isPivoted as _isPivoted,
-  getTitleForColumn,
-} from "metabase/viz-core/lib/settings/column";
+import { isPivoted as _isPivoted, getTitleForColumn } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 

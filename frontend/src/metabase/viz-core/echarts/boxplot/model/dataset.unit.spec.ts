@@ -1,15 +1,12 @@
 import { createMockSeriesModel } from "__support__/echarts";
 import { checkNumber } from "metabase/utils/types";
-import {
-  INDEX_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
+import type { RowValue } from "metabase-types/api";
+
+import { INDEX_KEY, X_AXIS_DATA_KEY } from "../../cartesian/constants/dataset";
 import type {
   ChartDataset,
   NumericAxisScaleTransforms,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import type { RowValue } from "metabase-types/api";
-
+} from "../../cartesian/model/types";
 import { getBoxPlotStatKey } from "../utils";
 
 import { computeMultiSeriesBoxPlotData } from "./dataset";

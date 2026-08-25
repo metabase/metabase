@@ -9,7 +9,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import {
   getComputedSettingsForSeries,
   getStoredSettingsForSeries,
-} from "metabase/viz-core/lib/settings/visualization";
+} from "metabase/viz-core";
 import type {
   Series,
   VisualizationDisplay,

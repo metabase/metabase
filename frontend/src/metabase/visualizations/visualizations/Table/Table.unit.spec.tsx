@@ -14,8 +14,10 @@ import { QuestionChartSettings } from "metabase/visualizations/components/ChartS
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
-import { loadVisualizationComponents } from "metabase/viz-core/lib/registry";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
+import {
+  getComputedSettingsForSeries,
+  loadVisualizationComponents,
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {

@@ -8,8 +8,8 @@ import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChar
 import {
   RowChart,
   type RowChartProps,
-} from "metabase/viz-core/shared/components/RowChart/RowChart";
-import { getStaticChartTheme } from "metabase/viz-core/shared/components/RowChart/theme";
+  getStaticChartTheme,
+} from "metabase/viz-core";
 
 export default {
   title: "Viz/Shared/RowChart",

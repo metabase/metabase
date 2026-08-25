@@ -5,10 +5,13 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import ChartSettingsWidget, {
   type ChartSettingsWidgetVariant,
 } from "metabase/visualizations/components/ChartSettingsWidget";
-import { getComputedSettings } from "metabase/viz-core/lib/settings";
-import { getSettingDefinitionsForColumn } from "metabase/viz-core/lib/settings/column";
-import { getSettingsWidgets } from "metabase/viz-core/lib/widgets";
-import type { FormattableColumn, SettingsExtra } from "metabase/viz-core/types";
+import {
+  type FormattableColumn,
+  type SettingsExtra,
+  getComputedSettings,
+  getSettingDefinitionsForColumn,
+  getSettingsWidgets,
+} from "metabase/viz-core";
 import type {
   ColumnSettings as ApiColumnSettings,
   Series,

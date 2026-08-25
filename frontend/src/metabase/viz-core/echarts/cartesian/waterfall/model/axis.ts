@@ -1,21 +1,18 @@
 import { t } from "ttag";
 
+import type { RawSeries, RowValue } from "metabase-types/api";
+
+import type { ComputedVisualizationSettings, Extent } from "../../../../types";
+import type { ShowWarning } from "../../../types";
+import { getXAxisModel } from "../../model/axis";
+import { isNumericAxis, isTimeSeriesAxis } from "../../model/guards";
 import type {
   ChartDataset,
   DateRange,
   DimensionModel,
   TimeSeriesXAxisModel,
   WaterfallXAxisModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import type { ShowWarning } from "metabase/viz-core/echarts/types";
-import type {
-  ComputedVisualizationSettings,
-  Extent,
-} from "metabase/viz-core/types";
-import type { RawSeries, RowValue } from "metabase-types/api";
-
-import { getXAxisModel } from "../../model/axis";
-import { isNumericAxis, isTimeSeriesAxis } from "../../model/guards";
+} from "../../model/types";
 import { tryGetDate } from "../../utils/timeseries";
 
 const getTotalTimeSeriesXValue = ({

@@ -13,7 +13,7 @@ import { getEntityIcon, getHeaderColumns } from "metabase/detail-view/utils";
 import { useSelector } from "metabase/redux";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { Box, Repeat, Skeleton, Stack, rem } from "metabase/ui";
-import { extractRemappedColumns } from "metabase/viz-core/lib/remapping";
+import { extractRemappedColumns } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {

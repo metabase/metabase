@@ -1,5 +1,5 @@
-import type { ColumnDescriptor } from "metabase/viz-core/lib/graph/columns";
-import type { RemappingHydratedDatasetColumn } from "metabase/viz-core/types";
+import type { ColumnDescriptor } from "../../../lib/graph/columns";
+import type { RemappingHydratedDatasetColumn } from "../../../types";
 
 export interface PieColumnDescriptors {
   metricDesc: ColumnDescriptor;

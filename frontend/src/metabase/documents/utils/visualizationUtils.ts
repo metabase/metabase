@@ -3,9 +3,9 @@ import { useMemo } from "react";
 import { isNotNull } from "metabase/utils/types";
 import {
   getIconForVisualizationType,
+  getSensibleVisualizations,
   visualizations,
-} from "metabase/viz-core/lib/registry";
-import { getSensibleVisualizations } from "metabase/viz-core/lib/sensibility";
+} from "metabase/viz-core";
 import type {
   Dataset,
   IconName,

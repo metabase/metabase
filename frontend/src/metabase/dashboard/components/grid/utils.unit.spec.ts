@@ -1,4 +1,4 @@
-import { MOBILE_DEFAULT_CARD_HEIGHT } from "metabase/viz-core/shared/utils/sizes";
+import { MOBILE_DEFAULT_CARD_HEIGHT } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 import {
   createMockCard,

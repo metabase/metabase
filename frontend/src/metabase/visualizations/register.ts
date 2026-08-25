@@ -9,18 +9,16 @@ import {
   convertLinkColumnToClickBehavior,
   removeInternalClickBehaviors,
 } from "metabase/embedding-sdk/lib/links";
-import { setTooltipRootProvider } from "metabase/viz-core/echarts/tooltip";
 import {
+  type ChartSettingColorRangeProps,
+  type ComputedVisualizationSettings,
+  type SettingsExtra,
   registerSettingWidgets,
   registerVisualization,
+  setComputedSettingsTransform,
   setDefaultVisualization,
-} from "metabase/viz-core/lib/registry";
-import { setComputedSettingsTransform } from "metabase/viz-core/lib/settings";
-import type {
-  ChartSettingColorRangeProps,
-  ComputedVisualizationSettings,
-  SettingsExtra,
-} from "metabase/viz-core/types";
+  setTooltipRootProvider,
+} from "metabase/viz-core";
 
 import { ChartNestedSettingColumns } from "./components/settings/ChartNestedSettingColumns";
 import ChartNestedSettingSeries from "./components/settings/ChartNestedSettingSeries";

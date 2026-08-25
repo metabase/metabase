@@ -2,7 +2,17 @@ import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
 
 import { parseNumberValue } from "metabase/utils/number";
-import { CHART_STYLE } from "metabase/viz-core/echarts/cartesian/constants/style";
+import { isNumericBaseType } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn } from "metabase-types/api";
+
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "../../../types";
+import { CHART_STYLE } from "../constants/style";
+import type { ChartLayout } from "../layout/types";
+import { getScaledMinAndMax } from "../model/axis";
+import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 import type {
   AxisFormatter,
   BaseCartesianChartModel,
@@ -10,20 +20,10 @@ import type {
   NumericXAxisModel,
   TimeSeriesXAxisModel,
   YAxisModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import { getPaddedAxisLabel } from "metabase/viz-core/echarts/cartesian/option/utils";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core/types";
-import { isNumericBaseType } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn } from "metabase-types/api";
-
-import type { ChartLayout } from "../layout/types";
-import { getScaledMinAndMax } from "../model/axis";
-import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
+} from "../model/types";
 
 import { getTicksOptions } from "./ticks";
+import { getPaddedAxisLabel } from "./utils";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 

@@ -3,18 +3,6 @@ import { dayjs } from "metabase/dayjs";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNumber } from "metabase/utils/types";
 import {
-  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
-  INDEX_KEY,
-  POSITIVE_STACK_TOTAL_DATA_KEY,
-  X_AXIS_DATA_KEY,
-  X_AXIS_RAW_VALUE_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import type {
-  BreakoutChartColumns,
-  CartesianChartColumns,
-} from "metabase/viz-core/lib/graph/columns";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
-import {
   type RowValue,
   type SingleSeries,
   numericScale,
@@ -25,6 +13,19 @@ import {
   createMockDatasetData,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+
+import type {
+  BreakoutChartColumns,
+  CartesianChartColumns,
+} from "../../../lib/graph/columns";
+import type { ComputedVisualizationSettings } from "../../../types";
+import {
+  ECHARTS_CATEGORY_AXIS_NULL_VALUE,
+  INDEX_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+  X_AXIS_RAW_VALUE_DATA_KEY,
+} from "../constants/dataset";
 
 import {
   NO_X_AXIS_VALUES_ERROR_MESSAGE,

@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import {
+  type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
-} from "metabase/viz-core/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/viz-core/types";
+} from "metabase/viz-core";
 
 export const settings: VisualizationDefinition = {
   getUiName: () => "Link",

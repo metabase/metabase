@@ -1,6 +1,5 @@
 import { assocIn } from "icepick";
 
-import { SERIES_SETTING_KEY } from "metabase/viz-core/shared/settings/series";
 import type {
   Card,
   Dataset,
@@ -10,6 +9,8 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { SERIES_SETTING_KEY } from "../shared/settings/series";
 
 export const updateSeriesColor = (
   settings: VisualizationSettings,

@@ -3,10 +3,12 @@ import { useCallback, useMemo } from "react";
 import { updateQuestion as updateQuestionAction } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
 import { ListViewConfiguration } from "metabase/visualizations/visualizations/List/components/ListView";
-import { getVisualizationTransformed } from "metabase/viz-core/lib/registry";
-import { extractRemappings } from "metabase/viz-core/lib/remapping";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import {
+  type ComputedVisualizationSettings,
+  extractRemappings,
+  getComputedSettingsForSeries,
+  getVisualizationTransformed,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { IconName, RawSeries, Series } from "metabase-types/api";

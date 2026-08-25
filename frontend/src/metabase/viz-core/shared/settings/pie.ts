@@ -3,17 +3,6 @@ import _ from "underscore";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { checkNotNull, checkNumber, isNumber } from "metabase/utils/types";
-import { SLICE_THRESHOLD } from "metabase/viz-core/echarts/pie/constants";
-import { getPieColumns } from "metabase/viz-core/echarts/pie/model";
-import type { ShowWarning } from "metabase/viz-core/echarts/types";
-import { getHexColor } from "metabase/viz-core/lib/color";
-import { getNumberOr } from "metabase/viz-core/lib/settings/row-values";
-import { getDefaultDimensionsAndMetrics } from "metabase/viz-core/lib/utils";
-import { unaggregatedDataWarningPie } from "metabase/viz-core/lib/warnings";
-import type {
-  ComputedVisualizationSettings,
-  Formatter,
-} from "metabase/viz-core/types";
 import {
   type DatasetColumn,
   type MaybeTranslatedSeries,
@@ -23,6 +12,15 @@ import {
   type RowValues,
   getRowsForStableKeys,
 } from "metabase-types/api";
+
+import { SLICE_THRESHOLD } from "../../echarts/pie/constants";
+import { getPieColumns } from "../../echarts/pie/model";
+import type { ShowWarning } from "../../echarts/types";
+import { getHexColor } from "../../lib/color";
+import { getNumberOr } from "../../lib/settings/row-values";
+import { getDefaultDimensionsAndMetrics } from "../../lib/utils";
+import { unaggregatedDataWarningPie } from "../../lib/warnings";
+import type { ComputedVisualizationSettings, Formatter } from "../../types";
 
 export function getPieDimensions(settings: ComputedVisualizationSettings) {
   const dimensionSetting = settings["pie.dimension"];

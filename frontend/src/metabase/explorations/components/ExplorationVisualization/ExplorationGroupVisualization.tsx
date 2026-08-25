@@ -24,9 +24,11 @@ import { is403Error } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
 import type { ClickActionsMode, OnBrush } from "metabase/visualizations/types";
-import { isCartesianChart } from "metabase/viz-core/lib/registry";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
-import type { HighlightedObject } from "metabase/viz-core/types";
+import {
+  type HighlightedObject,
+  getComputedSettingsForSeries,
+  isCartesianChart,
+} from "metabase/viz-core";
 import type {
   Comment,
   ExplorationBlockNodeType,

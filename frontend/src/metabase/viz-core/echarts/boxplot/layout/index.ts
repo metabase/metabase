@@ -1,12 +1,12 @@
-import { CHART_STYLE } from "metabase/viz-core/echarts/cartesian/constants/style";
-import type { ChartLayout } from "metabase/viz-core/echarts/cartesian/layout/types";
-import type { DataKey } from "metabase/viz-core/echarts/cartesian/model/types";
+import type { RowValue } from "metabase-types/api";
+
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/viz-core/types";
-import type { RowValue } from "metabase-types/api";
-
+} from "../../../types";
+import { CHART_STYLE } from "../../cartesian/constants/style";
+import type { ChartLayout } from "../../cartesian/layout/types";
+import type { DataKey } from "../../cartesian/model/types";
 import {
   BOXPLOT_DATA_LABEL_STYLE,
   BOXPLOT_LABEL_PADDING,

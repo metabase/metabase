@@ -7,17 +7,15 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import {
+  type ComputedVisualizationSettings,
+  type EChartsEventHandler,
+  type EChartsSeriesMouseEvent,
+  type TreemapChartColumns,
+  type TreemapTree,
   getNodesFromPath,
   getTreemapRootNodeId,
   isOverview,
-} from "metabase/viz-core/echarts/graph/treemap/model/tree";
-import type {
-  TreemapChartColumns,
-  TreemapTree,
-} from "metabase/viz-core/echarts/graph/treemap/model/types";
-import type { EChartsSeriesMouseEvent } from "metabase/viz-core/echarts/types";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
-import type { EChartsEventHandler } from "metabase/viz-core/types/echarts";
+} from "metabase/viz-core";
 import type { ClickObjectDimension } from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { RawSeries, RowValue } from "metabase-types/api";

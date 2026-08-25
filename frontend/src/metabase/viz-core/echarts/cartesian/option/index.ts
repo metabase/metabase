@@ -7,38 +7,34 @@ import type {
 } from "echarts/types/dist/shared";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
+import type { TimelineEventId } from "metabase-types/api";
+
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "../../../types";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
+} from "../constants/dataset";
+import { CHART_STYLE, Z_INDEXES } from "../constants/style";
+import type { ChartLayout } from "../layout/types";
+import { getDisplaySeriesSettingsByDataKey } from "../model/series";
 import type {
   BaseCartesianChartModel,
   CartesianChartModel,
   SeriesModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import {
-  buildAxes,
-  buildDimensionAxis,
-  buildMetricAxis,
-} from "metabase/viz-core/echarts/cartesian/option/axis";
-import { buildEChartsSeries } from "metabase/viz-core/echarts/cartesian/option/series";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core/types";
-import type { TimelineEventId } from "metabase-types/api";
-
-import { CHART_STYLE, Z_INDEXES } from "../constants/style";
-import type { ChartLayout } from "../layout/types";
-import { getDisplaySeriesSettingsByDataKey } from "../model/series";
+} from "../model/types";
 import { getBarSeriesDataLabelKey } from "../model/util";
 import type { SplitPanelYExtent } from "../timeline-events/option";
 import { getTimelineEventsSelectionSeries } from "../timeline-events/option";
 import type { TimelineEventsModel } from "../timeline-events/types";
 
+import { buildAxes, buildDimensionAxis, buildMetricAxis } from "./axis";
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
+import { buildEChartsSeries } from "./series";
 import { getTrendLinesOption } from "./trend-line";
 import type { EChartsSeriesOption } from "./types";
 

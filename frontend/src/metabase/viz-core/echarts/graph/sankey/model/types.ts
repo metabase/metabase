@@ -1,5 +1,6 @@
-import type { ColumnDescriptor } from "metabase/viz-core/lib/graph/columns";
 import type { RowValue } from "metabase-types/api";
+
+import type { ColumnDescriptor } from "../../../../lib/graph/columns";
 
 export type ColumnKey = string;
 

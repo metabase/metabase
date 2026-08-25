@@ -15,7 +15,7 @@ import type {
   ClickObject,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
-import type { HighlightedObject } from "metabase/viz-core/types";
+import type { HighlightedObject } from "metabase/viz-core";
 import type {
   DocumentContent,
   ExplorationBlockNodeType,

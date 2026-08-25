@@ -1,6 +1,3 @@
-import { sumMetric } from "metabase/viz-core/lib/dataset";
-import { getColumnDescriptors } from "metabase/viz-core/lib/graph/columns";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import {
@@ -10,6 +7,9 @@ import {
   getRowsForStableKeys,
 } from "metabase-types/api";
 
+import { sumMetric } from "../../../../lib/dataset";
+import { getColumnDescriptors } from "../../../../lib/graph/columns";
+import type { ComputedVisualizationSettings } from "../../../../types";
 import { NULL_CHAR } from "../../../cartesian/constants/dataset";
 
 import type {

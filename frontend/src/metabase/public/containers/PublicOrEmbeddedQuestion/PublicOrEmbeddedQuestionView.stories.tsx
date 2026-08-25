@@ -26,7 +26,7 @@ import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/Pi
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import * as TABLE_MOCK_DATA from "metabase/visualizations/visualizations/Table/stories-data";
-import { registerVisualization } from "metabase/viz-core/lib/registry";
+import { registerVisualization } from "metabase/viz-core";
 import {
   createMockCard,
   createMockColumn,

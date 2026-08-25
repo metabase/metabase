@@ -1,7 +1,7 @@
 import { formatPercent } from "metabase/utils/formatting";
-import type { RenderingContext } from "metabase/viz-core/types";
 
 import { DEFAULT_VISUALIZATION_THEME } from "../../../../shared/utils/theme";
+import type { RenderingContext } from "../../../../types";
 import type { TreemapTree } from "../model/types";
 
 import { getTreemapChartOption } from "./option";

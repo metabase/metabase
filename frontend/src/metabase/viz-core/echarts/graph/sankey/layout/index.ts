@@ -1,8 +1,7 @@
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/viz-core/types";
-
+} from "../../../../types";
 import { SANKEY_CHART_STYLE } from "../constants/style";
 import type { SankeyChartModel, SankeyData } from "../model/types";
 

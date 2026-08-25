@@ -17,17 +17,15 @@ import MetabaseSettings from "metabase/utils/settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   HEAT_MAP_ZERO_COLOR,
+  MinColumnsError,
+  type VisualizationDefinition,
   buildColorScale,
-  getLegendTitles,
-} from "metabase/viz-core/lib/choropleth";
-import { MinColumnsError } from "metabase/viz-core/lib/errors";
-import { getCanonicalRowKey } from "metabase/viz-core/lib/region-codes";
-import { unaggregatedDataWarningMap } from "metabase/viz-core/lib/warnings";
-import {
+  getCanonicalRowKey,
   getDefaultSize,
+  getLegendTitles,
   getMinSize,
-} from "metabase/viz-core/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/viz-core/types";
+  unaggregatedDataWarningMap,
+} from "metabase/viz-core";
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomGeoJSONMap,

@@ -5,7 +5,7 @@ import {
   computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
-import type { RenderingContext } from "metabase/viz-core/types";
+import type { RenderingContext } from "metabase/viz-core";
 
 import type { StaticChartProps } from "../StaticVisualization";
 

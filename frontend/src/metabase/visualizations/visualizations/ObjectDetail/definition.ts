@@ -2,14 +2,12 @@ import { t } from "ttag";
 
 import { displayNameForColumn } from "metabase/value-formatting";
 import {
+  type VisualizationDefinition,
   columnSettings,
-  tableColumnSettings,
-} from "metabase/viz-core/lib/settings/column";
-import {
   getDefaultSize,
   getMinSize,
-} from "metabase/viz-core/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/viz-core/types";
+  tableColumnSettings,
+} from "metabase/viz-core";
 
 export const OBJECT_DETAIL_DEFINITION: VisualizationDefinition = {
   getUiName() {

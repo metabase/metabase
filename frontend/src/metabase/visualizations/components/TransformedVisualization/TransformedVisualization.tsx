@@ -6,11 +6,11 @@ import type {
   OnChangeCardAndRunOpts,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core/types";
+import {
+  type ComputedVisualizationSettings,
+  type RenderingContext,
+  getComputedSettingsForSeries,
+} from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 export type TransformSeries = (

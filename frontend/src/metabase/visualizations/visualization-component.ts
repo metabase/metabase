@@ -1,4 +1,4 @@
-import { getRegisteredComponent } from "metabase/viz-core/lib/registry";
+import { getRegisteredComponent } from "metabase/viz-core";
 
 import type { VisualizationComponent } from "./types/visualization";
 

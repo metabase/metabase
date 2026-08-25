@@ -9,7 +9,7 @@ import {
 } from "metabase/visualizations/components/ChoroplethMap";
 import { buildFeatureClickObject } from "metabase/visualizations/components/ChoroplethMap.utils";
 import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
-import { getLegendTitles } from "metabase/viz-core/lib/choropleth";
+import { getLegendTitles } from "metabase/viz-core";
 import type { ColumnSettings, RowValue } from "metabase-types/api";
 import {
   createMockColumn,

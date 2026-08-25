@@ -1,18 +1,19 @@
 import _ from "underscore";
 
 import type {
-  ComputedVisualizationSettings,
-  SettingsExtra,
-  VisualizationSettingDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/viz-core/types";
-import type {
   ColumnSettings,
   Series,
   VisualizationSettingKey,
   VisualizationSettings,
 } from "metabase-types/api";
 import { isObjectWithRaw } from "metabase-types/guards";
+
+import type {
+  ComputedVisualizationSettings,
+  SettingsExtra,
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "../types";
 
 type ComputedSettingsTransform = (
   computedSettings: ComputedVisualizationSettings,

@@ -1,5 +1,5 @@
 import { registerVisualizations } from "metabase/visualizations/register";
-import { dimensionIsTimeseries } from "metabase/viz-core/lib/timeseries";
+import { dimensionIsTimeseries } from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockColumn,

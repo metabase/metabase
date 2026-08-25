@@ -18,7 +18,7 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import { registerVisualization } from "metabase/viz-core/lib/registry";
+import { registerVisualization } from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,

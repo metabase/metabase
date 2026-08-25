@@ -2,21 +2,17 @@ import Color from "color";
 import { t } from "ttag";
 
 import { color, staticVizOverrides } from "metabase/ui/colors";
-import { GRAPH_GOAL_SETTINGS } from "metabase/viz-core/lib/settings/goal";
 import {
+  type ComputedVisualizationSettings,
   GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
+  GRAPH_GOAL_SETTINGS,
   TOOLTIP_SETTINGS,
-} from "metabase/viz-core/lib/settings/graph";
-import {
+  type VisualizationDefinition,
   getDefaultSize,
   getMinSize,
-} from "metabase/viz-core/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-} from "metabase/viz-core/types";
+} from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { getCartesianChartDefinition } from "../CartesianChart/definition";

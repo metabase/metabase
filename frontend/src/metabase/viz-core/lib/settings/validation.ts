@@ -2,9 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
-import { ChartSettingsError, MinRowsError } from "metabase/viz-core/lib/errors";
-import { getCartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
-import { MAX_SERIES } from "metabase/viz-core/lib/utils";
 import type {
   DatasetColumn,
   RowValues,
@@ -12,6 +9,10 @@ import type {
   SingleSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { ChartSettingsError, MinRowsError } from "../errors";
+import { getCartesianChartColumns } from "../graph/columns";
+import { MAX_SERIES } from "../utils";
 
 export const validateDatasetRows = (series: Series) => {
   const singleSeriesHasNoRows = ({ data: { rows } }: SingleSeries) => {

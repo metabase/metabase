@@ -1,10 +1,11 @@
-import type { RenderingContext } from "metabase/viz-core/types";
 import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+
+import type { RenderingContext } from "../../../types";
 
 import { getPieChartModel } from ".";
 

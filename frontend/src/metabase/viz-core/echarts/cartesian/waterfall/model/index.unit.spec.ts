@@ -1,8 +1,3 @@
-import { IS_WATERFALL_TOTAL_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core/types";
 import type { RawSeries } from "metabase-types/api";
 import {
   createMockCard,
@@ -10,6 +5,12 @@ import {
   createMockDatasetData,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "../../../../types";
+import { IS_WATERFALL_TOTAL_DATA_KEY } from "../../constants/dataset";
 
 import { getWaterfallChartModel } from "./index";
 

@@ -18,8 +18,10 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import { segmentIsValid } from "metabase/viz-core/lib/utils";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import {
+  type ComputedVisualizationSettings,
+  segmentIsValid,
+} from "metabase/viz-core";
 
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import { SCALAR_CHART_DEFINITION } from "./definition";

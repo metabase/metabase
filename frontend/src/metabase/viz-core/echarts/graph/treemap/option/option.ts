@@ -3,9 +3,9 @@ import { match } from "ts-pattern";
 
 import { getTextColorForBackground } from "metabase/ui/colors";
 import { formatPercent as formatPercentDefault } from "metabase/utils/formatting";
-import { truncateText } from "metabase/viz-core/lib/text";
-import type { RenderingContext } from "metabase/viz-core/types";
 
+import { truncateText } from "../../../../lib/text";
+import type { RenderingContext } from "../../../../types";
 import { getTreemapColors, getTreemapLeafColor } from "../model/colors";
 import { getTreemapNodeKey } from "../model/data";
 import { getTreemapPercentOfTotalFormatter } from "../model/formatters";

@@ -5,10 +5,7 @@ import type { IconName } from "metabase/embedding-sdk/types/icon";
 import { Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { Visualization } from "metabase/visualizations/types";
-import {
-  getIconForVisualizationType,
-  visualizations,
-} from "metabase/viz-core/lib/registry";
+import { getIconForVisualizationType, visualizations } from "metabase/viz-core";
 import type { CardDisplayType } from "metabase-types/api";
 
 import { useQuestionVisualization } from "../../hooks/use-question-visualization";

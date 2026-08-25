@@ -1,14 +1,14 @@
 import Color from "color";
 
 import { checkNumber, isNotNull } from "metabase/utils/types";
-import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import { getTrendLineFunction } from "metabase/viz-core/lib/trends";
+import type { RawSeries } from "metabase-types/api";
+
+import { getTrendLineFunction } from "../../../lib/trends";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/viz-core/types";
-import type { RawSeries } from "metabase-types/api";
-
+} from "../../../types";
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { msToDays, tryGetDate } from "../utils/timeseries";
 
 import { getScaledMinAndMax } from "./axis";

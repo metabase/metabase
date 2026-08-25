@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/visualizations/types";
-import { ECHARTS_TOOLTIP_CONTAINER_CLASS } from "metabase/viz-core/echarts/tooltip";
+import { ECHARTS_TOOLTIP_CONTAINER_CLASS } from "metabase/viz-core";
 
 const ECHARTS_TOOLTIP_SELECTOR = `.${ECHARTS_TOOLTIP_CONTAINER_CLASS} > div`;
 const MOUSEMOVE_THROTTLE_MS = 50;

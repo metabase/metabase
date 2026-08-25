@@ -1,8 +1,9 @@
 import { getIn } from "icepick";
 
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { VisualizationSettings } from "metabase-types/api";
+
+import type { ComputedVisualizationSettings } from "../../types";
 
 export const SERIES_SETTING_KEY = "series_settings";
 export const SERIES_COLORS_SETTING_KEY = "series_settings.colors";

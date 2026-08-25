@@ -1,11 +1,11 @@
 import { extent } from "d3";
 
 import { isNotNull } from "metabase/utils/types";
+
 import type {
   ContinuousDomain,
   ContinuousScaleType,
-} from "metabase/viz-core/shared/types/scale";
-
+} from "../../../types/scale";
 import type { SeriesData } from "../types";
 
 const getExtent = (values: number[]) => {

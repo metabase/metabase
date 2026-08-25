@@ -9,15 +9,15 @@ import { getTooltipOption } from "metabase/visualizations/echarts/pie/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
-import { getPieChartFormatters } from "metabase/viz-core/echarts/pie/format";
-import { getPieChartModel } from "metabase/viz-core/echarts/pie/model";
-import { getPieChartOption } from "metabase/viz-core/echarts/pie/option";
-import { getArrayFromMapValues } from "metabase/viz-core/echarts/pie/util";
 import {
+  extractRemappings,
+  getArrayFromMapValues,
+  getPieChartFormatters,
+  getPieChartModel,
+  getPieChartOption,
   useCloseTooltipOnScroll,
   usePieChartValuesColorsClasses,
-} from "metabase/viz-core/echarts/tooltip";
-import { extractRemappings } from "metabase/viz-core/lib/remapping";
+} from "metabase/viz-core";
 
 import S from "./PieChart.module.css";
 import { PIE_CHART_DEFINITION } from "./definition";

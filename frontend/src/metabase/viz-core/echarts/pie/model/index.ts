@@ -3,27 +3,27 @@ import _ from "underscore";
 
 import { findWithIndex } from "metabase/utils/arrays";
 import { checkNotNull } from "metabase/utils/types";
-import type { ColumnDescriptor } from "metabase/viz-core/lib/graph/columns";
-import { getNumberOr } from "metabase/viz-core/lib/settings/row-values";
-import {
-  pieNegativesWarning,
-  unaggregatedDataWarningPie,
-} from "metabase/viz-core/lib/warnings";
-import {
-  getAggregatedRows,
-  getKeyFromDimensionValue,
-  getPieDimensions,
-} from "metabase/viz-core/shared/settings/pie";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core/types";
 import {
   type RawSeries,
   type RowValue,
   getRowsForStableKeys,
 } from "metabase-types/api";
 
+import type { ColumnDescriptor } from "../../../lib/graph/columns";
+import { getNumberOr } from "../../../lib/settings/row-values";
+import {
+  pieNegativesWarning,
+  unaggregatedDataWarningPie,
+} from "../../../lib/warnings";
+import {
+  getAggregatedRows,
+  getKeyFromDimensionValue,
+  getPieDimensions,
+} from "../../../shared/settings/pie";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "../../../types";
 import type { ShowWarning } from "../../types";
 import {
   OTHER_SLICE_KEY,

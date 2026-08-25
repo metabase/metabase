@@ -4,7 +4,7 @@ import {
   calcCircleIntersectionByHorizontalLine,
   calcInnerOuterRadiusesForRing,
   getCoordOnCircle,
-} from "metabase/viz-core/echarts/pie/util/label";
+} from "./label";
 
 describe("pie chart label utilities", () => {
   describe("calcChordLength", () => {

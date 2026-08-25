@@ -5,6 +5,26 @@ import { getObjectKeys } from "metabase/utils/objects";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/utils/types";
 import { isEmpty } from "metabase/utils/validate";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
+import {
+  type DatasetColumn,
+  type RawSeries,
+  type RowValue,
+  type SingleSeries,
+  type XAxisScale,
+  getRowsForStableKeys,
+} from "metabase-types/api";
+
+import { sumMetric } from "../../../lib/dataset";
+import type { CartesianChartColumns } from "../../../lib/graph/columns";
+import { getNumberOr } from "../../../lib/settings/row-values";
+import {
+  invalidDateWarning,
+  nullDimensionWarning,
+  unaggregatedDataWarning,
+} from "../../../lib/warnings";
+import type { ComputedVisualizationSettings, Extent } from "../../../types";
+import type { ShowWarning } from "../../types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   INDEX_KEY,
@@ -13,8 +33,12 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
   X_AXIS_RAW_VALUE_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import { getBreakoutDistinctValues } from "metabase/viz-core/echarts/cartesian/model/series";
+} from "../constants/dataset";
+import { tryGetDate } from "../utils/timeseries";
+
+import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
+import { getAggregatedOtherSeriesValue } from "./other-series";
+import { getBreakoutDistinctValues } from "./series";
 import type {
   BaseSeriesModel,
   ChartDataset,
@@ -26,34 +50,7 @@ import type {
   StackModel,
   TimeSeriesXAxisModel,
   XAxisModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import { sumMetric } from "metabase/viz-core/lib/dataset";
-import type { CartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
-import { getNumberOr } from "metabase/viz-core/lib/settings/row-values";
-import {
-  invalidDateWarning,
-  nullDimensionWarning,
-  unaggregatedDataWarning,
-} from "metabase/viz-core/lib/warnings";
-import type {
-  ComputedVisualizationSettings,
-  Extent,
-} from "metabase/viz-core/types";
-import { isMetric } from "metabase-lib/v1/types/utils/isa";
-import {
-  type DatasetColumn,
-  type RawSeries,
-  type RowValue,
-  type SingleSeries,
-  type XAxisScale,
-  getRowsForStableKeys,
-} from "metabase-types/api";
-
-import type { ShowWarning } from "../../types";
-import { tryGetDate } from "../utils/timeseries";
-
-import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
-import { getAggregatedOtherSeriesValue } from "./other-series";
+} from "./types";
 import { getBarSeriesDataLabelKey, getColumnScaling } from "./util";
 
 /**

@@ -1,10 +1,17 @@
 import _ from "underscore";
 
-import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
+import type {
+  ComputedVisualizationSettings,
+  Padding,
+  RenderingContext,
+} from "../../../types";
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
+import { CHART_STYLE, getSplitPanelGap } from "../constants/style";
 import {
-  CHART_STYLE,
-  getSplitPanelGap,
-} from "metabase/viz-core/echarts/cartesian/constants/style";
+  isCategoryAxis,
+  isNumericAxis,
+  isTimeSeriesAxis,
+} from "../model/guards";
 import type {
   AxisFormatter,
   ChartDataset,
@@ -14,19 +21,8 @@ import type {
   StackModel,
   XAxisModel,
   YAxisModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import { getPaddedAxisLabel } from "metabase/viz-core/echarts/cartesian/option/utils";
-import type {
-  ComputedVisualizationSettings,
-  Padding,
-  RenderingContext,
-} from "metabase/viz-core/types";
-
-import {
-  isCategoryAxis,
-  isNumericAxis,
-  isTimeSeriesAxis,
-} from "../model/guards";
+} from "../model/types";
+import { getPaddedAxisLabel } from "../option/utils";
 
 import type { ChartBoundsCoords, ChartLayout, TicksDimensions } from "./types";
 

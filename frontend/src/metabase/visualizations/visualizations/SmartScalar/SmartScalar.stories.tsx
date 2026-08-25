@@ -6,7 +6,7 @@ import {
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { registerVisualization } from "metabase/viz-core/lib/registry";
+import { registerVisualization } from "metabase/viz-core";
 
 import { SmartScalar } from "./SmartScalar";
 import { mockSeries } from "./tests/test-mocks";

@@ -8,7 +8,7 @@ import {
   fixParameterLegendOffsetForExport,
   resolveSvgVarPaint,
   restoreNestedSvgOverflow,
-} from "metabase/viz-core/lib/image-exports";
+} from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";
 
 import {

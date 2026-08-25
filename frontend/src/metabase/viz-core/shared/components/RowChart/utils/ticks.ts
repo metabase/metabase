@@ -2,9 +2,10 @@ import type { ScaleContinuousNumeric } from "d3-scale";
 import _ from "underscore";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
-import type { ValueFormatter } from "metabase/viz-core/shared/types/format";
-import type { ContinuousScaleType } from "metabase/viz-core/shared/types/scale";
-import type { ChartFont } from "metabase/viz-core/shared/types/style";
+
+import type { ValueFormatter } from "../../../types/format";
+import type { ContinuousScaleType } from "../../../types/scale";
+import type { ChartFont } from "../../../types/style";
 
 const TICK_SPACING = 20;
 

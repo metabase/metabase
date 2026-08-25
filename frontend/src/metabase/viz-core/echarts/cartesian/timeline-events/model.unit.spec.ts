@@ -1,5 +1,6 @@
-import type { TimeSeriesInterval } from "metabase/viz-core/echarts/cartesian/model/types";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
+
+import type { TimeSeriesInterval } from "../model/types";
 
 import { mergeOverlappingTimelineEventGroups } from "./model";
 import type { TimelineEventGroup } from "./types";

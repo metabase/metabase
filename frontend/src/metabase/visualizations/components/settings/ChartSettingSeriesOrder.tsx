@@ -15,7 +15,7 @@ import { isEmpty } from "metabase/utils/validate";
 import type {
   ChartSettingSeriesOrderItem,
   ChartSettingSeriesOrderProps,
-} from "metabase/viz-core/types";
+} from "metabase/viz-core";
 
 import { ChartSettingMessage } from "./ChartSettingMessage";
 import { ChartSettingOrderedItems } from "./ChartSettingOrderedItems";

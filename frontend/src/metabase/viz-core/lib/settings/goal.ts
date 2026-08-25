@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import { getDefaultGoalLabel } from "metabase/viz-core/shared/settings/cartesian-chart";
-import type { ChartGoal } from "metabase/viz-core/shared/types/settings";
-import type { VisualizationSettingsDefinitions } from "metabase/viz-core/types";
 import type { VisualizationSettings } from "metabase-types/api";
+
+import { getDefaultGoalLabel } from "../../shared/settings/cartesian-chart";
+import type { ChartGoal } from "../../shared/types/settings";
+import type { VisualizationSettingsDefinitions } from "../../types";
 
 import { getStackOffset } from "./stacking";
 

@@ -12,23 +12,21 @@ import {
   getLegendClickData,
 } from "metabase/visualizations/visualizations/RowChart/utils/events";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
-import { extractRemappedColumns } from "metabase/viz-core/lib/remapping";
-import { getChartGoal } from "metabase/viz-core/lib/settings/goal";
-import { getStackOffset } from "metabase/viz-core/lib/settings/stacking";
-import type { RowChartProps } from "metabase/viz-core/shared/components/RowChart";
-import { RowChart as SharedRowChart } from "metabase/viz-core/shared/components/RowChart";
-import type { BarData } from "metabase/viz-core/shared/components/RowChart/types";
-import type {
-  GroupedDatum,
-  SeriesInfo,
-} from "metabase/viz-core/shared/types/data";
-import type { HoveredData } from "metabase/viz-core/shared/types/events";
 import {
+  type BarData,
+  type GroupedDatum,
+  type HoveredData,
+  type RemappingHydratedChartData,
+  type RowChartProps,
+  type SeriesInfo,
+  RowChart as SharedRowChart,
+  extractRemappedColumns,
+  getChartGoal,
   getGroupedDataset,
+  getStackOffset,
+  getTwoDimensionalChartSeries,
   trimData,
-} from "metabase/viz-core/shared/utils/data";
-import { getTwoDimensionalChartSeries } from "metabase/viz-core/shared/utils/series";
-import type { RemappingHydratedChartData } from "metabase/viz-core/types";
+} from "metabase/viz-core";
 
 import {
   RowChartContainer,

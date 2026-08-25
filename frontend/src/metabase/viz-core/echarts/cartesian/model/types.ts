@@ -2,14 +2,6 @@ import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 
 import type { Dayjs } from "metabase/dayjs";
 import type {
-  INDEX_KEY,
-  NEGATIVE_STACK_TOTAL_DATA_KEY,
-  POSITIVE_STACK_TOTAL_DATA_KEY,
-  X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import type { CartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
-import type { Extent } from "metabase/viz-core/types";
-import type {
   Card,
   CardId,
   DatasetColumn,
@@ -17,6 +9,15 @@ import type {
   RowValue,
   VisualizationSettingKey,
 } from "metabase-types/api";
+
+import type { CartesianChartColumns } from "../../../lib/graph/columns";
+import type { Extent } from "../../../types";
+import type {
+  INDEX_KEY,
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "../constants/dataset";
 
 export type BreakoutValue = Exclude<RowValue, object>;
 export type ColumnName = string;

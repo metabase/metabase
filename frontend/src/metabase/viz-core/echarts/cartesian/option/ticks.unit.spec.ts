@@ -1,22 +1,18 @@
 import { createMockChartLayout } from "__support__/echarts";
 import { dayjs } from "metabase/dayjs";
-import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import { getXAxisModel } from "metabase/viz-core/echarts/cartesian/model/axis";
-import { isTimeSeriesAxis } from "metabase/viz-core/echarts/cartesian/model/guards";
-import type {
-  DimensionModel,
-  TimeSeriesXAxisModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import {
-  getPadding,
-  getTicksOptions,
-} from "metabase/viz-core/echarts/cartesian/option/ticks";
-import { getTimeSeriesIntervalDuration } from "metabase/viz-core/echarts/cartesian/utils/timeseries";
 import {
   createMockDatetimeColumn,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
+import { getXAxisModel } from "../model/axis";
+import { isTimeSeriesAxis } from "../model/guards";
+import type { DimensionModel, TimeSeriesXAxisModel } from "../model/types";
+import { getTimeSeriesIntervalDuration } from "../utils/timeseries";
+
+import { getPadding, getTicksOptions } from "./ticks";
 
 describe("getTicksOptions", () => {
   it("should align padded domain with timezone-naive date-only points under US/Samoa (#56580)", () => {

@@ -10,8 +10,10 @@ import {
   getRowUrl,
   getSingleResultsRow,
 } from "metabase/visualizations/components/ObjectDetail/utils";
-import { getSeriesWithDisplay } from "metabase/viz-core/lib/series";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
+import {
+  getComputedSettingsForSeries,
+  getSeriesWithDisplay,
+} from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {

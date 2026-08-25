@@ -1,7 +1,4 @@
-import type {
-  ComputedVisualizationSettings,
-  Padding,
-} from "metabase/viz-core/types";
+import type { ComputedVisualizationSettings, Padding } from "../../../types";
 
 export interface TicksDimensions {
   yTicksWidthLeft: number;

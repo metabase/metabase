@@ -1,9 +1,21 @@
 import { isNotNull } from "metabase/utils/types";
-import { OTHER_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
+import type { RawSeries, SingleSeries } from "metabase-types/api";
+
 import {
-  getXAxisModel,
-  getYAxesModels,
-} from "metabase/viz-core/echarts/cartesian/model/axis";
+  getCartesianChartColumns,
+  getReferencedColumns,
+} from "../../../lib/graph/columns";
+import { getSingleSeriesDimensionsAndMetrics } from "../../../lib/utils";
+import { getAreDimensionsAndMetricsValid } from "../../../shared/settings/cartesian-chart";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+  VisualizationGridSize,
+} from "../../../types";
+import type { ShowWarning } from "../../types";
+import { OTHER_DATA_KEY } from "../constants/dataset";
+
+import { getXAxisModel, getYAxesModels } from "./axis";
 import {
   applyVisualizationSettingsDataTransformations,
   getCardsColumnByDataKeyMap,
@@ -11,36 +23,21 @@ import {
   getSortedSeriesModels,
   scaleDataset,
   sortDataset,
-} from "metabase/viz-core/echarts/cartesian/model/dataset";
+} from "./dataset";
+import {
+  createOtherGroupSeriesModel,
+  groupSeriesIntoOther,
+} from "./other-series";
 import {
   getCardsSeriesModels,
   getComboChartDataDensity,
   getDimensionModel,
   getFormatters,
-} from "metabase/viz-core/echarts/cartesian/model/series";
-import type { CartesianChartModel } from "metabase/viz-core/echarts/cartesian/model/types";
-import {
-  getCartesianChartColumns,
-  getReferencedColumns,
-} from "metabase/viz-core/lib/graph/columns";
-import { getSingleSeriesDimensionsAndMetrics } from "metabase/viz-core/lib/utils";
-import { getAreDimensionsAndMetricsValid } from "metabase/viz-core/shared/settings/cartesian-chart";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-  VisualizationGridSize,
-} from "metabase/viz-core/types";
-import type { RawSeries, SingleSeries } from "metabase-types/api";
-
-import type { ShowWarning } from "../../types";
-
-import {
-  createOtherGroupSeriesModel,
-  groupSeriesIntoOther,
-} from "./other-series";
+} from "./series";
 import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
+import type { CartesianChartModel } from "./types";
 
 // HACK: when multiple cards (datasets) are combined on a single dashboard card
 // the settings prop of the visualization contains only one set of metrics and dimensions

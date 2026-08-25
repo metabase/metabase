@@ -5,16 +5,16 @@ import type {
   ClickObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type {
-  ColumnKey,
-  SankeyChartColumns,
-  SankeyLink,
-  SankeyNode,
-} from "metabase/viz-core/echarts/graph/sankey/model/types";
-import { useClickedStateTooltipSync } from "metabase/viz-core/echarts/tooltip";
-import type { EChartsSeriesMouseEvent } from "metabase/viz-core/echarts/types";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
-import type { EChartsEventHandler } from "metabase/viz-core/types/echarts";
+import {
+  type ColumnKey,
+  type ComputedVisualizationSettings,
+  type EChartsEventHandler,
+  type EChartsSeriesMouseEvent,
+  type SankeyChartColumns,
+  type SankeyLink,
+  type SankeyNode,
+  useClickedStateTooltipSync,
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { Card, RawSeries, RowValue } from "metabase-types/api";

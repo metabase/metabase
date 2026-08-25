@@ -1,12 +1,12 @@
 import { isNotNull } from "metabase/utils/types";
-import type { ShowWarning } from "metabase/viz-core/echarts/types";
+import type { RawSeries } from "metabase-types/api";
+
 import type {
   ComputedVisualizationSettings,
   Extent,
   RenderingContext,
-} from "metabase/viz-core/types";
-import type { RawSeries } from "metabase-types/api";
-
+} from "../../../../types";
+import type { ShowWarning } from "../../../types";
 import { getCardsColumns } from "../../model";
 import { getXAxisModel, getYAxesModels } from "../../model/axis";
 import {

@@ -12,7 +12,7 @@ import {
 } from "metabase/visualizer/utils/column";
 import { createDataSourceNameRef } from "metabase/visualizer/utils/data-source";
 import { isDraggedColumnItem } from "metabase/visualizer/utils/drag-and-drop";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import {
   isDimension,
   isMetric,

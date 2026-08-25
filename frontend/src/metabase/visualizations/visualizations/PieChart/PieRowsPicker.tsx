@@ -3,13 +3,11 @@ import { useMemo } from "react";
 import { color } from "metabase/ui/colors";
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import {
+  type ChartSettingOrderedItem,
+  type ComputedVisualizationSettings,
   createHexToAccentNumberMap,
   getPickerColorAlias,
-} from "metabase/viz-core/echarts/pie/util/colors";
-import type {
-  ChartSettingOrderedItem,
-  ComputedVisualizationSettings,
-} from "metabase/viz-core/types";
+} from "metabase/viz-core";
 import type { PieRow, RawSeries } from "metabase-types/api";
 
 export function PieRowsPicker({

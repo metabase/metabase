@@ -1,10 +1,5 @@
 import _ from "underscore";
 
-import {
-  columnsAreValid,
-  getDefaultDimensionAndMetric,
-} from "metabase/viz-core/lib/utils";
-import type { SeriesSettingDefinition } from "metabase/viz-core/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -12,6 +7,9 @@ import type {
   TableColumnOrderSetting,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import type { SeriesSettingDefinition } from "../../types";
+import { columnsAreValid, getDefaultDimensionAndMetric } from "../utils";
 
 export function getOptionFromColumn(col: DatasetColumn) {
   return {

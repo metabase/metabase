@@ -8,7 +8,7 @@ import {
 } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { registerVisualization } from "metabase/viz-core/lib/registry";
+import { registerVisualization } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,

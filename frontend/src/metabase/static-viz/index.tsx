@@ -22,10 +22,12 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils/split-series";
-import { isCartesianChart } from "metabase/viz-core/lib/registry";
-import { extractRemappings } from "metabase/viz-core/lib/remapping";
-import { extendCardWithDashcardSettings } from "metabase/viz-core/lib/settings/typed-utils";
-import { makeCellBackgroundGetter } from "metabase/viz-core/lib/table_format";
+import {
+  extendCardWithDashcardSettings,
+  extractRemappings,
+  isCartesianChart,
+  makeCellBackgroundGetter,
+} from "metabase/viz-core";
 import type {
   Card,
   DashCardVisualizationSettings,

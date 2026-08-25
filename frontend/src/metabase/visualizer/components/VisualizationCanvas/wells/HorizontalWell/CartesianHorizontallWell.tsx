@@ -15,7 +15,7 @@ import {
   getVisualizerRawSettings,
 } from "metabase/visualizer/selectors";
 import { removeColumn } from "metabase/visualizer/visualizer.slice";
-import { getDefaultDimensionFilter } from "metabase/viz-core/shared/settings/cartesian-chart";
+import { getDefaultDimensionFilter } from "metabase/viz-core";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 

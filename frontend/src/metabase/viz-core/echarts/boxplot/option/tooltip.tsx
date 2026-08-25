@@ -1,11 +1,11 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
-import { EChartsTooltip } from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
-import { GOAL_LINE_SERIES_ID } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import { getTooltipBaseOption } from "metabase/viz-core/echarts/tooltip";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 
+import { EChartsTooltip } from "../../../components/ChartTooltip/EChartsTooltip";
+import type { ComputedVisualizationSettings } from "../../../types";
+import { GOAL_LINE_SERIES_ID } from "../../cartesian/constants/dataset";
+import { getTooltipBaseOption } from "../../tooltip";
 import { getBoxPlotTooltipModel } from "../events";
 import type { BoxPlotChartModel } from "../model/types";
 

@@ -2,12 +2,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/ui/colors";
-import { columnSettings } from "metabase/viz-core/lib/settings/column";
-import { seriesSetting } from "metabase/viz-core/lib/settings/series";
-import { getOptionFromColumn } from "metabase/viz-core/lib/settings/utils";
-import { getBreakoutCardinality } from "metabase/viz-core/lib/settings/validation";
-import { dimensionIsTimeseries } from "metabase/viz-core/lib/timeseries";
-import { MAX_SERIES, columnsAreValid } from "metabase/viz-core/lib/utils";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import type { Series, VisualizationDisplay } from "metabase-types/api";
+
 import {
   STACKABLE_SERIES_DISPLAY_TYPES,
   getAreDimensionsAndMetricsValid,
@@ -41,24 +39,26 @@ import {
   isStackingValueValid,
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
-} from "metabase/viz-core/shared/settings/cartesian-chart";
+} from "../../shared/settings/cartesian-chart";
 import type {
   ComputedVisualizationSettings,
   SeriesSettingDefinition,
   VisualizationSettingsDefinitions,
-} from "metabase/viz-core/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { Series, VisualizationDisplay } from "metabase-types/api";
-
+} from "../../types";
 import type {
   ChartSettingEnumToggleProps,
   ChartSettingSegmentedControlProps,
 } from "../../types/widget-props";
 import { dimensionIsNumeric } from "../numeric";
 import { getMaxDimensionsSupported, getMaxMetricsSupported } from "../registry";
+import { dimensionIsTimeseries } from "../timeseries";
+import { MAX_SERIES, columnsAreValid } from "../utils";
 
 import { trackStackedSeriesEnabled } from "./analytics";
+import { columnSettings } from "./column";
+import { seriesSetting } from "./series";
+import { getOptionFromColumn } from "./utils";
+import { getBreakoutCardinality } from "./validation";
 
 export const getSeriesDisplays = (
   transformedSeries: Series,

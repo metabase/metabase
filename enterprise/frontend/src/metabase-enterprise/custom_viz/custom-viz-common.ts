@@ -6,7 +6,7 @@ import type {
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
-import { columnSettings } from "metabase/viz-core/lib/settings/column";
+import { columnSettings } from "metabase/viz-core";
 import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,

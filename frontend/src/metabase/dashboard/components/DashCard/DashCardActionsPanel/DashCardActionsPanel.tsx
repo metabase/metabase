@@ -20,7 +20,7 @@ import {
   isDisabledForVisualizer,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
-import { getVisualizationRaw } from "metabase/viz-core/lib/registry";
+import { getVisualizationRaw } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,

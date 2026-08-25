@@ -3,8 +3,7 @@ import { match } from "ts-pattern";
 import type {
   ComputedVisualizationSettings,
   VisualizationGridSize,
-} from "metabase/viz-core/types";
-
+} from "../../../../types";
 import { LABEL_PADDING, groupHeader } from "../style";
 
 import type { TreemapLayoutNode } from "./types";

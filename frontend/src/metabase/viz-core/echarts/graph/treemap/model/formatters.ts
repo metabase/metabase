@@ -1,8 +1,9 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { formatValue } from "metabase/value-formatting";
-import { computeMaxDecimalsForValues } from "metabase/viz-core/lib/utils";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+
+import { computeMaxDecimalsForValues } from "../../../../lib/utils";
+import type { ComputedVisualizationSettings } from "../../../../types";
 
 import type { TreemapChartColumns, TreemapTree } from "./types";
 import { getTreemapTotal } from "./value";

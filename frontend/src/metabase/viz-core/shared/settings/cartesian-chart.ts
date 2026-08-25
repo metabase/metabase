@@ -2,19 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
-import {
-  getCardsColumns,
-  getCardsReferencedColumns,
-} from "metabase/viz-core/echarts/cartesian/model";
-import { getCardsSeriesModels } from "metabase/viz-core/echarts/cartesian/model/series";
-import {
-  MAX_SERIES,
-  columnsAreValid,
-  getColumnCardinality,
-  getDefaultDimensionsAndMetrics,
-  preserveExistingColumnsOrder,
-} from "metabase/viz-core/lib/utils";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isAny,
@@ -32,9 +19,22 @@ import type {
 } from "metabase-types/api";
 
 import {
+  getCardsColumns,
+  getCardsReferencedColumns,
+} from "../../echarts/cartesian/model";
+import { getCardsSeriesModels } from "../../echarts/cartesian/model/series";
+import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "../../lib/registry";
+import {
+  MAX_SERIES,
+  columnsAreValid,
+  getColumnCardinality,
+  getDefaultDimensionsAndMetrics,
+  preserveExistingColumnsOrder,
+} from "../../lib/utils";
+import type { ComputedVisualizationSettings } from "../../types";
 
 export function getDefaultDimensionFilter(display: string) {
   return display === "scatter" ? isAny : isDimension;

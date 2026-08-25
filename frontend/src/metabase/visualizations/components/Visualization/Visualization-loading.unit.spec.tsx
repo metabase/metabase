@@ -6,7 +6,7 @@ import { delay } from "__support__/utils";
 import { createMockState } from "metabase/redux/store/mocks";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import type { Visualization } from "metabase/visualizations/types";
-import { registerVisualization } from "metabase/viz-core/lib/registry";
+import { registerVisualization } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 import {
   createMockCard,

@@ -14,27 +14,21 @@ import {
   getSeriesHovered,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
 import {
-  GOAL_LINE_SERIES_ID,
-  INDEX_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import type {
-  BaseCartesianChartModel,
-  ChartDataset,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import {
-  buildBrushMirrorGraphics,
-  buildClearBrushMirrorGraphics,
-} from "metabase/viz-core/echarts/cartesian/option";
-import { useClickedStateTooltipSync } from "metabase/viz-core/echarts/tooltip";
-import {
+  type BaseCartesianChartModel,
+  type ChartDataset,
+  type EChartsEventHandler,
   type EChartsSeriesBrushEndEvent,
   type EChartsSeriesBrushEvent,
   type EChartsSeriesMouseEvent,
+  GOAL_LINE_SERIES_ID,
+  INDEX_KEY,
+  type RenderingContext,
+  buildBrushMirrorGraphics,
+  buildClearBrushMirrorGraphics,
+  getVisualizerSeriesCardIndex,
   isLineXBrushRange,
-} from "metabase/viz-core/echarts/types";
-import { getVisualizerSeriesCardIndex } from "metabase/viz-core/lib/series";
-import type { RenderingContext } from "metabase/viz-core/types";
-import type { EChartsEventHandler } from "metabase/viz-core/types/echarts";
+  useClickedStateTooltipSync,
+} from "metabase/viz-core";
 import type { CardId } from "metabase-types/api";
 
 import type { CartesianHoveredObject } from "./types";

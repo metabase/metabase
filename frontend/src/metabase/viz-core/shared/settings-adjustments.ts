@@ -1,4 +1,4 @@
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import type { ComputedVisualizationSettings } from "../types";
 
 const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 360;
 const HIDE_X_AXIS_LABEL_HEIGHT_THRESHOLD = 200;

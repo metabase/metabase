@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Flex, Icon, Text, Title } from "metabase/ui";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
-import type { PreviousPeriodChange } from "metabase/viz-core/lib/trend-helpers";
+import type { PreviousPeriodChange } from "metabase/viz-core";
 
 import S from "./TrendInfo.module.css";
 

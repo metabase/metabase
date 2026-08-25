@@ -6,26 +6,22 @@ import { Box, Stack } from "metabase/ui";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import { getTreemapBreadcrumbModel } from "metabase/viz-core/echarts/graph/treemap/model/breadcrumb";
-import { getTreemapColors } from "metabase/viz-core/echarts/graph/treemap/model/colors";
 import {
+  extractRemappings,
+  getTreemapBreadcrumbModel,
   getTreemapChartColumns,
-  getTreemapData,
-} from "metabase/viz-core/echarts/graph/treemap/model/data";
-import { getTreemapFormatters } from "metabase/viz-core/echarts/graph/treemap/model/formatters";
-import { shouldShowParentLabels } from "metabase/viz-core/echarts/graph/treemap/model/labels";
-import { getTreemapInlineValueIds } from "metabase/viz-core/echarts/graph/treemap/model/tooltip";
-import { isOverview } from "metabase/viz-core/echarts/graph/treemap/model/tree";
-import { getTreemapChartOption } from "metabase/viz-core/echarts/graph/treemap/option/option";
-import {
+  getTreemapChartOption,
+  getTreemapColors,
   getTreemapContainerPadding,
+  getTreemapData,
+  getTreemapFormatters,
+  getTreemapInlineValueIds,
   groupHeader,
-} from "metabase/viz-core/echarts/graph/treemap/style";
-import {
+  isOverview,
+  shouldShowParentLabels,
   useCloseTooltipOnScroll,
   useInjectSeriesColorsClasses,
-} from "metabase/viz-core/echarts/tooltip";
-import { extractRemappings } from "metabase/viz-core/lib/remapping";
+} from "metabase/viz-core";
 
 import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
 import S from "./TreemapChart.module.css";

@@ -16,7 +16,7 @@ import { WATERFALL_CHART_DEFINITION } from "metabase/visualizations/visualizatio
 import {
   registerVisualization,
   setDefaultVisualization,
-} from "metabase/viz-core/lib/registry";
+} from "metabase/viz-core";
 
 const STATIC_CHART_DEFINITIONS = [
   SCALAR_CHART_DEFINITION,

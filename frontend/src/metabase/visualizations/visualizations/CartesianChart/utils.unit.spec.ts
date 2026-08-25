@@ -4,12 +4,12 @@ import {
   createMockSeriesModel,
 } from "__support__/echarts";
 import {
+  type CartesianChartColumns,
+  type Datum,
   INDEX_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import { getDatasetKey } from "metabase/viz-core/echarts/cartesian/model/dataset";
-import type { Datum } from "metabase/viz-core/echarts/cartesian/model/types";
-import type { CartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
+  getDatasetKey,
+} from "metabase/viz-core";
 import {
   createMockColumn,
   createMockSingleSeries,

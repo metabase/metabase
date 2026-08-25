@@ -1,10 +1,11 @@
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { RawSeries, RowValue, TreemapRow } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
+
+import type { ComputedVisualizationSettings } from "../../types";
 
 import { getTreemapRows } from "./treemap";
 

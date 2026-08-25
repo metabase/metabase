@@ -32,7 +32,7 @@ import {
   DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
 } from "metabase/visualizations/lib/save-dashboard-pdf";
-import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/viz-core/lib/image-exports";
+import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {

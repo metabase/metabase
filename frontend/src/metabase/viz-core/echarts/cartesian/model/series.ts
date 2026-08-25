@@ -2,7 +2,37 @@ import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { memoize } from "metabase/utils/memoize";
 import { isEmpty } from "metabase/utils/validate";
 import { formatValue } from "metabase/value-formatting";
-import { getDatasetKey } from "metabase/viz-core/echarts/cartesian/model/dataset";
+import {
+  type CardId,
+  type ColumnSettings,
+  type DatasetColumn,
+  type DatasetData,
+  type RawSeries,
+  type RowValue,
+  type SeriesSettings,
+  type SingleSeries,
+  type VisualizationSettingKey,
+  getRowsForStableKeys,
+} from "metabase-types/api";
+
+import { getHexColor } from "../../../lib/color";
+import type { CartesianChartColumns } from "../../../lib/graph/columns";
+import {
+  SERIES_COLORS_SETTING_KEY,
+  SERIES_SETTING_KEY,
+} from "../../../shared/settings/series";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "../../../types";
+import {
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+} from "../constants/dataset";
+import { CHART_STYLE } from "../constants/style";
+import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
+
+import { getDatasetKey } from "./dataset";
 import type {
   ChartDataset,
   ComboChartDataDensity,
@@ -19,37 +49,7 @@ import type {
   StackTotalDataKey,
   StackedSeriesFormatters,
   WaterFallChartDataDensity,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import { getHexColor } from "metabase/viz-core/lib/color";
-import type { CartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
-import {
-  SERIES_COLORS_SETTING_KEY,
-  SERIES_SETTING_KEY,
-} from "metabase/viz-core/shared/settings/series";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core/types";
-import {
-  type CardId,
-  type ColumnSettings,
-  type DatasetColumn,
-  type DatasetData,
-  type RawSeries,
-  type RowValue,
-  type SeriesSettings,
-  type SingleSeries,
-  type VisualizationSettingKey,
-  getRowsForStableKeys,
-} from "metabase-types/api";
-
-import {
-  NEGATIVE_STACK_TOTAL_DATA_KEY,
-  POSITIVE_STACK_TOTAL_DATA_KEY,
-} from "../constants/dataset";
-import { CHART_STYLE } from "../constants/style";
-import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
-
+} from "./types";
 import { getFormattingOptionsWithoutScaling } from "./util";
 
 export const getSeriesVizSettingsKey = (

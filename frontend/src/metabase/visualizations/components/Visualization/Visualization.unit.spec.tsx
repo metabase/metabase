@@ -11,7 +11,10 @@ import type {
   Visualization,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import { loadVisualizationComponents, registerVisualization  } from "metabase/viz-core/lib/registry";
+import {
+  loadVisualizationComponents,
+  registerVisualization,
+} from "metabase/viz-core";
 import type {
   RawSeries,
   Settings,

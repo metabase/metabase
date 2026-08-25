@@ -1,16 +1,5 @@
 import _ from "underscore";
 
-import {
-  cardHasBecomeDirty,
-  computeMaxDecimalsForValues,
-  computeSplit,
-  findSensibleSankeyColumns,
-  getCardAfterVisualizationClick,
-  getColumnCardinality,
-  getDefaultDimensionsAndMetrics,
-  getDefaultPivotColumn,
-  preserveExistingColumnsOrder,
-} from "metabase/viz-core/lib/utils";
 import type { Breakout, Card, CardId, DatasetQuery } from "metabase-types/api";
 import {
   createMockCard,
@@ -21,6 +10,18 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { Extent } from "../types";
+
+import {
+  cardHasBecomeDirty,
+  computeMaxDecimalsForValues,
+  computeSplit,
+  findSensibleSankeyColumns,
+  getCardAfterVisualizationClick,
+  getColumnCardinality,
+  getDefaultDimensionsAndMetrics,
+  getDefaultPivotColumn,
+  preserveExistingColumnsOrder,
+} from "./utils";
 
 // TODO Atte Keinänen 5/31/17 Rewrite tests using metabase-lib methods instead of a raw format
 

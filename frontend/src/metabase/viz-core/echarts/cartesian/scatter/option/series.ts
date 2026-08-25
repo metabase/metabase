@@ -1,9 +1,8 @@
 import * as d3 from "d3";
 import type { ScatterSeriesOption } from "echarts/charts";
 
-import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import type { Extent, RenderingContext } from "metabase/viz-core/types";
-
+import type { Extent, RenderingContext } from "../../../../types";
+import { X_AXIS_DATA_KEY } from "../../constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../../constants/style";
 import type { DataKey, Datum, SeriesModel } from "../../model/types";
 

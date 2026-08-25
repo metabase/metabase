@@ -5,8 +5,10 @@ import {
   type MantineThemeOther,
 } from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import { getSizeInPx } from "metabase/viz-core/shared/utils/size-in-px";
-import type { VisualizationTheme } from "metabase/viz-core/types";
+
+import type { VisualizationTheme } from "../../types";
+
+import { getSizeInPx } from "./size-in-px";
 
 function getPieBorderColor(
   dashboardCardBg: string,

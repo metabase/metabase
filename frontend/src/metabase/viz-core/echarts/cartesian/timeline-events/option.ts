@@ -1,10 +1,12 @@
 import type { LineSeriesOption } from "echarts/charts";
 import type { MarkLine2DDataItemOption } from "echarts/types/src/component/marker/MarkLineModel";
 
-import { CHART_STYLE } from "metabase/viz-core/echarts/cartesian/constants/style";
-import type { TimelineEventsModel } from "metabase/viz-core/echarts/cartesian/timeline-events/types";
-import type { RenderingContext } from "metabase/viz-core/types";
 import type { TimelineEventId } from "metabase-types/api";
+
+import type { RenderingContext } from "../../../types";
+import { CHART_STYLE } from "../constants/style";
+
+import type { TimelineEventsModel } from "./types";
 
 export const TIMELINE_EVENT_SELECTION_SERIES_ID = "timeline-event-selection";
 

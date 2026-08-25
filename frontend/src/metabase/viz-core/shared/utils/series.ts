@@ -1,7 +1,8 @@
-import type { CartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
-import { getCartesianChartColumns } from "metabase/viz-core/lib/graph/columns";
-import type { ColumnFormatter } from "metabase/viz-core/shared/types/format";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+
+import type { CartesianChartColumns } from "../../lib/graph/columns";
+import { getCartesianChartColumns } from "../../lib/graph/columns";
+import type { ColumnFormatter } from "../types/format";
 
 import { getSeriesColors } from "./colors";
 import { getOrderedSeries, getSeries } from "./data";

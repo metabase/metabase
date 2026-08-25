@@ -48,11 +48,11 @@ import {
 } from "metabase/visualizer/utils";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
 import {
+  extendCardWithDashcardSettings,
+  getComputedSettingsForSeries,
   getVisualizationRaw,
   isCartesianChart,
-} from "metabase/viz-core/lib/registry";
-import { extendCardWithDashcardSettings } from "metabase/viz-core/lib/settings/typed-utils";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
+} from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {

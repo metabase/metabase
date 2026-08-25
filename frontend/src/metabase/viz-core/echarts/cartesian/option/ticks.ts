@@ -1,6 +1,6 @@
 import { type Dayjs, dayjs } from "metabase/dayjs";
-import type { ContinuousDomain } from "metabase/viz-core/shared/types/scale";
 
+import type { ContinuousDomain } from "../../../shared/types/scale";
 import type { ChartLayout } from "../layout/types";
 import type {
   TimeSeriesAxisFormatter,

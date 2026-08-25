@@ -5,15 +5,15 @@ import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EC
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
-import { getSankeyLayout } from "metabase/viz-core/echarts/graph/sankey/layout";
-import { getSankeyChartModel } from "metabase/viz-core/echarts/graph/sankey/model";
-import { getSankeyChartOption } from "metabase/viz-core/echarts/graph/sankey/option";
-import { getTooltipOption } from "metabase/viz-core/echarts/graph/sankey/option/tooltip";
 import {
+  extractRemappings,
+  getSankeyChartModel,
+  getSankeyChartOption,
+  getSankeyLayout,
+  getTooltipOption,
   useCloseTooltipOnScroll,
   useSankeyChartColorsClasses,
-} from "metabase/viz-core/echarts/tooltip";
-import { extractRemappings } from "metabase/viz-core/lib/remapping";
+} from "metabase/viz-core";
 
 import { SANKEY_CHART_DEFINITION } from "./definition";
 import { useChartEvents } from "./events";

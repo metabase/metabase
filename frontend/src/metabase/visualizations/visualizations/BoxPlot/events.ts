@@ -7,17 +7,15 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import {
+  type BoxPlotChartModel,
+  type ComputedVisualizationSettings,
+  type EChartsEventHandler,
+  type EChartsSeriesMouseEvent,
+  type HoveredObject,
   extractSeriesDataKeyFromName,
   getBoxPlotClickData,
   isBoxPlotSeriesEvent,
-} from "metabase/viz-core/echarts/boxplot";
-import type { BoxPlotChartModel } from "metabase/viz-core/echarts/boxplot/model/types";
-import type { EChartsSeriesMouseEvent } from "metabase/viz-core/echarts/types";
-import type {
-  ComputedVisualizationSettings,
-  HoveredObject,
-} from "metabase/viz-core/types";
-import type { EChartsEventHandler } from "metabase/viz-core/types/echarts";
+} from "metabase/viz-core";
 import type { CardId, RawSeries } from "metabase-types/api";
 
 type UseBoxPlotEventsProps = {

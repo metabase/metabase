@@ -1,10 +1,11 @@
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { SingleSeries } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+
+import type { ComputedVisualizationSettings } from "../../../types";
 
 import { getCardsReferencedColumns } from "./index";
 

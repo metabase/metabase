@@ -6,7 +6,7 @@ import type {
   ClickObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatasetColumn } from "metabase-types/api";
 
 import { INNER_RADIUS_RATIO, OUTER_RADIUS } from "./constants";

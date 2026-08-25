@@ -50,20 +50,20 @@ import {
   isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
-import { ChartSettingsError, MinRowsError } from "metabase/viz-core/lib/errors";
 import {
+  ChartSettingsError,
+  type HighlightedObject,
+  type HoveredObject,
+  MinRowsError,
+  type VisualizationDefinition,
+  type VisualizationGridSize,
+  extractRemappings,
+  getCardKey,
+  getComputedSettingsForSeries,
   getVisualizationTransformed,
+  isSameSeries,
   prefetchVisualizationComponent,
-} from "metabase/viz-core/lib/registry";
-import { extractRemappings } from "metabase/viz-core/lib/remapping";
-import { getComputedSettingsForSeries } from "metabase/viz-core/lib/settings/visualization";
-import { getCardKey, isSameSeries } from "metabase/viz-core/lib/utils";
-import type {
-  HighlightedObject,
-  HoveredObject,
-  VisualizationDefinition,
-  VisualizationGridSize,
-} from "metabase/viz-core/types";
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {

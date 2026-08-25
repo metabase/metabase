@@ -1,31 +1,32 @@
 import { t } from "ttag";
 
 import { formatNullable } from "metabase/utils/formatting";
-import { getColumnScaling } from "metabase/viz-core/echarts/cartesian/model/util";
-import { sumMetric } from "metabase/viz-core/lib/dataset";
-import type {
-  CartesianChartColumns,
-  ColumnDescriptor,
-} from "metabase/viz-core/lib/graph/columns";
-import type { Series } from "metabase/viz-core/shared/components/RowChart/types";
-import type {
-  GroupedDataset,
-  GroupedDatum,
-  MetricDatum,
-  MetricValue,
-  SeriesInfo,
-} from "metabase/viz-core/shared/types/data";
-import type { ColumnFormatter } from "metabase/viz-core/shared/types/format";
-import type {
-  ComputedVisualizationSettings,
-  RemappingHydratedDatasetColumn,
-} from "metabase/viz-core/types";
 import {
   type DatasetData,
   type RowValue,
   type SeriesOrderSetting,
   getRowsForStableKeys,
 } from "metabase-types/api";
+
+import { getColumnScaling } from "../../echarts/cartesian/model/util";
+import { sumMetric } from "../../lib/dataset";
+import type {
+  CartesianChartColumns,
+  ColumnDescriptor,
+} from "../../lib/graph/columns";
+import type {
+  ComputedVisualizationSettings,
+  RemappingHydratedDatasetColumn,
+} from "../../types";
+import type { Series } from "../components/RowChart/types";
+import type {
+  GroupedDataset,
+  GroupedDatum,
+  MetricDatum,
+  MetricValue,
+  SeriesInfo,
+} from "../types/data";
+import type { ColumnFormatter } from "../types/format";
 
 import { getChartMetrics } from "./series";
 

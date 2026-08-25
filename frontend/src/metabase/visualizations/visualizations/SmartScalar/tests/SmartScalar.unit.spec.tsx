@@ -4,8 +4,10 @@ import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { loadVisualizationComponents } from "metabase/viz-core/lib/registry";
-import { getSettingsWidgetsForSeries } from "metabase/viz-core/lib/widgets";
+import {
+  getSettingsWidgetsForSeries,
+  loadVisualizationComponents,
+} from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 import { createMockSingleSeries } from "metabase-types/api/mocks";

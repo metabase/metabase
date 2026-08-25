@@ -3,12 +3,12 @@ import { useMemo } from "react";
 import { Box, Stack } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import {
+  type StackedTooltipModel,
   getPercent,
   getSortedRows,
   getTotalValue,
   groupExcessiveTooltipRows,
-} from "metabase/viz-core/echarts/tooltip/utils";
-import type { StackedTooltipModel } from "metabase/viz-core/types";
+} from "metabase/viz-core";
 
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
 

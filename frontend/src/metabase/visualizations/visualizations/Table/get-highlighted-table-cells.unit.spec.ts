@@ -2,7 +2,7 @@ import { getHighlightedTableCells } from "metabase/visualizations/visualizations
 import type {
   HighlightedObject,
   PivotedDatasetColumn,
-} from "metabase/viz-core/types";
+} from "metabase/viz-core";
 import {
   createMockCard,
   createMockColumn,

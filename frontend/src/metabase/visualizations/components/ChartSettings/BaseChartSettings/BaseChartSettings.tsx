@@ -4,13 +4,15 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { Stack, Tabs } from "metabase/ui";
-import { updateSeriesColor } from "metabase/viz-core/lib/series";
-import { getComputedSettings } from "metabase/viz-core/lib/settings";
-import { getSettingDefinitionsForColumn } from "metabase/viz-core/lib/settings/column";
-import { keyForSingleSeries } from "metabase/viz-core/lib/settings/series";
-import { getSettingsWidgets } from "metabase/viz-core/lib/widgets";
-import { SERIES_SETTING_KEY } from "metabase/viz-core/shared/settings/series";
-import type { Widget } from "metabase/viz-core/types";
+import {
+  SERIES_SETTING_KEY,
+  type Widget,
+  getComputedSettings,
+  getSettingDefinitionsForColumn,
+  getSettingsWidgets,
+  keyForSingleSeries,
+  updateSeriesColor,
+} from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { DatasetColumn } from "metabase-types/api";
 

@@ -1,7 +1,7 @@
-import type { RenderingContext } from "metabase/viz-core/types";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
+import type { RenderingContext } from "../../../types";
 
 import { getTimelineEventsSelectionSeries } from "./option";
 import type { TimelineEventsModel } from "./types";

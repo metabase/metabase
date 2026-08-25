@@ -14,56 +14,42 @@ import type {
   OnBrush,
   OnChangeCardAndRun,
 } from "metabase/visualizations/types";
-import type {
-  EChartsTooltipModel,
-  EChartsTooltipRow,
-} from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
 import {
+  type AxisFormatter,
+  type BaseCartesianChartModel,
+  type BaseSeriesModel,
+  type ChartDataset,
+  type ComputedVisualizationSettings,
+  type DataKey,
+  type DataPoint,
+  type Datum,
+  type DimensionModel,
+  type EChartsSeriesBrushEndEvent,
+  type EChartsSeriesMouseEvent,
+  type EChartsTooltipModel,
+  type EChartsTooltipRow,
   INDEX_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
+  type SeriesModel,
+  type StackModel,
   X_AXIS_DATA_KEY,
   X_AXIS_RAW_VALUE_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import {
-  isBreakoutSeries,
-  isNumericAxis,
-  isQuarterInterval,
-  isTimeSeriesAxis,
-} from "metabase/viz-core/echarts/cartesian/model/guards";
-import { getOtherSeriesAggregationLabel } from "metabase/viz-core/echarts/cartesian/model/other-series";
-import type {
-  AxisFormatter,
-  BaseCartesianChartModel,
-  BaseSeriesModel,
-  ChartDataset,
-  DataKey,
-  Datum,
-  DimensionModel,
-  SeriesModel,
-  StackModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import { getMarkerColorClass } from "metabase/viz-core/echarts/tooltip";
-import { formatValueForTooltip } from "metabase/viz-core/echarts/tooltip/format";
-import {
+  computeChange,
+  dimensionIsTimeseries,
+  formatValueForTooltip,
+  getMarkerColorClass,
+  getOtherSeriesAggregationLabel,
   getPercent,
   getTotalValue,
-} from "metabase/viz-core/echarts/tooltip/utils";
-import {
-  type EChartsSeriesBrushEndEvent,
-  type EChartsSeriesMouseEvent,
-  isLineXBrushRange,
-} from "metabase/viz-core/echarts/types";
-import { computeChange } from "metabase/viz-core/lib/numeric";
-import {
   hasClickBehavior,
+  isBreakoutSeries,
+  isLineXBrushRange,
+  isNumericAxis,
+  isQuarterInterval,
   isRemappedToString,
-} from "metabase/viz-core/lib/renderer_utils";
-import { dimensionIsTimeseries } from "metabase/viz-core/lib/timeseries";
-import type {
-  ComputedVisualizationSettings,
-  DataPoint,
-} from "metabase/viz-core/types";
+  isTimeSeriesAxis,
+} from "metabase/viz-core";
 import type {
   BrushClickObject,
   BrushRange,

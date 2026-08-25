@@ -1,9 +1,3 @@
-import type {
-  BreakoutChartColumns,
-  CartesianChartColumns,
-} from "metabase/viz-core/lib/graph/columns";
-import { SERIES_COLORS_SETTING_KEY } from "metabase/viz-core/shared/settings/series";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { SingleSeries } from "metabase-types/api";
 import {
   createMockCard,
@@ -11,6 +5,13 @@ import {
   createMockDatasetData,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
+
+import type {
+  BreakoutChartColumns,
+  CartesianChartColumns,
+} from "../../../lib/graph/columns";
+import { SERIES_COLORS_SETTING_KEY } from "../../../shared/settings/series";
+import type { ComputedVisualizationSettings } from "../../../types";
 
 import { getBreakoutDistinctValues, getCardsSeriesModels } from "./series";
 

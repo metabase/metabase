@@ -2,10 +2,10 @@ import { t } from "ttag";
 
 import { checkNumber } from "metabase/utils/types";
 import { isEmpty } from "metabase/utils/validate";
-import { SERIES_SETTING_KEY } from "metabase/viz-core/shared/settings/series";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { AggregationType, DatasetColumn } from "metabase-types/api";
 
+import { SERIES_SETTING_KEY } from "../../../shared/settings/series";
+import type { ComputedVisualizationSettings } from "../../../types";
 import { OTHER_DATA_KEY } from "../constants/dataset";
 
 import type { Datum, RegularSeriesModel, SeriesModel } from "./types";

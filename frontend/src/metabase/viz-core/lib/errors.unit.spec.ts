@@ -3,7 +3,7 @@ import {
   getDatasetError,
   getGenericErrorMessage,
   getPermissionErrorMessage,
-} from "metabase/viz-core/lib/errors";
+} from "./errors";
 
 describe("MinRowsError", () => {
   it("should be an instanceof Error", () => {

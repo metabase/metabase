@@ -23,7 +23,7 @@ import {
   getVisualizationType,
   getVisualizerRawSeries,
 } from "metabase/visualizer/selectors";
-import { isCartesianChart } from "metabase/viz-core/lib/registry";
+import { isCartesianChart } from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 import { TabularPreviewModal } from "../TabularPreviewModal";

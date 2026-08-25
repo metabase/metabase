@@ -10,11 +10,11 @@ import type { ScaleBand, ScaleContinuousNumeric } from "d3-scale";
 import * as React from "react";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
-import { truncateText } from "metabase/viz-core/lib/text";
-import type { HoveredData } from "metabase/viz-core/shared/types/events";
-import type { Margin } from "metabase/viz-core/shared/types/layout";
 
+import { truncateText } from "../../../lib/text";
 import type { SeriesInfo } from "../../types/data";
+import type { HoveredData } from "../../types/events";
+import type { Margin } from "../../types/layout";
 import type { BarData, RowChartTheme, SeriesData } from "../RowChart/types";
 import { VerticalGoalLine } from "../VerticalGoalLine/VerticalGoalLine";
 

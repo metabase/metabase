@@ -26,11 +26,11 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import {
+  type HoveredObject,
   calculateFunnelSteps,
   calculateStepOpacity,
-} from "metabase/viz-core/lib/funnel/utils";
-import { computeChange } from "metabase/viz-core/lib/numeric";
-import type { HoveredObject } from "metabase/viz-core/types";
+  computeChange,
+} from "metabase/viz-core";
 import type { RowValue, RowValues } from "metabase-types/api";
 import { getRowsForStableKeys } from "metabase-types/api";
 

@@ -1,10 +1,10 @@
-import type {
-  ComputedVisualizationSettings,
-  RemappingHydratedDatasetColumn,
-} from "metabase/viz-core/types";
 import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import type { ColumnSettings } from "metabase-types/api";
 
+import type {
+  ComputedVisualizationSettings,
+  RemappingHydratedDatasetColumn,
+} from "../../../types";
 import {
   NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX,
   POSITIVE_BAR_DATA_LABEL_KEY_SUFFIX,

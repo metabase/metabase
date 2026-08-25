@@ -3,8 +3,8 @@ import { t } from "ttag";
 import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
-} from "metabase/viz-core/components/ChartTooltip/EChartsTooltip";
-import { getMarkerColorClass } from "metabase/viz-core/echarts/tooltip";
+} from "../../../../components/ChartTooltip/EChartsTooltip";
+import { getMarkerColorClass } from "../../../tooltip";
 
 import type { ParentLabelLayout, TreemapLabelLayout } from "./labels";
 import { getSiblings, isOverview, parseTreemapNodeId } from "./tree";

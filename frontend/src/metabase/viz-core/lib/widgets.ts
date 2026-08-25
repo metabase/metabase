@@ -1,16 +1,3 @@
-import { getSettingWidgetComponent } from "metabase/viz-core/lib/registry";
-import {
-  getComputedSettingsForSeries,
-  getSettingDefinitionsForSeries,
-  getStoredSettingsForSeries,
-} from "metabase/viz-core/lib/settings/visualization";
-import type {
-  CompleteVisualizationSettingDefinition,
-  ComputedVisualizationSettings,
-  SettingsExtra,
-  VisualizationSettingDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/viz-core/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Series,
@@ -18,6 +5,21 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import { isObjectWithRaw } from "metabase-types/guards";
+
+import type {
+  CompleteVisualizationSettingDefinition,
+  ComputedVisualizationSettings,
+  SettingsExtra,
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "../types";
+
+import { getSettingWidgetComponent } from "./registry";
+import {
+  getComputedSettingsForSeries,
+  getSettingDefinitionsForSeries,
+  getStoredSettingsForSeries,
+} from "./settings/visualization";
 
 function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(
   settingDefs: VisualizationSettingsDefinitions,

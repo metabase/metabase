@@ -9,8 +9,7 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import { sumMetric } from "metabase/viz-core/lib/dataset";
-import { unaggregatedDataWarningMap } from "metabase/viz-core/lib/warnings";
+import { sumMetric, unaggregatedDataWarningMap } from "metabase/viz-core";
 import type {
   DatasetData,
   PinMapStyle,

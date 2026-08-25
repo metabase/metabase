@@ -1,34 +1,31 @@
 import { t } from "ttag";
 
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import type { RowValue } from "metabase-types/api";
+
+import { getNumberOr } from "../../../../lib/settings/row-values";
+import type { ComputedVisualizationSettings } from "../../../../types";
 import {
   INDEX_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import {
-  replaceValues,
-  replaceZeroesForLogScale,
-} from "metabase/viz-core/echarts/cartesian/model/dataset";
+} from "../../constants/dataset";
+import { replaceValues, replaceZeroesForLogScale } from "../../model/dataset";
+import { isNumericAxis, isTimeSeriesAxis } from "../../model/guards";
 import type {
   ChartDataset,
   DataKey,
   Datum,
   NumericAxisScaleTransforms,
   WaterfallXAxisModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
+} from "../../model/types";
 import {
   WATERFALL_DATA_KEYS,
   WATERFALL_END_KEY,
   WATERFALL_START_KEY,
   WATERFALL_TOTAL_KEY,
   WATERFALL_VALUE_KEY,
-} from "metabase/viz-core/echarts/cartesian/waterfall/constants";
-import { getNumberOr } from "metabase/viz-core/lib/settings/row-values";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
-import type { RowValue } from "metabase-types/api";
-
-import { isNumericAxis, isTimeSeriesAxis } from "../../model/guards";
+} from "../constants";
 
 export const getWaterfallDataset = (
   dataset: ChartDataset,

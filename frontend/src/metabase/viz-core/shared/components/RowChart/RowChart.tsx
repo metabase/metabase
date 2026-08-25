@@ -2,10 +2,10 @@ import type { NumberValue } from "d3-scale";
 import { useMemo } from "react";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
-import type { HoveredData } from "metabase/viz-core/shared/types/events";
-import type { ChartTicksFormatters } from "metabase/viz-core/shared/types/format";
 
 import type { SeriesInfo } from "../../types/data";
+import type { HoveredData } from "../../types/events";
+import type { ChartTicksFormatters } from "../../types/format";
 import type { ContinuousScaleType, Range } from "../../types/scale";
 import type { ChartGoal } from "../../types/settings";
 import RowChartView from "../RowChartView/RowChartView";

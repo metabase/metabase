@@ -13,7 +13,7 @@ import {
   pivot,
 } from "metabase/visualizations/lib/data_grid";
 import type { HeaderItem } from "metabase/visualizations/visualizations/PivotTable/types";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { DatasetColumn, DatasetData, RowValues } from "metabase-types/api";
 import {

@@ -2,16 +2,16 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import type {
-  VisualizationSettingDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/viz-core/types";
-import type {
   Card,
   TableColumnOrderSetting,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
+import type {
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "../../types";
 import { getVisualization } from "../registry";
 
 // Merge two settings objects together.

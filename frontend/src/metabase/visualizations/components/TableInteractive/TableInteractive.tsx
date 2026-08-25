@@ -55,11 +55,11 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import {
+  getColumnExtent,
   getTableCellClickedObject,
   getTableClickedObjectRowData,
   getTableHeaderClickedObject,
-} from "metabase/viz-core/lib/table";
-import { getColumnExtent } from "metabase/viz-core/lib/utils";
+} from "metabase/viz-core";
 import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";

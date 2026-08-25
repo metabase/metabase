@@ -1,5 +1,6 @@
-import { getComputedSettings } from "metabase/viz-core/lib/settings";
-import { nestedSettings } from "metabase/viz-core/lib/settings/nested";
+import { getComputedSettings } from "../settings";
+
+import { nestedSettings } from "./nested";
 
 describe("nestedSettings", () => {
   it("should add a nested setting function to settings", () => {

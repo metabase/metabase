@@ -2,7 +2,7 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Button, Center, Icon, Text } from "metabase/ui";
-import type { ChartSettingSegmentedControlProps } from "metabase/viz-core/types/widget-props";
+import type { ChartSettingSegmentedControlProps } from "metabase/viz-core";
 
 export const ChartSettingSegmentedControl = ({
   options,

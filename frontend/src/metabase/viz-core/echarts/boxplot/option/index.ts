@@ -2,21 +2,20 @@ import type { EChartsCoreOption } from "echarts/core";
 import type { YAXisOption } from "echarts/types/dist/shared";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
-import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import { getSharedEChartsOptions } from "metabase/viz-core/echarts/cartesian/option";
-import {
-  buildCategoricalDimensionAxis,
-  buildMetricAxis,
-} from "metabase/viz-core/echarts/cartesian/option/axis";
-import {
-  getGoalLineParams,
-  getGoalLineSeriesOption,
-} from "metabase/viz-core/echarts/cartesian/option/goal-line";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/viz-core/types";
-
+} from "../../../types";
+import { X_AXIS_DATA_KEY } from "../../cartesian/constants/dataset";
+import { getSharedEChartsOptions } from "../../cartesian/option";
+import {
+  buildCategoricalDimensionAxis,
+  buildMetricAxis,
+} from "../../cartesian/option/axis";
+import {
+  getGoalLineParams,
+  getGoalLineSeriesOption,
+} from "../../cartesian/option/goal-line";
 import { BOXPLOT_STATS } from "../constants";
 import type { BoxPlotLayoutModel } from "../layout/types";
 import type { BoxPlotChartModel } from "../model/types";

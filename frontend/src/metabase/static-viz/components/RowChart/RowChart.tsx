@@ -16,17 +16,17 @@ import {
   getLabels,
   getXValueRange,
 } from "metabase/visualizations/visualizations/RowChart/utils/settings";
-import { extractRemappedColumns } from "metabase/viz-core/lib/remapping";
-import { getChartGoal } from "metabase/viz-core/lib/settings/goal";
-import { getStackOffset } from "metabase/viz-core/lib/settings/stacking";
-import { RowChart } from "metabase/viz-core/shared/components/RowChart";
-import { getStaticChartTheme } from "metabase/viz-core/shared/components/RowChart/theme";
 import {
+  type RemappingHydratedChartData,
+  RowChart,
+  extractRemappedColumns,
+  getChartGoal,
   getGroupedDataset,
+  getStackOffset,
+  getStaticChartTheme,
+  getTwoDimensionalChartSeries,
   trimData,
-} from "metabase/viz-core/shared/utils/data";
-import { getTwoDimensionalChartSeries } from "metabase/viz-core/shared/utils/series";
-import type { RemappingHydratedChartData } from "metabase/viz-core/types";
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";

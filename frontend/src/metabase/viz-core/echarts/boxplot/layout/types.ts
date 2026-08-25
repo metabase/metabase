@@ -1,6 +1,5 @@
-import type { ChartLayout } from "metabase/viz-core/echarts/cartesian/layout/types";
-import type { DataKey } from "metabase/viz-core/echarts/cartesian/model/types";
-
+import type { ChartLayout } from "../../cartesian/layout/types";
+import type { DataKey } from "../../cartesian/model/types";
 import type { LabelLayoutMode } from "../utils";
 
 export type BoxPlotLabelOverflow = {

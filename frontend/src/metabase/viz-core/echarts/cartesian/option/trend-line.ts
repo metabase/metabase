@@ -1,7 +1,6 @@
 import type { LineSeriesOption } from "echarts/charts";
 
-import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { Z_INDEXES } from "../constants/style";
 import type { BaseCartesianChartModel } from "../model/types";
 

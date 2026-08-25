@@ -3,11 +3,12 @@ import type { EChartsOption, SunburstSeriesOption } from "echarts";
 
 import { getTextColorForBackground } from "metabase/ui/colors";
 import { checkNotNull } from "metabase/utils/types";
-import { CHAR_ELLIPSES, truncateText } from "metabase/viz-core/lib/text";
+
+import { CHAR_ELLIPSES, truncateText } from "../../lib/text";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
-} from "metabase/viz-core/types";
+} from "../../types";
 
 import { DIMENSIONS, OPTION_NAME_SEPERATOR, getTotalText } from "./constants";
 import type { PieChartFormatters } from "./format";

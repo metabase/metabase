@@ -1,8 +1,15 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { OTHER_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import type { LegacySeriesSettingsObjectKey } from "metabase/viz-core/echarts/cartesian/model/types";
+import type {
+  Card,
+  Series,
+  SingleSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+import { OTHER_DATA_KEY } from "../../echarts/cartesian/constants/dataset";
+import type { LegacySeriesSettingsObjectKey } from "../../echarts/cartesian/model/types";
 import {
   SERIES_COLORS_SETTING_KEY,
   SERIES_SETTING_KEY,
@@ -15,15 +22,8 @@ import {
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultShowSeriesTrendline,
   getSeriesDefaultShowSeriesValues,
-} from "metabase/viz-core/shared/settings/series";
-import type { VisualizationSettingsDefinitions } from "metabase/viz-core/types";
-import type {
-  Card,
-  Series,
-  SingleSeries,
-  VisualizationSettings,
-} from "metabase-types/api";
-
+} from "../../shared/settings/series";
+import type { VisualizationSettingsDefinitions } from "../../types";
 import { getNameForCard } from "../series";
 
 import { type NestedSettingsOptions, nestedSettings } from "./nested";

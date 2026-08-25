@@ -1,7 +1,7 @@
 import { memo } from "react";
 
 import type { VisualizationProps } from "metabase/visualizations/types";
-import { isSameSeries } from "metabase/viz-core/lib/utils";
+import { isSameSeries } from "metabase/viz-core";
 
 import { MapRenderer } from "./MapRenderer";
 import { MAP_VIZ_DEFINITION } from "./definition";

@@ -1,6 +1,6 @@
-import { NULL_CHAR } from "metabase/viz-core/echarts/cartesian/constants/dataset";
 import type { RowValue } from "metabase-types/api";
 
+import { NULL_CHAR } from "../cartesian/constants/dataset";
 import type { DataKey } from "../cartesian/model/types";
 
 import type { BoxPlotStat } from "./constants";

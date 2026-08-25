@@ -1,6 +1,4 @@
-import { getStackOffset } from "metabase/viz-core/lib/settings/stacking";
-import type { Series } from "metabase/viz-core/shared/components/RowChart/types";
-import type { Range } from "metabase/viz-core/shared/types/scale";
+import { type Range, type Series, getStackOffset } from "metabase/viz-core";
 import type { VisualizationSettings } from "metabase-types/api";
 
 export const getLabelledSeries = <TDatum>(

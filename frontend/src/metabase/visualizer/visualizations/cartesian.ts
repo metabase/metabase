@@ -14,12 +14,12 @@ import {
   shouldSplitVisualizerSeries,
   updateVizSettingsWithRefs,
 } from "metabase/visualizer/utils";
-import { isCartesianChart } from "metabase/viz-core/lib/registry";
 import {
+  type ComputedVisualizationSettings,
   getDefaultDimensionFilter,
   getDefaultMetricFilter,
-} from "metabase/viz-core/shared/settings/cartesian-chart";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+  isCartesianChart,
+} from "metabase/viz-core";
 import {
   isDate,
   isDimension,

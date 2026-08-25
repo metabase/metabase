@@ -6,14 +6,42 @@ import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
 import { isNotNull, isNumber } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  DateTimeAbsoluteUnit,
+  NumericScale,
+  RawSeries,
+  RowValue,
+  StackType,
+} from "metabase-types/api";
+import { numericScale } from "metabase-types/api";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+
+import { computeNumericDataInterval } from "../../../lib/numeric";
+import { getLineAreaBarComparisonSettings } from "../../../lib/settings";
+import type {
+  ComputedVisualizationSettings,
+  Extent,
+  VisualizationGridSize,
+} from "../../../types";
+import type { ShowWarning } from "../../types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
+} from "../constants/dataset";
 import {
-  getDatasetExtents,
-  getSeriesExtent,
-} from "metabase/viz-core/echarts/cartesian/model/dataset";
+  computeTimeseriesDataInterval,
+  ensureResultsTimezone,
+  getTimeSeriesIntervalDuration,
+  getTimezoneOrOffset,
+  minTimeseriesUnit,
+  normalizeDate,
+  tryGetDate,
+} from "../utils/timeseries";
+
+import { getDatasetExtents, getSeriesExtent } from "./dataset";
+import { getAxisTransforms } from "./transforms";
 import type {
   AxisFormatter,
   ChartDataset,
@@ -29,38 +57,7 @@ import type {
   TimeSeriesXAxisModel,
   XAxisModel,
   YAxisModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import {
-  computeTimeseriesDataInterval,
-  ensureResultsTimezone,
-  getTimeSeriesIntervalDuration,
-  getTimezoneOrOffset,
-  minTimeseriesUnit,
-  normalizeDate,
-  tryGetDate,
-} from "metabase/viz-core/echarts/cartesian/utils/timeseries";
-import { computeNumericDataInterval } from "metabase/viz-core/lib/numeric";
-import { getLineAreaBarComparisonSettings } from "metabase/viz-core/lib/settings";
-import type {
-  ComputedVisualizationSettings,
-  Extent,
-  VisualizationGridSize,
-} from "metabase/viz-core/types";
-import type {
-  ColumnSettings,
-  DatasetColumn,
-  DateTimeAbsoluteUnit,
-  NumericScale,
-  RawSeries,
-  RowValue,
-  StackType,
-} from "metabase-types/api";
-import { numericScale } from "metabase-types/api";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
-
-import type { ShowWarning } from "../../types";
-
-import { getAxisTransforms } from "./transforms";
+} from "./types";
 import { getFormattingOptionsWithoutScaling } from "./util";
 
 const uniqueCards = (seriesModels: SeriesModel[]) =>

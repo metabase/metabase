@@ -1,23 +1,21 @@
 import { t } from "ttag";
 
 import { formatValue } from "metabase/value-formatting";
-import { getTreemapChartColumns } from "metabase/viz-core/echarts/graph/treemap/model/data";
-import { ChartSettingsError } from "metabase/viz-core/lib/errors";
-import { columnSettings } from "metabase/viz-core/lib/settings/column";
-import { nestedSettings } from "metabase/viz-core/lib/settings/nested";
-import { keyForSingleSeries } from "metabase/viz-core/lib/settings/series";
 import {
+  ChartSettingsError,
+  type ComputedVisualizationSettings,
+  SERIES_SETTING_KEY,
+  type VisualizationDefinition,
+  type VisualizationSettingsDefinitions,
+  columnSettings,
+  columnsAreValid,
   dimensionSetting,
+  getTreemapChartColumns,
+  getTreemapRows,
+  keyForSingleSeries,
   metricSetting,
-} from "metabase/viz-core/lib/settings/utils";
-import { columnsAreValid } from "metabase/viz-core/lib/utils";
-import { SERIES_SETTING_KEY } from "metabase/viz-core/shared/settings/series";
-import { getTreemapRows } from "metabase/viz-core/shared/settings/treemap";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/viz-core/types";
+  nestedSettings,
+} from "metabase/viz-core";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries, SingleSeries } from "metabase-types/api";
 

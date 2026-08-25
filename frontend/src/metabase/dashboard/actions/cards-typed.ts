@@ -18,7 +18,7 @@ import {
 } from "metabase/utils/dashboard_grid";
 import { checkNotNull } from "metabase/utils/types";
 import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
-import { getRegisteredDefaultSize } from "metabase/viz-core/lib/registry";
+import { getRegisteredDefaultSize } from "metabase/viz-core";
 import type {
   Card,
   CardId,

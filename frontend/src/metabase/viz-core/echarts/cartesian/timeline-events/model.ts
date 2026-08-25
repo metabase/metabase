@@ -2,17 +2,18 @@ import type { SupportedUnit } from "types/dayjs";
 import _ from "underscore";
 
 import { type OpUnitType, dayjs } from "metabase/dayjs";
-import { CHART_STYLE } from "metabase/viz-core/echarts/cartesian/constants/style";
+import type { TimelineEvent } from "metabase-types/api";
+
+import { CHART_STYLE } from "../constants/style";
+import type { ChartLayout } from "../layout/types";
+import { isTimeSeriesAxis } from "../model/guards";
 import type {
   BaseCartesianChartModel,
   DateRange,
   TimeSeriesInterval,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import type { TimelineEventGroup } from "metabase/viz-core/echarts/cartesian/timeline-events/types";
-import type { TimelineEvent } from "metabase-types/api";
+} from "../model/types";
 
-import type { ChartLayout } from "../layout/types";
-import { isTimeSeriesAxis } from "../model/guards";
+import type { TimelineEventGroup } from "./types";
 
 const getIntervalWidth = (
   range: DateRange,

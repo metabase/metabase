@@ -14,19 +14,17 @@ import {
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 import {
+  extractRemappings,
   getBoxPlotLayoutModel,
   getBoxPlotModel,
   getBoxPlotOption,
   getBoxPlotTooltipOption,
-} from "metabase/viz-core/echarts/boxplot";
-import { getChartLayout } from "metabase/viz-core/echarts/cartesian/layout";
-import { getLegendItems } from "metabase/viz-core/echarts/cartesian/model/legend";
-import {
+  getChartLayout,
+  getDashboardAdjustedSettings,
+  getLegendItems,
   useClickedStateTooltipSync,
   useCloseTooltipOnScroll,
-} from "metabase/viz-core/echarts/tooltip";
-import { extractRemappings } from "metabase/viz-core/lib/remapping";
-import { getDashboardAdjustedSettings } from "metabase/viz-core/shared/settings-adjustments";
+} from "metabase/viz-core";
 
 import { BOXPLOT_CHART_DEFINITION } from "./definition";
 import { useBoxPlotEvents } from "./events";

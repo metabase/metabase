@@ -4,24 +4,24 @@ import { type Dayjs, dayjs } from "metabase/dayjs";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { isNotNull } from "metabase/utils/types";
 import type {
-  CartesianChartDateTimeAbsoluteUnit,
-  TimeSeriesAxisFormatter,
-  TimeSeriesInterval,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import { isTimezoneNaiveWallClock } from "metabase/viz-core/lib/date-validation";
-import {
-  multipleTimezoneWarning,
-  unexpectedTimezoneWarning,
-} from "metabase/viz-core/lib/warnings";
-import type { ContinuousDomain } from "metabase/viz-core/shared/types/scale";
-import type {
   DateTimeAbsoluteUnit,
   RawSeries,
   RowValue,
 } from "metabase-types/api";
 
+import { isTimezoneNaiveWallClock } from "../../../lib/date-validation";
+import {
+  multipleTimezoneWarning,
+  unexpectedTimezoneWarning,
+} from "../../../lib/warnings";
+import type { ContinuousDomain } from "../../../shared/types/scale";
 import type { ShowWarning } from "../../types";
 import type { ChartLayout } from "../layout/types";
+import type {
+  CartesianChartDateTimeAbsoluteUnit,
+  TimeSeriesAxisFormatter,
+  TimeSeriesInterval,
+} from "../model/types";
 import { getPaddedAxisLabel } from "../option/utils";
 
 export const tryGetDate = (rowValue: RowValue): Dayjs | null => {

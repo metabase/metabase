@@ -13,7 +13,7 @@ import {
   renderLinkURLForClick,
 } from "metabase/value-formatting";
 import type { ClickObject } from "metabase/visualizations/types";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";

@@ -7,12 +7,12 @@ import type {
   BodyItem,
   HeaderItem,
 } from "metabase/visualizations/visualizations/PivotTable/types";
-import { makeCellBackgroundGetter } from "metabase/viz-core/lib/table_format";
-import type {
-  ComputedVisualizationSettings,
-  PivotedDatasetColumn,
-  PivotedRowValues,
-} from "metabase/viz-core/types";
+import {
+  type ComputedVisualizationSettings,
+  type PivotedDatasetColumn,
+  type PivotedRowValues,
+  makeCellBackgroundGetter,
+} from "metabase/viz-core";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   DatasetColumn,

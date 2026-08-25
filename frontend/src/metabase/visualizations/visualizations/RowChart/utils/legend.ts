@@ -1,5 +1,4 @@
-import type { LegendItem } from "metabase/viz-core/echarts/cartesian/model/types";
-import type { Series } from "metabase/viz-core/shared/components/RowChart/types";
+import type { LegendItem, Series } from "metabase/viz-core";
 
 export const getLegendItems = <TDatum>(
   multipleSeries: Series<TDatum>[],

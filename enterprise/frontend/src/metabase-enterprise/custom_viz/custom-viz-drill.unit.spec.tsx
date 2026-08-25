@@ -7,7 +7,7 @@ import { getCard } from "metabase/query_builder/selectors";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
-import { registerVisualization } from "metabase/viz-core/lib/registry";
+import { registerVisualization } from "metabase/viz-core";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type { CustomVizDisplayType } from "metabase-types/api";
 import {

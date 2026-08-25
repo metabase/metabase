@@ -1,8 +1,10 @@
 import _ from "underscore";
 
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
-import { isCartesianChart } from "metabase/viz-core/lib/registry";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
+import {
+  type ComputedVisualizationSettings,
+  isCartesianChart,
+} from "metabase/viz-core";
 import type {
   Dataset,
   DatasetColumn,

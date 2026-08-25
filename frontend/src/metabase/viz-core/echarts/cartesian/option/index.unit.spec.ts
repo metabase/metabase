@@ -1,6 +1,5 @@
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 
-import type { RenderingContext } from "metabase/viz-core/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 import {
   createMockCard,
@@ -10,6 +9,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
+import type { RenderingContext } from "../../../types";
 import { getChartLayout } from "../layout";
 import { getCartesianChartModel } from "../model";
 

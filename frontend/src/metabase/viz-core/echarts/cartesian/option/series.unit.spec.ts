@@ -1,11 +1,11 @@
-import { X_AXIS_DATA_KEY } from "metabase/viz-core/echarts/cartesian/constants/dataset";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type { SeriesSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
+import type { ComputedVisualizationSettings } from "../../../types";
+import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import type { ComboChartDataDensity, DataKey, Datum } from "../model/types";
 
 import {

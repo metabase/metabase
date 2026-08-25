@@ -10,17 +10,35 @@ import _ from "underscore";
 import { getTextColorForBackground } from "metabase/ui/colors/palette";
 import { isNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
+import type {
+  DatasetColumn,
+  RowValue,
+  SeriesSettings,
+  XAxisScale,
+} from "metabase-types/api";
+
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "../../../types";
+import { getPercent } from "../../tooltip/utils";
 import {
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
-} from "metabase/viz-core/echarts/cartesian/constants/dataset";
+} from "../constants/dataset";
+import { CHART_STYLE, LINE_SIZE, Z_INDEXES } from "../constants/style";
+import type { ChartLayout, TicksRotation } from "../layout/types";
 import {
-  CHART_STYLE,
-  LINE_SIZE,
-  Z_INDEXES,
-} from "metabase/viz-core/echarts/cartesian/constants/style";
+  isCategoryAxis,
+  isNumericAxis,
+  isTimeSeriesAxis,
+} from "../model/guards";
+import {
+  getDisplaySeriesSettingsByDataKey,
+  getStackTotalValue,
+} from "../model/series";
 import type {
   CartesianChartModel,
   ChartDataDensity,
@@ -36,33 +54,11 @@ import type {
   StackTotalDataKey,
   TimeSeriesXAxisModel,
   XAxisModel,
-} from "metabase/viz-core/echarts/cartesian/model/types";
-import type { EChartsSeriesOption } from "metabase/viz-core/echarts/cartesian/option/types";
-import { getPercent } from "metabase/viz-core/echarts/tooltip/utils";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core/types";
-import type {
-  DatasetColumn,
-  RowValue,
-  SeriesSettings,
-  XAxisScale,
-} from "metabase-types/api";
-
-import type { ChartLayout, TicksRotation } from "../layout/types";
-import {
-  isCategoryAxis,
-  isNumericAxis,
-  isTimeSeriesAxis,
-} from "../model/guards";
-import {
-  getDisplaySeriesSettingsByDataKey,
-  getStackTotalValue,
-} from "../model/series";
+} from "../model/types";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getPadding } from "./ticks";
+import type { EChartsSeriesOption } from "./types";
 import { getSeriesYAxisIndex } from "./utils";
 
 const MIN_LABEL_SPACING_PX = 40;

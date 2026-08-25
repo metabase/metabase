@@ -3,17 +3,17 @@ import { t } from "ttag";
 
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import { registerEChartsModules } from "metabase/viz-core/echarts";
-import type { LegendItem } from "metabase/viz-core/echarts/cartesian/model/types";
-import { DIMENSIONS } from "metabase/viz-core/echarts/pie/constants";
-import type { PieChartFormatters } from "metabase/viz-core/echarts/pie/format";
-import type { PieChartModel } from "metabase/viz-core/echarts/pie/model/types";
-import type { getPieChartOption } from "metabase/viz-core/echarts/pie/option";
-import { getArrayFromMapValues } from "metabase/viz-core/echarts/pie/util";
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/viz-core/types";
+import {
+  type ComputedVisualizationSettings,
+  DIMENSIONS,
+  type LegendItem,
+  type PieChartFormatters,
+  type PieChartModel,
+  type RenderingContext,
+  getArrayFromMapValues,
+  type getPieChartOption,
+  registerEChartsModules,
+} from "metabase/viz-core";
 
 import {
   DEFAULT_LEGEND_FONT_SIZE,

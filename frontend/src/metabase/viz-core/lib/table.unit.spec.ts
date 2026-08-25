@@ -1,8 +1,3 @@
-import {
-  getTableCellClickedObject,
-  getTableClickedObjectRowData,
-  isColumnRightAligned,
-} from "metabase/viz-core/lib/table";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Series } from "metabase-types/api";
 import {
@@ -10,6 +5,12 @@ import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+
+import {
+  getTableCellClickedObject,
+  getTableClickedObjectRowData,
+  isColumnRightAligned,
+} from "./table";
 
 const RAW_COLUMN = createMockColumn({
   source: "fields",

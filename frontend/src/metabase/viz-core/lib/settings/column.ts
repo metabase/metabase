@@ -18,19 +18,6 @@ import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
 } from "metabase/value-formatting";
-import { getDeduplicatedTableColumnSettings } from "metabase/viz-core/lib/settings/utils";
-import {
-  getDefaultCurrency,
-  getDefaultCurrencyInHeader,
-  getDefaultCurrencyStyle,
-  getDefaultNumberSeparators,
-  getDefaultNumberStyle,
-} from "metabase/viz-core/shared/settings/column";
-import type {
-  ComputedVisualizationSettings,
-  FormattableColumn,
-  VisualizationSettingsDefinitions,
-} from "metabase/viz-core/types";
 import {
   getColumnKey,
   getObjectColumnSettings,
@@ -55,9 +42,22 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import {
+  getDefaultCurrency,
+  getDefaultCurrencyInHeader,
+  getDefaultCurrencyStyle,
+  getDefaultNumberSeparators,
+  getDefaultNumberStyle,
+} from "../../shared/settings/column";
+import type {
+  ComputedVisualizationSettings,
+  FormattableColumn,
+  VisualizationSettingsDefinitions,
+} from "../../types";
 import { getVisualization, getVisualizationRaw } from "../registry";
 
 import { nestedSettings } from "./nested";
+import { getDeduplicatedTableColumnSettings } from "./utils";
 
 type GetColumnsFn = (
   series: Series,

@@ -3,13 +3,10 @@ import { scaleBand, scaleLinear, scaleLog, scalePower } from "@visx/scale";
 import type { ScaleContinuousNumeric } from "d3-scale";
 
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
-import type { ValueFormatter } from "metabase/viz-core/shared/types/format";
-import type {
-  ContinuousScaleType,
-  Range,
-} from "metabase/viz-core/shared/types/scale";
-import type { ChartFont } from "metabase/viz-core/shared/types/style";
 
+import type { ValueFormatter } from "../../../types/format";
+import type { ContinuousScaleType, Range } from "../../../types/scale";
+import type { ChartFont } from "../../../types/style";
 import { DATA_LABEL_OFFSET } from "../../RowChartView";
 import type { SeriesData, StackOffset } from "../types";
 

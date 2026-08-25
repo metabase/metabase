@@ -1,12 +1,10 @@
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { getTreemapChartColumns } from "metabase/viz-core/echarts/graph/treemap/model/data";
-import { getNumberOr } from "metabase/viz-core/lib/settings/row-values";
-import type {
-  ComputedVisualizationSettings,
-  Formatter,
-} from "metabase/viz-core/types";
 import type { RawSeries, RowValue, TreemapRow } from "metabase-types/api";
+
+import { getTreemapChartColumns } from "../../echarts/graph/treemap/model/data";
+import { getNumberOr } from "../../lib/settings/row-values";
+import type { ComputedVisualizationSettings, Formatter } from "../../types";
 
 import { getKeyFromDimensionValue } from "./pie";
 

@@ -1,16 +1,17 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
-import { sumMetric } from "metabase/viz-core/lib/dataset";
-import { getColumnDescriptors } from "metabase/viz-core/lib/graph/columns";
-import { getNumberOr } from "metabase/viz-core/lib/settings/row-values";
-import { treemapNegativesWarning } from "metabase/viz-core/lib/warnings";
-import { getKeyFromDimensionValue } from "metabase/viz-core/shared/settings/pie";
-import type { ComputedVisualizationSettings } from "metabase/viz-core/types";
 import type {
   DatasetColumn,
   RawSeries,
   RowValue,
   TreemapRow,
 } from "metabase-types/api";
+
+import { sumMetric } from "../../../../lib/dataset";
+import { getColumnDescriptors } from "../../../../lib/graph/columns";
+import { getNumberOr } from "../../../../lib/settings/row-values";
+import { treemapNegativesWarning } from "../../../../lib/warnings";
+import { getKeyFromDimensionValue } from "../../../../shared/settings/pie";
+import type { ComputedVisualizationSettings } from "../../../../types";
 
 import { getTreemapColumnFormatter } from "./formatters";
 import type { TreemapChartColumns, TreemapNode, TreemapTree } from "./types";

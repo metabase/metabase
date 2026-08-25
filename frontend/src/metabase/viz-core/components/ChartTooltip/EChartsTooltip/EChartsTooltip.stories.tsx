@@ -1,12 +1,14 @@
+import type { ComponentProps } from "react";
+
 import { SdkVisualizationWrapper } from "__support__/storybook";
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box, Flex } from "metabase/ui";
-import {
-  EChartsTooltip,
-  type EChartsTooltipProps,
-} from "metabase/viz-core/components/ChartTooltip/EChartsTooltip/EChartsTooltip";
-import S from "metabase/viz-core/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
+
+import { EChartsTooltip, type EChartsTooltipProps } from "./EChartsTooltip";
+import S from "./EChartsTooltip.module.css";
+
+type Theme = NonNullable<
+  ComponentProps<typeof SdkVisualizationWrapper>["theme"]
+>;
 
 const data: EChartsTooltipProps = {
   header: "Header Text",
@@ -78,13 +80,13 @@ export const LightTheme = {
   parameters: {
     loki: { skip: true },
   },
-  render: ({ theme }: { theme: MetabaseTheme }) => (
+  render: ({ theme }: { theme: Theme }) => (
     <SdkVisualizationWrapper theme={theme}>
       <DefaultTemplate />
     </SdkVisualizationWrapper>
   ),
   args: {
-    theme: defineMetabaseTheme({
+    theme: {
       components: {
         tooltip: {
           textColor: "#2f3542",
@@ -93,6 +95,6 @@ export const LightTheme = {
           focusedBackgroundColor: "#f1f2f6",
         },
       },
-    }),
+    },
   },
 };

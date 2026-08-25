@@ -4,21 +4,17 @@ import _ from "underscore";
 import { getAccentColors, getPreferredColor } from "metabase/ui/colors/groups";
 import MetabaseSettings from "metabase/utils/settings";
 import {
-  getDefaultMapDimension,
-  getDefaultMapMetric,
-} from "metabase/viz-core/lib/choropleth";
-import { ChartSettingsError } from "metabase/viz-core/lib/errors";
-import { columnSettings } from "metabase/viz-core/lib/settings/column";
-import {
+  ChartSettingsError,
+  type VisualizationDefinition,
+  columnSettings,
   dimensionSetting,
   fieldSetting,
-  metricSetting,
-} from "metabase/viz-core/lib/settings/utils";
-import {
+  getDefaultMapDimension,
+  getDefaultMapMetric,
   getDefaultSize,
   getMinSize,
-} from "metabase/viz-core/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/viz-core/types";
+  metricSetting,
+} from "metabase/viz-core";
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,

@@ -1,7 +1,8 @@
 import _ from "underscore";
 
-import type { RemappingHydratedDatasetColumn } from "metabase/viz-core/types";
 import type { DatasetData, Series } from "metabase-types/api";
+
+import type { RemappingHydratedDatasetColumn } from "../types";
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
 export const extractRemappedColumns = (data: DatasetData) => {

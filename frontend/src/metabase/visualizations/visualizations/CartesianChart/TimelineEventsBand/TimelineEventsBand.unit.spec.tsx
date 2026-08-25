@@ -2,7 +2,7 @@ import type { EChartsType } from "echarts/core";
 
 import { createMockChartLayout } from "__support__/echarts";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { TimelineEventsModel } from "metabase/viz-core/echarts/cartesian/timeline-events/types";
+import type { TimelineEventsModel } from "metabase/viz-core";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
