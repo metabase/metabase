@@ -30,7 +30,7 @@ Define custom columns inside a stage using `expressions` and reference by name w
 "aggregation": [["sum", {}, ["expression", {}, "Subtotal"]]]
 ```
 
-The sequential form `[["expression", {}, "Name", expr], ...]` is also accepted and auto-converted.
+A sequential form is also accepted, but the name must live in the defining clause's own options as `lib/expression-name` — `[["+", {"lib/expression-name": "Subtotal"}, <a>, <b>], ...]`. There is no `["expression", {}, "Name", expr]` definition form; `["expression", {}, "<Name>"]` is only a *reference* to an already-defined expression. Prefer the object form above.
 
 ## Joins (explicit)
 
