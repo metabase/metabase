@@ -5,15 +5,13 @@ import type { Collection, Dashboard, Tenant } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("scenarios > dashboard > tenant-specific question picker (EMB-2312)", () => {
+describe("scenarios > dashboard > tenant-specific question picker", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.updateSetting("use-tenants", true);
-  });
 
-  it("allows adding questions from the dashboard's tenant-specific collection", () => {
     cy.request("POST", "/api/ee/tenant", {
       name: "Acme",
       slug: "acme",
@@ -38,7 +36,9 @@ describe("scenarios > dashboard > tenant-specific question picker (EMB-2312)", (
         query: { "source-table": ORDERS_ID },
       }),
     );
+  });
 
+  it("allows adding questions from the dashboard's tenant-specific collection (EMB-2312)", () => {
     cy.get<Tenant>("@tenant")
       .then(({ tenant_collection_id }) =>
         H.createDashboard({
@@ -62,7 +62,34 @@ describe("scenarios > dashboard > tenant-specific question picker (EMB-2312)", (
       H.sidebar().findByText("Tenant questions").click();
       H.sidebar().findByText("Tenant orders").click();
 
-      H.getDashboardCards().should("have.length", 1);
+      H.getDashboardCards()
+        .should("have.length", 1)
+        .and("contain", "Tenant orders");
+    });
+  });
+
+  // Verify that the tenant-specific collection is added to the Our Analytics collection.
+  it("allows browsing into a tenant-specific collection from Our Analytics (EMB-2312)", () => {
+    H.createDashboard({ name: "Our analytics dashboard" })
+      .its("body")
+      .as("dashboard");
+
+    cy.get<Dashboard>("@dashboard").then(({ id }) => {
+      H.visitDashboard(id);
+      H.editDashboard();
+      H.openQuestionsSidebar();
+
+      H.sidebar()
+        .findByTestId("breadcrumbs")
+        .should("contain", "Our analytics");
+
+      H.sidebar().findByText("Tenant collection: Acme").click();
+      H.sidebar().findByText("Tenant questions").click();
+      H.sidebar().findByText("Tenant orders").click();
+
+      H.getDashboardCards()
+        .should("have.length", 1)
+        .and("contain", "Tenant orders");
     });
   });
 });

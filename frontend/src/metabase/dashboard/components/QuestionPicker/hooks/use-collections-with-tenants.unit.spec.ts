@@ -117,11 +117,12 @@ describe("useCollectionsWithTenants", () => {
 });
 
 describe("mergeTenantSpecificCollections", () => {
-  it("merges tenant-specific collections without replacing Our Analytics", () => {
+  it("merges tenant-specific collections without removing Our Analytics root", () => {
     const ourAnalytics = createMockExpandedCollection({
       ...ROOT_COLLECTION,
       path: [],
     });
+
     const tenantCollection = createMockExpandedCollection({
       id: 100,
       name: "Tenant collection: Acme",
@@ -129,22 +130,31 @@ describe("mergeTenantSpecificCollections", () => {
       path: [ROOT_COLLECTION.id],
       namespace: "tenant-specific",
     });
+
     const tenantSpecificRoot = createMockExpandedCollection({
       ...ROOT_COLLECTION,
       name: "Collections",
       path: [],
     });
 
+    tenantSpecificRoot.children = [tenantCollection];
+    tenantCollection.parent = tenantSpecificRoot;
+
     const collectionsById = mergeTenantSpecificCollections(
-      { [ROOT_COLLECTION.id]: ourAnalytics },
+      {
+        [ROOT_COLLECTION.id]: ourAnalytics,
+      },
       {
         [ROOT_COLLECTION.id]: tenantSpecificRoot,
         [tenantCollection.id]: tenantCollection,
       },
     );
 
-    expect(collectionsById[ROOT_COLLECTION.id]).toBe(ourAnalytics);
-    expect(collectionsById[tenantCollection.id]).toBe(tenantCollection);
+    const mergedRoot = collectionsById[ROOT_COLLECTION.id];
+    const mergedTenantCollection = collectionsById[tenantCollection.id];
+
+    expect(mergedTenantCollection.parent).toBe(mergedRoot);
+    expect(mergedRoot.children).toContain(mergedTenantCollection);
   });
 });
 

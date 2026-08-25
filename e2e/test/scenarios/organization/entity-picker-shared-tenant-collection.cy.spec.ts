@@ -461,7 +461,9 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.sidebar().findByText("Tenant Sub-Collection").click();
         H.sidebar().findByText("Tenant Sub-Collection Orders Question").click();
 
-        H.getDashboardCards().should("have.length", 1);
+        H.getDashboardCards()
+          .should("have.length", 1)
+          .and("contain", "Tenant Sub-Collection Orders Question");
       });
     });
 

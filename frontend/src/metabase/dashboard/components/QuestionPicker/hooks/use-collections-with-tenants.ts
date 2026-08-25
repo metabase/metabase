@@ -43,6 +43,7 @@ export function useCollectionsWithTenants(
         }
       : skipToken,
   );
+
   const { data: tenantSpecificCollections } = useListCollectionsTreeQuery(
     isTenantsActive
       ? {
@@ -111,10 +112,20 @@ export const flattenCollectionTree = (
 export const mergeTenantSpecificCollections = (
   baseCollectionsById: Record<CollectionId, ExpandedCollection>,
   tenantSpecificCollectionsById: Record<CollectionId, ExpandedCollection>,
-): Record<CollectionId, ExpandedCollection> => ({
-  ...baseCollectionsById,
-  ..._.omit(tenantSpecificCollectionsById, ROOT_COLLECTION.id),
-});
+): Record<CollectionId, ExpandedCollection> => {
+  const baseRoot = baseCollectionsById[ROOT_COLLECTION.id];
+  const tenantSpecificRoot = tenantSpecificCollectionsById[ROOT_COLLECTION.id];
+
+  for (const collection of tenantSpecificRoot?.children ?? []) {
+    collection.parent = baseRoot;
+    baseRoot.children.push(collection);
+  }
+
+  return {
+    ...baseCollectionsById,
+    ..._.omit(tenantSpecificCollectionsById, ROOT_COLLECTION.id),
+  };
+};
 
 /**
  * Merge shared tenant collections into the base collections map,
