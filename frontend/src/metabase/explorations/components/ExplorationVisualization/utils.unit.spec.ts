@@ -2,10 +2,8 @@ import { OTHER_BUCKET_LABEL } from "metabase/explorations/constants";
 import { createQuery } from "metabase/explorations/test-utils";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type {
-  ClickObject,
-  HighlightedObject,
-} from "metabase/visualizations/types";
+import type { ClickObject } from "metabase/visualizations/types";
+import type { HighlightedObject } from "metabase/viz-core";
 import type {
   Dataset,
   ExplorationQuery,

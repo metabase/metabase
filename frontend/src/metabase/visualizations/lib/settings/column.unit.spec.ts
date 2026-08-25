@@ -1,17 +1,16 @@
 import { checkNotNull } from "metabase/utils/types";
-import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import { registerVisualizations } from "metabase/visualizations/register";
+import {
+  NUMBER_COLUMN_SETTINGS,
+  columnSettings,
+  getComputedSettings,
+  tableColumnSettings,
+} from "metabase/viz-core";
 import type { DatasetColumn, Series } from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
-
-import {
-  NUMBER_COLUMN_SETTINGS,
-  columnSettings,
-  tableColumnSettings,
-} from "./column";
 
 registerVisualizations();
 

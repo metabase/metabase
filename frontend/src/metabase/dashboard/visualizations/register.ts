@@ -1,5 +1,5 @@
 import ActionViz from "metabase/dashboard/components/ActionViz";
-import { registerVisualization } from "metabase/visualizations";
+import { registerVisualization } from "metabase/viz-core";
 
 import { DashCardPlaceholder } from "./DashCardPlaceholder";
 import { Heading } from "./Heading";

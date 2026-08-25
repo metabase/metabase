@@ -8,7 +8,7 @@ import {
   isEmptyString,
   isNonEmptyString,
   makeCellBackgroundGetter,
-} from "metabase/visualizations/lib/table_format";
+} from "metabase/viz-core";
 import {
   createMockColumnRangeFormattingSetting,
   createMockNumericColumn,

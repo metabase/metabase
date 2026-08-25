@@ -1,19 +1,18 @@
 import { createMockChartLayout } from "__support__/echarts";
 import { dayjs } from "metabase/dayjs";
-import type {
-  CartesianChartDateTimeAbsoluteUnit,
-  TimeSeriesInterval,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+import { registerVisualizations } from "metabase/visualizations/register";
 import {
+  type CartesianChartDateTimeAbsoluteUnit,
+  type ContinuousDomain,
+  type TimeSeriesInterval,
   computeTimeseriesDataInterval,
   computeTimeseriesTicksInterval,
   ensureResultsTimezone,
   expectedTickCount,
   getTimezoneOrOffset,
+  getVisualizationTransformed,
   normalizeDate,
-} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
-import { registerVisualizations } from "metabase/visualizations/register";
-import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
+} from "metabase/viz-core";
 import {
   type DateTimeAbsoluteUnit,
   type RawSeries,
@@ -24,8 +23,6 @@ import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
-
-import { getVisualizationTransformed } from "../../../lib/registry";
 
 registerVisualizations();
 

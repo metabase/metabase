@@ -13,9 +13,9 @@ import type {
   ClickActionPopoverProps,
   ClickActionsMode,
   ClickObject,
-  HighlightedObject,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
+import type { HighlightedObject } from "metabase/viz-core";
 import type {
   DocumentContent,
   ExplorationBlockNodeType,

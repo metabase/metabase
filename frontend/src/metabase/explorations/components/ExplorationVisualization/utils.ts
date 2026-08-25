@@ -10,17 +10,19 @@ import {
   formatDateTimeRangeWithUnit,
   formatValue,
 } from "metabase/value-formatting";
-import { isCartesianChart } from "metabase/visualizations";
-import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
   BrushClickObject,
   BrushRange,
   ClickObject,
-  ComputedVisualizationSettings,
-  HighlightedObject,
 } from "metabase/visualizations/types";
 import { isBrushClickObject } from "metabase/visualizations/types";
 import { getColorplethColorScale } from "metabase/visualizations/visualizations/Map/map-color-scale";
+import {
+  type ComputedVisualizationSettings,
+  type HighlightedObject,
+  getSeriesVizSettingsKey,
+  isCartesianChart,
+} from "metabase/viz-core";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCountry,
