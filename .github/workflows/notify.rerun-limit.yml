@@ -10,7 +10,7 @@ on:
 jobs:
   notify:
     name: Send Slack Notification If Workflow Run Attempts Exceed Limit
-    if: ${{ github.event.workflow_run.run_attempt > 5 }}
+    if: ${{ github.event.workflow_run.run_attempt > 5 && github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -27,13 +27,14 @@ jobs:
       - name: Send Slack Notification
         uses: actions/github-script@v9
         env:
-          SLACK_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: |
             const { mentionUserByGithubLogin, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const ATTEMPT = "${{ github.event.workflow_run.run_attempt }}";
             const AUTHOR = "${{ github.event.workflow_run.head_commit.author.name }}";
+            const AUTHOR_LOGIN = "${{ github.event.workflow_run.head_commit.author.username }}";
             const COMMIT = "${{ github.event.workflow_run.head_sha }}";
             const RUN_NAME = "${{ github.event.workflow_run.name }}";
             const RUN_URL = "${{ github.event.workflow_run.html_url }}";
@@ -42,16 +43,19 @@ jobs:
 
             // Get commit details to find author information as this isn't required in the
             // workflow_run payload.
-            try {
-              const { data: commit } = await github.rest.repos.getCommit({
-                owner,
-                repo,
-                ref: COMMIT,
-              });
-              const authorLogin = commit?.author?.login ?? '';
-            } catch (error) {
-              console.warn(`Failed to find commit details for ${COMMIT}: ${error.message}`);
+            if (!AUTHOR_LOGIN) {
+              try {
+                const { data: commit } = await github.rest.repos.getCommit({
+                  owner,
+                  repo,
+                  ref: COMMIT,
+                });
+                AUTHOR_LOGIN = commit?.author?.login ?? '';
+              } catch (error) {
+                console.warn(`Failed to find commit details for ${COMMIT}: ${error.message}`);
+              }
             }
+            
 
             await sendSlackMessage({
               channelName: 'engineering-ci',
@@ -73,7 +77,7 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": `<${RUN_URL}|${RUN_NAME} has been rerun ${ATTEMPT} times for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit by ${AUTHOR} (${mentionUserByGithubLogin(authorLogin)}).`
+                      "text": `<${RUN_URL}|${RUN_NAME}> has re-run ${ATTEMPT - 1} times for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit by ${AUTHOR} (${mentionUserByGithubLogin(AUTHOR_LOGIN)}).`
                     },
                   },
                   {
