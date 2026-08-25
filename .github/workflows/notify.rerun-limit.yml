@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows:
       - "Run tests"
-    types: 
+    types:
      - completed
 
 jobs:
@@ -20,10 +20,10 @@ jobs:
           sparse-checkout: |
             release
             .github
-      
+
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
-      
+
       - name: Send Slack Notification
         uses: actions/github-script@v9
         env:
