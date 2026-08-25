@@ -1,45 +1,43 @@
-import type { BaseUser, Tenant } from "metabase-types/api";
+export const ADMIN_TENANTS_BASE_PATH = "/admin/people/tenants";
+const ADMIN_PERMISSIONS_PATH = "/admin/permissions";
 
 /**
- * Where the tenant route fragment mounts under admin People. The embedding hub
- * mounts the same fragment under its Tenancy tab, so every URL below is built
- * from a base path rather than hardcoded.
+ * Where the tenant route fragment is currently mounted. The embedding hub
+ * mounts the same fragment under its Tenancy tab, so whichever host renders it
+ * declares its base path here -- see `setTenantsBasePath`.
+ *
+ * Unlike the permissions editor's equivalent (admin/permissions/utils/base-path.ts),
+ * this is read from both OSS and EE call sites, so it lives in this shared module
+ * rather than either tier's own urls file.
  */
-export const ADMIN_TENANTS_BASE_PATH = "/admin/people/tenants";
+let basePath = ADMIN_TENANTS_BASE_PATH;
+let permissionsPath = ADMIN_PERMISSIONS_PATH;
 
-export function createTenantUrls(basePath: string) {
-  const people = () => `${basePath}/people`;
-  const groups = () => `${basePath}/groups`;
-
-  return {
-    root: () => basePath,
-    userStrategy: () => `${basePath}/user-strategy`,
-
-    newTenant: () => `${basePath}/new`,
-    editTenant: (tenantId: Tenant["id"]) => `${basePath}/${tenantId}/edit`,
-    deactivateTenant: (tenantId: Tenant["id"]) =>
-      `${basePath}/${tenantId}/deactivate`,
-    reactivateTenant: (tenantId: Tenant["id"]) =>
-      `${basePath}/${tenantId}/reactivate`,
-
-    people,
-    newUser: () => `${people()}/new`,
-    editUser: (userId: BaseUser["id"]) => `${people()}/${userId}/edit`,
-    resetUserPassword: (userId: BaseUser["id"]) =>
-      `${people()}/${userId}/reset`,
-    newUserSuccess: (userId: BaseUser["id"]) => `${people()}/${userId}/success`,
-    deactivateUser: (userId: BaseUser["id"]) =>
-      `${people()}/${userId}/deactivate`,
-    reactivateUser: (userId: BaseUser["id"]) =>
-      `${people()}/${userId}/reactivate`,
-    unsubscribeUser: (userId: BaseUser["id"]) =>
-      `${people()}/${userId}/unsubscribe`,
-
-    groups,
-    group: (groupId: number) => `${groups()}/${groupId}`,
-  };
+export function setTenantsBasePath(
+  nextBasePath: string,
+  { permissionsPath: nextPermissionsPath = ADMIN_PERMISSIONS_PATH } = {},
+) {
+  basePath = nextBasePath;
+  permissionsPath = nextPermissionsPath;
 }
 
-export type TenantUrls = ReturnType<typeof createTenantUrls>;
+export function resetTenantsBasePath() {
+  basePath = ADMIN_TENANTS_BASE_PATH;
+  permissionsPath = ADMIN_PERMISSIONS_PATH;
+}
 
-export const adminTenantUrls = createTenantUrls(ADMIN_TENANTS_BASE_PATH);
+export function getTenantsBasePath() {
+  return basePath;
+}
+
+export function getTenantsPermissionsPath() {
+  return permissionsPath;
+}
+
+export function tenantGroupUrl(groupId: number) {
+  return `${basePath}/groups/${groupId}`;
+}
+
+export function tenantPeopleUrl() {
+  return `${basePath}/people`;
+}
