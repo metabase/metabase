@@ -472,7 +472,8 @@
 (defmethod sql-jdbc/set-role-statement :clickhouse
   [_driver _conn role]
   ;; Since Clickhouse does not truly support prepared statements with protocol-level safety and has no
-  ;; `quote_ident()` function or similar, escape/quote the identifier client-side.
+  ;; `quote_ident()` function or similar, escape/quote the identifier client-side. The whole value is quoted
+  ;; as one identifier, so a role name containing a comma stays a single role.
   (let [default-role         (driver.sql/default-database-role :clickhouse nil)
         quote-if-needed      (fn [role]
                                (if (or (and (str/starts-with? role "\"")
@@ -480,12 +481,8 @@
                                        (= role default-role))
                                  role
                                  (str \" role \")))
-        escape-double-quotes #(str/replace % #"(?!^)\"(?<!$)" "\"\"")
-        quoted-role          (->> (str/split role #",")
-                                  (map quote-if-needed)
-                                  (map escape-double-quotes)
-                                  (str/join ","))]
-    (format "SET ROLE %s" quoted-role)))
+        escape-double-quotes #(str/replace % #"(?!^)\"(?<!$)" "\"\"")]
+    (format "SET ROLE %s" (-> role quote-if-needed escape-double-quotes))))
 
 (defmethod driver/set-role! :clickhouse
   [driver ^Connection conn role]

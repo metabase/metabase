@@ -567,16 +567,18 @@
               (is (thrown-with-msg? Exception #"SQL parsing failed."
                                     (driver/validate-native-query-fields :clickhouse broken-query)))))))))
 
-(deftest ^:parallel set-role-statement-escape-quotes-test
+(deftest ^:parallel set-role-statement-quotes-role-test
   (are [role sql] (= sql
                      (sql-jdbc/set-role-statement :clickhouse nil role))
+    ;; the whole role is quoted as a single identifier
     "x"                             "SET ROLE \"x\""
-    ;; don't re-quote something that already has quotes
+    ;; a comma is part of the role name, not a separator between roles
+    "x,y"                           "SET ROLE \"x,y\""
+    "a,b"                           "SET ROLE \"a,b\""
+    ;; an already-quoted value is left as-is
     "\"x\""                         "SET ROLE \"x\""
-    ;; split on commas and quote separately
-    "x,y"                           "SET ROLE \"x\",\"y\""
-    ;; default database role, don't quote
+    ;; default database role is emitted verbatim, not quoted
     "NONE"                          "SET ROLE NONE"
-    ;; escape double-quotes in the role
+    ;; interior double-quotes are doubled
     "x\"; SELECT sleep(10); --"     "SET ROLE \"x\"\"; SELECT sleep(10); --\""
     "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""))
