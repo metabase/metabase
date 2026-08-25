@@ -11,7 +11,7 @@ import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collec
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import type {
   MetabaseCollectionItem,
-  SdkCollectionId,
+  SdkBrowseCollectionId,
 } from "embedding-sdk-bundle/types/collection";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
@@ -67,9 +67,9 @@ const ENTITY_NAME_MAP: Partial<
  */
 export type CollectionBrowserProps = {
   /**
-   * The numerical ID of the collection, "personal" for the user's personal collection, "tenant" for the user's tenant collection, or "root" for the root collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. Defaults to "personal"
+   * The numerical ID of the collection, "personal" for the user's personal collection, "tenant" for the user's tenant collection, or "root" for the root collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. Use "all" to show everything the user can access: their personal collection plus the shared collections. Defaults to "personal"
    */
-  collectionId?: SdkCollectionId;
+  collectionId?: SdkBrowseCollectionId;
 
   /**
    * The number of items to display per page. The default is 25.

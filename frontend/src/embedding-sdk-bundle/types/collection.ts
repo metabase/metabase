@@ -13,6 +13,12 @@ export type SdkCollectionId =
   | SdkEntityId;
 
 /**
+ * `SdkCollectionId` plus `"all"`, a virtual read-only top level showing
+ * everything the current user can access.
+ */
+export type SdkBrowseCollectionId = SdkCollectionId | "all";
+
+/**
  * The Collection entity
  */
 export type MetabaseCollection = {

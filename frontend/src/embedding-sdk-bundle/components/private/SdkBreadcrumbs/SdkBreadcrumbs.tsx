@@ -60,6 +60,7 @@ export const SdkBreadcrumbs = ({
 
 const getBreadcrumbIcon = (type: SdkBreadcrumbItemType): IconName =>
   match<SdkBreadcrumbItemType, IconName>(type)
+    .with("all-collections", () => "folder")
     .with("collection", () => "folder")
     .with("dashboard", () => "dashboard")
     .with("question", () => "table2")
