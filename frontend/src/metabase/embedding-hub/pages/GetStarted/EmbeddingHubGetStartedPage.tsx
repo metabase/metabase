@@ -334,10 +334,7 @@ function ThemeCard({
       icon="palette"
       title={t`Create a custom theme`}
       description={t`Fine-tune the appearance of your embedded content with colors and fonts.`}
-      // Points at the admin theme listing until the embedding hub grows its own Appearance
-      // tab in EMB-1532; `/embedding/appearance` has no route yet, so linking
-      // there would 404.
-      to="/admin/embedding/themes"
+      to={Urls.embeddingHubAppearance()}
     />
   );
 }
