@@ -14,7 +14,6 @@ const args = {
   description: undefined,
   error: undefined,
   disabled: false,
-  labelPosition: "right",
 };
 
 const argTypes = {
@@ -29,10 +28,6 @@ const argTypes = {
   },
   disabled: {
     control: { type: "boolean" },
-  },
-  labelPosition: {
-    options: ["left", "right"],
-    control: { type: "inline-radio" },
   },
 };
 
@@ -55,8 +50,6 @@ const OVERVIEW_STATES = [
     props: { disabled: true, defaultChecked: true },
   },
 ];
-
-const LABEL_POSITIONS = ["right", "left"] as const;
 
 const gridStyle = {
   display: "grid",
@@ -103,21 +96,6 @@ const OverviewTemplate: StoryFn<RadioProps> = () => (
           description="Description"
           error="Something went wrong"
         />
-      </Box>
-    </StorySection>
-
-    <StorySection title="Label position">
-      <Box style={gridStyle}>
-        {LABEL_POSITIONS.map((labelPosition) => (
-          <Fragment key={labelPosition}>
-            <StoryJsx>{`<Radio labelPosition="${labelPosition}" />`}</StoryJsx>
-            <Radio
-              label="Label"
-              description="Description"
-              labelPosition={labelPosition}
-            />
-          </Fragment>
-        ))}
       </Box>
     </StorySection>
   </StoryBoard>
