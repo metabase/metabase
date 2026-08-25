@@ -1,34 +1,21 @@
-import type { CustomVisualization } from "custom-viz";
-
 import { screen, waitFor } from "__support__/ui";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import {
   type LoadCustomVizPluginForDisplayResult,
   PLUGIN_CUSTOM_VIZ,
 } from "metabase/plugins";
-import { getCard } from "metabase/query_builder";
-// DEBT: this spec drives the query builder and asserts on its store, so it
-// needs internals no app-code consumer of the module needs. It is really a
-// query builder test that uses a custom viz as its fixture, and it belongs in
-// the query builder. It cannot move as it stands, because a feature module may
-// not import metabase-enterprise, so moving it means faking the custom viz
-// through the plugin registry instead of importing custom_viz directly.
-/* eslint-disable metabase/enforce-module-public-api */
-import { cancelQuery } from "metabase/query_builder/actions";
-import { setup } from "metabase/query_builder/containers/test-utils";
-import {
-  getFirstQueryResult,
-  getIsRunning,
-} from "metabase/query_builder/store/selectors";
-/* eslint-enable metabase/enforce-module-public-api */
 import type { Dispatch } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
-import { registerVisualization } from "metabase/visualizations";
+import { registerVisualization, visualizations } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { Visualization } from "metabase/visualizations/types/visualization";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
-import type { CustomVizDisplayType, UnsavedCard } from "metabase-types/api";
+import type {
+  CustomVizDisplayType,
+  DatasetData,
+  UnsavedCard,
+} from "metabase-types/api";
 import {
-  createMockCustomVizPluginRuntime,
   createMockDataset,
   createMockDatasetData,
   createMockNumericColumn,
@@ -41,8 +28,10 @@ import {
   createOrdersCreatedAtDatasetColumn,
 } from "metabase-types/api/mocks/presets";
 
-import { applyDefaultVisualizationProps } from "./custom-viz-common";
-import { unregisterCustomVizDisplay } from "./custom-viz-plugins";
+import { cancelQuery } from "../actions";
+import { getCard, getFirstQueryResult, getIsRunning } from "../store/selectors";
+
+import { setup } from "./test-utils";
 
 registerVisualizations();
 
@@ -88,32 +77,27 @@ function createUnsavedCustomVizCard(display: CustomVizDisplayType) {
   });
 }
 
+// A stand-in for a plugin-backed visualization. The query builder only needs a
+// registered `custom:` display it can render and check, so the spec builds one
+// here rather than reaching into the enterprise custom viz module.
 function registerDemoViz() {
-  const vizDef: CustomVisualization<Record<string, unknown>> = {
-    id: DISPLAY,
-    getName: () => "Reload demo viz",
-    checkRenderable: ([{ data }]) => {
+  const DemoViz = Object.assign(() => <span>Custom viz rendered</span>, {
+    identifier: DISPLAY,
+    getUiName: () => "Reload demo viz",
+    settings: {},
+    checkRenderable: ([{ data }]: { data?: DatasetData }[]) => {
       if (!data?.cols.some(isDate)) {
         throw new Error("Needs a date column");
       }
     },
-    mount: () => ({ update: () => undefined, unmount: () => undefined }),
-    VisualizationComponent: () => null,
-  };
+    noHeader: false,
+    canSavePng: false,
+    hidden: false,
+  });
 
-  const settings: Parameters<typeof applyDefaultVisualizationProps>[2] = {
-    identifier: DISPLAY,
-    plugin: createMockCustomVizPluginRuntime(),
-    getUiName: () => "Reload demo viz",
-  };
-
-  registerVisualization(
-    applyDefaultVisualizationProps(
-      () => <span>Custom viz rendered</span>,
-      vizDef,
-      settings,
-    ),
-  );
+  // A Visualization is a component carrying static props. Object.assign types
+  // the result as the intersection loosely, so name the target explicitly.
+  registerVisualization(DemoViz as unknown as Visualization);
 }
 
 function setupFromUrlHash(card: UnsavedCard) {
@@ -133,7 +117,7 @@ describe("query builder > unsaved question with a custom viz restored from the U
 
   afterEach(() => {
     PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay = originalLoadForDisplay;
-    unregisterCustomVizDisplay(DISPLAY);
+    visualizations.delete(DISPLAY);
   });
 
   it("keeps the custom viz when its plugin loads during query completion", async () => {
