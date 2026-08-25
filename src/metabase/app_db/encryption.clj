@@ -24,7 +24,7 @@
 ;; transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key only requires decrypting
 ;; the raw value with the current key and re-encrypting the resulting string. We list raw table names (not models) so
 ;; this also works for enterprise models that aren't loaded in every edition.
-(def ^:private encrypted-columns
+(def ^:private encrypted-string-columns
   [[:metabase_database :details]
    [:metabase_database :settings]
    [:metabase_database :write_data_details]
@@ -35,6 +35,14 @@
    [:exploration_query_result :chart_stats]
    [:exploration_query_result :metric_description]
    [:exploration_query_result :chart_description]])
+
+(def ^:private encrypted-bytes-columns
+  "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike
+  the string/JSON columns above these hold raw bytes, so encryption and key rotation must decrypt-and-re-encrypt them as
+  bytes. Any such column omitted here would keep whatever plaintext it held before a key was set, and the strict read
+  would then reject it."
+  [[:secret :value]
+   [:stored_result :result_data]])
 
 ;; Older versions of dump-to-h2 and key rotation only processed `metabase_database.details` (plus settings and
 ;; secrets), skipping every other encrypted JSON column. A dump or rotation from such a version left the skipped
@@ -66,7 +74,7 @@
       :invalid)))
 
 (defn- reencrypt-encrypted-column!
-  "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-columns`.
+  "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-string-columns`.
 
   When `clear-undecryptable?` is true, a value that cannot be decrypted with the current key is reset to an empty
   JSON object (with a warning) instead of aborting. Only pass true when the current key is known to be correct for
@@ -100,7 +108,7 @@
         (when (= check-status :invalid)
           (throw (ex-info (trs "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")
                           {})))
-        (doseq [[table column] encrypted-columns]
+        (doseq [[table column] encrypted-string-columns]
           (reencrypt-encrypted-column! conn table column encrypt-str-fn
                                        (and (= check-status :valid)
                                             (contains? clearable-when-undecryptable [table column])))))
@@ -113,15 +121,12 @@
           (t2/update! :conn conn :setting
                       {:key key}
                       {:value (encrypt-str-fn value)})))
-      ;; update all secret values according to the new encryption key
-      ;; fortunately, we don't need to fetch the latest secret instance per ID, as we would need to in order to update
-      ;; a secret value through the regular database save API path; instead, ALL secret values in the app DB (regardless
-      ;; of whether they are the "current version" or not), should be updated with the new key
-      (doseq [{:keys [id value]} (t2/select [:secret :id :value])]
-        (when (some? value)
-          (t2/update! :conn conn :secret
-                      {:id id}
-                      {:value (encrypt-bytes-fn (encryption/maybe-decrypt-bytes-accepting-plaintext (maybe-blob->bytes value)))})))
+      (doseq [[table column]     encrypted-bytes-columns
+              {:keys [id value]} (t2/select [table :id [column :value]])
+              :when              (some? value)]
+        (t2/update! :conn conn table
+                    {:id id}
+                    {column (encrypt-bytes-fn (encryption/maybe-decrypt-bytes-accepting-plaintext (maybe-blob->bytes value)))}))
       (t2/delete! :conn conn :model/QueryCache))))
 
 (defn encrypt-db
