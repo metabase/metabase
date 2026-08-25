@@ -800,15 +800,16 @@
           (is (= 1 (count (cond-> rows (= export-format :csv) rest)))
               "the export should contain the one data row, not die mid-stream"))))))
 
-(deftest ^:parallel export-survives-malformed-card-click-behavior-test
-  (testing (str "A card whose `visualization_settings` carry a malformed top-level `:click_behavior` still exports. "
-                "Same root cause as the model `result_metadata[].settings` blob, on the sibling `db->norm` path "
-                "(SEC-868).")
-    (doseq [bad-click-behavior ["x" [1 2] 42]
-            export-format      [:csv :json :xlsx]]
-      (testing (str export-format ", click_behavior = " (pr-str bad-click-behavior))
+(deftest ^:parallel export-survives-malformed-card-visualization-settings-test
+  (testing (str "A card whose `visualization_settings` carry a malformed value still exports. Same root cause as the "
+                "model `result_metadata[].settings` blob, on the sibling `db->norm` path — the card API validates "
+                "`visualization_settings` only as a map, so every value under it is attacker-controlled (SEC-868).")
+    (doseq [k             [:click_behavior :column_settings :table.columns]
+            bad-value     ["x" 42]
+            export-format [:csv :json :xlsx]]
+      (testing (str export-format ", " k " = " (pr-str bad-value))
         (let [query (-> (mt/native-query {:query "SELECT 1 AS N"})
-                        (assoc :viz-settings {:click_behavior bad-click-behavior}
+                        (assoc :viz-settings {k bad-value}
                                :middleware {:process-viz-settings? true}))
               rows  (streaming.test-util/process-query-basic-streaming export-format query ["N"])]
           (is (= 1 (count (cond-> rows (= export-format :csv) rest)))

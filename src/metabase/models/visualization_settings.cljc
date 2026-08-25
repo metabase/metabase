@@ -482,21 +482,28 @@
     "HH:mm"
     v))
 
-(defn- db->norm-table-columns [v]
-  (-> v
-      (assoc ::table-columns (mapv (fn [tbl-col]
-                                     (set/rename-keys tbl-col db->norm-table-columns-keys))
-                                   (:table.columns v)))
-      (dissoc :table.columns)))
+(defn- db->norm-table-columns
+  "Normalizes the `:table.columns` entry of a DB-form viz settings map.
+
+  `:table.columns` is a free-form JSON blob that is only validated as far as its enclosing map, so it need not be a
+  sequence of maps; anything it isn't is dropped rather than allowed to throw."
+  [v]
+  (let [tbl-cols (:table.columns v)]
+    (cond-> (dissoc v :table.columns)
+      (sequential? tbl-cols)
+      (assoc ::table-columns (into []
+                                   (comp (filter map?)
+                                         (map #(set/rename-keys % db->norm-table-columns-keys)))
+                                   tbl-cols)))))
 
 (defn- db->norm-column-settings-entry
   "Converts the DB form of a :column_settings entry value to its normalized form. Does the opposite of
   `norm->db-column-settings-entry`.
 
   Entry values are only loosely validated on write (`result_metadata[].settings` types them as `:any`), so an entry
-  that cannot be normalized is dropped rather than allowed to throw. Every consumer of a column's settings — CSV,
-  JSON and XLSX export plus the static-viz render path — funnels through here, so one unnormalizable entry would
-  otherwise take all of them down."
+  that cannot be normalized is dropped rather than allowed to throw. CSV, JSON and XLSX export and the static-viz
+  render path all normalize a column's settings through here, so one unnormalizable entry would otherwise take all
+  of them down."
   [m k v]
   (try
     (case k
@@ -520,40 +527,48 @@
     {}))
 
 (defn db->norm-column-settings
-  "Converts a :column_settings DB form to its normalized form. Drops any columns that fail to be parsed."
+  "Converts a :column_settings DB form to its normalized form. Drops any columns that fail to be parsed, and treats a
+  `settings` that isn't a map as having no column settings at all — the per-column `catch` below can't help there,
+  since `reduce-kv` throws before it ever reaches the reducing fn."
   [settings]
-  (reduce-kv (fn [m k v]
-               (try
-                 (let [k' (parse-db-column-ref k)
-                       v' (db->norm-column-settings-entries v)]
-                   (assoc m k' v'))
-                 (catch #?(:clj Throwable :cljs js/Error) _e
-                   m)))
-             {}
-             settings))
+  (if-not (map? settings)
+    {}
+    (reduce-kv (fn [m k v]
+                 (try
+                   (let [k' (parse-db-column-ref k)
+                         v' (db->norm-column-settings-entries v)]
+                     (assoc m k' v'))
+                   (catch #?(:clj Throwable :cljs js/Error) _e
+                     m)))
+               {}
+               settings)))
 
 (defn db->norm
   "Converts a DB form of visualization settings (i.e. map with key `:visualization_settings`) into the equivalent
   normalized form (i.e. map with keys `::column-settings`, `::click-behavior`, etc.).
 
-  Does the opposite of `norm->db`."
+  Does the opposite of `norm->db`.
+
+  `vs` comes out of a free-form JSON column, so a blob that isn't a map at all normalizes to no settings rather than
+  throwing on the `dissoc` below."
   {:added "0.40.0"}
   [vs]
-  (cond-> vs
-    ;; column_settings at top level; ex: table card
-    (:column_settings vs)
-    (assoc ::column-settings (->> (:column_settings vs)
-                                  db->norm-column-settings))
+  (let [vs (if (map? vs) vs {})]
+    (cond-> vs
+      ;; column_settings at top level; ex: table card
+      (:column_settings vs)
+      (assoc ::column-settings (->> (:column_settings vs)
+                                    db->norm-column-settings))
 
-    ;; click behavior key at top level; ex: non-table card
-    (:click_behavior vs)
-    (m/assoc-some ::click-behavior (db->norm-click-behavior (:click_behavior vs)))
+      ;; click behavior key at top level; ex: non-table card
+      (:click_behavior vs)
+      (m/assoc-some ::click-behavior (db->norm-click-behavior (:click_behavior vs)))
 
-    (:table.columns vs)
-    db->norm-table-columns
+      (:table.columns vs)
+      db->norm-table-columns
 
-    :always
-    (dissoc :column_settings :click_behavior)))
+      :always
+      (dissoc :column_settings :click_behavior))))
 
 (defn- norm->db-click-behavior-value [v]
   (-> v
