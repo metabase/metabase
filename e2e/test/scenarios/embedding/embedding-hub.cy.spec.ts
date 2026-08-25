@@ -490,13 +490,11 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
       });
 
       cy.log("Applying lands on the tenants listing, now empty");
-      // Two sequential round trips sit behind this: the setting update's own
-      // refetch, then the tenants list fetch once the listing mounts. The
-      // default 4s command timeout is tight for both under CI load.
+      // The empty state's copy is interpolated with anchor links, so no
+      // single node's text content matches the sentence exactly -- a regex
+      // matches the substring instead.
       cy.findByTestId("embedding-hub-main")
-        .findByText("Create your first tenant to start adding", {
-          timeout: 10_000,
-        })
+        .findByText(/Create your first tenant to start adding/)
         .should("be.visible");
 
       cy.findByTestId("embedding-hub-main").within(() => {
