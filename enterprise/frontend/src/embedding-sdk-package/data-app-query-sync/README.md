@@ -29,15 +29,15 @@ authoring mistake.
 `syncResources` (`sync.ts`) runs five steps:
 
 1. **Discover** every `defineQuery` / `defineAction` in those directories (`discover.ts`).
-2. **Ensure resources** — `POST /api/apps/:slug/resources` creates the app row if it doesn't exist
+2. **Ensure resources** — `POST /api/apps/:slug/draft` creates the app row if it doesn't exist
    yet, plus its collection and permission group.
 3. **Reconcile queries** (`reconcile.ts`) — each authored query becomes a saved question in the
    collection, and its ID is injected back into the source as `savedQuestionSourceId`.
 4. **Reconcile models** (`reconcile-models.ts`) — each declared action's model is copied into the
    collection, the action is copied onto that copy, and the copy's ID is injected back as
    `copiedActionId`.
-5. **Reconcile permissions** — `PUT /api/apps/:slug/resources/permissions` makes the databases those
-   queries and actions touch `:unrestricted` for the group, and every other database `:blocked`.
+5. **Reconcile permissions** — `PUT /api/apps/:slug/resources/permissions` makes the tables those
+   queries and actions touch `:unrestricted` for the group, and everything else `:blocked`.
 
 ## Why actions copy a whole model
 

@@ -1,5 +1,6 @@
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   addUserToGroup,
   buildDataAppHostApp,
@@ -17,7 +18,7 @@ import {
 import type { DataApp } from "metabase-types/api";
 
 const { H } = cy;
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 /** `syncResources` takes the app's slug from its directory name. */
 const APP_SLUG = "vite-6-data-app-host-app";
@@ -513,6 +514,58 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         addUserToGroup(groupId, USERS.normal.email);
         return cy.wrap(groupId, { log: false });
       });
+
+    // The app group grants unrestricted view-data on Orders, and that grant is
+    // deliberately excluded when deciding whether another group lifts a sandbox
+    // (enterprise sandbox/api/util.clj). So a member who is *also* sandboxed on
+    // Orders through another group stays sandboxed — joining the app group must
+    // not widen what their sandbox lets them see.
+    it("keeps a sandbox enforced for a member who also belongs to the app group", () => {
+      const USER_ATTRIBUTE = "User ID";
+      const ATTRIBUTE_VALUE = "1";
+
+      syncOneQuery().then((card) => {
+        // Drop the ambient unrestricted grants so the sandbox is the only thing
+        // deciding Orders access; otherwise All Users lifts it on its own and the
+        // app group's role in the decision is never exercised.
+        H.blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+        H.blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+
+        cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
+          login_attributes: { [USER_ATTRIBUTE]: ATTRIBUTE_VALUE },
+        });
+
+        // Sandbox Orders for the group the normal user already belongs to.
+        cy.sandboxTable({
+          table_id: ORDERS_ID,
+          group_id: USER_GROUPS.DATA_GROUP,
+          attribute_remappings: {
+            [USER_ATTRIBUTE]: ["dimension", ["field", ORDERS.USER_ID, null]],
+          },
+        });
+
+        // Granting app access adds the user to the app group.
+        joinAppGroup();
+
+        cy.signInAsNormalUser();
+        cy.request("POST", `/api/card/${card.id}/query`).then(({ body }) => {
+          expect(body.data.is_sandboxed, "the sandbox still applies").to.eq(
+            true,
+          );
+
+          const userIdCol = body.data.cols.findIndex(
+            (col: { id?: number }) => col.id === ORDERS.USER_ID,
+          );
+          expect(userIdCol, "Orders.User ID is in the result").to.be.gte(0);
+
+          const values = body.data.rows.map((row: unknown[]) => row[userIdCol]);
+          expect(
+            values.every((value: unknown) => value === Number(ATTRIBUTE_VALUE)),
+            "every row is the sandboxed user's own",
+          ).to.eq(true);
+        });
+      });
+    });
 
     it("grants view-data only on the query's table and no query authoring", () => {
       syncOneQuery().then(() => {

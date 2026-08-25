@@ -188,7 +188,7 @@
             resource    (data-app.resources/reconcile-resources!
                          app
                          {:resource_collection_entity_id resource_collection_entity_id
-                          :permission_group_entity_id permission_group_entity_id}
+                          :permission_group_entity_id    permission_group_entity_id}
                          app-changes)]
         (or (app-content-changed? existing fields)
             (:changed? resource)
@@ -215,7 +215,8 @@
       :sha       <commit-sha-string>}
 
    Discovers every `data_apps/<dir>/data_app.yaml`, upserts a row per app, and prunes
-   rows whose directory is gone from the snapshot. Each app sync uses one transaction. Returns
+   rows whose directory is gone from the snapshot. Apps are synced independently, so
+   one failing app cannot roll back the others. Returns
    `{:synced <n>, :changed <n>, :removed <n>, :sha <sha>, :config-errors [<msg> ...]}`,
    where `:changed` counts apps actually created/updated (a `last_synced_sha` bump on
    unchanged content does not count) and `:removed` counts apps dropped for no longer

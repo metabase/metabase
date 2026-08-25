@@ -3227,6 +3227,7 @@
            models
            permissions
            premium-features
+           request
            settings
            util}
    :model-imports #{:model/Card
