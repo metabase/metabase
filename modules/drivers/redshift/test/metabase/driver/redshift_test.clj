@@ -5,12 +5,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -340,6 +342,67 @@
                       (let [match? #(re-matches #"pg_(.*)" %)]
                         (is (some match? all-schemas))
                         (is (not-any? match? synced-schemas))))))))))))))
+
+(deftest ^:parallel exactly-named-schemas-agrees-with-client-side-filter-test
+  (let [universe ["orders" "orders_v2" "ORDERS" "public" "public_archive" "a_b" "x1"]]
+    (testing "a filter of plain names pushes down a superset of what the client-side filter keeps"
+      (doseq [patterns ["orders" "ORDERS" "orders,public" "  orders , public  " "a_b" "x1,orders_v2"
+                        ;; naming something absent is fine -- it just selects nothing
+                        "not_a_schema" "orders,not_a_schema"]]
+        (testing (pr-str patterns)
+          (let [named        (#'redshift/exactly-named-schemas patterns)
+                pushed-down? (fn [schema] (contains? (set named) (u/lower-case-en schema)))
+                syncable?    (fn [schema] (driver.s/include-schema? patterns nil schema))]
+            (is (some? named)
+                "should be recognized as naming its schemas outright")
+            (is (every? pushed-down? (filter syncable? universe))
+                "no schema the client-side filter keeps may be dropped by the pushdown")
+            (is (= (set (filter syncable? universe))
+                   (set (filter syncable? (filter pushed-down? universe))))
+                "describing only the pushed-down schemas describes the same schemas as describing everything")))))
+    (testing "a schema named twice is bound once, as the unfiltered query would yield it once"
+      (is (= ["orders" "public"]
+             (#'redshift/exactly-named-schemas "orders,public,Orders"))))
+    (testing "filters that an in list cannot answer leave the query unfiltered"
+      (doseq [[patterns why] {"orders*"         "wildcard"
+                              "*"               "wildcard"
+                              "a,b*"            "wildcard in one segment"
+                              "crazy\\*schema"  "escaped asterisk is not a legal schema name here"
+                              ""                "blank means include everything"
+                              nil               "blank means include everything"}]
+        (testing why
+          (is (nil? (#'redshift/exactly-named-schemas patterns))))))))
+
+(deftest ^:parallel get-tables-sql-schema-pushdown-test
+  (let [unfiltered (#'redshift/get-tables-sql nil)]
+    (testing "without inclusion patterns the query is unfiltered and takes no parameters"
+      (is (= 1 (count unfiltered)))
+      (is (not (str/includes? (first unfiltered) "?"))))
+    (testing "schemas named outright are bound as parameters on both union arms"
+      (let [[sql & params] (#'redshift/get-tables-sql "Foo, bar,foo")]
+        (is (str/includes? sql "and lower(n.nspname) in (?, ?)"))
+        (is (str/includes? sql "and lower(t.schemaname) in (?, ?)"))
+        (is (= ["foo" "bar" "foo" "bar"] params))))
+    (testing "patterns that need a regex to evaluate leave the query unfiltered"
+      (is (= unfiltered (#'redshift/get-tables-sql "foo*,bar")))
+      (is (= unfiltered (#'redshift/get-tables-sql "foo.bar")))
+      (is (= unfiltered (#'redshift/get-tables-sql ""))))))
+
+(deftest describe-database-schema-filter-pushdown-test
+  (mt/test-driver :redshift
+    (testing "an inclusion filter naming a schema outright describes the same tables as filtering client-side does"
+      (let [schema  (sql.tx/session-schema :redshift)
+            details (assoc (:details (mt/db))
+                           :schema-filters-type "inclusion"
+                           :schema-filters-patterns schema)]
+        (mt/with-temp [:model/Database db {:engine :redshift, :details details}]
+          (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
+            (let [expected (into #{}
+                                 (filter (comp #{schema} :schema))
+                                 (:tables (driver/describe-database :redshift (mt/db))))]
+              (is (seq expected))
+              (is (= expected
+                     (:tables (driver/describe-database :redshift db)))))))))))
 
 (deftest sync-materialized-views-test
   (mt/test-driver :redshift
