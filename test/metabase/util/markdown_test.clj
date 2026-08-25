@@ -270,7 +270,15 @@
 (deftest ^:parallel process-markdown-link-scheme-slack-test
   (testing "Links with non-allow-listed schemes render as their text alone in Slack"
     (is (= "x" (slack "[x](javascript:alert(1))")))
-    (is (= "x" (slack "[x](DaTa:text/html;base64,PHNjcmlwdD4=)")))))
+    (is (= "x" (slack "[x](DaTa:text/html;base64,PHNjcmlwdD4=)"))))
+  (testing "Images with non-allow-listed schemes render as their placeholder alone in Slack"
+    (is (= "[Image: x]" (slack "![x](javascript:alert(1))")))
+    (is (= "[Image]"    (slack "![](data:text/html;base64,PHNjcmlwdD4=)")))
+    (is (= "[Image: x]" (slack "![x][ref]\n\n[ref]: javascript:alert(1)"))))
+  (testing "Slack image sources are resolved against the site URL and allow inline base64 images"
+    (is (= "<https://example.com/a.png|[Image: x]>" (slack "![x](/a.png)" "https://example.com")))
+    (is (= "<https://example.com/a.png|[Image: x]>" (slack "![x][ref]\n\n[ref]: a.png" "https://example.com")))
+    (is (= "<data:image/png;base64,iVBORw0KGgo=|[Image: x]>" (slack "![x](data:image/png;base64,iVBORw0KGgo=)")))))
 
 (deftest ^:parallel process-markdown-allowed-scheme-case-test
   (testing "Scheme allow-listing is case-insensitive for allowed schemes too"

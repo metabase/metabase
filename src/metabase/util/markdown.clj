@@ -382,20 +382,23 @@
   (map-indexed (fn [idx list-item] [(inc idx) ". " list-item])
                (resolved-content content)))
 
+(defn- slack-image
+  "Replace an image with text that links to its source, including alt text if available. A dropped (malformed
+  or non-allow-listed) source renders the placeholder text alone."
+  [src alt]
+  (let [placeholder (if (str/blank? alt) "[Image]" (str "[Image: " alt "]"))]
+    (if-let [resolved-uri (resolve-uri src)]
+      ["<" resolved-uri "|" placeholder ">"]
+      placeholder)))
+
 (defmethod ast->slack :image
   [{{:keys [src alt]} :attrs}]
-  ;; Replace images with text that links to source, including alt text if available
-  (if (str/blank? alt)
-    ["<" src "|[Image]>"]
-    ["<" src "|[Image: " alt "]>"]))
+  (slack-image src alt))
 
 (defmethod ast->slack :image-ref
   [{:keys [content attrs]}]
-  (let [src (-> attrs :reference :attrs :url)
-        alt (-> content resolved-content resolved-content-string)]
-    (if (str/blank? alt)
-      ["<" src "|[Image]>"]
-      ["<" src "|[Image: " alt "]>"])))
+  (slack-image (-> attrs :reference :attrs :url)
+               (-> content resolved-content resolved-content-string)))
 
 (defmethod ast->slack :html-entity
   [{content :content}]
