@@ -11,6 +11,7 @@
    [toucan2.jdbc.connection :as t2.jdbc.conn]
    [toucan2.pipeline :as t2.pipeline])
   (:import
+   (java.sql SQLException)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -145,10 +146,33 @@
 (def ^:private ^:dynamic *before-commit-callbacks* nil)
 (def ^:private ^:dynamic *after-commit-callbacks* nil)
 
-;; Holds an atom set to true when a requested rollback fails, leaving writes that should have been discarded. The atom
+;; Holds an atom set to true when a rollback fails and leaves behind writes that should have been discarded. The atom
 ;; is shared across the transaction tree so that the outermost scope cannot commit those writes, even if an
 ;; intermediate scope catches the rollback error.
+;;
+;; Once set it stays set. Clearing it correctly would mean tracking the depth that failed: a sibling scope rolling
+;; back to its own, later savepoint does not discard an earlier scope's writes.
 (def ^:private ^:dynamic *rollback-required* nil)
+
+(defn- savepoint-gone?
+  "Whether `e` reports that the savepoint we tried to roll back to no longer exists.
+
+  A server can end the transaction itself and discard every savepoint with it: MySQL and MariaDB do this when they
+  break a deadlock, and when DDL commits implicitly. The writes are already resolved in that case, so the failure
+  says nothing is pending rather than that a rollback left writes behind."
+  [^Throwable e]
+  (loop [^Throwable e e]
+    (cond
+      (nil? e)
+      false
+
+      (and (instance? SQLException e)
+           (or (= (.getErrorCode ^SQLException e) 1305)     ; MySQL/MariaDB: SAVEPOINT ... does not exist
+               (= (.getSQLState ^SQLException e) "3B001"))) ; SQL standard: invalid savepoint specification
+      true
+
+      :else
+      (recur (.getCause e)))))
 
 (def ^:dynamic *transaction-state*
   "When non-nil, an atom holding a map of arbitrary per-transaction data, shared by the whole
@@ -243,8 +267,11 @@
                           (try
                             (.rollback connection savepoint)
                             (catch Throwable rollback-e
-                              ;; The writes remain pending. No enclosing scope may commit them.
-                              (some-> *rollback-required* (reset! true))
+                              ;; A missing savepoint means the server already ended the transaction and discarded
+                              ;; its writes, so there is nothing for an enclosing scope to commit by mistake.
+                              ;; Any other failure leaves the writes pending, and no enclosing scope may commit them.
+                              (when-not (savepoint-gone? rollback-e)
+                                (some-> *rollback-required* (reset! true)))
                               (throw rollback-e))
                             (finally
                               (when state-snapshot
@@ -289,10 +316,10 @@
 
                       (and (= *transaction-depth* 1) (some-> *rollback-required* deref))
                       (do
-                        ;; Discard the entire tree. A rollback-only scope failed to undo its writes, so do not commit
-                        ;; them or return as though the scope succeeded.
+                        ;; Discard the entire tree. A scope failed to undo its writes, so do not commit them or
+                        ;; return as though the scope succeeded.
                         (rollback-connection!)
-                        (throw (ex-info (str "Not committing: a rollback-only transaction in this tree failed to "
+                        (throw (ex-info (str "Not committing: a transaction in this tree failed to "
                                              "roll back, so its writes are still present")
                                         {})))
 
@@ -307,7 +334,7 @@
                             (recur)))
                         ;; A callback can catch a nested rollback failure, so check the failure flag again here.
                         (when (some-> *rollback-required* deref)
-                          (throw (ex-info (str "Not committing: a rollback-only transaction in this tree failed to "
+                          (throw (ex-info (str "Not committing: a transaction in this tree failed to "
                                                "roll back, so its writes are still present")
                                           {})))
                         (.commit connection)
@@ -371,11 +398,16 @@
   [^java.sql.Connection connection
    {:keys [nested-transaction-rule rollback-only] :or {nested-transaction-rule :allow} :as options}
    f]
-  (when-let [unsupported-options (seq (remove supported-transaction-options (keys options)))]
-    (throw (ex-info (str "Unsupported transaction options: " (pr-str (vec unsupported-options)))
-                    {:unsupported-options (vec unsupported-options)
+  ;; Sort so the message and the ex-data name the options in the same order every time.
+  (when-let [unsupported-options (not-empty (vec (sort (remove supported-transaction-options (keys options)))))]
+    (throw (ex-info (str "Unsupported transaction options: " (pr-str unsupported-options))
+                    {:unsupported-options unsupported-options
                      :options             options})))
-  (assert (#{:allow :ignore :prohibit} nested-transaction-rule))
+  ;; `assert` compiles away under `*assert*` false, and this validates a public option.
+  (when-not (#{:allow :ignore :prohibit} nested-transaction-rule)
+    (throw (ex-info (str "Invalid :nested-transaction-rule: " (pr-str nested-transaction-rule))
+                    {:nested-transaction-rule nested-transaction-rule
+                     :options                 options})))
   ;; Reject this combination at every depth so a call site behaves consistently wherever it runs.
   (when (and rollback-only (= nested-transaction-rule :ignore))
     (throw (ex-info (str "Cannot combine :rollback-only with :nested-transaction-rule :ignore -- an ignored "
