@@ -247,9 +247,9 @@
                             (.rollback connection savepoint)
                             (catch Throwable rollback-e
                               ;; The writes remain pending. No enclosing scope may commit them.
-                              ;; A vanished savepoint is no exception. DDL committing implicitly, or a server
-                              ;; breaking a deadlock, ends the transaction and discards the writes so far, but
-                              ;; anything written after that sits in a new transaction and is still pending.
+                              ;; A vanished savepoint still counts as a rollback failure. DDL committing implicitly,
+                              ;; or a server breaking a deadlock, ends the transaction and discards the writes so far,
+                              ;; but anything written after that sits in a new transaction and is still pending.
                               (some-> *rollback-required* (reset! true))
                               (throw rollback-e))
                             (finally

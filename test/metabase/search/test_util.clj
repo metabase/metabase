@@ -23,8 +23,8 @@
   "Create a temporary index table for the duration of the body.
 
   The table belongs to the app DB, so app-DB support is the condition. [[metabase.search.core/supports-index?]] is
-  true for any active engine, so with semantic search enabled it would have MySQL and MariaDB build a table their
-  app DB cannot hold."
+  true for any active engine, so with semantic search enabled it would make MySQL and MariaDB try to build a table
+  their app DB cannot hold."
   [& body]
   `(when (search.engine/supported-engine? :search.engine/appdb)
      (search.index/with-temp-index-table
@@ -76,12 +76,12 @@
   `(if (search.engine/supported-engine? :search.engine/appdb)
      (with-appdb-search-if-available* ~@body)
      ;; Pin the engine rather than taking whatever the default is. Semantic can be active here, and the body is
-     ;; written for an index this app DB cannot hold.
+     ;; expects an index that this app DB cannot hold.
      (with-legacy-search ~@body)))
 
 (defmacro with-appdb-search-if-available-without-fallback
   "Create a temporary index table for the duration of the body.
-   Only runs if the appdb search engine is supported."
+   Only runs if the app DB search engine is supported."
   [& body]
   `(when (search.engine/supported-engine? :search.engine/appdb)
      (with-appdb-search-if-available* ~@body)))

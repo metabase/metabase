@@ -309,8 +309,8 @@
 
 (deftest a-vanished-savepoint-still-blocks-the-outer-commit-test
   (testing "a savepoint the server already discarded says nothing about what was written after it"
-    ;; MySQL and MariaDB raise 1305 and PostgreSQL 3B001 once the transaction has ended under them -- breaking a
-    ;; deadlock, or DDL committing implicitly. Writes made after that point sit in a fresh transaction and are
+    ;; MySQL and MariaDB raise 1305 and PostgreSQL 3B001 after the transaction ends -- when a deadlock is broken or
+    ;; DDL commits implicitly. Writes made after that point sit in a fresh transaction and are
     ;; still pending, so the tree must not commit.
     (doseq [[label sqlstate error-code] [["MySQL 1305" "42000" 1305]
                                          ["PostgreSQL 3B001" "3B001" 0]]]
