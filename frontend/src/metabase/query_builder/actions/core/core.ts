@@ -33,7 +33,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
-import { getDefaultSize } from "metabase/visualizations";
+import { getRegisteredDefaultSize } from "metabase/visualizations";
 import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
@@ -378,7 +378,7 @@ async function reduxCreateQuestion(
   options?: OnCreateOptions,
 ) {
   const display = question.display();
-  const size = getDefaultSize(display);
+  const size = getRegisteredDefaultSize(display);
   // Unjustified type cast. FIXME
   const card = (await dispatch(
     createQuestionCard({

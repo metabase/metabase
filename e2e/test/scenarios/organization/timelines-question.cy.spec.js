@@ -365,12 +365,16 @@ describe("scenarios > organization > timelines > question", () => {
         H.timelineEventChip("RC2").should("not.exist");
 
         // its timeline, visible but having one hidden event
-        // should display its checkbox with a "dash" icon
+        // should display its checkbox in an indeterminate state
         cy.findByTestId("sidebar-content")
           .findByText("Releases")
           .closest("[aria-label='Timeline card header']")
           .within(() => {
-            cy.icon("dash").should("be.visible");
+            cy.findByRole("checkbox").should(
+              "have.prop",
+              "indeterminate",
+              true,
+            );
 
             // Hide the timeline then show it again
             cy.findByRole("checkbox").click();

@@ -43,7 +43,8 @@ export const visitNewEmbedPage = (
 
       cy.wait("@dashboard");
 
-      cy.get("[data-iframe-loaded]", { timeout: 20000 }).should(
+      // Same 40s margin as waitForSimpleEmbedIframesToLoad (metabase#66954).
+      cy.get("[data-iframe-loaded]", { timeout: 40_000 }).should(
         "have.length",
         1,
       );
