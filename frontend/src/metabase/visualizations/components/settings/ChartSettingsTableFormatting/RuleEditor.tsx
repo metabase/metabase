@@ -89,7 +89,7 @@ export const RuleEditor = ({
   };
 
   return (
-    <Stack gap="xl">
+    <Stack gap="xxl">
       <Stack gap="xxs">
         <Text fw="bold" fz="lg">{t`Which columns should be affected?`}</Text>
         <MultiSelect

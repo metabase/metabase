@@ -355,7 +355,7 @@ export function DashCardVisualization({
 
         return (
           <Flex align="center" justify="center" h="100%">
-            <Title className={S.VirtualDashCardOverlayText} order={4} p="lg">
+            <Title className={S.VirtualDashCardOverlayText} order={4} p="xl">
               {placeholderText}
             </Title>
           </Flex>

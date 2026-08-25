@@ -82,7 +82,7 @@ export const Toast = ({
       }}
       {...divProps}
     >
-      <Group gap="lg" align="center" wrap="nowrap">
+      <Group gap="xl" align="center" wrap="nowrap">
         <Text className={S.message} flex={1} c="tooltip-text" fz="md">
           {message}
         </Text>

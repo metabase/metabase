@@ -181,7 +181,7 @@ export const ChartSettingSeriesOrder = ({
   ]);
 
   return (
-    <Box pl="lg" pb="sm">
+    <Box pl="xl" pb="sm">
       {orderedItems.length > 0 ? (
         <>
           <ChartSettingOrderedItems

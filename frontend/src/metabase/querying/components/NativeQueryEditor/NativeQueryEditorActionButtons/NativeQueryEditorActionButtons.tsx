@@ -67,7 +67,7 @@ export const NativeQueryEditorActionButtons = (
     <Flex
       component="aside"
       data-testid="native-query-editor-action-buttons"
-      gap="xl"
+      gap="xxl"
       align="center"
     >
       {features.promptInput && onTogglePromptInput && (

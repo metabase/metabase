@@ -91,7 +91,7 @@ export function DeleteSubscriptionAction({
         size="lg"
         data-testid="delete-confirmation-modal-pulse"
       >
-        <Flex direction="column" gap="lg" mt="lg">
+        <Flex direction="column" gap="xl" mt="xl">
           <ul>
             {confirmItems.map((item, index) => (
               <li

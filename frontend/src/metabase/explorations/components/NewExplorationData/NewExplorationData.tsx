@@ -219,8 +219,8 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       bg="background-primary"
       flex={1}
       px="xxl"
-      pt="xl"
-      pb="lg"
+      pt="xxl"
+      pb="xl"
       h="100%"
       w="100%"
     >
@@ -288,14 +288,14 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         data-testid="selected-data-blocks-container"
         flex={1}
         mih={0}
-        mt="lg"
+        mt="xl"
       >
         {blocks.length === 0 ? (
           <Center h="100%" mt="-3rem">
             <ResearchModeIntro />
           </Center>
         ) : (
-          <Stack gap="lg" mb="xl">
+          <Stack gap="xl" mb="xxl">
             {blocks.map((block) =>
               isMetricBlock(block) ? (
                 <MetricBlockItem

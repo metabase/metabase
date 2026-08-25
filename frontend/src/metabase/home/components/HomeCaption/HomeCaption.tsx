@@ -16,7 +16,7 @@ export const HomeCaption = ({
       align="center"
       c={primary ? "text-primary" : "text-secondary"}
       fw="bold"
-      mb={{ base: "lg", xl: "xl" }}
+      mb={{ base: "xl", xl: "xxl" }}
     >
       {children}
     </Flex>

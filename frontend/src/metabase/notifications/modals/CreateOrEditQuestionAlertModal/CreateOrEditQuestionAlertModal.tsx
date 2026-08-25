@@ -328,7 +328,7 @@ export const CreateOrEditQuestionAlertModal = ({
         <AlertModalSettingsBlock
           title={t`What do you want to be alerted about?`}
         >
-          <Flex gap="xl" align="center">
+          <Flex gap="xxl" align="center">
             <AlertTriggerIcon />
             {hasSingleTriggerOption ? (
               <Paper
@@ -437,7 +437,7 @@ export const CreateOrEditQuestionAlertModal = ({
         justify="space-between"
         align="center"
         px="2.5rem"
-        pt="xl"
+        pt="xxl"
         className={CS.borderTop}
       >
         <Button

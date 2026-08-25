@@ -75,7 +75,7 @@ export const MetabotGreeting = ({
 
   return (
     <Box className={S.page}>
-      <Stack gap="xl" className={S.inputWrapper}>
+      <Stack gap="xxl" className={S.inputWrapper}>
         <Flex align="center" justify="space-between" mt="3.5rem">
           <Text fz="xl" fw={600} c="text-primary">
             {title}

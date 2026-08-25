@@ -429,7 +429,7 @@ export function EmailAttachmentPicker({
         checked={includePdf}
         onChange={(e) => onToggleIncludePdf(e.target.checked)}
         disabled={!canAttachFiles}
-        mb="lg"
+        mb="xl"
         classNames={{
           body: S.AttachmentSwitchBody,
           input: S.AttachmentSwitchInput,
@@ -468,7 +468,7 @@ export function EmailAttachmentPicker({
               body: S.AttachmentSwitchBody,
               input: S.AttachmentSwitchInput,
             }}
-            mb="lg"
+            mb="xl"
           />
         </Box>
       </Tooltip>

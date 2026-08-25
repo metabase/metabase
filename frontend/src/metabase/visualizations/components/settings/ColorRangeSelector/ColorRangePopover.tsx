@@ -84,8 +84,8 @@ export const ColorRangePopover = forwardRef(function ColorRangeSelector(
   }, [color, value, colorMapping, isInverted, onChange]);
 
   return (
-    <Stack py="lg" gap="lg" {...props} ref={ref}>
-      <Group px="lg" gap="xxs" justify="center">
+    <Stack py="xl" gap="xl" {...props} ref={ref}>
+      <Group px="xl" gap="xxs" justify="center">
         {colors.map((value, index) => (
           <ColorPill
             key={index}
@@ -96,7 +96,7 @@ export const ColorRangePopover = forwardRef(function ColorRangeSelector(
         ))}
       </Group>
       <ColorRangeToggle
-        px="lg"
+        px="xl"
         justify="center"
         value={value}
         isQuantile={isQuantile}
@@ -104,7 +104,7 @@ export const ColorRangePopover = forwardRef(function ColorRangeSelector(
         showToggleButton
       />
       {colorRanges.length > 0 && <Divider />}
-      <Stack px="lg">
+      <Stack px="xl">
         {colorRanges?.map((range, index) => (
           <ColorRangeToggle
             key={index}

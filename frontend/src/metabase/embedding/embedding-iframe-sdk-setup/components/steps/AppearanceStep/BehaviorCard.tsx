@@ -61,7 +61,7 @@ export const BehaviorCard = () => {
       .with(
         { componentName: "metabase-question", questionId: P.nonNullable },
         (settings) => (
-          <Stack gap="lg">
+          <Stack gap="xl">
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
                 <Checkbox
@@ -152,7 +152,7 @@ export const BehaviorCard = () => {
       .with(
         { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
         (settings) => (
-          <Stack gap="lg">
+          <Stack gap="xl">
             <WithNotAvailableForOssOrGuestEmbedsGuard>
               {({ disabled }) => (
                 <Checkbox
@@ -248,8 +248,8 @@ export const BehaviorCard = () => {
   }
 
   return (
-    <Card p="lg">
-      <Flex align="center" justify="space-between" gap="xxs" mb="lg">
+    <Card p="xl">
+      <Flex align="center" justify="space-between" gap="xxs" mb="xl">
         <Flex align="center" gap="xxs">
           <Text size="lg" fw="bold">
             {t`Behavior`}
