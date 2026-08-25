@@ -14,7 +14,6 @@ const args = {
   error: undefined,
   indeterminate: false,
   disabled: false,
-  labelPosition: "right",
   size: "sm",
 };
 
@@ -33,10 +32,6 @@ const argTypes = {
   },
   disabled: {
     control: { type: "boolean" },
-  },
-  labelPosition: {
-    options: ["left", "right"],
-    control: { type: "inline-radio" },
   },
   size: {
     options: ["xs", "sm", "md"],
@@ -59,7 +54,6 @@ export const Default = {};
 
 const SIZES = ["xs", "sm", "md"] as const;
 const VARIANTS = ["default", "stacked"] as const;
-const LABEL_POSITIONS = ["right", "left"] as const;
 
 const STATES = [
   { id: "default", attrs: "", props: {} },
@@ -147,24 +141,6 @@ const OverviewTemplate: StoryFn<CheckboxProps> = ({ label }) => (
     {VARIANTS.map((variant) => (
       <VariantSection key={variant} variant={variant} label={label} />
     ))}
-
-    <StorySection title="Label position">
-      <Box style={gridStyle}>
-        {LABEL_POSITIONS.map((labelPosition) => (
-          <Fragment key={labelPosition}>
-            <StoryJsx>{`<Checkbox labelPosition="${labelPosition}" />`}</StoryJsx>
-            {SIZES.map((size) => (
-              <Checkbox
-                key={size}
-                size={size}
-                labelPosition={labelPosition}
-                label={label}
-              />
-            ))}
-          </Fragment>
-        ))}
-      </Box>
-    </StorySection>
 
     <StorySection title="Description and error">
       <Box style={gridStyle}>
