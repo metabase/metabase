@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.test.http-client :as client]
@@ -237,13 +238,18 @@
       ;; Do not use `with-temp` here. The request handler runs in-process on this thread, so a rollback-only
       ;; transaction around the Session would also discard every app DB write made by the request. Delete only
       ;; the Session explicitly instead.
-      (t2/insert! :model/Session {:id         session-id
-                                  :key_hashed (session/hash-session-key session-key)
-                                  :user_id    user-id})
+      ;;
+      ;; Write the row rather than the model. `:model/Session`'s after-insert hook publishes `:event/user-login`,
+      ;; which stamps `User.last_login`, and `:event/user-joined` for a User that has never logged in. Deleting the
+      ;; Session does not undo either, so they leak into whatever runs next.
+      (t2/insert! :core_session {:id         session-id
+                                 :key_hashed (session/hash-session-key session-key)
+                                 :user_id    user-id
+                                 :created_at (mi/now)})
       (try
         (apply the-client session-key args)
         (finally
-          (t2/delete! :model/Session :id session-id))))))
+          (t2/delete! :core_session :id session-id))))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-http-request
