@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
@@ -97,6 +98,10 @@
                 (reset! secret-id-unenc (u/the-id secret)))
               (encryption-test/with-secret-key k1
                 (t2/insert! :model/Setting {:key "k1crypted", :value "encrypted with k1"})
+                ;; the fixture was loaded unencrypted; encrypt the app db under k1 exactly as startup's
+                ;; check-encryption does, so no encrypted-json column is left plaintext for the strict model
+                ;; reads triggered by the operations below to reject
+                (mdb.encryption/encrypt-db driver/*driver* data-source nil)
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                 ;; other encrypted-json columns that must also be re-encrypted on rotation
                 (t2/update! :model/Database 1 {:settings {:database-enable-actions true}})
@@ -134,9 +139,10 @@
                 (testing "but not with old key"
                   (encryption-test/with-secret-key k1
                     (is (not= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
-                    (is (not= "{\"db\":\"/tmp/test.db\"}" (t2/select-one-fn :details :model/Database :id 1)))
-                    (is (not= {:database-enable-actions true} (t2/select-one-fn :settings :model/Database :id 1)))
-                    (is (not= {:locale "en"} (t2/select-one-fn :settings :model/User :id @user-id)))
+                    ;; strict encrypted-json columns throw (rather than returning garbage) when read with the wrong key
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database :id 1)))
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/Database :id 1)))
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/User :id @user-id)))
                     (is (not (mt/secret-value-equals? secret-val
                                                       (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))))
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
@@ -153,7 +159,8 @@
                        #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
                        (rotate-encryption-key! k3))))
                 (encryption-test/with-secret-key k3
-                  (is (not= {:db "/tmp/k2.db"} (t2/select-one-fn :details :model/Database :name "k2")))
+                  ;; the k2 db's details were encrypted with k2, so a strict read under k3 throws
+                  (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database :name "k2")))
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details :model/Database :name "k3")))))
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})

@@ -9,18 +9,21 @@
 
 (set! *warn-on-reflection* true)
 
-;; All columns encrypted via `mi/transform-encrypted-json`. The on-disk format of such a column is
-;; `encrypt(json-string)`, so rotating the key only requires decrypting the raw value with the current key and
-;; re-encrypting the resulting string. We list raw table names (not models) so this also works for enterprise models
-;; that aren't loaded in every edition.
-(def ^:private encrypted-json-columns
+;; All columns whose whole value is encrypted at rest (via `mi/transform-encrypted-json`, or the encrypted-text/EDN
+;; transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key only requires decrypting
+;; the raw value with the current key and re-encrypting the resulting string. We list raw table names (not models) so
+;; this also works for enterprise models that aren't loaded in every edition.
+(def ^:private encrypted-columns
   [[:metabase_database :details]
    [:metabase_database :settings]
    [:metabase_database :write_data_details]
    [:metabase_database :admin_details]
    [:core_user :settings]
    [:channel :details]
-   [:auth_identity :credentials]])
+   [:auth_identity :credentials]
+   [:exploration_query_result :chart_stats]
+   [:exploration_query_result :metric_description]
+   [:exploration_query_result :chart_description]])
 
 ;; Older versions of dump-to-h2 and key rotation only processed `metabase_database.details` (plus settings and
 ;; secrets), skipping every other encrypted JSON column. A dump or rotation from such a version left the skipped
@@ -42,11 +45,11 @@
   (let [raw (t2/select-one-fn :value :setting :key "encryption-check")]
     (cond
       (or (nil? raw) (= raw "unencrypted"))               :unknown
-      (string/valid-uuid? (encryption/maybe-decrypt raw)) :valid
+      (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw)) :valid
       :else                                               :invalid)))
 
-(defn- reencrypt-encrypted-json-column!
-  "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-json-columns`.
+(defn- reencrypt-encrypted-column!
+  "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-columns`.
 
   When `clear-undecryptable?` is true, a value that cannot be decrypted with the current key is reset to an empty
   JSON object (with a warning) instead of aborting. Only pass true when the current key is known to be correct for
@@ -56,7 +59,7 @@
   [conn table column encrypt-str-fn clear-undecryptable?]
   (doseq [{:keys [id value]} (t2/select [table :id [column :value]])]
     (when (some? value)
-      (let [decrypted (encryption/maybe-decrypt value)]
+      (let [decrypted (encryption/maybe-decrypt-accepting-plaintext value)]
         (if (encryption/possibly-encrypted-string? decrypted)
           (if clear-undecryptable?
             (do
@@ -79,10 +82,10 @@
         (when (= check-status :invalid)
           (throw (ex-info (trs "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains")
                           {})))
-        (doseq [[table column] encrypted-json-columns]
-          (reencrypt-encrypted-json-column! conn table column encrypt-str-fn
-                                            (and (= check-status :valid)
-                                                 (contains? clearable-when-undecryptable [table column])))))
+        (doseq [[table column] encrypted-columns]
+          (reencrypt-encrypted-column! conn table column encrypt-str-fn
+                                       (and (= check-status :valid)
+                                            (contains? clearable-when-undecryptable [table column])))))
       (doseq [[key value] (t2/select-fn->fn :key :value :model/Setting)]
         (case key
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)

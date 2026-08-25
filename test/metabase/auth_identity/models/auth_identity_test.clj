@@ -202,14 +202,26 @@
                  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
                          [:credentials :secret]))))))))
 
-(deftest credentials-plaintext-rows-still-readable-test
-  (testing "rows written before encryption (plain JSON in the column) still read as maps"
+(deftest credentials-reject-plaintext-when-key-set-test
+  (testing "with a key set, encrypted credentials read back but a plaintext value written directly via SQL is rejected"
     (encryption-test/with-secret-key "key-for-auth-identity-test-2"
       (mt/with-temp [:model/User {user-id :id}]
-        (t2/insert! :model/AuthIdentity {:user_id user-id :provider "google" :credentials {}})
-        ;; simulate a legacy plaintext row by writing raw JSON straight to the table
+        (t2/insert! :model/AuthIdentity {:user_id user-id :provider "google" :credentials {:secret "legit"}})
+        (is (= "legit"
+               (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
+                       [:credentials :secret])))
         (t2/update! :auth_identity {:user_id user-id :provider "google"}
-                    {:credentials "{\"secret\":\"legacy-plain\"}"})
-        (is (= "legacy-plain"
+                    {:credentials "{\"secret\":\"injected\"}"})
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"
+                              (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")))))))
+
+(deftest credentials-plaintext-allowed-without-key-test
+  (testing "with no key set there is nothing to sign with, so plaintext credentials read back as-is"
+    (encryption-test/with-secret-key nil
+      (mt/with-temp [:model/User {user-id :id}]
+        (t2/insert! :model/AuthIdentity {:user_id user-id :provider "google" :credentials {}})
+        (t2/update! :auth_identity {:user_id user-id :provider "google"}
+                    {:credentials "{\"secret\":\"plain\"}"})
+        (is (= "plain"
                (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
                        [:credentials :secret])))))))

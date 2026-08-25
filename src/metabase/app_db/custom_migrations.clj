@@ -135,9 +135,10 @@
   (comp encryption/maybe-encrypt json-in))
 
 (defn- encrypted-json-out
-  "Should mirror [[metabase.models.interface/encrypted-json-out]]"
+  "Lenient deserialize of an encrypted-json column that tolerates plaintext at rest, for reading legacy rows during
+  migrations. Mirrors [[metabase.models.interface/encrypted-json-in]]'s inverse from before that read became strict."
   [v]
-  (let [decrypted (encryption/maybe-decrypt v)]
+  (let [decrypted (encryption/maybe-decrypt-accepting-plaintext v)]
     (try
       (json/decode+kw decrypted)
       (catch Throwable e
@@ -1406,7 +1407,7 @@
 (defn- raw-setting-value [key]
   (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
           :value
-          encryption/maybe-decrypt))
+          encryption/maybe-decrypt-accepting-plaintext))
 
 (define-reversible-migration MigrateUploadsSettings
   (do (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)
@@ -2242,3 +2243,24 @@
 (define-reversible-migration MigrateLlmProviderSettings
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
+
+(define-migration EncryptEncryptedJsonColumns
+  (when (encryption/default-encryption-enabled?)
+    (doseq [[table column] [[:metabase_database :details]
+                            [:metabase_database :settings]
+                            [:metabase_database :write_data_details]
+                            [:metabase_database :admin_details]
+                            [:core_user :settings]
+                            [:channel :details]
+                            [:auth_identity :credentials]]]
+      (run! (fn [row]
+              (let [id (:id row)
+                    v  (get row column)]
+                (when (and (string? v)
+                           (not (str/blank? v))
+                           (not (encryption/possibly-encrypted-string? v)))
+                  (t2/query {:update table
+                             :set    {column (encryption/maybe-encrypt v)}
+                             :where  [:= :id id]}))))
+            (t2/reducible-query {:select [:id column]
+                                 :from   [table]})))))

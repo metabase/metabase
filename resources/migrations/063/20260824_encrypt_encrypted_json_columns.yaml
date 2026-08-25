@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: v63.2026-08-24T12:00:00
+      author: alexander.polyankin
+      comment: >-
+        When encryption is enabled, encrypt any plaintext values left in the encrypted-json columns by an earlier SQL
+        backfill (e.g. the v58 auth_identity.credentials backfill) so the now-strict reads accept them. Enabling
+        encryption later is handled separately by check-encryption/encrypt-db.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptEncryptedJsonColumns

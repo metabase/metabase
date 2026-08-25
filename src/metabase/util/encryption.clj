@@ -226,10 +226,12 @@
                       (codec/base64-decode s))]
       (possibly-encrypted-bytes? b))))
 
-(defn maybe-decrypt
-  "If `MB_ENCRYPTION_SECRET_KEY` is set and `v` is encrypted, decrypt `v`; otherwise return `s` as-is. Attempts to check
-  whether `v` is an encrypted String, in which case the decrypted String is returned, or whether `v` is encrypted bytes,
-  in which case the decrypted bytes are returned."
+(defn maybe-decrypt-accepting-plaintext
+  "Lenient decrypt. If `MB_ENCRYPTION_SECRET_KEY` is set and `v` is encrypted, decrypt `v`; otherwise return it as-is,
+  tolerating a value that is stored as plaintext. Attempts to check whether `v` is an encrypted String, in which case
+  the decrypted String is returned, or whether `v` is encrypted bytes, in which case the decrypted bytes are returned.
+  Prefer the strict [[maybe-decrypt]]; use this only for values that may legitimately be plaintext at rest (rows written
+  before encryption was enabled, key rotation, the encryption-check sentinel, secrets, and settings)."
   {:arglists '([secret-key? s])}
   [& args]
   ;; secret-key as an argument so that tests can pass it directly without using `with-redefs` to run in parallel
@@ -261,3 +263,24 @@
 
           :else
           v)))
+
+(defn maybe-decrypt
+  "Strict decrypt of a String or byte-array `v`. When `MB_ENCRYPTION_SECRET_KEY` is set, `v` must be an encrypted value
+  that decrypts with the current key: a value that is not encrypted throws (it was written outside the encrypting path
+  — a plaintext value cannot stand in for an encrypted one), and a value that is encrypted but cannot be decrypted with
+  the current key (wrong key, tampering, or corruption) also throws rather than being trusted. When no key is set, `v`
+  is returned as-is (there is no key to decrypt with). For values that may legitimately be plaintext at rest, use
+  [[maybe-decrypt-accepting-plaintext]].
+
+  `secret-key` is accepted as an argument so tests can pass it directly instead of using `with-redefs` to run in
+  parallel."
+  ([v] (maybe-decrypt default-secret-key v))
+  ([secret-key v]
+   (cond
+     (nil? secret-key)              v
+     (nil? v)                       v
+     (possibly-encrypted-string? v) (decrypt secret-key v)
+     (possibly-encrypted-bytes? v)  (decrypt-bytes secret-key v)
+     :else
+     (throw (ex-info "Expected an encrypted value but the stored value is not encrypted."
+                     {:type ::not-encrypted})))))

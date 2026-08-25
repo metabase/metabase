@@ -38,12 +38,13 @@
         nil))))
 
 (def ^:private transform-encrypted-text
+  "When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read (see
+  [[encryption/maybe-decrypt]])."
   {:in  encryption/maybe-encrypt
    :out encryption/maybe-decrypt})
 
 (def ^:private transform-encrypted-edn
-  "[[transform-encrypted-text]] over a value serialized as EDN. `maybe-decrypt` passes plaintext
-  through unchanged, so rows written before a column was encrypted keep reading with no migration."
+  "[[transform-encrypted-text]] over a value serialized as EDN."
   {:in  (comp encryption/maybe-encrypt edn-in)
    :out (comp edn-out encryption/maybe-decrypt)})
 
