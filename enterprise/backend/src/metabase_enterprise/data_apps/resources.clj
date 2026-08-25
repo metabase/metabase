@@ -1,9 +1,9 @@
 (ns metabase-enterprise.data-apps.resources
   "Lifecycle for the permission group and resource collection owned by a data app."
   (:require
-   [metabase.api.common :as api]
    [metabase.collections.core :as collection]
    [metabase.permissions.core :as perms]
+   [metabase.request.core :as request]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -27,15 +27,21 @@
                (t2/select-one :model/PermissionsGroup :id))
       (create-permission-group! app)))
 
+(defn- database-level-permission?
+  "Whether `rows` (one `[group db perm-type]` entry of an [[perms/index-database-permissions]]
+   index) is exactly a database-wide permission of `value`, with no table-level rows."
+  [rows value]
+  (and (= 1 (count rows))
+       (let [{:keys [table_id perm_value]} (first rows)]
+         (and (nil? table_id)
+              (= perm_value value)))))
+
 (defn- restrict-query-creation! [group]
   (let [database-ids (t2/select-pks-set :model/Database :router_database_id nil)
         permissions  (or (perms/index-database-permissions [(:id group)] database-ids) {})]
     (doseq [database-id database-ids
-            :let [current-value (some-> permissions
-                                        (get [(:id group) database-id :perms/create-queries])
-                                        first
-                                        :perm_value)]
-            :when (not= current-value :no)]
+            :let [rows (get permissions [(:id group) database-id :perms/create-queries])]
+            :when (not (database-level-permission? rows :no))]
       (perms/set-database-permission! permissions group database-id :perms/create-queries :no))))
 
 (defn- restore-trashed-collection!
@@ -51,8 +57,7 @@
    so there is no one else's decision to weigh."
   [collection]
   (when (:archived collection)
-    (binding [api/*is-superuser?*              true
-              api/*current-user-permissions-set* (atom #{"/"})]
+    (request/as-admin
       (collection/archive-or-unarchive-collection! collection
                                                    {:archived false, :parent_id nil}))))
 
@@ -72,9 +77,6 @@
                                                     (assoc :entity_id (:resource_collection_entity_id app))))]
     (t2/update! :model/DataApp :id (:id app)
                 {:resource_collection_id (:id collection)})
-    (doseq [group (t2/select :model/PermissionsGroup)
-            :when (not= (:id group) (:id (perms/admin-group)))]
-      (perms/revoke-collection-permissions! group collection))
     collection))
 
 (defn- resource-collection! [app]
@@ -97,7 +99,7 @@
                   {:name (resource-name app)})
       (restore-trashed-collection! collection)
       (apply-resource-permissions! group collection)
-      {:permission_group_id     (:id group)
+      {:permission_group_id    (:id group)
        :resource_collection_id (:id collection)})))
 
 (defn resource-entity-ids
@@ -165,7 +167,7 @@
                                            :permission_group_entity_id permission_group_entity_id)
              collection (resolve-resource! app :model/Collection
                                            :resource_collection_entity_id resource_collection_entity_id)
-             links      {:permission_group_id     (:id group)
+             links      {:permission_group_id    (:id group)
                          :resource_collection_id (:id collection)}
              changed?   (not= links (select-keys app (keys links)))]
          (validate-unclaimed! app :permission_group_id :permission_group_entity_id group)
@@ -185,10 +187,7 @@
   (let [current-permissions (get permissions [group-id database-id :perms/view-data])
         selected-table-ids  (into #{} (comp (map :id) (filter table-ids)) tables)]
     (if (empty? selected-table-ids)
-      (and (= 1 (count current-permissions))
-           (let [{:keys [table_id perm_value]} (first current-permissions)]
-             (and (nil? table_id)
-                  (= perm_value :blocked))))
+      (database-level-permission? current-permissions :blocked)
       (= (into {}
                (map (fn [{:keys [id]}]
                       [id (if (contains? selected-table-ids id)
@@ -202,14 +201,13 @@
 (defn reconcile-view-data!
   "Make `table-ids` the authoritative view-data permission set for `app`."
   [app table-ids]
-  (ensure-resources! app)
-  (let [app (t2/select-one :model/DataApp :id (:id app))]
+  (let [{:keys [permission_group_id]} (ensure-resources! app)
+        group (t2/select-one :model/PermissionsGroup :id permission_group_id)]
     (perms/with-global-permissions-lock
       (t2/with-transaction [_conn]
-        (let [group            (permission-group! app)
-              all-database-ids (t2/select-pks-set :model/Database :router_database_id nil)
-              permissions     (or (perms/index-database-permissions [(:id group)] all-database-ids) {})
-              tables-by-db     (group-by :db_id (t2/select :model/Table))]
+        (let [all-database-ids (t2/select-pks-set :model/Database :router_database_id nil)
+              permissions      (or (perms/index-database-permissions [(:id group)] all-database-ids) {})
+              tables-by-db     (group-by :db_id (t2/select [:model/Table :id :db_id]))]
           (doseq [database-id all-database-ids
                   :let [tables (get tables-by-db database-id [])
                         table-permissions (into {}

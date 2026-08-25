@@ -9,7 +9,7 @@
        - https://api.example.com
        - https://*.internal.acme.com
      resource_collection_entity_id: abc123def456ghi789jkl
-     permission_group_entity_id:  abc123def456ghi789mno"
+     permission_group_entity_id: abc123def456ghi789mno"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -168,7 +168,7 @@
         path          (some-> (:path parsed) normalize-path not-empty)
         allowed-hosts (parse-allowed-hosts parsed dir)
         resource-collection-entity-id (parse-entity-id parsed :resource_collection_entity_id dir)
-        permission-group-entity-id     (parse-entity-id parsed :permission_group_entity_id dir)]
+        permission-group-entity-id    (parse-entity-id parsed :permission_group_entity_id dir)]
     (when-not (re-matches slug-pattern slug)
       (throw (ex-info (tru "{0}: the app directory''s name is its slug, so it must be lowercase letters, numbers, and dashes." dir)
                       {:status-code 400})))

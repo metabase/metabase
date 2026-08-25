@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -26,7 +27,7 @@
 (defn- manifest-resource-ids
   [{:keys [collection group]}]
   {:resource_collection_entity_id (:entity_id collection)
-   :permission_group_entity_id     (:entity_id group)})
+   :permission_group_entity_id    (:entity_id group)})
 
 (deftest reconcile-resources-rejects-a-populated-collection-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -168,3 +169,17 @@
                 "the app collection is out of the trash")
             (is (false? (t2/select-one-fn :archived :model/Card :id card-id))
                 "the copy the app serves is readable again")))))))
+
+(deftest ensure-resources-reasserts-the-query-creation-restriction-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [app (create-data-app! "birds")
+          {:keys [permission_group_id]} (data-app.resources/ensure-resources! app)]
+      (perms/set-table-permissions! permission_group_id :perms/create-queries
+                                    {(mt/id :venues) :query-builder})
+      (data-app.resources/ensure-resources! app)
+      (is (=? [{:table_id nil, :perm_value :no}]
+              (t2/select [:model/DataPermissions :table_id :perm_value]
+                         :group_id permission_group_id
+                         :db_id (mt/id)
+                         :perm_type :perms/create-queries))
+          "a manual table-level grant is swept back to the database-wide restriction"))))
