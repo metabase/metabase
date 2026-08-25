@@ -8,7 +8,11 @@ import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { Stack } from "metabase/ui";
 
-export const UpsellTenants = () => {
+export const UpsellTenants = ({
+  align = "center",
+}: {
+  align?: "center" | "flex-start";
+}) => {
   const hasTenants = useHasTokenFeature("tenants");
   const campaign = "tenants";
   const location = "people-tenants";
@@ -23,11 +27,10 @@ export const UpsellTenants = () => {
   }
 
   return (
-    <DottedBackground px={0} py="2rem">
-      {/* Left-aligned, no extra horizontal padding: the card lines up
-          with the page heading, as the design shows. Admin People
-          renders this card too and shifts left with it. */}
-      <Stack align="flex-start">
+    <DottedBackground px={align === "flex-start" ? 0 : "3.5rem"} py="2rem">
+      {/* Left-aligned in the embedding hub, where the card lines up with
+          the page heading. Admin People keeps the original centered layout. */}
+      <Stack align={align}>
         <LineDecorator>
           <UpsellCardContent
             campaign={campaign}
