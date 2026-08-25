@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
@@ -633,6 +634,49 @@
         (catch Exception _ nil))
       arguments))
 
+(defn- json-type-name
+  [v]
+  (cond
+    (nil? v)        "null"
+    (string? v)     "a string"
+    (boolean? v)    "a boolean"
+    (number? v)     "a number"
+    (map? v)        "an object"
+    (sequential? v) "an array"
+    :else           "an unsupported value"))
+
+(defn- argument-error-text
+  [arguments field messages]
+  (let [texts (->> (tree-seq coll? seq messages) (filter string?) distinct vec)]
+    (condp = texts
+      ["disallowed key"]       (str "`" (name field) "` is not a supported argument.")
+      ["missing required key"] (str "`" (name field) "` is required.")
+      (str "`" (name field) "` " (str/join "; " texts)
+           (when (every? string? messages)
+             (str "; received " (json-type-name (get arguments field))))
+           "."))))
+
+(defn- invalid-arguments-message
+  "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match."
+  [schema arguments]
+  (when-let [error (mc/explain schema arguments)]
+    (let [humanized (me/humanize error)]
+      (str "Invalid tool arguments: "
+           (if (map? humanized)
+             (str/join " " (for [[field messages] (sort-by (comp name key) humanized)]
+                             (argument-error-text arguments field messages)))
+             (str "expected an object of named arguments; received "
+                  (json-type-name arguments) "."))))))
+
+(defn- validate-tool-arguments!
+  [tool arguments]
+  (when (and (map? arguments) (contains? arguments :_raw_arguments))
+    (throw (ex-info "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
+                    {:agent-error? true})))
+  (when-let [schema (tool-args-schema tool)]
+    (when-let [message (invalid-arguments-message schema arguments)]
+      (throw (ex-info message {:agent-error? true})))))
+
 (defn- tool-decode-fn
   "Extract the `:decode` function from a tool definition map.
   The decode function transforms tool arguments before the tool runs.
@@ -652,6 +696,10 @@
   arguments before invocation. The decode function can coerce values and throw
   `:agent-error?` exceptions for validation failures.
 
+  The arguments are then checked against the tool's declared schema in every
+  environment — `mu/defn` only instruments dev and test namespaces — and a
+  mismatch is returned to the model as a repair-oriented error.
+
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tool chunks]
   (ait/with-tool-call {:ai/tool-name    tool-name
@@ -669,7 +717,8 @@
                              arguments (or (coerce-stringified-json arguments) {})
                              arguments (coerce-stringified-scalars tool arguments)
                              decode    (tool-decode-fn tool)
-                             arguments (cond-> arguments decode decode)]
+                             arguments (cond-> arguments decode decode)
+                             _         (validate-tool-arguments! tool arguments)]
                          (log/debug "Executing tool" {:tool-name tool-name})
                          (when (ait/capture-active?)
                            (ait/record! {:ai/tool-args arguments}))

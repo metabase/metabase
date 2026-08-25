@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -24,23 +25,12 @@
     (is (= "revenue"
            (#'search/search-display {:keyword_queries ["revenue"] :semantic_queries ["revenue"]}))))
   (testing "no queries -> nil"
-    (is (nil? (#'search/search-display {})))))
-
-(deftest ^:parallel decode-search-args-test
-  (testing "a bare string becomes a one-element list, so it is searched (and displayed) as a phrase"
-    (is (= {:keyword_queries ["metabot byok"]}
-           (#'search/decode-search-args {:keyword_queries "metabot byok"})))
-    (is (= "metabot byok"
-           (#'search/search-display (#'search/decode-search-args {:keyword_queries "metabot byok"})))))
-  (testing "semantic_queries and entity_types are wrapped the same way"
-    (is (= {:semantic_queries ["monthly revenue"] :entity_types ["table"]}
-           (#'search/decode-search-args {:semantic_queries "monthly revenue" :entity_types "table"}))))
-  (testing "lists, nils and missing keys are left alone"
-    (is (= {:keyword_queries ["orders" "revenue"] :semantic_queries nil :limit 10}
-           (#'search/decode-search-args {:keyword_queries ["orders" "revenue"]
-                                         :semantic_queries nil
-                                         :limit 10})))
-    (is (= {} (#'search/decode-search-args {})))))
+    (is (nil? (#'search/search-display {}))))
+  (testing "a malformed query argument is left untitled rather than rendered character by character"
+    (is (nil? (#'search/search-display {:keyword_queries "metabot byok"})))
+    (is (nil? (#'search/search-display {:semantic_queries "monthly revenue"})))
+    (is (= "orders"
+           (#'search/search-display {:keyword_queries ["orders"] :semantic_queries nil})))))
 
 (deftest ^:parallel search-result->item-test
   (testing "trims a result to the fields the results card renders, nesting collection id+name"
@@ -470,34 +460,29 @@
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
 
-(defn- registered-search-tool
-  [tool-var]
-  (-> (metabot.tools/wrap-tools-with-state {"search" tool-var} (atom {}) nil nil)
-      (get "search")))
+(deftest ^:parallel scalar-search-args-test
+  (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
+    (doseq [[field value message]
+            [[:keyword_queries  "metabot byok"
+              "Invalid tool arguments: `keyword_queries` must be an array of strings; received a string."]
+             [:semantic_queries "monthly revenue"
+              "Invalid tool arguments: `semantic_queries` must be an array of strings; received a string."]
+             [:entity_types     "table"
+              "Invalid tool arguments: `entity_types` must be an array of supported entity type strings; received a string."]]]
+      (testing (str "a scalar " field)
+        (is (= message
+               (test-util/tool-boundary-error "search" #'metabot.tools/search-tool {field value})))))))
 
-(deftest ^:parallel tool-registered-decode-test
-  (testing "every search tool variant reaches the agent loop with its decoder attached"
-    (doseq [tool-var [#'metabot.tools/search-tool
-                      #'metabot.tools/sql-search-tool
-                      #'metabot.tools/nlq-search-tool
-                      #'metabot.tools/transform-search-tool]]
+(deftest ^:parallel scalar-search-args-every-variant-test
+  (testing "every search tool variant rejects a scalar the same way"
+    (doseq [[tool-var extra-args] [[#'metabot.tools/search-tool {}]
+                                   [#'metabot.tools/sql-search-tool {:database_id 1}]
+                                   [#'metabot.tools/nlq-search-tool {}]
+                                   [#'metabot.tools/transform-search-tool {}]]]
       (testing (str tool-var)
-        (is (= {:keyword_queries ["metabot byok"]}
-               ((:decode (registered-search-tool tool-var)) {:keyword_queries "metabot byok"})))))))
-
-(deftest tool-decoded-string-query-test
-  (testing "a query the model sent as a bare string is searched as one phrase, not one search per character"
-    (mt/with-test-user :rasta
-      (with-redefs [perms/impersonated-user? (fn [] false)
-                    perms/sandboxed-user? (fn [] false)
-                    api/*current-user-id* 1]
-        (let [captured (atom [])
-              decode   (:decode (registered-search-tool #'metabot.tools/search-tool))]
-          (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
-                                                           (swap! captured conj (:search-string context))
-                                                           {:data []})]
-            (search/search-tool (decode {:keyword_queries "metabot byok"})))
-          (is (= ["metabot byok"] @captured)))))))
+        (is (= "Invalid tool arguments: `keyword_queries` must be an array of strings; received a string."
+               (test-util/tool-boundary-error "search" tool-var
+                                              (assoc extra-args :keyword_queries "metabot byok"))))))))
 
 (deftest other-user-collection-test
   (testing "excludes entities from other users' collections"
