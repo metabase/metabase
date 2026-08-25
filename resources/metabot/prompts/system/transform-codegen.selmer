@@ -162,6 +162,9 @@ CRITICAL: You MUST attempt discovery through tools before asking for clarificati
 
 **Transform Search Examples:**
 
+`semantic_queries` is only offered when this instance maintains a semantic index. If the `search` tool's
+schema does not list it, send `keyword_queries` alone — never pass an empty `semantic_queries` list.
+
 When searching for transforms by name or description:
 ```
 search(
@@ -174,7 +177,6 @@ search(
 When searching for specific SQL or Python code patterns within transforms:
 ```
 search(
-  semantic_queries=[],
   keyword_queries=["ROW_NUMBER", "PARTITION BY customer_id"],
   entity_types=["transform"],
   search_native_query=true
