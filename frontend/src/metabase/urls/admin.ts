@@ -1,4 +1,4 @@
-import * as TenantUrls from "metabase/common/tenants";
+import { getTenantsBasePath } from "metabase/common/tenants";
 import type {
   BaseUser,
   CustomVizPluginId,
@@ -17,43 +17,43 @@ export function newUser() {
 }
 
 export function newTenantUser() {
-  return `${TenantUrls.getTenantsBasePath()}/people/new`;
+  return `${getTenantsBasePath()}/people/new`;
 }
 
 export function editUser(user: Pick<BaseUser, "id" | "tenant_id">) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/edit`
-    : `${TenantUrls.getTenantsBasePath()}/people/${user.id}/edit`;
+    : `${getTenantsBasePath()}/people/${user.id}/edit`;
 }
 
 export function resetPassword(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/reset`
-    : `${TenantUrls.getTenantsBasePath()}/people/${user.id}/reset`;
+    : `${getTenantsBasePath()}/people/${user.id}/reset`;
 }
 
 export function newUserSuccess(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/success`
-    : `${TenantUrls.getTenantsBasePath()}/people/${user.id}/success`;
+    : `${getTenantsBasePath()}/people/${user.id}/success`;
 }
 
 export function deactivateUser(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/deactivate`
-    : `${TenantUrls.getTenantsBasePath()}/people/${user.id}/deactivate`;
+    : `${getTenantsBasePath()}/people/${user.id}/deactivate`;
 }
 
 export function reactivateUser(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/reactivate`
-    : `${TenantUrls.getTenantsBasePath()}/people/${user.id}/reactivate`;
+    : `${getTenantsBasePath()}/people/${user.id}/reactivate`;
 }
 
 export function unsubscribeUser(user: Pick<BaseUser, "id" | "tenant_id">) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/unsubscribe`
-    : `${TenantUrls.getTenantsBasePath()}/people/${user.id}/unsubscribe`;
+    : `${getTenantsBasePath()}/people/${user.id}/unsubscribe`;
 }
 
 // TODO: move to EE urls

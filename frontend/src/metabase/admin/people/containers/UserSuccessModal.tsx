@@ -7,7 +7,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
-import * as Urls from "metabase/common/tenants";
+import { getTenantsBasePath } from "metabase/common/tenants";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -42,7 +42,7 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
 
   const handleClose = () => {
     navigate(
-      isExternalUser ? `${Urls.getTenantsBasePath()}/people` : "/admin/people",
+      isExternalUser ? `${getTenantsBasePath()}/people` : "/admin/people",
     );
   };
 
@@ -54,7 +54,7 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
 
   useEffect(() => {
     if (isExternalUser && !temporaryPassword) {
-      navigate(`${Urls.getTenantsBasePath()}/people`, { replace: true });
+      navigate(`${getTenantsBasePath()}/people`, { replace: true });
     }
   }, [isExternalUser, temporaryPassword, navigate]);
 
