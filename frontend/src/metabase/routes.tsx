@@ -325,12 +325,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               {
                 path: "collection/tenant-specific",
-                element: <PLUGIN_TENANTS.CanAccessTenantSpecificRoute />,
+                lazy: PLUGIN_TENANTS.canAccessTenantSpecificRoute,
                 children: [
-                  {
-                    index: true,
-                    element: <PLUGIN_TENANTS.TenantCollectionList />,
-                  },
+                  { index: true, lazy: PLUGIN_TENANTS.tenantCollectionList },
                 ],
               },
 
@@ -338,12 +335,10 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "collection/tenant-users",
                 element: <IsAdmin />,
                 children: [
-                  { index: true, element: <PLUGIN_TENANTS.TenantUsersList /> },
+                  { index: true, lazy: PLUGIN_TENANTS.tenantUsersList },
                   {
                     path: ":tenantId",
-                    element: (
-                      <PLUGIN_TENANTS.TenantUsersPersonalCollectionList />
-                    ),
+                    lazy: PLUGIN_TENANTS.tenantUsersPersonalCollectionList,
                   },
                 ],
               },

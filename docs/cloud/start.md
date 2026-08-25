@@ -40,7 +40,7 @@ Manage your Metabase Cloud instance, subscription, and billing via the [Metabase
 ### Billing
 
 - [Accounts and billing](./accounts-and-billing.md)
-- [How billing works](./how-billing-works.md)
+- [How billing works](https://www.metabase.com/how-billing-works)
 
 ## Metabase Cloud contact
 

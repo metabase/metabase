@@ -1,8 +1,8 @@
 import { trackSchemaEvent } from "metabase/analytics";
-import type { ExportFormat } from "metabase/common/types/export";
 import type {
   EmbedResourceDownloadOptions,
   EmbeddingParameterVisibility,
+  ExportFormat,
 } from "metabase-types/api";
 
 import type {

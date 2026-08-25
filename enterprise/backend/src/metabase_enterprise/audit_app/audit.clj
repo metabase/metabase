@@ -392,7 +392,7 @@
 
 (defn- remap-result-metadata-ref
   "Remap the Field ID of a single result-metadata `:field_ref` via `field-id-remap`. Handles legacy refs
-   (`[:field id opts]`, `[:field-id id]`, id second) and pMBQL refs (`[:field opts id]`, id last). Non-field refs and
+   (`[:field id opts]`, `[:field-id id]`, id second) and MBQL 5 refs (`[:field opts id]`, id last). Non-field refs and
    ids with no remapping are returned unchanged."
   [field-id-remap ref]
   (if (and (vector? ref) (#{:field :field-id} (first ref)))

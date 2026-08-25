@@ -49,6 +49,7 @@ import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
+import { createPlainCellFormatter } from "metabase/visualizations/lib/plain-cell-formatter";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
@@ -300,18 +301,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       );
 
       const plain: PlainCellFormatter<RowValue> = memoize(
-        (untranslatedValue, rowIndex) => {
-          const clicked = getCellClickedObject(columnIndex, rowIndex);
-          const value = tc(untranslatedValue);
-
-          return String(
-            formatValue(value, {
-              ...columnSettings,
-              type: "cell",
-              clicked,
-            }),
-          );
-        },
+        createPlainCellFormatter({
+          columnSettings,
+          translate: tc,
+          getClicked: (rowIndex) => getCellClickedObject(columnIndex, rowIndex),
+        }),
       );
 
       return {

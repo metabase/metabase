@@ -457,7 +457,7 @@ function ExplorationGroupVisualizationChart({
             pageId={String(page.id)}
             onClose={onCloseCommentsSidebar}
             context={{
-              timeline_id: selectedTimelineId,
+              timeline_id: selectedTimelineId ?? undefined,
             }}
             renderCommentTags={renderCommentTags}
           />

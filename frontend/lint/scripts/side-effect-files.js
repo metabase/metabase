@@ -1,12 +1,5 @@
-/**
- * @fileoverview Keeps frontend/lint/side-effect-files.json in step with the source tree.
- * The registry lists every source file that `metabase/no-module-side-effects` reports under the options
- * eslint.config.mjs gives it, so this scans the tree with just that rule and compares.
- *
- *   bun frontend/lint/scripts/side-effect-files.js --check    exit 1 on drift, listing it
- *   bun frontend/lint/scripts/side-effect-files.js --update   add new files as unclassified, drop clean ones
- *   bun frontend/lint/scripts/side-effect-files.js --verbose  also print every finding
- */
+// Generates frontend/lint/side-effect-files.json by linting the whole tree with `metabase/no-module-side-effects`.
+// Without a flag it exits 1 when the registry has drifted, `--update` adds new files as unclassified and drops clean ones, and `--verbose` prints every finding.
 
 const fs = require("fs");
 const path = require("path");
@@ -17,6 +10,7 @@ const tseslint = require("typescript-eslint");
 
 const rule = require("../eslint-plugin-metabase/rules/no-module-side-effects");
 const {
+  NO_MODULE_SIDE_EFFECTS_IGNORES,
   NO_MODULE_SIDE_EFFECTS_OPTIONS,
 } = require("../no-module-side-effects-options");
 const {
@@ -30,70 +24,61 @@ const REPO_ROOT = path.resolve(__dirname, "../../..");
 
 const SOURCE_ROOTS = ["frontend/src", "enterprise/frontend/src"];
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
-// The same files eslint.config.mjs leaves out of the rule.
-const IGNORED_PATTERNS = [
-  "**/*.unit.spec.*",
-  "**/*.stories.*",
-  "**/tests/**",
-  "**/__support__/**",
-  "**/*.d.ts",
-];
 
 const RULE_NAME = "metabase/no-module-side-effects";
 
+const LINTER_CONFIG = [
+  {
+    files: ["**/*.{ts,tsx,js,jsx}"],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+      sourceType: "module",
+    },
+    plugins: { metabase: { rules: { "no-module-side-effects": rule } } },
+    rules: { [RULE_NAME]: ["error", NO_MODULE_SIDE_EFFECTS_OPTIONS] },
+  },
+];
+
+function readSource(file) {
+  return fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+}
+
 function listSourceFiles() {
-  const files = [];
-  const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const entryPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(entryPath);
-      } else if (SOURCE_EXTENSIONS.has(path.extname(entry.name))) {
-        files.push(path.relative(REPO_ROOT, entryPath).replaceAll("\\", "/"));
-      }
-    }
-  };
-  for (const root of SOURCE_ROOTS) {
-    walk(path.join(REPO_ROOT, root));
-  }
-  return files
-    .filter((file) => !micromatch.isMatch(file, IGNORED_PATTERNS))
+  return SOURCE_ROOTS.flatMap((root) =>
+    fs
+      .readdirSync(path.join(REPO_ROOT, root), {
+        recursive: true,
+        withFileTypes: true,
+      })
+      .filter(
+        (entry) =>
+          entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name)),
+      )
+      .map((entry) =>
+        path
+          .relative(REPO_ROOT, path.join(entry.parentPath, entry.name))
+          .replaceAll("\\", "/"),
+      ),
+  )
+    .filter((file) => !micromatch.isMatch(file, NO_MODULE_SIDE_EFFECTS_IGNORES))
     .sort();
 }
 
-function createLinter() {
+function scanEffectFiles() {
   const linter = new Linter();
-  const config = [
-    {
-      files: ["**/*.{ts,tsx,js,jsx}"],
-      languageOptions: {
-        parser: tseslint.parser,
-        parserOptions: { ecmaFeatures: { jsx: true } },
-        sourceType: "module",
-      },
-      plugins: { metabase: { rules: { "no-module-side-effects": rule } } },
-      rules: { [RULE_NAME]: ["error", NO_MODULE_SIDE_EFFECTS_OPTIONS] },
-    },
-  ];
-  return (file) => {
-    const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
-    // The registry records what a file does at import, so its imports of other effect files do not count.
-    return linter
-      .verify(source, config, { filename: path.join(REPO_ROOT, file) })
+  const findings = new Map();
+  for (const file of listSourceFiles()) {
+    // The registry records what a file itself does at import, so its imports of other listed files don't count.
+    const messages = linter
+      .verify(readSource(file), LINTER_CONFIG, {
+        filename: path.join(REPO_ROOT, file),
+      })
       .filter(
         (message) =>
           message.ruleId === RULE_NAME &&
           message.messageId !== "importsGlobalEffect",
       );
-  };
-}
-
-// Repo-relative path -> messages, for every source file the rule reports.
-function scanEffectFiles() {
-  const lint = createLinter();
-  const findings = new Map();
-  for (const file of listSourceFiles()) {
-    const messages = lint(file);
     if (messages.length > 0) {
       findings.set(file, messages);
     }
@@ -101,8 +86,7 @@ function scanEffectFiles() {
   return findings;
 }
 
-// Listed packages that no source file imports, so the list cannot keep dead entries.
-// A specifier is imported when it appears quoted, alone or with a subpath, anywhere in a source file.
+// Listed packages that no source file imports.
 function unimportedPackages(registry, files) {
   const unseen = new Map(
     Object.keys(registry.packages).map((specifier) => [
@@ -114,7 +98,7 @@ function unimportedPackages(registry, files) {
     if (unseen.size === 0) {
       break;
     }
-    const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+    const source = readSource(file);
     for (const [specifier, pattern] of unseen) {
       if (pattern.test(source)) {
         unseen.delete(specifier);
@@ -128,7 +112,6 @@ function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// { missing: effect files the registry does not list, stale: exact entries whose file is clean }
 function diffRegistry(registry, effectFiles) {
   const effectSet = new Set(effectFiles);
   const missing = effectFiles.filter(
@@ -139,6 +122,11 @@ function diffRegistry(registry, effectFiles) {
     ...registry.unclassified,
   ].filter((file) => !effectSet.has(file));
   return { missing, stale };
+}
+
+// A stale "global" or "entry" entry keeps rejecting imports of a clean file, whereas a stale "self" entry affects nothing.
+function enforcedStale(registry, stale) {
+  return stale.filter((file) => classify(registry, file) !== "self");
 }
 
 function updateRegistry(registryPath, { missing, stale }) {
@@ -211,6 +199,7 @@ module.exports = {
   listSourceFiles,
   scanEffectFiles,
   diffRegistry,
+  enforcedStale,
   unimportedPackages,
 };
 

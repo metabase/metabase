@@ -10,7 +10,7 @@ import {
   type MBQLClauseFunctionConfig,
   MBQL_CLAUSES,
 } from "metabase-lib";
-import type Database from "metabase-lib/v1/metadata/Database";
+import type { Database } from "metabase-types/api";
 
 export function isDefinedClause(name: string): name is Lib.DefinedClauseName {
   return name in MBQL_CLAUSES;
@@ -85,7 +85,7 @@ export function getSupportedClauses({
   database,
 }: {
   expressionMode: Lib.ExpressionMode;
-  database?: Database | null;
+  database?: Pick<Database, "features"> | null;
 }) {
   return clausesForMode(expressionMode)
     .filter(
