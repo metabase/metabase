@@ -532,6 +532,21 @@ const enforcedRules = buildEnforcedRules(elements, [
   ...buildEnforcedSharedRules(elements, sharedRules),
 ]);
 
+const toEntitySelector = (type) => ({ element: { type } });
+const toDependencySelector = (type) => ({
+  to: toEntitySelector(type),
+});
+
+const toPolicy = ({ from, allow, disallow, ...options }) => ({
+  ...options,
+  from: from.map(toEntitySelector),
+  ...(allow && { allow: allow.map(toDependencySelector) }),
+  ...(disallow && { disallow: disallow.map(toDependencySelector) }),
+});
+
+const policies = rules.map(toPolicy);
+const enforcedPolicies = enforcedRules.map(toPolicy);
+
 function getFeatureModules(els = elements) {
   return els.map((e) => e.type).filter((type) => type.startsWith("feature/"));
 }
@@ -545,7 +560,8 @@ function getPublicApiModules(els = elements) {
 export {
   elements,
   rules,
-  enforcedRules,
+  policies,
+  enforcedPolicies,
   getFeatureModules,
   getPublicApiModules,
 };

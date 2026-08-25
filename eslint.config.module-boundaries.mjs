@@ -13,8 +13,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 import {
   elements as boundaryElements,
-  rules as boundaryRules,
+  policies as boundaryPolicies,
 } from "./frontend/lint/module-boundaries.mjs";
+import { createSourceSpecificBoundaryConfigs } from "./frontend/lint/source-specific-boundaries.mjs";
+import { canonicalizeBoundariesPlugin } from "./frontend/lint/canonicalize-boundaries-plugin.mjs";
 
 // dummy plugins to keep eslint from complaining about missing plugins and settings
 const alwaysPassingRule = {
@@ -44,6 +46,29 @@ const alwaysPassingPlugin = {
   ),
 };
 
+const boundarySettings = {
+  "boundaries/elements": boundaryElements,
+  "boundaries/ignore": ["**/e2e/**", "test/**"],
+  "boundaries/dependency-nodes": ["import", "dynamic-import"],
+  "boundaries/legacy-templates": false,
+  "boundaries/legacy-warnings": false,
+};
+
+// The boundaries plugin caches its matcher per merged-settings identity; the
+// wrapper canonicalizes the (deep-equal) settings so it is built once despite
+// the per-source configs. See canonicalize-boundaries-plugin.mjs.
+const boundariesPlugin = canonicalizeBoundariesPlugin(boundaries);
+
+// One flat config per element descriptor, holding only the policies whose
+// `from` selector can match that element's type. See
+// frontend/lint/source-specific-boundaries.mjs for details.
+const sourceSpecificBoundaryConfigs = createSourceSpecificBoundaryConfigs({
+  elements: boundaryElements,
+  policies: boundaryPolicies,
+  plugin: boundariesPlugin,
+  settings: boundarySettings,
+});
+
 export default defineConfig([
   globalIgnores(["**/e2e/**", "test/**"]),
   {
@@ -72,13 +97,11 @@ export default defineConfig([
       "testing-library": alwaysPassingPlugin,
       jest: alwaysPassingPlugin,
       "jest-dom": alwaysPassingPlugin,
-      boundaries,
+      boundaries: boundariesPlugin,
       react,
     },
     settings: {
-      "boundaries/elements": boundaryElements,
-      "boundaries/ignore": ["**/e2e/**", "test/**"],
-      "boundaries/dependency-nodes": ["import", "dynamic-import"],
+      ...boundarySettings,
       "import-x/resolver": {
         node: true,
         webpack: {
@@ -95,15 +118,9 @@ export default defineConfig([
       },
     },
     rules: {
-      "boundaries/element-types": [
-        "error",
-        {
-          default: "disallow",
-          rules: boundaryRules,
-        },
-      ],
       // Every file frontend/src/ and enterprise/frontend/src/ must belong to a declared module.
       "boundaries/no-unknown-files": "error",
     },
   },
+  ...sourceSpecificBoundaryConfigs,
 ]);

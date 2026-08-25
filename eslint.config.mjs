@@ -34,9 +34,11 @@ import {
 } from "./frontend/lint/no-module-side-effects-options.js";
 import {
   elements as boundaryElements,
-  enforcedRules as boundaryRules,
+  enforcedPolicies as boundaryPolicies,
   getPublicApiModules,
 } from "./frontend/lint/module-boundaries.mjs";
+import { createSourceSpecificBoundaryConfigs } from "./frontend/lint/source-specific-boundaries.mjs";
+import { canonicalizeBoundariesPlugin } from "./frontend/lint/canonicalize-boundaries-plugin.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -127,6 +129,34 @@ const baseMetabaseRestrictedConfig = {
     },
   ],
 };
+
+const BOUNDARIES_MESSAGE =
+  "{{from.element.types.[0]}} cannot import from {{to.element.types.[0]}}";
+
+const boundarySettings = {
+  "boundaries/elements": boundaryElements,
+  "boundaries/ignore": ["**/e2e/**", "test/**"],
+  "boundaries/dependency-nodes": ["import", "dynamic-import"],
+  "boundaries/legacy-templates": false,
+  "boundaries/legacy-warnings": false,
+};
+
+// The boundaries plugin caches its matcher per merged-settings identity; the
+// wrapper canonicalizes the (deep-equal) settings so it is built once despite
+// the per-source configs. See canonicalize-boundaries-plugin.mjs.
+const boundariesPlugin = canonicalizeBoundariesPlugin(boundaries);
+
+// One flat config per element descriptor, holding only the policies whose
+// `from` selector can match that element's type (with `from` dropped, since
+// the config's `files` glob already fixes the source type). Much faster than
+// a single rule instance scanning every policy for every dependency.
+const sourceSpecificBoundaryConfigs = createSourceSpecificBoundaryConfigs({
+  elements: boundaryElements,
+  policies: boundaryPolicies,
+  plugin: boundariesPlugin,
+  settings: boundarySettings,
+  message: BOUNDARIES_MESSAGE,
+});
 
 const configs = [
   {
@@ -353,23 +383,11 @@ const configs = [
       "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
     ],
     plugins: {
-      boundaries,
+      boundaries: boundariesPlugin,
       metabase: metabasePlugin,
     },
-    settings: {
-      "boundaries/elements": boundaryElements,
-      "boundaries/ignore": ["**/e2e/**", "test/**"],
-      "boundaries/dependency-nodes": ["import", "dynamic-import"],
-    },
+    settings: boundarySettings,
     rules: {
-      "boundaries/element-types": [
-        "error",
-        {
-          default: "disallow",
-          rules: boundaryRules,
-          message: "${file.type} cannot import from ${dependency.type}",
-        },
-      ],
       // Modules flagged `enforcePublicApi` in module-boundaries.mjs must be imported through their index.
       // Their own files must import relatively.
       "metabase/enforce-module-public-api": [
@@ -380,6 +398,7 @@ const configs = [
       "boundaries/no-unknown-files": "error",
     },
   },
+  ...sourceSpecificBoundaryConfigs,
   {
     files: ["**/*.js", "**/*.jsx"],
     languageOptions: {

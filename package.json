@@ -298,7 +298,7 @@
     "eslint-import-resolver-node": "^0.3.9",
     "eslint-import-resolver-webpack": "^0.13.10",
     "eslint-module-utils": "^2.12.1",
-    "eslint-plugin-boundaries": "5.4.0",
+    "eslint-plugin-boundaries": "7.2.0",
     "eslint-plugin-chai-friendly": "^1.1.0",
     "eslint-plugin-cypress": "6.1.0",
     "eslint-plugin-depend": "1.4.0",
