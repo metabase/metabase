@@ -181,8 +181,13 @@
              (:required-any (llm.provider/provider-type "bedrock"))))
       (is (false? (llm.provider/config-complete? "bedrock" {})))
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"bedrock needs one of: Access key ID \+ Secret access key"
+           clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
            (llm.provider/validate-config! "bedrock" {})))
+      (testing "the pair is a mandatory set, so the form marks each of its fields required"
+        (is (= {:access-key-id true :secret-access-key true :region false :session-token false}
+               (->> (llm.provider/provider-type "bedrock")
+                    :fields
+                    (into {} (map (juxt :key (comp boolean :required?))))))))
       (testing "an explicit customer pair stays valid"
         (is (nil? (llm.provider/validate-config! "bedrock" {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
                                                             :secret-access-key "test-secret"})))
@@ -198,7 +203,7 @@
              (:required-any (llm.provider/provider-type "bedrock"))))
       (is (false? (llm.provider/config-complete? "bedrock" {})))
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"bedrock needs one of: Access key ID \+ Secret access key"
+           clojure.lang.ExceptionInfo #"Access key ID is required for bedrock"
            (llm.provider/validate-config! "bedrock" {})))))
   (testing "a token the service did answer for leaves a self-hosted deployment keyless"
     (with-redefs [premium-features/canonically-has-feature? (constantly false)]

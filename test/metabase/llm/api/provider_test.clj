@@ -132,6 +132,8 @@
                          first)]
         (is (= [["access-key-id" "secret-access-key"]]
                (:required_any bedrock)))
+        (is (= {"access-key-id" true "secret-access-key" true "region" false "session-token" false}
+               (->> bedrock :fields (into {} (map (juxt :key :required))))))
         (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
                (->> bedrock :fields (filter #(= "access-key-id" (:key %))) first :help)))))))
 

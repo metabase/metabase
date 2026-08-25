@@ -325,14 +325,29 @@
 (def ^:private provider-type-by-name
   (into {} (map (juxt :type identity)) provider-type-registry))
 
+(defn- hosted-required-fields
+  "The field keys a hosted deployment can mark required outright. A single `:hosted-required-any` group is a
+  mandatory set rather than a choice between alternatives, so each of its fields is required on its own; with
+  several groups any one of them will do and none of their fields is."
+  [hosted-required-any]
+  (if (= 1 (count hosted-required-any))
+    (set (first hosted-required-any))
+    #{}))
+
 (defn- hosted-provider-type
-  "`entry` adjusted for a hosted deployment: `:hosted-required-any` groups become `:required-any` and a field's
-  `:hosted-help` replaces its `:help`. Everything downstream (validation, completeness, the connection form)
-  reads the entry through [[provider-type]], so this is the one place hosted policy is applied."
+  "`entry` adjusted for a hosted deployment: `:hosted-required-any` groups become `:required-any`, the fields of a
+  lone group are marked required so the form labels them and screen readers announce them, and a field's
+  `:hosted-help` replaces its `:help`. Everything downstream (validation, completeness, the connection form) reads
+  the entry through [[provider-type]], so this is the one place hosted policy is applied."
   [{:keys [hosted-required-any] :as entry}]
-  (cond-> entry
-    hosted-required-any (update :required-any (fnil into []) hosted-required-any)
-    :always             (update :fields (partial mapv #(if-let [h (:hosted-help %)] (assoc % :help h) %)))))
+  (let [required-keys (hosted-required-fields hosted-required-any)]
+    (cond-> entry
+      hosted-required-any (update :required-any (fnil into []) hosted-required-any)
+      :always             (update :fields
+                                  (partial mapv (fn [{:keys [key hosted-help] :as field}]
+                                                  (cond-> field
+                                                    hosted-help             (assoc :help hosted-help)
+                                                    (required-keys key)     (assoc :required? true))))))))
 
 (defn hosted?
   "Whether hosted credential policy applies. [[premium-features/is-hosted?]] reads the `:hosting` license feature,
