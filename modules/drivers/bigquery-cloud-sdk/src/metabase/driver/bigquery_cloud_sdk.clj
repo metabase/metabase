@@ -642,9 +642,9 @@
   ([[adaptive-query-next-page]])."
   ^long [^long budget ^long measured-bytes ^long measured-rows ^long remaining]
   (let [avg-row-bytes (max 1 (quot measured-bytes (max 1 measured-rows)))]
-    (doto (-> (quot budget avg-row-bytes)
-              (max 1)
-              (min remaining)) tap>)))
+    (-> (quot budget avg-row-bytes)
+        (max 1)
+        (min remaining))))
 
 (defn- list-sample-page
   "Issue a `tabledata.list` request for at most `page-size` rows, continuing from `page-token` when given."
@@ -849,14 +849,13 @@
   throws if BigQuery reports another page is available (non-blank page token) but fails to return it, so we surface
   the error instead of silently truncating the result set."
   [^Job job]
-  (let [budget #_(long *page-byte-budget*) (long *query-page-byte-budget*)
+  (let [budget (long *query-page-byte-budget*)
         seen   (atom {:bytes 0, :rows 0})]
     (fn [^TableResult page]
       (let [token (.getNextPageToken page)]
         (when-not (str/blank? token)
           (let [[page-bytes page-rows] (reduce (fn [[b n] row] [(+ (long b) (row-bytes row)) (inc (long n))])
                                                [0 0]
-                                               #_(.getValues page)
                                                (eduction (take measured-rows-per-page) (.getValues page)))
                 {:keys [bytes rows]}   (swap! seen (fn [s] {:bytes (+ (long (:bytes s)) (long page-bytes))
                                                             :rows  (+ (long (:rows s)) (long page-rows))}))]
