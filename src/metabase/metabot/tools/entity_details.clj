@@ -655,7 +655,12 @@
           :query_json (when-let [query (when dataset-query
                                          (try
                                            (lib/query metadata-provider (lib-be/normalize-query dataset-query))
-                                           (catch Exception _ nil)))]
+                                           (catch Exception e
+                                             ;; A Card whose query fails to build for another reason is
+                                             ;; otherwise indistinguishable from one that has no query.
+                                             (log/warnf "Could not build the stored query for Card %s; omitting it from the LLM payload: %s"
+                                                        id (ex-message e))
+                                             nil)))]
                         (repr.resolve/try-export-query
                          metadata-provider
                          query

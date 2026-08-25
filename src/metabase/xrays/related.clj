@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.schema :as ads]
@@ -54,7 +55,10 @@
     (-> card
         :dataset_query
         ((juxt lib/breakouts lib/aggregations lib/expressions lib/fields)))
-    (catch Exception _
+    (catch Exception e
+      ;; Runs for every candidate Card while ranking, so keep it quiet.
+      (log/debugf "Ignoring Card %s while finding related entities because its query could not be parsed: %s"
+                  (:id card) (ex-message e))
       nil)))
 
 (mu/defmethod definition :model/Segment
