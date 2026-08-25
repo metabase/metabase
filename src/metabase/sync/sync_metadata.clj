@@ -59,6 +59,15 @@
    ;; Sync the metabase metadata table if it exists.
    (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))])
 
+(defn- test-for [^Exception e]
+  (first (for [elem (.getStackTrace e)
+               :let [n (.getClassName elem)
+                     [ns-name var-name] (clojure.string/split n #"\$")]
+               :when (and (re-find #"test$" ns-name)
+                          (re-find #"test(__\d+)?$" var-name)
+                          (not (re-find #"\$.*\$" n)))]
+           n)))
+
 (mu/defn- sync-db-metadata!*
   "Shared core of [[sync-db-metadata!]] and [[sync-db-metadata-explicit!]]: the metadata sync work,
   without the surrounding `*-sync-operation` wrapper (which is what applies the eligibility gating)."
@@ -75,6 +84,9 @@
         steps           (make-sync-steps db-metadata)
         essential-steps (into #{} (comp (filter :essential?) (map :step-name)) steps)
         results         (sync-util/run-sync-operation "sync" database steps)]
+    (println "called sync from test"
+             (test-for (Exception. "sync"))
+             (sync-util/name-for-logging database))
     (cond
       (some sync-util/abandon-sync? (map second (:steps results)))
       (sync-util/set-initial-database-sync-aborted! database)

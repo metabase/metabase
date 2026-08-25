@@ -457,21 +457,19 @@
                                 (mt/process-query)
                                 (mt/formatted-rows [int str]))))))
                 (testing "sync task can see database"
-                  (let [job-data       (reify qc/JobDataMapConversion
-                                         ;; i'm doing this at the "job-data" level so it's as close to what runs in
-                                         ;; the task itself without actually hitting scheduler stuff.
-                                         (from-job-data [_] {"db-id" (u/the-id router)})
-                                         (to-job-data [_]))
-                        results        (#'task.sync-databases/sync-and-analyze-database! job-data)
-                        step-with-name (fn [step-name]
-                                         (->> results :metadata-results :steps
-                                              (some (fn [step] (when (= step-name (first step)) (second step))))))]
-                    (is (set/subset? #{"sync-fields" "sync-tables"}
-                                     (->> results :metadata-results :steps (map first) set)))
-                    ;; this is usually 1 total tables, but some cloud dbs put multiple databases inside of a
-                    ;; single catalog
+                  (let [job-data (reify qc/JobDataMapConversion
+                                   ;; i'm doing this at the "job-data" level so it's as close to what runs in
+                                   ;; the task itself without actually hitting scheduler stuff.
+                                   (from-job-data [_] {"db-id" (u/the-id router)})
+                                   (to-job-data [_]))
+                        results (or (#'task.sync-databases/sync-and-analyze-database! job-data)
+                                    (throw (Exception. "sync failed (probably timed out)")))
+                        steps (into {} (:steps (:metadata-results results)))]
+                    (is (set/subset? #{"sync-fields" "sync-tables"} (set (keys steps))))
+                    ;; this is usually 1 total tables, but some cloud dbs put
+                    ;; multiple databases inside of a single catalog
                     (is (=? {:updated-tables 0 :total-tables pos-int?}
-                            (step-with-name "sync-tables")))))))))))))
+                            (steps "sync-tables")))))))))))))
 
 (deftest athena-region-bucket-routing-test
   (mt/test-driver :athena

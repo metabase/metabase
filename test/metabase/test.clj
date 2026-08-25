@@ -360,3 +360,12 @@
     (when config/is-test?
       (log/info "Compiled query")))
   built-query)
+
+(in-ns 'clojure.test)
+(defmacro deftest [name & body]
+  (when clojure.test/*load-tests*
+    ;; stock deftest gives you broken stack traces because it doesn't propagate
+    ;; the name of the test; the fn below is normally anonymous.
+    ;; we can do better, easily!
+    `(def ~(vary-meta name assoc :test `(fn ~name [] ~@body))
+          (fn ~name [] (test-var (var ~name))))))
