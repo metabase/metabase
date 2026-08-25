@@ -72,6 +72,8 @@
               (#'self/parse-provider-model "mistral/mistral-medium-3-5")))
       (is (=? {:provider "moonshot" :model "kimi-k3" :ai-proxy? false}
               (#'self/parse-provider-model "moonshot/kimi-k3")))
+      (is (=? {:provider "deepseek" :model "deepseek-v4-flash" :ai-proxy? false}
+              (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
     (testing "a vLLM served model is often a Hugging Face repo id, so the model segment keeps its slashes"
@@ -98,6 +100,7 @@
     (is (fn? (#'self/resolve-adapter "zai")))
     (is (fn? (#'self/resolve-adapter "mistral")))
     (is (fn? (#'self/resolve-adapter "moonshot")))
+    (is (fn? (#'self/resolve-adapter "deepseek")))
     (is (fn? (#'self/resolve-adapter "google")))
     (is (fn? (#'self/resolve-adapter "vllm"))))
   (testing "throws for unknown provider"
@@ -730,7 +733,15 @@
     (testing "a length finish outranks a max-iterations stop"
       (is (=? {:type "finish" :finishReason "length"}
               (last (sse-events [(usage-part "length" "max_tokens")
-                                 {:type :finish :finish-reason :max-iterations}])))))))
+                                 {:type :finish :finish-reason :max-iterations}])))))
+    (testing "a turn ending on a terminal tool call is a normal stop, not an incomplete turn"
+      (is (=? {:type "finish" :finishReason "stop"}
+              (last (sse-events [(usage-part "tool-calls" "tool_use")])))))
+    (testing "an in-turn error outranks every non-length provider finish reason"
+      (doseq [finish-reason (disj self.core/finish-reasons "length" "error")]
+        (is (=? {:type "finish" :finishReason "error"}
+                (last (sse-events [error-part
+                                   (usage-part finish-reason nil)]))))))))
 
 (deftest parts->aisdk-sse-xf-lifecycle-test
   (testing "first :start opens the message and a step; later :start is a step boundary; completion closes"
@@ -912,10 +923,10 @@
   (testing "accumulated usage lands on finish.messageMetadata, last snapshot per model"
     (let [parts  [{:type :start :id "m"}
                   {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 5 :completionTokens 1}}
-                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
                   {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
                   {:type :finish}]
-          finish (last (sse-events parts))]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
       (is (= {:type "finish"
               :finishReason "stop"
               :messageMetadata {:usage        {:inputTokens 12 :outputTokens 8 :totalTokens 20
@@ -923,8 +934,18 @@
                                 :usageByModel {:claude-sonnet-4-6 {:inputTokens 10 :outputTokens 5 :totalTokens 15
                                                                    :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}
                                                :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
-                                                                   :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}}}
+                                                                   :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}
+                                :contextWindowTokens 1000000
+                                ;; the turn's last call alone: (10-5) prompt + (5-1) completion
+                                :contextTokens 9}}
              finish))))
+  (testing "contextTokens follows the turn's last call, not its biggest"
+    (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 900 :completionTokens 100}}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 7 :completionTokens 3}}
+                  {:type :finish}]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
+      (is (= 10 (get-in finish [:messageMetadata :contextTokens])))))
   (testing "finish omits messageMetadata when no usage was observed"
     (is (not (contains? (last (sse-events [{:type :text :id "t" :text "x"}]))
                         :messageMetadata)))))
@@ -932,12 +953,12 @@
 (deftest parts->aisdk-sse-xf-usage-cache-test
   (testing "Anthropic cache breakdown flows onto finish.messageMetadata; non-cache models contribute 0"
     (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
                   {:type :usage :model "claude-sonnet-4-6"
                    :usage {:promptTokens 1540 :completionTokens 10
                            :cacheCreationTokens 300 :cacheReadTokens 1200}}
-                  {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
                   {:type :finish}]
-          finish (last (sse-events parts))]
+          finish (last (sse-events {:context-window-tokens 1000000} parts))]
       (is (= {:type "finish"
               :finishReason "stop"
               :messageMetadata
@@ -947,8 +968,21 @@
                :usageByModel {:claude-sonnet-4-6 {:inputTokens 1540 :outputTokens 10 :totalTokens 1550
                                                   :cacheCreationTokens 300 :cacheReadTokens 1200 :cachedInputTokens 1200}
                               :gpt-5             {:inputTokens 2 :outputTokens 3 :totalTokens 5
-                                                  :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}}}
+                                                  :cacheCreationTokens 0 :cacheReadTokens 0 :cachedInputTokens 0}}
+               :contextWindowTokens 1000000
+               :contextTokens 1550}}
              finish)))))
+
+(deftest context-window-tokens-test
+  (llm.tu/with-default-connections
+    (are [model window] (= window (self/context-window-tokens model))
+      "anthropic/claude-sonnet-4-6"          1000000 ; adapter table hit
+      "metabase/anthropic/claude-sonnet-4-6" 1000000 ; proxy prefix is stripped
+      "azure/openai/gpt-5.4-mini-prod"       272000  ; longest model-id prefix wins
+      "google/google/gemini-3.6-flash"       1048576 ; publisher-qualified model reaches Google adapter
+      "azure/openai/my-deployment"           nil     ; unmatched deployment
+      "anthropic/some-future-model"          nil     ; unknown model
+      "unknown"                              nil)))  ; no such connection
 
 ;;; ===================== Retry Logic Tests =====================
 

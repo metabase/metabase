@@ -12,6 +12,8 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -32,7 +34,6 @@
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -62,8 +63,25 @@
   [card]
   (assoc card :parameters (qp.card/combined-parameters-and-template-tags card)))
 
+(defn- blank-dataset-query
+  "Replace the contents of `query` with a blank query of the same type, so the query contents themselves (SQL,
+  filters, aggregations, template tags, etc.) are never exposed to the general public. MBQL queries keep only their
+  source table or source card, plus a placeholder `:count` aggregation per original aggregation, so the frontend can
+  still tell MBQL and native queries apart (e.g. to use the pivot endpoints) and resolve `:aggregation` column refs."
+  [query]
+  (if (lib/native? query)
+    (lib/native-query query "-")
+    (if-let [source (or (some->> (lib/primary-source-table-id query) (lib.metadata/table query))
+                        (some->> (lib/primary-source-card-id query) (lib.metadata/card query)))]
+      (reduce lib/aggregate
+              (lib/query query source)
+              (repeatedly (count (lib/aggregations query -1)) lib/count))
+      (lib/native-query query "-"))))
+
 (defn remove-card-non-public-columns
   "Remove everything from public `card` that shouldn't be visible to the general public.
+
+  The `:dataset_query` is replaced with a blank query of the same type via [[blank-dataset-query]].
 
   This function is used by both OSS (for public cards) and EE (for cards in public documents) to ensure
   consistent filtering of sensitive fields across all public sharing endpoints."
@@ -74,8 +92,11 @@
     (mi/instance
      :model/Card
      (-> card
-         (select-keys [:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query])
-         (update :dataset_query select-keys [:lib/metadata :lib/type :database :stages])))))
+         (select-keys [:id :name :description :display :visualization_settings :parameters :param_fields :entity_id
+                       :dataset_query])
+         (update :dataset_query (fn [query]
+                                  (cond-> query
+                                    (seq query) blank-dataset-query)))))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
@@ -85,9 +106,9 @@
     (-> (api/check-404 (apply t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters
                                              :visualization_settings :card_schema]
                               :archived false, conditions))
-        remove-card-non-public-columns
         combine-parameters-and-template-tags
-        (t2/hydrate :param_fields))))
+        (t2/hydrate :param_fields)
+        remove-card-non-public-columns)))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
@@ -707,14 +728,12 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField string?]
-       [:lonField string?]]]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card       (api/check-404 (t2/select-one :model/Card :public_uuid uuid, :archived false))
-        lat-field  (json/decode+kw latField)
-        lon-field  (json/decode+kw lonField)]
+  (let [card (api/check-404 (t2/select-one :model/Card :public_uuid uuid, :archived false))]
     (request/as-admin
-      (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field))))
+      (api.tiles/process-tiles-query-for-card card parameters zoom x y latField lonField))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -734,17 +753,15 @@
    {:keys [parameters latField lonField]}
    :- [:map
        [:parameters {:optional true} ::parameters.schema/api.parameter-values]
-       [:latField string?]
-       [:lonField string?]]]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [dashboard  (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
-        dashcard   (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
-        card       (api/check-404 (t2/select-one :model/Card card-id))
-        lat-field  (json/decode+kw latField)
-        lon-field  (json/decode+kw lonField)]
+  (let [dashboard (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
+        dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card      (api/check-404 (t2/select-one :model/Card card-id))]
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard dashcard card
-                                                  parameters zoom x y lat-field lon-field))))
+                                                  parameters zoom x y latField lonField))))
 
 ;;; ------------------------------------------------ Public Documents -------------------------------------------------
 

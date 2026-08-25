@@ -223,6 +223,27 @@
   :setter     (connection-field-setter :llm-moonshot-api-key)
   :doc        "Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
+;;; ------------------------------------------------- DeepSeek --------------------------------------------------
+
+(defsetting llm-deepseek-api-base-url
+  (deferred-tru "The DeepSeek API base URL. Both the Anthropic-compatible Messages surface (`/anthropic/v1/messages`) and the model catalog (`/models`) are served off this root, so do not include `/anthropic` or `/v1`.")
+  :encryption :no
+  :visibility :settings-manager
+  :default    "https://api.deepseek.com"
+  :export?    false
+  :getter     (connection-field-getter :llm-deepseek-api-base-url)
+  :setter     (connection-field-setter :llm-deepseek-api-base-url)
+  :doc        "Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
+(defsetting llm-deepseek-api-key
+  (deferred-tru "The DeepSeek API Key.")
+  :sensitive? true
+  :visibility :settings-manager
+  :export?    false
+  :getter     (connection-field-getter :llm-deepseek-api-key)
+  :setter     (connection-field-setter :llm-deepseek-api-key)
+  :doc        "Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
+
 ;;; ------------------------------------ Google Gemini Enterprise Agent Platform --------------------------------
 ;;; The Gemini Enterprise Agent Platform (formerly Vertex AI). Every request applies to one Google Cloud project. The
 ;;; project ID is necessary. The location is optional and defaults to `global`.

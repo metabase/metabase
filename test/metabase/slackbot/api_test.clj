@@ -206,6 +206,39 @@
                 (let [msg (t2/select-one :model/MetabotMessage :channel_id channel-id :role "assistant")]
                   (is (some? (:slack_msg_id msg))))))))))))
 
+(deftest app-mention-long-answer-fits-slack-blocks-test
+  (testing "POST /events with app_mention truncates a long answer so Slack accepts it (BOT-1606)"
+    (tu/with-slackbot-setup
+      (let [channel-id "C-LONG-ANSWER-TEST"
+            event-body (assoc-in tu/base-mention-event [:event :channel] channel-id)]
+        (tu/with-slackbot-mocks
+          {:ai-text tu/oversized-answer}
+          (fn [{:keys [post-calls]}]
+            (let [response (mt/client :post 200 "metabot/slack/events"
+                                      (tu/slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (u/poll {:thunk      #(t2/select-one :model/MetabotMessage
+                                                   :channel_id channel-id :role "assistant"
+                                                   :slack_msg_id [:not= nil])
+                       :done?      some?
+                       :timeout-ms 5000})
+              (is (= 1 (count @post-calls)))
+              (let [blocks (:blocks (first @post-calls))]
+                (testing "no section block is over the limit -- unlike the untruncated answer"
+                  (is (nil? (tu/oversized-section-error blocks)))
+                  (is (some? (tu/oversized-section-error [{:type "section"
+                                                           :text {:type "mrkdwn" :text tu/oversized-answer}}]))
+                      "the answer really is past the limit, so the case under test is the real one"))
+                (testing "the answer is cut to the limit, and the message says why"
+                  (is (= tu/slack-section-text-limit
+                         (count (get-in (first blocks) [:text :text]))))
+                  (is (some (fn [block]
+                              (and (= "context" (:type block))
+                                   (str/includes? (get-in block [:elements 0 :text])
+                                                  "too long to post in Slack")))
+                            blocks)))))))))))
+
 (deftest stream-start-failure-test
   (testing "When start-stream fails, falls back to a regular message"
     (tu/with-slackbot-setup
@@ -228,6 +261,29 @@
                             @post-calls)))
                 (testing "stop-stream is never called"
                   (is (= 0 (count @stop-stream-calls))))))))))))
+
+;; Not ^:parallel: `with-prometheus-system!` redefs a process-global var.
+(deftest dm-response-undeliverable-metric-test
+  (testing "a DM whose stream and plain-text fallback both fail is counted as undeliverable"
+    (tu/with-slackbot-setup
+      (mt/with-prometheus-system! [_ system]
+        (let [event-body tu/base-dm-event]
+          (tu/with-slackbot-mocks
+            {:ai-text "Here is your answer"}
+            (fn [_]
+              ;; `post-thread-reply` delegates to `post-message`, so failing that fails the
+              ;; fallback too -- the user ends up with nothing at all.
+              (mt/with-dynamic-fn-redefs
+                [slackbot.client/stop-stream  (constantly {:ok false :error "invalid_blocks"})
+                 slackbot.client/post-message (constantly {:ok false :error "channel_not_found"})]
+                (let [response (mt/client :post 200 "metabot/slack/events"
+                                          (tu/slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk      #(mt/metric-value system :metabase-slackbot/responses-undeliverable)
+                           :done?      pos?
+                           :timeout-ms 5000})
+                  (is (= 1.0 (mt/metric-value system :metabase-slackbot/responses-undeliverable))))))))))))
 
 (deftest ai-request-error-stops-stream-test
   (testing "When the agent loop throws after the stream has started, the stream is stopped"

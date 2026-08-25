@@ -1,14 +1,56 @@
 (ns metabase.lib.binning.util
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [get-in some])
   (:require
    [clojure.math :as math]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.binning :as lib.schema.binning]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [get-in some]]))
+
+(mr/def ::field-id-or-name->filters
+  [:map-of [:or ::lib.schema.id/field :string] [:sequential ::lib.schema.expression/boolean]])
+
+(mu/defn filters->field-map :- ::field-id-or-name->filters
+  "Find any comparison or `:between` filter and return a map of referenced Field ID or Name -> all the clauses that
+  reference it."
+  [filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]]
+  (reduce
+   (partial merge-with concat)
+   {}
+   (for [subclause        (match/match-many filters [#{:between :< :<= :> :>=} & _] &match)
+         field-id-or-name (match/match-many subclause [:field _opts field-id-or-name] field-id-or-name)]
+     {field-id-or-name [subclause]})))
+
+(mu/defn extract-bounds :- [:maybe [:map [:min-value number?] [:max-value number?]]]
+  "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
+  the smallest user specified max value. When a user specified min or max is not found, use the global min/max for the
+  given field. Returns nil when no bound can be determined at all (e.g. a missing or incomplete fingerprint)."
+  [field-id-or-name          :- [:maybe [:or ::lib.schema.id/field :string]]
+   fingerprint               :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
+   field-id-or-name->filters :- ::field-id-or-name->filters]
+  (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
+        filter-clauses                     (get field-id-or-name->filters field-id-or-name)
+        ;; [:between <field> <min> <max>] or [:< <field> <x>]
+        user-maxes                         (match/match-many filter-clauses
+                                             [#{:< :<= :between} _opts & args] (last args))
+        user-mins                          (match/match-many filter-clauses
+                                             [#{:> :>= :between} _opts _field min-val & _] min-val)
+        min-value                          (or (when (seq user-mins)
+                                                 (apply max user-mins))
+                                               global-min)
+        max-value                          (or (when (seq user-maxes)
+                                                 (apply min user-maxes))
+                                               global-max)]
+    (when (and min-value max-value)
+      {:min-value min-value, :max-value max-value})))
 
 (mu/defn- calculate-bin-width :- ::lib.schema.binning/bin-width
   "Calculate bin width required to cover interval [`min-value`, `max-value`] with `num-bins`."

@@ -3,9 +3,9 @@ import _ from "underscore";
 
 import { act, waitFor } from "__support__/ui";
 import {
+  attachAgentToConversation,
   getMetabotConversation,
   getMetabotRequestState,
-  setConversationSnapshot,
 } from "metabase/metabot/state";
 
 import {
@@ -21,6 +21,7 @@ import {
   setup,
   showMetabot,
   stopResponseButton,
+  testConversationId,
   whoIsYourFavoriteResponse,
 } from "./utils";
 
@@ -28,7 +29,7 @@ describe("metabot > convo state", () => {
   it("should update the convo state on a successful request", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       stream: createMockSSEStream(
@@ -48,7 +49,7 @@ describe("metabot > convo state", () => {
   it("should not update the convo state on a failed request", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       events: [
@@ -65,7 +66,7 @@ describe("metabot > convo state", () => {
   it("should preserve conversation state if aborted response didn't contain a state data object", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       events: [
@@ -121,11 +122,14 @@ describe("metabot > convo state", () => {
     });
     await enterChatMessage("hi");
     await userEvent.click(await stopResponseButton());
-    const reqState = getMetabotRequestState(store.getState(), "omnibot");
+    const reqState = getMetabotRequestState(
+      store.getState(),
+      testConversationId("omnibot"),
+    );
     expect(reqState).toEqual({ testing: 123 });
   });
 
-  it("should drop streamed output once the user has switched away, even after switching back", async () => {
+  it("should keep streaming into a conversation the surface has navigated away from", async () => {
     const { store } = setup();
     const { conversationId } = getMetabotConversation(
       store.getState(),
@@ -151,28 +155,30 @@ describe("metabot > convo state", () => {
       ["agent", "first half"],
     ]);
 
-    const reload = (id: string) =>
+    act(() => {
       store.dispatch(
-        setConversationSnapshot({
+        attachAgentToConversation({
           agentId: "omnibot",
-          conversationId: id,
-          messages: [
-            { id: "u1", role: "user", type: "text", message: "stream me" },
-          ],
-          activeToolCalls: [],
+          conversationId: "some-other-conversation",
         }),
       );
-
-    act(() => {
-      reload("some-other-conversation");
-      reload(conversationId);
     });
+    await assertConversation([]);
 
     await act(async () => {
       pause1.resolve();
     });
 
-    await assertConversation([["user", "stream me"]]);
+    act(() => {
+      store.dispatch(
+        attachAgentToConversation({ agentId: "omnibot", conversationId }),
+      );
+    });
+
+    await assertConversation([
+      ["user", "stream me"],
+      ["agent", "first half second half"],
+    ]);
   });
 
   it("should keep the conversation thread when metabot is hidden or opened", async () => {
@@ -192,7 +198,7 @@ describe("metabot > convo state", () => {
     expect(reqBody.parent_message_id).toBe("msg_test_favorite");
   });
 
-  it("should reset the conversation when the reset button is clicked", async () => {
+  it("should start a new conversation when the new conversation button is clicked", async () => {
     const { store } = setup();
     const getState = () => getMetabotConversation(store.getState(), "omnibot");
     mockAgentEndpoint({ events: whoIsYourFavoriteResponse });

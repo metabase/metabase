@@ -245,10 +245,10 @@
           "pre-wrapped string coerced to the report timezone for a DateTimeWithZoneID field"))))
 
 (defn- year-literal-filter-query
-  "Build a pMBQL query whose `:=` filter compares an *unbucketed* `checkins.date` against a string-valued
+  "Build a MBQL 5 query whose `:=` filter compares an *unbucketed* `checkins.date` against a string-valued
   `[:absolute-datetime {} `s` `unit`]`. Year / year-month string literals can't be expressed through the
   legacy `mbql-query` macro, so we build a valid query and swap the literal into the already-wrapped
-  pMBQL clause."
+  MBQL 5 clause."
   [s unit]
   (-> (lib/query
        meta/metadata-provider
