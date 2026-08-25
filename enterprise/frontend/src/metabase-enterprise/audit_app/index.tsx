@@ -22,9 +22,8 @@ import { InsightsMenuItem } from "./components/InsightsMenuItem";
 import { getUserMenuRoutes } from "./routes";
 import { isAuditDb } from "./utils";
 
-// Registered at module load, so there is no route context here and no hook can
-// be called where the URL is built. The item is a component instead, which puts
-// the `useTenantUrls` call inside the render that actually happens under a host.
+// A component rather than an element: the menu items are built at module load,
+// where there is no route context to read `useTenantUrls` from.
 function UnsubscribeUserMenuItem({ user }: { user: User }) {
   const tenantUrls = useTenantUrls();
 
