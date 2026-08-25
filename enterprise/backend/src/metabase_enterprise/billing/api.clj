@@ -64,8 +64,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get billing information. This acts as a proxy between `metabase-billing-info-url` and the client,
-   using the embedding token and signed in user's email to fetch the billing information. You must be a superuser or
-   have `setting` permission to do this."
+   using the embedding token and signed in user's email to fetch the billing information."
   []
   (perms/check-has-application-permission :setting)
   (let [token    (premium-features/premium-embedding-token)
