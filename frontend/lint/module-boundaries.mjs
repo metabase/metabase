@@ -71,7 +71,7 @@ const elements = [
   }),
   // The compute side of charting: settings computation, echarts models and options, shared utils and types.
   // static-viz renders it in GraalJS, so nothing in it may reach the React or redux side of visualizations.
-  createElement({ type: "basic", name: "viz-core" }),
+  createElement({ type: "basic", name: "viz-core", enforcePublicApi: true }),
 
   // shared
   createElement({ type: "feature", name: "account" }),
