@@ -8,7 +8,7 @@
    [toucan2.core :as t2]
    [toucan2.jdbc.options :as t2.jdbc.options])
   (:import
-   (java.sql Connection)
+   (java.sql Connection SQLException)
    (java.util.concurrent Semaphore)))
 
 (set! *warn-on-reflection* true)
@@ -306,6 +306,35 @@
           (is (re-find #"Not committing" (ex-message e)))))
       (is (= #{:rollback} (set @calls))
           "the tree is rolled back, and never committed"))))
+
+(deftest a-vanished-savepoint-still-blocks-the-outer-commit-test
+  (testing "a savepoint the server already discarded says nothing about what was written after it"
+    ;; MySQL and MariaDB raise 1305 and PostgreSQL 3B001 once the transaction has ended under them -- breaking a
+    ;; deadlock, or DDL committing implicitly. Writes made after that point sit in a fresh transaction and are
+    ;; still pending, so the tree must not commit.
+    (doseq [[label sqlstate error-code] [["MySQL 1305" "42000" 1305]
+                                         ["PostgreSQL 3B001" "3B001" 0]]]
+      (testing label
+        (let [calls     (atom [])
+              auto?     (atom true)
+              mock-conn (reify Connection
+                          (rollback [_ _savepoint]
+                            (throw (SQLException. "SAVEPOINT does not exist" ^String sqlstate ^int error-code)))
+                          (rollback [_] (swap! calls conj :rollback))
+                          (commit [_] (swap! calls conj :commit))
+                          (setAutoCommit [_ v] (reset! auto? v))
+                          (getAutoCommit [_] @auto?)
+                          (setSavepoint [_]))]
+          (binding [t2.connection/*current-connectable* mock-conn]
+            (let [e (is (thrown? Exception
+                                 (t2/with-transaction [conn]
+                                   (try
+                                     (t2/with-transaction [_ conn {:rollback-only true}] :nested)
+                                     (catch Exception _ :swallowed))
+                                   :outer)))]
+              (is (re-find #"Not committing" (ex-message e)))))
+          (is (= #{:rollback} (set @calls))
+              "the tree is rolled back, and never committed"))))))
 
 (deftest failed-savepoint-rollback-still-restores-transaction-state-test
   (testing "a nested scope whose savepoint rollback throws must not leave its state visible to the outer scope"
