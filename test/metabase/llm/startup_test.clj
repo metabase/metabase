@@ -19,8 +19,7 @@
                                 (fn [feature]
                                   (case feature
                                     :metabot-v3          metabot-v3?
-                                    :metabase-ai-managed managed-ai?
-                                    false))
+                                    :metabase-ai-managed managed-ai?))
                                 metabot.settings/llm-metabot-configured? (constantly (boolean configured?))]
       (thunk))))
 

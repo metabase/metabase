@@ -7,7 +7,6 @@
    [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
-   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.util.json :as json])
   (:import
@@ -100,19 +99,19 @@
                                 (fn [] (throw (SdkClientException/create "Unable to load credentials")))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"none were found by the AWS default credentials chain"
+           #"got no credentials from the AWS default credentials chain"
            (bedrock/list-models))))))
 
 (deftest list-models-chain-refresh-failure-test
-  (testing "a provider that was found but could not hand over credentials (an STS rejection on refresh) is not
-            reported as a missing key pair, which would send an operator off to create long-lived keys"
+  (testing "a refresh that throws on its own, rather than through the chain's own report, is not called a missing
+            key pair, which would send an operator off to create long-lived keys"
     (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
                                 (fn [] (throw (-> (SdkException/builder)
                                                   (.message "User: arn:aws:sts::123456789012:assumed-role/x is not authorized")
                                                   (.build))))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"found a provider but could not get credentials from it"
+           #"could not refresh its AWS credentials"
            (bedrock/list-models)))
       (is (= :credentials-unavailable
              (try (bedrock/list-models)
@@ -128,21 +127,6 @@
 (deftest list-models-hosted-keyless-rejected-test
   (testing "a hosted deployment rejects a keyless connection before the credentials chain is touched"
     (mt/with-premium-features #{:hosting}
-      (let [chain-calls (atom 0)
-            requests    (atom 0)]
-        (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]
-          (with-redefs [http/request (fn [_] (swap! requests inc) {:body {:data fake-catalog}})]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Metabase Cloud requires an access key pair"
-                 (bedrock/list-models)))
-            (is (zero? @chain-calls))
-            (is (zero? @requests))))))))
-
-(deftest list-models-unconfirmed-hosting-keyless-rejected-test
-  (testing "a token status the token service could not confirm is treated as hosted, so a Cloud instance that
-            cannot reach it does not fall back to the operator identity"
-    (with-redefs [premium-features/canonically-has-feature? (constantly nil)]
       (let [chain-calls (atom 0)
             requests    (atom 0)]
         (mt/with-dynamic-fn-redefs [bedrock/chain-credentials (fn [] (swap! chain-calls inc) nil)]

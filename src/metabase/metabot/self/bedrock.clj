@@ -19,12 +19,12 @@
   https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html"
   (:require
    [clojure.string :as str]
-   [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai :as openai]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -45,20 +45,24 @@
 
 ;;; ------------------------------------------ AWS Signature Version 4 ------------------------------------------
 
-(defn- chain-empty-ex [cause]
-  (ex-info (tru "AWS Bedrock credentials are not configured, and none were found by the AWS default credentials chain")
+(defn- chain-empty-ex
+  "The chain ran out of providers. `AwsCredentialsProviderChain` catches what each provider throws and reports them
+  together once none is left, so an unconfigured process and a broken IRSA trust policy both arrive here. The AWS
+  text names roles and endpoints, so it goes to the log and the admin gets pointed at it."
+  [cause]
+  (log/warnf "AWS Bedrock default credentials chain resolved nothing: %s" (ex-message cause))
+  (ex-info (tru "AWS Bedrock got no credentials from the AWS default credentials chain. See the Metabase logs for what each provider reported.")
            {:api-error   true
             :error-code  :api-key-missing
             :status-code 403}
            cause))
 
 (defn- chain-failed-ex
-  "A provider in the chain was found but could not hand over credentials: an STS rejection on
-  `AssumeRoleWithWebIdentity`, an EKS Pod Identity authorization error, a throttled refresh. The AWS message names
-  roles and endpoints, so it goes to the log rather than to the admin."
+  "A provider that resolved before threw on its own rather than being folded into the chain's report: an STS
+  rejection refreshing a web identity, a throttled container-credentials refresh."
   [cause]
   (log/warnf "AWS Bedrock default credentials chain failed: %s" (ex-message cause))
-  (ex-info (tru "The AWS default credentials chain found a provider but could not get credentials from it. See the Metabase logs for what AWS returned.")
+  (ex-info (tru "AWS Bedrock could not refresh its AWS credentials. See the Metabase logs for what AWS reported.")
            {:api-error   true
             :error-code  :credentials-unavailable
             :status-code 403}
@@ -170,9 +174,8 @@
 (defn- ensure-credentials
   "Validate the credentials of the connection serving this request.
   Self-hosted, no access key pair at all is fine, signing falls back to the AWS default credentials chain; on a
-  hosted deployment, or one whose license cannot be checked, the chain would resolve the operator's own identity,
-  so the pair is required. Half a pair throws, as does a session token without the pair and an unknown region; the
-  region defaults to us-east-1."
+  hosted deployment the chain would resolve the operator's own identity, so the pair is required. Half a pair
+  throws, as does a session token without the pair and an unknown region; the region defaults to us-east-1."
   [credentials]
   (let [key-id (u/trimmed-string (:access-key-id credentials))
         secret (u/trimmed-string (:secret-access-key credentials))
@@ -181,7 +184,7 @@
       (throw (incomplete-credentials-ex)))
     (when (and token (not key-id))
       (throw (token-without-pair-ex)))
-    (when (and (not key-id) (llm.provider/hosted?))
+    (when (and (not key-id) (premium-features/is-hosted?))
       (throw (hosted-keyless-ex)))
     (-> credentials
         (u/assoc-dissoc :access-key-id key-id)

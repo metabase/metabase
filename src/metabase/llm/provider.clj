@@ -265,24 +265,25 @@
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
-    ;; Both keys select explicit credentials, neither selects the AWS default credentials chain; one without the
-    ;; other authenticates nothing.
-    :all-or-none   [[:access-key-id :secret-access-key]]
-    ;; A session token only extends a key pair; alone it authenticates nothing.
-    :requires      {:session-token [:access-key-id :secret-access-key]}
-    ;; The default chain resolves the instance's own AWS identity, which on Metabase Cloud belongs to the
-    ;; operator rather than the tenant, so hosted deployments must bring explicit keys.
-    :hosted-required-any [[:access-key-id :secret-access-key]]
-    :fields        [{:key         :access-key-id
-                     :label       (deferred-tru "Access key ID")
-                     :type        :password
-                     :placeholder "AKIA..."
-                     :help        (deferred-tru "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile).")
-                     :hosted-help (deferred-tru "On Metabase Cloud, Bedrock always authenticates with your own AWS keys.")
-                     :docs-url    "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"}
-                    {:key   :secret-access-key
-                     :label (deferred-tru "Secret access key")
-                     :type  :password}
+    ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one
+    ;; without the other authenticates nothing. A session token only extends the pair.
+    :requires      {:access-key-id     [:secret-access-key]
+                    :secret-access-key [:access-key-id]
+                    :session-token     [:access-key-id :secret-access-key]}
+    :fields        [{:key              :access-key-id
+                     :label            (deferred-tru "Access key ID")
+                     :type             :password
+                     :placeholder      "AKIA..."
+                     :help             (deferred-tru "Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile).")
+                     ;; The default chain resolves the instance's own AWS identity, which on Metabase Cloud belongs
+                     ;; to the operator rather than the tenant, so hosted deployments must bring explicit keys.
+                     :hosted-required? true
+                     :hosted-help      (deferred-tru "On Metabase Cloud, Bedrock always authenticates with your own AWS keys.")
+                     :docs-url         "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"}
+                    {:key              :secret-access-key
+                     :label            (deferred-tru "Secret access key")
+                     :type             :password
+                     :hosted-required? true}
                     {:key     :region
                      :label   (deferred-tru "Region")
                      :type    :select
@@ -325,43 +326,22 @@
 (def ^:private provider-type-by-name
   (into {} (map (juxt :type identity)) provider-type-registry))
 
-(defn- hosted-required-fields
-  "The field keys a hosted deployment can mark required outright. A single `:hosted-required-any` group is a
-  mandatory set rather than a choice between alternatives, so each of its fields is required on its own; with
-  several groups any one of them will do and none of their fields is."
-  [hosted-required-any]
-  (if (= 1 (count hosted-required-any))
-    (set (first hosted-required-any))
-    #{}))
-
 (defn- hosted-provider-type
-  "`entry` adjusted for a hosted deployment: `:hosted-required-any` groups become `:required-any`, the fields of a
-  lone group are marked required so the form labels them and screen readers announce them, and a field's
-  `:hosted-help` replaces its `:help`. Everything downstream (validation, completeness, the connection form) reads
-  the entry through [[provider-type]], so this is the one place hosted policy is applied."
-  [{:keys [hosted-required-any] :as entry}]
-  (let [required-keys (hosted-required-fields hosted-required-any)]
-    (cond-> entry
-      hosted-required-any (update :required-any (fnil into []) hosted-required-any)
-      :always             (update :fields
-                                  (partial mapv (fn [{:keys [key hosted-help] :as field}]
-                                                  (cond-> field
-                                                    hosted-help             (assoc :help hosted-help)
-                                                    (required-keys key)     (assoc :required? true))))))))
-
-(defn hosted?
-  "Whether hosted credential policy applies. [[premium-features/is-hosted?]] reads the `:hosting` license feature,
-  which reads as absent while the token service is unreachable, so an indeterminate token status counts as hosted
-  too: on Cloud a keyless Bedrock connection would otherwise sign as the operator."
-  []
-  (or (premium-features/is-hosted?)
-      (nil? (premium-features/canonically-has-feature? :hosting))))
+  "`entry` adjusted for a hosted deployment: a field's `:hosted-required?` makes it required and its `:hosted-help`
+  replaces its `:help`. Everything downstream (validation, completeness, the connection form) reads the entry
+  through [[provider-type]], so this is the one place hosted policy is applied."
+  [entry]
+  (update entry :fields
+          (partial mapv (fn [{:keys [hosted-help hosted-required?] :as field}]
+                          (cond-> field
+                            hosted-help      (assoc :help hosted-help)
+                            hosted-required? (assoc :required? true))))))
 
 (defn provider-type
   "The registry entry for `type-name`, or nil when it is not a known provider type."
   [type-name]
   (when-let [entry (get provider-type-by-name type-name)]
-    (cond-> entry (hosted?) hosted-provider-type)))
+    (cond-> entry (premium-features/is-hosted?) hosted-provider-type)))
 
 (defn provider-types
   "Every registered provider type."
@@ -472,23 +452,9 @@
                                           required-any)))
                       {:status-code 400 :required-any required-any})))))
 
-(defn- validate-all-or-none!
-  "Throw a 400 when `config` carries part of one of `type-name`'s `:all-or-none` credential groups: for Bedrock, an
-  access key without its secret."
-  [type-name config]
-  (let [{:keys [all-or-none fields]} (provider-type type-name)
-        label-for                    (into {} (map (juxt :key :label)) fields)
-        carried?                     #(u/trimmed-string (get config %))]
-    (doseq [group all-or-none]
-      (when (and (some carried? group) (not-every? carried? group))
-        (throw (ex-info (tru "{0} needs {1} together, or neither."
-                             type-name
-                             (str/join " + " (map (comp str label-for) group)))
-                        {:status-code 400 :all-or-none all-or-none}))))))
-
 (defn- validate-requires!
-  "Throw a 400 when `config` carries a field without the fields its `:requires` entry names: for Bedrock, a
-  session token without its access key pair."
+  "Throw a 400 when `config` carries a field without the fields its `:requires` entry names: for Bedrock, half an
+  access key pair, or a session token without the pair."
   [type-name config]
   (let [{:keys [requires fields]} (provider-type type-name)
         label-for                 (into {} (map (juxt :key :label)) fields)
@@ -504,8 +470,8 @@
 (defn validate-config!
   "Check a connection's `:config` against its provider type's field descriptors: required fields are present, fields
   that declare a `:prefix` start with it, `:options` values are among the options, per-field `:validate` hooks pass,
-  one of the type's `:required-any` credential groups is carried, no `:all-or-none` group is carried in part, and
-  no field is carried without its `:requires` dependencies. Throws a 400 on the first problem."
+  one of the type's `:required-any` credential groups is carried, and no field is carried without the fields its
+  `:requires` entry names. Throws a 400 on the first problem."
   [type-name config]
   (when-not (provider-type type-name)
     (throw (ex-info (tru "Unknown provider type {0}." (pr-str type-name))
@@ -513,7 +479,6 @@
   (doseq [field (:fields (provider-type type-name))]
     (validate-field! type-name field config))
   (validate-required-any! type-name config)
-  (validate-all-or-none! type-name config)
   (validate-requires! type-name config))
 
 (defn credentials-complete?
@@ -522,18 +487,18 @@
   A required field the registry gives a `:default` counts as carried: [[with-field-defaults]] supplies it when the
   connection is resolved, so leaving it untouched is the admin accepting the value its form showed. A type with
   `:required-any` groups additionally needs one of them carried in full — Google's fields are individually optional
-  because either credential will do, which without the groups would make an empty config count as complete. A type
-  with `:all-or-none` groups needs each of them carried in full or not at all: Bedrock's key pair is optional
-  because a keyless connection signs with the AWS default credentials chain, but half a pair authenticates nothing.
+  because either credential will do, which without the groups would make an empty config count as complete. A field
+  with a `:requires` entry needs the fields it names: Bedrock's key pair is optional because a keyless connection
+  signs with the AWS default credentials chain, but half a pair authenticates nothing.
 
   [[model-fields]] are exempt: they name what to call, not what authenticates the call, and a connection can
   legitimately take its model from the `connection-key/model` reference instead — which is where an Azure
   deployment configured before the connection list existed still lives. [[validate-config!]] still requires them
   of anything saved through the API, so only the environment and a hand-written `llm-providers` can omit them."
   [type-name config]
-  (let [{:keys [fields required-any all-or-none requires]} (provider-type type-name)
-        model-keys                                         (set (model-fields type-name))
-        carried?                                           #(u/trimmed-string (get config %))]
+  (let [{:keys [fields required-any requires]} (provider-type type-name)
+        model-keys                              (set (model-fields type-name))
+        carried?                                #(u/trimmed-string (get config %))]
     (and (every? (fn [{:keys [key required? default]}]
                    (or (not required?)
                        default
@@ -543,9 +508,6 @@
          (or (empty? required-any)
              (boolean (some (fn [group] (every? carried? group))
                             required-any)))
-         (every? (fn [group] (or (every? carried? group)
-                                 (not-any? carried? group)))
-                 all-or-none)
          (every? (fn [[field-key deps]]
                    (or (not (carried? field-key))
                        (every? carried? deps)))
