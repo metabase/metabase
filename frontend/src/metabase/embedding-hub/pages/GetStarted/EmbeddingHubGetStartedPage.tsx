@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -59,7 +59,10 @@ type HubStep = {
   onClick?: () => void;
 };
 
-type NumberedCard = (step: number) => ReactNode;
+type HubCard =
+  | { type: "step"; step: HubStep }
+  | { type: "theme" }
+  | { type: "ai" };
 
 const UTM_CAMPAIGN = "embedding-hub";
 const UTM_CONTENT = "embedding-hub-get-started-page";
@@ -126,60 +129,58 @@ export function EmbeddingHubGetStartedPage() {
     [openEmbedModal],
   );
 
-  function renderStep(step: HubStep, position: number) {
-    const locked = lockedSteps[step.id];
+  function renderCard(card: HubCard, position: number) {
+    switch (card.type) {
+      case "step": {
+        const { step } = card;
+        const locked = lockedSteps[step.id];
 
-    return (
-      <ChecklistCard
-        key={step.id}
-        step={position}
-        icon={step.icon}
-        title={step.title}
-        description={step.description}
-        isDone={completedSteps[step.id]}
-        isLocked={locked?.isLocked ?? false}
-        lockedReason={locked?.reason}
-        to={step.to}
-        onClick={step.onClick}
-      />
-    );
+        return (
+          <ChecklistCard
+            key={step.id}
+            step={position}
+            icon={step.icon}
+            title={step.title}
+            description={step.description}
+            isDone={completedSteps[step.id]}
+            isLocked={locked?.isLocked ?? false}
+            lockedReason={locked?.reason}
+            to={step.to}
+            onClick={step.onClick}
+          />
+        );
+      }
+      case "theme":
+        return (
+          <ThemeCard
+            key="custom-theme"
+            step={position}
+            isLocked={!hasSimpleEmbedding}
+            isDone={completedSteps["create-custom-theme"]}
+          />
+        );
+      case "ai":
+        return (
+          <AiCard
+            key="configure-ai"
+            step={position}
+            isConfigured={completedSteps["configure-ai"]}
+          />
+        );
+    }
   }
-
-  const themeCard: NumberedCard = (position) => (
-    <ThemeCard
-      key="custom-theme"
-      step={position}
-      isLocked={!hasSimpleEmbedding}
-      isDone={completedSteps["create-custom-theme"]}
-    />
-  );
-  const aiCard: NumberedCard = (position) => (
-    <AiCard
-      key="configure-ai"
-      step={position}
-      isConfigured={completedSteps["configure-ai"]}
-    />
-  );
 
   // Without modular embedding every Fine-tune step is locked, and AI is the one
   // advanced step still reachable -- so the design promotes it into the first
   // section.
-  const firstSection: NumberedCard[] = [
-    ...baseEmbedSteps.map(
-      (step): NumberedCard =>
-        (position) =>
-          renderStep(step, position),
-    ),
-    ...(hasSimpleEmbedding ? [] : [aiCard]),
+  const firstSection: HubCard[] = [
+    ...baseEmbedSteps.map((step): HubCard => ({ type: "step", step })),
+    ...(hasSimpleEmbedding ? [] : [{ type: "ai" as const }]),
   ];
-  const fineTuneSection: NumberedCard[] = [
-    ...fineTuneSteps.map(
-      (step): NumberedCard =>
-        (position) =>
-          renderStep(step, position),
-    ),
-    themeCard,
-    ...(hasSimpleEmbedding ? [aiCard] : []),
+  const fineTuneSection: HubCard[] = [
+    ...fineTuneSteps.map((step): HubCard => ({ type: "step", step })),
+    { type: "theme" },
+    ...(hasSimpleEmbedding ? [{ type: "ai" as const }] : []),
   ];
 
   return (
@@ -201,7 +202,7 @@ export function EmbeddingHubGetStartedPage() {
         <Box
           className={cx(S.cardGrid, !hasSimpleEmbedding && S.cardGridTwoColumn)}
         >
-          {firstSection.map((renderCard, index) => renderCard(index + 1))}
+          {firstSection.map((card, index) => renderCard(card, index + 1))}
         </Box>
       </Stack>
 
@@ -231,8 +232,8 @@ export function EmbeddingHubGetStartedPage() {
         <Box
           className={cx(S.cardGrid, !hasSimpleEmbedding && S.cardGridTwoColumn)}
         >
-          {fineTuneSection.map((renderCard, index) =>
-            renderCard(firstSection.length + index + 1),
+          {fineTuneSection.map((card, index) =>
+            renderCard(card, firstSection.length + index + 1),
           )}
         </Box>
       </Stack>
