@@ -20,9 +20,13 @@
      ~@body))
 
 (defmacro with-temp-index-table
-  "Create a temporary index table for the duration of the body."
+  "Create a temporary index table for the duration of the body.
+
+  The table belongs to the app DB, so app-DB support is the condition. [[metabase.search.core/supports-index?]] is
+  true for any active engine, so with semantic search enabled it would have MySQL and MariaDB build a table their
+  app DB cannot hold."
   [& body]
-  `(when (search/supports-index?)
+  `(when (search.engine/supported-engine? :search.engine/appdb)
      (search.index/with-temp-index-table
        ;; We need ingestion to happen on the same thread so that it uses the right search index.
        (with-sync-search-indexing
@@ -32,16 +36,11 @@
   "Like [[with-temp-index-table]], but always runs `body`, even when the app DB cannot support an index.
 
   Use this for tests that cover both indexed and non-indexed behavior. Wrapping such a test in
-  [[with-temp-index-table]] would skip it entirely on MySQL and MariaDB.
-
-  The table belongs to the app DB, so app-DB support is the condition. [[metabase.search.core/supports-index?]] is
-  true for any active engine; with semantic search enabled on MySQL or MariaDB, it can select the wrong branch."
+  [[with-temp-index-table]] would skip it entirely on MySQL and MariaDB."
   [& body]
   `(let [thunk# (fn [] ~@body)]
      (if (search.engine/supported-engine? :search.engine/appdb)
-       (search.index/with-temp-index-table
-         ;; Ingestion must run on this thread so it uses the index table created here.
-         (with-sync-search-indexing (thunk#)))
+       (with-temp-index-table (thunk#))
        (thunk#))))
 
 (defmacro with-appdb-search-if-available*
@@ -61,7 +60,7 @@
 (defmacro with-appdb-search-if-available-otherwise-legacy
   "Create a temporary index table for the duration of the body."
   [& body]
-  `(if (search/supports-index?)
+  `(if (search.engine/supported-engine? :search.engine/appdb)
      (with-appdb-search-if-available* ~@body)
      ~@body))
 
