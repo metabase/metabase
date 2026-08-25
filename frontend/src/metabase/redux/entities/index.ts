@@ -1,5 +1,6 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import { tablesReducer } from "./tables-reducer";
 
@@ -39,19 +40,27 @@ function mergeEntities(
   newEntities: Record<string, unknown>,
 ): SliceState {
   const result = { ...entities };
+  let hasChanges = false;
   for (const id of Object.keys(newEntities)) {
     const entry = newEntities[id];
     if (entry == null) {
-      delete result[id];
+      if (id in result) {
+        delete result[id];
+        hasChanges = true;
+      }
     } else {
-      result[id] = {
+      const merged = {
         ...(result[id] ?? {}),
         // Unjustified type cast. FIXME
         ...(entry as Record<string, unknown>),
       };
+      if (!_.isEqual(merged, result[id])) {
+        result[id] = merged;
+        hasChanges = true;
+      }
     }
   }
-  return result;
+  return hasChanges ? result : entities;
 }
 
 /**
