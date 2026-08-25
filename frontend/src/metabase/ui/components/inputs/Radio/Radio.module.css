@@ -118,11 +118,6 @@
   }
 }
 
-.cardLeftSection {
-  display: flex;
-  flex-shrink: 0;
-}
-
 .cardBody {
   display: flex;
   flex-direction: column;

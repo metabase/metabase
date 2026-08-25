@@ -23,7 +23,7 @@ export const RadioCard = ({
 }: RadioCardProps) => (
   <MantineRadioCard disabled={disabled} {...props}>
     <MantineRadioIndicator disabled={disabled} />
-    {leftSection && <div className={S.cardLeftSection}>{leftSection}</div>}
+    {leftSection}
     <div className={S.cardBody}>
       {label && <div className={S.cardLabel}>{label}</div>}
       {description && <div className={S.cardDescription}>{description}</div>}
