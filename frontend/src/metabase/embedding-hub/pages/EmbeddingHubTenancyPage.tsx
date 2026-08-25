@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
   resetPermissionsBasePath,
   setPermissionsBasePath,
@@ -8,7 +9,10 @@ import {
 import { UpsellTenants } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
-import * as TenantUrls from "metabase/common/tenants";
+import {
+  resetTenantsBasePath,
+  setTenantsBasePath,
+} from "metabase/common/tenants";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Outlet, useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -35,10 +39,10 @@ const TENANTS_ILLUSTRATION = "app/assets/img/upsell-embedding-tenants.svg";
 /**
  * A second view of admin People's tenant surfaces, not a move — admin keeps its
  * copy, including the tab bar, which comes from PeopleNav outside the route
- * fragment. The page branches on the license and the setting rather than reusing
- * `createTenantsRouteGuard`, which redirects to `/admin/people` when tenants are
- * licensed but `use-tenants` is off — the state a hub user lands in by clicking
- * a tab that is always visible.
+ * fragment. Branches on license and the setting itself rather than reusing
+ * `createTenantsRouteGuard`: that guard redirects the licensed-but-disabled
+ * state to `/admin/people`, but here the tab that leads to it is always
+ * clickable, so that state renders in place instead.
  */
 export function EmbeddingHubTenancyPage() {
   const hasTenants = useHasTokenFeature("tenants");
@@ -47,20 +51,20 @@ export function EmbeddingHubTenancyPage() {
   // Declares the hub as both the tenant and the permissions editor's URL
   // builders' host, the same way EmbeddingHubPermissionsBasePath does when the
   // Permissions tab itself is mounted.
-  TenantUrls.setTenantsBasePath(Urls.embeddingHubTenancy());
+  setTenantsBasePath(Urls.embeddingHubTenancy());
   setPermissionsBasePath(Urls.embeddingHubPermissions());
   useEffect(() => {
     return () => {
-      TenantUrls.resetTenantsBasePath();
+      resetTenantsBasePath();
       resetPermissionsBasePath();
     };
   }, []);
 
   return (
-    <Stack gap="xl">
-      <Title order={1} c="text-primary">{t`Tenancy`}</Title>
-
-      {!hasTenants && <UpsellTenants align="flex-start" />}
+    <SettingsPageWrapper title={t`Tenancy`} gap="xl">
+      {!hasTenants && (
+        <UpsellTenants align="flex-start" source="embedding-hub-tenancy" />
+      )}
 
       {hasTenants && !isUsingTenants && <EnableTenancyCard />}
 
@@ -75,26 +79,27 @@ export function EmbeddingHubTenancyPage() {
           </Box>
         </>
       )}
-    </Stack>
+    </SettingsPageWrapper>
   );
 }
 
 function TenancyTabs() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const root = Urls.embeddingHubTenancy();
+  const tenancyBasePath = Urls.embeddingHubTenancy();
 
   const tabs = [
-    { label: t`Tenants`, to: root },
-    { label: t`Tenant groups`, to: `${root}/groups` },
-    { label: t`Tenant users`, to: `${root}/people` },
+    { label: t`Tenants`, to: tenancyBasePath },
+    { label: t`Tenant groups`, to: `${tenancyBasePath}/groups` },
+    { label: t`Tenant users`, to: `${tenancyBasePath}/people` },
   ];
 
   // The listing also renders at /:tenantId, so anything that is not groups or
   // users belongs to the Tenants tab.
   const activeTab =
-    tabs.find((tab) => tab.to !== root && pathname.startsWith(tab.to))?.to ??
-    root;
+    tabs.find(
+      (tab) => tab.to !== tenancyBasePath && pathname.startsWith(tab.to),
+    )?.to ?? tenancyBasePath;
 
   return (
     <Group justify="space-between" align="center">
@@ -186,7 +191,7 @@ function TenantsDocsLink({ label }: { label: string }) {
         <Text c="brand" fw="bold">
           {label}
         </Text>
-        <Icon name="external" size={12} c="brand" />
+        <Icon name="external" size={12} c="brand" aria-hidden />
       </Group>
     </ExternalLink>
   );

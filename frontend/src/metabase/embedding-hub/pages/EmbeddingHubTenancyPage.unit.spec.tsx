@@ -61,6 +61,9 @@ describe("EmbeddingHubTenancyPage", () => {
       expect(
         await screen.findByText("Use a multi-tenant user strategy"),
       ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Securely share data with external users/),
+      ).toBeInTheDocument();
 
       expect(
         screen.queryByRole("button", { name: "Enable multi-tenancy" }),
@@ -128,7 +131,7 @@ describe("EmbeddingHubTenancyPage", () => {
       setup({ hasTenants: true, isUsingTenants: true });
 
       const docsLink = await screen.findByRole("link", {
-        name: /Documentation/,
+        name: "Documentation",
       });
 
       expect(docsLink).toHaveAttribute(
