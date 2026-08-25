@@ -12,7 +12,7 @@ import type { ComputedVisualizationSettings } from "metabase/visualizations/type
 import type {
   SettingsExtra,
   Widget,
-} from "metabase/visualizations/types/visualization";
+} from "metabase/visualizations/types/definition";
 import type Question from "metabase-lib/v1/Question";
 import type {
   RawSeries,

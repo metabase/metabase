@@ -44,7 +44,7 @@ export function getGroupHeaderBgTint(
     .string();
 }
 
-export function getChartPadding(isDashboard: boolean) {
+export function getTreemapContainerPadding(isDashboard: boolean) {
   const side = isDashboard ? "1rem" : "2rem";
   return `0 ${side} ${side} ${side}`;
 }

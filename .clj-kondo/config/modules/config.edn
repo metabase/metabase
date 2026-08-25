@@ -878,6 +878,7 @@
    :uses #{analytics-interface
            app-db
            appearance
+           audit-app
            auth-provider
            classloader
            config
@@ -2051,6 +2052,7 @@
            dashboards
            events
            lib
+           lib-be
            models
            parameters
            queries
