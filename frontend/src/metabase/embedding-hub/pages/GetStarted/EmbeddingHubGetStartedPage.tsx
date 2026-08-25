@@ -259,7 +259,7 @@ function getBaseEmbedSteps({
       id: "add-data",
       icon: "database",
       title: t`Connect a database`,
-      description: t`Automatically generate a dashboard from your data using x-rays.`,
+      description: t`Connect your own database or upload a CSV and start working with your real data.`,
       onClick: () => setOpenedModal({ type: "add-data", initialTab: "db" }),
     },
     {
