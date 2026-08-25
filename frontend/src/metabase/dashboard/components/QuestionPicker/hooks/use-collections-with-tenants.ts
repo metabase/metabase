@@ -13,9 +13,10 @@ import type { ExpandedCollection } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
 import type { CollectionId } from "metabase-types/api";
 
+import { flattenCollectionTree } from "../utils/tenant-collection-tree";
 import {
-  flattenCollectionTree,
   mergeTenantCollections,
+  mergeTenantUserCollections,
 } from "../utils/tenant-collections";
 
 /**
@@ -103,19 +104,26 @@ export function useCollectionsWithTenants(
         PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
       ) ?? t`Shared collections`;
 
-    return mergeTenantCollections(
-      collectionsById,
-      sharedCollectionsById,
-      tenantSpecificCollectionsById,
-      displayName,
-      tenantCollectionNamesById,
-    );
+    return isTenantUser
+      ? mergeTenantUserCollections({
+          baseCollectionsById: collectionsById,
+          sharedCollectionsById,
+          tenantSpecificCollectionsById,
+        })
+      : mergeTenantCollections({
+          baseCollectionsById: collectionsById,
+          sharedCollectionsById,
+          tenantSpecificCollectionsById,
+          sharedCollectionsName: displayName,
+          tenantCollectionNamesById,
+        });
   }, [
     isTenantsActive,
     sharedTenantCollections,
     tenantSpecificCollections,
     tenantCollectionNamesById,
     collectionsById,
+    isTenantUser,
     userPersonalCollectionId,
   ]);
 }

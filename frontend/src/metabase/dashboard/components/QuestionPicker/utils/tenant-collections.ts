@@ -5,14 +5,36 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-export const SHARED_TENANT_COLLECTIONS_ROOT_ID: CollectionId =
-  "shared-tenant-collections-root";
+import {
+  COLLECTIONS_TOP_LEVEL_ID,
+  SHARED_TENANT_COLLECTIONS_ROOT_ID,
+  TENANT_SPECIFIC_COLLECTIONS_ROOT_ID,
+  createSyntheticTopLevel,
+  mergeBaseCollectionsAtTopLevel,
+  mergeCollectionNamespaceChildren,
+} from "./tenant-collection-tree";
 
-export const TENANT_SPECIFIC_COLLECTIONS_ROOT_ID: CollectionId =
-  "tenant-specific-collections-root";
+/**
+ * Collection trees used to construct the question picker for tenant-aware users.
+ */
+interface TenantCollectionTrees {
+  baseCollectionsById: Record<CollectionId, ExpandedCollection>;
+  sharedCollectionsById: Record<CollectionId, ExpandedCollection>;
+  tenantSpecificCollectionsById: Record<CollectionId, ExpandedCollection>;
+}
 
-export const COLLECTIONS_TOP_LEVEL_ID: CollectionId = "collections-top-level";
+/**
+ * Input to populate the question picker's synthetic root
+ * for non-tenant users, including admins.
+ */
+interface MergeTenantCollectionsArgs extends TenantCollectionTrees {
+  sharedCollectionsName: string;
+  tenantCollectionNamesById?: ReadonlyMap<CollectionId, string>;
+}
 
+/**
+ * Represents the synthetic `Collections` root for tenant-aware users.
+ */
 interface TenantCollectionSyntheticRoot {
   id: CollectionId;
   name: string;
@@ -20,25 +42,27 @@ interface TenantCollectionSyntheticRoot {
   collectionNamesById?: ReadonlyMap<CollectionId, string>;
 }
 
-export const flattenCollectionTree = (
-  collections: Collection[],
-): Collection[] =>
-  collections.flatMap((collection) => [
-    collection,
-    ...flattenCollectionTree(collection.children ?? []),
-  ]);
-
-function mergeTenantCollectionNamespace(
-  collectionsById: Record<CollectionId, ExpandedCollection>,
-  namespaceCollectionsById: Record<CollectionId, ExpandedCollection>,
-  topLevel: ExpandedCollection,
-  { id, name, namespace, collectionNamesById }: TenantCollectionSyntheticRoot,
-): ExpandedCollection | null {
-  const namespaceRoot = namespaceCollectionsById[ROOT_COLLECTION.id];
-  if (!namespaceRoot?.children.length) {
-    return null;
-  }
-
+/**
+ * Adds one synthetic collection under the synthetic `Collections` root.
+ *
+ * Collections/
+ *   Shared collections/  # adds this collection
+ *     Finance/
+ *
+ * Updates the collection path and parent links for this new hierarchy.
+ * Returns `null` when the namespace has no collections.
+ */
+function addSyntheticCollectionToRoot({
+  topLevel,
+  syntheticRoot: { id, name, namespace, collectionNamesById },
+  collectionsById,
+  namespaceCollectionsById,
+}: {
+  topLevel: ExpandedCollection;
+  syntheticRoot: TenantCollectionSyntheticRoot;
+  collectionsById: Record<CollectionId, ExpandedCollection>;
+  namespaceCollectionsById: Record<CollectionId, ExpandedCollection>;
+}): ExpandedCollection | null {
   const syntheticRoot: ExpandedCollection = {
     id,
     name,
@@ -53,130 +77,138 @@ function mergeTenantCollectionNamespace(
     children: [],
   };
 
-  const directCollectionIds = new Set(
-    namespaceRoot.children.map((collection) => collection.id),
-  );
+  const children = mergeCollectionNamespaceChildren({
+    collectionsById,
+    namespaceCollectionsById,
+    parent: syntheticRoot,
+    pathPrefix: [COLLECTIONS_TOP_LEVEL_ID, syntheticRoot.id],
+    getCollectionName: (collection) =>
+      collectionNamesById?.get(collection.id) ?? collection.name,
+  });
 
-  for (const collection of namespaceRoot.children) {
-    const mergedCollection = {
-      ...collection,
-      name: collectionNamesById?.get(collection.id) ?? collection.name,
-      path: [COLLECTIONS_TOP_LEVEL_ID, syntheticRoot.id],
-      parent: syntheticRoot,
-    };
-
-    syntheticRoot.children.push(mergedCollection);
-    collectionsById[collection.id] = mergedCollection;
+  if (children.length === 0) {
+    return null;
   }
 
-  for (const collection of Object.values(namespaceCollectionsById)) {
-    if (
-      collection.id === ROOT_COLLECTION.id ||
-      directCollectionIds.has(collection.id)
-    ) {
-      continue;
-    }
-
-    const path = collection.path
-      ? [
-          COLLECTIONS_TOP_LEVEL_ID,
-          syntheticRoot.id,
-          ...collection.path.filter((pathId) => pathId !== ROOT_COLLECTION.id),
-        ]
-      : null;
-
-    const parent = collection.parent
-      ? (collectionsById[collection.parent.id] ?? collection.parent)
-      : null;
-
-    collectionsById[collection.id] = { ...collection, path, parent };
-  }
+  syntheticRoot.children = children;
 
   return syntheticRoot;
 }
 
-export function mergeTenantCollections(
-  baseCollectionsById: Record<CollectionId, ExpandedCollection>,
-  sharedCollectionsById: Record<CollectionId, ExpandedCollection>,
-  tenantSpecificCollectionsById: Record<CollectionId, ExpandedCollection>,
-  sharedCollectionsName: string,
-  tenantCollectionNamesById?: ReadonlyMap<CollectionId, string>,
-): Record<CollectionId, ExpandedCollection> {
-  const rootCollection = baseCollectionsById[ROOT_COLLECTION.id];
-
-  const syntheticTopLevel: ExpandedCollection = {
-    id: COLLECTIONS_TOP_LEVEL_ID,
-    name: t`Collections`,
-    description: null,
-    can_write: false,
-    can_restore: false,
-    can_delete: false,
-    namespace: null,
-    location: null,
-    path: [],
-    parent: null,
-    children: [],
-  };
-
+/**
+ * Builds the question picker tree for admins and other non-tenant users.
+ *
+ * It adds synthetic shared collections and tenant-specific collections to the tree.
+ */
+export function mergeTenantCollections({
+  baseCollectionsById,
+  sharedCollectionsById,
+  tenantSpecificCollectionsById,
+  sharedCollectionsName,
+  tenantCollectionNamesById,
+}: MergeTenantCollectionsArgs): Record<CollectionId, ExpandedCollection> {
+  const syntheticTopLevel = createSyntheticTopLevel();
   const mergedCollectionsById = { ...baseCollectionsById };
 
-  mergedCollectionsById[ROOT_COLLECTION.id] = {
-    ...rootCollection,
-    path: [COLLECTIONS_TOP_LEVEL_ID],
-    parent: syntheticTopLevel,
-  };
-
-  for (const collection of Object.values(baseCollectionsById)) {
-    if (collection.id === ROOT_COLLECTION.id || !collection.path) {
-      continue;
-    }
-
-    mergedCollectionsById[collection.id] = {
-      ...collection,
-      path: [COLLECTIONS_TOP_LEVEL_ID, ...collection.path],
-    };
-  }
-
-  const sharedSyntheticRoot = mergeTenantCollectionNamespace(
+  const mergedRoot = mergeBaseCollectionsAtTopLevel({
+    baseCollectionsById,
     mergedCollectionsById,
-    sharedCollectionsById,
     syntheticTopLevel,
-    {
+  });
+
+  const sharedSyntheticRoot = addSyntheticCollectionToRoot({
+    collectionsById: mergedCollectionsById,
+    namespaceCollectionsById: sharedCollectionsById,
+    topLevel: syntheticTopLevel,
+    syntheticRoot: {
       id: SHARED_TENANT_COLLECTIONS_ROOT_ID,
       name: sharedCollectionsName,
       namespace: PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
     },
-  );
+  });
 
-  const tenantSpecificSyntheticRoot = mergeTenantCollectionNamespace(
-    mergedCollectionsById,
-    tenantSpecificCollectionsById,
-    syntheticTopLevel,
-    {
+  const tenantSpecificSyntheticRoot = addSyntheticCollectionToRoot({
+    collectionsById: mergedCollectionsById,
+    namespaceCollectionsById: tenantSpecificCollectionsById,
+    topLevel: syntheticTopLevel,
+    syntheticRoot: {
       id: TENANT_SPECIFIC_COLLECTIONS_ROOT_ID,
       name: t`Tenant collections`,
       namespace: PLUGIN_TENANTS.TENANT_SPECIFIC_NAMESPACE,
       collectionNamesById: tenantCollectionNamesById,
     },
-  );
+  });
 
   syntheticTopLevel.children = [
-    mergedCollectionsById[ROOT_COLLECTION.id],
+    mergedRoot,
     sharedSyntheticRoot,
     tenantSpecificSyntheticRoot,
   ].filter(
     (collection): collection is ExpandedCollection => collection != null,
   );
 
-  if (sharedSyntheticRoot) {
-    mergedCollectionsById[SHARED_TENANT_COLLECTIONS_ROOT_ID] =
-      sharedSyntheticRoot;
+  for (const syntheticRoot of [
+    sharedSyntheticRoot,
+    tenantSpecificSyntheticRoot,
+  ]) {
+    if (syntheticRoot) {
+      mergedCollectionsById[syntheticRoot.id] = syntheticRoot;
+    }
   }
 
-  if (tenantSpecificSyntheticRoot) {
-    mergedCollectionsById[TENANT_SPECIFIC_COLLECTIONS_ROOT_ID] =
-      tenantSpecificSyntheticRoot;
-  }
+  mergedCollectionsById[COLLECTIONS_TOP_LEVEL_ID] = syntheticTopLevel;
+
+  return mergedCollectionsById;
+}
+
+/**
+ * Builds the question-picker tree for tenant users,
+ * who uses full-app embedding or uses the internal app:
+ *
+ * Collections/
+ *   Our data/   # tenant collection
+ *   Finance/    # shared collection
+ *
+ * This assumes that the tenant user has access to dashboard creation.
+ * An admin or internal user will never see this tree.
+ */
+export function mergeTenantUserCollections({
+  baseCollectionsById,
+  sharedCollectionsById,
+  tenantSpecificCollectionsById,
+}: TenantCollectionTrees): Record<CollectionId, ExpandedCollection> {
+  const syntheticTopLevel = createSyntheticTopLevel();
+  const mergedCollectionsById = { ...baseCollectionsById };
+
+  const tenantCollections = mergeCollectionNamespaceChildren({
+    collectionsById: mergedCollectionsById,
+    namespaceCollectionsById: tenantSpecificCollectionsById,
+    parent: syntheticTopLevel,
+    pathPrefix: [COLLECTIONS_TOP_LEVEL_ID],
+    getCollectionName: () => t`Our data`,
+  });
+
+  const sharedCollections = mergeCollectionNamespaceChildren({
+    collectionsById: mergedCollectionsById,
+    namespaceCollectionsById: sharedCollectionsById,
+    parent: syntheticTopLevel,
+    pathPrefix: [COLLECTIONS_TOP_LEVEL_ID],
+  });
+
+  const rootCollection = baseCollectionsById[ROOT_COLLECTION.id];
+
+  const mergedRoot = mergeBaseCollectionsAtTopLevel({
+    baseCollectionsById,
+    mergedCollectionsById,
+    syntheticTopLevel,
+    shouldIncludeRoot: rootCollection.children.length > 0,
+  });
+
+  syntheticTopLevel.children = [
+    ...tenantCollections,
+    ...sharedCollections,
+    ...(mergedRoot ? [mergedRoot] : []),
+  ];
 
   mergedCollectionsById[COLLECTIONS_TOP_LEVEL_ID] = syntheticTopLevel;
 

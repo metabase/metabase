@@ -33,7 +33,7 @@ import {
   COLLECTIONS_TOP_LEVEL_ID,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
   TENANT_SPECIFIC_COLLECTIONS_ROOT_ID,
-} from "./utils/tenant-collections";
+} from "./utils/tenant-collection-tree";
 
 interface QuestionPickerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
