@@ -10,10 +10,15 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.server.streaming-response :as sr]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.nio.charset StandardCharsets)))
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
@@ -46,13 +51,22 @@
   (api/check-403 (perms/has-any-transforms-permission? api/*current-user-id*))
   (python-library/update-python-library-source! path (:source body)))
 
+(def ^:private test-run-response
+  [:map
+   [:logs :string]
+   [:error {:optional true} [:map [:message i18n/LocalizedString]]]
+   [:output {:optional true} [:map
+                              [:cols [:sequential [:map [:name :string]]]]
+                              [:rows [:sequential :any]]]]])
+
+(defn- write-json-body!
+  "Write `body` onto `os` as the JSON response body."
+  [^OutputStream os body]
+  (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+    (json/encode-to body writer {})))
+
 (api.macros/defendpoint :post "/test-run"
-  :- [:map
-      [:logs :string]
-      [:error {:optional true} [:map [:message i18n/LocalizedString]]]
-      [:output {:optional true} [:map
-                                 [:cols [:sequential [:map [:name :string]]]]
-                                 [:rows [:sequential :any]]]]]
+  :- (sr/streaming-response-schema test-run-response)
   "Evaluate an ad-hoc python transform on a sample of input data.
   Intended for short runs for early feedback. Input/output/timeout limits apply."
   [_
@@ -75,19 +89,23 @@
     (doseq [table-id table-ids]
       (api/check-403 (mi/can-query? :model/Table table-id))))
   ;; NOTE: we do not test database support, as there is no write target.
-  (let [result (python-runner/execute-and-read-output!
-                {:code            code
-                 :source-tables   source_tables
-                 :per-input-limit per_input_row_limit
-                 :row-limit       output_row_limit
-                 :timeout-secs    (transforms-python.settings/python-runner-test-run-timeout-seconds)})
-        logs   (str/join "\n" (map :message (:logs result)))]
-    (if (= :succeeded (:status result))
-      {:logs   logs
-       :output {:cols (mapv #(select-keys % [:name]) (:cols result))
-                :rows (:rows result)}}
-      {:logs  logs
-       :error {:message (:message result)}})))
+  ;; The runner call blocks for the length of the run, so it streams from the async pool rather than
+  ;; holding a Jetty request thread.
+  (sr/streaming-response {:content-type "application/json; charset=utf-8", :status 200} [os _canceled-chan]
+    (let [result (python-runner/execute-and-read-output!
+                  {:code            code
+                   :source-tables   source_tables
+                   :per-input-limit per_input_row_limit
+                   :row-limit       output_row_limit
+                   :timeout-secs    (transforms-python.settings/python-runner-test-run-timeout-seconds)})
+          logs   (str/join "\n" (map :message (:logs result)))]
+      (write-json-body! os
+                        (if (= :succeeded (:status result))
+                          {:logs   logs
+                           :output {:cols (mapv #(select-keys % [:name]) (:cols result))
+                                    :rows (:rows result)}}
+                          {:logs  logs
+                           :error {:message (:message result)}})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transforms-python` routes."
