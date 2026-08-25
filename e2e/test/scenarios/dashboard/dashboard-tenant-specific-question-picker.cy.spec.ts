@@ -56,7 +56,7 @@ describe("scenarios > dashboard > tenant-specific question picker", () => {
 
       H.sidebar()
         .findByTestId("breadcrumbs")
-        .should("contain", "Tenant collection: Acme")
+        .should("contain", "Acme")
         .and("not.contain", "Unknown");
 
       H.sidebar().findByText("Tenant questions").click();
@@ -68,7 +68,7 @@ describe("scenarios > dashboard > tenant-specific question picker", () => {
     });
   });
 
-  // Verify that the tenant-specific collection is added to the Our Analytics collection.
+  // Verify that Tenant collections and Our analytics are separate top-level entries.
   it("allows browsing into a tenant-specific collection from Our Analytics (EMB-2312)", () => {
     H.createDashboard({ name: "Our analytics dashboard" })
       .its("body")
@@ -81,9 +81,12 @@ describe("scenarios > dashboard > tenant-specific question picker", () => {
 
       H.sidebar()
         .findByTestId("breadcrumbs")
-        .should("contain", "Our analytics");
+        .should("contain", "Our analytics")
+        .findByText("Collections")
+        .click();
 
-      H.sidebar().findByText("Tenant collection: Acme").click();
+      H.sidebar().findByText("Tenant collections").click();
+      H.sidebar().findByText("Acme").click();
       H.sidebar().findByText("Tenant questions").click();
       H.sidebar().findByText("Tenant orders").click();
 

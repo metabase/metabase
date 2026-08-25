@@ -31,6 +31,7 @@ import { addDashboardQuestion } from "./actions";
 import {
   COLLECTIONS_TOP_LEVEL_ID,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
+  TENANT_SPECIFIC_COLLECTIONS_ROOT_ID,
   useCollectionsWithTenants,
 } from "./hooks/use-collections-with-tenants";
 
@@ -64,6 +65,8 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
   const isAtTopLevel = currentCollectionId === COLLECTIONS_TOP_LEVEL_ID;
   const isAtSharedTenantRoot =
     currentCollectionId === SHARED_TENANT_COLLECTIONS_ROOT_ID;
+  const isAtTenantSpecificRoot =
+    currentCollectionId === TENANT_SPECIFIC_COLLECTIONS_ROOT_ID;
   const collection = collectionsById[currentCollectionId];
   const crumbs = getCollectionBreadCrumbs(
     collection,
@@ -165,10 +168,11 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
         </>
       )}
 
-      {/* Hide the question list at top-level "Collections"
-          and "Shared collections" root. These have fake IDs that don't map to
-          real collections, so querying questions against them would fail. */}
-      {((!isAtSharedTenantRoot && !isAtTopLevel) || debouncedSearchText) && (
+      {/* Hide the question list at top-level "Collections" and tenant roots.
+          These have fake IDs that don't map to real collections, so querying
+          questions against them would fail. */}
+      {((!isAtSharedTenantRoot && !isAtTenantSpecificRoot && !isAtTopLevel) ||
+        debouncedSearchText) && (
         <QuestionList
           hasCollections={collections.length > 0}
           searchText={debouncedSearchText}
