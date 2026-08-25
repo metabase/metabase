@@ -18,6 +18,13 @@ const path = require("path");
 const root = process.argv[2];
 const port = Number(process.argv[3] || 8099);
 
+/**
+ * `off`, `low` or `high`. The backend emits these hints with
+ * `fetchpriority="low"`; the other two are here so the choice can be measured
+ * rather than argued.
+ */
+const preloadPriority = process.env.PRELOAD_PRIORITY || "low";
+
 if (!root) {
   console.error("usage: node serve.js <resources/frontend_client dir> [port]");
   process.exit(1);
@@ -58,8 +65,57 @@ const CONTENT_TYPES = {
 
 const IMMUTABLE = "public, max-age=31536000, immutable";
 
-function serveTemplate(file, res) {
-  const html = Object.entries(TEMPLATE_VALUES).reduce(
+/** The manifest the build emits, if this tree has one. */
+function loadManifest() {
+  const file = path.join(root, "app/dist/route-preloads.json");
+  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
+}
+
+/**
+ * The backend matches these patterns with clout. This is the same shape: `:name`
+ * takes one segment and `*` takes the rest.
+ */
+function matches(pattern, urlPath) {
+  const source = pattern
+    .split("/")
+    .map((segment) => {
+      if (segment === "*") {
+        return "(?:.*)";
+      }
+      if (segment.startsWith(":")) {
+        return "[^/]+";
+      }
+      return segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    })
+    .join("/");
+  return new RegExp(`^${source}$`).test(urlPath);
+}
+
+function preloadTags(urlPath) {
+  if (preloadPriority === "off") {
+    return "";
+  }
+
+  const entry = loadManifest().find((row) =>
+    row.patterns.some((pattern) => matches(pattern, urlPath)),
+  );
+  if (!entry) {
+    return "";
+  }
+
+  return entry.files
+    .map((file) => {
+      const as = file.endsWith(".css") ? "style" : "script";
+      const priority =
+        preloadPriority === "high" ? "" : ` fetchpriority="${preloadPriority}"`;
+      return `<link rel="preload" href="${file}" as="${as}"${priority}>`;
+    })
+    .join("");
+}
+
+function serveTemplate(file, res, urlPath) {
+  const values = { ...TEMPLATE_VALUES, routePreloads: preloadTags(urlPath) };
+  const html = Object.entries(values).reduce(
     (result, [key, value]) => result.replaceAll(`{{{${key}}}}`, value),
     fs.readFileSync(file, "utf8"),
   );
@@ -81,11 +137,11 @@ http
       return;
     }
 
-    const relative = url === "/" ? "/index.html" : url;
+    const relative = url.startsWith("/app/") ? url : "/index.html";
     const file = path.join(root, relative);
 
     if (relative === "/index.html") {
-      serveTemplate(file, res);
+      serveTemplate(file, res, url);
       return;
     }
 

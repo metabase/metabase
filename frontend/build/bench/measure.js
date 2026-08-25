@@ -85,15 +85,37 @@ class Session {
 
 const READ_METRICS = `JSON.stringify((() => {
   const nav = performance.getEntriesByType("navigation")[0];
-  const scripts = performance
-    .getEntriesByType("resource")
-    .filter((entry) => entry.name.endsWith(".js"));
+  const resources = performance.getEntriesByType("resource");
+  const url = (value) => new URL(value, location.href).href;
+
+  // The entry scripts gate DOMContentLoaded. Preloaded files do not: they are
+  // what the page's own chunk needs, and the question is whether fetching them
+  // early delays the entry, and when they become available.
+  const entry = new Set([...document.querySelectorAll("script[src]")].map((s) => url(s.src)));
+  // The entry scripts are preloaded too, by the build. Exclude them, so this
+  // set is only what the page's own chunk needs.
+  const preloaded = new Set(
+    [...document.querySelectorAll('link[rel="preload"]')]
+      .map((l) => url(l.href))
+      .filter((href) => !entry.has(href)),
+  );
+
+  const endOf = (names) => {
+    const ends = resources.filter((r) => names.has(r.name)).map((r) => r.responseEnd);
+    return ends.length ? Math.max(...ends) : 0;
+  };
+  const bytesOf = (names) =>
+    resources.filter((r) => names.has(r.name)).reduce((t, r) => t + r.encodedBodySize, 0);
+
   return {
     href: location.href,
     domContentLoaded: nav ? nav.domContentLoadedEventEnd : 0,
-    lastScriptEnd: Math.max(0, ...scripts.map((entry) => entry.responseEnd)),
-    scriptCount: scripts.length,
-    scriptBytes: scripts.reduce((total, entry) => total + entry.encodedBodySize, 0),
+    lastScriptEnd: endOf(entry),
+    lastPreloadEnd: endOf(preloaded),
+    scriptCount: entry.size,
+    preloadCount: preloaded.size,
+    scriptBytes: bytesOf(entry),
+    preloadBytes: bytesOf(preloaded),
   };
 })())`;
 
@@ -205,6 +227,10 @@ function median(values) {
         cache: keepCache ? "kept between runs" : "disabled",
         scripts: results[0].scriptCount,
         scriptKb: Number((results[0].scriptBytes / 1024).toFixed(1)),
+        preloads: results[0].preloadCount,
+        preloadKb: Number((results[0].preloadBytes / 1024).toFixed(1)),
+        medianEntryReadyMs: at("lastScriptEnd"),
+        medianPreloadReadyMs: at("lastPreloadEnd"),
         firstLoadMs: Number(results[0].domContentLoaded.toFixed(1)),
         medianDomContentLoadedMs: at("domContentLoaded"),
         steadyStateMs: results.length > 2 ? at("domContentLoaded", 2) : null,

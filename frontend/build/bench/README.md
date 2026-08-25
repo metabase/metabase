@@ -53,6 +53,22 @@ PORT_OFFSET=1 node frontend/build/bench/measure.js http://127.0.0.1:8100/ 8
 | `WARM` | unset | keep the cache between runs, to measure a returning user |
 | `PORT_OFFSET` | `0` | added to the debugging port `9222` |
 | `CHROME_PATH` | macOS Chrome | the browser binary |
+| `PRELOAD_PRIORITY` | `low` | `off`, `low` or `high`, for the route preload hints |
+
+## Route preload hints
+
+When the served tree has an `app/dist/route-preloads.json`, `serve.js` injects the
+hints for the URL being loaded, matching its patterns the way the backend does.
+`PRELOAD_PRIORITY` switches them off or changes their priority, so the choice can
+be measured rather than argued.
+
+`measure.js` then reports two times rather than one:
+
+- `medianEntryReadyMs`, when the entry scripts have arrived,
+- `medianPreloadReadyMs`, when the page's own chunk has arrived.
+
+The entry scripts are preloaded too, by the build, so they are excluded from the
+second number.
 
 ## What it does not need
 
