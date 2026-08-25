@@ -2,6 +2,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { color } from "metabase/ui/colors";
+import type { ColorGetter } from "metabase/ui/colors/types";
 import type {
   Card,
   CardId,
@@ -25,6 +26,11 @@ import {
 } from "metabase-types/guards";
 
 import { segmentIsValid } from "./utils";
+
+export type GoalData = Pick<
+  DatasetData,
+  "cols" | "rows" | "referenced_entities"
+>;
 
 export type ResolvedGoalSegment = {
   color: string;
@@ -61,7 +67,7 @@ export type ResolvedGoalValue = {
 };
 
 export function resolveGoalValue(
-  data: DatasetData,
+  data: GoalData,
   goalValue: GoalValue | null | undefined,
 ): ResolvedGoalValue {
   if (goalValue == null) {
@@ -80,7 +86,7 @@ export function resolveGoalValue(
 }
 
 function resolveSelfColumnValue(
-  data: DatasetData,
+  data: GoalData,
   columnName: string,
 ): ResolvedGoalValue {
   const columnIndex = data.cols.findIndex(
@@ -113,7 +119,7 @@ function resolveSelfColumnValue(
 }
 
 function resolveForeignColumnRef(
-  data: DatasetData,
+  data: GoalData,
   ref: GoalForeignColumnRef,
 ): ResolvedGoalValue {
   const { type, id, column } = ref;
@@ -180,8 +186,9 @@ function validGoalSegments(segments: unknown): GoalSegment[] {
 }
 
 export function resolveGoalSegments(
-  data: DatasetData,
+  data: GoalData,
   segments: GoalSegment[] | undefined,
+  getColor: ColorGetter = color,
 ): ResolvedGoalSegment[] {
   return validGoalSegments(segments).flatMap((segment) => {
     const min = resolveGoalValue(data, segment.min).value;
@@ -192,17 +199,25 @@ export function resolveGoalSegments(
     }
 
     return [
-      { color: getSegmentColor(segment), label: segment.label, min, max },
+      {
+        color: getSegmentColor(segment, getColor),
+        label: segment.label,
+        min,
+        max,
+      },
     ];
   });
 }
 
-export function getSegmentColor(segment: GoalSegment): string {
-  return segment.color ?? color("text-secondary");
+export function getSegmentColor(
+  segment: GoalSegment,
+  getColor: ColorGetter = color,
+): string {
+  return segment.color ?? getColor("text-secondary");
 }
 
 export function getGoalSegmentErrors(
-  data: DatasetData,
+  data: GoalData,
   segments: GoalSegment[] | undefined,
 ): GoalRefError[] {
   return validGoalSegments(segments).flatMap((segment) => {
@@ -221,7 +236,7 @@ export function needsAnswer(resolved: ResolvedGoalValue): boolean {
 }
 
 export function getUnansweredGoalEntities(
-  data: DatasetData,
+  data: GoalData,
   segments: GoalSegment[] | undefined,
 ): ReferencedEntity[] {
   const unansweredRefs = validGoalSegments(segments)
@@ -283,7 +298,7 @@ function getGoalForeignColumnRefs(
 
 export function hasUnansweredGoalReferences(
   settings: VisualizationSettings,
-  data: DatasetData | undefined,
+  data: GoalData | undefined,
 ): boolean {
   return getGoalForeignColumnRefs(settings).some(
     (ref) => data == null || resolveGoalValue(data, ref).isUnanswered === true,
@@ -292,7 +307,7 @@ export function hasUnansweredGoalReferences(
 
 export function cardHasUnresolvedGoalReferences(
   card: Pick<Card, "display" | "visualization_settings">,
-  data: DatasetData | undefined,
+  data: GoalData | undefined,
 ): boolean {
   if (!supportsDynamicGoals(card.display)) {
     return false;

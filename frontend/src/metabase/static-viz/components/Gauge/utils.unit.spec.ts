@@ -2,12 +2,12 @@ import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import type { ResolvedGoalSegment } from "metabase/visualizations/lib/dynamic-goals";
 
 import {
   GAUGE_ARC_ANGLE,
   SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE,
 } from "./constants";
-import type { GaugeSegment } from "./types";
 import {
   calculateRelativeValueAngle,
   calculateSegmentLabelTextAnchor,
@@ -183,7 +183,9 @@ describe("Static gauge utils", () => {
 
   describe("colorGetter", () => {
     const getColor = createColorGetter();
-    const createPieArcDatum = (color: string): PieArcDatum<GaugeSegment> => ({
+    const createPieArcDatum = (
+      color: string,
+    ): PieArcDatum<ResolvedGoalSegment> => ({
       data: { min: 0, max: 100, color, label: "test" },
       value: 100,
       index: 0,

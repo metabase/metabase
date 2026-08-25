@@ -251,6 +251,20 @@ describe("resolveGoalSegments", () => {
     ]);
   });
 
+  it("takes the default fill from the given color getter", () => {
+    const getColor = jest.fn(() => "#123456");
+    const segments = resolveGoalSegments(
+      DATA,
+      [{ min: 0, max: 100 }],
+      getColor,
+    );
+
+    expect(getColor).toHaveBeenCalledWith("text-secondary");
+    expect(segments).toEqual([
+      { min: 0, max: 100, color: "#123456", label: undefined },
+    ]);
+  });
+
   it("resolves a foreign card reference from referenced_entities", () => {
     const data = createMockDatasetData({
       ...DATA,
