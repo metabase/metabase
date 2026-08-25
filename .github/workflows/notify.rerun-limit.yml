@@ -1,0 +1,95 @@
+name: Notify On Re-run Limit
+
+on:
+  workflow_run:
+    workflows:
+      - "Run tests"
+    types: 
+     - completed
+
+jobs:
+  notify:
+    name: Send Slack Notification If Workflow Run Attempts Exceed Limit
+    if: ${{ github.event.workflow_run.run_attempt > 5 }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            release
+            .github
+      
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+      
+      - name: Send Slack Notification
+        uses: actions/github-script@v9
+        env:
+          SLACK_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: |
+            const { mentionUserByGithubLogin, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const ATTEMPT = "${{ github.event.workflow_run.run_attempt }}";
+            const AUTHOR = "${{ github.event.workflow_run.head_commit.author.name }}";
+            const COMMIT = "${{ github.event.workflow_run.head_sha }}";
+            const RUN_NAME = "${{ github.event.workflow_run.name }}";
+            const RUN_URL = "${{ github.event.workflow_run.html_url }}";
+
+            const { owner, repo } = context.repo;
+
+            // Get commit details to find author information as this isn't required in the
+            // workflow_run payload.
+            try {
+              const { data: commit } = await github.rest.repos.getCommit({
+                owner,
+                repo,
+                ref: COMMIT,
+              });
+              const authorLogin = commit?.author?.login ?? '';
+            } catch (error) {
+              console.warn(`Failed to find commit details for ${COMMIT}: ${error.message}`);
+            }
+
+            await sendSlackMessage({
+              channelName: 'engineering-ci',
+              message: 'Workflow Retry Limit Exceeded',
+              blocks: [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": `:shame-conga: Workflow Rerun Limit Exceeded :shame-conga:`,
+                    "emoji": true,
+                  }
+                },
+              ],
+              attachments: [{
+                color: "#ff4500",
+                blocks: [
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": `<${RUN_URL}|${RUN_NAME} has been rerun ${ATTEMPT} times for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit by ${AUTHOR} (${mentionUserByGithubLogin(authorLogin)}).`
+                    },
+                  },
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": "Repeatedly re-running CI workflows wastes CI resources and may cause more issues. If re-running a workflow a handful of times does not resolve an issue, reach out to the github-admins Slack group to force merge the PR."
+                    }
+                  }
+                ],
+              }],
+            });
+            
+
+            
+
+
+
+
