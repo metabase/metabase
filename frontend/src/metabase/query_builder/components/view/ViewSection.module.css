@@ -1,8 +1,10 @@
 .ViewSectionRoot {
   display: flex;
   align-items: center;
+  padding: 0 0.5rem;
 
-  /* continuous inset: 2rem/1rem at >=70em containers, tapering below, never flush */
-  padding-block: 0;
-  padding-inline: clamp(0.5rem, 3cqw, 2rem) clamp(0.5rem, 1.5cqw, 1rem);
+  @container query-builder (min-width: 70em) {
+    padding-left: 2rem;
+    padding-right: 1rem;
+  }
 }
