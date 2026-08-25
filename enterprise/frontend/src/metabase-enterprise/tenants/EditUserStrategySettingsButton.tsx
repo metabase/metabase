@@ -2,14 +2,14 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
-import * as EnterpriseUrls from "metabase-enterprise/urls";
+import * as Urls from "metabase-enterprise/urls";
 
 export const EditUserStrategySettingsButton = ({
   page,
 }: {
   page: "people" | "tenants";
 }) => (
-  <Link to={EnterpriseUrls.editUserStrategy(page)}>
+  <Link to={Urls.editUserStrategy(page)}>
     <Tooltip label={t`Edit user strategy`}>
       <ActionIcon
         size="lg"

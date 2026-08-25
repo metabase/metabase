@@ -1,48 +1,29 @@
-import {
-  getTenantsBasePath,
-  getTenantsPermissionsPath,
-  tenantPeopleUrl,
-} from "metabase/common/tenants";
+import { getPermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
+import * as TenantUrls from "metabase/common/tenants";
 import type { DatabaseId, Tenant } from "metabase-types/api";
 
 export * as Urls from "metabase/urls";
 
 export function newTenant() {
-  return `${getTenantsBasePath()}/new`;
+  return `${TenantUrls.getTenantsBasePath()}/new`;
 }
 
 export function editTenant(tenantId: Tenant["id"]) {
-  return `${getTenantsBasePath()}/${tenantId}/edit`;
+  return `${TenantUrls.getTenantsBasePath()}/${tenantId}/edit`;
 }
 
 export function deactivateTenant(tenantId: Tenant["id"]) {
-  return `${getTenantsBasePath()}/${tenantId}/deactivate`;
+  return `${TenantUrls.getTenantsBasePath()}/${tenantId}/deactivate`;
 }
 
 export function reactivateTenant(tenantId: Tenant["id"]) {
-  return `${getTenantsBasePath()}/${tenantId}/reactivate`;
+  return `${TenantUrls.getTenantsBasePath()}/${tenantId}/reactivate`;
 }
 
 export function editUserStrategy(page: "people" | "tenants") {
   return page === "tenants"
-    ? `${getTenantsBasePath()}/user-strategy`
+    ? `${TenantUrls.getTenantsBasePath()}/user-strategy`
     : `/admin/people/user-strategy`;
-}
-
-export function tenants() {
-  return getTenantsBasePath();
-}
-
-export function tenantPeople() {
-  return tenantPeopleUrl();
-}
-
-export function tenantGroups() {
-  return `${getTenantsBasePath()}/groups`;
-}
-
-export function tenantsPermissions() {
-  return getTenantsPermissionsPath();
 }
 
 export function viewDestinationDatabases(databaseId: DatabaseId) {
@@ -65,4 +46,20 @@ export function removeDestinationDatabase(
   destinationDatabaseId: DatabaseId,
 ) {
   return `/admin/databases/${databaseId}/destination-databases/${destinationDatabaseId}/remove`;
+}
+
+export function tenants() {
+  return TenantUrls.getTenantsBasePath();
+}
+
+export function tenantPeople() {
+  return `${TenantUrls.getTenantsBasePath()}/people`;
+}
+
+export function tenantGroups() {
+  return `${TenantUrls.getTenantsBasePath()}/groups`;
+}
+
+export function tenantsPermissions() {
+  return getPermissionsBasePath();
 }
