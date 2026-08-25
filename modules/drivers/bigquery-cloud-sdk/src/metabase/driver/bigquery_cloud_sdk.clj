@@ -591,17 +591,15 @@
 (def ^:private ^:dynamic *page-byte-budget*
   "Target measured bytes per result page for `tabledata.list` sampling. The next page size is
   `budget / measured-bytes-per-row`, clamped to [1, remaining]. Kept well under the server's ~10 MB page cap to leave
-  headroom for JVM object expansion when the page is parsed; sync may have several tables in flight at once, so this
-  stays small. Regular query execution uses the larger [[*query-page-byte-budget*]]."
+  headroom for JVM object expansion when the page is parsed. Sync may have several tables in flight at once, so this
+ stays small. Regular query execution uses the larger [[*query-page-byte-budget*]]."
   (* 4 1024 1024))
 
 (def ^:private ^:dynamic *query-page-byte-budget*
-  "Target measured bytes per result page for regular query execution. Deliberately larger than
-  [[*page-byte-budget*]]: the QP streams rows and holds only one parsed page at a time, and the number of sequential
-  `getQueryResults` round trips is inversely proportional to this budget, so a small budget makes wide results
-  latency-bound. A 274-column row measures ~18 KB (dominated by the [[sample-cell-overhead-bytes]] floor), which
-  against a 4 MB budget yields ~220-row pages and hundreds of round trips per export (#79273). Still a hard bound, so
-  the unbounded-first-page OOM this pagination was added to prevent (#76459) cannot recur."
+  "Target measured bytes per result page for regular query execution. Deliberately larger than [[*page-byte-budget*]]
+  because the QP streams rows and holds only one parsed page at a time, and the number of `getQueryResults` round trips
+  is inversely proportional to this budget, so a small budget makes CSV downloads of larger tables >2x slower (#79273).
+  Still a hard bound, so the unbounded-first-page OOM this pagination was added to prevent (#76459) cannot recur."
   (* 32 1024 1024))
 
 (def ^:private initial-page-rows
@@ -644,9 +642,9 @@
   ([[adaptive-query-next-page]])."
   ^long [^long budget ^long measured-bytes ^long measured-rows ^long remaining]
   (let [avg-row-bytes (max 1 (quot measured-bytes (max 1 measured-rows)))]
-    (-> (quot budget avg-row-bytes)
-        (max 1)
-        (min remaining))))
+    (doto (-> (quot budget avg-row-bytes)
+              (max 1)
+              (min remaining)) tap>)))
 
 (defn- list-sample-page
   "Issue a `tabledata.list` request for at most `page-size` rows, continuing from `page-token` when given."
@@ -836,11 +834,10 @@
   (.getQueryResults job options))
 
 (def ^:private measured-rows-per-page
-  "Rows of each consumed page [[adaptive-query-next-page]] measures to estimate bytes/row. Measuring the whole page
-  re-walks every cell a second time after normal result parsing -- O(rows × cols) per page, ~13.7M cells for a
-  274-column × 50K-row export (#79273) -- and a prefix estimates the average just as well. Only the query path can
-  take this shortcut: [[adaptive-sample-next-page]] also needs the *exact* per-page row count for its `max-rows`
-  budget, so it still measures every row."
+  "Rows of each consumed page [[adaptive-query-next-page]] measured to estimate bytes/row. Measuring the whole page
+  re-walks every cell a second time after normal result parsing but a prefix estimates the average just as well.
+  Only the query path can take this shortcut: [[adaptive-sample-next-page]] also needs the *exact* per-page row count
+  for its `max-rows` budget, so it still measures every row."
   32)
 
 (defn- adaptive-query-next-page
@@ -852,13 +849,14 @@
   throws if BigQuery reports another page is available (non-blank page token) but fails to return it, so we surface
   the error instead of silently truncating the result set."
   [^Job job]
-  (let [budget (long *query-page-byte-budget*)
+  (let [budget #_(long *page-byte-budget*) (long *query-page-byte-budget*)
         seen   (atom {:bytes 0, :rows 0})]
     (fn [^TableResult page]
       (let [token (.getNextPageToken page)]
         (when-not (str/blank? token)
           (let [[page-bytes page-rows] (reduce (fn [[b n] row] [(+ (long b) (row-bytes row)) (inc (long n))])
                                                [0 0]
+                                               #_(.getValues page)
                                                (eduction (take measured-rows-per-page) (.getValues page)))
                 {:keys [bytes rows]}   (swap! seen (fn [s] {:bytes (+ (long (:bytes s)) (long page-bytes))
                                                             :rows  (+ (long (:rows s)) (long page-rows))}))]
