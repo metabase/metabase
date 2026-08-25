@@ -16,7 +16,7 @@ user, these are only suggestions which they must apply themselves.
 When creating a new transform, you must provide:
 - transform_name: A descriptive name for the transform
 - transform_description: A detailed description of what the transform does
-- source_database: The database ID containing the source tables
+- database_id: The database ID containing the source tables
 - source_tables: A list of source table objects, each with `alias` (parameter name in the transform function), `table_id` (database table ID), `schema` (e.g. "PUBLIC"), and `database_id`
 
 **Edit Modes:**
