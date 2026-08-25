@@ -6,7 +6,6 @@ import {
   StoryBoard,
   StoryJsx,
   StorySection,
-  StoryShowcase,
 } from "metabase/ui/stories/showcase";
 
 const args = {
@@ -109,7 +108,7 @@ export const Overview = {
 };
 
 const GroupsTemplate: StoryFn<RadioProps> = () => (
-  <StoryShowcase title="Radio.Group">
+  <StoryBoard title="Radio.Group">
     <Stack gap="1.5rem">
       <StoryJsx>{"<Radio.Group />"}</StoryJsx>
       <Radio.Group
@@ -156,7 +155,7 @@ const GroupsTemplate: StoryFn<RadioProps> = () => (
         </Stack>
       </Radio.Group>
     </Stack>
-  </StoryShowcase>
+  </StoryBoard>
 );
 
 export const Groups = {
@@ -194,7 +193,7 @@ const CARD_STATES: CardState[] = [
 ];
 
 const CardTemplate: StoryFn<RadioProps> = () => (
-  <StoryShowcase title="Radio.Card">
+  <StoryBoard title="Radio.Card">
     <Stack gap="1.5rem">
       <StoryJsx>{"<Radio.Card />"}</StoryJsx>
       {CARD_STATES.map((state) => (
@@ -213,7 +212,7 @@ const CardTemplate: StoryFn<RadioProps> = () => (
         </Stack>
       ))}
     </Stack>
-  </StoryShowcase>
+  </StoryBoard>
 );
 
 export const Card = {
