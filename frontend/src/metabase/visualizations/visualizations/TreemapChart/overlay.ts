@@ -1,6 +1,6 @@
-import { type EChartsType, graphic } from "echarts/core";
 import type { MutableRefObject } from "react";
 
+import { type EChartsType, graphic } from "metabase/viz-core";
 import {
   HOVER_OVERLAY_Z,
   TREEMAP_HOVER_OVERLAY_FILL,

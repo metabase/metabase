@@ -1,4 +1,3 @@
-import type { EChartsType } from "echarts/core";
 import { useMemo } from "react";
 
 import type {
@@ -10,6 +9,7 @@ import {
   type ComputedVisualizationSettings,
   type EChartsEventHandler,
   type EChartsSeriesMouseEvent,
+  type EChartsType,
   type SankeyChartColumns,
   type SankeyLink,
   type SankeyNode,

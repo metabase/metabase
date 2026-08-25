@@ -18,31 +18,33 @@ import {
   ToolboxComponent,
   TooltipComponent,
 } from "echarts/components";
-import { use } from "echarts/core";
+import { use as echartsUse, graphic, init, setPlatformAPI } from "echarts/core";
 import { LabelLayout } from "echarts/features";
 import { SVGRenderer } from "echarts/renderers";
 
-export const registerEChartsModules = () => {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  use([
-    LineChart,
-    BarChart,
-    BoxplotChart,
-    ScatterChart,
-    CustomChart,
-    SunburstChart,
-    GraphicComponent,
-    GridComponent,
-    BarChart,
-    SVGRenderer,
-    MarkLineComponent,
-    DataZoomComponent,
-    ToolboxComponent,
-    BrushComponent,
-    DatasetComponent,
-    SankeyChart,
-    TreemapChart,
-    LabelLayout,
-    TooltipComponent,
-  ]);
-};
+export type { EChartsOption } from "echarts";
+export type { EChartsCoreOption, EChartsType } from "echarts/core";
+export type { TooltipOption } from "echarts/types/dist/shared";
+
+echartsUse([
+  LineChart,
+  BarChart,
+  BoxplotChart,
+  ScatterChart,
+  CustomChart,
+  SunburstChart,
+  GraphicComponent,
+  GridComponent,
+  SVGRenderer,
+  MarkLineComponent,
+  DataZoomComponent,
+  ToolboxComponent,
+  BrushComponent,
+  DatasetComponent,
+  SankeyChart,
+  TreemapChart,
+  LabelLayout,
+  TooltipComponent,
+]);
+
+export { graphic, init, setPlatformAPI };

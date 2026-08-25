@@ -1,4 +1,3 @@
-import type { EChartsType } from "echarts/core";
 import {
   type MutableRefObject,
   type RefObject,
@@ -9,6 +8,7 @@ import {
 } from "react";
 
 import { isTouchDevice } from "metabase/utils/browser";
+import type { EChartsType } from "metabase/viz-core";
 
 const LONG_PRESS_DURATION_MS = 500;
 const TOUCH_MOVE_THRESHOLD_PX = 10;

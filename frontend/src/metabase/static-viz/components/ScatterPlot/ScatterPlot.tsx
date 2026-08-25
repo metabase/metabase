@@ -1,5 +1,4 @@
 import { Group } from "@visx/group";
-import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
@@ -9,14 +8,12 @@ import {
   getLegendItems,
   getScatterPlotModel,
   getScatterPlotOption,
-  registerEChartsModules,
+  init,
 } from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
-
-registerEChartsModules();
 
 const WIDTH = 540;
 const HEIGHT = 360;

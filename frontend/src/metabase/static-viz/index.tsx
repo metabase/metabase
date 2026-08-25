@@ -1,4 +1,3 @@
-import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 
 // eslint-disable-next-line import/order
@@ -27,6 +26,7 @@ import {
   extractRemappings,
   isCartesianChart,
   makeCellBackgroundGetter,
+  setPlatformAPI,
 } from "metabase/viz-core";
 import type {
   Card,

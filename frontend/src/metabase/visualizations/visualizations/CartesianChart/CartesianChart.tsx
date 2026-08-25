@@ -1,4 +1,3 @@
-import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
@@ -16,6 +15,7 @@ import {
 import type { CartesianHoveredObject } from "metabase/visualizations/visualizations/CartesianChart/types";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 import {
+  type EChartsType,
   type TimelineEventGroup,
   getLegendItems,
   useCartesianChartSeriesColorsClasses,

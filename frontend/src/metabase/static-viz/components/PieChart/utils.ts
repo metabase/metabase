@@ -1,8 +1,8 @@
-import { init } from "echarts/core";
 import { t } from "ttag";
 
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { init } from "metabase/viz-core";
 import {
   type ComputedVisualizationSettings,
   DIMENSIONS,
@@ -12,7 +12,6 @@ import {
   type RenderingContext,
   getArrayFromMapValues,
   type getPieChartOption,
-  registerEChartsModules,
 } from "metabase/viz-core";
 
 import {
@@ -28,8 +27,6 @@ import {
   calculateLegendRowsWithColumns,
   calculateNumRowsCols,
 } from "../Legend/utils";
-
-registerEChartsModules();
 
 // Synthetic key for the "And N more" legend overflow row.
 const MORE_LEGEND_KEY = "___PIE_LEGEND_MORE___";

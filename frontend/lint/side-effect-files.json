@@ -3,7 +3,8 @@
     "frontend/src/metabase/router/",
     "frontend/src/metabase/ui/",
     "frontend/src/metabase/redux/",
-    "frontend/src/metabase/dayjs/"
+    "frontend/src/metabase/dayjs/",
+    "frontend/src/metabase/viz-core/echarts/"
   ],
   "packages": {
     "@mantine/core/styles.css": "global",
@@ -204,14 +205,14 @@
     "frontend/src/metabase/utils/settings.ts": "self",
     "frontend/src/metabase/value-formatting/geography.ts": "self",
     "frontend/src/metabase/visualizations/components/ClickActions/utils.ts": "self",
-    "frontend/src/metabase/visualizations/components/EChartsRenderer/EChartsRenderer.tsx": "global",
     "frontend/src/metabase/visualizations/components/LeafletChoropleth.tsx": "self",
     "frontend/src/metabase/visualizations/components/LeafletMap.tsx": "self",
     "frontend/src/metabase/visualizations/lib/open-url.ts": "self",
     "frontend/src/metabase/visualizations/visualizations/Map/Map.tsx": "self",
     "frontend/src/metabase/visualizations/visualizations/ObjectDetail/ObjectDetail.ts": "self",
     "frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTable.tsx": "self",
-    "frontend/src/metabase/visualizer/visualizer.slice.ts": "self"
+    "frontend/src/metabase/visualizer/visualizer.slice.ts": "self",
+    "frontend/src/metabase/viz-core/echarts/index.ts": "self"
   },
   "unclassified": []
 }

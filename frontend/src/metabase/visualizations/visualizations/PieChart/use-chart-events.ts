@@ -1,4 +1,3 @@
-import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
@@ -13,6 +12,7 @@ import {
   type EChartsSunburstSeriesMouseEvent,
   type EChartsTooltipModel,
   type EChartsTooltipRow,
+  type EChartsType,
   type PieChartFormatters,
   type PieChartModel,
   type SliceTreeNode,

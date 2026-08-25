@@ -1,6 +1,8 @@
-import type { EChartsType } from "echarts/core";
-
-import type { ChartBoundsCoords, TimelineEventsModel } from "metabase/viz-core";
+import type {
+  ChartBoundsCoords,
+  EChartsType,
+  TimelineEventsModel,
+} from "metabase/viz-core";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import {

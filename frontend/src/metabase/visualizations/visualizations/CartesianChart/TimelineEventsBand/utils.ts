@@ -1,6 +1,5 @@
-import type { EChartsType } from "echarts/core";
-
 import type {
+  EChartsType,
   TimelineEventCluster,
   TimelineEventGroup,
   TimelineEventsModel,
