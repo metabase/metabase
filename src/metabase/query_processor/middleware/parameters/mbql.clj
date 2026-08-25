@@ -114,11 +114,19 @@
    target-column :- [:or ::lib.schema.id/field :string]
    temporal-unit :- ::lib.schema.temporal-bucketing/unit
    new-unit      :- ::lib.schema.temporal-bucketing/unit]
-  (lib.util.match/replace stage
-    [(tag :guard #{:field :expression})
-     (opts :guard #(= temporal-unit (:temporal-unit %)))
-     (_id-or-name :guard #(= target-column %))]
-    (lib/with-temporal-bucket &match new-unit)))
+  ;; only rewrite clauses in :breakout and :order-by, clauses elsewhere
+  ;; (like a :join) should keep their original bucketing (#80098)
+  (let [update-clauses (fn [clauses]
+                         (lib.util.match/replace clauses
+                           [(tag :guard #{:field :expression})
+                            (opts :guard #(= temporal-unit (:temporal-unit %)))
+                            (_id-or-name :guard #(= target-column %))]
+                           (lib/with-temporal-bucket &match new-unit)))]
+    (reduce (fn [stage k]
+              (cond-> stage
+                (seq (get stage k)) (update k update-clauses)))
+            stage
+            [:breakout :order-by])))
 
 (mu/defn- update-breakout-unit :- ::lib.schema/stage
   [metadata-providerable  :- ::lib.schema.metadata/metadata-providerable
