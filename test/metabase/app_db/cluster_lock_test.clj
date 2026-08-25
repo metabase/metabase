@@ -281,6 +281,21 @@
             (is (= :ok (sut/with-cluster-lock ::checkout-failure-lock :ok)))
             (is (t2/exists? :metabase_cluster_lock :lock_name lock-name))))))))
 
+(deftest out-of-band-insert-commits-without-help-from-the-pool-test
+  (testing "the lock row outlives the caller's rollback even when the dedicated connection arrives in a transaction"
+    ;; H2 takes an in-process lock and never writes a row.
+    (when (not= (mdb/db-type) :h2)
+      (let [lock-name (u/qualified-name ::autocommit-off-lock)]
+        (t2/delete! :metabase_cluster_lock :lock_name lock-name)
+        (mt/with-dynamic-fn-redefs [sut/checkout-connection!
+                                    (fn []
+                                      (doto (.getConnection (mdb/data-source))
+                                        (.setAutoCommit false)))]
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (is (= :ok (sut/with-cluster-lock ::autocommit-off-lock :ok)))))
+        (is (t2/exists? :metabase_cluster_lock :lock_name lock-name)
+            "the dedicated connection committed it, so the caller's rollback cannot take it away")))))
+
 (deftest detached-lock-basic-test
   (testing "returns the body's value and works non-concurrently"
     (is (= :ok (sut/with-detached-cluster-lock {:lock ::detached-basic} :ok)))))
