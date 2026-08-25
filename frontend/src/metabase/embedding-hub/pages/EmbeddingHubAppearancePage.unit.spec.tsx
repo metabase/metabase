@@ -98,13 +98,13 @@ describe("EmbeddingHubAppearancePage", () => {
 
     await screen.findByRole("button", { name: /New theme/ });
 
-    expect(screen.queryByText(/Full-app embedding/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/full-app embedding/)).not.toBeInTheDocument();
   });
 
   it("points the full-app banner at admin when full-app embedding is on", async () => {
     setup({ hasSimpleEmbedding: true, isFullAppEmbeddingEnabled: true });
 
-    expect(await screen.findByText(/Full-app embedding/)).toBeInTheDocument();
+    expect(await screen.findByText(/full-app embedding/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Admin/ })).toHaveAttribute(
       "href",
       "/admin/settings/whitelabel",

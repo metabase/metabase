@@ -56,7 +56,7 @@ function FullAppAppearanceBanner() {
     <Card p="md" withBorder bg="background-info">
       <Group gap="xs" wrap="nowrap">
         <Text c="text-secondary">
-          {t`Colors and branding of Full-app embedding are based on the appearance settings defined in the`}
+          {t`Colors and branding for full-app embedding are based on the appearance settings defined in the`}
         </Text>
 
         <Link to="/admin/settings/whitelabel">
