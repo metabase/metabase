@@ -4,76 +4,157 @@ import type {
   CustomVisualizationSettingDefinition,
   ReservedVisualizationSettingId,
   Widgets,
+  WritableCommonVisualizationSettingId,
 } from "custom-viz";
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
+import { GOAL_SETTING_KEYS } from "metabase/visualizations/lib/dynamic-goals";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
+import { isFunction, isObject } from "metabase-types/guards";
 
 import { wrapPluginWidget } from "./widget-mount";
 
-const RESERVED_SETTING_IDS: ReadonlySet<string> = new Set(
-  Object.keys({
-    column: true,
-    column_settings: true,
-  } satisfies Record<ReservedVisualizationSettingId, true>),
-);
+const RESERVED_SETTING_IDS: ReadonlySet<string> =
+  new Set<ReservedVisualizationSettingId>([
+    "column",
+    "column_settings",
+    ...GOAL_SETTING_KEYS,
+  ]);
+
+const COMMON_WRITABLE_SETTING_IDS: readonly string[] = Object.keys({
+  "card.title": true,
+  "card.description": true,
+  "card.hide_empty": true,
+  click_behavior: true,
+} satisfies Record<WritableCommonVisualizationSettingId, true>);
+
+type PluginSettings = NonNullable<
+  CustomVisualization<Record<string, unknown>>["settings"]
+>;
+
+type PluginSettingDefinition = CustomVisualizationSettingDefinition<
+  Record<string, unknown>
+>;
+
+type RuntimeSettingDefinition = Record<string, unknown>;
+
+type SanitizeContext = {
+  allowedWriteKeys: ReadonlySet<string>;
+  mount: CustomVisualizationMount;
+  plugin: CustomVizPluginRuntime;
+};
 
 /**
- * Walk a plugin's `vizDef.settings` and rewrite every Component-shaped
- * `widget` into a host-trusted `WidgetMount` whose body delegates to the
- * plugin's shared `mount` function (i.e., its sandbox-side `createRoot`
- * render path). Built-in `WidgetName` strings pass through unchanged.
+ * Make a plugin's `vizDef.settings` host-safe: drop reserved ids, hand plugin
+ * callbacks only their documented arguments, confine writes to the plugin's
+ * own settings, and rewrite Component-shaped `widget`s into host-trusted
+ * `WidgetMount`s that delegate to the plugin's `mount`.
  */
 export function sanitizePluginSettings(
-  settings:
-    | CustomVisualization<Record<string, unknown>>["settings"]
-    | undefined,
+  settings: PluginSettings | undefined,
   mount: CustomVisualizationMount,
   plugin: CustomVizPluginRuntime,
-): CustomVisualization<Record<string, unknown>>["settings"] {
+): PluginSettings | undefined {
   if (!settings) {
     return settings;
   }
 
-  assertValidSettingWidgets(settings);
-
-  const sanitizedSettings: CustomVisualization<
-    Record<string, unknown>
-  >["settings"] = {};
-
-  for (const [settingId, value] of Object.entries(settings)) {
+  const definitions: [string, RuntimeSettingDefinition][] = [];
+  for (const [settingId, definition] of Object.entries(settings)) {
     if (RESERVED_SETTING_IDS.has(settingId)) {
       console.warn(
         `Custom viz setting "${settingId}" uses a reserved id and was ignored.`,
       );
-      continue;
-    }
-
-    if (!isObject(value)) {
-      // settings definitions should be objects
-      continue;
-    }
-
-    if ("widget" in value && typeof value.widget === "function") {
-      // Unjustified type cast. FIXME
-      const Widget = value.widget as ComponentType<Record<string, unknown>>;
-      // Unjustified type cast. FIXME
-      sanitizedSettings[settingId] = {
-        ...value,
-        widget: wrapPluginWidget(
-          (container, initialProps) => mount(Widget, container, initialProps),
-          plugin,
-        ),
-      } as unknown as CustomVisualizationSettingDefinition<
-        Record<string, unknown>
-      >;
-    } else {
-      sanitizedSettings[settingId] = value;
+    } else if (isObject(definition)) {
+      definitions.push([settingId, definition]);
     }
   }
-  return sanitizedSettings;
+
+  assertValidSettingWidgets(definitions);
+
+  const context: SanitizeContext = {
+    allowedWriteKeys: new Set([
+      ...definitions.map(([settingId]) => settingId),
+      ...COMMON_WRITABLE_SETTING_IDS,
+    ]),
+    mount,
+    plugin,
+  };
+
+  return Object.fromEntries(
+    definitions.map(([settingId, definition]) => [
+      settingId,
+      sanitizeDefinition(settingId, definition, context),
+    ]),
+  );
+}
+
+function sanitizeDefinition(
+  settingId: string,
+  definition: RuntimeSettingDefinition,
+  { allowedWriteKeys, mount, plugin }: SanitizeContext,
+): PluginSettingDefinition {
+  const { getProps, widget, writeDependencies, eraseDependencies } = definition;
+  const pickWritable = (ids: unknown) =>
+    pickWritableSettingIds(settingId, ids, allowedWriteKeys);
+
+  return brandDefinition({
+    ...definition,
+    ...(isFunction(getProps) && {
+      getProps: (series: unknown, settings: unknown) =>
+        getProps(series, settings),
+    }),
+    ...(writeDependencies !== undefined && {
+      writeDependencies: pickWritable(writeDependencies),
+    }),
+    ...(eraseDependencies !== undefined && {
+      eraseDependencies: pickWritable(eraseDependencies),
+    }),
+    ...(isComponentWidget(widget) && {
+      widget: wrapPluginWidget(
+        (container, initialProps) => mount(widget, container, initialProps),
+        plugin,
+        allowedWriteKeys,
+      ),
+    }),
+  });
+}
+
+function pickWritableSettingIds(
+  settingId: string,
+  ids: unknown,
+  allowedWriteKeys: ReadonlySet<string>,
+): string[] {
+  if (!Array.isArray(ids)) {
+    return [];
+  }
+
+  const settingIds = ids.filter((id: unknown): id is string => {
+    return typeof id === "string";
+  });
+  const dropped = settingIds.filter((id) => !allowedWriteKeys.has(id));
+  if (dropped.length > 0) {
+    console.warn(
+      `Custom viz setting "${settingId}" depends on settings it cannot write and they were ignored: ${dropped.join(", ")}.`,
+    );
+  }
+
+  return settingIds.filter((id) => allowedWriteKeys.has(id));
+}
+
+// Built-in widgets are names; by the public contract a function-shaped widget is a React component.
+function isComponentWidget(
+  widget: unknown,
+): widget is ComponentType<Record<string, unknown>> {
+  return typeof widget === "function";
+}
+
+function brandDefinition(
+  definition: RuntimeSettingDefinition,
+): PluginSettingDefinition {
+  // The public definition type is an opaque brand over this runtime shape.
+  return definition as unknown as PluginSettingDefinition;
 }
 
 const ALLOWED_WIDGET_NAMES: Array<keyof Widgets> = [
@@ -90,17 +171,12 @@ const ALLOWED_WIDGET_NAMES: Array<keyof Widgets> = [
 ] as const;
 
 function assertValidSettingWidgets(
-  settings: CustomVisualization<Record<string, unknown>>["settings"],
+  definitions: [string, RuntimeSettingDefinition][],
 ): void {
-  if (!settings) {
-    return;
-  }
-  for (const [settingId, def] of Object.entries(settings)) {
-    // Unjustified type cast. FIXME
-    const widget = (def as { widget?: unknown }).widget;
+  for (const [settingId, { widget }] of definitions) {
     if (
       typeof widget === "string" &&
-      !ALLOWED_WIDGET_NAMES.some((w) => w === widget)
+      !ALLOWED_WIDGET_NAMES.some((name) => name === widget)
     ) {
       throw new Error(
         t`Setting "${settingId}" has unsupported widget ${widget}. Use one of: ${ALLOWED_WIDGET_NAMES.join(", ")}.`,

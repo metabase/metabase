@@ -24,6 +24,7 @@ import {
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import type { ClickObject } from "metabase/visualizations/types";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import type {
@@ -34,6 +35,7 @@ import type {
 import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import { toHostClickObject } from "./click-object";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 import type { SandboxMode } from "./sandbox";
@@ -529,6 +531,11 @@ function createCustomVizWrapper(
       [browserRenderingContext],
     );
 
+    const handleClick = (clickObject: ClickObject | null) =>
+      onVisualizationClick(
+        clickObject && toHostClickObject(clickObject, settings),
+      );
+
     const pluginProps: GenericVizPluginProps = {
       width,
       height,
@@ -539,9 +546,10 @@ function createCustomVizWrapper(
       // unions); the runtime value is the host's computed settings.
       settings: settings as unknown as GenericVizPluginProps["settings"],
       renderingContext,
-      // Unjustified type cast. FIXME
-      onClick: onVisualizationClick as unknown as (
-        clickObject: CustomVizClickObject<Record<string, unknown>> | null,
+      // The plugin API mirrors host types with looser public shapes; the
+      // runtime value is a plain click object.
+      onClick: handleClick as unknown as (
+        clickObject: CustomVizClickObject | null,
       ) => void,
       // Unjustified type cast. FIXME
       onHover: onHoverChange as unknown as (

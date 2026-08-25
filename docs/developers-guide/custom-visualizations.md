@@ -234,7 +234,7 @@ Your component receives `onClick` and `onHover`. Call them with an object that i
 />
 ```
 
-Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value. You can include `settings` (the current resolved settings) in the click object too, so dashboard click behaviors configured against your visualization have what they need.
+Pass `null` to `onHover` to dismiss the tooltip. `onClick` also takes an `origin: { row, cols }` when a drill-through needs the whole row, not just the clicked cell. It can take a `data` array of `{ col, value }` pairs (one per column) when an action needs every column's value. Metabase attaches the visualization's current settings to the click object itself, so dashboard click behaviors configured against your visualization need nothing more from you; anything you pass under `settings` is ignored.
 
 The hover object accepts more than `element` and `data`. Optional fields like `index` and `seriesIndex` (to highlight a series in the legend) and `value`, `column`, `dimensions`, and `event` (for a simpler single-point tooltip) are available when you need them.
 
@@ -280,9 +280,14 @@ settings: {
 
 ### Reserved setting ids
 
-Metabase adds a few settings of its own to every custom visualization. They power built-in behavior, like the column formatting popover that opens when a `"field"` or `"fields"` widget sets `showColumnSetting: true`. The setting ids `column_settings` and `column` are reserved for those settings: TypeScript rejects a `Settings` type that declares either key, and Metabase ignores any setting definition that uses one (and logs a warning to the console).
+Some setting ids belong to Metabase. TypeScript rejects a `Settings` type that declares any of them, and Metabase ignores a setting definition that uses one (and logs a warning to the console):
+
+- `column` and `column_settings` power built-in behavior, like the column formatting popover that opens when a `"field"` or `"fields"` widget sets `showColumnSetting: true`.
+- `graph.goal_value`, `progress.goal`, `gauge.segments`, and `scalar.segments` can point at another saved question, which makes Metabase run that question. A custom visualization must not be able to do that.
 
 Your visualization can still _read_ the per-column formatting: the resolved `settings` object includes `column`, a function that returns a column's effective formatting settings. See [Formatting and theming](#formatting-and-theming) for how to apply it with `formatValue`.
+
+Writes are limited to your own settings. `onChangeSettings`, `writeDependencies`, and `eraseDependencies` accept the ids declared in your `settings` map plus `card.title`, `card.description`, `card.hide_empty`, and `click_behavior`; Metabase drops any other key and logs a warning to the console.
 
 ### Built-in widgets
 
@@ -312,7 +317,7 @@ Metabase injects these props into your widget component (import the type with `B
 | `id`               | `string`              | The setting's `id`.                     |
 | `value`            | `TValue \| undefined` | The setting's current value.            |
 | `onChange`         | `(value?) => void`    | Update this setting's value.            |
-| `onChangeSettings` | `(settings) => void`  | Update other settings at the same time. |
+| `onChangeSettings` | `(settings) => void`  | Update other settings at the same time. Limited to your own settings, see [Reserved setting ids](#reserved-setting-ids). |
 
 Add any extra props your component needs with `getProps()`. Its return type is your component's own props, minus the base props Metabase injects.
 

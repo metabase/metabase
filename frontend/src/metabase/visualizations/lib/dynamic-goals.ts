@@ -27,6 +27,14 @@ import {
 
 import { segmentIsValid } from "./utils";
 
+// Mirrors `goal-settings` in `metabase.visualization-settings.dynamic-goals`.
+export const GOAL_SETTING_KEYS = [
+  "graph.goal_value",
+  "progress.goal",
+  "gauge.segments",
+  "scalar.segments",
+] as const;
+
 export type GoalData = Pick<
   DatasetData,
   "cols" | "rows" | "referenced_entities"
