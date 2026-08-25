@@ -499,11 +499,9 @@ describe("scenarios > dashboard > title drill", () => {
           { row: 6, col: 6, size_x: 6, size_y: 6 },
         ],
       }).then(({ dashboard, questions }) => {
-        // Park the cursor off the grid before the dashcards render. A pointer
-        // resting over a title computes that title's href, and the preceding
-        // test leaves the cursor over a dashcard title.
-        cy.visit("/");
-        cy.findByTestId("sidebar-toggle").realHover();
+        // Park the cursor off the grid before the dashcards render: a pointer
+        // resting over a title computes that title's href before it is asserted.
+        cy.get("body").realHover({ position: "topLeft" });
 
         H.visitDashboard(dashboard.id);
         H.waitForDashcardsToLoad({ count: 4 });
