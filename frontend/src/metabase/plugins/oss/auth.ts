@@ -29,7 +29,6 @@ const getDefaultPluginAuthProviders = () => ({
   settingsSAMLForm: pluginPlaceholderRoute,
   settingsJWTForm: pluginPlaceholderRoute,
   settingsOIDCForm: pluginPlaceholderRoute,
-  SettingsJWTForm: PluginPlaceholder<SettingsJWTFormProps>,
   // Unjustified type cast. FIXME
   providers: [] as GetAuthProviders[],
 });
