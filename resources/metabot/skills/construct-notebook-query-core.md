@@ -17,7 +17,7 @@ Return:
 - `description`: required — a short description of what the query returns.
 - `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
 
-> The Slackbot variant of this tool has a different contract: `title` is optional and there's no `description`; it uses `display` (a Slack-specific visualization-type enum) instead of `visualization`. See the Slackbot system prompt for its exact argument set.
+> The Slackbot variant of this tool has a different contract: `reasoning` is **required**, `title` is optional and there's no `description`; it uses `display` (a Slack-specific visualization-type enum) instead of `visualization`. See the Slackbot system prompt for its exact argument set.
 
 ## Minimal example — count of orders by month
 
