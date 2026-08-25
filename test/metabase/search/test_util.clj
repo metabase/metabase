@@ -57,20 +57,6 @@
        (search/reindex! {:async? false :in-place? true})
        ~@body)))
 
-(defmacro with-appdb-search-if-available-otherwise-legacy
-  "Create a temporary index table for the duration of the body."
-  [& body]
-  `(if (search.engine/supported-engine? :search.engine/appdb)
-     (with-appdb-search-if-available* ~@body)
-     ~@body))
-
-(defmacro with-appdb-search-if-available-without-fallback
-  "Create a temporary index table for the duration of the body.
-   Only runs if the appdb search engine is supported."
-  [& body]
-  `(when (search.engine/supported-engine? :search.engine/appdb)
-     (with-appdb-search-if-available* ~@body)))
-
 (defmacro with-legacy-search
   "Ensure legacy search, which doesn't require an index, is used.
    Semantic queries go to :search.engine/semantic and keyword queries fall back to :search.engine/in-place."
@@ -83,6 +69,22 @@
                                                               (when (search.engine/supported-engine? :search.engine/semantic)
                                                                 [:search.engine/semantic]))]
      ~@body))
+
+(defmacro with-appdb-search-if-available-otherwise-legacy
+  "Create a temporary index table for the duration of the body, or run it under legacy search."
+  [& body]
+  `(if (search.engine/supported-engine? :search.engine/appdb)
+     (with-appdb-search-if-available* ~@body)
+     ;; Pin the engine rather than taking whatever the default is. Semantic can be active here, and the body is
+     ;; written for an index this app DB cannot hold.
+     (with-legacy-search ~@body)))
+
+(defmacro with-appdb-search-if-available-without-fallback
+  "Create a temporary index table for the duration of the body.
+   Only runs if the appdb search engine is supported."
+  [& body]
+  `(when (search.engine/supported-engine? :search.engine/appdb)
+     (with-appdb-search-if-available* ~@body)))
 
 (defmacro with-appdb-search-and-legacy-search
   "Run the body twice, once with the legacy search engine, and once with the appdb search engine."
