@@ -1406,6 +1406,26 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 
 TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever.
 
+### `MB_LLM_DEEPSEEK_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.deepseek.com`
+- [Configuration file name](./config-file.md): `llm-deepseek-api-base-url`
+
+The DeepSeek API base URL. Both the Anthropic-compatible Messages surface (`/anthropic/v1/messages`) and the model catalog (`/models`) are served off this root, so do not include `/anthropic` or `/v1`.
+
+Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_DEEPSEEK_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-deepseek-api-key`
+
+The DeepSeek API Key.
+
+Backed by the deepseek connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
 ### `MB_LLM_GOOGLE_API_BASE_URL`
 
 - Type: string
@@ -1603,6 +1623,34 @@ Maximum SQL generation requests per user per minute.
 - [Configuration file name](./config-file.md): `llm-request-timeout-ms`
 
 Socket (inter-byte read) timeout in milliseconds for LLM API requests. For streaming responses this bounds the gap between successive chunks, NOT the total response time. Picked generously: extended thinking can pause for tens of seconds between chunks. Without it, a hung read inside the stream blocks the worker indefinitely — observed in production when an upstream proxy held the connection open without sending data.
+
+### `MB_LLM_VLLM_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-vllm-api-base-url`
+
+The base URL of your vLLM server's OpenAI-compatible API, e.g. `http://vllm.internal:8000/v1`.
+
+Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_VLLM_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-vllm-api-key`
+
+The API key for your vLLM server. Only needed when the server was started with `--api-key`.
+
+Backed by the vllm connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_VLLM_REQUEST_TIMEOUT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `llm-vllm-request-timeout-ms`
+
+Socket timeout in milliseconds for requests to your vLLM server.
 
 ### `MB_LLM_ZAI_API_BASE_URL`
 
@@ -2449,6 +2497,16 @@ This variable also controls the geocoding service that Metabase uses to know the
 - [Configuration file name](./config-file.md): `send-new-sso-user-admin-email`
 
 Should new email notifications be sent to admins, for all new SSO users?
+
+### `MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION`
+
+- Type: boolean
+- Default: `false`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Whether to import questions whose queries this Metabase's query schema rejects. Defaults to false.
+
+On import, Metabase validates every question against the query format this version understands, and refuses any it cannot read. Set this to true to skip that validation. Skipping it will not necessarily make the import succeed. Import may still fail on a later step.
 
 ### `MB_SESSION_COOKIE_SAMESITE`
 
@@ -3421,6 +3479,13 @@ Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
+
+### `MB_SESSION_SECRET_KEY`
+
+Type: string<br>
+Default: `null`
+
+When set, session keys are stored in the application database signed with this secret, so a valid session cannot be created or used with database access alone. Requirement: minimum 16 characters. Setting or changing this value logs out all active sessions.
 
 ### `MB_SETUP_TOKEN`
 
