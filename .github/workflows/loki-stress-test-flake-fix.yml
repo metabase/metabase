@@ -156,7 +156,8 @@ jobs:
 
       - name: Stress-test Loki
         run: |
-          # The default run shell has no pipefail, and without it the tee below would hide loki's exit status.
+          # Loki's output is piped through tee below, and a pipeline normally reports the exit status of its last command.
+          # Without this a failed loki run would look like a pass, because tee itself succeeded.
           set -o pipefail
           BURN_IN=${{ inputs.burn_in || '10' }}
           STORY_FILES='${{ needs.detect-changed-stories.outputs.story_files }}'
