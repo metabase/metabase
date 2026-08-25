@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import { timelineApi } from "metabase/api";
+import type { TimelineEventsVisibilityContext } from "metabase/visualizations/types";
 import type { Timeline } from "metabase-types/api";
 
 import { transformTimelines } from "./utils";
@@ -19,4 +20,9 @@ export const getFetchedTimelines = createSelector(
 export const getTransformedTimelines = createSelector(
   [getFetchedTimelines],
   transformTimelines,
+);
+
+export const getTimelineEventsVisibilityContext = createSelector(
+  [getTransformedTimelines],
+  (timelines): TimelineEventsVisibilityContext => ({ timelines }),
 );

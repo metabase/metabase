@@ -1,4 +1,4 @@
-import type { CardId } from "./card";
+import type { CardId, VisualizationSettings } from "./card";
 import type {
   Collection,
   CollectionId,
@@ -59,10 +59,15 @@ export interface TimelineEventData {
   question_id?: CardId;
 }
 
-export interface TimelineEventsVisibility {
-  shown_timeline_ids?: TimelineId[];
-  hidden_event_ids?: TimelineEventId[];
-}
+/**
+ * The visualization settings that record which timeline events a chart shows.
+ * Nothing is shown unless its timeline is selected. Both keys are written
+ * together, so a selected list (even an empty one) means a recorded choice.
+ */
+export type TimelineEventsVisibility = Pick<
+  VisualizationSettings,
+  "timeline.selected_timeline_ids" | "timeline.excluded_timeline_event_ids"
+>;
 
 export type ListTimelinesRequest = {
   include?: "events";

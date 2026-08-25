@@ -57,7 +57,6 @@ import {
   markCardAsSlow,
   setDashboardAttributes,
   setDocumentTitle,
-  setMultipleDashCardAttributes,
   setShowLoadingCompleteFavicon,
   setSidebar,
 } from "./actions";
@@ -217,10 +216,6 @@ export const timelineEvents = createReducer(
   (builder) => {
     builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.timelineEvents);
     builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.timelineEvents);
-    builder.addCase(
-      SET_EDITING_DASHBOARD,
-      () => INITIAL_DASHBOARD_STATE.timelineEvents,
-    );
     builder.addCase(CLOSE_SIDEBAR, (state) => {
       state.selection = null;
     });
@@ -232,19 +227,6 @@ export const timelineEvents = createReducer(
     builder.addCase(setDashCardTimelineEventsVisibility, (state, action) => {
       state.overrides = { ...state.overrides, ...action.payload };
     });
-    builder.addCase(
-      setMultipleDashCardAttributes,
-      (state, { payload: { dashcards } }) => {
-        dashcards.forEach(({ id, attributes }) => {
-          if (
-            attributes.visualization_settings &&
-            "timeline_events.visibility" in attributes.visualization_settings
-          ) {
-            delete state.overrides[id];
-          }
-        });
-      },
-    );
     builder.addCase(selectTimelineEvents, (state, action) => {
       state.selection = action.payload;
     });

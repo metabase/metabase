@@ -1,27 +1,44 @@
 import { createAction } from "redux-actions";
 
-import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import {
   DESELECT_TIMELINE_EVENTS,
-  HIDE_TIMELINE_EVENTS,
   SELECT_TIMELINE_EVENTS,
-  SHOW_TIMELINE_EVENTS,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
-import type { CollectionId } from "metabase-types/api";
+import { getTimelineEventsVisibilityContext } from "metabase/timelines/panel/selectors";
+import {
+  hideTimelineEvents as hideEventsInVisibility,
+  showTimelineEvents as showEventsInVisibility,
+} from "metabase/visualizations/lib/timeline-events-visibility";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
+import type { TimelineEvent } from "metabase-types/api";
+
+import { getTimelineEventsVisibility } from "../selectors";
+
+import { onUpdateVisualizationSettings } from "./visualization-settings";
 
 export const selectTimelineEvents = createAction(SELECT_TIMELINE_EVENTS);
 export const deselectTimelineEvents = createAction(DESELECT_TIMELINE_EVENTS);
-export const hideTimelineEvents = createAction(HIDE_TIMELINE_EVENTS);
-export const showTimelineEvents = createAction(SHOW_TIMELINE_EVENTS);
 
-export const showTimelinesForCollection =
-  (collectionId?: CollectionId | null) =>
+// Which events a question shows lives in its visualization settings, so
+// toggling them is a settings change that gets saved with the question.
+const updateTimelineEventsVisibility =
+  (update: TimelineEventsVisibilityUpdate) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const collectionTimelines = getCollectionTimelines(
-      getFetchedTimelines(getState()),
-      collectionId,
+    const state = getState();
+    const visibility = update(
+      getTimelineEventsVisibility(state),
+      getTimelineEventsVisibilityContext(state),
     );
-    dispatch(showTimelineEvents(collectionTimelines.flatMap((t) => t.events)));
+    dispatch(onUpdateVisualizationSettings(visibility));
   };
+
+export const showTimelineEvents = (events: TimelineEvent[]) =>
+  updateTimelineEventsVisibility((visibility, context) =>
+    showEventsInVisibility(visibility, events, context),
+  );
+
+export const hideTimelineEvents = (events: TimelineEvent[]) =>
+  updateTimelineEventsVisibility((visibility, context) =>
+    hideEventsInVisibility(visibility, events, context),
+  );

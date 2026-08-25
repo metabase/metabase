@@ -6,7 +6,6 @@ import {
 import { createCachedSelector } from "re-reselect";
 import { shallowEqual } from "react-redux";
 
-import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import {
   getCurrentDashcards,
   getDashboard,
@@ -17,12 +16,12 @@ import type {
   DashboardTimelineEventsState,
   State,
 } from "metabase/redux/store";
-import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
+import { getTimelineEventsVisibilityContext } from "metabase/timelines/panel/selectors";
 import {
   aggregateVisibleEventIds,
+  getSavedTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
-import type { TimelineEventsVisibilityContext } from "metabase/visualizations/types";
 import type {
   DashCardId,
   TimelineEvent,
@@ -38,31 +37,19 @@ const NO_EVENT_IDS: TimelineEventId[] = [];
 export const getDashboardCollectionId = (state: State) =>
   getDashboard(state)?.collection_id ?? null;
 
-export const getTimelineEventsVisibilityContext = createSelector(
-  [getTransformedTimelines],
-  (timelines): TimelineEventsVisibilityContext => ({ timelines }),
-);
-
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
 
-export const getCollectionTimelinesVisibility = createSelector(
-  [getTransformedTimelines, getDashboardCollectionId],
-  (timelines, collectionId): TimelineEventsVisibility => {
-    const timelineIds = getCollectionTimelines(timelines, collectionId).map(
-      (timeline) => timeline.id,
-    );
-    return timelineIds.length > 0 ? { shown_timeline_ids: timelineIds } : {};
-  },
-);
-
+// What a viewer toggled in this session wins over what the question saved.
 const resolveDashCardVisibility = (
   overrides: DashboardTimelineEventsState["overrides"],
   dashcards: DashboardState["dashcards"],
   dashcardId: DashCardId,
 ): TimelineEventsVisibility | undefined =>
   overrides[dashcardId] ??
-  dashcards[dashcardId]?.visualization_settings?.["timeline_events.visibility"];
+  getSavedTimelineEventsVisibility(
+    dashcards[dashcardId]?.card?.visualization_settings,
+  );
 
 export const getDashCardTimelineEventsVisibility = (
   state: State,

@@ -7,7 +7,6 @@ import {
 
 import {
   filterTimelinesByXAxis,
-  filterVisibleTimelineEvents,
   formatTitle,
   getEventsXDomain,
   getFocusedTimelines,
@@ -182,26 +181,5 @@ describe("filterTimelinesByXAxis", () => {
   it("returns non-empty timelines untouched without an axis", () => {
     const filtered = filterTimelinesByXAxis(timelines, null);
     expect(filtered.map((timeline) => timeline.id)).toEqual([1, 2]);
-  });
-});
-
-describe("filterVisibleTimelineEvents", () => {
-  it("returns visible events across timelines sorted by timestamp", () => {
-    const timelines = [
-      createMockTimeline({
-        events: [
-          createMockTimelineEvent({ id: 1, timestamp: "2027-06-15T00:00:00Z" }),
-          createMockTimelineEvent({ id: 2, timestamp: "2027-06-01T00:00:00Z" }),
-        ],
-      }),
-      createMockTimeline({
-        events: [
-          createMockTimelineEvent({ id: 3, timestamp: "2027-06-10T00:00:00Z" }),
-        ],
-      }),
-    ];
-    expect(
-      filterVisibleTimelineEvents(timelines, [1, 3]).map((event) => event.id),
-    ).toEqual([3, 1]);
   });
 });

@@ -2,9 +2,13 @@ import _ from "underscore";
 
 import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import {
+  getCollectionTimelinesVisibility,
+  getSavedTimelineEventsVisibility,
+} from "metabase/visualizations/lib/timeline-events-visibility";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Series } from "metabase-types/api";
+import type { Series, Timeline } from "metabase-types/api";
 
 /**
  * Saves to `visualization_settings` property of a question those visualization settings that
@@ -29,6 +33,28 @@ export function getQuestionWithDefaultVisualizationSettings(
   } else {
     return question;
   }
+}
+
+/**
+ * Saving records which timeline events the question shows, so the saved
+ * question shows the same events wherever it appears, e.g. on dashboards.
+ * Nothing is recorded while there are no timelines to show (or they haven't
+ * loaded), so the question keeps following its collection.
+ */
+export function recordTimelineEventsVisibility(
+  question: Question,
+  timelines: Timeline[],
+): Question {
+  if (getSavedTimelineEventsVisibility(question.settings()) != null) {
+    return question;
+  }
+  const visibility = getCollectionTimelinesVisibility(
+    timelines,
+    question.collectionId(),
+  );
+  return visibility["timeline.selected_timeline_ids"]?.length
+    ? question.updateSettings(visibility)
+    : question;
 }
 
 export function getAdHocQuestionWithVizSettings(options: {

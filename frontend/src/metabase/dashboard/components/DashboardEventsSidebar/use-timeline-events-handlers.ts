@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 
 import {
-  type TimelineEventsVisibilityUpdate,
   deselectTimelineEvents,
   selectTimelineEvents,
   updateDashCardsTimelineEventsVisibility,
@@ -13,6 +12,7 @@ import {
   showTimelineEvents,
   showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
+import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
 import type { DashCardId, Timeline, TimelineEvent } from "metabase-types/api";
 
 export const useTimelineEventsHandlers = ({

@@ -1,16 +1,19 @@
 import _ from "underscore";
 
+import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import { dayjs } from "metabase/dayjs";
 import type {
   AggregatedEventsVisibility,
   TimelineEventsVisibilityContext,
 } from "metabase/visualizations/types";
 import type {
+  CollectionId,
   Timeline,
   TimelineEvent,
   TimelineEventId,
   TimelineEventsVisibility,
   TimelineId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 interface ResolveOptions {
@@ -27,8 +30,8 @@ interface VisibilitySets {
 const toSets = (
   visibility: TimelineEventsVisibility | undefined,
 ): VisibilitySets => ({
-  shownTimelineIds: new Set(visibility?.shown_timeline_ids),
-  hiddenEventIds: new Set(visibility?.hidden_event_ids),
+  shownTimelineIds: new Set(visibility?.["timeline.selected_timeline_ids"]),
+  hiddenEventIds: new Set(visibility?.["timeline.excluded_timeline_event_ids"]),
 });
 
 const sortedIds = <T extends number>(ids: Iterable<T>): T[] =>
@@ -37,16 +40,20 @@ const sortedIds = <T extends number>(ids: Iterable<T>): T[] =>
 const fromSets = ({
   shownTimelineIds,
   hiddenEventIds,
-}: VisibilitySets): TimelineEventsVisibility => {
-  const visibility: TimelineEventsVisibility = {};
-  if (shownTimelineIds.size > 0) {
-    visibility.shown_timeline_ids = sortedIds(shownTimelineIds);
-  }
-  if (hiddenEventIds.size > 0) {
-    visibility.hidden_event_ids = sortedIds(hiddenEventIds);
-  }
-  return visibility;
-};
+}: VisibilitySets): TimelineEventsVisibility => ({
+  "timeline.selected_timeline_ids": sortedIds(shownTimelineIds),
+  "timeline.excluded_timeline_event_ids": sortedIds(hiddenEventIds),
+});
+
+/**
+ * The selection recorded in a card's visualization settings, or undefined when
+ * the card has never had one recorded. Returns the settings object itself so
+ * selectors memoized on it stay stable.
+ */
+export const getSavedTimelineEventsVisibility = (
+  settings: VisualizationSettings | undefined,
+): TimelineEventsVisibility | undefined =>
+  settings?.["timeline.selected_timeline_ids"] != null ? settings : undefined;
 
 const getActiveEvents = (timeline: Timeline) =>
   (timeline.events ?? []).filter((event) => !event.archived);
@@ -70,12 +77,6 @@ export const resolveVisibleTimelineEvents = ({
       .filter((event) => !sets.hiddenEventIds.has(event.id)),
   );
 };
-
-export const isDefaultVisibility = (
-  visibility: TimelineEventsVisibility | undefined,
-): boolean =>
-  !visibility?.shown_timeline_ids?.length &&
-  !visibility?.hidden_event_ids?.length;
 
 const setTimelineVisible = (
   timeline: Timeline,
@@ -106,6 +107,11 @@ export const showTimelines = (
   visibility: TimelineEventsVisibility,
   timelines: Timeline[],
 ) => setTimelinesVisible(visibility, timelines, true);
+
+export const getCollectionTimelinesVisibility = (
+  timelines: Timeline[],
+  collectionId: CollectionId | null | undefined,
+) => showTimelines({}, getCollectionTimelines(timelines, collectionId));
 
 export const hideTimelines = (
   visibility: TimelineEventsVisibility,

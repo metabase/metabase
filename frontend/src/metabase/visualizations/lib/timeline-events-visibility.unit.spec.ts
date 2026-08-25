@@ -6,13 +6,16 @@ import {
 
 import {
   aggregateVisibleEventIds,
+  getSavedTimelineEventsVisibility,
   hideTimelineEvents,
   hideTimelines,
-  isDefaultVisibility,
   resolveVisibleTimelineEvents,
   showTimelineEvents,
   showTimelines,
 } from "./timeline-events-visibility";
+
+const SELECTED = "timeline.selected_timeline_ids";
+const EXCLUDED = "timeline.excluded_timeline_event_ids";
 
 const COLLECTION_ID = 7;
 
@@ -84,22 +87,22 @@ describe("resolveVisibleTimelineEvents", () => {
   });
 
   it("shows the non-archived events of shown timelines, sorted by date", () => {
-    expect(
-      visibleNames({ shown_timeline_ids: [releases.id, marketing.id] }),
-    ).toEqual(["RC1", "Launch", "RC2"]);
+    expect(visibleNames({ [SELECTED]: [releases.id, marketing.id] })).toEqual([
+      "RC1",
+      "Launch",
+      "RC2",
+    ]);
   });
 
   it("shows nothing when events are turned off", () => {
-    expect(visibleNames({ shown_timeline_ids: [releases.id] }, false)).toEqual(
-      [],
-    );
+    expect(visibleNames({ [SELECTED]: [releases.id] }, false)).toEqual([]);
   });
 
   it("hides single events of shown timelines", () => {
     expect(
       visibleNames({
-        shown_timeline_ids: [releases.id, incidents.id],
-        hidden_event_ids: [rc2.id],
+        [SELECTED]: [releases.id, incidents.id],
+        [EXCLUDED]: [rc2.id],
       }),
     ).toEqual(["RC1", "Outage"]);
   });
@@ -107,18 +110,34 @@ describe("resolveVisibleTimelineEvents", () => {
   it("ignores ids that no longer exist", () => {
     expect(
       visibleNames({
-        shown_timeline_ids: [releases.id, 999],
-        hidden_event_ids: [999],
+        [SELECTED]: [releases.id, 999],
+        [EXCLUDED]: [999],
       }),
     ).toEqual(["RC1", "RC2"]);
   });
 });
 
-describe("isDefaultVisibility", () => {
-  it("is true only when nothing is shown", () => {
-    expect(isDefaultVisibility(undefined)).toBe(true);
-    expect(isDefaultVisibility({ hidden_event_ids: [] })).toBe(true);
-    expect(isDefaultVisibility({ shown_timeline_ids: [1] })).toBe(false);
+describe("getSavedTimelineEventsVisibility", () => {
+  it("reads a recorded selection out of the card settings", () => {
+    const settings = {
+      "graph.dimensions": ["CREATED_AT"],
+      [SELECTED]: [releases.id],
+      [EXCLUDED]: [rc2.id],
+    };
+    expect(getSavedTimelineEventsVisibility(settings)).toBe(settings);
+  });
+
+  it("treats an empty selection as recorded", () => {
+    const settings = { [SELECTED]: [] };
+    expect(getSavedTimelineEventsVisibility(settings)).toBe(settings);
+  });
+
+  it("is undefined when nothing was ever recorded", () => {
+    expect(getSavedTimelineEventsVisibility(undefined)).toBeUndefined();
+    expect(getSavedTimelineEventsVisibility({})).toBeUndefined();
+    expect(
+      getSavedTimelineEventsVisibility({ [EXCLUDED]: [] }),
+    ).toBeUndefined();
   });
 });
 
@@ -127,12 +146,15 @@ describe("showing and hiding timelines", () => {
     const shown = showTimelines({}, [releases]);
     expect(visibleNames(shown)).toEqual(["RC1", "RC2"]);
 
-    expect(hideTimelines(shown, [releases])).toEqual({});
+    expect(hideTimelines(shown, [releases])).toEqual({
+      [SELECTED]: [],
+      [EXCLUDED]: [],
+    });
   });
 
   it("showing a timeline brings back its individually hidden events", () => {
     const visibility = hideTimelineEvents(
-      { shown_timeline_ids: [releases.id] },
+      { [SELECTED]: [releases.id] },
       [rc1],
       context,
     );
@@ -148,7 +170,7 @@ describe("showing and hiding timelines", () => {
 describe("showing and hiding single events", () => {
   it("hides one event and keeps the rest of its timeline", () => {
     const visibility = hideTimelineEvents(
-      { shown_timeline_ids: [releases.id, marketing.id] },
+      { [SELECTED]: [releases.id, marketing.id] },
       [rc1],
       context,
     );
@@ -157,7 +179,7 @@ describe("showing and hiding single events", () => {
 
   it("keeps events added later hidden once every event of a timeline was hidden", () => {
     const visibility = hideTimelineEvents(
-      { shown_timeline_ids: [releases.id, marketing.id] },
+      { [SELECTED]: [releases.id, marketing.id] },
       [rc1, rc2],
       context,
     );
@@ -185,14 +207,17 @@ describe("showing and hiding single events", () => {
   });
 
   it("hiding and showing the same events leaves no leftovers behind", () => {
-    const shown = { shown_timeline_ids: [releases.id, marketing.id] };
+    const shown = {
+      [SELECTED]: [releases.id, marketing.id],
+      [EXCLUDED]: [],
+    };
     const hidden = hideTimelineEvents(shown, [rc1, launch], context);
     expect(showTimelineEvents(hidden, [rc1, launch], context)).toEqual(shown);
   });
 
   it("does not affect other timelines", () => {
     const visibility = hideTimelineEvents(
-      { shown_timeline_ids: [releases.id] },
+      { [SELECTED]: [releases.id] },
       [rc1],
       context,
     );

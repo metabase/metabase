@@ -1,11 +1,9 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { assoc, merge } from "icepick";
-import _ from "underscore";
 
 import {
   createCardPublicLink,
   deleteCardPublicLink,
-  timelineEventApi,
   updateCardEmbeddingParams,
   updateCardEnableEmbedding,
 } from "metabase/api";
@@ -27,7 +25,6 @@ import {
   CLOSE_TIMELINES,
   DESELECT_TIMELINE_EVENTS,
   EDIT_SUMMARY,
-  HIDE_TIMELINE_EVENTS,
   INITIALIZE_QB,
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ON_CLOSE_SUMMARY,
@@ -59,7 +56,6 @@ import {
   SET_SNIPPET_COLLECTION_ID,
   SET_UI_CONTROLS,
   SHOW_CHART_SETTINGS,
-  SHOW_TIMELINE_EVENTS,
   SOFT_RELOAD_CARD,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_SNIPPET_SIDEBAR,
@@ -576,31 +572,6 @@ export const parentEntity = createReducer<QueryBuilderParentEntityState>(
         isEditing: true,
       }))
       .addCase(CLOSE_QB, () => DEFAULT_PARENT_ENTITY_STATE);
-  },
-);
-
-export const visibleTimelineEventIds = createReducer<number[]>(
-  [],
-  (builder) => {
-    builder
-      .addCase(INITIALIZE_QB, () => [])
-      .addCase<string, { type: string; payload: TimelineEvent[] }>(
-        SHOW_TIMELINE_EVENTS,
-        (state, action) =>
-          _.uniq([...state, ...action.payload.map((event) => event.id)]),
-      )
-      .addCase<string, { type: string; payload: TimelineEvent[] }>(
-        HIDE_TIMELINE_EVENTS,
-        (state, action) => {
-          const eventIdsToHide = action.payload.map((event) => event.id);
-          return state.filter((eventId) => !eventIdsToHide.includes(eventId));
-        },
-      )
-      .addCase(RESET_QB, () => [])
-      .addMatcher(
-        timelineEventApi.endpoints.createTimelineEvent.matchFulfilled,
-        (state, action) => [...state, action.payload.id],
-      );
   },
 );
 

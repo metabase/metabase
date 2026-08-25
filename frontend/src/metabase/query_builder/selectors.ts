@@ -14,10 +14,7 @@ import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/settings";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
-import {
-  filterTimelinesByXAxis,
-  filterVisibleTimelineEvents,
-} from "metabase/timelines/panel/utils";
+import { filterTimelinesByXAxis } from "metabase/timelines/panel/utils";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import {
   extractRemappings,
@@ -27,6 +24,11 @@ import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/t
 import { isTimeseries } from "metabase/visualizations/lib/renderer_utils";
 import { createRawSeries } from "metabase/visualizations/lib/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import {
+  getCollectionTimelinesVisibility,
+  getSavedTimelineEventsVisibility,
+  resolveVisibleTimelineEvents,
+} from "metabase/visualizations/lib/timeline-events-visibility";
 import { getTimeseriesXAxis } from "metabase/visualizations/lib/timeseries-x-axis";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -48,7 +50,10 @@ import type {
   Series,
 } from "metabase-types/api";
 
-import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
+import {
+  getQuestionWithDefaultVisualizationSettings,
+  recordTimelineEventsVisibility,
+} from "./actions/core/utils";
 import { cleanIndexFlags } from "./model-indexes/actions";
 import {
   getCard,
@@ -117,8 +122,6 @@ export const getLastRunCard = (state: State) => state.qb.lastRunCard;
 
 export const getMetadataDiff = (state: State) => state.qb.metadataDiff;
 
-export const getVisibleTimelineEventIds = (state: State) =>
-  state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = (state: State) =>
   state.qb.selectedTimelineEventIds;
 
@@ -811,9 +814,30 @@ export const getFilteredTimelines = createSelector(
   filterTimelinesByXAxis,
 );
 
+// A question shows the events it has recorded in its settings. Until it has
+// recorded any (a new question, or one saved before events were recorded),
+// it shows the timelines of its collection.
+export const getTimelineEventsVisibility = createSelector(
+  [
+    (state: State) =>
+      getSavedTimelineEventsVisibility(getQuestion(state)?.settings()),
+    (state: State) => getQuestion(state)?.collectionId(),
+    getTransformedTimelines,
+  ],
+  (savedVisibility, collectionId, timelines) =>
+    savedVisibility ??
+    getCollectionTimelinesVisibility(timelines, collectionId),
+);
+
 export const getVisibleTimelineEvents = createSelector(
-  [getFilteredTimelines, getVisibleTimelineEventIds],
-  filterVisibleTimelineEvents,
+  [getFilteredTimelines, getTimelineEventsVisibility],
+  (timelines, visibility) =>
+    resolveVisibleTimelineEvents({ timelines, visibility }),
+);
+
+export const getVisibleTimelineEventIds = createSelector(
+  [getVisibleTimelineEvents],
+  (events) => events.map((event) => event.id),
 );
 
 export function getOffsetForQueryAndPosition(
@@ -1045,7 +1069,10 @@ export const getSubmittableQuestion = (state: State, question: Question) => {
     .setQuery(cleanQuery)
     .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
-  return submittableQuestion;
+  return recordTimelineEventsVisibility(
+    submittableQuestion,
+    getTransformedTimelines(state),
+  );
 };
 
 export const getNotebookNativePreviewSidebarWidth = (state: State) =>
