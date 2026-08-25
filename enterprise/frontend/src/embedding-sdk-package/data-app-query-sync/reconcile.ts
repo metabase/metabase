@@ -191,22 +191,29 @@ function findLockfileRepairs(
       );
     }
 
+    if (!card) {
+      continue;
+    }
+
     const isLockfileProven = entries.some(
       ({ savedQuestionSourceId }) => savedQuestionSourceId === id,
     );
 
     if (isLockfileProven) {
-      if (card && card.type !== "question") {
+      if (card.type !== "question") {
         throw new Error(`Card ${id} is no longer a saved question.`);
       }
 
       continue;
     }
-    if (
-      !card ||
-      card.type !== "question" ||
-      card.collection_id !== collectionId
-    ) {
+
+    if (card.archived === true) {
+      throw new Error(
+        `${query.exportName} references card ${id}, which is in the trash. Restore it to data app collection ${collectionId} to publish it again, or drop \`savedQuestionSourceId: ${id}\` from the declaration to publish a new copy, then run sync-resources again.`,
+      );
+    }
+
+    if (card.type !== "question" || card.collection_id !== collectionId) {
       throw new Error(
         `${query.exportName} references card ${id}, but the lockfile does not prove ownership and the card cannot be safely adopted.`,
       );
