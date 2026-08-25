@@ -452,6 +452,23 @@
                       (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
  ::evict-personal-collection-cache)
 
+(def ^:private dimension-lock
+  "Serialises temporary Dimensions against each other.
+
+  A Dimension names a Field the whole suite shares, and it lives until its scope ends. Two threads creating one at
+  once deadlock on the unique index over `dimension.field_id`: each holds the record lock the other's uniqueness
+  check wants, while asking for the insert-intention gap in front of it. MySQL and MariaDB pick a victim and roll
+  it back, taking its savepoints with it.
+
+  Tests that create no Dimension keep running in parallel alongside these."
+  (Object.))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Dimension
+  [model explicit-attributes f]
+  ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
+  (locking dimension-lock
+    (next-method model explicit-attributes f)))
+
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
     (methodical/defmethod t2.with-temp/with-temp-defaults model
@@ -1323,63 +1340,51 @@
   [locale-tag & body]
   `(call-with-locale! ~locale-tag (fn [] ~@body)))
 
-(def ^:private column-remapping-lock
-  "Serialises remapping scopes against each other.
-
-  A remapping writes a Dimension for a Field the whole suite shares, and those writes live until the surrounding
-  scope ends. Two threads remapping at once deadlock on the unique index over `dimension.field_id`: each holds the
-  record lock the other's uniqueness check needs, while wanting the insert-intention gap lock in front of it.
-  MySQL and MariaDB break the tie by killing one transaction, which takes its savepoints with it.
-
-  Tests that never remap keep running in parallel alongside these."
-  (Object.))
-
 (defn do-with-column-remappings! [orig->remapped thunk]
-  (locking column-remapping-lock
-    (transduce
-     identity
-     (fn
-       ([] thunk)
-       ([thunk] (thunk))
-       ([thunk [original-column-id remap]]
-        (let [original (t2/select-one :model/Field :id (u/the-id original-column-id))
-              describe-field (fn [{table-id :table_id, field-name :name}]
-                               (format "%s.%s" (t2/select-one-fn :name :model/Table :id table-id) field-name))]
-          (if (integer? remap)
-            ;; remap is integer => fk remap
-            (let [remapped (t2/select-one :model/Field :id (u/the-id remap))]
-              (fn []
+  (transduce
+   identity
+   (fn
+     ([] thunk)
+     ([thunk] (thunk))
+     ([thunk [original-column-id remap]]
+      (let [original (t2/select-one :model/Field :id (u/the-id original-column-id))
+            describe-field (fn [{table-id :table_id, field-name :name}]
+                             (format "%s.%s" (t2/select-one-fn :name :model/Table :id table-id) field-name))]
+        (if (integer? remap)
+          ;; remap is integer => fk remap
+          (let [remapped (t2/select-one :model/Field :id (u/the-id remap))]
+            (fn []
+              (t2.with-temp/with-temp [:model/Dimension _ {:field_id (:id original)
+                                                           :name (format "%s [external remap]" (:display_name original))
+                                                           :type :external
+                                                           :human_readable_field_id (:id remapped)}]
+                (testing (format "With FK remapping %s -> %s\n" (describe-field original) (describe-field remapped))
+                  (thunk)))))
+          ;; remap is sequential or map => HRV remap
+          (let [values-map (if (sequential? remap)
+                             (zipmap (range 1 (inc (count remap)))
+                                     remap)
+                             remap)]
+            (fn []
+              (let [preexisting-id (t2/select-one-pk :model/FieldValues
+                                                     :field_id (:id original)
+                                                     :type :full)
+                    testing-thunk (fn []
+                                    (testing (format "With human readable values remapping %s -> %s\n"
+                                                     (describe-field original) (pr-str values-map))
+                                      (thunk)))]
                 (t2.with-temp/with-temp [:model/Dimension _ {:field_id (:id original)
-                                                             :name (format "%s [external remap]" (:display_name original))
-                                                             :type :external
-                                                             :human_readable_field_id (:id remapped)}]
-                  (testing (format "With FK remapping %s -> %s\n" (describe-field original) (describe-field remapped))
-                    (thunk)))))
-            ;; remap is sequential or map => HRV remap
-            (let [values-map (if (sequential? remap)
-                               (zipmap (range 1 (inc (count remap)))
-                                       remap)
-                               remap)]
-              (fn []
-                (let [preexisting-id (t2/select-one-pk :model/FieldValues
-                                                       :field_id (:id original)
-                                                       :type :full)
-                      testing-thunk (fn []
-                                      (testing (format "With human readable values remapping %s -> %s\n"
-                                                       (describe-field original) (pr-str values-map))
-                                        (thunk)))]
-                  (t2.with-temp/with-temp [:model/Dimension _ {:field_id (:id original)
-                                                               :name (format "%s [internal remap]" (:display_name original))
-                                                               :type :internal}]
-                    (if preexisting-id
-                      (with-temp-vals-in-db :model/FieldValues preexisting-id {:values (keys values-map)
-                                                                               :human_readable_values (vals values-map)}
-                        (testing-thunk))
-                      (t2.with-temp/with-temp [:model/FieldValues _ {:field_id (:id original)
-                                                                     :values (keys values-map)
-                                                                     :human_readable_values (vals values-map)}]
-                        (testing-thunk)))))))))))
-     orig->remapped)))
+                                                             :name (format "%s [internal remap]" (:display_name original))
+                                                             :type :internal}]
+                  (if preexisting-id
+                    (with-temp-vals-in-db :model/FieldValues preexisting-id {:values (keys values-map)
+                                                                             :human_readable_values (vals values-map)}
+                      (testing-thunk))
+                    (t2.with-temp/with-temp [:model/FieldValues _ {:field_id (:id original)
+                                                                   :values (keys values-map)
+                                                                   :human_readable_values (vals values-map)}]
+                      (testing-thunk)))))))))))
+   orig->remapped))
 
 (defn- col-remappings-arg [x]
   (cond
