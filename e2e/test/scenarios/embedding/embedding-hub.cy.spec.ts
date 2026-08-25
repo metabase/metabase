@@ -560,8 +560,26 @@ describe("scenarios > embedding > embedding hub > appearance", () => {
         .findByRole("button", { name: /New theme/ })
         .click();
 
-      cy.url().should("include", "/embedding/appearance/new");
+      cy.url().should("include", "/embedding/appearance/theme/new");
       cy.url().should("not.include", "/admin/embedding/themes");
+    });
+
+    it("creates a theme from the hub and shows it in the listing", () => {
+      cy.visit("/embedding/appearance");
+
+      cy.findByTestId("embedding-hub-main")
+        .findByRole("button", { name: /New theme/ })
+        .click();
+
+      cy.findByLabelText("Theme name").clear().type("Hub theme");
+      cy.findByRole("button", { name: /Save theme/ }).click();
+
+      H.undoToastList().contains("Theme saved").should("be.visible");
+
+      cy.url().should("eq", Cypress.config().baseUrl + "/embedding/appearance");
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Hub theme")
+        .should("be.visible");
     });
   });
 
