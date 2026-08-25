@@ -80,7 +80,7 @@
       ;; locks held by the caller, while coordination that lasts until commit would be complex for a test-only path.
       ;; Materializing the dataset before opening the transaction avoids both problems.
       ;;
-      ;; Inside a transaction `mt/id` therefore costs a query, so a `t2/with-call-count` window expecting zero
+      ;; Inside a transaction, `mt/id` therefore costs a query, so a `t2/with-call-count` window expecting zero
       ;; calls must resolve its ids before opening.
       (if (mdb/in-transaction?)
         (u/the-id (get-or-create-default-dataset! driver))

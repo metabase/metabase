@@ -15,7 +15,7 @@
   false)
 
 (defonce ^:private prewarm-failures-logged
-  ;; Messages already reported by the dataset pre-warm below, so a repeated failure is logged once.
+  ;; Failure messages already reported by the dataset prewarm below, so repeated failures are logged once.
   (atom #{}))
 
 (methodical/defmethod toucan2.tools.with-temp/do-with-temp* :around :default
@@ -40,7 +40,7 @@
         (try
           ((resolve 'metabase.test.data.impl/db-id))
           (catch Throwable e
-            ;; This failure resurfaces much later as a Database that does not exist. Log each message once, since a
+            ;; A failed prewarm resurfaces much later as a Database that does not exist. Log each message once, since a
             ;; warehouse that is down would otherwise produce a warning for every top-level `with-temp`.
             (let [message (ex-message e)]
               (when-not (contains? (first (swap-vals! prewarm-failures-logged conj message)) message)
