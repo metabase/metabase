@@ -402,10 +402,10 @@ describe("Schedule", () => {
         "0 0 8 ? * 6#1 *",
       ],
       [
-        "switch daily to weekly keeps the time",
+        "switch daily to weekly keeps the time and drops the hidden minute",
         "0 30 15 * * ? *",
         { frequency: "weekly" },
-        "0 30 15 ? * 2 *",
+        "0 0 15 ? * 2 *",
       ],
       [
         "switch monthly to daily clears frame and weekday",
@@ -458,6 +458,36 @@ describe("Schedule", () => {
         expect(lastEvent.cronString).toBe(expectedCron);
       },
     );
+
+    it("does not carry a minute past the hour into a type that hides it", async () => {
+      const { onScheduleChange } = setup({
+        value: scheduleFromCron("0 0 * * * ? *"),
+        minutesOnHourPicker: true,
+      });
+
+      await pickField("minute", "15");
+      await pickField("frequency", "daily");
+      await pickField("time", "9:00");
+
+      expect(screen.getByTestId("select-time")).toHaveValue("9:00");
+      expectAmPmToBe("AM");
+      expect(screen.queryByTestId("select-minute")).not.toBeInTheDocument();
+      const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
+      expect(lastEvent.cronString).toBe("0 0 9 * * ? *");
+    });
+
+    it("does not carry a minute named by a custom cron expression into a type that hides it", async () => {
+      const { onScheduleChange } = setup({
+        value: { schedule_type: "cron", cron: "0 15 8 * * ? *" },
+      });
+
+      await pickField("frequency", "daily");
+
+      expect(screen.getByTestId("select-time")).toHaveValue("8:00");
+      expectAmPmToBe("AM");
+      const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
+      expect(lastEvent.cronString).toBe("0 0 8 * * ? *");
+    });
 
     it("keeps the day of the month a custom cron expression names", async () => {
       setup({ value: { schedule_type: "cron", cron: "0 0 8 15 * ? *" } });

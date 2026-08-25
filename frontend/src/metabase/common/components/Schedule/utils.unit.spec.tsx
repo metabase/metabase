@@ -175,7 +175,7 @@ describe("normalizeScheduleValue", () => {
           schedule_type: "weekly",
           schedule_day: "fri",
           schedule_hour: 20,
-          schedule_minute: 15,
+          schedule_minute: 0,
         },
         getScheduleDefaults,
       ),
@@ -184,8 +184,22 @@ describe("normalizeScheduleValue", () => {
       schedule_day: "fri",
       schedule_frame: null,
       schedule_hour: 20,
-      schedule_minute: 15,
+      schedule_minute: 0,
     });
+  });
+
+  it("should reset a minute the type cannot show", () => {
+    expect(
+      normalizeScheduleValue(
+        {
+          schedule_type: "weekly",
+          schedule_day: "fri",
+          schedule_hour: 20,
+          schedule_minute: 15,
+        },
+        getScheduleDefaults,
+      ),
+    ).toMatchObject({ schedule_minute: 0 });
   });
 
   it("should drop values the type does not use", () => {
@@ -284,14 +298,14 @@ describe("changeScheduleType", () => {
     });
   });
 
-  it("should keep the minute the user already picked past the hour", () => {
+  it("should not carry a minute past the hour into a type that hides it", () => {
     expect(
       changeScheduleType(
         { schedule_type: "hourly", schedule_minute: 15 },
         "daily",
         getScheduleDefaults,
       ),
-    ).toMatchObject({ schedule_type: "daily", schedule_minute: 15 });
+    ).toMatchObject({ schedule_type: "daily", schedule_minute: 0 });
   });
 
   it("should not read a by-the-minute interval as a minute past the hour", () => {
