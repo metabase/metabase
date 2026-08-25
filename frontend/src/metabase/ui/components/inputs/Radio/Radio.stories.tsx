@@ -193,7 +193,7 @@ const CARD_STATES: CardState[] = [
 ];
 
 const CardTemplate: StoryFn<RadioProps> = () => (
-  <StoryBoard title="Radio.Card">
+  <StoryBoard title="Radio.Card" background="background_page-primary">
     <Stack gap="1.5rem">
       <StoryJsx>{"<Radio.Card />"}</StoryJsx>
       {CARD_STATES.map((state) => (

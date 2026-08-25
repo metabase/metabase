@@ -82,6 +82,10 @@
     background-color: var(--mb-color-background_surface-primary-hover);
   }
 
+  &[data-checked]:not(:disabled) {
+    border: 1px solid var(--mb-color-border-highlight);
+  }
+
   &:disabled {
     cursor: not-allowed;
     border-color: transparent;
