@@ -43,11 +43,11 @@ Embed Metabot, so people can ask questions of their data in natural language.
 
 ## Things you can only do with the React SDK
 
-Web components cover the components above, but a few features need the [Modular embedding SDK](./sdk/introduction.md), since they take React components or functions rather than HTML attributes.
+Web components cover the components above. A few features are React-only, because they take React components or hooks that an HTML attribute can't carry. For those, use the [Modular embedding SDK](./sdk/introduction.md).
 
 - [Plugins](./sdk/plugins.md), to customize component menus and click actions
 - [Actions](./sdk/actions.md), to run Metabase actions from your app with the `useAction` hook
-- [Customize loading and error states](./loading-and-errors.md), to swap in your own loading and error components
+- [Customize loading and error states](./sdk/loading-and-errors.md), to swap in your own loading and error components
 
 ## Further reading
 

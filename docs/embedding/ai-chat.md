@@ -11,17 +11,19 @@ redirect_from:
 
 {% include plans-blockquote.html feature="AI chat component" convert_pro_link_to_embedding=true%}
 
-You can embed an AI chat in your app, so people can ask questions of their data in natural language. Embedded Metabot is a more focused version of [Metabot](../ai/metabot.md), built to work well in an embedded context: it can only display ad-hoc questions and metrics, and it doesn't know about dashboards.
+You can embed an AI chat in your app, so people can ask questions of their data in natural language. Embedded chat is a more focused version of [Metabot](../ai/metabot.md), built to work well in an embedded context: it can only display ad-hoc questions and metrics, and it doesn't know about dashboards.
 
 AI chat requires an authenticated (SSO) embed. [Guest embeds](./guest-embedding.md) can't use it.
 
 ## Try the AI chat demo
 
-See the [AI chat component](https://embedded-analytics-sdk-demo.metabase.com/admin/analytics/new/ask-metabot) running on the Shoppy demo site.
+For what AI chat looks like in action, check out the [AI chat component](https://embedded-analytics-sdk-demo.metabase.com/admin/analytics/new/ask-metabot) running on the Shoppy demo site. The demo's chat uses the [dedicated chart component](#ai-chat-with-dedicated-chart-panel).
 
 ## Set up AI chat in Metabase
 
-Before you embed the chat, turn on embedded Metabot and tell Metabase which collection it should search:
+First, an admin needs to [connect an AI provider](../ai/settings.md#enable-ai-features). If you're self-hosting, that means [bringing your own API key](../ai/settings.md#bring-your-own-api-key).
+
+Then turn on embedded Metabot and tell Metabase which collection it should search:
 
 1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
@@ -31,13 +33,9 @@ Before you embed the chat, turn on embedded Metabot and tell Metabase which coll
 6. Turn on **Enable Embedded Metabot**. With that toggle off, your chat component won't work.
 7. Under **Collection Embedded Metabot can use**, click **Pick a different collection** and choose the collection that holds the models and metrics embedded Metabot should query.
 
-Pointing embedded Metabot at a focused collection narrows where it looks: when it goes hunting for models and metrics to build a query from, it searches that collection and its subcollections. Picking **Our analytics** is the same as picking no collection at all, so pick something narrower if you want the scoping to do anything.
+The collection you pick here just narrows the chat's search scope. The AI can still query anything the person using the chat has [permissions to query](../permissions/embedding.md).
 
-That collection is a search scope, not a permission boundary. Embedded Metabot can still read and query anything the person using it has permissions for. It also sees the items that person viewed recently, whichever collection those live in. To control what people can get to, set [data permissions](../permissions/embedding.md).
-
-The **Embedded** tab configures embedded Metabot separately from the Metabot in your own Metabase, which lives on the **Internal** tab.
-
-For tips and more, see [Metabot settings](../ai/settings.md).
+The **Embedded** tab configures embedded Metabot separately from the Metabot in your own Metabase, which lives on the **Internal** tab. For the rest of the settings for embedded Metabot, see [Metabot settings](../ai/settings.md#configure-metabot).
 
 With embedded Metabot set up, there are two ways to add the chat to your app:
 
@@ -91,7 +89,7 @@ Use the `layout` attribute (web component) or the `layout` prop (SDK) to positio
 
 Metabot answers with ad-hoc questions, so nothing lands in your Metabase unless you say so. Turning on the save button lets people keep a question Metabot built.
 
-With a web component, turn saving on with `is-save-enabled="true"`, which is off by default. `target-collection` is optional, but it's worth setting: it picks the collection that new questions land in, so people's work doesn't scatter across your Metabase. Setting a target collection also hides the collection picker in the save modal, so nobody has to decide where their question goes.
+With a web component, saving is off by default. Turn it on with `is-save-enabled="true"`. `target-collection` is optional, but it's worth setting: it picks the collection that new questions land in, so people's work doesn't scatter across your Metabase. Setting a target collection also hides the collection picker in the save modal, so nobody has to decide where their question goes.
 
 ```html
 <metabase-metabot
