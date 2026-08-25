@@ -21,6 +21,16 @@
         (is (some? (get-in auth-identity [:credentials :password_salt])))
         (is (nil? (get-in auth-identity [:credentials :plaintext_password])))))))
 
+(deftest set-password!-invalidates-reset-token-test
+  (testing "set-password! deletes the user's password-reset token, so a reset link can't be replayed once the password is set"
+    (mt/with-temp [:model/User {user-id :id}]
+      (auth-identity/create-password-reset! user-id)
+      (is (some? (t2/select-one :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset"))
+          "sanity: a pending reset token exists")
+      (auth-identity/set-password! user-id "new-password")
+      (is (nil? (t2/select-one :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset"))
+          "setting a password removes the pending reset token"))))
+
 (deftest set-password!-clears-stale-expiry-test
   (testing "a plain set-password! clears any :expires_at a prior support-access grant left on the credential"
     (mt/with-temp [:model/User {user-id :id}]

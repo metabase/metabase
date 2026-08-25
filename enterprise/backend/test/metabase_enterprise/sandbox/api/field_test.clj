@@ -84,7 +84,7 @@
                            (fetch-values :rasta :name))))
                   (testing "A User with a *different* sandbox should see their own values"
                     (let [password (mt/random-name)]
-                      (mt/with-temp [:model/User another-user {:password password}]
+                      (mt/with-temp [:model/User another-user]
                         (auth-identity/set-password! (:id another-user) password)
                         (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                              {:remappings
@@ -157,7 +157,7 @@
                              :type :advanced)))))
       (testing "Do different users has different sandbox FieldValues"
         (let [password (mt/random-name)]
-          (mt/with-temp [:model/User another-user {:password password}]
+          (mt/with-temp [:model/User another-user]
             (auth-identity/set-password! (:id another-user) password)
             (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                  {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}

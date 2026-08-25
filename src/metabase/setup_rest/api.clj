@@ -45,10 +45,8 @@
                                                           :email        email
                                                           :first_name   first-name
                                                           :last_name    last-name
-                                                          :password     (str (random-uuid))
                                                           :is_superuser true))
         user-id    (u/the-id new-user)]
-    ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (auth-identity/set-password! user-id password)
     (let [session (auth-identity/create-session-with-auth-tracking! new-user device-info :provider/password)]
       {:session-key (:key session), :user-id user-id, :session session})))

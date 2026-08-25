@@ -1485,7 +1485,7 @@
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"
-    (mt/with-temp [:model/User {user-id :id, email :email} {:password "p@ssw0rd"}]
+    (mt/with-temp [:model/User {user-id :id, email :email} {}]
       (auth-identity/set-password! user-id "p@ssw0rd")
       (letfn [(set-locale! [expected-status-code new-locale]
                 (mt/client {:username email, :password "p@ssw0rd"}
@@ -1639,7 +1639,7 @@
 (deftest reset-password-session-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we return a session if we are changing our own password"
-      (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
+      (mt/with-temp [:model/User user {:is_superuser false}]
         (auth-identity/set-password! (:id user) "def")
         (let [creds {:username (:email user), :password "def"}]
           (is (=? {:session_id string/valid-uuid?
@@ -1647,7 +1647,7 @@
                   (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                     :old_password "def"}))))))
     (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
-      (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
+      (mt/with-temp [:model/User user {:is_superuser false}]
         (auth-identity/set-password! (:id user) "def")
         (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                                     :old_password "def"})))))))

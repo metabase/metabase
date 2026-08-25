@@ -98,6 +98,10 @@
   Always deletes the user's existing sessions: changing a password must invalidate every session authenticated with the
   old one. A caller that wants the acting user to stay logged in should create a fresh session afterward.
 
+  Also deletes the user's `emailed-secret-password-reset` AuthIdentity: this is called by the password-reset flow, so
+  once the password has been set the reset token must stop working — otherwise it could be replayed to reset the
+  password again until it expires.
+
   `opts` may contain `:expires-at`, an instant after which the credential is no longer valid (used by time-limited
   support-access grants)."
   ([user-id  :- ms/PositiveInt
@@ -119,6 +123,7 @@
        (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
          (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
          (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs))))
+     (t2/delete! :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")
      (t2/delete! :model/Session :user_id user-id))))
 
 (mu/defn reset-token-hash :- [:maybe :string]
