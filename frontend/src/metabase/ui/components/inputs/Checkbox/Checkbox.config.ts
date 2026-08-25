@@ -1,25 +1,14 @@
-import {
-  Checkbox,
-  CheckboxCard,
-  CheckboxIndicator,
-  getSize,
-  rem,
-} from "@mantine/core";
+import { Checkbox, CheckboxCard, CheckboxIndicator, rem } from "@mantine/core";
 
 import CheckboxStyles from "./Checkbox.module.css";
 import { CheckboxIcon } from "./CheckboxIcon";
 
-const SIZES: Record<string, string> = {
-  xs: rem(16),
-  sm: rem(16),
-  md: rem(20),
-};
+const CHECKBOX_SIZE = rem(16);
 
 export const checkboxOverrides = {
   Checkbox: Checkbox.extend({
     defaultProps: {
       icon: CheckboxIcon,
-      size: "sm",
       radius: "xs",
     },
     classNames: {
@@ -33,13 +22,11 @@ export const checkboxOverrides = {
       inner: CheckboxStyles.inner,
       error: CheckboxStyles.error,
     },
-    vars: (_theme, { size }) => {
-      return {
-        root: {
-          "--checkbox-size": getSize(SIZES[size || "md"]),
-        },
-      };
-    },
+    vars: () => ({
+      root: {
+        "--checkbox-size": CHECKBOX_SIZE,
+      },
+    }),
   }),
   CheckboxCard: CheckboxCard.extend({
     defaultProps: {
@@ -53,7 +40,7 @@ export const checkboxOverrides = {
     defaultProps: {
       icon: CheckboxIcon,
       radius: "xs",
-      size: SIZES.sm,
+      size: CHECKBOX_SIZE,
     },
     classNames: {
       indicator: CheckboxStyles.cardIndicator,

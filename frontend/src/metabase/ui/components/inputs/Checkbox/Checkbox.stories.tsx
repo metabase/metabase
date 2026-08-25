@@ -14,7 +14,6 @@ const args = {
   error: undefined,
   indeterminate: false,
   disabled: false,
-  size: "sm",
 };
 
 const argTypes = {
@@ -33,10 +32,6 @@ const argTypes = {
   disabled: {
     control: { type: "boolean" },
   },
-  size: {
-    options: ["xs", "sm", "md"],
-    control: { type: "inline-radio" },
-  },
   variant: {
     options: ["default", "stacked"],
     control: { type: "inline-radio" },
@@ -52,7 +47,6 @@ export default {
 
 export const Default = {};
 
-const SIZES = ["xs", "sm", "md"] as const;
 const VARIANTS = ["default", "stacked"] as const;
 
 const STATES = [
@@ -78,22 +72,11 @@ const STATES = [
 
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: "20rem repeat(3, minmax(0, 1fr))",
+  gridTemplateColumns: "20rem minmax(0, 1fr)",
   columnGap: "2rem",
   rowGap: "0.75rem",
   alignItems: "center",
 } as const;
-
-const SizeHeader = () => (
-  <>
-    <div />
-    {SIZES.map((size) => (
-      <Text key={size} size="sm" fw="bold" c="text-secondary">
-        {size}
-      </Text>
-    ))}
-  </>
-);
 
 const VariantSection = ({
   variant,
@@ -110,15 +93,7 @@ const VariantSection = ({
         {STATES.map(({ id, attrs, props }) => (
           <Fragment key={id}>
             <StoryJsx>{`<Checkbox${variantAttr}${attrs} />`}</StoryJsx>
-            {SIZES.map((size) => (
-              <Checkbox
-                key={size}
-                size={size}
-                variant={variant}
-                label={label}
-                {...props}
-              />
-            ))}
+            <Checkbox variant={variant} label={label} {...props} />
           </Fragment>
         ))}
       </Box>
@@ -128,16 +103,6 @@ const VariantSection = ({
 
 const OverviewTemplate: StoryFn<CheckboxProps> = ({ label }) => (
   <StoryBoard title="Checkbox" padding="2rem">
-    <StorySection title="Sizes" description="Note: the default size is “sm”.">
-      <Box style={gridStyle}>
-        <SizeHeader />
-        <StoryJsx>{`<Checkbox size="…" />`}</StoryJsx>
-        {SIZES.map((size) => (
-          <Checkbox key={size} size={size} defaultChecked />
-        ))}
-      </Box>
-    </StorySection>
-
     {VARIANTS.map((variant) => (
       <VariantSection key={variant} variant={variant} label={label} />
     ))}
@@ -145,23 +110,9 @@ const OverviewTemplate: StoryFn<CheckboxProps> = ({ label }) => (
     <StorySection title="Description and error">
       <Box style={gridStyle}>
         <StoryJsx>{`<Checkbox description="…" />`}</StoryJsx>
-        {SIZES.map((size) => (
-          <Checkbox
-            key={size}
-            size={size}
-            label={label}
-            description="A short explanation"
-          />
-        ))}
+        <Checkbox label={label} description="A short explanation" />
         <StoryJsx>{`<Checkbox error="…" />`}</StoryJsx>
-        {SIZES.map((size) => (
-          <Checkbox
-            key={size}
-            size={size}
-            label={label}
-            error="Something went wrong"
-          />
-        ))}
+        <Checkbox label={label} error="Something went wrong" />
       </Box>
     </StorySection>
   </StoryBoard>

@@ -6,7 +6,10 @@ import { forwardRef } from "react";
 
 import { CheckboxCard } from "./CheckboxCard";
 
-export type CheckboxProps = Omit<MantineCheckboxProps, "labelPosition">;
+export type CheckboxProps = Omit<
+  MantineCheckboxProps,
+  "labelPosition" | "size"
+>;
 
 const CheckboxRoot = forwardRef<HTMLInputElement, CheckboxProps>(
   function CheckboxRoot(props, ref) {
