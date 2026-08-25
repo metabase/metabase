@@ -85,20 +85,40 @@
                           "WHERE (\"tc\".\"constraint_type\" = 'PRIMARY KEY')"
                           "WHERE \"tc\".\"constraint_type\" = 'PRIMARY KEY'"))))))
 
+(defn- timed-query [spec statement]
+  (let [timer (u/start-timer)
+        rows  (set (jdbc/query spec statement))]
+    {:rows rows :ms (u/since-ms timer)}))
+
+;;; `run-outgoing-query` and `run-current-query` are separate fns so that a wall profile of this namespace
+;;; attributes their time separately. Called inline they are two `jdbc/query` calls from one place, sharing a
+;;; stack, and the profiler aggregates them into a single flamegraph node that cannot be split afterwards.
+
+(defn- run-outgoing-query [spec args]
+  (timed-query spec (outgoing-describe-fields-sql args)))
+
+(defn- run-current-query [spec args]
+  (timed-query spec (sql-jdbc.sync/describe-fields-sql :redshift args)))
+
+(def ^:private measurement-rounds 3)
+
 (deftest equivalence-test
   (mt/test-driver :redshift
-    (let [table    (t2/select-one :model/Table (mt/id :venues))
-          spec     (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-          args     {:schema-names [(:schema table)] :table-names [(:name table)]}
-          run      (fn [statement]
-                     (let [timer (u/start-timer)
-                           rows  (set (jdbc/query spec statement))]
-                       {:rows rows :ms (u/since-ms timer)}))
-          outgoing (run (outgoing-describe-fields-sql args))
-          current  (run (sql-jdbc.sync/describe-fields-sql :redshift args))]
-      (log/infof "describe-fields for %s.%s: outgoing %.0fms, current %.0fms"
-                 (:schema table) (:name table) (:ms outgoing) (:ms current))
+    (let [table   (t2/select-one :model/Table (mt/id :venues))
+          spec    (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+          args    {:schema-names [(:schema table)] :table-names [(:name table)]}
+          ;; Whichever query runs first pays for opening the pooled connection, which is far larger than the
+          ;; difference being measured. Discard one round of both before timing anything.
+          _       (do (run-outgoing-query spec args) (run-current-query spec args))
+          rounds  (vec (repeatedly measurement-rounds
+                                   #(hash-map :outgoing (run-outgoing-query spec args)
+                                              :current  (run-current-query spec args))))
+          elapsed (fn [k] (mapv #(Math/round ^double (:ms (k %))) rounds))]
+      (log/infof "describe-fields for %s.%s, %d rounds: outgoing %sms, current %sms"
+                 (:schema table) (:name table) measurement-rounds
+                 (elapsed :outgoing) (elapsed :current))
       (testing "restricting the pk derived table returns the same fields, primary keys included"
-        (is (seq (:rows current)))
-        (is (some :pk? (:rows current)))
-        (is (= (:rows outgoing) (:rows current)))))))
+        (let [{:keys [outgoing current]} (first rounds)]
+          (is (seq (:rows current)))
+          (is (some :pk? (:rows current)))
+          (is (= (:rows outgoing) (:rows current))))))))
