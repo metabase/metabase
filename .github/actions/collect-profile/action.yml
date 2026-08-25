@@ -44,6 +44,9 @@ runs:
 
     # Only the rendered flamegraph is kept: the raw collapsed stacks it was built from run to
     # hundreds of MB on a long suite, and are reproducible locally from the same test selection.
+    #
+    # The info-level test log rides along on a green profiled run too. The failure-only log artifact
+    # the test jobs upload is not written when nothing failed, which is exactly the run being profiled.
     - name: Upload profile
       if: ${{ inputs.profiled == 'true' }}
       continue-on-error: true
@@ -53,5 +56,6 @@ runs:
         path: |
           target/clj-async-profiler/results/*flamegraph.html
           target/junit/*.xml
+          logs/test-log.json
         retention-days: 14
         if-no-files-found: warn
