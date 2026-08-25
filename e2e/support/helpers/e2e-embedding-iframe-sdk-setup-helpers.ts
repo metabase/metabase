@@ -26,20 +26,14 @@ export const embedModalEnableEmbedding = () => {
     // also shows transiently on the stale section after an auth-mode switch.
     cy.findByRole("button", { name: ACCEPT_TERMS_BUTTON_NAME }).click();
 
-    // Retry until the acceptance registered (the clicked section freezes into
-    // a disabled "Enabled" button), so a lost click fails here instead of on
-    // a misleading iframe timeout downstream (EMB-2292).
-    cy.get("body", { timeout: 10_000 }).should(($body) => {
-      const isAcceptButtonStillActionable = $body
-        .find('[data-testid="enable-embedding-card"] button:enabled')
-        .toArray()
-        .some((button) =>
-          ACCEPT_TERMS_BUTTON_NAME.test(button.textContent ?? ""),
-        );
-
-      expect(isAcceptButtonStillActionable, "terms acceptance registered").to.be
-        .false;
-    });
+    // Once the acceptance registers, the section freezes and relabels its
+    // button to a disabled "Enabled", so the actionable label going away is
+    // the signal. Asserting it here makes a lost click fail on the spot
+    // instead of on a misleading iframe timeout downstream (EMB-2292).
+    cy.findByRole("button", {
+      name: ACCEPT_TERMS_BUTTON_NAME,
+      timeout: 10_000,
+    }).should("not.exist");
   });
 };
 
