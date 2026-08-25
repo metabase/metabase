@@ -113,6 +113,7 @@
 
   &:disabled {
     cursor: not-allowed;
+    border-color: var(--mb-color-background_surface-disabled);
     background-color: var(--mb-color-background_surface-disabled);
   }
 }
