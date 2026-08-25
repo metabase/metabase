@@ -80,6 +80,49 @@
           (is (= #{deleted-ts}
                  (slackbot.persistence/deleted-message-ids conv-id #{deleted-ts}))))))))
 
+(deftest message-history-excludes-non-replayable-rows-test
+  (testing "only rows a later turn may replay contribute tool history"
+    (let [conv-id   (str (random-uuid))
+          insert!   (fn [slack-ts call-id & {:keys [error] :as opts}]
+                      (t2/insert! :model/MetabotMessage
+                                  (cond-> {:conversation_id conv-id
+                                           :slack_msg_id    slack-ts
+                                           :role            "assistant"
+                                           :profile_id      "slackbot"
+                                           :total_tokens    0
+                                           :data            [{:type       "tool-search"
+                                                              :toolCallId call-id
+                                                              :state      "output-available"
+                                                              :input      {}
+                                                              :output     {:output "result"}}]
+                                           :data_version    2}
+                                    (contains? opts :finished) (assoc :finished (:finished opts))
+                                    error                      (assoc :error error))))
+          clean     "1712100000.000001"
+          errored   "1712100000.000002"
+          in-flight "1712100000.000003"
+          legacy    "1712100000.000004"]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (insert! clean     "call-clean"     :finished true)
+        (insert! errored   "call-errored"   :finished true :error "boom")
+        (insert! in-flight "call-in-flight" :finished nil)
+        ;; No :finished at all -- exercises the column default that keeps pre-migration threads readable.
+        (insert! legacy    "call-legacy")
+        (let [history (slackbot.persistence/message-history
+                       conv-id #{clean errored in-flight legacy})]
+          (testing "a clean finished row still contributes -- guards against over-filtering"
+            (is (contains? history clean)))
+          (testing "an errored row contributes nothing"
+            (is (not (contains? history errored))))
+          ;; Unreachable in production: insert-assistant-placeholder! writes neither `finished` nor
+          ;; `slack_msg_id`, so an in-flight row can never match this query. Covered only because the
+          ;; shared predicate checks `finished`.
+          (testing "an in-flight row contributes nothing"
+            (is (not (contains? history in-flight))))
+          (testing "a row written before the `finished` column still contributes"
+            (is (contains? history legacy))))))))
+
 (deftest message-history-v2-parts-test
   (testing "stored v2 tool parts are translated to AI-SDK message pairs"
     (let [conv-id    (str (random-uuid))

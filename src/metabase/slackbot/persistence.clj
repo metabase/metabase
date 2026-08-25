@@ -18,7 +18,8 @@
        (into [] (mapcat #(metabot.persistence/tool-part->llm-messages % {:on-unresolved :skip})))))
 
 (defn message-history
-  "Tool call history for Slack messages. Returns {slack-msg-id -> [messages...]}."
+  "Tool call history for Slack messages. Returns {slack-msg-id -> [messages...]}.
+  Only [[metabase.metabot.persistence/replayable-assistant-row?]] rows contribute."
   [conversation-id slack-msg-ids]
   (when (seq slack-msg-ids)
     (->> (t2/select :model/MetabotMessage
@@ -26,6 +27,9 @@
                     :role "assistant"
                     :deleted_at nil
                     :slack_msg_id [:in slack-msg-ids])
+         ;; A failed turn's state is dropped by [[metabase.metabot.persistence/conversation-state]], so
+         ;; replaying its tool calls would announce queries the seeded state does not contain.
+         (filter metabot.persistence/replayable-assistant-row?)
          (keep (fn [{:keys [slack_msg_id] :as msg}]
                  (when-let [parts (seq (extract-history-messages msg))]
                    [slack_msg_id parts])))

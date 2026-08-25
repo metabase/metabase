@@ -91,6 +91,49 @@
         (is (= :user (:role (first result))))
         (is (= "Live bot response" (:content (second result))))))))
 
+(deftest thread->history-drops-errored-turns-tool-calls-test
+  (testing "an errored turn's tool calls are not replayed, but its Slack text still is"
+    (let [conv-id    (str (random-uuid))
+          clean-ts   "1712200000.000002"
+          errored-ts "1712200000.000004"
+          insert!    (fn [slack-ts call-id & {:keys [error]}]
+                       (t2/insert! :model/MetabotMessage
+                                   (cond-> {:conversation_id conv-id
+                                            :slack_msg_id    slack-ts
+                                            :role            "assistant"
+                                            :profile_id      "slackbot"
+                                            :total_tokens    0
+                                            :data            [{:type       "tool-search"
+                                                               :toolCallId call-id
+                                                               :state      "output-available"
+                                                               :input      {:query "orders"}
+                                                               :output     {:output "<result>orders</result>"}}]
+                                            :data_version    2
+                                            :finished        true}
+                                     error (assoc :error error))))]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        ;; The clean row is the control: without it a green assertion cannot tell the filter
+        ;; working apart from the fixture never producing tool parts at all.
+        (insert! clean-ts   "call-clean")
+        (insert! errored-ts "call-errored" :error "boom")
+        (let [thread   {:messages [{:ts "1712200000.000001" :text "First question"  :user   "U123"}
+                                   {:ts clean-ts            :text "Here you go"     :bot_id "B123"}
+                                   {:ts "1712200000.000003" :text "Second question" :user   "U123"}
+                                   {:ts     errored-ts
+                                    :text   "Something went wrong. Please try again."
+                                    :bot_id "B123"}]}
+              result   (#'slackbot.streaming/thread->history thread "UBOT123" conv-id)
+              call-ids (into #{} (comp (mapcat :tool_calls) (map :id)) result)]
+          (testing "the clean turn's tool call is replayed, the errored turn's is not"
+            (is (= #{"call-clean"} call-ids)))
+          (testing "both bot messages keep their Slack text -- the thread still shows the failure"
+            (is (= ["First question"
+                    "Here you go"
+                    "Second question"
+                    "Something went wrong. Please try again."]
+                   (into [] (comp (remove #(= :tool (:role %))) (keep :content)) result)))))))))
+
 (deftest format-viz-title-test
   (testing "format-viz-title builds correct title text"
     (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
