@@ -724,8 +724,7 @@
   (testing "LDAP login - fallback to local for broken LDAP settings"
     (ldap.test/with-ldap-server!
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        (mt/with-temp [:model/User {user-id :id} {:email    "sally.brown@metabase.com"
-                                                  :password "1234"}]
+        (mt/with-temp [:model/User {user-id :id} {:email "sally.brown@metabase.com"}]
           (auth-identity/set-password! user-id "1234")
           (is (malli= SessionResponse
                       (mt/client :post 200 "session" {:username "sally.brown@metabase.com"
@@ -737,8 +736,7 @@
       (mt/with-temporary-setting-values [ldap-timeout-seconds 0.01]
         (mt/with-dynamic-fn-redefs [metabase.sso.ldap.default-implementation/search (fn [& _args]
                                                                                       (Thread/sleep 500))]
-          (mt/with-temp [:model/User {user-id :id} {:email    "sally.brown@metabase.com"
-                                                    :password "1234"}]
+          (mt/with-temp [:model/User {user-id :id} {:email "sally.brown@metabase.com"}]
             (auth-identity/set-password! user-id "1234")
             (is (malli= SessionResponse
                         (mt/client :post 200 "session" {:username "sally.brown@metabase.com"
