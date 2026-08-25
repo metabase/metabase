@@ -17,7 +17,7 @@ export const AlertSubRow = ({ alerts, severity }: AlertSubRowProps) => {
     <Box p="sm">
       <Box
         p="sm"
-        bdrs="sm"
+        bdrs="xs"
         bg={match(severity)
           .with("error", () => "background_surface-error" as const)
           .with("warning", () => "background_surface-warning" as const)

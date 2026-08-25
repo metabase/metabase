@@ -20,7 +20,7 @@ export function ChartLayoutPicker({
       gap="xxs"
       bg="background_page-secondary"
       p="xxs"
-      bdrs="md"
+      bdrs="sm"
       data-testid="chart-layout-picker"
     >
       <Tooltip label={t`Default layout`}>

@@ -9,7 +9,7 @@ export const DataAppsEmptyState = () => (
     justify="center"
     gap="lg"
     bd="1px solid var(--mb-color-border)"
-    bdrs="md"
+    bdrs="sm"
     bg="background-primary"
     mih="16rem"
     p="xxl"

@@ -60,7 +60,7 @@ function ModalTitle({ title }: ModalTitleProps) {
         h="2rem"
         c="core-brand"
         bg="background_surface-brand-subtle"
-        bdrs="md"
+        bdrs="sm"
       >
         <FixedSizeIcon name="repository" />
       </Center>

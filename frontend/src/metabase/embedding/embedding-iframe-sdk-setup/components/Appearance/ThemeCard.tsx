@@ -35,7 +35,7 @@ export function ThemeCard({
       data-testid={`theme-card-${name}`}
       data-selected={isSelected}
       className={cx(S.card, isSelected && S.cardSelected)}
-      bdrs="md"
+      bdrs="sm"
       h="42px"
     >
       <Stack gap="xxs">

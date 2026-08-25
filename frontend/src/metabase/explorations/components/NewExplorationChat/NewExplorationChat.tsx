@@ -347,7 +347,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         <Flex
           bg="background-primary"
           bd="1px solid border"
-          bdrs="md"
+          bdrs="sm"
           mx="xl"
           pr="0.75rem"
           flex="none"

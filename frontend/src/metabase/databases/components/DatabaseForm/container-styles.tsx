@@ -53,7 +53,7 @@ function Backdrop({ children }: { children: React.ReactNode }) {
     <Box
       p="xl"
       bg="background_page-secondary"
-      bdrs="md"
+      bdrs="sm"
       mb="xl"
       display="grid"
       pb={0}

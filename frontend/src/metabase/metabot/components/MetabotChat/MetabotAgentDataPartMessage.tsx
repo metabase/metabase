@@ -228,7 +228,7 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
     align="center"
     justify="space-between"
     bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="sm"
+    bdrs="xs"
     className={Styles.agentPartCard}
     p="sm"
     pl="lg"
@@ -269,7 +269,7 @@ const DataPartJsonCard = ({
   return (
     <Box
       bd="1px solid var(--mb-color-border-neutral)"
-      bdrs="sm"
+      bdrs="xs"
       className={Styles.agentPartCard}
     >
       <Flex
@@ -330,7 +330,7 @@ const CodeEditDataPart = ({
   return (
     <Box
       bd="1px solid var(--mb-color-border-neutral)"
-      bdrs="sm"
+      bdrs="xs"
       className={Styles.agentPartCard}
     >
       <Flex

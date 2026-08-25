@@ -396,7 +396,7 @@ function ScoreDisplayInline({
           ml="auto"
           px={8}
           py={4}
-          bdrs="sm"
+          bdrs="xs"
           bg={RATING_BADGE_BACKGROUND_COLORS[ratingColorKey]}
           {...rest}
           gap="sm"

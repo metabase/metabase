@@ -212,7 +212,7 @@ function Banner() {
       px="xl"
       py="lg"
       bd="1px solid border"
-      bdrs="md"
+      bdrs="sm"
       data-testid="research-mode-banner"
     >
       <Text>
@@ -250,7 +250,7 @@ function ExplorationList({ explorations }: ExplorationListProps) {
               key={id}
               px="lg"
               py="sm"
-              bdrs="md"
+              bdrs="sm"
               className={S.explorationLink}
               style={{
                 animationDelay: `${index * 75}ms`,

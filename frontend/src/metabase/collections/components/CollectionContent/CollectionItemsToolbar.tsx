@@ -36,7 +36,7 @@ export function CollectionItemsToolbar({
     <Flex mb="lg" gap="0.75rem" data-testid="collection-items-toolbar">
       <TextInput
         flex="1"
-        bdrs="md"
+        bdrs="sm"
         value={searchText}
         onChange={(event) => onSearchTextChange(event.target.value)}
         placeholder={t`Search by name or editor...`}

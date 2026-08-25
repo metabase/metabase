@@ -120,7 +120,7 @@ export function ManageCustomVizPage() {
         <Group
           align="center"
           bd="1px solid var(--mb-color-border-neutral)"
-          bdrs="md"
+          bdrs="sm"
           bg="background_page-primary"
           justify="center"
           mih="15rem"
@@ -133,7 +133,7 @@ export function ManageCustomVizPage() {
       {repoPlugins && repoPlugins.length > 0 && (
         <Box
           bd="1px solid var(--mb-color-border-neutral)"
-          bdrs="md"
+          bdrs="sm"
           bg="background_page-primary"
           className={S.pluginList}
           style={{

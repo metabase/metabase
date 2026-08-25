@@ -63,7 +63,7 @@ export const AgentTodoListMessage = ({
             const config = todoStatusConfig[todo.status];
 
             return (
-              <Flex key={todo.id} bdrs="sm" align="flex-start">
+              <Flex key={todo.id} bdrs="xs" align="flex-start">
                 {match(todo.status)
                   .with("pending", () => (
                     <Flex

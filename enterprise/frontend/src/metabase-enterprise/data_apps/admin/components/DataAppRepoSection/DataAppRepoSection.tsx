@@ -30,7 +30,7 @@ export const DataAppRepoSection = ({ isConfigured, url }: Props) => (
         py="sm"
         bg="background-secondary"
         bd="1px solid var(--mb-color-border)"
-        bdrs="md"
+        bdrs="sm"
         visibleFrom="sm"
       >
         <Icon name="git_branch" c="text-secondary" size={16} flex="0 0 auto" />

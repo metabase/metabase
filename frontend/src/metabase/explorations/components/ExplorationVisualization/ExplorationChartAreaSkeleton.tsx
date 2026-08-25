@@ -19,7 +19,7 @@ export function ExplorationChartAreaSkeleton() {
         w="100%"
         bg="background-primary"
         bd="1px solid border"
-        bdrs="md"
+        bdrs="sm"
         p="xl"
       >
         <ExplorationChartSkeleton name={null} />

@@ -113,7 +113,7 @@ export const LinkHoverMenu = ({ editor, editable }: LinkHoverMenuProps) => {
       <Card
         shadow="0 2px 8px var(--mb-color-shadow-default)"
         bd="1px solid var(--mb-color-border-neutral)"
-        bdrs="sm"
+        bdrs="xs"
         px="sm"
         py="xxs"
         maw={MAX_W}

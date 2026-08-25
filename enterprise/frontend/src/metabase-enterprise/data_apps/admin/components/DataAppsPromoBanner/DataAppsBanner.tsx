@@ -14,7 +14,7 @@ export const DataAppsBanner = () => (
           p="xl"
           bg="background-brand"
           bd="1px solid var(--mb-color-border)"
-          bdrs="md"
+          bdrs="sm"
         >
           <ActionIcon
             pos="absolute"

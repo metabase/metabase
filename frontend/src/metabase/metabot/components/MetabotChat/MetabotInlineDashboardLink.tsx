@@ -14,7 +14,7 @@ export function MetabotInlineDashboardLink({
       align="center"
       gap="sm"
       bd="1px solid var(--mb-color-border)"
-      bdrs="md"
+      bdrs="sm"
       p="lg"
       data-testid="metabot-inline-dashboard-link"
     >

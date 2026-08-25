@@ -26,7 +26,7 @@ export function ChartTypePicker({
       gap="xxs"
       bg="background_page-secondary"
       px="xxs"
-      bdrs="md"
+      bdrs="sm"
     >
       {chartTypes.map(({ type, icon }) => (
         <ActionIcon

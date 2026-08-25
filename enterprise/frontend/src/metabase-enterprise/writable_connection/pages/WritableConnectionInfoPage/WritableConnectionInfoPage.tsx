@@ -79,7 +79,7 @@ function WritableConnectionInfoPageBody({
       data-testid="writable-connection-info-page"
     >
       <Box h="100%" w="100%" component={ScrollArea}>
-        <Box w="100%" maw="54rem" mx="auto" p={{ base: "md", sm: "xl" }}>
+        <Box w="100%" maw="54rem" mx="auto" p={{ base: "lg", sm: "xxl" }}>
           <Flex mb="xl" align="center">
             <Title order={1} fz="h2">
               {title}

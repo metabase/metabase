@@ -48,7 +48,7 @@ export function AddMappingRow({
       align="center"
       justify="space-between"
       bd="1px solid var(--mb-color-core-brand)"
-      bdrs="md"
+      bdrs="sm"
       m="lg"
       p="sm"
     >

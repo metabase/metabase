@@ -28,7 +28,7 @@ export default function UploadOverlay({
       mx="4%"
       my="sm"
       p={rem(64)}
-      bdrs="md"
+      bdrs="sm"
       bg="background_surface-brand-subtle"
       c="core-brand"
       fz="lg"

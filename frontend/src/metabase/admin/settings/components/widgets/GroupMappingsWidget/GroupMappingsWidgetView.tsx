@@ -167,7 +167,7 @@ export function GroupMappingsWidgetView({
 
       <Flex
         bd="1px solid var(--mb-color-border-neutral)"
-        bdrs="md"
+        bdrs="sm"
         direction="column"
         w="100%"
       >

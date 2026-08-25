@@ -31,7 +31,7 @@ export const UploadInfoModal = ({
           c="core-brand"
           bg="background_surface-brand-subtle"
           mx="auto"
-          bdrs="sm"
+          bdrs="xs"
         >
           {t`New`}
         </Text>

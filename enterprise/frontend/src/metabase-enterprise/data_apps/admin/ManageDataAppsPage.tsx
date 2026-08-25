@@ -83,7 +83,7 @@ export const ManageDataAppsPage = () => {
           {apps && apps.length > 0 && (
             <Box
               bd="1px solid var(--mb-color-border)"
-              bdrs="md"
+              bdrs="sm"
               bg="background-primary"
               className={S.appList}
               style={{ overflow: "hidden" }}

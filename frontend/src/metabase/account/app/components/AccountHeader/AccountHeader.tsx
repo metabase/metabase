@@ -52,10 +52,10 @@ export const AccountHeader = ({
       justify="center"
       align="center"
       bg="background_page-primary"
-      pt={{ base: "sm", sm: "md" }}
+      pt={{ base: "sm", sm: "lg" }}
     >
-      <Flex direction="column" align="center" p={{ base: "md", md: rem(64) }}>
-        <Box mb={{ base: "sm", sm: "md" }}>
+      <Flex direction="column" align="center" p={{ base: "lg", md: rem(64) }}>
+        <Box mb={{ base: "sm", sm: "lg" }}>
           <UserAvatar user={user} className={S.avatar} />
         </Box>
         {userFullName && (

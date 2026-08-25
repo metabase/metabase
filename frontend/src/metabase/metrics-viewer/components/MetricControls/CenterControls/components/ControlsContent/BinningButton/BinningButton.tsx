@@ -78,7 +78,7 @@ export function BinningButton({
           fw={400}
           py={0}
           px="lg"
-          bdrs="md"
+          bdrs="sm"
           variant="subtle"
           color="text-primary"
           onClick={() => setIsOpen(!isOpen)}

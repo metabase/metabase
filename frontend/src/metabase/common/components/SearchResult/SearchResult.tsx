@@ -224,7 +224,7 @@ export function SearchResult({
                 size="md"
                 color="input-focus"
                 orientation="vertical"
-                bdrs="xs"
+                bdrs="xxs"
               />
               <Markdown
                 dark

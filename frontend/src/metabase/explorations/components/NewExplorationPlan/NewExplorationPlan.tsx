@@ -78,7 +78,7 @@ export function NewExplorationPlan({ selection }: NewExplorationPlanProps) {
             w="100%"
             align="stretch"
             wrap="nowrap"
-            bdrs="md"
+            bdrs="sm"
             gap={0}
           >
             <Stack flex={1} miw={0} mih={0} h="100%" gap={0}>

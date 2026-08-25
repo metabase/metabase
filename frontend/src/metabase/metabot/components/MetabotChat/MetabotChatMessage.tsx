@@ -384,7 +384,7 @@ const AgentTurnAlert = ({
     gap="xxs"
     p="sm"
     bd="1px solid var(--mb-color-border-neutral)"
-    bdrs="sm"
+    bdrs="xs"
     data-testid="metabot-chat-message-turn-alert"
     bg="background_page-primary"
   >
@@ -402,7 +402,7 @@ const AgentTurnAlert = ({
     </Flex>
     {debugDetails && (
       <Card
-        bdrs="xs"
+        bdrs="xxs"
         ml="xl"
         p="sm"
         withBorder

@@ -66,7 +66,7 @@ const ToolCallSection = ({
           </ActionIcon>
         </Tooltip>
       </Flex>
-      <Box p="xxs" bd="1px solid var(--mb-color-border-neutral)" bdrs="sm">
+      <Box p="xxs" bd="1px solid var(--mb-color-border-neutral)" bdrs="xs">
         <CodeEditor
           value={value}
           language={isJson ? "json" : undefined}
@@ -181,7 +181,7 @@ export const AgentToolCallMessage = ({
         p="sm"
         pl="lg"
         bd="1px solid var(--mb-color-border-neutral)"
-        bdrs="sm"
+        bdrs="xs"
         direction="row"
         align="center"
         justify="space-between"

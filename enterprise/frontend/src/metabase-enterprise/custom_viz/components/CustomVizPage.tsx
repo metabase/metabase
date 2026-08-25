@@ -162,7 +162,7 @@ export function CustomVizPage({ params }: Props) {
       </Stack>
       <SettingsSection>
         <Box
-          bdrs="md"
+          bdrs="sm"
           bg="background_page-primary"
           data-testid="custom-viz-settings-form"
         >

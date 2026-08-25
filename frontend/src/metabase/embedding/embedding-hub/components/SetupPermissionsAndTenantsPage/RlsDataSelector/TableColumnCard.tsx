@@ -155,7 +155,7 @@ export const TableColumnCard = ({
             px="0.75rem"
             py="sm"
             bg="background_page-primary"
-            bdrs="xs"
+            bdrs="xxs"
           >
             <Text
               c={selectedTableName ? "text-primary" : "text-disabled"}

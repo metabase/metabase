@@ -18,7 +18,7 @@ export const LockedTransformsBanner = () => {
       bg="background_page-tertiary"
       p="xl"
       mb="sm"
-      bdrs="md"
+      bdrs="sm"
       lh="lg"
       align="center"
       justify="space-between"

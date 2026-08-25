@@ -142,7 +142,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                     gap="sm"
                     mb={hasItems ? "0.75rem" : 0}
                     bg="background_page-secondary"
-                    bdrs="md"
+                    bdrs="sm"
                   >
                     <Icon
                       name={getGroupIcon(group.spec)}

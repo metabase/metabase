@@ -103,7 +103,7 @@ export function McpQuestionView({
             h={32}
             align="stretch"
             bd="1px solid var(--mb-color-border-neutral)"
-            bdrs="md"
+            bdrs="sm"
             style={{ overflow: "hidden" }}
             data-testid="query-explorer-bar"
           >

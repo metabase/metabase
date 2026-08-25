@@ -64,7 +64,7 @@ export function TableSelector({
     <>
       <Group
         w="100%"
-        bdrs="xs"
+        bdrs="xxs"
         gap="xxs"
         wrap="nowrap"
         className={S.tableSelector}

@@ -33,7 +33,7 @@ export const SlackConfiguration = () => {
           alt="Metabot icon"
           w={80}
           h={80}
-          bdrs="sm"
+          bdrs="xs"
           bd="1px solid var(--mb-color-border-neutral)"
         />
         <Stack gap="sm" align="flex-start">

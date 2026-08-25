@@ -96,7 +96,7 @@ export function ExplorationGroupVisualization(
         w="100%"
         bg="background-primary"
         bd="1px solid border"
-        bdrs="md"
+        bdrs="sm"
         h="100%"
       >
         <ErrorBoundary
@@ -670,7 +670,7 @@ interface CommentBadgeProps {
 function CommentBadge({ label, buttonProps }: CommentBadgeProps) {
   return (
     <UnstyledButton
-      bdrs="md"
+      bdrs="sm"
       py="xxs"
       px="sm"
       fz="sm"

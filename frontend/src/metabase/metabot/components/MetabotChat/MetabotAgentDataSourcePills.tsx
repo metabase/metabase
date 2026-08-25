@@ -303,7 +303,7 @@ const SourceFeedbackButtons = ({
           variant="default"
           className={S.sourceFeedbackButton}
           data-active={feedback === true || undefined}
-          bdrs="sm"
+          bdrs="xs"
           style={{
             boxShadow: "0 1px 3px 0 #00000012",
           }}
@@ -322,7 +322,7 @@ const SourceFeedbackButtons = ({
           variant="default"
           className={S.sourceFeedbackButton}
           data-active={feedback === false || undefined}
-          bdrs="sm"
+          bdrs="xs"
           style={{
             boxShadow: "0 1px 3px 0 #00000012",
           }}

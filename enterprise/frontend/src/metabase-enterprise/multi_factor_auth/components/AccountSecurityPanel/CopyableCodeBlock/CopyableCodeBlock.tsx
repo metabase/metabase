@@ -22,7 +22,7 @@ export function CopyableCodeBlock({ codes }: CopyableCodeBlockProps) {
       justify="space-between"
       align="flex-start"
       bg="background-secondary"
-      bdrs="md"
+      bdrs="sm"
     >
       <Stack gap="sm">
         {codes.map((code, index) => (

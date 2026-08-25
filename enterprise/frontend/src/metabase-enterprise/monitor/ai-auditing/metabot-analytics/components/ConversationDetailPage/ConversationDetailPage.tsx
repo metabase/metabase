@@ -453,7 +453,7 @@ function NotebookGeneratedQueryCard({
     <Card
       withBorder
       shadow="none"
-      p={{ base: "md", sm: "xl" }}
+      p={{ base: "lg", sm: "xxl" }}
       pb="sm"
       style={{ overflowX: "auto" }}
     >

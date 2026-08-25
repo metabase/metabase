@@ -71,7 +71,7 @@ export const CollectionHeader = ({
       direction={{ base: "column", sm: "row" }}
       align={{ base: "stretch", sm: "center" }}
       mb="xxl"
-      pt={{ base: "xs", sm: "sm" }}
+      pt={{ base: "xxs", sm: "sm" }}
     >
       <CollectionCaption
         collection={collection}
