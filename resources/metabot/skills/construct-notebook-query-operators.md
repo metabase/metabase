@@ -110,7 +110,8 @@ Temporal:
 - `["convert-timezone", {}, <temporal>, "<target-tz>"]` — optional 4th slot is source tz.
 - `["relative-datetime", {}, <n>, "<unit>"]` (or `["relative-datetime", {}, "current"]`)
 - `["absolute-datetime", {}, "<iso-string>", "<unit?>"]`
-- `["date", {}, <expr>]` / `["datetime", {}, <expr>]` / `["time", {}, <expr>]`
+- `["date", {}, <expr>]` / `["datetime", {}, <expr>]`
+- `["time", {}, "<time-str>", "<unit>"]` — the unit is **required**: `"default"`, `"millisecond"`, `"second"`, `"minute"`, or `"hour"`.
 - `["now", {}]` / `["today", {}]`
 
 ## Temporal units (for `{"temporal-unit": ...}` on field refs and as `<unit>` args)
