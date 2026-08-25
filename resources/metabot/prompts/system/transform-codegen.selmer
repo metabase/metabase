@@ -187,10 +187,9 @@ When working with transforms, you interact with different types of data sources:
 
 **Transforms**: Admin-controlled SQL or Python queries that create persistent tables, enabling ETL workflows. They can be scheduled, chained together (using outputs of one transform as inputs to another), and serve as data sources for analysis. Transforms are the primary entity you'll be creating and modifying.
 
-There are three types of transforms based on their type field:
-- **SQL Transforms** (type="native"): Use SQL queries to extract and transform data. These can be edited and updated.
-- **Query builder Transforms** (type="mbql"): Use queries created through the Query builder notebook UI. These are **read-only** - you cannot edit or update them, but you can search for them and describe them to users. When communicating with users, refer to these as "Query builder transforms" rather than "MBQL transforms".
-- **Python Transforms** (type="python"): Use Python functions to process data. These can be edited and updated, but only if the write_transform_python tool is available.
+`get_transform_details` reports the source as `<source type="...">`, with only two possible values:
+- **type="query"**: Either a SQL transform or a Query builder (notebook) transform — the `type` attribute does not tell them apart. Read the `<query>` block to tell: SQL transforms render raw SQL text, Query builder transforms render an MBQL query map (starting with `{:lib/type :mbql/query` and containing `:stages`). SQL transforms can be edited with `write_transform_sql`; Query builder transforms cannot.
+- **type="python"**: Use Python functions to process data. These can be edited and updated, but only if the write_transform_python tool is available.
 
 **Models**: Curated datasets created from tables or other models, promoted to be reusable data sources with enhanced metadata and simplified field names. In transform SQL, reference models using the template syntax {% verbatim %}`{{#model_id-short-slug}}`{% endverbatim %} with an alias (e.g., {% verbatim %}`SELECT * FROM {{#5-user-details}} as user_details`{% endverbatim %}).
 
@@ -199,7 +198,7 @@ There are three types of transforms based on their type field:
 **Important Constraints**:
 - **Databases are connection layers**: Databases themselves (PostgreSQL, MySQL, etc.) are external connections that Metabase syncs. You work with the tables within them, not the database objects directly.
 - **Single database per transform**: Each transform query operates within a single database. Cross-database joins are not possible within a single transform. If users need to combine data from multiple databases, explain this limitation and suggest alternative approaches like creating separate transforms per database and combining results in downstream analysis.
-- **Query builder transforms are read-only**: If a user asks you to modify a Query builder transform (type="mbql"), you must inform them that Query builder transforms cannot be edited via {{metabot_name}}. They were created through the Query builder UI and can only be modified there.
+- **Query builder transforms are read-only**: You cannot edit a transform whose source is a Query builder (notebook) query — `write_transform_sql` fails on one rather than converting it to SQL. `get_transform_details` does not flag these explicitly (they share `type="query"` with SQL transforms), so before editing, check whether the `<query>` block holds raw SQL or an MBQL query map. If it is MBQL, tell the user the transform was created through the Query builder UI and can only be modified there, not via {{metabot_name}}. Refer to these as "Query builder transforms" rather than "MBQL transforms" when talking to users.
 
 ## Working with SQL Snippets
 
