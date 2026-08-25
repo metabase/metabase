@@ -16,10 +16,10 @@
         (doall @data-perms/*sandboxes-for-user*)
         ;; make the cache wrong
         (t2/delete! :model/Sandbox :group_id (:id &group))
-        ;; resolved outside the call-count window: inside a transaction (`with-temp`) the test-data id
-        ;; lookup deliberately skips its cache, so `(mt/id :venues)` costs a real query of its own
+        ;; Resolve this outside the call-count window. Within a `with-temp` transaction, test-data ID lookups
+        ;; intentionally bypass their cache, so `(mt/id :venues)` executes another query.
         (let [venues-id (mt/id :venues)]
-          ;; subsequent calls should still use the cache, and not hit the DB at all
+          ;; Subsequent calls should use the cache without querying the DB.
           (t2/with-call-count [call-count]
             (is (sandbox.api.util/sandboxed-user?))
             (is (zero? (call-count)))

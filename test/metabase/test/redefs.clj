@@ -26,13 +26,11 @@
   ;; run `f` in a transaction if it's the top-level with-temp
   (if (and tu.thread-local/*thread-local* (not *in-with-temp*))
     (do
-      ;; Materialise the test-data Database before opening the transaction. Created inside it, the
-      ;; Database and its Tables are rolled back with the scope while the memoized ids in
-      ;; [[metabase.test.data.impl]] outlive it, handing out ids for rows that no longer exist -- and it
-      ;; would be rebuilt for every test, since it could never commit.
-      ;; Skipped where the app DB is deliberately empty -- creating a Database there breaks the very thing
-      ;; those helpers assert. Best effort otherwise: a dataset that cannot be built must not take an
-      ;; unrelated with-temp down with it.
+      ;; Materialize the test-data Database before opening the transaction. If created inside it, the Database
+      ;; and its Tables are rolled back while memoized IDs in [[metabase.test.data.impl]] survive and refer to
+      ;; missing rows. The dataset would also be rebuilt for every test because its creation could never commit.
+      ;; Skip this for helpers whose app DB must remain empty. Otherwise this is best-effort: failure to build a
+      ;; dataset must not fail an unrelated `with-temp`.
       (classloader/require 'metabase.test.data.impl)
       (when-not @(resolve 'metabase.test.data.impl/*skip-dataset-prewarm?*)
         (try

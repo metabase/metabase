@@ -145,9 +145,9 @@
 (def ^:private ^:dynamic *before-commit-callbacks* nil)
 (def ^:private ^:dynamic *after-commit-callbacks* nil)
 
-;; Set when a requested rollback fails and leaves writes behind that the caller asked to discard. Shared by
-;; the whole tree like the accumulators above, so the outermost transaction cannot commit them even if the
-;; code between here and there catches the error.
+;; Holds an atom set to true when a requested rollback fails, leaving writes that should have been discarded. The atom
+;; is shared across the transaction tree so that the outermost scope cannot commit those writes, even if an
+;; intermediate scope catches the rollback error.
 (def ^:private ^:dynamic *rollback-required* nil)
 
 (def ^:dynamic *transaction-state*
@@ -211,19 +211,19 @@
              (into [] (subvec cbs 0 (min n (count cbs))))))))
 
 (defn- do-transaction [^java.sql.Connection connection rollback-only? f]
-  ;; Set when rolling the connection back fails, leaving pending writes that were meant to be
-  ;; discarded. Restoring autocommit would commit those, so the flag turns that restore off and
-  ;; lets the pool roll the connection back when it is checked in.
+  ;; Set when a connection rollback fails and leaves pending writes. Restoring autocommit would commit those writes,
+  ;; so this flag prevents the restore and leaves cleanup to the pool when the connection is checked in.
   (let [discard-failed?      (volatile! false)
         rollback-connection! (fn []
                                (try
                                  (.rollback connection)
                                  (catch Throwable rollback-e
-                                   ;; only matters when we were relying on this to discard pending writes --
-                                   ;; if the savepoint rollback already succeeded there is nothing left to commit
-                                   ;; TODO (Chris 2026-08-18) -- a caller-supplied connection goes back to its
-                                   ;; owner still holding these writes. Ours cannot commit them: the flag stops
-                                   ;; autocommit being restored.
+                                   ;; This matters only when the transaction still contains writes that must be
+                                   ;; discarded. After a successful savepoint rollback, there is nothing left here
+                                   ;; to commit.
+                                   ;; TODO (Chris 2026-08-18) -- A caller-supplied connection is returned to its owner
+                                   ;; with these writes still pending. We prevent an accidental commit by leaving
+                                   ;; autocommit disabled, but cannot force the owner to roll them back.
                                    (when (some-> *rollback-required* deref)
                                      (vreset! discard-failed? true))
                                    (log/warnf "Failed to roll back transaction: %s"
@@ -235,17 +235,15 @@
                     state-snapshot (when (and *transaction-state* (> *transaction-depth* 1))
                                      @*transaction-state*)]
                 (letfn [(rollback! []
-                          ;; callbacks and transaction state follow the same savepoint boundary as the DB writes,
-                          ;; whether the rollback was requested or caused by an exception
+                          ;; Rollback callbacks and transaction state together with the DB writes, whether the rollback
+                          ;; is explicit or caused by an exception.
                           (when after-count  (discard-callbacks-after! *after-commit-callbacks*  after-count))
                           (when before-count (discard-callbacks-after! *before-commit-callbacks* before-count))
-                          ;; restored even when the rollback throws, to match the callbacks discarded above -- an
-                          ;; outer scope that catches the error and commits must not see the failed scope's state
+                          ;; Restore the state even if rollback throws. An outer scope must not see state from this one.
                           (try
                             (.rollback connection savepoint)
                             (catch Throwable rollback-e
-                              ;; whatever asked for this rollback, the writes are still here, so nothing up the
-                              ;; tree may commit them however far the error gets caught before the outermost scope
+                              ;; The writes remain pending. No enclosing scope may commit them.
                               (some-> *rollback-required* (reset! true))
                               (throw rollback-e))
                             (finally
@@ -271,33 +269,28 @@
                           (rollback!)
                           (catch Exception rollback-e
                             (if (= *transaction-depth* 1)
-                              ;; The savepoint is usually gone because a statement in the body committed the
-                              ;; transaction under us -- DDL does that implicitly on H2 and MySQL, and once it has,
-                              ;; those writes are durable and no rollback can take them back. Discard whatever is
-                              ;; still pending and say where it happened, rather than fail on work already on disk.
-                              ;; TODO (Chris 2026-08-18) -- consider rejecting the DDL instead of tolerating the
-                              ;; damage here, and fixing each site. [[metabase.app-db.honeysql-guard]] already hooks
-                              ;; the t2 pipeline and is the place to catch it, though raw SQL strings would slip
-                              ;; past. Two things to settle first: savepoints are invalidated for any nested
-                              ;; transaction, not just rollback-only ones, so scope the check to the hazard rather
-                              ;; than to this branch; and not every site is a test -- search's drop-table! runs DDL
-                              ;; on the ambient connection, and moving it to its own risks blocking on locks the
-                              ;; caller's transaction holds.
+                              ;; The body committed the transaction, so the savepoint is gone. H2 and MySQL do this
+                              ;; implicitly for DDL. Those writes are already durable; discard anything still pending.
+                              ;; TODO (Chris 2026-08-18) -- Consider rejecting DDL in rollback-only transactions and
+                              ;; fixing each caller.
+                              ;; The existing SQL guard does not cover raw SQL, and savepoints can also disappear in
+                              ;; ordinary nested transactions. Callers such as search's `drop-table!` use the ambient
+                              ;; connection; moving that DDL could block on locks held by the caller.
                               (do
                                 (log/warnf (str "Could not roll back a rollback-only transaction (%s). Something in"
                                                 " it committed the transaction -- DDL commits implicitly on H2 and"
                                                 " MySQL -- so its writes up to that point are already durable.")
                                            (ex-message rollback-e))
                                 (rollback-connection!))
-                              ;; Nested: the enclosing scope's work is still pending, so this has to reach it
-                              ;; as an error. `rollback!` has already marked the tree, so it cannot be committed anyway.
+                              ;; In a nested scope, propagate the error. `rollback!` has marked the transaction tree
+                              ;; as unsafe to commit.
                               (throw (ex-info "Error rolling back a rollback-only transaction" {} rollback-e)))))
                         [result false])
 
                       (and (= *transaction-depth* 1) (some-> *rollback-required* deref))
                       (do
-                        ;; discard the whole tree rather than commit writes a rollback-only scope failed to undo,
-                        ;; and say so rather than returning as if the body's work had been kept
+                        ;; Discard the entire tree. A rollback-only scope failed to undo its writes, so do not commit
+                        ;; them or return as though the scope succeeded.
                         (rollback-connection!)
                         (throw (ex-info (str "Not committing: a rollback-only transaction in this tree failed to "
                                              "roll back, so its writes are still present")
@@ -305,16 +298,14 @@
 
                       (= *transaction-depth* 1)
                       (try
-                        ;; top-level transaction. Run before-commit callbacks first, while the transaction is
-                        ;; still open, so their writes commit atomically with it. They are NOT wrapped in
-                        ;; try/catch — a throwing callback must roll the whole transaction back.
+                        ;; Run before-commit callbacks while the top-level transaction is open. Their writes commit
+                        ;; atomically with it, and a callback exception rolls back the transaction.
                         (loop []
                           (when-let [callbacks (seq (first (reset-vals! *before-commit-callbacks* [])))]
                             (doseq [cb callbacks] (cb))
-                            ;; a before-commit callback may register more (before- or after-commit); run those too
+                            ;; A before-commit callback may register more callbacks; run those as well.
                             (recur)))
-                        ;; rechecked here, not just in the cond above: a callback can catch a nested scope whose
-                        ;; rollback failed, which marks the tree after that test has already passed
+                        ;; A callback can catch a nested rollback failure, so check the failure flag again here.
                         (when (some-> *rollback-required* deref)
                           (throw (ex-info (str "Not committing: a rollback-only transaction in this tree failed to "
                                                "roll back, so its writes are still present")
@@ -326,25 +317,24 @@
 
                       :else
                       [result false])))))]
-      ;; optimization: don't set and unset autocommit if it's already false
+      ;; Avoid toggling autocommit when the connection is already in a transaction.
       (if (.getAutoCommit connection)
         (try
           (.setAutoCommit connection false)
           (try
             (thunk)
             (catch Throwable t
-              ;; restoring autocommit below commits whatever is still open, so anything that got here by throwing --
-              ;; including a requested rollback that failed -- has to discard the transaction itself, or the work it
-              ;; was meant to undo gets committed
+              ;; Restoring autocommit commits any open transaction. On an exceptional exit, including a failed
+              ;; requested rollback, try to discard the transaction before reaching that restore.
               (rollback-connection!)
               (throw t)))
           (finally
             (if @discard-failed?
-              ;; the writes we were told to discard are still pending, and restoring autocommit would
-              ;; commit them -- leave it off and let the pool roll the connection back on check-in
+              ;; The writes remain pending, so leave autocommit disabled and let the pool roll the connection back
+              ;; when it is checked in.
               (log/warn (str "Leaving autocommit off: this connection holds writes that could not be"
                              " rolled back, and restoring autocommit would commit them."))
-              ;; prevent a failing .setAutoCommit call from masking the original exception
+              ;; Do not let a failed autocommit restore mask the original exception.
               (try
                 (.setAutoCommit connection true)
                 (catch Throwable t
@@ -374,9 +364,10 @@
       are not well defined - a rollback will undo all work done by other transactions in the same tree that
       started later.
 
-  `:rollback-only true` rolls a successful scope back to its savepoint and discards the callbacks and transaction state
-  it registered. It cannot be combined with `:nested-transaction-rule :ignore`, which skips the savepoint entirely.
-  Other JDBC transaction options are rejected rather than silently treated as ordinary writable transactions."
+  With `:rollback-only true`, a successful scope rolls back to its savepoint and discards the callbacks and transaction
+  state registered within that scope. This cannot be combined with `:nested-transaction-rule :ignore`, which skips the
+  savepoint entirely. Unsupported JDBC transaction options are rejected rather than silently treated as ordinary
+  writable transactions."
   [^java.sql.Connection connection
    {:keys [nested-transaction-rule rollback-only] :or {nested-transaction-rule :allow} :as options}
    f]
@@ -385,7 +376,7 @@
                     {:unsupported-options (vec unsupported-options)
                      :options             options})))
   (assert (#{:allow :ignore :prohibit} nested-transaction-rule))
-  ;; rejected whatever the current depth is, so a call site fails the same way wherever it runs
+  ;; Reject this combination at every depth so a call site behaves consistently wherever it runs.
   (when (and rollback-only (= nested-transaction-rule :ignore))
     (throw (ex-info (str "Cannot combine :rollback-only with :nested-transaction-rule :ignore -- an ignored "
                          "nested transaction has no savepoint to roll back to")
@@ -405,7 +396,7 @@
           callbacks  (if outermost? (atom []) *after-commit-callbacks*)
           [result committed?]
           (binding [*transaction-depth*       (inc *transaction-depth*)
-                    ;; one set of accumulators + state for the whole tree, created at the outermost txn
+                    ;; Create one set of callback accumulators and transaction state for the entire tree.
                     *before-commit-callbacks* (if outermost? (atom []) *before-commit-callbacks*)
                     *transaction-state*       (if outermost? (atom {}) *transaction-state*)
                     *rollback-required*       (if outermost? (atom false) *rollback-required*)

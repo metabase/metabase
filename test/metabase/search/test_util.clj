@@ -29,9 +29,10 @@
          ~@body))))
 
 (defmacro with-temp-index-table-if-supported
-  "Like [[with-temp-index-table]], but runs `body` whether or not the app db can index. For a test that also
-  covers behaviour needing no index -- wrapping such a test in [[with-temp-index-table]] would skip all of it
-  on MySQL and MariaDB."
+  "Like [[with-temp-index-table]], but always runs `body`, even when the app DB cannot support an index.
+
+  Use this for tests that cover both indexed and non-indexed behavior. Wrapping such a test in
+  [[with-temp-index-table]] would skip it entirely on MySQL and MariaDB."
   [& body]
   `(let [thunk# (fn [] ~@body)]
      (if (search/supports-index?)

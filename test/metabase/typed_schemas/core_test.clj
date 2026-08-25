@@ -110,8 +110,8 @@
 ;; metric cards need no result_metadata — columns are computed from metadata.
 (deftest full-pipeline-end-to-end-test
   (mt/dataset test-data
-    ;; A copy of the Database: the assertion below is about what falls inside this database's scope,
-    ;; and that can only mean something if no other namespace can commit a Card against it.
+    ;; Use a copy of the Database so Cards committed concurrently by other namespaces cannot affect the
+    ;; database-scoped assertion below.
     (mt/with-temp-copy-of-db
       (mt/with-actions-enabled
         (let [mp            (mt/metadata-provider)

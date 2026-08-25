@@ -23,8 +23,8 @@
 
 (set! *warn-on-reflection* true)
 
-;; initialize before any test runs: the index scopes below start writing search-index bookkeeping, and the
-;; first lazy `initialize` would otherwise recreate the H2 test db underneath them
+;; Initialize before any tests run. The index scopes below write search-index bookkeeping; a later lazy
+;; initialization would recreate the H2 test DB while a test is running.
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;; We act on a random localized table, making this thread-safe.
@@ -261,10 +261,9 @@
 ;; These require some related appdb content
 
 (deftest bookmark-test
-  ;; the temp index table is created here, before `with-temp` opens its transaction: creating it inside
-  ;; would run DDL on the ambient connection, which on H2/MySQL implicitly commits the transaction, so
-  ;; its rollback could not take the rows back and they would leak to every later test that walks the
-  ;; app db. The nested index-table scope below reuses this one rather than creating its own.
+  ;; Create the temporary index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the
+  ;; ambient connection would implicitly commit that transaction, preventing rollback and leaking rows into later
+  ;; tests. The nested index-table scope below reuses this table.
   (search.tu/with-temp-index-table
     (let [crowberto (mt/user->id :crowberto)
           rasta     (mt/user->id :rasta)]
@@ -303,10 +302,9 @@
                      (search-results :bookmarked "collection" {:current-user-id crowberto}))))))))))
 
 (deftest user-recency-test
-  ;; the temp index table is created here, before `with-temp` opens its transaction: creating it inside
-  ;; would run DDL on the ambient connection, which on H2/MySQL implicitly commits the transaction, so
-  ;; its rollback could not take the rows back and they would leak to every later test that walks the
-  ;; app db. The nested index-table scope below reuses this one rather than creating its own.
+  ;; Create the temporary index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the
+  ;; ambient connection would implicitly commit that transaction, preventing rollback and leaking rows into later
+  ;; tests. The nested index-table scope below reuses this table.
   (search.tu/with-temp-index-table
     (let [user-id     (mt/user->id :crowberto)
           right-now   (Instant/now)
@@ -351,14 +349,13 @@
              (search-results :mine "card" {:current-user-id rasta}))))))
 
 (deftest library-test
-  ;; the temp index table is created here, before `with-temp` opens its transaction: creating it inside
-  ;; would run DDL on the ambient connection, which on H2/MySQL implicitly commits the transaction, so
-  ;; its rollback could not take the rows back and they would leak to every later test that walks the
-  ;; app db. The nested index-table scope below reuses this one rather than creating its own.
+  ;; Create the temporary index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the
+  ;; ambient connection would implicitly commit that transaction, preventing rollback and leaking rows into later
+  ;; tests. The nested index-table scope below reuses this table.
   (search.tu/with-temp-index-table
     (testing "Library-collection cards rank above non-library cards"
-      ;; Real Collections are needed in appdb so the `:root-collection-type` fn attr can resolve the
-      ;; top-level ancestor's `:type` from each row's `:collection_location` materialized path.
+      ;; Use real Collections so the app DB index's `:root-collection-type` function attribute can resolve the
+      ;; top-level ancestor's `:type` from each row's materialized `:collection_location` path.
       (mt/with-temp [:model/Collection lib       {:name "lib top"        :type "library"        :location "/"}
                      :model/Collection lib-data  {:name "lib data"       :type "library-data"   :location "/"}
                      :model/Collection lib-met   {:name "lib metrics"    :type "library-metrics" :location "/"}

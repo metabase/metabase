@@ -87,11 +87,10 @@
                   "User with write permissions should see archived documents in accessible collections"))))))))
 
 (deftest document-view-tracking-integration-test
-  ;; Take the index table here, before `with-temp` opens its transaction. Creating it inside runs DDL on the
-  ;; ambient connection, which commits that transaction on H2 and MySQL -- the rollback then has nothing to
-  ;; take back and the rows leak to every later test that walks the app db. The nested scope below reuses this
-  ;; one. `-if-supported` because the rest of this test does not need an index, and would otherwise be skipped
-  ;; wholesale where the app db cannot have one.
+  ;; Create the index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the ambient
+  ;; connection would commit that transaction, preventing rollback and leaking rows into later tests. The nested
+  ;; scope below reuses this table. Use `-if-supported` because the rest of the test does not require an index and
+  ;; should still run where the app DB cannot support one.
   (search.tu/with-temp-index-table-if-supported
     (testing "Document view tracking integrates with search"
       (mt/with-temp [:model/Document {doc-id :id} {:name "Viewed Document"
@@ -100,17 +99,16 @@
         (testing "Document has initial state"
           (let [doc (t2/select-one :model/Document :id doc-id)]
             (is (= 0 (:view_count doc)))
-            ;; last_viewed_at has a default timestamp from migration, not nil
+            ;; The migration gives `last_viewed_at` a non-nil default timestamp.
             (is (some? (:last_viewed_at doc)))))
         (testing "Publishing document-read event works without errors"
-          ;; The actual view count increment is batched and asynchronous
-          ;; So we test that the event publishes successfully
+          ;; View-count updates are asynchronous and batched, so assert only that publishing succeeds.
           (is (some? (events/publish-event! :event/document-read
                                             {:object-id doc-id
                                              :user-id (mt/user->id :crowberto)}))
               "Document read event should publish successfully"))
         (testing "Document with higher view count appears in search"
-          ;; Manually set view count to test search integration
+          ;; Set the view count directly to test its search integration.
           (t2/update! :model/Document doc-id {:view_count 5
                                               :last_viewed_at (t/offset-date-time)})
           (search.tu/with-temp-index-table
@@ -119,7 +117,7 @@
               (when (seq doc-results)
                 (let [doc-result (first doc-results)]
                   (is (= doc-id (:id doc-result)))
-                  ;; View count affects scoring but isn't directly in result
+                  ;; View count affects scoring but is not included directly in the result.
                   (is (some #(= "view-count" (:name %)) (:scores doc-result))))))))
         (testing "Document with recent view appears in search results"
           (let [recent-time (t/minus (t/offset-date-time) (t/minutes 5))]
@@ -130,7 +128,7 @@
                 (when (seq doc-results)
                   (let [doc-result (first doc-results)]
                     (is (= doc-id (:id doc-result)))
-                    ;; User recency affects scoring
+                    ;; View recency contributes the `user-recency` score.
                     (is (some #(= "user-recency" (:name %)) (:scores doc-result)))))))))))))
 
 (deftest document-content-search-test

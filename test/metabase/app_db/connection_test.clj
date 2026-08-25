@@ -185,13 +185,13 @@
                     (setSavepoint [_])
                     (commit [_]))]
     (binding [t2.connection/*current-connectable* mock-conn]
-      ;; the nested callback is discarded even though the rollback threw, and the outer scope then refuses to
-      ;; commit -- the nested writes are still pending, so its own callbacks never fire either
+      ;; The nested callback is discarded even though rollback throws. The outer scope then refuses to commit
+      ;; because the nested writes remain pending, so its callbacks do not run either.
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"Not committing"
            (t2/with-transaction [_conn]
              (mdb.connection/do-after-commit (fn [] (swap! calls conj :outer)))
-             ;; the nested body registers a callback then throws; its savepoint rollback also throws
+             ;; The nested body registers a callback and throws; its savepoint rollback also throws.
              (is (thrown?
                   Exception
                   (t2/with-transaction [_]
@@ -284,8 +284,8 @@
 
 (deftest failed-nested-rollback-only-blocks-the-outer-commit-test
   (testing "swallowing the error from a failed rollback-only rollback must not let the outer scope commit it"
-    ;; autocommit is tracked rather than pinned true, so only the outermost scope believes it owns the
-    ;; connection -- with it pinned, the nested scope also installs a rollback and hides what this covers
+    ;; Track autocommit instead of pinning it to true so only the outermost scope believes it owns the connection.
+    ;; Pinning it would make the nested scope install another rollback and hide the behavior under test.
     (let [calls     (atom [])
           auto?     (atom true)
           mock-conn (reify Connection
@@ -318,8 +318,7 @@
                       (setSavepoint [_])
                       (commit [_]))]
       (binding [t2.connection/*current-connectable* mock-conn]
-        ;; the outer scope refuses to commit at the end: the nested writes could not be rolled back, so they
-        ;; are still pending and committing would take them with it
+        ;; The outer scope refuses to commit because the nested writes could not be rolled back and remain pending.
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Not committing"
              (t2/with-transaction [conn]
@@ -332,8 +331,8 @@
 
 (deftest failed-rollback-only-rollback-discards-the-transaction-test
   (testing "an outermost rollback-only whose savepoint is gone discards what is pending instead of failing"
-    ;; the savepoint is normally gone because something in the body committed -- DDL does that implicitly on
-    ;; H2 and MySQL -- and those writes are already durable, so there is nothing left to fail over
+    ;; The savepoint normally disappears because the body committed; DDL does this implicitly on H2 and MySQL.
+    ;; Those writes are already durable, so only any remaining pending work can be rolled back.
     (let [calls     (atom [])
           mock-conn (reify Connection
                       (rollback [_ _savepoint]

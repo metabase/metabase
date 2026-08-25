@@ -548,9 +548,8 @@
     [:model/Card {card-id :id} {:name          "Card"
                                 :display       "line"
                                 :dataset_query (mt/mbql-query venues)
-                                ;; get-or-create rather than select: whether the personal collection row already
-                                ;; exists depends on which tests ran before us, and a nil collection_id would
-                                ;; put the card in the root collection, which rasta CAN read
+                                ;; Use get-or-create because the Personal Collection may not exist yet. A nil
+                                ;; `collection_id` would place the Card in the root Collection, which Rasta can read.
                                 :collection_id (u/the-id (collection/user->personal-collection (mt/user->id :crowberto)))}]
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "card/%d/series" card-id))))
@@ -1267,8 +1266,8 @@
 
 (deftest updating-model-query-does-not-shift-metadata-overrides-test
   (testing "Metadata should not shift to another column with the same name when the query changes (#60930)"
-    ;; :model/Revision too -- the cleanup deletes rows directly, which skips the Card hook that would have
-    ;; taken the revisions this test's POST and PUTs create with it
+    ;; Clean up Revisions explicitly. Direct Card cleanup bypasses the hook that would normally delete the
+    ;; Revisions created by this test's POST and PUT requests.
     (mt/with-model-cleanup [:model/Card :model/Revision]
       (let [mp                 (mt/metadata-provider)
             orders-table       (lib.metadata/table mp (mt/id :orders))
@@ -1492,8 +1491,8 @@
                           (create-card! :rasta 403))))))))))
 
 (deftest ^:parallel create-card-with-type-and-dataset-test
-  ;; :rollback-only, like the sibling tests that use this pattern: without it the two cards this test
-  ;; creates through the API are committed and leak to every later test that walks the card table
+  ;; Use `:rollback-only` like the sibling tests below. Otherwise, the two Cards created through the API
+  ;; commit and leak into later tests that scan the Card table.
   (t2/with-transaction [_ nil {:rollback-only true}]
     (testing "can create a model using type"
       (is (=? {:type "model"}

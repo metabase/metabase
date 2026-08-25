@@ -589,8 +589,8 @@
                                            :dataset_query (mt/mbql-query venues
                                                             {:aggregation [[:count]]
                                                              :breakout    [$price]})}]
-          ;; through `cards-details`, the batch path the typed-schemas endpoint walks -- calling
-          ;; `get-table-details` per card would not see the failure, since the whole seq died together
+          ;; Exercise `cards-details`, the batch path used by the typed-schemas endpoint. Calling
+          ;; `get-table-details` for each Card would miss a failure that terminates the complete sequence.
           (let [details (->> (entity-details/cards-details :question (mt/id) [broken good] {})
                              (into [] (map #(select-keys % [:name :query_json]))))]
             (is (= ["Broken" "Venues by Price"] (mapv :name details)))

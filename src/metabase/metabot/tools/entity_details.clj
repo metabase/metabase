@@ -650,9 +650,8 @@
           ;; Returns `nil` (so `m/assoc-some` drops the key) for cards whose
           ;; `dataset_query` can't be exported, e.g. unusual / partially-broken legacy
           ;; queries; the rest of the payload is still useful.
-          ;; `lib/query` is inside the guard too: a stored `dataset_query` with no stages builds a query that
-          ;; fails its own output schema, and one such Card would otherwise take down every response that
-          ;; walks a set of Cards.
+          ;; Keep `lib/query` inside the guard. A stored `dataset_query` with no stages fails the query output
+          ;; schema; one such Card must not break an entire response containing multiple Cards.
           :query_json (when-let [query (when dataset-query
                                          (try
                                            (lib/query metadata-provider (lib-be/normalize-query dataset-query))

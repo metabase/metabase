@@ -48,9 +48,8 @@
 
 (defmethod definition :model/Card
   [card]
-  ;; A stored `dataset_query` can be empty or otherwise unparseable -- nothing at the schema level prevents
-  ;; it. Such a card simply has no context-bearing forms; without the guard one broken card would take down
-  ;; the whole related-entities computation (and with it every x-ray) for everyone else.
+  ;; The schema permits an empty or otherwise unparseable stored `dataset_query`. Treat such a Card as having
+  ;; no context-bearing forms so it does not break related-entity computation for every Card and x-ray.
   (try
     (-> card
         :dataset_query

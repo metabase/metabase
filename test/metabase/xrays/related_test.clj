@@ -15,8 +15,8 @@
    [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
 
-;; the parallel tests here all take a `with-temp` Card, whose creator defaults to rasta -- created inside the
-;; transaction, and rolled back with it, so without this every one of them races to insert the test users
+;; Initialize test users before these tests run in parallel. Each creates a `with-temp` Card whose creator defaults
+;; to Rasta; creating that User within the transaction would roll it back and make every test race to reinsert it.
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest ^:parallel collect-context-bearing-forms-test

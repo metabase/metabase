@@ -3486,8 +3486,8 @@
 (deftest chain-filter-should-use-cached-field-values-test
   (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
     ;; ignore the cache entries added by #23699
-    ;; Ask for the full FieldValues rather than assuming an earlier test left one behind: the row is created
-    ;; lazily, and a run that creates it inside a `with-temp` discards it again.
+    ;; Request the complete FieldValues instead of relying on another test to create it. The row is lazy, and
+    ;; creating it within `with-temp` rolls it back afterward.
     (mt/with-temp-vals-in-db :model/FieldValues (field-values/get-or-create-full-field-values!
                                                  (t2/select-one :model/Field :id (mt/id :categories :name)))
                              {:values ["Good" "Bad"]}

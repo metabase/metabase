@@ -92,9 +92,9 @@
 ;;; If we run INSIDE of a transaction before the test users have been created globally then do not memoize the IDs,
 ;;; since the users will get discarded and we will need to recreate them next time around.
 ;;;
-;;; "Globally" is per application database: [[metabase.test.data/with-empty-h2-app-db!]] swaps in an empty
-;;; one, where the users another database created do not exist. Tracking it as a boolean meant the first
-;;; branch handed back ids for absent users, and the session insert failed on FK_SESSION_REF_USER_ID.
+;;; "Globally" means within one application DB. [[metabase.test.data/with-empty-h2-app-db!]] swaps in an empty
+;;; application DB where users created in another DB do not exist. Tracking this state with one boolean returned
+;;; stale IDs and caused session inserts to violate FK_SESSION_REF_USER_ID.
 (let [f                 (fn []
                           (zipmap usernames
                                   (map (comp u/the-id fetch-user) usernames)))
@@ -145,11 +145,11 @@
     {:username email
      :password password}))
 
-;; {[app-db username] session-key}
+;; {[app-db-id username] session-key}
 ;;
-;; The app DB is part of the key because [[metabase.test.data/with-empty-h2-app-db!]] swaps in a different one. A
-;; token from the old database names a session the new one has never heard of, so the request returns 401. Tokens
-;; minted while the empty database is in place must not leak back out when the original is restored.
+;; Include the application DB in the key because [[metabase.test.data/with-empty-h2-app-db!]] swaps databases. A
+;; token from one database names a session the other has never heard of, so the request returns 401. Tokens created
+;; in the replacement database must not survive its restoration.
 (defonce ^:private tokens (atom {}))
 
 ;;; This is done by hitting the app DB directly instead of hitting [[metabase.test.http-client/authenticate]] to avoid
@@ -185,13 +185,13 @@
         (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                    username (user->credentials username)))))))
 
-;; TODO (Chris 2026-08-24) -- the standard users get their sessions at initialization, where nothing has
-;; opened a transaction yet, so those survive. One gap left: if the first thing to trigger that
-;; initialization is itself inside a `with-temp`, the sessions roll back with it and everything after
-;; re-authenticates.
+;; TODO (Chris 2026-08-24) -- Ensure initialization cannot first occur inside `with-temp`, or recreate these
+;; sessions after the transaction rolls back. Standard-user sessions are normally created before a transaction opens;
+;; if initialization happens inside `with-temp`, those sessions are rolled back and subsequent requests authenticate
+;; again.
 (defn clear-cached-session-tokens!
-  "Clear any cached session tokens, which may have expired or been removed. You should do this in the even you get a
-  `401` unauthenticated response, and then retry the request."
+  "Clear cached session tokens that may have expired or been removed. Call this after receiving a `401` response, then
+  retry the request."
   []
   (locking tokens
     (reset! tokens {})))
@@ -212,9 +212,8 @@
             (thunk)
             (catch ExceptionInfo e
               (rethrow-when-not-401 e)
-              ;; second retry: forget this user's token, then try again one last time. Only this user's:
-              ;; a session minted inside a transaction is rolled back with it, and clearing the whole cache
-              ;; over one such 401 would throw away the durable tokens of every other user too.
+              ;; For the final retry, evict only this user's token. A session created in a transaction can be
+              ;; rolled back with it; one resulting 401 should not evict every other user's durable token.
               (swap! tokens dissoc [(mdb/unique-identifier) username])
               (try
                 (thunk)
@@ -235,9 +234,9 @@
           session-id (session/generate-session-id)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
-      ;; Not a `with-temp`: that would run the whole request inside a rollback-only transaction, and the
-      ;; request handler runs in-process on this thread, so every app db write it made would be discarded
-      ;; when it returned. Delete the session by hand instead.
+      ;; Do not use `with-temp` here. The request handler runs in-process on this thread, so a rollback-only
+      ;; transaction around the Session would also discard every app DB write made by the request. Delete only
+      ;; the Session explicitly instead.
       (t2/insert! :model/Session {:id         session-id
                                   :key_hashed (session/hash-session-key session-key)
                                   :user_id    user-id})

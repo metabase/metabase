@@ -247,6 +247,40 @@
                 [:b :done]]
                @results))))))
 
+(deftest fall-back-in-band?-test
+  (testing "the out-of-band insert retries on the caller's connection when"
+    (testing "the pool cannot provide a second connection"
+      (is (#'sut/fall-back-in-band? (ex-info "checkout timed out" {::sut/checkout-failed true}))))
+    (testing "the dedicated connection timed out on a row lock"
+      (is (#'sut/fall-back-in-band?
+           (SQLException. "Lock wait timeout exceeded; try restarting transaction" "HY000" 1205)))))
+  (testing "other errors still propagate"
+    (is (not (#'sut/fall-back-in-band?
+              (SQLException. "You have an error in your SQL syntax" "42000" 1064))))))
+
+(deftest checkout-connection!-tags-pool-failures-test
+  (testing "a failed checkout produces an error that triggers the fallback"
+    (let [exhausted-pool (reify javax.sql.DataSource
+                           (getConnection [_]
+                             (throw (SQLException. "An attempt by a client to checkout a Connection has timed out."))))]
+      (mdb/with-application-db exhausted-pool
+        (is (#'sut/fall-back-in-band? (try
+                                        (#'sut/checkout-connection!)
+                                        (catch Exception e e))))))))
+
+(deftest checkout-failure-still-acquires-a-first-time-lock-test
+  (testing "a first-time lock is acquired even when the pool cannot provide a second connection"
+    ;; H2 takes an in-process lock and never writes a row.
+    (when (not= (mdb/db-type) :h2)
+      (let [lock-name (u/qualified-name ::checkout-failure-lock)]
+        (t2/delete! :metabase_cluster_lock :lock_name lock-name)
+        (mt/with-dynamic-fn-redefs [sut/checkout-connection!
+                                    (fn [] (throw (ex-info "checkout timed out" {::sut/checkout-failed true})))]
+          ;; An ambient transaction is what sends the insert out of band in the first place.
+          (t2/with-transaction [_conn]
+            (is (= :ok (sut/with-cluster-lock ::checkout-failure-lock :ok)))
+            (is (t2/exists? :metabase_cluster_lock :lock_name lock-name))))))))
+
 (deftest detached-lock-basic-test
   (testing "returns the body's value and works non-concurrently"
     (is (= :ok (sut/with-detached-cluster-lock {:lock ::detached-basic} :ok)))))

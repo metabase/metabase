@@ -221,11 +221,10 @@
   (letfn [(run-leaf [[uuid leaf-plan]]
             (process-leaf-query (:leaf/mbql leaf-plan) (get metric-card-ids uuid)))]
     (if (mdb/in-transaction?)
-      ;; A transaction owns a single connection and `future` hands that binding to every thread, so running
-      ;; the leaves in parallel interleaves their app db writes -- used-card stats behind a cluster lock,
-      ;; query rows -- on one session, and savepoints are per session: one thread rolling back to its own
-      ;; destroys the savepoints its siblings are holding. Only tests reach this branch; a request runs in no
-      ;; transaction, where each future takes its own pooled connection.
+      ;; A transaction owns one connection, and `future` conveys that binding to each thread. Parallel leaves
+      ;; would therefore interleave app DB writes and savepoints on the same session; one thread's rollback can
+      ;; invalidate its siblings' savepoints. Only tests run this code within a transaction. During a request,
+      ;; each future obtains its own pooled connection.
       (into {} (map (fn [leaf] [(first leaf) (run-leaf leaf)])) leaves)
       (let [uuid->future (into {}
                                (map (fn [leaf] [(first leaf) (future (run-leaf leaf))]))

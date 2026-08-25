@@ -436,15 +436,11 @@
   (binding [pgm/*allow-direct-deletion* true]
     (next-method model explicit-attributes f)))
 
-;; A Personal Collection created during a with-temp is rolled back with it, invalidating the production
-;; cache's "Personal Collections cannot be deleted" premise. Evicting the temp User's own entry is not
-;; enough: a committed user's collection is created lazily on its first permission check, which often
-;; lands inside somebody else's with-temp, and no User scope ends to clear it. Key off the rollback
-;; instead of the user, and drop whatever the scope may have cached.
-;; Registered with a unique key rather than `defmethod`: metabase.test.redefs already holds
-;; `:around :default` on this multifn, and two methods sharing a key overwrite each other instead of
-;; composing -- whichever loaded last would win, silently dropping either this eviction or the
-;; rollback-only transaction wrapper.
+;; A Personal Collection created within `with-temp` is rolled back, but the production cache assumes it cannot be
+;; deleted. Evicting only the temporary User's entry is insufficient: a committed User's collection may be created
+;; inside another User's `with-temp` scope. Clear the cache whenever a `with-temp` scope exits.
+;; Use a unique method key because [[metabase.test.redefs]] already defines `:around :default`. Methods with the same
+;; key overwrite one another, which would disable either this eviction or the rollback-only transaction wrapper.
 (methodical/add-aux-method-with-unique-key!
  #'t2.with-temp/do-with-temp* :around :default
  (fn [next-method model explicit-attributes f]

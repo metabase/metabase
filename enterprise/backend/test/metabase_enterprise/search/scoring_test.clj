@@ -15,9 +15,9 @@
    [metabase.util.json :as json])
   (:import [java.time Instant]))
 
-;; initialize before any test runs: the appdb-index tests below start writing search-index bookkeeping
-;; before anything else touches the app db, and the first lazy `initialize` (triggered mid-test via
-;; `mt/user->id` inside `search-results`) recreates the H2 test db underneath them
+;; Initialize before any tests run. The app DB index tests below write search-index bookkeeping before anything
+;; else accesses the app DB; a later lazy initialization, triggered by `mt/user->id` in `search-results`, would
+;; recreate the H2 test DB while a test is running.
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (set! *warn-on-reflection* true)
@@ -195,12 +195,10 @@
                (appdb.scoring-test/search-results* "card")))))))
 
 (deftest transforms-user-recency-test
-  ;; the temp index table is created here, before `with-temp` opens its transaction: creating it inside
-  ;; would run DDL on the ambient connection, which on H2/MySQL implicitly commits the transaction, so
-  ;; its rollback could not take the rows back and they would leak to every later test that walks the
-  ;; app db. The nested index-table scope below reuses this one rather than creating its own.
-  ;; Materialise the test-data Database first: created inside the index scope, its ingestion would land in
-  ;; the temp index and show up as an extra search hit.
+  ;; Create the temporary index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the
+  ;; ambient connection would implicitly commit that transaction, preventing rollback and leaking rows into later
+  ;; tests. The nested index-table scope below reuses this table. Materialize the test-data Database first as well;
+  ;; otherwise its ingestion would enter the temporary index and appear as an extra search result.
   (mt/id)
   (search.tu/with-temp-index-table
     (mt/with-premium-features #{:transforms-basic :hosting}

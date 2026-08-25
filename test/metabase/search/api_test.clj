@@ -2274,11 +2274,10 @@
                                          :models "measure")))))))))
 
 (deftest ^:synchronized search-results-do-not-expose-is-published-test
-  ;; Take the index table here, before `with-temp` opens its transaction. Creating it inside runs DDL on the
-  ;; ambient connection, which commits that transaction on H2 and MySQL -- the rollback then has nothing to
-  ;; take back and the rows leak to every later test that walks the app db. The nested scope below reuses this
-  ;; one. `-if-supported` because the rest of this test does not need an index, and would otherwise be skipped
-  ;; wholesale where the app db cannot have one.
+  ;; Create the index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the ambient
+  ;; connection would commit that transaction, preventing rollback and leaking rows into later tests. The nested
+  ;; scope below reuses this table. Use `-if-supported` because the rest of the test does not require an index and
+  ;; should still run where the app DB cannot support one.
   (search.tu/with-temp-index-table-if-supported
     (testing "the internal is_published permission signal never carries a value in search API responses"
       (let [table-name (mt/random-name)]

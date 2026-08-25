@@ -320,7 +320,7 @@
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
      (next.jdbc/execute! conn# ["RUNSCRIPT FROM ?" (str @h2-app-db-script)])
      (mdb/finish-db-setup!)
-     ;; this app DB is meant to stay empty, so with-temp must not materialise the test-data Database in it
+     ;; This app DB must remain empty, so `with-temp` must not materialize the test-data Database in it.
      (binding [data.impl/*skip-dataset-prewarm?* true]
        ~@body)))
 

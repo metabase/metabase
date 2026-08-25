@@ -25,8 +25,9 @@
  [verify verify-data-loaded-correctly])
 
 (def ^:dynamic *skip-dataset-prewarm?*
-  "Bound by helpers whose app DB is deliberately empty, so the with-temp boundary does not materialise the
-  test-data Database inside them. See [[metabase.test.data/with-empty-h2-app-db!]]."
+  "Whether `with-temp` should skip materializing the test-data Database before opening its transaction.
+
+  Bind this in helpers whose app DB must remain empty. See [[metabase.test.data/with-empty-h2-app-db!]]."
   false)
 
 (defmulti get-or-create-database!
@@ -70,16 +71,14 @@
                 (fn [driver]
                   (u/the-id (get-or-create-default-dataset! driver))))]
     (fn [driver]
-      ;; The id is memoized for the whole app db, so caching one obtained inside a transaction would outlive a
-      ;; rollback that took the Database with it. Look it up directly there instead of caching. Don't reach for a
-      ;; separate connection to make it durable: the caller's transaction may be holding cluster lock rows, and a
-      ;; second connection waiting on those deadlocks until the lock acquisition times out.
-      ;; TODO (Chris 2026-08-18) -- an in-transaction miss creates the Database on the caller's uncommitted
-      ;; connection, so a concurrent first lookup cannot see the row and may create and sync a duplicate
-      ;; ((name, engine) is not unique), and Quartz triggers from the after-insert hook can outlive the
-      ;; rollback. Left as is deliberately: creating it on its own connection deadlocks against cluster
-      ;; lock rows the caller's transaction holds, and single-flight-until-commit is a lot of machinery
-      ;; for a test path. Initialising the dataset before the transaction opens would avoid both.
+      ;; A cached ID can outlive the transaction that created its Database. Bypass the cache within a transaction so
+      ;; rollback cannot leave a stale ID. Do not create the Database on a dedicated connection: the caller may hold
+      ;; cluster-lock rows that would block that connection until timeout.
+      ;; TODO (Chris 2026-08-18) -- On a cache miss, concurrent transactions cannot see one another's uncommitted
+      ;; Database and may each create and sync a duplicate because `(name, engine)` is not unique. Quartz triggers
+      ;; from the after-insert hook can also outlive a rollback. A dedicated connection can deadlock on cluster
+      ;; locks held by the caller, while coordination that lasts until commit would be complex for a test-only path.
+      ;; Materializing the dataset before opening the transaction avoids both problems.
       (if (mdb/in-transaction?)
         (u/the-id (get-or-create-default-dataset! driver))
         (cached driver)))))
@@ -159,9 +158,8 @@
                     :table_id table-id
                     :active   true))
 
-;; Like the Database id above, these are memoized for the whole app db, so a map built inside a transaction
-;; would outlive a rollback that took the Tables and Fields with it and hand out ids for rows that are
-;; gone. Look them up directly there instead of caching.
+;; Like the Database ID above, these maps are memoized for the application DB. Bypass the caches within a transaction
+;; so a rollback cannot leave IDs for Tables and Fields that no longer exist.
 (def ^:private ^{:arglists '([database-id])} cached-table-lookup-map
   (mdb/memoize-for-application-db build-table-lookup-map))
 
@@ -431,7 +429,7 @@
                               (assert (pos-int? (:id db)))
                               db))
         cached            (mdb/memoize-for-application-db get-db!)
-        ;; skip the cache inside a transaction -- see [[make-memoized-test-database-id-fn]]
+        ;; Bypass the cache within a transaction; see [[make-memoized-test-database-id-fn]].
         get-db-for-driver #(if (mdb/in-transaction?) (get-db! %) (cached %))
         db-fn             #(get-db-for-driver (tx/driver))]
     (binding [*db-fn*                   db-fn

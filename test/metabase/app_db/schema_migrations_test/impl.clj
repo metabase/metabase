@@ -79,8 +79,8 @@
      (with-open [conn (.getConnection data-source)]
        (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
                  custom-migrations.util/*allow-temp-scheduling* false
-                 ;; this app DB is meant to stay empty (or hold only what the test loads), so a `with-temp`
-                 ;; inside it must not materialise the test-data Database via the dataset pre-warm
+                 ;; This app DB must remain empty, or contain only what the test loads. Prevent `with-temp` from
+                 ;; prewarming the test-data Database within it.
                  data.impl/*skip-dataset-prewarm?* true]
          (f conn))))))
 
