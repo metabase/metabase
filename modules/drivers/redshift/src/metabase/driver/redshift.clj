@@ -199,36 +199,42 @@
   ;; The `database-is-auto-increment` and `database-required` columns are currently missing because they are only
   ;; needed for actions, which redshift doesn't support yet.
   [driver & {:keys [schema-names table-names]}]
-  (sql/format {:select [[:c.column_name :name]
-                        [:c.data_type :database-type]
-                        [[:- :c.ordinal_position [:inline 1]] :database-position]
-                        [:c.table_schema :table-schema]
-                        [:c.table_name :table-name]
-                        [[:not= :pk.column_name nil] :pk?]
-                        [[:case [:not= :c.remarks [:inline ""]] :c.remarks :else nil] :field-comment]]
-               ;; svv_columns excludes columns from datashares, unlike svv_all_columns with includes them
-               :from [[:svv_columns :c]]
-               :left-join [[{:select [:tc.table_schema
-                                      :tc.table_name
-                                      :kc.column_name]
-                             :from [[:information_schema.table_constraints :tc]]
-                             :join [[:information_schema.key_column_usage :kc]
-                                    [:and
-                                     [:= :tc.constraint_name :kc.constraint_name]
-                                     [:= :tc.table_schema :kc.table_schema]
-                                     [:= :tc.table_name :kc.table_name]]]
-                             :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]}
-                            :pk]
-                           [:and
-                            [:= :c.table_schema :pk.table_schema]
-                            [:= :c.table_name :pk.table_name]
-                            [:= :c.column_name :pk.column_name]]]
-               :where [:and
-                       [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.table_schema (map u/lower-case-en schema-names)])
-                       (when table-names [:in :c.table_name (map u/lower-case-en table-names)])]
-               :order-by [:table-schema :table-name :database-position]}
-              :dialect (sql.qp/quote-style driver)))
+  ;; Redshift evaluates `information_schema` on the leader node and does not push the outer restriction through the
+  ;; LEFT JOIN into the `pk` subquery, so the subquery has to repeat it or every call scans every constraint in the
+  ;; cluster. Generating both from `scoped-to` keeps them from drifting: a subquery narrower than the outer query
+  ;; would silently report real primary keys as non-PK.
+  (let [scoped-to (fn [schema-col table-col]
+                    [(when schema-names [:in schema-col (map u/lower-case-en schema-names)])
+                     (when table-names [:in table-col (map u/lower-case-en table-names)])])]
+    (sql/format {:select [[:c.column_name :name]
+                          [:c.data_type :database-type]
+                          [[:- :c.ordinal_position [:inline 1]] :database-position]
+                          [:c.table_schema :table-schema]
+                          [:c.table_name :table-name]
+                          [[:not= :pk.column_name nil] :pk?]
+                          [[:case [:not= :c.remarks [:inline ""]] :c.remarks :else nil] :field-comment]]
+                 ;; svv_columns excludes columns from datashares, unlike svv_all_columns with includes them
+                 :from [[:svv_columns :c]]
+                 :left-join [[{:select [:tc.table_schema
+                                        :tc.table_name
+                                        :kc.column_name]
+                               :from [[:information_schema.table_constraints :tc]]
+                               :join [[:information_schema.key_column_usage :kc]
+                                      [:and
+                                       [:= :tc.constraint_name :kc.constraint_name]
+                                       [:= :tc.table_schema :kc.table_schema]
+                                       [:= :tc.table_name :kc.table_name]]]
+                               :where (into [:and [:= :tc.constraint_type [:inline "PRIMARY KEY"]]]
+                                            (scoped-to :tc.table_schema :tc.table_name))}
+                              :pk]
+                             [:and
+                              [:= :c.table_schema :pk.table_schema]
+                              [:= :c.table_name :pk.table_name]
+                              [:= :c.column_name :pk.column_name]]]
+                 :where (into [:and [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]]
+                              (scoped-to :c.table_schema :c.table_name))
+                 :order-by [:table-schema :table-name :database-position]}
+                :dialect (sql.qp/quote-style driver))))
 
 (defmethod driver/db-start-of-week :redshift
   [_]
