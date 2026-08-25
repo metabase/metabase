@@ -75,6 +75,35 @@
   [[sql & params]]
   (into [(str/replace sql #"(?m)^.*has_(?:schema|table|any_column)_privilege.*$\n?" "")] params))
 
+(defn- without-table-privilege-checks
+  "The arm with only the per-row privilege calls removed. `has_schema_privilege` runs once per namespace, the other
+  two once per `pg_class` row, so timing this apart from [[without-privilege-checks]] says which one costs."
+  [[sql & params]]
+  (into [(str/replace sql #"(?m)^.*has_(?:table|any_column)_privilege.*$\n?" "")] params))
+
+(defn- restrict-rows-before-privilege-checks
+  "The arm with its privilege predicates moved outside a subquery that has already restricted the rows.
+
+  Derived rather than frozen because the parameter count follows the schema filter. The subquery exposes the oids the
+  predicates need; the outer select lists only the four real columns, so they do not reach the results."
+  [pg-class-arm]
+  (let [[sql & params] (without-privilege-checks pg-class-arm)
+        with-oids      (str/replace sql
+                                    "select\n  c.relname as name,"
+                                    "select\n  c.oid as oid,\n  n.oid as nsoid,\n  c.relname as name,")]
+    (assert (not= sql with-oids)
+            "the subquery must expose the oids the privilege checks run on")
+    (into [(str/join
+            "\n"
+            ["select t.name, t.schema, t.type, t.description"
+             "from ("
+             with-oids
+             ") t"
+             "where pg_catalog.has_schema_privilege(t.nsoid, 'USAGE')"
+             "  and (pg_catalog.has_table_privilege(t.oid,'SELECT')"
+             "       or pg_catalog.has_any_column_privilege(t.oid,'SELECT'))"])]
+          params)))
+
 (deftest ^:parallel outgoing-baseline-carries-no-parameters-test
   (testing "the frozen baseline must not gain the pushdown, or the live comparison measures a query against itself"
     (is (= 1 (count (outgoing-get-tables-sql))))))
@@ -91,7 +120,22 @@
           stripped   (without-privilege-checks pg-class)]
       (is (not= pg-class stripped))
       (is (not (re-find #"privilege" (first stripped))))
-      (is (= (rest pg-class) (rest stripped))))))
+      (is (= (rest pg-class) (rest stripped)))))
+  (testing "the narrowing variant drops only the per-row privilege calls"
+    (let [[pg-class] (arms "spectrum")
+          stripped   (first (without-table-privilege-checks pg-class))]
+      (is (str/includes? stripped "has_schema_privilege"))
+      (is (not (str/includes? stripped "has_table_privilege")))
+      (is (not (str/includes? stripped "has_any_column_privilege")))))
+  (testing "the restrict-first variant moves every privilege check without dropping one"
+    (let [[pg-class] (arms "spectrum")
+          restricted (restrict-rows-before-privilege-checks pg-class)
+          sql        (first restricted)]
+      (is (not= pg-class restricted))
+      (is (str/includes? sql "has_schema_privilege"))
+      (is (str/includes? sql "has_table_privilege"))
+      (is (str/includes? sql "has_any_column_privilege"))
+      (is (= (rest pg-class) (rest restricted))))))
 
 (defn- timed-query
   [spec statement]
@@ -130,6 +174,14 @@
   [spec inclusion-patterns]
   (timed-query spec (without-privilege-checks (second (arms inclusion-patterns)))))
 
+(defn- run-pg-class-arm-schema-privilege-only
+  [spec inclusion-patterns]
+  (timed-query spec (without-table-privilege-checks (first (arms inclusion-patterns)))))
+
+(defn- run-pg-class-arm-restrict-first
+  [spec inclusion-patterns]
+  (timed-query spec (restrict-rows-before-privilege-checks (first (arms inclusion-patterns)))))
+
 (def ^:private measurement-rounds 3)
 
 (deftest schema-pushdown-vs-outgoing-live-test
@@ -165,10 +217,12 @@
 (def ^:private breakdown-rounds 2)
 
 ;; A measurement harness for one open question: `describe-database` costs 15-36s per call and pushing the schema
-;; filter into SQL did not move it, so the time is server-side, not rows on the wire. Experiment 1 times each `union
-;; all` arm on its own; experiment 2 times the `pg_class` arm with the privilege functions removed, which says
-;; whether restricting rows in a CTE ahead of those checks is the fix. The no-privilege variants are diagnostic and
-;; must never ship: without them Metabase would sync tables the connecting user cannot read.
+;; filter into SQL did not move it, so the time is server-side, not rows on the wire. The variants time each `union
+;; all` arm alone, then the `pg_class` arm with all privilege calls removed, with only the per-row pair removed, and
+;; with all three moved outside a subquery that has already restricted the rows. The variants that remove a
+;; privilege call are diagnostic and must never ship: without those calls Metabase would sync tables the connecting
+;; user cannot read. Only the restrict-first variant is a shipping candidate, which is why it alone is asserted to
+;; return the same rows as the arm it replaces.
 (deftest describe-database-cost-breakdown-test
   (mt/test-driver :redshift
     (let [spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -181,9 +235,12 @@
                                                :pg-class         (run-pg-class-arm spec inclusion-patterns)
                                                :external         (run-external-arm spec inclusion-patterns)
                                                :pg-class-no-priv (run-pg-class-arm-without-privileges spec inclusion-patterns)
-                                               :external-no-priv (run-external-arm-without-privileges spec inclusion-patterns))))
+                                               :external-no-priv (run-external-arm-without-privileges spec inclusion-patterns)
+                                               :pg-class-schema-priv-only (run-pg-class-arm-schema-privilege-only spec inclusion-patterns)
+                                               :pg-class-restrict-first (run-pg-class-arm-restrict-first spec inclusion-patterns))))
             rows   (fn [variant] (:rows (variant (first rounds))))]
-        (doseq [variant [:full :pg-class :external :pg-class-no-priv :external-no-priv]]
+        (doseq [variant [:full :pg-class :external :pg-class-no-priv :external-no-priv
+                         :pg-class-schema-priv-only :pg-class-restrict-first]]
           (log/infof "%s: %d rows, ms %s"
                      (name variant)
                      (count (rows variant))
@@ -194,4 +251,8 @@
                (+ (count (rows :pg-class)) (count (rows :external))))
             "the arms must partition the full query, or the split is measuring something else")
         (is (>= (count (rows :pg-class-no-priv)) (count (rows :pg-class)))
-            "dropping the privilege filters can only add rows")))))
+            "dropping the privilege filters can only add rows")
+        (is (>= (count (rows :pg-class-schema-priv-only)) (count (rows :pg-class)))
+            "dropping the per-row privilege filters can only add rows")
+        (is (= (set (rows :pg-class)) (set (rows :pg-class-restrict-first)))
+            "restricting rows first must return exactly what the arm returns, or it cannot ship")))))
