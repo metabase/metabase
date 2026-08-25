@@ -47,7 +47,7 @@ export const UpsellContentTranslation = ({ source }: { source: string }) => {
             // A generated placeholder, sized to match the real upsell
             // illustrations, rather than another upsell's artwork -- borrowing
             // one makes a pending design look finished. Replace when the real
-            // illustration is exported; see 09-clarifications.md item 1.
+            // illustration is exported.
             image="app/assets/img/upsell-embedding-localization-placeholder.svg"
           />
         </LineDecorator>
