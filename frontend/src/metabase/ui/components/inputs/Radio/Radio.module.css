@@ -71,6 +71,7 @@
   align-items: flex-start;
   gap: rem(12px);
   padding: var(--mantine-spacing-md);
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
   border-radius: rem(12px);
   background-color: var(--mb-color-background_surface-primary);
   box-shadow: var(--mantine-shadow-xs);
@@ -82,6 +83,7 @@
 
   &:disabled {
     cursor: not-allowed;
+    border-color: transparent;
     background-color: var(--mb-color-background_surface-disabled);
 
     .cardLabel,
@@ -114,6 +116,11 @@
       color: var(--mb-color-text-disabled);
     }
   }
+}
+
+.cardLeftSection {
+  display: flex;
+  flex-shrink: 0;
 }
 
 .cardBody {
