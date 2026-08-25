@@ -1,8 +1,8 @@
-import type { DashboardSubscriptionData } from "metabase/redux/store";
 import type {
   ChannelApiResponse,
   CreateSubscriptionRequest,
   DashboardSubscription,
+  DashboardSubscriptionData,
   ListSubscriptionsRequest,
   UpdateSubscriptionRequest,
 } from "metabase-types/api";

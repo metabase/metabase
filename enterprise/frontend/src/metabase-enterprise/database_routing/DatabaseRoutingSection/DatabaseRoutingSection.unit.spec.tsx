@@ -18,16 +18,20 @@ import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
 
 interface SetupOpts {
   database?: Database;
+  isAdmin?: boolean;
 }
 
-const setup = ({ database = createMockDatabase() }: SetupOpts = {}) => {
+const setup = ({
+  database = createMockDatabase(),
+  isAdmin = true,
+}: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
   setupListTransformsEndpoint([]);
 
   renderWithProviders(<DatabaseRoutingSection database={database} />, {
     storeInitialState: {
-      currentUser: createMockUser({ is_superuser: true }),
+      currentUser: createMockUser({ is_superuser: isAdmin }),
       settings: createMockSettingsState(
         createMockSettings({
           engines: createMockEngines({
@@ -108,6 +112,40 @@ describe("DatabaseRoutingSection", () => {
       database: createMockDatabase({ engine: "clickhouse", features: [] }),
     });
     expect(screen.queryByText("Database routing")).not.toBeInTheDocument();
+  });
+
+  it("should let a non-admin with database management permission view but not change routing settings", async () => {
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+        router_user_attribute: "cool_guy",
+      }),
+      isAdmin: false,
+    });
+
+    expect(screen.getByText("Database routing")).toBeInTheDocument();
+    expect(screen.getByLabelText("Enable database routing")).toBeDisabled();
+    expect(
+      await screen.findByTestId("db-routing-user-attribute"),
+    ).toBeDisabled();
+    expect(screen.queryByRole("link", { name: /Add/ })).not.toBeInTheDocument();
+  });
+
+  it("should let an admin change routing settings", async () => {
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+        router_user_attribute: "cool_guy",
+      }),
+    });
+
+    expect(screen.getByLabelText("Enable database routing")).toBeEnabled();
+    expect(
+      await screen.findByTestId("db-routing-user-attribute"),
+    ).toBeEnabled();
+    expect(screen.getByRole("link", { name: /Add/ })).toBeInTheDocument();
   });
 
   it("should show a warning when writable connection is enabled", () => {
