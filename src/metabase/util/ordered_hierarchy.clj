@@ -179,8 +179,9 @@
     (nil? tag-a) tag-b
     (nil? tag-b) tag-a
     (= tag-a tag-b) tag-a
-    :else (let [ancestors-a (ancestors h tag-a)
-                ancestors-b (ancestors h tag-b)]
+    ;; Tags with no ancestors, including tags absent from the hierarchy, come back as nil.
+    :else (let [ancestors-a (or (ancestors h tag-a) #{})
+                ancestors-b (or (ancestors h tag-b) #{})]
             (cond
               (contains? ancestors-b tag-a) tag-a
               (contains? ancestors-a tag-b) tag-b

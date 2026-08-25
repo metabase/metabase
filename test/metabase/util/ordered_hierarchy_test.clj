@@ -100,3 +100,15 @@
   (is (thrown-with-msg? AssertionError
                         #"Tag must be a keyword"
                         (ordered-hierarchy/derive (ordered-hierarchy/make-hierarchy) 'child :parent))))
+
+(deftest ^:parallel first-common-ancestor-test
+  (testing "The shared ancestor closest to the first tag wins"
+    (is (= :quadrilateral (ordered-hierarchy/first-common-ancestor polygons :square :trapezoid))))
+  (testing "A tag counts as its own ancestor"
+    (is (= :kite (ordered-hierarchy/first-common-ancestor polygons :square :kite))))
+  (testing "Tags under separate roots have no common ancestor"
+    (is (nil? (ordered-hierarchy/first-common-ancestor polygons :square :triangle)))
+    (is (nil? (ordered-hierarchy/first-common-ancestor polygons :triangle :square))))
+  (testing "Tags outside the hierarchy have no common ancestor"
+    (is (nil? (ordered-hierarchy/first-common-ancestor polygons :square :circle)))
+    (is (nil? (ordered-hierarchy/first-common-ancestor polygons :circle :square)))))
