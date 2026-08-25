@@ -189,22 +189,33 @@
                     semantic.embedding/get-configured-model        (constantly in-process-embedding-model)]
         (let [app-db (mdb/data-source)]
           (try
-            (let [pgvector       (semantic.env/get-pgvector-datasource!)
-                  index-metadata (semantic.env/get-index-metadata)
-                  documents      (mapv #(assoc % :archived false) (semantic.tu/mock-documents))]
-              (is (semantic.core/supported?) "the semantic search engine accepts the registered provider")
-              (semantic.pgvector-api/init-semantic-search! pgvector index-metadata
-                                                           (semantic.env/get-configured-embedding-model))
-              (semantic.pgvector-api/index-documents! pgvector index-metadata documents)
-              (testing "real in-process embeddings flow through indexing and semantic querying"
-                (is (= {:model "card" :id 123}
-                       (-> (semantic.tu/with-weights {:semantic-distance 1}
-                             (mt/with-test-user :crowberto
-                               (semantic.pgvector-api/query pgvector index-metadata
-                                                            {:search-string "puppy"
-                                                             :vector-search-strategy :brute-force})))
-                           :results
-                           first
-                           (select-keys [:model :id]))))))
+            ;; As in the mock-embedder round trip above: `mi/can-read?` on a Card consults its
+            ;; `document_id`, which keeps Cards off the collection-id-only fast path, so the permission
+            ;; filter resolves each Card result to its row and drops one it cannot find. Back the indexed
+            ;; card with a real row, or the only surviving result is the dashboard and this test measures
+            ;; the missing fixture rather than the embeddings.
+            (mt/with-temp [:model/Card {card-id :id} {:name "Dog Training Guide"}]
+              (let [pgvector       (semantic.env/get-pgvector-datasource!)
+                    index-metadata (semantic.env/get-index-metadata)
+                    documents      (mapv (fn [doc]
+                                           (cond-> (assoc doc :archived false)
+                                             (= "card" (:model doc))
+                                             (-> (assoc :id card-id)
+                                                 (assoc-in [:legacy_input :id] card-id))))
+                                         (semantic.tu/mock-documents))]
+                (is (semantic.core/supported?) "the semantic search engine accepts the registered provider")
+                (semantic.pgvector-api/init-semantic-search! pgvector index-metadata
+                                                             (semantic.env/get-configured-embedding-model))
+                (semantic.pgvector-api/index-documents! pgvector index-metadata documents)
+                (testing "real in-process embeddings flow through indexing and semantic querying"
+                  (is (= {:model "card" :id card-id}
+                         (-> (semantic.tu/with-weights {:semantic-distance 1}
+                               (mt/with-test-user :crowberto
+                                 (semantic.pgvector-api/query pgvector index-metadata
+                                                              {:search-string "puppy"
+                                                               :vector-search-strategy :brute-force})))
+                             :results
+                             first
+                             (select-keys [:model :id])))))))
             (finally
               (jdbc/execute! app-db ["DROP SCHEMA IF EXISTS semantic_search CASCADE"]))))))))
