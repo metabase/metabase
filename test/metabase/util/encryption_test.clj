@@ -4,7 +4,6 @@
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
    [metabase.settings.models.setting.cache :as setting.cache]
-   [metabase.test :as mt]
    [metabase.test.initialize :as initialize]
    [metabase.util.encryption :as encryption]
    [metabase.util.string :as string])
