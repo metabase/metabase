@@ -237,6 +237,22 @@
   metabase-enterprise.metabot.usage
   [])
 
+(defenterprise run-content-diagnostics-scan!
+  "Runs a content diagnostics scan on EE and returns its topline. No-op on OSS."
+  metabase-enterprise.content-diagnostics.scan
+  [])
+
+(api.macros/defendpoint :post "/content-diagnostics/scan"
+  :- [:maybe [:map
+              [:scan_id       :string]
+              [:finding_count :int]
+              [:duration_ms   :int]]]
+  "Run a content diagnostics scan synchronously and return its topline. Findings only reach the UI
+  through a scan, and the production trigger is a nightly job, so E2E tests need a way to run one on
+  demand. Intended only for E2E tests."
+  []
+  (run-content-diagnostics-scan!))
+
 (defenterprise reset-mfa-throttlers-for-testing!
   "Clears the accumulated MFA management throttle state (enroll/disable/regenerate) on EE.
   No-op on OSS."

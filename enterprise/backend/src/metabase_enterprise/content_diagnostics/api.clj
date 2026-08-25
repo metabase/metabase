@@ -11,7 +11,6 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
-   [metabase-enterprise.content-diagnostics.scan :as scan]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.request.core :as request]
@@ -299,17 +298,6 @@
      :last_scan_at (api.common/last-scan-at)}))
 
 ;;; ------------------------------------------------ endpoints ------------------------------------------
-
-(api.macros/defendpoint :post "/scan"
-  :- [:map
-      [:scan_id       :string]
-      [:finding_count :int]
-      [:duration_ms   :int]]
-  "Run a scan **synchronously** and return its topline. Demo/dev-only - the production trigger is the
-  scheduled Quartz job. Synchronous (calls `scan/scan!` directly, not `trigger-now!`) so it works with
-  the scheduler disabled (`MB_DISABLE_SCHEDULER=true`)."
-  []
-  (scan/scan!))
 
 (api.macros/defendpoint :get "/stale"
   :- [:map
