@@ -1,1 +1,1 @@
-export * from "./tenant-urls";
+export * from "./base-path";
