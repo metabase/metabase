@@ -38,8 +38,11 @@ export const useCollectionData = (
     return internalCollectionId;
   }, [isGlobalBreadcrumbEnabled, currentLocation, internalCollectionId]);
 
+  // `currentData`, not `data`: `data` keeps serving the previous collection
+  // while a new one loads, so the caller would read the `can_write` of the
+  // collection the user just left and offer to create things in this one.
   const {
-    data: fetchedCollection,
+    currentData: collection,
     error: collectionLoadingError,
     isFetching: isFetchingCollection,
   } = useGetCollectionQuery(
@@ -50,12 +53,6 @@ export const useCollectionData = (
       ? skipToken
       : { id: effectiveCollectionId },
   );
-
-  // RTK Query keeps serving the last result once the argument becomes
-  // `skipToken`, so going back to having no current collection would otherwise
-  // inherit the collection - and its `can_write` - the user just left.
-  const collection =
-    effectiveCollectionId == null ? undefined : fetchedCollection;
 
   return {
     baseCollectionId,
