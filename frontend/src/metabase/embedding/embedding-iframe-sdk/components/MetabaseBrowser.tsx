@@ -203,8 +203,6 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
                     virtual: true,
                     id: item.id,
                     name: item.name,
-                    onPop: () =>
-                      setCurrentView({ type: "collection", id: view.id }),
                   });
                 }
               }}
