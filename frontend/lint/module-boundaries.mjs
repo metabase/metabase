@@ -69,8 +69,7 @@ const elements = [
     name: "value-formatting",
     enforcePublicApi: true,
   }),
-  // The compute side of charting: settings computation, echarts models and options, shared utils and types.
-  // static-viz renders it in GraalJS, so nothing in it may reach the React or redux side of visualizations.
+  // static-viz runs this in GraalJS, so it stays free of the React and redux side of visualizations.
   createElement({ type: "basic", name: "viz-core", enforcePublicApi: true }),
 
   // shared
@@ -441,8 +440,7 @@ const baseRules = [
     from: ["basic/value-formatting"],
     allow: ["basic/mlv1"],
   },
-  // mlv1 for the same column predicates, value-formatting for formatValue,
-  // ui for the chart colour utilities and the Mantine theme types.
+  // mlv1 for the column predicates, value-formatting for formatValue, ui for the colour utilities and theme types.
   {
     from: ["basic/viz-core"],
     allow: ["basic/mlv1", "basic/value-formatting", "basic/ui"],

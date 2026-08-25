@@ -10,7 +10,8 @@ const SIDE_EFFECT_FREE_PATHS = [
   "frontend/src/metabase/router",
   "frontend/src/metabase/querying/expressions",
   "frontend/src/metabase/ui",
-  // static-viz reaches single helpers through the barrel, so the rest of the module has to shake out of that bundle.
+  // The chart compute layer: static-viz imports a few helpers from its barrel,
+  // so without this the GraalJS bundle would pull in every echarts model too.
   "frontend/src/metabase/viz-core",
   // Trailing separator: rspack prefix-matches `include`, so a bare directory path would also claim a sibling like `router-utils.ts`.
 ].map((dir) => path.join(REPO_ROOT, dir) + path.sep);
