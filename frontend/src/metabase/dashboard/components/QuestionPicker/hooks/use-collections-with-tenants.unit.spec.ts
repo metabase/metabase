@@ -18,8 +18,9 @@ import {
   TENANT_SPECIFIC_COLLECTIONS_ROOT_ID,
   flattenCollectionTree,
   mergeTenantCollections,
-  useCollectionsWithTenants,
-} from "./use-collections-with-tenants";
+} from "../utils/tenant-collections";
+
+import { useCollectionsWithTenants } from "./use-collections-with-tenants";
 
 const createMockExpandedCollection = (
   overrides: Partial<Collection> & { path?: CollectionId[] | null },

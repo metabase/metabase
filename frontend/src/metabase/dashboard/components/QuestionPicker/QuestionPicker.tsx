@@ -28,12 +28,12 @@ import type { CollectionId } from "metabase-types/api";
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
 import { addDashboardQuestion } from "./actions";
+import { useCollectionsWithTenants } from "./hooks/use-collections-with-tenants";
 import {
   COLLECTIONS_TOP_LEVEL_ID,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
   TENANT_SPECIFIC_COLLECTIONS_ROOT_ID,
-  useCollectionsWithTenants,
-} from "./hooks/use-collections-with-tenants";
+} from "./utils/tenant-collections";
 
 interface QuestionPickerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
