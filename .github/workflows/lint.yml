@@ -98,6 +98,12 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
+      - name: Validate committed split OpenAPI spec
+        if: needs.files-changed.outputs.openapi_spec == 'true'
+        run: |
+          bun run openapi:bundle
+          bun run openapi:lint
+
       - name: Generate and split OpenAPI spec
         if: needs.files-changed.outputs.openapi_spec == 'true'
         run: bun run openapi:update
