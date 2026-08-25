@@ -66,7 +66,7 @@ jobs:
             SAMPLE='5'; EVALS_BRANCH='main'
           else
             PR="$INPUT_PR"; REF="$INPUT_REF"; SCOPE="$INPUT_SCOPE"
-            SAMPLE="$INPUT_SAMPLE"; EVALS_BRANCH="$INPUT_EVALS_BRANCH"
+            SAMPLE="${INPUT_SAMPLE:-5}"; EVALS_BRANCH="$INPUT_EVALS_BRANCH"
           fi
           # None of these is ever multi-line; a newline would forge extra output entries.
           for v in PR REF SCOPE SAMPLE EVALS_BRANCH; do
@@ -191,14 +191,13 @@ jobs:
             -f "inputs[comment_id]=$COMMENT_ID"
 
   finalize:
-    needs: [announce, dispatch, image]
+    needs: [announce, resolve, image, dispatch]
     if: always() && needs.announce.result == 'success' && needs.dispatch.result != 'success'
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       COMMENT_ID: ${{ needs.announce.outputs.comment_id }}
-      DISPATCH_RESULT: ${{ needs.dispatch.result }}
-      IMAGE_RESULT: ${{ needs.image.result }}
+      NEEDS_JSON: ${{ toJSON(needs) }}
     steps:
       - name: Comment (build/dispatch failed)
         uses: actions/github-script@v9
@@ -206,8 +205,8 @@ jobs:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            // A concurrency-cancelled retrigger lands here too; don't stamp it as an infra failure.
-            const cancelled = [process.env.DISPATCH_RESULT, process.env.IMAGE_RESULT].includes('cancelled');
+            const cancelled = Object.values(JSON.parse(process.env.NEEDS_JSON))
+              .some(j => j.result === 'cancelled');
             const body = cancelled
               ? `🤖 **Evals** — ⚪ cancelled before evals started ([logs](${runUrl}))`
               : `🤖 **Evals** — ❌ build or dispatch failed before evals started ([logs](${runUrl}))`;
