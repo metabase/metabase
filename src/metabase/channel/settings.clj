@@ -117,7 +117,7 @@
 
 (defsetting notification-link-base-url
   (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :internal
   :type       :string
   :feature    :whitelabel

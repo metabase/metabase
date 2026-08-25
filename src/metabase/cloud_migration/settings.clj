@@ -35,7 +35,7 @@
 (defsetting store-url
   (deferred-tru "Store URL.")
   :type       :string
-  :encryption :no
+  :encryption :when-encryption-key-set
   ;; should be :internal, but FE doesn't get internal settings. -- Someone else
   ;;
   ;; OK, then no it shouldn't be internal at all, internal is literally for Settings that are only visible to backend
