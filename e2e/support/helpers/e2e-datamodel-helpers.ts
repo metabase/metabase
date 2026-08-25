@@ -589,7 +589,8 @@ function getSegmentEditorNameInput() {
 }
 
 function getSegmentEditorDescriptionInput() {
-  return getSegmentEditor().findByLabelText("Give it a description");
+  getSegmentEditor().findByLabelText("Give it a description").click();
+  return getSegmentEditor().findByPlaceholderText("Only if it really needs it");
 }
 
 function getSegmentEditorFilterPlaceholder() {
@@ -681,7 +682,8 @@ function getMeasureEditorNameInput() {
 }
 
 function getMeasureEditorDescriptionInput() {
-  return getMeasureEditor().findByLabelText("Give it a description");
+  getMeasureEditor().findByLabelText("Give it a description").click();
+  return getMeasureEditor().findByPlaceholderText("Only if it really needs it");
 }
 
 function getMeasureEditorAggregationPlaceholder() {
