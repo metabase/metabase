@@ -1030,6 +1030,35 @@
                                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
+(mt/defdataset boolean-like-strings
+  [["ratings"
+    [{:field-name "isactive", :base-type :type/Text}]
+    [["true"] ["true"] ["false"]]]])
+
+(deftest ^:parallel filter-text-column-on-boolean-like-string-test
+  (testing "filtering a text column on the literal string \"true\" should not coerce it to a boolean (#80004)"
+    (mt/dataset boolean-like-strings
+      (let [mp (mt/metadata-provider)
+            ratings           (lib.metadata/table mp (mt/id :ratings))
+            isactive          (lib.metadata/field mp (mt/id :ratings :isactive))
+            query             (-> (lib/query mp ratings)
+                                  (lib/filter (lib/= isactive "true")))]
+        (is (=? {:status   "completed"
+                 :row_count 2
+                 :data      {:rows [[1 "true"] [2 "true"]]}}
+                (mt/user-http-request :crowberto :post 202 "dataset" query))))))
+  (testing "filtering a boolean column on an actual boolean should still work"
+    (mt/dataset places-cam-likes
+      (let [mp (mt/metadata-provider)
+            places            (lib.metadata/table mp (mt/id :places))
+            liked             (lib.metadata/field mp (mt/id :places :liked))
+            query             (-> (lib/query mp places)
+                                  (lib/filter (lib/= liked true)))]
+        (is (=? {:status   "completed"
+                 :row_count 2
+                 :data      {:rows [[1 "Tempest" true] [2 "Bullit" true]]}}
+                (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
+
 (deftest ^:parallel mbql5-query-convert-to-native-test
   (testing "POST /api/dataset/native"
     (testing "Should be able to convert an MBQL 5 query to native (#39024)"
