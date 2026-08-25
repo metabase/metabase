@@ -12,6 +12,7 @@ export type RadioCardProps = Omit<MantineRadioCardProps, "children"> & {
   description?: ReactNode;
   leftSection?: ReactNode;
   disabled?: boolean;
+  withIndicator?: boolean;
 };
 
 export const RadioCard = ({
@@ -19,10 +20,11 @@ export const RadioCard = ({
   description,
   leftSection,
   disabled,
+  withIndicator = true,
   ...props
 }: RadioCardProps) => (
   <MantineRadioCard disabled={disabled} {...props}>
-    <MantineRadioIndicator disabled={disabled} />
+    {withIndicator && <MantineRadioIndicator disabled={disabled} />}
     {leftSection}
     <div className={S.cardBody}>
       {label && <div className={S.cardLabel}>{label}</div>}

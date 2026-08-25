@@ -135,6 +135,7 @@ export const EditUserStrategyModal = ({
                     value={option.value}
                     label={option.label}
                     description={option.description}
+                    withIndicator={false}
                   />
                 ))}
               </Stack>
