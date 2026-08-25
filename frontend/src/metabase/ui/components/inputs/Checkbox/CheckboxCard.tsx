@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 
 import S from "./Checkbox.module.css";
 
-export type CheckboxCardProps = MantineCheckboxCardProps & {
+export type CheckboxCardProps = Omit<MantineCheckboxCardProps, "children"> & {
   label?: ReactNode;
   description?: ReactNode;
 };
