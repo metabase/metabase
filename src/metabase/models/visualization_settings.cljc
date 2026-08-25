@@ -29,6 +29,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -446,7 +447,7 @@
                          (norm->db-generic-param-mapping k v))]
                    (assoc acc new-k new-v))) {} parameter-mapping)))
 
-(defn- db->norm-click-behavior [v]
+(defn- db->norm-click-behavior* [v]
   (-> v
       (assoc
        ::click-behavior-type
@@ -458,6 +459,21 @@
        (some? (:parameterMapping v)) (assoc ::parameter-mapping (db->norm-param-mapping (:parameterMapping v))))
       (dissoc :parameterMapping)
       (set/rename-keys db->norm-click-behavior-keys)))
+
+(defn- db->norm-click-behavior
+  "Normalizes a DB-form click behavior, returning `nil` for one that can't be normalized.
+
+  Click behaviors are stored inside free-form JSON blobs (a card's `visualization_settings` and a column's
+  `settings`) that are only loosely validated on write, so anything at all can turn up here. Normalization assumes a
+  map; treat everything else as no click behavior rather than throwing, since the callers sit on the export and
+  static-viz render paths where a throw kills the whole download."
+  [v]
+  (when (map? v)
+    (try
+      (db->norm-click-behavior* v)
+      (catch #?(:clj Throwable :cljs js/Error) e
+        (log/warnf "Ignoring malformed click behavior: %s" (ex-message e))
+        nil))))
 
 (defn- db->norm-time-style
   "Converts the deprecated k:mm format to HH:mm (#18112)"
@@ -475,21 +491,33 @@
 
 (defn- db->norm-column-settings-entry
   "Converts the DB form of a :column_settings entry value to its normalized form. Does the opposite of
-  `norm->db-column-settings-entry`."
+  `norm->db-column-settings-entry`.
+
+  Entry values are only loosely validated on write (`result_metadata[].settings` types them as `:any`), so an entry
+  that cannot be normalized is dropped rather than allowed to throw. Every consumer of a column's settings — CSV,
+  JSON and XLSX export plus the static-viz render path — funnels through here, so one unnormalizable entry would
+  otherwise take all of them down."
   [m k v]
-  (case k
-    :click_behavior
-    (assoc m ::click-behavior (db->norm-click-behavior v))
+  (try
+    (case k
+      :click_behavior
+      (m/assoc-some m ::click-behavior (db->norm-click-behavior v))
 
-    :time_style
-    (assoc m ::time-style (db->norm-time-style v))
+      :time_style
+      (assoc m ::time-style (db->norm-time-style v))
 
-    (assoc m (db->norm-column-settings-keys k) v)))
+      (assoc m (db->norm-column-settings-keys k) v))
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (log/warnf "Ignoring malformed column setting %s: %s" (pr-str k) (ex-message e))
+      m)))
 
 (defn db->norm-column-settings-entries
-  "Converts the DB form of a map of :column_settings entries to its normalized form."
+  "Converts the DB form of a map of :column_settings entries to its normalized form. Drops any entries that fail to be
+  normalized."
   [entries]
-  (reduce-kv db->norm-column-settings-entry {} entries))
+  (if (map? entries)
+    (reduce-kv db->norm-column-settings-entry {} entries)
+    {}))
 
 (defn db->norm-column-settings
   "Converts a :column_settings DB form to its normalized form. Drops any columns that fail to be parsed."
@@ -519,7 +547,7 @@
 
     ;; click behavior key at top level; ex: non-table card
     (:click_behavior vs)
-    (assoc ::click-behavior (db->norm-click-behavior (:click_behavior vs)))
+    (m/assoc-some ::click-behavior (db->norm-click-behavior (:click_behavior vs)))
 
     (:table.columns vs)
     db->norm-table-columns

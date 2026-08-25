@@ -186,3 +186,21 @@
       ;; make sure all keywords have the right namespace in normalized form
       (t/is (empty? (filter #(some? (namespace %)) (all-keywords to-db))))
       (t/is (= db-form to-db)))))
+
+(t/deftest ^:parallel db->norm-column-settings-entries-malformed-entry-test
+  (t/testing "entries that can't be normalized are dropped rather than thrown (SEC-868)"
+    (doseq [bad-click-behavior ["x" [1 2] 42 true]]
+      (t/testing (str "click_behavior = " (pr-str bad-click-behavior))
+        (t/is (= {::mb.viz/column-title "Legit Title"}
+                 (mb.viz/db->norm-column-settings-entries
+                  {:click_behavior bad-click-behavior
+                   :column_title   "Legit Title"})))))
+    (t/testing "a well-formed entry is still normalized"
+      (t/is (= {::mb.viz/click-behavior {::mb.viz/click-behavior-type ::mb.viz/link
+                                         ::mb.viz/link-type           ::mb.viz/url
+                                         ::mb.viz/link-text-template  "http://example.com"}}
+               (mb.viz/db->norm-column-settings-entries
+                {:click_behavior {:type "link" :linkType "url" :linkTextTemplate "http://example.com"}}))))
+    (t/testing "a non-associative settings value normalizes to nothing"
+      (doseq [bad ["x" [1 2] 42]]
+        (t/is (= {} (mb.viz/db->norm-column-settings-entries bad)))))))
