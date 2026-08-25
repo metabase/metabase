@@ -34,8 +34,8 @@ export interface AdminState {
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
-    /** The databases an unsaved edit touched, with the tables the save confirmation names. */
-    editedDatabases: Record<DatabaseId, PermissionsDatabase>;
+    /** Databases whose tables the permissions tree has seen, kept while the page is open. */
+    databasesWithTables: Record<DatabaseId, PermissionsDatabase>;
     dataPermissionsRevision: number | null;
     collectionPermissions: CollectionPermissions;
     originalCollectionPermissions: CollectionPermissions;

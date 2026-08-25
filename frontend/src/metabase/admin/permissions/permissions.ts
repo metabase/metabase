@@ -761,17 +761,22 @@ const originalDataPermissions = createReducer<GroupsPermissions | null>(
 );
 
 /**
- * The databases an unsaved edit touched, with the tables the save confirmation
- * needs to name what it granted or revoked. The edit already resolved the
- * database, so keeping it here means the confirmation does not depend on the
- * request that supplied it still being cached.
+ * Databases whose tables the tree has seen, kept for as long as the page is
+ * open. The tables come from `getDatabaseMetadata`, whose cache entry is
+ * unsubscribed as soon as the admin navigates away from that database, but the
+ * save confirmation still has to name the tables an edit granted or revoked,
+ * and a parent's confirmation still has to look at its children.
  */
-type EditedDatabases = Record<DatabaseId, PermissionsDatabase>;
+type DatabasesWithTables = Record<DatabaseId, PermissionsDatabase>;
 
-function editedDatabases(
-  state: EditedDatabases = {},
+function databasesWithTables(
+  state: DatabasesWithTables = {},
   action: UnknownAction,
-): EditedDatabases {
+): DatabasesWithTables {
+  if (databaseApi.endpoints.getDatabaseMetadata.matchFulfilled(action)) {
+    const database = action.payload;
+    return { ...state, [database.id]: database };
+  }
   if (isUpdateDataPermissionAction(action)) {
     const database = action.payload?.database;
     return database == null ? state : { ...state, [database.id]: database };
@@ -1053,7 +1058,7 @@ const hasRevisionChanged = createReducer<RevisionChangedState>(
 export const permissions = combineReducers({
   saveError,
   dataPermissions,
-  editedDatabases,
+  databasesWithTables,
   originalDataPermissions,
   dataPermissionsRevision,
   collectionPermissions,

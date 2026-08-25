@@ -145,18 +145,10 @@ const fulfilled = (
 
 // The permissions tree reads its databases straight out of the RTK Query cache,
 // so the fixture seeds the same entries DataPermissionsPage subscribes to.
-const databaseTablesArgs = (id: number) => ({
-  id,
-  include_hidden: true,
-  remove_inactive: true,
-  skip_fields: true,
-});
-
-const databaseTablesEntries = Object.fromEntries(
-  databases.map((database) => [
-    `getDatabaseMetadata(${JSON.stringify(databaseTablesArgs(database.id))})`,
-    fulfilled("getDatabaseMetadata", databaseTablesArgs(database.id), database),
-  ]),
+// The tree takes each database's identity from the listDatabases cache and its
+// tables from permissions state, so the fixture seeds both.
+const databasesWithTables = Object.fromEntries(
+  databases.map((database) => [database.id, database]),
 );
 
 export const state = {
@@ -164,6 +156,7 @@ export const state = {
     permissions: {
       dataPermissions: initialPermissions,
       originalDataPermissions: initialPermissions,
+      databasesWithTables,
     },
   },
   settings: createMockSettingsState(),
@@ -178,7 +171,6 @@ export const state = {
         data: databases,
         total: databases.length,
       }),
-      ...databaseTablesEntries,
     },
   },
 };

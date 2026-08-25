@@ -22,18 +22,19 @@ interface DiffProps {
 /**
  * The save confirmation names the tables an edit granted or revoked, so it needs
  * the tables of every database the edit touched, not just the one on screen.
- * Each edit records its database, so they are all here by the time it opens.
+ * A database with no change contributes nothing, so passing every database the
+ * tree has loaded is the same answer with none of the bookkeeping.
  */
 export const getDiff = createSelector(
   (_state: State, { groups }: DiffProps) => groups,
   (state: State) => state.admin.permissions.dataPermissions,
   (state: State) => state.admin.permissions.originalDataPermissions,
-  (state: State) => state.admin.permissions.editedDatabases,
-  (groups, permissions, originalPermissions, editedDatabases) =>
+  (state: State) => state.admin.permissions.databasesWithTables,
+  (groups, permissions, originalPermissions, databasesWithTables) =>
     diffDataPermissions(
       permissions,
       originalPermissions,
       groups,
-      Object.values(editedDatabases),
+      Object.values(databasesWithTables),
     ),
 );

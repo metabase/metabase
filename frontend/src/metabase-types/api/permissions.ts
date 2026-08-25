@@ -205,13 +205,11 @@ export type PermissionEntityId = DatabaseEntityId &
 export type EntityWithGroupId = PermissionEntityId & { groupId: number };
 
 /**
- * What the permissions tree needs of a database. `getDatabaseMetadata` supplies
- * it, tables included; the permissions code never reads more than this.
+ * A database as the permissions tree sees it: the API database, with `tables`
+ * from `GET /api/database/:id/metadata` and `router_user_attribute` from
+ * `GET /api/database`. Neither endpoint returns both.
  */
-export type PermissionsDatabase = Pick<
-  Database,
-  "id" | "name" | "tables" | "features" | "router_user_attribute"
->;
+export type PermissionsDatabase = Database;
 
 export type PermissionSubject = "schemas" | "tables" | "fields";
 
