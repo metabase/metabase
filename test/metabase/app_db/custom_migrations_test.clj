@@ -2701,6 +2701,30 @@
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
 
+(deftest encrypt-auth-identity-credentials-test
+  (testing "v58.2026-08-25T00:00:00 : plaintext auth_identity.credentials rows are encrypted, encrypted rows untouched"
+    (encryption-test/with-secret-key "encrypt-creds-test-key-1234"
+      (impl/test-migrations ["v58.2026-08-25T00:00:00"] [migrate!]
+        (let [user-id  (:id (new-instance-with-default :core_user))
+              ins-cred (fn [provider creds-str]
+                         (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                                  :provider    provider
+                                                                  :credentials creds-str
+                                                                  :created_at  :%now
+                                                                  :updated_at  :%now}))
+              plain-id (ins-cred "password" (json/encode {:password_hash "h" :password_salt "s"}))
+              enc-str  (encryption/maybe-encrypt (json/encode {:password_hash "h2" :password_salt "s2"}))
+              enc-id   (ins-cred "google" enc-str)
+              raw-cred (fn [id] (t2/select-one-fn :credentials :auth_identity :id id))]
+          (is (not (encryption/possibly-encrypted-string? (raw-cred plain-id))))
+          (migrate!)
+          (testing "plaintext credentials are encrypted and decrypt to the original value"
+            (is (encryption/possibly-encrypted-string? (raw-cred plain-id)))
+            (is (= {:password_hash "h" :password_salt "s"}
+                   (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext (raw-cred plain-id))))))
+          (testing "already-encrypted credentials row is left unchanged"
+            (is (= enc-str (raw-cred enc-id)))))))))
+
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
     (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]
@@ -2966,37 +2990,3 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
-
-(deftest encrypt-encrypted-json-columns-test
-  (testing "v63.2026-08-24T12:00:00: plaintext values in encrypted-json columns are encrypted, encrypted values untouched"
-    (encryption-test/with-secret-key "encrypt-json-cols-test-key-1234"
-      (impl/test-migrations ["v63.2026-08-24T12:00:00"] [migrate!]
-        (let [user-id  (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
-              ins-cred (fn [provider creds-str]
-                         (t2/insert-returning-pk! :auth_identity {:user_id     user-id
-                                                                  :provider    provider
-                                                                  :credentials creds-str
-                                                                  :created_at  :%now
-                                                                  :updated_at  :%now}))
-              plain-id (ins-cred "password" (json/encode {:password_hash "h" :password_salt "s"}))
-              enc-str  (encryption/maybe-encrypt (json/encode {:password_hash "h2" :password_salt "s2"}))
-              enc-id   (ins-cred "google" enc-str)
-              db-id    (:id (new-instance-with-default :metabase_database))
-              _        (t2/query {:update :metabase_database
-                                  :set    {:details (json/encode {:host "localhost"})}
-                                  :where  [:= :id db-id]})
-              raw-cred (fn [id] (t2/select-one-fn :credentials :auth_identity :id id))
-              raw-det  (fn [id] (t2/select-one-fn :details :metabase_database :id id))]
-          (is (not (encryption/possibly-encrypted-string? (raw-cred plain-id))))
-          (is (not (encryption/possibly-encrypted-string? (raw-det db-id))))
-          (migrate!)
-          (testing "plaintext credentials are encrypted and decrypt to the original value"
-            (is (encryption/possibly-encrypted-string? (raw-cred plain-id)))
-            (is (= {:password_hash "h" :password_salt "s"}
-                   (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext (raw-cred plain-id))))))
-          (testing "plaintext database details are encrypted and decrypt to the original value"
-            (is (encryption/possibly-encrypted-string? (raw-det db-id)))
-            (is (= {:host "localhost"}
-                   (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext (raw-det db-id))))))
-          (testing "already-encrypted credentials row is left unchanged"
-            (is (= enc-str (raw-cred enc-id)))))))))

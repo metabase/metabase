@@ -480,9 +480,9 @@
     v))
 
 (def transform-secret-value
-  "Transform for secret value."
+  "Transform for secret value. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-   :out (comp encryption/maybe-decrypt-accepting-plaintext maybe-blob->bytes)})
+   :out (comp encryption/maybe-decrypt-bytes maybe-blob->bytes)})
 
 #_(defn decompress
     "Decompress `compressed-bytes`."

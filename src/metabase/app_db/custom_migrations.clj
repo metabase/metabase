@@ -2244,23 +2244,14 @@
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
 
-(define-migration EncryptEncryptedJsonColumns
+(define-migration EncryptAuthIdentityCredentials
   (when (encryption/default-encryption-enabled?)
-    (doseq [[table column] [[:metabase_database :details]
-                            [:metabase_database :settings]
-                            [:metabase_database :write_data_details]
-                            [:metabase_database :admin_details]
-                            [:core_user :settings]
-                            [:channel :details]
-                            [:auth_identity :credentials]]]
-      (run! (fn [row]
-              (let [id (:id row)
-                    v  (get row column)]
-                (when (and (string? v)
-                           (not (str/blank? v))
-                           (not (encryption/possibly-encrypted-string? v)))
-                  (t2/query {:update table
-                             :set    {column (encryption/maybe-encrypt v)}
-                             :where  [:= :id id]}))))
-            (t2/reducible-query {:select [:id column]
-                                 :from   [table]})))))
+    (run! (fn [{:keys [id credentials]}]
+            (when (and (string? credentials)
+                       (not (str/blank? credentials))
+                       (not (encryption/possibly-encrypted-string? credentials)))
+              (t2/query {:update :auth_identity
+                         :set    {:credentials (encryption/maybe-encrypt credentials)}
+                         :where  [:= :id id]})))
+          (t2/reducible-query {:select [:id :credentials]
+                               :from   [:auth_identity]}))))

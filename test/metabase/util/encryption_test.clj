@@ -137,7 +137,7 @@
       (is (thrown? Throwable (encryption/maybe-decrypt secret fake-ciphertext)))
       (is (thrown? Throwable (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW")))))
     (testing "decrypts an encrypted byte array"
-      (is (= "WOW" (String. ^bytes (encryption/maybe-decrypt secret (encryption/encrypt-bytes secret (.getBytes "WOW")))))))
+      (is (= "WOW" (String. ^bytes (encryption/maybe-decrypt-bytes secret (encryption/encrypt-bytes secret (.getBytes "WOW")))))))
     (testing "passes nil through but rejects a blank (non-encrypted) string"
       (is (nil? (encryption/maybe-decrypt nil)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"

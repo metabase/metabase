@@ -5,9 +5,21 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.string :as string]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Blob)))
 
 (set! *warn-on-reflection* true)
+
+(defn- blob->bytes [^Blob b]
+  (.getBytes ^Blob b 0 (.length ^Blob b)))
+
+(defn- maybe-blob->bytes
+  "Normalize a raw `secret.value` read to a byte array: some drivers return a JDBC `Blob`, others a byte array."
+  [v]
+  (if (instance? Blob v)
+    (blob->bytes v)
+    v))
 
 ;; All columns whose whole value is encrypted at rest (via `mi/transform-encrypted-json`, or the encrypted-text/EDN
 ;; transforms in explorations). The on-disk format is `encrypt(string)`, so rotating the key only requires decrypting
@@ -99,12 +111,11 @@
       ;; fortunately, we don't need to fetch the latest secret instance per ID, as we would need to in order to update
       ;; a secret value through the regular database save API path; instead, ALL secret values in the app DB (regardless
       ;; of whether they are the "current version" or not), should be updated with the new key
-      (doseq [[id value] (t2/select-pk->fn :value :model/Secret)]
-        (when (encryption/possibly-encrypted-string? value)
-          (throw (ex-info (trs "Can''t decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
-        (t2/update! :conn conn :secret
-                    {:id id}
-                    {:value (encrypt-bytes-fn value)}))
+      (doseq [{:keys [id value]} (t2/select [:secret :id :value])]
+        (when (some? value)
+          (t2/update! :conn conn :secret
+                      {:id id}
+                      {:value (encrypt-bytes-fn (encryption/maybe-decrypt-bytes-accepting-plaintext (maybe-blob->bytes value)))})))
       (t2/delete! :conn conn :model/QueryCache))))
 
 (defn encrypt-db
