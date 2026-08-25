@@ -461,8 +461,8 @@
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :delete 403 "apps/demo")))
               (is (t2/exists? :model/DataApp :name "demo")))
-            ; each data app owns a permission group and a collection
-            ; containing saved questions and models
+            ;; each data app owns a permission group and a collection
+            ;; containing saved questions and models
             (testing "a superuser removes the app, its resources, and their contents"
               (is (nil? (mt/user-http-request :crowberto :delete 204 "apps/demo")))
               (is (not (t2/exists? :model/DataApp :name "demo")))
