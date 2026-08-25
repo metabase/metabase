@@ -34,6 +34,8 @@ const SIDE_EFFECT_FREE_PATHS = [
   // would otherwise pull CodeMirror into the initial bundle.
   path.join(REPO_ROOT, "frontend/src/metabase/querying/expressions") + path.sep,
   path.join(REPO_ROOT, "frontend/src/metabase/ui") + path.sep,
+  // static-viz reaches single helpers through the barrel, so the rest of the module has to shake out of that bundle.
+  path.join(REPO_ROOT, "frontend/src/metabase/viz-core") + path.sep,
 ];
 
 /**

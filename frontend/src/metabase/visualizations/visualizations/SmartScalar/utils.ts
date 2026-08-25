@@ -6,6 +6,7 @@ import { formatNumber } from "metabase/utils/formatting";
 import { measureText } from "metabase/utils/measure-text";
 import { uuid } from "metabase/utils/uuid";
 import { isEmpty } from "metabase/utils/validate";
+import { formatPreviousPeriodOptionName } from "metabase/viz-core/lib/trend-helpers";
 import type { ComparisonMenuOption } from "metabase/viz-core/types";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -395,26 +396,6 @@ function createComparisonMenuOption(
   }
 
   return COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE;
-}
-
-export function formatPreviousPeriodOptionName(dateUnit: DateTimeAbsoluteUnit) {
-  switch (dateUnit) {
-    case "minute":
-      return t`Previous minute`;
-    case "hour":
-      return t`Previous hour`;
-    case "day":
-      return t`Previous day`;
-    case "week":
-      return t`Previous week`;
-    case "month":
-      return t`Previous month`;
-    case "quarter":
-      return t`Previous quarter`;
-    case "year":
-      return t`Previous year`;
-  }
-  return "";
 }
 
 function formatPeriodsAgoOptionName(dateUnit: DateTimeAbsoluteUnit) {
