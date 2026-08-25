@@ -489,7 +489,10 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
         cy.findByRole("button", { name: "Apply" }).click();
       });
 
-      H.undoToast().findByText("Changes saved").should("be.visible");
+      cy.log("Applying lands on the tenants listing, now empty");
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Create your first tenant to start adding")
+        .should("be.visible");
 
       cy.findByTestId("embedding-hub-main").within(() => {
         cy.findByRole("tab", { name: "Tenants" }).should("be.visible");
@@ -511,9 +514,13 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
     it("upsells rather than hiding the tab", () => {
       cy.visit("/embedding/tenancy");
 
-      cy.findByTestId("embedding-hub-main")
-        .findByText("Use a multi-tenant user strategy")
-        .should("be.visible");
+      cy.findByTestId("embedding-hub-main").within(() => {
+        cy.findByText("Use a multi-tenant user strategy").should("be.visible");
+        cy.findByText(
+          "Securely share data with external users and allow them to create content.",
+          { exact: false },
+        ).should("be.visible");
+      });
     });
   });
 });
