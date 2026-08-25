@@ -65,7 +65,7 @@ String (accept `{"case-sensitive": false}` in opts):
 - `["does-not-contain", {}, <str>, <substring>]`
 
 Temporal:
-- `["time-interval", {}, <temporal>, <n-or-:current/:last/:next>, "<unit>"]` — relative window. Opts may set `{"include-current": true}`.
+- `["time-interval", {}, <temporal>, <n>, "<unit>"]` — relative window. `<n>` is either an integer (negative = past) or one of the strings `"current"`, `"last"`, `"next"`. Opts may set `{"include-current": true}`.
 - `["during", {}, <temporal>, "<iso-date-or-datetime>", "<unit>"]` — value falls within the bucket containing the literal.
 - `["relative-time-interval", {}, <temporal>, <value>, "<bucket>", <offset-value>, "<offset-bucket>"]` — window offset from now.
 
