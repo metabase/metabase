@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import {
+  resetPermissionsBasePath,
+  setPermissionsBasePath,
+} from "metabase/admin/permissions/utils/base-path";
 import { UpsellTenants } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
-import {
-  resetTenantsBasePath,
-  setTenantsBasePath,
-} from "metabase/common/tenants";
+import * as TenantUrls from "metabase/common/tenants";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Outlet, useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -43,18 +44,23 @@ export function EmbeddingHubTenancyPage() {
   const hasTenants = useHasTokenFeature("tenants");
   const isUsingTenants = useSetting("use-tenants");
 
-  // Declares the hub as the tenant URL builders' host, the same way
-  // EmbeddingHubPermissionsBasePath does for the permissions editor.
-  setTenantsBasePath(Urls.embeddingHubTenancy(), {
-    permissionsPath: Urls.embeddingHubPermissions(),
-  });
-  useEffect(() => resetTenantsBasePath, []);
+  // Declares the hub as both the tenant and the permissions editor's URL
+  // builders' host, the same way EmbeddingHubPermissionsBasePath does when the
+  // Permissions tab itself is mounted.
+  TenantUrls.setTenantsBasePath(Urls.embeddingHubTenancy());
+  setPermissionsBasePath(Urls.embeddingHubPermissions());
+  useEffect(() => {
+    return () => {
+      TenantUrls.resetTenantsBasePath();
+      resetPermissionsBasePath();
+    };
+  }, []);
 
   return (
     <Stack gap="xl">
       <Title order={1} c="text-primary">{t`Tenancy`}</Title>
 
-      {!hasTenants && <UpsellTenants />}
+      {!hasTenants && <UpsellTenants align="flex-start" />}
 
       {hasTenants && !isUsingTenants && <EnableTenancyCard />}
 

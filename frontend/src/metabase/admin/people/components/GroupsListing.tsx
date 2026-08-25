@@ -10,7 +10,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { tenantGroupUrl } from "metabase/common/tenants";
+import * as Urls from "metabase/common/tenants";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -247,7 +247,7 @@ function GroupRow({
   const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
 
   const membersLink = isTenantGroup
-    ? tenantGroupUrl(group.id)
+    ? `${Urls.getTenantsBasePath()}/groups/${group.id}`
     : `/admin/people/groups/${group.id}`;
 
   return editing ? (

@@ -22,7 +22,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { tenantIdToColor } from "metabase-enterprise/tenants/utils/colors";
-import * as EnterpriseUrls from "metabase-enterprise/urls";
+import * as Urls from "metabase-enterprise/urls";
 import type { Tenant } from "metabase-types/api";
 
 import { TenantsListingEmptyState } from "../TenantsListingEmptyState";
@@ -51,7 +51,7 @@ export const TenantsListing = ({
   const openNewTenantModal = () => {
     const param = hasNoTenants ? "?onboarding=true" : "";
 
-    navigate(EnterpriseUrls.newTenant() + param);
+    navigate(Urls.newTenant() + param);
   };
 
   const filteredTenants = useMemo(() => {
@@ -94,7 +94,7 @@ export const TenantsListing = ({
               <Flex
                 component={ForwardRefLink}
                 align="center"
-                to={EnterpriseUrls.editTenant(tenant.id)}
+                to={Urls.editTenant(tenant.id)}
                 className={CS.link}
                 gap="lg"
               >
@@ -161,17 +161,14 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item
-          component={ForwardRefLink}
-          to={EnterpriseUrls.editTenant(tenant.id)}
-        >
+        <Menu.Item component={ForwardRefLink} to={Urls.editTenant(tenant.id)}>
           {t`Edit tenant`}
         </Menu.Item>
         {tenant.is_active ? (
           <Menu.Item
             c="feedback-negative"
             component={ForwardRefLink}
-            to={EnterpriseUrls.deactivateTenant(tenant.id)}
+            to={Urls.deactivateTenant(tenant.id)}
           >
             {t`Deactivate tenant`}
           </Menu.Item>
@@ -179,7 +176,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
           <Menu.Item
             c="feedback-negative"
             component={ForwardRefLink}
-            to={EnterpriseUrls.reactivateTenant(tenant.id)}
+            to={Urls.reactivateTenant(tenant.id)}
           >
             {t`Reactivate tenant`}
           </Menu.Item>
