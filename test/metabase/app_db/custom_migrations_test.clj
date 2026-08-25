@@ -2725,6 +2725,31 @@
           (testing "already-encrypted credentials row is left unchanged"
             (is (= enc-str (raw-cred enc-id)))))))))
 
+(deftest encrypt-api-keys-test
+  (testing "v58.2026-08-25T00:00:01 : plaintext api_key.key hashes are encrypted, encrypted rows untouched"
+    (encryption-test/with-secret-key "encrypt-api-keys-test-key-1234"
+      (impl/test-migrations ["v58.2026-08-25T00:00:01"] [migrate!]
+        (let [user-id  (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
+              ins-key  (fn [prefix key-str]
+                         (:id (new-instance-with-default :api_key {:name          (str "k-" prefix)
+                                                                   :user_id       user-id
+                                                                   :creator_id    user-id
+                                                                   :updated_by_id user-id
+                                                                   :key           key-str
+                                                                   :key_prefix    prefix})))
+              plain-id (ins-key "mb_plai" "plaintext-bcrypt-hash")
+              enc-str  (encryption/maybe-encrypt "another-bcrypt-hash")
+              enc-id   (ins-key "mb_encr" enc-str)
+              raw-key  (fn [id] (t2/select-one-fn :key :api_key :id id))]
+          (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
+          (migrate!)
+          (testing "plaintext key is encrypted and decrypts to the original hash"
+            (is (encryption/possibly-encrypted-string? (raw-key plain-id)))
+            (is (= "plaintext-bcrypt-hash"
+                   (encryption/maybe-decrypt-accepting-plaintext (raw-key plain-id)))))
+          (testing "already-encrypted key row is left unchanged"
+            (is (= enc-str (raw-key enc-id)))))))))
+
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
     (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]
