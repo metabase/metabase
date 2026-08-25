@@ -10,7 +10,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { useTenantUrls } from "metabase/common/tenants";
+import { tenantGroupUrl } from "metabase/common/tenants";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -237,7 +237,6 @@ function GroupRow({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }: GroupRowProps) {
-  const tenantUrls = useTenantUrls();
   const backgroundColor = groupIdToColor(group.id);
   const showActionsButton =
     !isDefaultGroup(group) &&
@@ -248,7 +247,7 @@ function GroupRow({
   const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
 
   const membersLink = isTenantGroup
-    ? tenantUrls.group(group.id)
+    ? tenantGroupUrl(group.id)
     : `/admin/people/groups/${group.id}`;
 
   return editing ? (

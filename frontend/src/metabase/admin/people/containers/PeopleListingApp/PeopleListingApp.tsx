@@ -5,13 +5,13 @@ import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useUserUrls } from "metabase/common/tenants";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { PeopleList } from "../../components/PeopleList";
 import { SearchFilter } from "../../components/SearchFilter";
@@ -36,7 +36,6 @@ export function PeopleListingApp({
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
   const isUsingTenants = useSetting("use-tenants");
-  const userUrls = useUserUrls();
 
   const {
     data: groups = [],
@@ -142,11 +141,7 @@ export function PeopleListingApp({
 
               {buttonText && (
                 <Box>
-                  <Link
-                    to={
-                      external ? userUrls.newTenantUser() : userUrls.newUser()
-                    }
-                  >
+                  <Link to={external ? Urls.newTenantUser() : Urls.newUser()}>
                     <Button variant="filled">{buttonText}</Button>
                   </Link>
                 </Box>

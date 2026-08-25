@@ -7,7 +7,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
-import { useTenantUrls } from "metabase/common/tenants";
+import { tenantPeopleUrl } from "metabase/common/tenants";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -39,10 +39,9 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
   );
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const tenantUrls = useTenantUrls();
 
   const handleClose = () => {
-    navigate(isExternalUser ? tenantUrls.people() : "/admin/people");
+    navigate(isExternalUser ? tenantPeopleUrl() : "/admin/people");
   };
 
   useEffect(() => {
@@ -53,9 +52,9 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
 
   useEffect(() => {
     if (isExternalUser && !temporaryPassword) {
-      navigate(tenantUrls.people(), { replace: true });
+      navigate(tenantPeopleUrl(), { replace: true });
     }
-  }, [isExternalUser, temporaryPassword, navigate, tenantUrls]);
+  }, [isExternalUser, temporaryPassword, navigate]);
 
   if (!user || isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
