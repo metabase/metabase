@@ -90,6 +90,8 @@
         timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))]
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
+    (when (api/column-will-change? :timeline_id existing timeline-event-updates)
+      (api/write-check :model/Timeline (:timeline_id timeline-event-updates)))
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
     (t2/update! :model/TimelineEvent id
                 (u/select-keys-when timeline-event-updates

@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.channel.models.channel :as models.channel]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.permissions.core :as perms]
@@ -98,17 +99,23 @@
    :id
    {:default []}))
 
+(defn- notification-entries
+  "Entries every notification map has, whatever its `:payload_type`."
+  [{:keys [with-id?]}]
+  (cond->> [[:payload_type                  (ms/enum-decode-keyword notification-types)]
+            [:active       {:optional true} [:maybe :boolean]]]
+    with-id? (into [[:id {:optional true} ms/PositiveInt]])))
+
 (mr/def ::Notification
   [:merge
-   [:map
-    [:payload_type (ms/enum-decode-keyword notification-types)]]
-   [:multi {:dispatch (comp keyword :payload_type)}
+   (into [:map] (notification-entries {:with-id? true}))
+   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+            :dispatch         (comp keyword :payload_type)}
     [:notification/system-event
-     [:map
-      [:payload_id {:optional true} nil?]]]
+     [:map [:payload_id {:optional true} nil?]]]
     [:notification/card
+     ;; both optional during creation
      [:map
-      ;; optional during creation
       [:payload_id {:optional true} int?]
       [:creator_id {:optional true} int?]]]
     [:notification/testing :any]]])
@@ -186,11 +193,14 @@
    :event_name      (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))
    :ui_display_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-ui-display-types))})
 
-(mr/def ::NotificationSubscription
-  "Schema for :model/NotificationSubscription."
-  [:merge [:map
-           [:type (ms/enum-decode-keyword subscription-types)]]
-   [:multi {:dispatch (comp keyword :type)}
+(defn- notification-subscription-schema
+  [{:keys [with-id?]}]
+  [:merge
+   (into [:map] (cond->> [[:type                             (ms/enum-decode-keyword subscription-types)]
+                          [:notification_id {:optional true} ms/PositiveInt]]
+                  with-id? (into [[:id {:optional true} :int]])))
+   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+            :dispatch         (comp keyword :type)}
     [:notification-subscription/system-event
      [:map
       [:event_name                     [:or :keyword :string]]
@@ -201,6 +211,14 @@
       [:event_name      {:optional true} nil?]
       ;; enum values can change depending on UI
       [:ui_display_type {:optional true} [:maybe (into [:enum] subscription-ui-display-types)]]]]]])
+
+(mr/def ::NotificationSubscription
+  "Schema for :model/NotificationSubscription."
+  (notification-subscription-schema {:with-id? true}))
+
+(mr/def ::CreateNotificationSubscriptionParams
+  "[[::NotificationSubscription]] on a create request, where the caller does not get to pick the id."
+  (notification-subscription-schema {:with-id? false}))
 
 (defn- validate-subscription
   "Validate a NotificationSubscription."
@@ -300,14 +318,23 @@
                          :channel-type  channel-type
                          :template-type template-type}))))))
 
+(defn- notification-handler-schema
+  [{:keys [with-id?]}]
+  (into [:map]
+        (cond->> [;; optional during insertion
+                  [:notification_id {:optional true}       ms/PositiveInt]
+                  [:channel_type    {:decode/json keyword} [:fn #(= "channel" (-> % keyword namespace))]]
+                  [:channel_id      {:optional true}       [:maybe ms/PositiveInt]]
+                  [:template_id     {:optional true}       [:maybe ms/PositiveInt]]
+                  [:active          {:optional true}       [:maybe :boolean]]]
+          with-id? (into [[:id {:optional true} ms/PositiveInt]]))))
+
 (mr/def ::NotificationHandler
-  [:map
-   ;; optional during insertion
-   [:notification_id {:optional true}       ms/PositiveInt]
-   [:channel_type    {:decode/json keyword} [:fn #(= "channel" (-> % keyword namespace))]]
-   [:channel_id      {:optional true}       [:maybe ms/PositiveInt]]
-   [:template_id     {:optional true}       [:maybe ms/PositiveInt]]
-   [:active          {:optional true}       [:maybe :boolean]]])
+  (notification-handler-schema {:with-id? true}))
+
+(mr/def ::CreateNotificationHandlerParams
+  "[[::NotificationHandler]] on a create request, where the caller does not get to pick the id."
+  (notification-handler-schema {:with-id? false}))
 
 (defn- validate-notification-handler
   [notification-handler]
@@ -340,12 +367,14 @@
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))
    :details mi/transform-json})
 
-(mr/def ::NotificationRecipient
-  "Schema for :model/NotificationRecipient."
-  [:merge [:map
-           [:type (ms/enum-decode-keyword notification-recipient-types)]
-           [:notification_handler_id {:optional true} ms/PositiveInt]]
-   [:multi {:dispatch (comp keyword :type)}
+(defn- notification-recipient-schema
+  [{:keys [with-id?]}]
+  [:merge
+   (into [:map] (cond->> [[:type                                    (ms/enum-decode-keyword notification-recipient-types)]
+                          [:notification_handler_id {:optional true} ms/PositiveInt]]
+                  with-id? (into [[:id {:optional true} ms/PositiveInt]])))
+   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+            :dispatch         (comp keyword :type)}
     [:notification-recipient/user
      [:map
       [:user_id                               ms/PositiveInt]
@@ -371,6 +400,14 @@
       [:user_id              {:optional true} [:fn nil?]]
       [:permissions_group_id {:optional true} [:fn nil?]]]]]])
 
+(mr/def ::NotificationRecipient
+  "Schema for :model/NotificationRecipient."
+  (notification-recipient-schema {:with-id? true}))
+
+(mr/def ::CreateNotificationRecipientParams
+  "[[::NotificationRecipient]] on a create request, where the caller does not get to pick the id."
+  (notification-recipient-schema {:with-id? false}))
+
 (defn- check-valid-recipient
   [recipient]
   (mu/validate-throw ::NotificationRecipient recipient))
@@ -382,17 +419,24 @@
   [_email-addresses]
   nil)
 
+(defn- validate-raw-value-email-domain!
+  "Enforce the `subscription-allowed-domains` allow-list on any write of a raw-value email recipient. Must run on both
+  insert and update so no write path (e.g. the unauthenticated unsubscribe-undo endpoint) can skip it."
+  [instance]
+  (when (and (= :notification-recipient/raw-value (:type instance))
+             (u/email? (get-in instance [:details :value])))
+    (validate-email-domains! [(get-in instance [:details :value])])))
+
 (t2/define-before-insert :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
+  (validate-raw-value-email-domain! instance)
   instance)
 
 (t2/define-before-update :model/NotificationRecipient
   [instance]
   (check-valid-recipient instance)
-  (when (and (= :notification-recipient/raw-value (:type instance))
-             (u/email? (get-in instance [:details :value])))
-    (validate-email-domains! [(get-in instance [:details :value])]))
+  (validate-raw-value-email-domain! instance)
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -408,13 +452,25 @@
 (t2/deftransforms :model/NotificationCard
   {:send_condition (mi/transform-validator mi/transform-keyword (partial mi/assert-enum card-subscription-send-conditions))})
 
+(defn- notification-card-schema
+  [{:keys [with-id?]}]
+  (into [:map]
+        (cond->> [[:card_id                          ms/PositiveInt]
+                  [:notification_id {:optional true} [:maybe ms/PositiveInt]]
+                  ;; the hydrated Card, echoed back by clients on update; nothing here reads it
+                  [:card            {:optional true} [:maybe ms/Map]]
+                  [:send_condition  {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
+                  [:send_once       {:optional true} :boolean]]
+          ;; nil on an unsaved notification, e.g. the one POST /api/pulse/test builds to send a test alert
+          with-id? (into [[:id {:optional true} [:maybe ms/PositiveInt]]]))))
+
 (mr/def ::NotificationCard
   "Schema for :model/NotificationCard."
-  [:map
-   [:card_id                         ms/PositiveInt]
-   [:card           {:optional true} [:maybe :map]]
-   [:send_condition {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
-   [:send_once      {:optional true} :boolean]])
+  (notification-card-schema {:with-id? true}))
+
+(mr/def ::CreateNotificationCardParams
+  "[[::NotificationCard]] on a create request, where the caller does not get to pick the id."
+  (notification-card-schema {:with-id? false}))
 
 (t2/define-before-insert :model/NotificationCard
   [instance]
@@ -501,29 +557,63 @@
      (or
       (not (premium-features/has-feature? :advanced-permissions))
       (perms/current-user-has-application-permissions? :subscription))
-     (current-user-can-read-payload? instance)))))
+     (current-user-can-read-payload? instance)
+     (current-user-can-read-payload? (merge instance changes))))))
+
+(defmethod mi/can-write? :model/Notification
+  ;; superuser, or the creator with subscription permissions who can read the payload (mirrors `can-update?`)
+  ([notification]
+   (or
+    (mi/superuser?)
+    (and
+     (current-user-is-creator? notification)
+     (or
+      (not (premium-features/has-feature? :advanced-permissions))
+      (perms/current-user-has-application-permissions? :subscription))
+     (current-user-can-read-payload? notification))))
+  ([_model pk]
+   (mi/can-write? (t2/select-one :model/Notification pk))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(defn hydrated-notification-schema
+  "Schema for a notification hydrated with its creator, subscriptions and handlers, where each handler matches
+  `handler-schema`. Callers supply the handler schema because API input accepts a narrower set of templates than what
+  we hand back out.
+
+  `{:with-id? false}` builds the create-request variant, which carries no `:id` at any level."
+  ([handler-schema]
+   (hydrated-notification-schema handler-schema {:with-id? true}))
+  ([handler-schema {:keys [with-id?] :as opts}]
+   (let [entries (into (notification-entries opts)
+                       [;; the hydrated User, echoed back by clients on update; `:creator_id` is what gets read
+                        [:creator       {:optional true} [:maybe ms/Map]]
+                        [:creator_id    {:optional true} [:maybe int?]]
+                        [:payload_id    {:optional true} [:maybe int?]]
+                        [:subscriptions {:optional true} [:sequential [:ref (if with-id?
+                                                                              ::NotificationSubscription
+                                                                              ::CreateNotificationSubscriptionParams)]]]
+                        [:handlers      {:optional true} [:sequential handler-schema]]])]
+     [:merge
+      (into [:map] entries)
+      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+               :dispatch         (comp keyword :payload_type)}
+       [:notification/card [:map [:payload [:ref (if with-id?
+                                                   ::NotificationCard
+                                                   ::CreateNotificationCardParams)]]]]
+       [::mc/default       [:map]]]])))
+
 (mr/def ::FullyHydratedNotification
   "Fully hydrated notification."
-  [:merge
-   ::Notification
-   [:map
-    [:creator       {:optional true} [:maybe :map]]
-    [:subscriptions {:optional true} [:sequential ::NotificationSubscription]]
-    [:handlers      {:optional true} [:sequential [:merge
-                                                   ::NotificationHandler
-                                                   [:map
-                                                    [:template   {:optional true} [:maybe ::models.channel/ChannelTemplate]]
-                                                    [:channel    {:optional true} [:maybe ::models.channel/Channel]]
-                                                    [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]]]]
-   [:multi {:dispatch (comp keyword :payload_type)}
-    [:notification/card [:map
-                         [:payload ::NotificationCard]]]
-    [::mc/default       :map]]])
+  (hydrated-notification-schema
+   [:merge
+    ::NotificationHandler
+    [:map
+     [:template   {:optional true} [:maybe ::models.channel/ChannelTemplate]]
+     [:channel    {:optional true} [:maybe ::models.channel/Channel]]
+     [:recipients {:optional true} [:sequential ::NotificationRecipient]]]]))
 
 (mu/defn hydrate-notification :- [:or ::FullyHydratedNotification [:sequential ::FullyHydratedNotification]]
   "Fully hydrate notifictitons."
@@ -540,9 +630,9 @@
   (hydrate-notification (t2/select :model/Notification
                                    :active true
                                    :payload_type :notification/card
-                                   :payload_id [:in {:select [:id]
-                                                     :from   [:notification_card]
-                                                     :where  [:= :card_id card-id]}])))
+                                   :payload_id [:in ^:allow-subquery {:select [:id]
+                                                                      :from   [:notification_card]
+                                                                      :where  [:= :card_id card-id]}])))
 
 (defn notifications-for-event
   "Find all active notifications for a given event."
@@ -626,6 +716,6 @@
   [notification-id user-id]
   (t2/delete! :model/NotificationRecipient
               :user_id user-id
-              :notification_handler_id [:in {:select [:id]
-                                             :from   [:notification_handler]
-                                             :where  [:= :notification_id notification-id]}]))
+              :notification_handler_id [:in ^:allow-subquery {:select [:id]
+                                                              :from   [:notification_handler]
+                                                              :where  [:= :notification_id notification-id]}]))

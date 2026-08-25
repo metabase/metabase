@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.metrics.core :as metrics]
@@ -38,9 +39,12 @@
 
 (def ^:private transform-measure-definition
   "Transform for measure definitions. Handles JSON serialization/deserialization.
-  Validation happens in before-insert and before-update hooks."
+  Validation happens in before-insert and before-update hooks.
+
+  Keys are left as strings for the schema-driven normalization in the after-select hook to keywordize, the same way
+  Card `dataset_query` is handled."
   {:in mi/json-in
-   :out mi/json-out-with-keywordization})
+   :out mi/json-out-without-keywordization})
 
 (t2/deftransforms :model/Measure
   {:definition         transform-measure-definition
@@ -155,11 +159,14 @@
 
 (defn- normalize-definition-from-db
   "Normalize a measure definition read from the database.
-  This handles keyword normalization after JSON round-trip (e.g., string \"mbql/query\" -> keyword :mbql/query)."
+  This handles keyword normalization after JSON round-trip (e.g., string \"mbql/query\" -> keyword :mbql/query).
+  Keys are normalized against the query schema first, so that `normalize-query` sees an MBQL 5 query rather than an
+  opaque map."
   [{:keys [definition] :as measure}]
   (if (seq definition)
     (try
-      (assoc measure :definition (lib-be/normalize-query definition))
+      (assoc measure :definition (-> (lib/normalize ::lib.schema/query definition)
+                                     lib-be/normalize-query))
       (catch Throwable e
         (log/error e "Error normalizing measure definition:" (ex-message e))
         measure))

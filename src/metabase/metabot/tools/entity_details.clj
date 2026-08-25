@@ -9,9 +9,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.util :as metabot.tools.u]
-   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.util :as u]
@@ -118,6 +118,12 @@
 (defn get-dashboard-details
   "Get information about the dashboard with ID `dashboard-id`."
   [{:keys [dashboard-id]}]
+  ;; `dashboard-id` is caller-supplied via the Metabot viewing context and reaches `t2/select-one`'s queryable
+  ;; position, where a non-integer is executed as a raw query against the app DB. Require an integer PK,
+  ;; the same guard `get-report-details`/`get-metric-details` already apply.
+  (when-not (int? dashboard-id)
+    (throw (ex-info "Invalid dashboard_id format"
+                    {:agent-error? true :status-code 400})))
   (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id)]
     (do (api/read-check dashboard)
         {:structured-output
@@ -146,46 +152,50 @@
     cols))
 
 (defn- permission-filter-columns
-  "Remove columns hidden by Table or sandbox permissions and hide inaccessible FK targets on retained columns."
+  "Remove columns hidden by Table or sandbox permissions and hide inaccessible FK targets on retained columns.
+
+  Two bars, matching [[metabase.metabot.tools.field-stats]]: a table the entity itself selects from takes
+  data access, so a card published as a permissions boundary keeps its columns; a table reached only by an
+  FK hop takes query permission, since joining to it is something the caller would have to do themselves."
   [columns]
   (let [columns                (vec columns)
         referenced-field-ids   (into #{}
                                      (comp (mapcat (juxt :fk-field-id :fk-target-field-id))
                                            (filter some?))
                                      columns)
-        referenced-fields      (when (seq referenced-field-ids)
-                                 (t2/select [:model/Field :id :table_id]
-                                            :id [:in referenced-field-ids]))
-        field-id->field         (m/index-by :id referenced-fields)
-        table-ids               (into #{}
-                                      (filter pos-int?)
-                                      (concat (keep :table-id columns)
-                                              (keep :table_id referenced-fields)))
-        readable-table-ids      (->> (t2/select :model/Table :id [:in table-ids])
-                                     (filter mi/can-read?)
-                                     (map :id)
-                                     set)
-        sandbox-restricted-ids  (metrics/sandbox-restricted-fields table-ids)
-        field-readable?         (fn [table-id field]
-                                  (and (contains? readable-table-ids table-id)
-                                       (if-let [allowed-field-ids (get sandbox-restricted-ids table-id)]
-                                         (contains? allowed-field-ids (u/id field))
-                                         true)))
-        referenced-field-readable?
-        (fn [field-id]
-          (when-let [field (get field-id->field field-id)]
-            (field-readable? (:table_id field) field)))
-        column-readable?        (fn [{:keys [fk-field-id table-id] :as column}]
-                                  (and (or (not (pos-int? table-id))
-                                           (field-readable? table-id column))
-                                       (or (nil? fk-field-id)
-                                           (referenced-field-readable? fk-field-id))))]
+        referenced-field-table (when (seq referenced-field-ids)
+                                 (metabot.perms/field-id->table-id referenced-field-ids))
+        table-ids              (into #{}
+                                     (filter pos-int?)
+                                     (concat (keep :table-id columns)
+                                             (vals referenced-field-table)))
+        queryable-table-ids    (metabot.perms/queryable-table-ids table-ids)
+        accessible-table-ids   (metabot.perms/data-accessible-table-ids table-ids)
+        sandbox-restricted-ids (metabot.perms/sandbox-restricted-fields table-ids)
+        field-visible?         (fn [visible-table-ids table-id field-id]
+                                 (and (contains? visible-table-ids table-id)
+                                      (if-let [allowed-field-ids (get sandbox-restricted-ids table-id)]
+                                        (contains? allowed-field-ids field-id)
+                                        true)))
+        referenced-field-visible?
+        (fn [visible-table-ids field-id]
+          (when-let [table-id (get referenced-field-table field-id)]
+            (field-visible? visible-table-ids table-id field-id)))
+        column-visible?        (fn [{:keys [fk-field-id table-id] :as column}]
+                                 (and (or (not (pos-int? table-id))
+                                          (field-visible? (if (= :source/implicitly-joinable (:lib/source column))
+                                                            queryable-table-ids
+                                                            accessible-table-ids)
+                                                          table-id
+                                                          (u/id column)))
+                                      (or (nil? fk-field-id)
+                                          (referenced-field-visible? accessible-table-ids fk-field-id))))]
     (->> columns
-         (filter column-readable?)
+         (filter column-visible?)
          (mapv (fn [{:keys [fk-target-field-id] :as column}]
                  (cond-> column
                    (and fk-target-field-id
-                        (not (referenced-field-readable? fk-target-field-id)))
+                        (not (referenced-field-visible? queryable-table-ids fk-target-field-id)))
                    (dissoc :fk-target-field-id)))))))
 
 (defn metric-details
@@ -226,7 +236,7 @@
          ;; reveal metadata for this physical Table.
          source-table-id (or (:table-id card) (:table_id card))
          source-table (when (and source-table-id
-                                 (mi/can-read? :model/Table source-table-id))
+                                 (mi/can-query? :model/Table source-table-id))
                         (lib.metadata/table metadata-provider source-table-id))
          base-table-portable-fk (when (and database-name source-table)
                                   [database-name (:schema source-table) (:name source-table)])
@@ -328,6 +338,9 @@
                with-measures?       false
                with-segments?       false}
         :as   options}]
+   (when-not (int? id)
+     (throw (ex-info "Invalid table id format"
+                     {:agent-error? true :status-code 400})))
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
                      (metabot.tools.u/get-table id :db_id :description :name :schema))]
@@ -348,6 +361,7 @@
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
+                       permission-filter-columns
                        field-values-fn
                        (map #(metabot.tools.u/add-table-reference table-query %))))
            related (when with-related-tables?
@@ -389,9 +403,14 @@
   expand [[max-related-tables]] of them (metabase#76493). Instead we read the source table's own FK columns and do a
   single bulk lookup of just the target fields (not their sibling columns) to map each FK to its table."
   [query]
-  (let [source-cols        (lib/visible-columns query -1 {:include-implicitly-joinable? false})
-        existing-table-ids (into #{} (keep :table-id) source-cols)
-        fk-cols            (filter (every-pred :fk-target-field-id (comp number? :id)) source-cols)
+  (let [all-cols           (lib/visible-columns query -1 {:include-implicitly-joinable? false})
+        ;; The FK columns are permission-filtered because their targets get named and expanded.
+        ;; `existing-table-ids` is not, because it is only ever used to *exclude*: a table whose
+        ;; columns are all hidden here is still already joined, and filtering it would let it
+        ;; resurface as a related table it was never eligible to be.
+        existing-table-ids (into #{} (keep :table-id) all-cols)
+        fk-cols            (filter (every-pred :fk-target-field-id (comp number? :id))
+                                   (permission-filter-columns all-cols))
         id->target-field   (m/index-by :id (lib.metadata/bulk-metadata
                                             query :metadata/column (into #{} (map :fk-target-field-id) fk-cols)))]
     (->> fk-cols
@@ -454,6 +473,9 @@
   "Get details for a card."
   ([id] (card-details id nil))
   ([id options]
+   (when-not (int? id)
+     (throw (ex-info "Invalid card id format"
+                     {:agent-error? true :status-code 400})))
    (when-let [card (metabot.tools.u/get-card id)]
      (card-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?

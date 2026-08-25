@@ -24,6 +24,8 @@
 
 (defmethod find-stale-query :model/Card
   [_model args]
+  ;; nested as a `:union-all` arm in [[rows-query]]/[[total-query]]
+  ^:allow-subquery
   {:select [:report_card.id
             [(h2x/literal "Card") :model]
             [:report_card.name :name]
@@ -59,6 +61,8 @@
 
 (defmethod find-stale-query :model/Dashboard
   [_model args]
+  ;; nested as a `:union-all` arm in [[rows-query]]/[[total-query]]
+  ^:allow-subquery
   {:select [:report_dashboard.id
             [(h2x/literal "Dashboard") :model]
             [:report_dashboard.name :name]
@@ -100,7 +104,7 @@
 
 (mu/defn ^:private rows-query [{:keys [limit offset] :as args} :- FindStaleContentArgs]
   (cond-> {:select [:id :model]
-           :from [[{:union-all (queries args)} :dummy_alias]]
+           :from [[^:allow-subquery {:union-all (queries args)} :dummy_alias]]
            :order-by [[(sort-column (:sort-column args))
                        (:sort-direction args)]]}
     (some? limit) ;; limit
@@ -110,7 +114,7 @@
 
 (mu/defn ^:private total-query [args :- FindStaleContentArgs]
   {:select [[:%count.* :count]]
-   :from [[{:union-all (queries args)} :dummy_alias]]})
+   :from [[^:allow-subquery {:union-all (queries args)} :dummy_alias]]})
 
 (mu/defn find-candidates :- [:map
                              [:rows [:sequential [:map

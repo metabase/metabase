@@ -3,7 +3,7 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
-   [hiccup.core :refer [html]]
+   [hiccup.core :refer [h html]]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
@@ -38,6 +38,11 @@
   (for [template-type [:email/handlebars-text :email/handlebars-resource]]
     {:template-type template-type
      :channel-type  :channel/email}))
+
+(def EmailDetails
+  "Schema for the connection `:details` of a `:channel/email` channel. Email channels reference the globally
+  configured SMTP integration and carry no details of their own."
+  [:map {:closed true}])
 
 (def ^:private EmailMessage
   [:map
@@ -115,7 +120,8 @@
           rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))
           heading-text    (:text part)
           style           (style/style (if (seq inline-params) {:margin-bottom "4px"} {}))]
-      {:content (str (html [:h2 {:style style} heading-text])
+      ;; hiccup 1 doesn't escape strings and :content reaches `{{{computed.dashboard_content}}}` as-is
+      {:content (str (html [:h2 {:style style} (h heading-text)])
                      rendered-params)})
     :tab-title
     {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))

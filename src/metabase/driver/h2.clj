@@ -51,6 +51,13 @@
 ;; :sql-mbql5 as a parent and move the :h2-mbql5 methods below to just :h2.
 (driver/register! :h2-mbql5, :parent #{:h2 :sql-mbql5})
 
+(defmethod driver/connection-hosts :h2
+  [_driver {:keys [db]}]
+  (if (and (string? db)
+           (re-find #"(?i)(?:^|:)(?:tcp|ssl)://" db))
+    (driver/hosts-from-details {:db db} [:db])
+    []))
+
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
 

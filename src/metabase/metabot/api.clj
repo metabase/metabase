@@ -235,10 +235,7 @@
             [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
             [:history [:maybe ::metabot.schema/messages]]
-            [:state [:map
-                     [:queries {:optional true} [:map-of :string :any]]
-                     [:charts {:optional true} [:map-of :string :any]]
-                     [:chart-configs {:optional true} [:map-of :string :any]]]]
+            [:state [:ref ::agent/state]]
             [:debug {:optional true} [:maybe :boolean]]]
    req]
   (metabot.context/log body :llm.log/fe->be)

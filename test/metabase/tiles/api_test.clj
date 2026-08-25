@@ -3,12 +3,17 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.tiles.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.api.macros :as api.macros]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]
    [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 ;; TODO: Assert on the contents of the response, not just the format
 (defn png? [s]
@@ -61,6 +66,19 @@
     (case mbql-or-native
       :mbql   (mt/$ids $people.longitude)
       :native [:field "LONGITUDE" {:base-type :type/Float}]))))
+
+(defn implicit-join-query
+  "Query on Orders; the People lat/lon columns are only reachable via an implicit join through USER_ID."
+  []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :orders)))))
+
+(defn encoded-implicit-join-field-ref
+  "JSON-encoded legacy ref with `:source-field` for a People column reached from Orders via an implicit join."
+  [field-name]
+  (let [col (m/find-first #(= (:id %) (mt/id :people field-name))
+                          (lib/visible-columns (implicit-join-query)))]
+    (json/encode (lib/->legacy-MBQL (lib/ref col)))))
 
 (deftest ^:parallel ad-hoc-query-test
   (testing "GET /api/tiles/:zoom/:x/:y with latField and lonField query params"
@@ -261,3 +279,86 @@
              :latField (encoded-lat-field-ref :mbql)
              :lonField (encoded-lon-field-ref :mbql)
              :query (json/encode (mt/mbql-query people {:filter [:= $people.id "X"]})))))))
+
+(deftest ad-hoc-query-cannot-write-another-cards-result-metadata-test
+  (testing "GET /api/tiles/:zoom/:x/:y takes a whole query as a query-string param, so its :info must come from the server"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card       {card-id :id}       {:collection_id collection-id
+                                                            :dataset_query (venues-query)
+                                                            :result_metadata
+                                                            [{:name         "SECRET"
+                                                              :display_name "Secret"
+                                                              :base_type    :type/Text}]}]
+        (testing "sanity: the caller cannot even read the Card"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "card/" card-id)))))
+        (testing "a forged :info :card-id does not rewrite that Card's result_metadata"
+          (is (png? (mt/user-http-request
+                     :rasta :get 200 "tiles/4/2/4"
+                     :query (json/encode (assoc (venues-query) :info {:card-id card-id}))
+                     :latField (encoded-lat-field-ref :mbql)
+                     :lonField (encoded-lon-field-ref :mbql))))
+          (is (= ["SECRET"]
+                 (map :name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
+
+(deftest ^:parallel ad-hoc-implicit-join-ref-test
+  (testing "GET /api/tiles/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join (:source-field)"
+    (is (= "Fields referenced via implicit joins are not supported."
+           (mt/user-http-request
+            :crowberto :get 400 "tiles/1/1/1"
+            :query (json/encode (implicit-join-query))
+            :latField (encoded-implicit-join-field-ref :latitude)
+            :lonField (encoded-implicit-join-field-ref :longitude))))))
+
+(deftest ^:parallel saved-card-implicit-join-ref-test
+  (testing "GET /api/tiles/:card-id/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join (:source-field)"
+    (mt/with-temp [:model/Card card {:dataset_query (implicit-join-query)}]
+      (is (= "Fields referenced via implicit joins are not supported."
+             (mt/user-http-request
+              :crowberto :get 400 (format "tiles/%d/1/1/1" (u/id card))
+              :latField (encoded-implicit-join-field-ref :latitude)
+              :lonField (encoded-implicit-join-field-ref :longitude)))))))
+
+(deftest ^:parallel dashcard-implicit-join-ref-test
+  (testing "GET /api/tiles/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y returns a 400 when the lat/lon refs use an implicit join (:source-field)"
+    (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                   :model/Card          {card-id :id}      {:dataset_query (implicit-join-query)}
+                   :model/DashboardCard {dashcard-id :id}  {:card_id card-id
+                                                            :dashboard_id dashboard-id}]
+      (is (= "Fields referenced via implicit joins are not supported."
+             (mt/user-http-request
+              :crowberto :get 400 (format "tiles/%d/dashcard/%d/card/%d/1/1/1"
+                                          dashboard-id
+                                          dashcard-id
+                                          card-id)
+              :latField (encoded-implicit-join-field-ref :latitude)
+              :lonField (encoded-implicit-join-field-ref :longitude)))))))
+
+(deftest ^:parallel legacy-ref-schema-strips-extra-keys-test
+  (testing "the tile latField/lonField schema decodes a JSON field ref, validates it, and strips undeclared properties"
+    (let [decoded (api.macros/decode-and-validate-params
+                   :query ::api.tiles/legacy-ref
+                   (json/encode [:field 1 {:base-type :type/Integer :a 1 :a/b 2}]))]
+      (is (mr/validate ::api.tiles/legacy-ref decoded))
+      (is (= [:field 1 {:base-type :type/Integer}] decoded)))
+    (testing "a value that isn't a field ref is rejected with a clean 400 (not a 500 later)"
+      (is (= 400 (-> (try (api.macros/decode-and-validate-params
+                           :query ::api.tiles/legacy-ref (json/encode {:not "a-ref"}))
+                          (catch clojure.lang.ExceptionInfo e (ex-data e)))
+                     :status-code))))))
+
+(deftest ^:parallel query-schema-strips-extra-keys-test
+  (testing "the ad-hoc tile query schema decodes a JSON query, validates it, and strips undeclared properties"
+    (let [decoded (api.macros/decode-and-validate-params
+                   :query ::api.tiles/query
+                   (json/encode {:database (mt/id)
+                                 :type     "query"
+                                 :query    {:source-table (mt/id :people)
+                                            :a            1
+                                            :a/b          2}}))]
+      (is (= :mbql/query (:lib/type decoded)))
+      (is (not (contains? decoded :a)))
+      (is (not (contains? decoded :a/b)))
+      (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages decoded))
+          "undeclared properties are stripped from every stage"))))

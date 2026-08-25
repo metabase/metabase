@@ -1064,8 +1064,12 @@ function createSourceTotalAmountMeasure() {
           name: "Total amount",
           table_id: sourceTableId,
           definition: {
-            "source-table": sourceTableId,
-            aggregation: [["sum", ["field", amountFieldId, null]]],
+            database: WRITABLE_DB_ID,
+            type: "query",
+            query: {
+              "source-table": sourceTableId,
+              aggregation: [["sum", ["field", amountFieldId, null]]],
+            },
           },
         }),
     ),

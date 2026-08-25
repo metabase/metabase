@@ -57,15 +57,16 @@
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
+(defn- portable-table-fk
+  [x]
+  (when (and (vector? x) (= 3 (count x)) (string? (nth x 0)))
+    x))
+
 (defn- first-stage-source-table-fk
   "Pull the portable `[db schema table]` FK out of `stages[0].source-table`, or `nil`
   if not present / wrong shape."
   [parsed-query]
-  (let [fk (get-in parsed-query ["stages" 0 "source-table"])]
-    (when (and (vector? fk)
-               (= 3 (count fk))
-               (string? (nth fk 0)))
-      fk)))
+  (portable-table-fk (get-in parsed-query ["stages" 0 "source-table"])))
 
 (def ^:private metabase-uri-source-table-pattern
   "Matches values the LLM sometimes writes into `source-table:` by confusing the Metabase
@@ -128,18 +129,89 @@
   avoid a full-table scan via `find-by-identity-hash`."
   shared.content-store/default-store)
 
-(defn- check-first-stage-source-table-query-permissions!
-  "Ensure the current user can query the table named by `stages[0].source-table`.
+(defn- portable-field-fk-table
+  [x]
+  (when (and (vector? x)
+             (>= (count x) 4)
+             (string? (nth x 0))
+             (let [schema (nth x 1)] (or (nil? schema) (string? schema)))
+             (string? (nth x 2)))
+    (subvec x 0 3)))
+
+(defn- node-table-fks
+  [node]
+  (cond
+    (map? node)
+    (keep identity [(portable-table-fk (get node "source-table"))
+                    (portable-field-fk-table (get node "source-field"))])
+
+    (and (vector? node)
+         (not (map-entry? node))
+         (= "field" (nth node 0 nil)))
+    ;; Canonical shape is ["field" {opts} [fqn]], but the resolver also accepts the legacy
+    ;; ["field" [fqn] opts-or-nil] order, so check both slots.
+    (keep identity [(or (portable-field-fk-table (nth node 2 nil))
+                        (portable-field-fk-table (nth node 1 nil)))])))
+
+(defn- referenced-table-fks
+  [parsed-query]
+  (into []
+        (comp (mapcat node-table-fks) (distinct))
+        (tree-seq coll? seq parsed-query)))
+
+(def ^:private unresolved-table-fk-errors
+  "The `:error` keys [[metabase.models.serialization.resolve/import-table-fk]] raises when a portable FK
+  names no single table: the path's database does not match the metadata provider's, no active table
+  matches, or several do.
+
+  This resolver is `resolve.mp/import-resolver`, which reads through the metadata provider and writes
+  nothing — not the row-synthesizing `resolve.db/import-table-fk`. So each of these means \"there is no
+  table here\", never \"a table was found but could not be named\"."
+  #{:unknown-table :ambiguous-table})
+
+(defn- resolve-table-fk
+  "The numeric table id `table-fk` names, or nil when it names no single table.
+
+  A nil is `check-source-table-query-permissions!`'s signal that there is nothing to check, not that a
+  check was skipped: only [[unresolved-table-fk-errors]] are swallowed, and any other error — including
+  another `:agent-error?` — is rethrown rather than silently dropping a permission check.
+
+  Swallowing rather than throwing is required at the first pass, which runs on the raw LLM query before
+  repair: a path repair would have fixed must not 403 here. The repaired query goes through this same
+  check again, and `repr.resolve/resolve-query` resolves it a third time, so a path that resolves later
+  is permission-checked by the pass that resolves it."
+  [resolver table-fk]
+  (try
+    (serdes.resolve/import-table-fk resolver table-fk)
+    (catch clojure.lang.ExceptionInfo e
+      (when-not (contains? unresolved-table-fk-errors (:error (ex-data e)))
+        (throw e))
+      nil)))
+
+(defn- check-source-table-query-permissions!
+  "Ensure the current user can query every warehouse table `portable-query` names directly.
 
   The metadata provider intentionally exposes database metadata without applying user data
-  permissions. Before any repair pass can inspect fields/FKs on the requested source table,
-  resolve the portable table FK and run the normal API query permission check."
-  [metadata-provider parsed-query]
-  (when-let [table-fk (first-stage-source-table-fk parsed-query)]
-    (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)
-          table-id (serdes.resolve/import-table-fk resolver table-fk)]
-      (api/query-check :model/Table table-id)
-      nil)))
+  permissions, so resolve each portable table FK and run the normal API query permission check.
+
+  Returns the set of table ids checked; pass it back in as `already-checked` so a table cleared by
+  an earlier call is not re-checked."
+  ([metadata-provider portable-query]
+   (check-source-table-query-permissions! metadata-provider portable-query #{}))
+
+  ([metadata-provider portable-query already-checked]
+   (if-let [table-fks (not-empty (referenced-table-fks portable-query))]
+     (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)]
+       (reduce (fn [checked table-fk]
+                 (if-let [table-id (resolve-table-fk resolver table-fk)]
+                   (if (contains? checked table-id)
+                     checked
+                     (do (api/query-check :model/Table table-id)
+                         (conj checked table-id)))
+                   checked))
+               already-checked
+               table-fks))
+     already-checked)))
 
 (defn resolve-database-id-from-first-stage
   "Resolve the application database id from the first stage's source.
@@ -293,16 +365,19 @@
                       (catch clojure.lang.ExceptionInfo e
                         (throw (as-agent-input-error e))))
         database-id (resolve-database-id-from-first-stage parsed)
-        mp          (lib-be/application-database-metadata-provider database-id)]
-    ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
-    ;; never inspects table/card metadata that the current user cannot use.
-    (check-first-stage-source-table-query-permissions! mp parsed)
+        mp          (lib-be/application-database-metadata-provider database-id)
+        ;; Permission checks happen before repair, and again on the repaired form before resolve,
+        ;; so the metadata-provider-backed pipeline never inspects table/card metadata that the
+        ;; current user cannot use. Only the repaired form has every field clause in a shape the
+        ;; walk can recognise, so the second pass is the authoritative one.
+        checked     (check-source-table-query-permissions! mp parsed)]
     ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
     ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
     ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
     ;; them reach the tool wrapper with the flag set.
     (try
       (let [repaired      (repr.repair/repair mp parsed permission-aware-content-store)
+            _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]

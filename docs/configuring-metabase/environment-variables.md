@@ -331,13 +331,6 @@ When using the default binning strategy for a field of type Coordinate (such as 
 
 When using the default binning strategy and a number of bins is not provided, this number will be used as the default.
 
-### `MB_CAN_RUN_ADHOC_QUERY_CHECK_THRESHOLD`
-
-- Type: integer
-- Default: `250`
-
-Maximum number of cards to compute can_run_adhoc_query for. When the number of cards exceeds this threshold, can_run_adhoc_query will return true for all cards without computing actual permissions. Set to 0 to always compute permissions. This only affects how cards are displayed in the query builder and does not affect actual permission enforcement.
-
 ### `MB_CHECK_FOR_UPDATES`
 
 - Type: boolean
@@ -1547,6 +1540,14 @@ Allow persisting models into the source database.
 
 Token for premium features. Go to the MetaStore to get yours!
 
+### `MB_QUERY_CACHING_EARLY_REFRESH_RATIO`
+
+- Type: double
+- Default: `0.1`
+- [Configuration file name](./config-file.md): `query-caching-early-refresh-ratio`
+
+Refresh cached results this fraction of their cache duration before they expire, so requests keep being served from cache instead of waiting for a recomputation. Set to 0 to only refresh once results have expired.
+
 ### `MB_QUERY_CACHING_MAX_KB`
 
 - Type: integer
@@ -1946,6 +1947,15 @@ This variable also controls the geocoding service that Metabase uses to know the
 - [Configuration file name](./config-file.md): `send-new-sso-user-admin-email`
 
 Should new email notifications be sent to admins, for all new SSO users?
+
+### `MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION`
+
+- Type: boolean
+- Default: `false`
+
+Whether to import questions whose queries this Metabase's query schema rejects. Defaults to false.
+
+On import, Metabase validates every question against the query format this version understands, and refuses any it cannot read. Set this to true to skip that validation. Skipping it will not necessarily make the import succeed. Import may still fail on a later step.
 
 ### `MB_SESSION_COOKIE_SAMESITE`
 
@@ -2370,6 +2380,19 @@ Prefix for upload table names.
 - [Configuration file name](./config-file.md): `user-visibility`
 
 Note: Sandboxed users will never see suggestions.
+
+### `MB_WAREHOUSE_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `null`
+
+Controls which networks Metabase may connect to for warehouse connections.
+Options:
+- external-only (only globally routable public addresses)
+- allow-private (external + private networks but NOT loopback or link-local)
+- allow-all (no restrictions).
+Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
+Also covers the SSH tunnel host and the database auth-provider URLs.
 
 ## Other environment variables
 

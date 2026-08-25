@@ -158,11 +158,14 @@
   termination even when the dependency graph has cycles."
   [type :- AnalyzableEntityType
    batch-size :- pos-int?]
-  (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
-    (lib-be/with-metadata-provider-cache
+  ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
+  ;; (see `metabase.lib-be.models.transforms/transform-query`), so selecting outside the cache gives every entity in
+  ;; the batch a private one.
+  (lib-be/with-metadata-provider-cache
+    (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
       (doseq [instance instances]
         (try (upsert-analysis! instance)
              (catch Exception e
                (log/errorf e "Analyzing entity %s %s failed"
-                           (t2/model instance) (:id instance))))))
-    (count instances)))
+                           (t2/model instance) (:id instance)))))
+      (count instances))))

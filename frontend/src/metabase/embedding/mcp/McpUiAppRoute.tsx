@@ -31,12 +31,12 @@ interface McpUiAppRouteContentProps {
   instanceUrl: string;
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
-  sessionToken: string;
+  uiCredential: string;
 }
 
 interface McpMetabaseConfig {
   instanceUrl: string;
-  sessionToken: string;
+  uiCredential: string;
   mcpSessionId: string;
 }
 
@@ -50,7 +50,7 @@ const SimpleLoader = () => (
 export function McpUiAppRoute() {
   const { app, hostContext, prompt, query } = useMcpApp();
 
-  const { instanceUrl = "", sessionToken = "" } =
+  const { instanceUrl = "", uiCredential = "" } =
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
   const scheme: ResolvedColorScheme =
@@ -84,7 +84,7 @@ export function McpUiAppRoute() {
         instanceUrl={instanceUrl}
         prompt={prompt}
         query={query}
-        sessionToken={sessionToken}
+        uiCredential={uiCredential}
       />
     </ComponentProvider>
   );
@@ -96,7 +96,7 @@ function McpUiAppRouteContent({
   instanceUrl,
   prompt,
   query,
-  sessionToken,
+  uiCredential,
 }: McpUiAppRouteContentProps) {
   const handleDrillThrough = useHandleMcpDrillThrough(app);
   const isHosted = useSelector(getIsHosted);
@@ -117,7 +117,7 @@ function McpUiAppRouteContent({
   const { isSettingsReady, userAndSettingsFetchError } =
     useMcpUserAndSettingsFetch({
       instanceUrl,
-      sessionToken,
+      uiCredential,
       store,
     });
 
@@ -168,7 +168,7 @@ function McpUiAppRouteContent({
     mcpSessionId,
     prompt,
     query,
-    sessionToken,
+    uiCredential,
   });
 
   const renderSdkQuestionContent = () => {

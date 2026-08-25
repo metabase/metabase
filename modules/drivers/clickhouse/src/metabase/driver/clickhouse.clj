@@ -34,6 +34,14 @@
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
+;; the connection is made through the proxy when one is set, so it is the host actually contacted.
+(defmethod driver/host-carrying-parameters :clickhouse [_driver] ["proxy_host"])
+
+(defmethod driver/non-host-parameters :clickhouse
+  [_driver]
+  ["proxy_password" "proxy_port" "proxy_type" "proxy_user" "server_time_zone" "server_version"
+   "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
+
 (defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
 (defn- quote-field  [s] (sql.u/quote-name :clickhouse :field s))
 

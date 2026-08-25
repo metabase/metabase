@@ -186,9 +186,24 @@
                                 (for [field fields-to-search]
                                   [:like (lowercase-field field) query-string]))))))
 
+(def ^:private sort-directions
+  "The only two directions an audit page may sort in.
+
+  HoneySQL quotes the `ORDER BY` *column* as an entity -- and refuses one containing a suspicious character -- but
+  emits the direction as a bare SQL token, so it is never escaped. Running the caller's string through `keyword` and
+  handing it over therefore spliced it into the query verbatim, and these directions arrive as `:args` on an
+  `:internal` query that any monitoring user can post to `/api/dataset`."
+  {"asc" :asc, "desc" :desc})
+
 (defn add-sort-clause
   "Add an `ORDER BY` clause to `query` on `sort-column` and `sort-direction`.
 
   Most queries will just have explicit default `ORDER BY` clauses"
   [query sort-column sort-direction]
-  (sql.helpers/order-by query [(keyword sort-column) (keyword sort-direction)]))
+  (let [direction (get sort-directions (u/lower-case-en (if (keyword? sort-direction)
+                                                          (name sort-direction)
+                                                          (str sort-direction))))]
+    (when-not direction
+      (throw (ex-info (tru "Invalid sort direction: {0}" (pr-str sort-direction))
+                      {:status-code 400})))
+    (sql.helpers/order-by query [(keyword sort-column) direction])))

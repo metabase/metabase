@@ -696,9 +696,12 @@ describe("issue 24922", () => {
     description: "All orders with a total under $100.",
     table_id: ORDERS_ID,
     definition: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+      },
     },
   };
 

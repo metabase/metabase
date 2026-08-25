@@ -23,20 +23,32 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- handler-api-input
+  "The handler shape API input accepts: like the model's, but restricted to user-provided templates (no
+  handlebars-resource)."
+  [handler-schema recipient-schema]
+  [:merge
+   handler-schema
+   [:map
+    [:template   {:optional true} [:multi {:dispatch map?}
+                                   [true ::models.channel/ChannelTemplateUserProvided]
+                                   [false :nil]]]
+    [:channel    {:optional true} [:maybe ::models.channel/Channel]]
+    [:recipients {:optional true} [:sequential recipient-schema]]]])
+
 (mr/def ::NotificationApiInput
   "Notification schema for API input. Like FullyHydratedNotification but restricts templates
   to user-provided types only (no handlebars-resource)."
-  [:merge
-   ::models.notification/FullyHydratedNotification
-   [:map
-    [:handlers {:optional true}
-     [:sequential
-      [:merge
-       ::models.notification/NotificationHandler
-       [:map
-        [:template   {:optional true} [:maybe ::models.channel/ChannelTemplateUserProvided]]
-        [:channel    {:optional true} [:maybe ::models.channel/Channel]]
-        [:recipients {:optional true} [:sequential ::models.notification/NotificationRecipient]]]]]]]])
+  (models.notification/hydrated-notification-schema
+   (handler-api-input ::models.notification/NotificationHandler
+                      ::models.notification/NotificationRecipient)))
+
+(mr/def ::CreateNotificationParams
+  "[[::NotificationApiInput]] for a create request: no `:id` at any level, so a caller cannot pick a primary key."
+  (models.notification/hydrated-notification-schema
+   (handler-api-input ::models.notification/CreateNotificationHandlerParams
+                      ::models.notification/CreateNotificationRecipientParams)
+   {:with-id? false}))
 
 (defn- check-no-resource-templates!
   "Validate that no handler uses handlebars-resource templates. That type is internal only."
@@ -46,6 +58,29 @@
           :let [template-type (some-> template :details :type keyword)]]
     (when (= :email/handlebars-resource template-type)
       (throw (ex-info "invalid template" {:status-code 400})))))
+
+(defn- check-inline-channels!
+  "Validate that an inline `:channel` handler requires the same permission as creating one."
+  [handlers]
+  (when (some :channel handlers)
+    (api/check-403 (mi/can-write? :model/Channel))))
+
+(defn- handler-touches-template?
+  [{:keys [template template_id]}]
+  (or (map? template) (some? template_id)))
+
+(defn- check-handler-templates!
+  "Validate the templates carried by a notification request's `handlers`: reject internal-only
+  handlebars-resource templates (400), and require the same permission as writing a `ChannelTemplate`
+  directly (403) for any template the request creates, overwrites, or deletes. `existing-handlers`
+  (nil on create) hold templates an update may overwrite or delete, so a template on either side
+  gates the write."
+  ([handlers] (check-handler-templates! handlers nil))
+  ([handlers existing-handlers]
+   (check-no-resource-templates! handlers)
+   (when (or (some handler-touches-template? handlers)
+             (some handler-touches-template? existing-handlers))
+     (api/check-403 (mi/can-write? :model/ChannelTemplate)))))
 
 (defn get-notification
   "Get a notification by id."
@@ -189,8 +224,8 @@
 
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification
   "Create a new notification, return the created notification."
-  [_route _query body :- ::NotificationApiInput request]
-  (check-no-resource-templates! (:handlers body))
+  [_route _query body :- ::CreateNotificationParams request]
+  (check-handler-templates! (:handlers body))
   (create-notification!
    (-> body
        (update :payload_type keyword)
@@ -251,9 +286,9 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiInput]
-  (check-no-resource-templates! (:handlers body))
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
+    (check-handler-templates! (:handlers body) (:handlers existing-notification))
     (models.notification/update-notification! existing-notification body)
     (u/prog1 (get-notification id)
       (publish-notification-update! <> existing-notification))))
@@ -270,7 +305,8 @@
   (let [notification (cond-> (get-notification id)
                        (seq handler_ids)
                        (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]
-    (api/read-check notification)
+    ;; sending runs the notification's payload as its creator, so gate on write access rather than read access
+    (api/write-check notification)
     (notification/send-notification! notification :notification/sync? true)))
 
 (defn- promote-to-t2-instance
@@ -292,6 +328,7 @@
   "Send an unsaved notification."
   [_route _query body :- ::NotificationApiInput request]
   (check-no-resource-templates! (:handlers body))
+  (check-inline-channels! (:handlers body))
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
   (let [notification (-> body
