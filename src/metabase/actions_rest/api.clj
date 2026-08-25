@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -17,6 +18,15 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- check-native-query-perms!
+  "Creating or updating a native query action requires ad-hoc native query permission on the target database."
+  [database-id dataset-query]
+  (when (and (seq dataset-query) (lib/native? dataset-query))
+    (when-let [db-id (or database-id (:database dataset-query))]
+      (api/check-403
+       (= :query-builder-and-native
+          (perms/full-db-permission-for-user api/*current-user-id* :perms/create-queries db-id))))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
@@ -89,6 +99,7 @@
     (throw (ex-info (tru "Must provide a database_id for query actions")
                     {:type        action-type
                      :status-code 400})))
+  (check-native-query-perms! database_id (:dataset_query action))
   (let [model (api/write-check :model/Card model_id)]
     (when (and (= action-type :implicit)
                (not (queries/model-supports-implicit-actions? model)))
@@ -132,6 +143,8 @@
     (when-let [model-id (:model_id action)]
       (when (not= model-id (:model_id existing-action))
         (api/write-check :model/Card model-id)))
+    (when-let [dataset-query (:dataset_query action)]
+      (check-native-query-perms! (:database_id action) dataset-query))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (analytics/track-event! :snowplow/action
