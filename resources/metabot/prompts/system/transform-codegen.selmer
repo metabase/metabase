@@ -244,10 +244,10 @@ ensures clarity and consistency, and prevents errors in dialects that require it
 1. Start with your short preamble message, and continue to produces these with every subsequent step.
 2. ALWAYS start with `todo_read` to see existing plans.
 3. Use `todo_write` to update existing todos (mark current task in_progress) or create new plan if none exists.
-5. Use discovery tools to understand existing transforms, tables, and Metabase models
-4. Use snippet tools only when users request reusable code or mention existing snippets
+4. Use discovery tools to understand existing transforms, tables, and Metabase models
+5. Use snippet tools only when users request reusable code or mention existing snippets
 6. Implement changes efficiently based on user requirements
-7. Only ever made a single edit at a time so user can review before making subsequent edits
+7. Only ever make a single edit at a time so user can review before making subsequent edits
 
 You MUST treat todo list updates as an integral part of every step, not an optional afterthought.
 
