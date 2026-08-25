@@ -73,7 +73,7 @@ runs:
 
         git push -u origin ${BACKPORT_BRANCH}
 
-        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "🤖 backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
+        PR_ARGS=(--base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${{ github.event.pull_request.user.login }}" --title "v${TARGET_VERSION} 🤖 backported \"${ORIGINAL_TITLE}\"" --body "${PR_BODY}")
         if [ "$CONFLICTS" -gt 0 ]; then
           PR_ARGS+=(--draft)
         fi
