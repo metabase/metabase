@@ -26,7 +26,7 @@ Building a custom viz from scaffolding to adding it to your Metabase looks somet
 
 ## Prerequisites
 
-- Node.js 22 or newer.
+- Node.js 24 or newer.
 - Familiarity with React and TypeScript.
 - A Metabase on a [Pro or Enterprise plan](https://www.metabase.com/pricing/) to load your plugin into.
 

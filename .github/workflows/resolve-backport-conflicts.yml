@@ -133,7 +133,7 @@ jobs:
         id: claude
         uses: anthropics/claude-code-base-action@e8132bc5e637a42c27763fc757faa37e1ee43b34 # v0.0.63
         env:
-          NODE_VERSION: "22"
+          NODE_VERSION: "24"
         with:
           # TODO: get a dedicated API key, sharing repro bot's key for now
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
