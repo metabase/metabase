@@ -133,7 +133,7 @@ describe("EmbeddingHubTenancyPage", () => {
 
       expect(docsLink).toHaveAttribute(
         "href",
-        expect.stringContaining("utm_campaign=embedding_hub"),
+        expect.stringContaining("utm_campaign=embedding-hub"),
       );
     });
   });

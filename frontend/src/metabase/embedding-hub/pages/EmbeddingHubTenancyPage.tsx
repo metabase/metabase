@@ -24,17 +24,17 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+const UTM_CAMPAIGN = "embedding-hub";
+const UTM_CONTENT = "embedding-hub-tenancy-page";
+const TENANTS_ILLUSTRATION = "app/assets/img/upsell-embedding-tenants.svg";
+
 /**
- * The tenant surfaces from admin People, mounted a second time under the hub.
- * Admin People keeps its copy — this is a second view, not a move.
- *
- * The tab bar is the hub's own: in admin it comes from PeopleNav, which sits
- * outside the route fragment and so does not travel with it.
- *
- * The page renders conditionally rather than reusing `createTenantsRouteGuard`:
- * that guard redirects to `/admin/people` when tenants are licensed but
- * `use-tenants` is still off, which is exactly the state a hub user reaches by
- * clicking a tab that is always visible.
+ * A second view of admin People's tenant surfaces, not a move — admin keeps its
+ * copy, including the tab bar, which comes from PeopleNav outside the route
+ * fragment. The page branches on the license and the setting rather than reusing
+ * `createTenantsRouteGuard`, which redirects to `/admin/people` when tenants are
+ * licensed but `use-tenants` is off — the state a hub user lands in by clicking
+ * a tab that is always visible.
  */
 export function EmbeddingHubTenancyPage() {
   const hasTenants = useHasTokenFeature("tenants");
@@ -44,29 +44,25 @@ export function EmbeddingHubTenancyPage() {
     <Stack gap="xl">
       <Title order={1} c="text-primary">{t`Tenancy`}</Title>
 
-      {!hasTenants && <UpsellTenants />}
+      {/* The provider rebases the tenant URLs onto the hub, so the listing's
+          links and the modal's post-save navigation stay inside it. */}
+      <TenantUrlsProvider basePath={Urls.embeddingHubTenancy()}>
+        {!hasTenants && <UpsellTenants />}
 
-      {hasTenants && !isUsingTenants && (
-        // Inside the provider so the modal's post-save navigation lands on the
-        // hub's tenants listing rather than admin's.
-        <TenantUrlsProvider basePath={Urls.embeddingHubTenancy()}>
-          <EnableTenancyCard />
-        </TenantUrlsProvider>
-      )}
+        {hasTenants && !isUsingTenants && <EnableTenancyCard />}
 
-      {hasTenants && isUsingTenants && (
-        <TenantUrlsProvider basePath={Urls.embeddingHubTenancy()}>
-          <TenancyTabs />
+        {hasTenants && isUsingTenants && (
+          <>
+            <TenancyTabs />
 
-          {/* The listing centres itself with `mx="auto"`. As a flex item that
-              auto margin beats `align-items: stretch` and collapses it to its
-              content width -- in admin its parent is a plain block, so the
-              same margin only centres a full-width box. */}
-          <Box w="100%">
-            <Outlet />
-          </Box>
-        </TenantUrlsProvider>
-      )}
+            {/* The listing centres itself with `mx="auto"`, which as a flex
+                item collapses it to its content width. */}
+            <Box w="100%">
+              <Outlet />
+            </Box>
+          </>
+        )}
+      </TenantUrlsProvider>
     </Stack>
   );
 }
@@ -109,8 +105,6 @@ function TenancyTabs() {
   );
 }
 
-const TENANTS_ILLUSTRATION = "app/assets/img/upsell-embedding-tenants.svg";
-
 function EnableTenancyCard() {
   const [isUserStrategyModalOpen, setIsUserStrategyModalOpen] = useState(false);
 
@@ -121,14 +115,13 @@ function EnableTenancyCard() {
           <Title order={4}>{t`Enable multi-tenant user strategy`}</Title>
 
           <Text c="text-secondary" lh="lg">
-            {t`A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant. Tenants let reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer.`}
+            {t`A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant. Tenants let you reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer.`}
           </Text>
 
           <Group gap="lg">
-            {/* Opened here rather than by routing to `.../user-strategy`: that
-              modal route hangs off the tenants listing, which this page does
-              not render until tenancy is on, so the URL matched and nothing
-              appeared. */}
+            {/* Opened here rather than routed to: the `.../user-strategy`
+                modal route hangs off the tenants listing, which this page does
+                not render until tenancy is on. */}
             <Button
               variant="filled"
               onClick={() => setIsUserStrategyModalOpen(true)}
@@ -146,9 +139,8 @@ function EnableTenancyCard() {
           </Group>
         </Stack>
 
-        {/* The same artwork the upsell shows below the paywall: this is the
-            same subject one step further on, so a second illustration would
-            only say the product changed its mind. */}
+        {/* The same artwork the upsell shows, since this is the same subject
+            one step further on. */}
         <Card
           p={6}
           radius={12}
@@ -167,14 +159,12 @@ function EnableTenancyCard() {
 }
 
 function TenantsDocsLink({ label }: { label: string }) {
-  // Same campaign the rest of the hub's docs links carry, so these clicks land
-  // with the others rather than as untagged traffic.
   const { url } = useDocsUrl("embedding/tenants", {
     utm: {
       utm_source: "product",
       utm_medium: "docs",
-      utm_campaign: "embedding_hub",
-      utm_content: "tenancy",
+      utm_campaign: UTM_CAMPAIGN,
+      utm_content: UTM_CONTENT,
     },
   });
 
