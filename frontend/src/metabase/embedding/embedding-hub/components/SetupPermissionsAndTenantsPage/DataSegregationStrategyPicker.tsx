@@ -5,8 +5,6 @@ import { t } from "ttag";
 import { Button, Flex, Icon, Radio, Stack } from "metabase/ui";
 import type { DataSegregationStrategy, IconName } from "metabase-types/api";
 
-import S from "./DataSegregationStrategyPicker.module.css";
-
 interface DataSegregationStrategyPickerProps {
   value: DataSegregationStrategy | null;
   onChange: (value: DataSegregationStrategy) => void;
@@ -69,12 +67,7 @@ export const DataSegregationStrategyPicker = ({
               label={strategy.label}
               description={strategy.description}
               leftSection={
-                <Icon
-                  name={strategy.icon}
-                  className={S.cardIcon}
-                  w={24}
-                  h={24}
-                />
+                <Icon name={strategy.icon} color="core-brand" w={24} h={24} />
               }
               data-testid={`strategy-card-${strategy.id}`}
             />
