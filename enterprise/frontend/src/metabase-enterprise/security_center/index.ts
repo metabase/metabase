@@ -7,9 +7,9 @@ import { SecurityCenterNavItem } from "./components/SecurityCenterNavItem/Securi
 import { SecurityCenterPromoCard } from "./components/SecurityCenterPromoCard/SecurityCenterPromoCard";
 
 const securityCenterPage = () =>
-  import("./components/SecurityCenterPage/SecurityCenterPage").then(
-    ({ SecurityCenterPage }) => ({ Component: SecurityCenterPage }),
-  );
+  import(
+    /* webpackChunkName: "security-center" */ "./components/SecurityCenterPage/SecurityCenterPage"
+  ).then(({ SecurityCenterPage }) => ({ Component: SecurityCenterPage }));
 
 export function initializePlugin() {
   if (hasPremiumFeature("admin_security_center")) {

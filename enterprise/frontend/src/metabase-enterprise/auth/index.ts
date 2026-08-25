@@ -21,17 +21,23 @@ import { createOidcAuthProvider } from "./components/OidcButton/OidcButton";
 import { SsoButton } from "./components/SsoButton";
 
 const settingsSAMLForm = () =>
-  import("./components/SettingsSAMLForm").then(({ SettingsSAMLForm }) => ({
+  import(
+    /* webpackChunkName: "auth-saml" */ "./components/SettingsSAMLForm"
+  ).then(({ SettingsSAMLForm }) => ({
     Component: SettingsSAMLForm,
   }));
 
 const settingsJWTForm = () =>
-  import("./components/SettingsJWTForm").then(({ SettingsJWTForm }) => ({
+  import(
+    /* webpackChunkName: "auth-jwt" */ "./components/SettingsJWTForm"
+  ).then(({ SettingsJWTForm }) => ({
     Component: SettingsJWTForm,
   }));
 
 const settingsOIDCForm = () =>
-  import("./components/SettingsOIDCForm").then(({ SettingsOIDCForm }) => ({
+  import(
+    /* webpackChunkName: "auth-oidc" */ "./components/SettingsOIDCForm"
+  ).then(({ SettingsOIDCForm }) => ({
     Component: SettingsOIDCForm,
   }));
 

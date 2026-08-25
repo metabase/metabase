@@ -5,14 +5,16 @@ import { AdminAuthCard } from "./components/AdminAuthCard";
 import { AuthChallengeForm } from "./components/AuthChallengeForm";
 
 const enrolledUsersPage = () =>
-  import("./components/EnrolledUsersPage").then(({ EnrolledUsersPage }) => ({
+  import(
+    /* webpackChunkName: "mfa-enrolled-users" */ "./components/EnrolledUsersPage"
+  ).then(({ EnrolledUsersPage }) => ({
     Component: EnrolledUsersPage,
   }));
 
 const unenrolledUsersPage = () =>
-  import("./components/UnenrolledUsersPage").then(
-    ({ UnenrolledUsersPage }) => ({ Component: UnenrolledUsersPage }),
-  );
+  import(
+    /* webpackChunkName: "mfa-unenrolled-users" */ "./components/UnenrolledUsersPage"
+  ).then(({ UnenrolledUsersPage }) => ({ Component: UnenrolledUsersPage }));
 
 export function initializePlugin() {
   PLUGIN_MULTI_FACTOR_AUTH.AuthChallengeForm = AuthChallengeForm;

@@ -7,9 +7,11 @@ import { getPythonTransformsRoutes, getPythonUpsellRoutes } from "./routes";
 import { getPythonSourceValidationResult } from "./utils";
 
 const pythonRunnerSettingsPage = () =>
-  import("./pages/PythonRunnerSettingsPage").then(
-    ({ PythonRunnerSettingsPage }) => ({ Component: PythonRunnerSettingsPage }),
-  );
+  import(
+    /* webpackChunkName: "python-runner-settings" */ "./pages/PythonRunnerSettingsPage"
+  ).then(({ PythonRunnerSettingsPage }) => ({
+    Component: PythonRunnerSettingsPage,
+  }));
 
 /**
  * Initialize transforms-python plugin features that depend on hasPremiumFeature.

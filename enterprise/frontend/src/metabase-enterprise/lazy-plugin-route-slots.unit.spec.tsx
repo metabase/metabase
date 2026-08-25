@@ -1,6 +1,5 @@
 import {
   PLUGIN_AUTH_PROVIDERS,
-  PLUGIN_DEPENDENCIES,
   PLUGIN_MULTI_FACTOR_AUTH,
   PLUGIN_SECURITY_CENTER,
   PLUGIN_TENANTS,
@@ -22,7 +21,6 @@ jest.mock("metabase-enterprise/settings", () => ({
  * Resolving every loader is the cheap guard against that.
  */
 const SLOTS: [string, () => PluginRoute][] = [
-  ["dependency graph", () => PLUGIN_DEPENDENCIES.dependencyGraphPage],
   ["security center", () => PLUGIN_SECURITY_CENTER.securityCenterPage],
   ["enrolled users", () => PLUGIN_MULTI_FACTOR_AUTH.enrolledUsersPage],
   ["unenrolled users", () => PLUGIN_MULTI_FACTOR_AUTH.unenrolledUsersPage],

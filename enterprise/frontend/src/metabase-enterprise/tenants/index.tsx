@@ -96,28 +96,30 @@ const externalGroupDetail = () =>
  * them.
  */
 const canAccessTenantSpecificRoute = () =>
-  import("./components/CanAccessTenantSpecificRoute").then(
-    ({ CanAccessTenantSpecificRoute }) => ({
-      Component: CanAccessTenantSpecificRoute,
-    }),
-  );
+  import(
+    /* webpackChunkName: "tenant-collections" */ "./components/CanAccessTenantSpecificRoute"
+  ).then(({ CanAccessTenantSpecificRoute }) => ({
+    Component: CanAccessTenantSpecificRoute,
+  }));
 
 const tenantCollectionList = () =>
-  import("./components/TenantCollectionList").then(
-    ({ TenantCollectionList }) => ({ Component: TenantCollectionList }),
-  );
+  import(
+    /* webpackChunkName: "tenant-collections" */ "./components/TenantCollectionList"
+  ).then(({ TenantCollectionList }) => ({ Component: TenantCollectionList }));
 
 const tenantUsersList = () =>
-  import("./components/TenantUsersList").then(({ TenantUsersList }) => ({
+  import(
+    /* webpackChunkName: "tenant-users" */ "./components/TenantUsersList"
+  ).then(({ TenantUsersList }) => ({
     Component: TenantUsersList,
   }));
 
 const tenantUsersPersonalCollectionList = () =>
-  import("./components/TenantUsersPersonalCollectionList").then(
-    ({ TenantUsersPersonalCollectionList }) => ({
-      Component: TenantUsersPersonalCollectionList,
-    }),
-  );
+  import(
+    /* webpackChunkName: "tenant-user-collections" */ "./components/TenantUsersPersonalCollectionList"
+  ).then(({ TenantUsersPersonalCollectionList }) => ({
+    Component: TenantUsersPersonalCollectionList,
+  }));
 
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
