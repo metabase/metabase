@@ -124,10 +124,9 @@ jobs:
       - name: Upload affected tests stats
         env:
           STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
-          TRIGGERED_BY: ${{ github.event_name == 'pull_request' && 'pr_update' || 'merge_to_master' }}
-          PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || 0 }}
-          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
           API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
         run: bun .github/scripts/upload-affected-tests-stats.ts

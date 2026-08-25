@@ -61,6 +61,8 @@ Add `allowedCustomVisualizations` to `defineMetabaseConfig()`:
 <metabase-dashboard dashboard-id="1"></metabase-dashboard>
 ```
 
+These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
+
 If you create your embed through the [embed wizard](./modular-embedding.md#create-a-new-embed), Metabase fills in the allowlist with the custom visualizations that the dashboard or question you picked already uses, so the generated snippet works as-is.
 
 ### React SDK allowlist for custom visualizations
