@@ -9,7 +9,7 @@ When using the read_resource tool, you have access to a unified interface for na
 
 The URI pattern determines what is returned — from top-level lists (databases, collections) to a single entity, to its sub-resources (fields, items, sources, derived items).
 
-You can request multiple resources in one call by providing a list of URIs (max 5). Lists are paginated at 25 items per page. Every `<list>` carries `total`, `page`, `pages`, `showing`, and `truncated` — `truncated` is always present, reading `"false"` when you have the whole list and `"true"` when more pages remain, in which case a `<truncation-note>` names the next page. From there you can fetch the next page by appending `?page=N` to the same URI (e.g. `metabase://database/1/tables?page=2`), drill into a specific item via its URI (each list item carries a `uri="..."` attribute), or refine via `search`.
+You can request multiple resources in one call by providing a list of URIs (max 5). Lists are paginated at 25 items per page. Every `<list>` carries `total`, `page`, `pages`, `showing`, and `truncated` — `truncated` is always present, reading `"false"` when you have the whole list and `"true"` when more pages remain, in which case a `<truncation-note>` names the next page. From there you can fetch the next page by appending `?page=N` to the same URI (e.g. `metabase://database/1/tables?page=2`), drill into a specific item via its URI (list items carry a `uri="..."` attribute — the exception is a dashboard's virtual items, `virtual_heading`/`virtual_text` and the like, which are not addressable resources and carry a `dashcard_id` instead), or refine via `search`.
 
 # When to Use read_resource vs search
 
