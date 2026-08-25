@@ -56,7 +56,22 @@ const SCALE_PROPS_TO_SCALES = {
   ml: Object.keys(SPACING_SCALE),
   mr: Object.keys(SPACING_SCALE),
   gap: Object.keys(SPACING_SCALE),
+  gutter: Object.keys(SPACING_SCALE),
+  spacing: Object.keys(SPACING_SCALE),
 } as const;
+
+type ExtendedComponentTheme = {
+  defaultProps?: Record<string, unknown>;
+  styles?: Record<string, Record<string, unknown>>;
+};
+
+const getExtendedComponentTheme = (
+  component: unknown,
+): ExtendedComponentTheme => {
+  // Mantine extended components expose these fields as statics, but the public
+  // theme type treats component entries as opaque configuration values.
+  return component as ExtendedComponentTheme;
+};
 
 const isBareWord = (value: string) => /^[a-z_]+$/.test(value);
 
@@ -115,13 +130,7 @@ describe("theme scales (GDGT-2486)", () => {
       const violations: string[] = [];
 
       for (const [componentName, component] of Object.entries(components)) {
-        // Extended Mantine components expose their `defaultProps` as a static,
-        // but `MantineThemeComponents` types the values as plain theme entries.
-        const defaultProps = (
-          component as unknown as {
-            defaultProps?: Record<string, unknown>;
-          }
-        ).defaultProps;
+        const defaultProps = getExtendedComponentTheme(component).defaultProps;
         if (!defaultProps) {
           continue;
         }
@@ -146,6 +155,34 @@ describe("theme scales (GDGT-2486)", () => {
       }
 
       expect(violations).toEqual([]);
+    });
+
+    it("preserves Mantine defaults affected by the spacing scale", () => {
+      const components = getThemeOverrides().components ?? {};
+      const expectedDefaults = {
+        Card: { padding: "lg" },
+        Grid: { gutter: "lg" },
+        Group: { gap: "lg" },
+        SimpleGrid: { spacing: "lg" },
+        Stack: { gap: "lg" },
+      };
+
+      for (const [componentName, expectedProps] of Object.entries(
+        expectedDefaults,
+      )) {
+        const component = components[componentName];
+        expect(getExtendedComponentTheme(component).defaultProps).toMatchObject(
+          expectedProps,
+        );
+      }
+
+      expect(
+        getExtendedComponentTheme(components.DatePicker).styles,
+      ).toMatchObject({
+        levelsGroup: {
+          gap: "var(--mantine-spacing-lg)",
+        },
+      });
     });
   });
 });
