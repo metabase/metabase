@@ -452,7 +452,7 @@
       (driver.conn/track-connection-acquisition! (driver.conn/effective-details db))
       (cond
         ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
-        ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
+        ;; connections with application-db and 1 less connection pool. Note: This data-source is
         ;; not in [[pool-cache-key->connection-pool]].
         (or (:is-audit db)
             (and (audit-app/analytics-dev-mode)

@@ -13,6 +13,7 @@
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.global-system.mutable-component :as mc]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -38,11 +39,13 @@
                                (tx/dbdef->connection-details target-db-type :db db-def)))]
       (tx/destroy-db! target-db-type db-def)
       (tx/create-db! target-db-type db-def)
-      (binding [mdb.connection/*application-db* (mdb.connection/application-db target-db-type target-data-source)]
-        (load-from-h2/load-from-h2! h2-filename)
-        (is (= 4
-               (t2/count :model/Table)))
-        (thunk)))))
+      (mc/binding (mdb.connection/application-db-handle)
+        (mdb.connection/application-db target-db-type target-data-source)
+        (fn []
+          (load-from-h2/load-from-h2! h2-filename)
+          (is (= 4
+                 (t2/count :model/Table)))
+          (thunk))))))
 
 (deftest load-from-h2-test
   (do-load-from-h2-test!
@@ -105,28 +108,30 @@
   (let [db-type driver/*driver*
         current-version @current-major-version
         data-source (get-data-source db-type db-def)]
-    (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
-      (mt/dataset bird-flocks
-        ;; make sure the data is there
-        (is (= 18
-               (ffirst (mt/formatted-rows
-                        [int]
-                        (mt/run-mbql-query bird
-                          {:aggregation [[:count]]})))))
-        (let [filename (dump-filename h2-filename version)]
-          (when (< version current-version)
-            (log/info "rolling back to version" version)
-            (t2.conn/with-connection [conn]
-              (liquibase/with-liquibase [liquibase conn]
-                (liquibase/rollback-major-version! conn liquibase false version))))
-          (log/info "creating dump" filename)
-          ;; this migrates the DB back to the newest and creates a dump
-          (dump-to-h2/dump-to-h2! filename)
-          ;; check if after a down and up migration we can still run a query
-          (is (= 18 (ffirst (mt/formatted-rows
-                             [int]
-                             (mt/run-mbql-query bird
-                               {:aggregation [[:count]]}))))))))))
+    (mc/binding (mdb.connection/application-db-handle)
+      (mdb.connection/application-db db-type data-source)
+      (fn []
+        (mt/dataset bird-flocks
+          ;; make sure the data is there
+          (is (= 18
+                 (ffirst (mt/formatted-rows
+                          [int]
+                          (mt/run-mbql-query bird
+                            {:aggregation [[:count]]})))))
+          (let [filename (dump-filename h2-filename version)]
+            (when (< version current-version)
+              (log/info "rolling back to version" version)
+              (t2.conn/with-connection [conn]
+                (liquibase/with-liquibase [liquibase conn]
+                  (liquibase/rollback-major-version! conn liquibase false version))))
+            (log/info "creating dump" filename)
+            ;; this migrates the DB back to the newest and creates a dump
+            (dump-to-h2/dump-to-h2! filename)
+            ;; check if after a down and up migration we can still run a query
+            (is (= 18 (ffirst (mt/formatted-rows
+                               [int]
+                               (mt/run-mbql-query bird
+                                 {:aggregation [[:count]]})))))))))))
 
 (defn- load-dump!
   [db-name h2-filename version]
@@ -134,21 +139,23 @@
         db-def {:database-name db-name}
         data-source (get-data-source db-type db-def)]
     (create-current-database! db-type db-def data-source)
-    (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
-      (mt/dataset sad-toucan-incidents
-        (is (= 200
-               (ffirst (mt/formatted-rows
-                        [int]
-                        (mt/run-mbql-query incidents
-                          {:aggregation [[:count]]})))))
-        (log/info "loading dump" h2-filename "version" version)
-        (load-from-h2/load-from-h2! (dump-filename h2-filename version))
-        ;; check that we can run the query using data from the dump
-        (is (= 18
-               (ffirst (mt/formatted-rows
-                        [int]
-                        (mt/run-mbql-query bird
-                          {:aggregation [[:count]]})))))))))
+    (mc/binding (mdb.connection/application-db-handle)
+      (mdb.connection/application-db db-type data-source)
+      (fn []
+        (mt/dataset sad-toucan-incidents
+          (is (= 200
+                 (ffirst (mt/formatted-rows
+                          [int]
+                          (mt/run-mbql-query incidents
+                            {:aggregation [[:count]]})))))
+          (log/info "loading dump" h2-filename "version" version)
+          (load-from-h2/load-from-h2! (dump-filename h2-filename version))
+          ;; check that we can run the query using data from the dump
+          (is (= 18
+                 (ffirst (mt/formatted-rows
+                          [int]
+                          (mt/run-mbql-query bird
+                            {:aggregation [[:count]]}))))))))))
 
 (deftest down-migrate-and-load-dump-test
   (mt/test-drivers #{:mysql :postgres}

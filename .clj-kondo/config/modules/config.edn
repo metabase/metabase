@@ -353,6 +353,7 @@
            classloader
            config
            connection-pool
+           global-system
            task
            util}
    :model-imports #{:model/Field
@@ -579,6 +580,7 @@
            auth-identity
            classloader
            config
+           global-system
            models
            query-processor
            search
@@ -1090,6 +1092,12 @@
            permissions
            settings
            util}}
+
+  global-system
+  {:team "Graphy"
+   :api #{metabase.global-system.mutable-component
+          metabase.global-system.system}
+   :uses #{}}
 
   glossary
   {:team "Gadget"
