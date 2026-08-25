@@ -28,34 +28,40 @@ jobs:
         uses: actions/github-script@v9
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          AUTHOR: ${{ github.event.workflow_run.head_commit.author.name }}
+          AUTHOR_LOGIN: ${{ github.event.workflow_run.head_commit.author.username }}
+          COMMIT: ${{ github.event.workflow_run.head_sha }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
         with:
           script: |
-            const { mentionUserByGithubLogin, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { mentionUserByGithubLogin, sendSlackMessage } = require(`${{ github.workspace }}/release/dist/index.cjs`);
 
-            const ATTEMPT = "${{ github.event.workflow_run.run_attempt }}";
-            const AUTHOR = "${{ github.event.workflow_run.head_commit.author.name }}";
-            const AUTHOR_LOGIN = "${{ github.event.workflow_run.head_commit.author.username }}";
-            const COMMIT = "${{ github.event.workflow_run.head_sha }}";
-            const RUN_NAME = "${{ github.event.workflow_run.name }}";
-            const RUN_URL = "${{ github.event.workflow_run.html_url }}";
+            const ATTEMPT = Number(process.env.ATTEMPT);
+            const AUTHOR = process.env.AUTHOR;
+            const COMMIT = process.env.COMMIT;
+            const RUN_NAME = process.env.RUN_NAME;
+            const RUN_URL = process.env.RUN_URL;
+
+            let authorLogin = process.env.AUTHOR_LOGIN;
 
             const { owner, repo } = context.repo;
 
             // Get commit details to find author information as this isn't required in the
             // workflow_run payload.
-            if (!AUTHOR_LOGIN) {
+            if (!authorLogin) {
               try {
                 const { data: commit } = await github.rest.repos.getCommit({
                   owner,
                   repo,
                   ref: COMMIT,
                 });
-                AUTHOR_LOGIN = commit?.author?.login ?? '';
+                authorLogin = commit?.author?.login ?? '';
               } catch (error) {
                 console.warn(`Failed to find commit details for ${COMMIT}: ${error.message}`);
               }
             }
-            
 
             await sendSlackMessage({
               channelName: 'engineering-ci',
@@ -77,7 +83,7 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": `<${RUN_URL}|${RUN_NAME}> has re-run ${ATTEMPT - 1} times for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit by ${AUTHOR} (${mentionUserByGithubLogin(AUTHOR_LOGIN)}).`
+                      "text": `<${RUN_URL}|${RUN_NAME}> has re-run ${ATTEMPT - 1} times for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit by ${AUTHOR} (${mentionUserByGithubLogin(authorLogin)}).`
                     },
                   },
                   {
@@ -90,10 +96,3 @@ jobs:
                 ],
               }],
             });
-            
-
-            
-
-
-
-
