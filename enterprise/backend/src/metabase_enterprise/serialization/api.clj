@@ -293,11 +293,8 @@
        ;;      ideally we'd fix the underlying issue (by delaying realtime indexing updates until the tx closes)
        ;;      for now, we let users opt out, in case they're indexing a lot, so they can only reindex on the last step
        [:reindex           {:default true}  (mu/with ms/BooleanValue {:description "Rebuild the search index afterwards"})]]
-   _body
-   {{:strs [file]} :multipart-params, :as _request} :- [:map
-                                                        [:multipart-params
-                                                         [:map
-                                                          ["file" (mu/with ms/File {:description ".tgz with serialization data"})]]]]]
+   {:keys [file]} :- [:map
+                      [:file (mu/with ms/File {:description ".tgz with serialization data"})]]]
   (api/check-superuser)
   (try
     (let [start              (System/nanoTime)

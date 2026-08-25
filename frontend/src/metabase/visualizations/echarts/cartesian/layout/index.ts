@@ -650,7 +650,7 @@ const getTicksOverflow = (
   return { firstTickOverflow, lastTickOverflow };
 };
 
-export const getChartPadding = (
+export const getCartesianChartPadding = (
   input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
   ticksDimensions: TicksDimensions,
@@ -913,7 +913,7 @@ export const getChartLayout = (
     hasTimelineEvents,
     renderingContext,
   );
-  const padding = getChartPadding(
+  const padding = getCartesianChartPadding(
     input,
     settings,
     ticksDimensions,
@@ -998,7 +998,7 @@ const computeSplitPanelLayout = (
     getXTickWidth: computedTicks.getXTickWidth,
   };
 
-  const padding = getChartPadding(
+  const padding = getCartesianChartPadding(
     singleAxisInput,
     settings,
     ticksDimensions,
