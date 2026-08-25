@@ -98,8 +98,11 @@ const AZURE_TYPE = createMockLlmProviderType({
 const BEDROCK_TYPE = createMockLlmProviderType({
   type: "bedrock",
   label: "Amazon Bedrock",
-  all_or_none: [["access-key-id", "secret-access-key"]],
-  requires: { "session-token": ["access-key-id", "secret-access-key"] },
+  requires: {
+    "access-key-id": ["secret-access-key"],
+    "secret-access-key": ["access-key-id"],
+    "session-token": ["access-key-id", "secret-access-key"],
+  },
   fields: [
     createMockLlmProviderField({
       key: "access-key-id",

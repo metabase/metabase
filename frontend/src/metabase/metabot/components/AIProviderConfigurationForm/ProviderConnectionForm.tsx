@@ -159,9 +159,6 @@ export function ProviderConnectionForm({
       .every((field) => hasValue(field.key)) &&
     (providerType.required_any.length === 0 ||
       providerType.required_any.some((group) => group.every(hasValue))) &&
-    providerType.all_or_none.every(
-      (group) => group.every(hasValue) || !group.some(hasValue),
-    ) &&
     Object.entries(providerType.requires).every(
       ([key, deps]) => !hasValue(key) || deps.every(hasValue),
     );

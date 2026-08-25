@@ -53,7 +53,6 @@
    ;; alternative credential groups: the connection is complete when one group is filled in full
    [:required_any [:sequential [:sequential :string]]]
    ;; paired credential groups: each must be filled in full or left empty in full
-   [:all_or_none [:sequential [:sequential :string]]]
    ;; per-field dependencies: a field may be filled only when the fields it names are too
    [:requires [:map-of :string [:sequential :string]]]
    [:fields [:sequential field-response-schema]]])
@@ -111,7 +110,7 @@
     show-when   (assoc :show_when {:field (name (:field show-when)) :value (:value show-when)})))
 
 (defn- provider-type-response
-  [{:keys [type label managed? singleton? default-model required-any all-or-none requires fields]}]
+  [{:keys [type label managed? singleton? default-model required-any requires fields]}]
   {:type          type
    :label         (str label)
    :managed       (boolean managed?)
@@ -120,7 +119,6 @@
    :default_model default-model
    :models        (mapv #(select-keys % [:id :display_name]) (llm.provider/fixed-models type))
    :required_any  (mapv #(mapv name %) required-any)
-   :all_or_none   (mapv #(mapv name %) all-or-none)
    :requires      (into {} (map (fn [[k deps]] [(name k) (mapv name deps)])) requires)
    :fields        (mapv field-response fields)})
 
