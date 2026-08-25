@@ -34,6 +34,7 @@ import type {
   Collection,
   CollectionPermissions,
   CollectionPermissionsGraph,
+  DatabaseId,
   GroupId,
   GroupsPermissions,
   PermissionEntityId,
@@ -759,6 +760,30 @@ const originalDataPermissions = createReducer<GroupsPermissions | null>(
   },
 );
 
+/**
+ * The databases an unsaved edit touched, with the tables the save confirmation
+ * needs to name what it granted or revoked. The edit already resolved the
+ * database, so keeping it here means the confirmation does not depend on the
+ * request that supplied it still being cached.
+ */
+type EditedDatabases = Record<DatabaseId, PermissionsDatabase>;
+
+function editedDatabases(
+  state: EditedDatabases = {},
+  action: UnknownAction,
+): EditedDatabases {
+  if (isUpdateDataPermissionAction(action)) {
+    const database = action.payload?.database;
+    return database == null ? state : { ...state, [database.id]: database };
+  }
+  // Loading the graph covers both a fresh load and the reset after a save or a
+  // discard, so the edits it clears are gone from the diff too.
+  if (isLoadDataPermissionsAction(action)) {
+    return {};
+  }
+  return state;
+}
+
 const dataPermissionsRevision = createReducer<number | null>(
   null,
   (builder) => {
@@ -1028,6 +1053,7 @@ const hasRevisionChanged = createReducer<RevisionChangedState>(
 export const permissions = combineReducers({
   saveError,
   dataPermissions,
+  editedDatabases,
   originalDataPermissions,
   dataPermissionsRevision,
   collectionPermissions,

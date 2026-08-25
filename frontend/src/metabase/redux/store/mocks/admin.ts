@@ -31,6 +31,7 @@ export const createMockPermissionsState = (
   return {
     dataPermissions: {},
     originalDataPermissions: {},
+    editedDatabases: {},
     dataPermissionsRevision: null,
     collectionPermissions: {},
     originalCollectionPermissions: {},

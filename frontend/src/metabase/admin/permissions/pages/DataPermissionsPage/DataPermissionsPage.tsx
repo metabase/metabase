@@ -10,8 +10,7 @@ import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { Center, Loader } from "metabase/ui";
-import { isNotNull } from "metabase/utils/types";
-import type { DatabaseId, GroupInfo } from "metabase-types/api";
+import type { GroupInfo } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
@@ -20,15 +19,8 @@ import {
   restoreLoadedPermissions,
   saveDataPermissions,
 } from "../../permissions";
-import {
-  DATABASE_TABLES_QUERY,
-  getPermissionsDatabase,
-} from "../../selectors/data-permissions/databases";
-import {
-  getChangedDatabaseIds,
-  getDiff,
-  getIsDirty,
-} from "../../selectors/data-permissions/diff";
+import { DATABASE_TABLES_QUERY } from "../../selectors/data-permissions/databases";
+import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
 
@@ -40,15 +32,7 @@ export function DataPermissionsPage() {
   );
   const groups = data ?? EMPTY_GROUP_LIST;
   const isDirty = useSelector(getIsDirty);
-  // The save confirmation names the tables an edit granted or revoked, so it
-  // needs every changed database's tables, not just the one on screen.
-  const changedDatabaseIds = useSelector(getChangedDatabaseIds);
-  const databases = useSelector((state) =>
-    changedDatabaseIds
-      .map((databaseId) => getPermissionsDatabase(state, databaseId))
-      .filter(isNotNull),
-  );
-  const diff = useSelector((state) => getDiff(state, { databases, groups }));
+  const diff = useSelector((state) => getDiff(state, { groups }));
   const dispatch = useDispatch();
 
   const resetPermissions = () => dispatch(restoreLoadedPermissions());
@@ -100,18 +84,7 @@ export function DataPermissionsPage() {
       helpContent={<DataPermissionsHelp />}
       canShowSplitPermsModal
     >
-      {changedDatabaseIds.map((databaseId) => (
-        <ChangedDatabaseTables key={databaseId} databaseId={databaseId} />
-      ))}
       <Outlet />
     </PermissionsPageLayout>
   );
-}
-
-// Navigating between databases unsubscribes the previous one's tables, which the
-// save confirmation still needs. Holding a subscription per changed database
-// keeps them loaded for as long as the edit is unsaved.
-function ChangedDatabaseTables({ databaseId }: { databaseId: DatabaseId }) {
-  useGetDatabaseMetadataQuery({ id: databaseId, ...DATABASE_TABLES_QUERY });
-  return null;
 }

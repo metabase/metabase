@@ -2,6 +2,7 @@ import type {
   CollectionPermissions,
   DatabaseId,
   GroupsPermissions,
+  PermissionsDatabase,
   Revision,
 } from "metabase-types/api";
 
@@ -33,6 +34,8 @@ export interface AdminState {
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
+    /** The databases an unsaved edit touched, with the tables the save confirmation names. */
+    editedDatabases: Record<DatabaseId, PermissionsDatabase>;
     dataPermissionsRevision: number | null;
     collectionPermissions: CollectionPermissions;
     originalCollectionPermissions: CollectionPermissions;
