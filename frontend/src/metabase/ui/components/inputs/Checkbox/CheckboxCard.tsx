@@ -6,41 +6,40 @@ import {
   Text,
   rem,
 } from "@mantine/core";
-import type { ReactNode } from "react";
+import { type ReactNode, forwardRef } from "react";
 
 export type CheckboxCardProps = Omit<MantineCheckboxCardProps, "children"> & {
   label?: ReactNode;
   description?: ReactNode;
 };
 
-export const CheckboxCard = ({
-  label,
-  description,
-  disabled,
-  ...props
-}: CheckboxCardProps) => (
-  <MantineCheckboxCard disabled={disabled} {...props}>
-    <MantineCheckboxIndicator disabled={disabled} />
-    <Stack component="span" gap={rem(2)} miw={0}>
-      {label && (
-        <Text
-          component="span"
-          c={disabled ? "text-disabled" : "text-primary"}
-          fw={700}
-          lh={rem(18)}
-        >
-          {label}
-        </Text>
-      )}
-      {description && (
-        <Text
-          component="span"
-          size="sm"
-          c={disabled ? "text-disabled" : "text-secondary"}
-        >
-          {description}
-        </Text>
-      )}
-    </Stack>
-  </MantineCheckboxCard>
+export const CheckboxCard = forwardRef<HTMLButtonElement, CheckboxCardProps>(
+  function CheckboxCard({ label, description, disabled, ...props }, ref) {
+    return (
+      <MantineCheckboxCard disabled={disabled} {...props} ref={ref}>
+        <MantineCheckboxIndicator disabled={disabled} />
+        <Stack component="span" gap={rem(2)} miw={0}>
+          {label && (
+            <Text
+              component="span"
+              c={disabled ? "text-disabled" : "text-primary"}
+              fw={700}
+              lh={rem(18)}
+            >
+              {label}
+            </Text>
+          )}
+          {description && (
+            <Text
+              component="span"
+              size="sm"
+              c={disabled ? "text-disabled" : "text-secondary"}
+            >
+              {description}
+            </Text>
+          )}
+        </Stack>
+      </MantineCheckboxCard>
+    );
+  },
 );
