@@ -12,6 +12,12 @@
   (or (contains? (:parents h) tag)
       (contains? (:children h) tag)))
 
+(defn- check-first-occurrence!
+  [h [tag & children :as basis]]
+  (when (and (known-tag? h tag) (seq children))
+    (throw (ex-info (format "Children of %s may only be listed at its first occurrence" tag)
+                    {:basis basis :tag tag}))))
+
 (defn- register-parent
   [h parent]
   (if (contains? (:children h) parent)
@@ -31,14 +37,11 @@
                   (derive h child parent)
 
                   (vector? child)
-                  (let [[grandchild & grandchildren] child]
+                  (let [grandchild (first child)]
                     (when-not (keyword? grandchild)
                       (throw (ex-info "Hierarchy vectors must begin with a keyword tag"
                                       {:basis child})))
-                    (when (and (known-tag? h grandchild) (seq grandchildren))
-                      (throw (ex-info (format "Children of %s may only be listed at its first occurrence"
-                                              grandchild)
-                                      {:basis child :tag grandchild})))
+                    (check-first-occurrence! h child)
                     (derive-children (derive h grandchild parent) child))
 
                   :else
@@ -49,10 +52,11 @@
       (calculate-derived-fields h))))
 
 (defn- derive-basis [h basis]
-  (if (vector? basis)
-    (derive-children h basis)
+  (when-not (vector? basis)
     (throw (ex-info (str "Hierarchy basis must be a vector, got " (type basis))
-                    {:basis basis}))))
+                    {:basis basis})))
+  (check-first-occurrence! h basis)
+  (derive-children h basis))
 
 (defn make-hierarchy
   "Creates a hierarchy whose sets have deterministic iteration order.

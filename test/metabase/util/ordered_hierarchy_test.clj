@@ -90,11 +90,21 @@
   (testing "Children may only be declared at a tag's first occurrence"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Children of :child may only be listed at its first occurrence"
-                          (ordered-hierarchy/make-hierarchy [:root :child [:child :grandchild]]))))
+                          (ordered-hierarchy/make-hierarchy [:root :child [:child :grandchild]])))
+    (testing "including when the later occurrence heads its own basis"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Children of :child may only be listed at its first occurrence"
+                            (ordered-hierarchy/make-hierarchy [:root :child] [:child :grandchild])))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Children of :root may only be listed at its first occurrence"
+                            (ordered-hierarchy/make-hierarchy [:root] [:root :child])))))
   (testing "Repeating a tag without listing children is allowed"
     (is (= [:child :root]
            (vec (ordered-hierarchy/sorted-tags
-                 (ordered-hierarchy/make-hierarchy [:root :child [:child]])))))))
+                 (ordered-hierarchy/make-hierarchy [:root :child [:child]])))))
+    (is (= [:child :root]
+           (vec (ordered-hierarchy/sorted-tags
+                 (ordered-hierarchy/make-hierarchy [:root :child] [:child])))))))
 
 (deftest ^:parallel derive-validation-test
   (is (thrown-with-msg? AssertionError
