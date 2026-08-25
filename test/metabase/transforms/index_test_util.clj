@@ -169,6 +169,10 @@
   {:name nm :kind kind :access-method access-method :is-unique unique :is-primary primary :is-valid true
    :key-columns key-columns :include-columns include :partial-predicate partial})
 
+(def ^:private bigquery-fetch-table-expiration
+  "A bigquery `CREATE TABLE` OPTIONS clause that drops the table on its own after a few hours."
+  "OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 6 HOUR))")
+
 (def fetch-cases
   "Driver -> fetch-correctness cases. Each case creates `:table` via the literal `:create` statements (popular index
   kinds, made directly so we cover catalog shapes the apply path never produces, e.g. Postgres gin/partial), and
@@ -177,7 +181,9 @@
   {:postgres
    [{:label  "btree, unique, composite, INCLUDE, partial, gin, gist, brin, hash, expression, and the primary key"
      :table  "mb_fetch_pg"
-     :create ["CREATE TABLE mb_fetch_pg (id INT PRIMARY KEY, user_id INT, email TEXT, a INT, b INT, data JSONB, created_at TIMESTAMP, p POINT)"
+     ;; a named PK constraint so the index has a deterministic name: Postgres derives the default
+     ;; (mb_fetch_pg_pkey) from the table name, which carries a per-run suffix.
+     :create ["CREATE TABLE mb_fetch_pg (id INT, user_id INT, email TEXT, a INT, b INT, data JSONB, created_at TIMESTAMP, p POINT, CONSTRAINT pk_fetch_pg PRIMARY KEY (id))"
               "CREATE INDEX fc_btree ON mb_fetch_pg (user_id)"
               "CREATE UNIQUE INDEX fc_unique ON mb_fetch_pg (email)"
               "CREATE INDEX fc_ab ON mb_fetch_pg (a, b)"
@@ -189,7 +195,7 @@
               "CREATE INDEX fc_hash ON mb_fetch_pg USING hash (email)"
               "CREATE INDEX fc_expr ON mb_fetch_pg (lower(email))"
               "CREATE INDEX fc_mixed ON mb_fetch_pg (user_id, lower(email))"]
-     :expected #{(idx "mb_fetch_pg_pkey" :btree "btree" ["id"] :unique true :primary true)
+     :expected #{(idx "pk_fetch_pg" :btree "btree" ["id"] :unique true :primary true)
                  (idx "fc_btree" :btree "btree" ["user_id"])
                  (idx "fc_unique" :btree "btree" ["email"] :unique true)
                  (idx "fc_ab" :btree "btree" ["a" "b"])
@@ -281,14 +287,19 @@
      :create ["CREATE TABLE mb_fetch_mysql_empty (id INT PRIMARY KEY, a INT)"]
      :expected #{(idx "PRIMARY" :btree "btree" ["id"] :unique true :primary true)}}]
 
+   ;; the fetch cases run in the long-lived shared test-data dataset and their names are run-unique, so a run killed
+   ;; before its DROP would strand a table nothing reaps -- `delete-old-datasets!` only ever drops whole datasets.
+   ;; `expiration_timestamp` is bigquery's own TTL and fires even if the JVM never gets to clean up.
    :bigquery-cloud-sdk
    [{:label  "the inline clustering, unnamed, reconciled by kind + columns"
      :table  "mb_fetch_bq"
-     :create ["CREATE TABLE mb_fetch_bq (category STRING, price FLOAT64) CLUSTER BY category"]
+     :create [(str "CREATE TABLE mb_fetch_bq (category STRING, price FLOAT64) CLUSTER BY category "
+                   bigquery-fetch-table-expiration)]
      :expected #{(idx nil :clustering nil ["category"])}}
     {:label "a table with no clustering returns []"
      :table "mb_fetch_bq_empty"
-     :create ["CREATE TABLE mb_fetch_bq_empty (a INT64, b INT64)"]
+     :create [(str "CREATE TABLE mb_fetch_bq_empty (a INT64, b INT64) "
+                   bigquery-fetch-table-expiration)]
      :expected #{}}]
 
    ;; columns are quoted so snowflake keeps them lower-case; unquoted, the clustering key reads back as `CATEGORY`.

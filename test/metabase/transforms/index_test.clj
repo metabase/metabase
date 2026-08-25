@@ -15,6 +15,7 @@
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -182,6 +183,13 @@
     (format "\"%s\".\"%s\"" schema table)
     (format "`%s`.%s" schema table)))
 
+(def ^:private fetch-table-suffix
+  "Appended to every fetch-case table name so concurrent CI jobs never touch the same table. On a shared warehouse
+  the fetch cases run in one long-lived dataset (bigquery's is `mb_rel_<hash>_test_data` for every master job), and
+  a fixed name there put overlapping jobs on one table -- enough DROP/CREATE traffic to trip bigquery's per-table
+  metadata quota. Lower-case so snowflake, which reads the name back from its catalog, still matches."
+  (u/lower-case-en (mt/random-name)))
+
 (defn- run-fetch-ddl!
   "Run raw fetch-case DDL through execute-raw-queries! (both sql-jdbc and bigquery implement it). Each statement is
   wrapped as `[sql]` because the seam expects `[sql & params]` vectors, not bare strings."
@@ -203,13 +211,16 @@
         (doseq [{:keys [label table create expected definition-contains]} cases]
           (testing label
             ;; most sql-jdbc drivers create in the connection default (schema nil, bare name); the rest qualify.
-            (let [qualified (if schema (qualify-fetch-table driver/*driver* schema table) table)
+            (let [unique    (str table "_" fetch-table-suffix)
+                  qualified (if schema (qualify-fetch-table driver/*driver* schema unique) unique)
                   drop-sql  (str "DROP TABLE IF EXISTS " qualified)
-                  creates   (cond->> create schema (mapv #(str/replace-first % table qualified)))]
+                  ;; index names stay fixed: only unnamed-index drivers (bigquery, snowflake, redshift) share a
+                  ;; warehouse, and `:expected` asserts the named ones verbatim.
+                  creates   (mapv #(str/replace-first % table qualified) create)]
               (run-fetch-ddl! driver/*driver* db [drop-sql])
               (try
                 (run-fetch-ddl! driver/*driver* db creates)
-                (let [indexes (driver/fetch-table-indexes driver/*driver* db schema table)]
+                (let [indexes (driver/fetch-table-indexes driver/*driver* db schema unique)]
                   (is (nil? (mr/explain :metabase.driver/fetch-table-indexes.result indexes))
                       "result conforms to ::fetch-table-indexes.result")
                   (is (= expected (into #{} (map #(dissoc % :definition)) indexes)))
