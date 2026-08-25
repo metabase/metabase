@@ -53,12 +53,6 @@ export function interceptPluginCreate() {
   cy.intercept("POST", "/api/ee/custom-viz-plugin").as("pluginCreate");
 }
 
-export function interceptPluginRefresh() {
-  cy.intercept("POST", "/api/ee/custom-viz-plugin/*/refresh").as(
-    "pluginRefresh",
-  );
-}
-
 export function waitForPluginBundle() {
   return cy.wait("@pluginBundle");
 }

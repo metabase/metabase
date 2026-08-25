@@ -1,4 +1,4 @@
-import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
+import type { CustomVizPlugin } from "metabase-types/api";
 
 /**
  * Upload a packaged custom-viz bundle (.tgz) and register it as a plugin.
@@ -55,12 +55,4 @@ export function removeAllCustomVizPlugins() {
       }
     },
   );
-}
-
-export function refreshCustomVizPlugin(
-  id: CustomVizPluginId,
-): Cypress.Chainable<CustomVizPlugin> {
-  return cy
-    .request<CustomVizPlugin>("POST", `/api/ee/custom-viz-plugin/${id}/refresh`)
-    .then(({ body }) => body);
 }

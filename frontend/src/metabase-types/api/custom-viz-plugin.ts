@@ -78,6 +78,8 @@ export interface CreateCustomVizPluginRequest {
 
 export interface CreateDevCustomVizPluginRequest {
   dev_bundle_url: string;
+  identifier?: string;
+  manifest?: CustomVizPluginManifest;
 }
 
 export interface UpdateCustomVizPluginRequest {

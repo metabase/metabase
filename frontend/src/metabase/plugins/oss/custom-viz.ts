@@ -63,6 +63,7 @@ const getDefaultPluginCustomViz = () => ({
   getPluginAssetUrl: (
     _pluginId: CustomVizPluginId,
     _assetPath: string | null,
+    _devBundleUrl?: string | null,
     // Unjustified type cast. FIXME
   ) => undefined as string | undefined,
 
@@ -73,6 +74,7 @@ const getDefaultPluginCustomViz = () => ({
   resolveCustomVizAssetUrl: (
     _pluginId: CustomVizPluginId,
     _assetPath: string | null | undefined,
+    _devBundleUrl?: string | null,
   ): Promise<string | undefined> => Promise.resolve(undefined),
   releaseCustomVizAsset: (_pluginId: CustomVizPluginId) => {},
 

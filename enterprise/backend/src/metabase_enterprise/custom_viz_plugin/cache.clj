@@ -8,12 +8,12 @@
    served straight from the local filesystem. When a plugin's bundle is replaced
    or the plugin is deleted, the on-disk directory is evicted.
 
-   Dev-only plugins (no uploaded bundle) live entirely off `dev_bundle_url` and
-   bypass this storage; only the dev http fetch helpers below are used for them."
+   Dev-only plugins (no uploaded bundle) live entirely off `dev_bundle_url` and bypass this storage
+   altogether: the browser fetches them straight from the dev server, so the only dev concern here is
+   validating and normalizing that URL before it reaches the CSP."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
-   [clj-http.client :as http]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
@@ -24,6 +24,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (java.net InetAddress URI)
    (java.nio.file CopyOption FileAlreadyExistsException Files FileVisitOption Path)
    (java.nio.file.attribute FileAttribute)))
 
@@ -33,9 +34,6 @@
 
 (defn- bytes-hash [^bytes b]
   (-> b buddy-hash/sha256 codecs/bytes->hex))
-
-(defn- string-hash [^String s]
-  (bytes-hash (.getBytes s "UTF-8")))
 
 ;;; ------------------------------------------------ Layout ------------------------------------------------
 
@@ -287,82 +285,78 @@
   ^bytes [plugin ^String asset-name]
   (read-cached-bytes plugin (dist-path (asset-rel-path asset-name))))
 
-;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
+;;; ------------------------------------------------ Dev Server URL ------------------------------------------------
 
-(defn- allowed-schemes
-  "Set of URL schemes allowed for dev bundle URLs."
-  []
-  #{"http" "https"})
+;; Dev plugins are loaded by the browser, straight from the developer's dev server.
 
-(defn- validate-url!
-  "Validate that a URL uses an allowed scheme. Throws on invalid input."
-  [^String url ^String label]
-  (let [scheme (some-> (java.net.URI. url) .getScheme u/lower-case-en)]
-    (when-not (contains? (allowed-schemes) scheme)
-      (throw (ex-info (str label " must use http or https, got: " scheme)
-                      {:status-code 400 :url url})))))
+(defn loopback-host?
+  "Whether `host` names the machine the browser runs on localhost or a loopback address."
+  [^String host]
+  (boolean
+   (when-not (str/blank? host)
+     (or (= "localhost" host)
+         (try
+           (.isLoopbackAddress (InetAddress/ofLiteral host))
+           (catch Exception _ false))))))
 
-(defn dev-base-url
-  "Validate and normalize the dev base URL. Ensures http/https scheme and trailing slash."
+(defn- parse-dev-url
+  "Parse `url` into `{:origin \"scheme://host[:port]\"}` when it is usable as a dev server URL, or
+   `{:problem \"...\"}` saying why not.
+
+   One definition of the rule, shared by the write path ([[validate-dev-url!]], which throws the problem at
+   the admin) and the read path ([[loopback-origin]], which just drops the row). Keeping them together is
+   the point: if they could drift, a URL could be storable but never reach the CSP, or the reverse."
+  [^String url]
+  (if-let [uri (try (URI. url) (catch Exception _ nil))]
+    (let [scheme (some-> (.getScheme uri) u/lower-case-en)
+          host   (some-> (.getHost uri) u/lower-case-en)
+          port   (.getPort uri)]
+      (cond
+        (not (contains? #{"http" "https"} scheme))
+        {:problem (str "must use http or https, got: " (or scheme url))}
+
+        (not (loopback-host? host))
+        {:problem (str "must point at localhost, got: " (or host url))}
+
+        (not (and (contains? #{nil "" "/"} (.getPath uri))
+                  (nil? (.getQuery uri))
+                  (nil? (.getFragment uri))))
+        {:problem "must be a bare origin like http://localhost:5174, with no path or query."}
+
+        :else
+        {:origin (str scheme "://" host (when (pos? port) (str ":" port)))}))
+    {:problem "is not a valid URL."}))
+
+(defn validate-dev-url!
+  "Validate a dev server URL, returning it normalized to a bare `scheme://host[:port]` origin, or throwing a
+   400 naming what is wrong with it.
+
+   The host must be loopback. The browser doing the fetching always runs on the developer's own machine, so
+   every legitimate dev server is local, and holding the value to loopback is what makes widening
+   `connect-src` to it harmless -- you cannot exfiltrate to another machine's loopback."
+  ^String [^String url ^String label]
+  (let [{:keys [origin problem]} (parse-dev-url url)]
+    (when problem
+      (throw (ex-info (str label " " problem) {:status-code 400 :url url})))
+    origin))
+
+(defn loopback-origin
+  "The normalized origin of `url`, or nil unless [[validate-dev-url!]] would accept it.
+
+   The read-path counterpart, used to build the CSP `connect-src` entry. Re-checking here rather than
+   trusting what is stored keeps a row written before these rules existed from reaching the header; such a
+   row simply contributes nothing instead of throwing."
   ^String [^String url]
-  (validate-url! url "Dev bundle URL")
-  (if (str/ends-with? url "/") url (str url "/")))
-
-(defn- dev-url
-  "Build a full dev URL by joining the base URL with a relative path."
-  ^String [^String base-url ^String relative-path]
-  (str (dev-base-url base-url) relative-path))
-
-(def ^:private http-opts
-  {:socket-timeout 5000 :connection-timeout 5000})
-
-(defn fetch-dev-bundle
-  "Fetch a JS bundle from a dev base URL.
-   Returns {:content str :hash str}, or nil when the dev server is transiently
-   unavailable (e.g. mid-rebuild)."
-  [^String base-url]
-  (try
-    (let [content (:body (http/get (dev-url base-url bundle-rel-path)
-                                   (assoc http-opts :as :string)))]
-      {:content content
-       :hash    (string-hash content)})
-    (catch Exception e
-      (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
-      nil)))
-
-(defn fetch-dev-manifest
-  "Fetch and parse the manifest from a dev base URL.
-   Returns the parsed manifest map or nil on failure. Throws ex-info with
-   `:status-code 400` when the manifest is structurally invalid."
-  [^String base-url]
-  (when-let [parsed (try
-                      (let [content (:body (http/get (dev-url base-url (manifest/manifest-path))
-                                                     (assoc http-opts :as :string)))]
-                        (manifest/parse-manifest content))
-                      (catch Exception e
-                        (log/debugf "No manifest at %s: %s" base-url (ex-message e))
-                        nil))]
-    (when-let [error (manifest/validation-error parsed)]
-      (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
-                      {:status-code 400})))
-    parsed))
-
-(defn fetch-dev-asset
-  "Fetch a static asset from a dev base URL.
-   Returns the bytes or nil on failure."
-  ^bytes [^String base-url ^String asset-name]
-  (:body (http/get (dev-url base-url (asset-rel-path asset-name))
-                   (assoc http-opts :as :byte-array))))
+  (:origin (parse-dev-url url)))
 
 (defn set-or-clear-dev-bundle!
-  "Set or clear the dev base URL for a plugin. Persists to the database."
+  "Set or clear the dev server URL for a plugin, normalized to an origin. Persists to the database."
   [id dev-bundle-url]
-  (let [url (not-empty dev-bundle-url)]
-    (some-> url (validate-url! "Dev bundle URL"))
+  (let [url (some-> (not-empty dev-bundle-url) (validate-dev-url! "Dev server URL"))]
     (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})))
 
 (defn resolve-dev-bundle
-  "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil.
+  "Resolve the dev server URL for a plugin from the database. Returns the URL string or nil.
    Always returns nil when dev mode is disabled."
   [id]
   (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
@@ -370,22 +364,9 @@
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 
-(defn resolve-bundle
-  "Resolve the JS bundle for a plugin, respecting dev bundle URL if set.
-   Returns {:content str :hash str} or nil."
-  [plugin]
-  (let [id      (:id plugin)
-        dev-url (resolve-dev-bundle id)]
-    (if dev-url
-      (fetch-dev-bundle dev-url)
-      (get-bundle plugin))))
-
 (defn resolve-asset
-  "Resolve a static asset for a plugin, respecting dev base URL if set.
-   Only serves assets whitelisted by the plugin's manifest.
-   Returns a byte array or nil."
+  "Resolve a static asset for an upload-backed plugin. Only serves assets whitelisted by the plugin's
+   manifest. Returns a byte array or nil."
   ^bytes [plugin ^String asset-name]
   (when (asset-whitelisted? plugin asset-name)
-    (if-let [dev-url (resolve-dev-bundle (:id plugin))]
-      (fetch-dev-asset dev-url asset-name)
-      (get-asset plugin asset-name))))
+    (get-asset plugin asset-name)))

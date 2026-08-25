@@ -235,9 +235,15 @@
   [_slug]
   [])
 
+(defenterprise custom-viz-dev-connect-src-hosts
+  "Origins of the configured custom-viz dev servers, has value only for superusers with custom-viz dev mode enabled."
+  metabase-enterprise.custom-viz-plugin.csp
+  []
+  [])
+
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  [nonce data-app-iframe? data-app-connect-hosts allow-blob-img? custom-viz-dev-hosts]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -304,7 +310,8 @@
                                       (application-font-files->hosts))
                   :img-src      (let [restricted (cond-> (into (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
                                                                (map-tile-server->hosts))
-                                                   config/is-dev? (conj frontend-address))]
+                                                   config/is-dev? (conj frontend-address)
+                                                   :always        (into custom-viz-dev-hosts))]
                                   (cond-> (cond
                                             ;; A sandboxed data-app document NEVER gets `*`: an ungated
                                             ;; `new Image()`/`<img>` under `img-src *` would beacon the viewing
@@ -321,7 +328,7 @@
                                     ;; as blob: <img> URLs (see the callers of `:allow-blob-img?`).
                                     ;; `*` does not cover the blob: scheme, so it is listed either way.
                                     allow-blob-img? (conj "blob:")))
-                  :connect-src  (into
+                  :connect-src  (concat
                                  ["'self'"
                                   ;; Google Identity Services
                                   "https://accounts.google.com"
@@ -341,7 +348,8 @@
                                  ;; Per-app `allowed_hosts` for the data-app iframe document, so its
                                  ;; sandboxed bundle can fetch/XHR the origins the app declared. Added
                                  ;; separately from `'self'` (which stays for the host-side SDK calls).
-                                 (when data-app-iframe? data-app-connect-hosts))
+                                 (when data-app-iframe? data-app-connect-hosts)
+                                 custom-viz-dev-hosts)
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
@@ -364,8 +372,9 @@
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
-  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
+  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts allow-blob-img? custom-viz-dev-hosts]
+  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts allow-blob-img?
+                                                  custom-viz-dev-hosts)
                   "Content-Security-Policy"
                   #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
     ;; MANDATORY for data apps — do not remove/weaken. Sole barrier (no JS backstop)
@@ -484,12 +493,14 @@
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
    `:self` (same-origin only), or `:none` (default — no framing unless interactive
    embedding is configured)."
-  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts allow-blob-img?
+             custom-viz-dev-hosts]
       :or   {frame-ancestors :none, allow-cache? false, data-app-iframe? false, allow-blob-img? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
+   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts allow-blob-img?
+                                                        custom-viz-dev-hosts)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
@@ -580,7 +591,9 @@
                                                 (drop-instance-origin (data-app-connect-src-hosts slug)))
                  ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
                  :allow-blob-img?             (or (data-app-iframe-request? request)
-                                                  (request/embed-sdk-eajs-entrypoint? request)))
+                                                  (request/embed-sdk-eajs-entrypoint? request))
+                 :custom-viz-dev-hosts        (when (:is-superuser? request)
+                                                (custom-viz-dev-connect-src-hosts)))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"

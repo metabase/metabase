@@ -1,7 +1,8 @@
 (ns metabase-enterprise.custom-viz-plugin.test-util
-  "Shared helpers for custom-viz-plugin tests: building in-memory tar+gzip
-   archives that match the format `validate-bundle!` expects."
+  "Shared helpers for custom-viz-plugin tests: toggling dev mode, and building in-memory
+   tar+gzip archives that match the format `validate-bundle!` expects."
   (:require
+   [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.util.json :as json])
   (:import
    (java.io ByteArrayOutputStream)
@@ -9,6 +10,11 @@
    (org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream)))
 
 (set! *warn-on-reflection* true)
+
+(defmacro with-dev-mode
+  [enabled? & body]
+  `(with-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly ~enabled?)]
+     ~@body))
 
 (defn make-tgz-bytes
   "Build a tar.gz archive in memory from a seq of `[name content]` pairs.

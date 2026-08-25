@@ -19,7 +19,6 @@ import {
   PLUGIN_CUSTOM_VIZ,
 } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { getSubpathSafeUrl } from "metabase/urls";
 import { measureText } from "metabase/utils/measure-text";
 import { retry } from "metabase/utils/retry";
 import { registerVisualization, visualizations } from "metabase/visualizations";
@@ -41,6 +40,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import { fetchDevServerBundle, getDevServerSseUrl } from "./dev-server";
 import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
 import { reportUnavailableCustomVizPlugin } from "./utils/unavailable-toast";
@@ -104,10 +104,7 @@ export function useCustomVizPlugins({
 }
 
 /**
- * Dev mode: listen for Server-Sent Events proxied through the Metabase backend.
- * The SSE proxy endpoint is at /api/ee/custom-viz-plugin/:id/dev-sse, which
- * forwards events from the dev server's /__sse endpoint. This avoids the need
- * for a CSP exception for the dev server origin.
+ * Dev mode: listen for Server-Sent Events straight from the dev server's `/__sse` endpoint.
  */
 function useCustomVizDevReload(
   display: string | undefined,
@@ -127,11 +124,9 @@ function useCustomVizDevReload(
       return;
     }
 
-    const sseUrl = getSubpathSafeUrl(
-      `/api/ee/custom-viz-plugin/${plugin.id}/dev-sse`,
+    const eventSource = new EventSource(
+      getDevServerSseUrl(plugin.dev_bundle_url),
     );
-
-    const eventSource = new EventSource(sseUrl);
 
     eventSource.addEventListener("message", async () => {
       // eslint-disable-next-line no-console
@@ -170,8 +165,7 @@ export type UseAutoLoadCustomVizPluginOptions = {
  * type starts with "custom:". Returns `true` while loading so the caller
  * can show a spinner instead of rendering the (not-yet-registered) viz.
  *
- * For plugins with `dev_bundle_url` set, polls the bundle endpoint via HEAD
- * every 2s and reloads when the ETag changes.
+ * Plugins with `dev_bundle_url` set are reloaded when the dev server announces a rebuild over its `__sse`
  */
 export function useAutoLoadCustomVizPlugin(
   display: string | undefined,
@@ -363,7 +357,12 @@ async function fetchAndRegisterCustomVizPlugin(
       params.v = currentHash;
     }
 
+    const devBundleUrl = plugin.dev_bundle_url;
+
     const fetchBundle = async () => {
+      if (devBundleUrl) {
+        return fetchDevServerBundle(devBundleUrl);
+      }
       const res = await api.fetch({
         method: "GET",
         url: plugin.bundle_url,
@@ -373,18 +372,19 @@ async function fetchAndRegisterCustomVizPlugin(
       if (!res.ok) {
         throw new BundleFetchError(res.status);
       }
-      return res;
+      return res.text();
     };
     const isLatest = () => loadStartedSeqByPluginId.get(plugin.id) === loadSeq;
 
-    const res = await retry(fetchBundle, {
-      maxRetries: plugin.dev_bundle_url ? 4 : 0,
+    const text = await retry(fetchBundle, {
+      maxRetries: devBundleUrl ? 4 : 0,
       delayMs: () => 300,
+      // A dev server mid-rebuild refuses the connection or 5xxs; either is worth another try.
       shouldRetry: (error) =>
-        isLatest() && error instanceof BundleFetchError && error.status >= 500,
+        isLatest() &&
+        (Boolean(devBundleUrl) ||
+          (error instanceof BundleFetchError && error.status >= 500)),
     });
-
-    const text = await res.text();
 
     // Lazy-load the sandbox so its top-level references to browser globals
     // (Document/Window/Navigator/etc. in sandbox/distortions-*.ts) don't end
@@ -436,6 +436,7 @@ async function fetchAndRegisterCustomVizPlugin(
     const resolvedIconUrl = await PLUGIN_CUSTOM_VIZ.resolveCustomVizAssetUrl(
       plugin.id,
       plugin.icon,
+      plugin.dev_bundle_url,
     );
 
     // Attach the required static properties onto the component function
@@ -561,7 +562,11 @@ export const useCustomVizPluginsIcon = () => {
       const icon: IconData | undefined = currentPlugin
         ? {
             name: "unknown",
-            iconUrl: getPluginAssetUrl(currentPlugin.id, currentPlugin.icon),
+            iconUrl: getPluginAssetUrl(
+              currentPlugin.id,
+              currentPlugin.icon,
+              currentPlugin.dev_bundle_url,
+            ),
           }
         : undefined;
 
