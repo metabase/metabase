@@ -581,4 +581,7 @@
     "NONE"                          "SET ROLE NONE"
     ;; interior double-quotes are doubled
     "x\"; SELECT sleep(10); --"     "SET ROLE \"x\"\"; SELECT sleep(10); --\""
-    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""))
+    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""
+    ;; a trailing backslash is escaped so it cannot close the quoted identifier
+    "foo\\"                         "SET ROLE \"foo\\\\\""
+    "a\\\"b"                        "SET ROLE \"a\\\\\"\"b\""))
