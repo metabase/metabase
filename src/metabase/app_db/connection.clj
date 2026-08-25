@@ -11,7 +11,6 @@
    [toucan2.jdbc.connection :as t2.jdbc.conn]
    [toucan2.pipeline :as t2.pipeline])
   (:import
-   (java.sql SQLException)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -154,26 +153,6 @@
 ;; back to its own, later savepoint does not discard an earlier scope's writes.
 (def ^:private ^:dynamic *rollback-required* nil)
 
-(defn- savepoint-gone?
-  "Whether `e` reports that the savepoint we tried to roll back to no longer exists.
-
-  A server can end the transaction itself and discard every savepoint with it: MySQL and MariaDB do this when they
-  break a deadlock, and when DDL commits implicitly. The writes are already resolved in that case, so the failure
-  says nothing is pending rather than that a rollback left writes behind."
-  [^Throwable e]
-  (loop [^Throwable e e]
-    (cond
-      (nil? e)
-      false
-
-      (and (instance? SQLException e)
-           (or (= (.getErrorCode ^SQLException e) 1305)     ; MySQL/MariaDB: SAVEPOINT ... does not exist
-               (= (.getSQLState ^SQLException e) "3B001"))) ; SQL standard: invalid savepoint specification
-      true
-
-      :else
-      (recur (.getCause e)))))
-
 (def ^:dynamic *transaction-state*
   "When non-nil, an atom holding a map of arbitrary per-transaction data, shared by the whole
   nested-transaction tree and thrown away when the outermost transaction ends. Any subsystem can stash
@@ -267,11 +246,11 @@
                           (try
                             (.rollback connection savepoint)
                             (catch Throwable rollback-e
-                              ;; A missing savepoint means the server already ended the transaction and discarded
-                              ;; its writes, so there is nothing for an enclosing scope to commit by mistake.
-                              ;; Any other failure leaves the writes pending, and no enclosing scope may commit them.
-                              (when-not (savepoint-gone? rollback-e)
-                                (some-> *rollback-required* (reset! true)))
+                              ;; The writes remain pending. No enclosing scope may commit them.
+                              ;; A vanished savepoint is no exception. DDL committing implicitly, or a server
+                              ;; breaking a deadlock, ends the transaction and discards the writes so far, but
+                              ;; anything written after that sits in a new transaction and is still pending.
+                              (some-> *rollback-required* (reset! true))
                               (throw rollback-e))
                             (finally
                               (when state-snapshot
