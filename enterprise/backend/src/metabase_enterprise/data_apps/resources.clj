@@ -198,12 +198,11 @@
 (defn reconcile-view-data!
   "Make `table-ids` the authoritative view-data permission set for `app`."
   [app table-ids]
-  (ensure-resources! app)
-  (let [app (t2/select-one :model/DataApp :id (:id app))]
+  (let [{:keys [permission_group_id]} (ensure-resources! app)
+        group (t2/select-one :model/PermissionsGroup :id permission_group_id)]
     (perms/with-global-permissions-lock
       (t2/with-transaction [_conn]
-        (let [group            (permission-group! app)
-              all-database-ids (t2/select-pks-set :model/Database :router_database_id nil)
+        (let [all-database-ids (t2/select-pks-set :model/Database :router_database_id nil)
               permissions      (or (perms/index-database-permissions [(:id group)] all-database-ids) {})
               tables-by-db     (group-by :db_id (t2/select [:model/Table :id :db_id]))]
           (doseq [database-id all-database-ids
