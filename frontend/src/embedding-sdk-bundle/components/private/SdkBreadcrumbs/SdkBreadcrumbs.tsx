@@ -37,7 +37,7 @@ export const SdkBreadcrumbs = ({
     <PublicComponentStylesWrapper className={className} style={style}>
       <Flex align="center" data-testid="sdk-breadcrumbs">
         {breadcrumbs.map((breadcrumb, index) => (
-          <Fragment key={breadcrumb.id}>
+          <Fragment key={`${breadcrumb.type}-${breadcrumb.id}`}>
             <Breadcrumb
               icon={getBreadcrumbIcon(breadcrumb.type)}
               onClick={() => {
