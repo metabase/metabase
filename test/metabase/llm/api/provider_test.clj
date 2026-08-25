@@ -597,6 +597,23 @@
                                              :base-url "https://new.example.com"}})))
       (is (= {:api-key "sk-ant-stored" :base-url "https://new.example.com"} (stored-config "anthropic"))))))
 
+(deftest update-preserves-a-masked-service-account-key-test
+  (testing (str "re-saving a Google connection without touching the key file echoes back the mask of a JSON key "
+                "that ends in a newline — the stored key has to survive it rather than be replaced by the mask")
+    (let [key-file "{\n  \"type\": \"service_account\",\n  \"project_id\": \"my-project\"\n}\n"]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:auth-method         "service-account-key"
+                                                                     :service-account-key key-file})]]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                    (fn [_provider {:keys [credentials]}]
+                                      (is (= key-file (:service-account-key credentials))
+                                          "the stored key is what gets probed, not the mask")
+                                      {:models []})]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/google"
+                                {:config {:auth-method         "service-account-key"
+                                          :service-account-key (setting/obfuscate-value key-file)}})
+          (is (= key-file (:service-account-key (stored-config "google")))))))))
+
 (deftest update-replaces-a-freshly-entered-secret-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models
