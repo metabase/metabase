@@ -13,6 +13,7 @@ import {
   resetTenantsBasePath,
   setTenantsBasePath,
 } from "metabase/common/tenants";
+import { isUnder } from "metabase/embedding-hub/components/EmbeddingHubLayout";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Outlet, useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
@@ -97,9 +98,8 @@ function TenancyTabs() {
   // The listing also renders at /:tenantId, so anything that is not groups or
   // users belongs to the Tenants tab.
   const activeTab =
-    tabs.find(
-      (tab) => tab.to !== tenancyBasePath && pathname.startsWith(tab.to),
-    )?.to ?? tenancyBasePath;
+    tabs.find((tab) => tab.to !== tenancyBasePath && isUnder(pathname, tab.to))
+      ?.to ?? tenancyBasePath;
 
   return (
     <Group justify="space-between" align="center">
