@@ -22,7 +22,7 @@
       (is (= "Kimi K3" (registry/model-display-name "moonshot/kimi-k3")))
       (is (= "Claude Haiku 4.5" (registry/model-display-name "bedrock/anthropic.claude-haiku-4-5"))))
     (testing "a type whose catalog the registry carries is named from it, not from an adapter whitelist"
-      (is (= "gemini-3.5-flash" (registry/model-display-name "google/google/gemini-3.5-flash"))))
+      (is (= "Gemini 3.5 Flash" (registry/model-display-name "google/google/gemini-3.5-flash"))))
     (testing "the managed connection is named by the adapter its model routes to"
       (is (= "Claude Sonnet 4.6" (registry/model-display-name "metabase/anthropic/claude-sonnet-4-6"))))
     (testing "nothing names an Azure deployment, a model outside the whitelist, or a missing connection"
