@@ -6,9 +6,9 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 /**
- * Content translation only. It renders today *only* from the admin embedding
- * section, so this is the one tab with a genuine migration in it: it moves
- * here and admin loses it.
+ * Content translation only. Unlike the other tabs, it duplicates the admin
+ * embedding section's UI rather than linking to it -- admin's copy is
+ * removed separately, when EMB-1526 drops the admin embedding route.
  *
  * The instance-wide localization settings -- site-locale, report-timezone,
  * start-of-week, custom-formatting -- stay in admin and are not surfaced.
