@@ -1,7 +1,7 @@
 import * as d3 from "d3";
-import L from "leaflet";
 import { t } from "ttag";
 
+import { L } from "metabase/leaflet";
 import { color } from "metabase/ui/colors";
 import type { ClickObject, HoveredObject } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";

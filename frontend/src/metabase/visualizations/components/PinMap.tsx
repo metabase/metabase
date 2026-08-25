@@ -1,12 +1,12 @@
 import cx from "classnames";
 import * as d3 from "d3";
-import L from "leaflet";
 import { type ComponentClass, useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { L } from "metabase/leaflet";
 import { Button } from "metabase/ui";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import { unaggregatedDataWarningMap } from "metabase/visualizations/lib/warnings";

@@ -1,11 +1,9 @@
-import "leaflet-draw";
-import "leaflet/dist/leaflet.css";
 import "./LeafletMap.module.css";
 
-import L from "leaflet";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
+import { L } from "metabase/leaflet";
 import MetabaseSettings from "metabase/utils/settings";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
