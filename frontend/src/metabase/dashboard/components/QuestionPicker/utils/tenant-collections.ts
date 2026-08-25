@@ -162,7 +162,7 @@ export function mergeTenantCollections({
 }
 
 /**
- * Builds the question-picker tree for tenant users,
+ * Builds the question picker tree for tenant users,
  * who uses full-app embedding or uses the internal app:
  *
  * Collections/
