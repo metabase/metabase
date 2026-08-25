@@ -53,7 +53,7 @@ export function EmbeddingHubAppearancePage() {
 
 function FullAppAppearanceBanner() {
   return (
-    <Card p="md" withBorder bg="background-info">
+    <Card p="md" bg="background-brand">
       <Group gap="xs" wrap="nowrap">
         <Text c="text-secondary">
           {t`Colors and branding for full-app embedding are based on the appearance settings defined in the`}
