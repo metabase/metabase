@@ -6,7 +6,7 @@ import { forwardRef } from "react";
 
 import { RadioCard } from "./RadioCard";
 
-export type RadioProps = Omit<MantineRadioProps, "labelPosition">;
+export type RadioProps = Omit<MantineRadioProps, "labelPosition" | "size">;
 
 const RadioRoot = forwardRef<HTMLInputElement, RadioProps>(
   function RadioRoot(props, ref) {

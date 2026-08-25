@@ -1,17 +1,13 @@
-import { Radio, RadioCard, RadioIndicator, getSize, rem } from "@mantine/core";
+import { Radio, RadioCard, RadioIndicator, rem } from "@mantine/core";
 
 import RadioStyles from "./Radio.module.css";
 
-const SIZES: Record<string, string> = {
-  sm: rem(16),
-};
-
+const RADIO_SIZE = rem(16);
 const ICON_SIZE = rem(6);
 
 export const radioOverrides = {
   Radio: Radio.extend({
     defaultProps: {
-      size: "sm",
       radius: "md",
     },
     classNames: {
@@ -25,9 +21,9 @@ export const radioOverrides = {
       description: RadioStyles.description,
       error: RadioStyles.error,
     },
-    vars: (_theme, { size = "sm" }) => ({
+    vars: () => ({
       root: {
-        "--radio-size": getSize(SIZES[size] ?? SIZES.sm),
+        "--radio-size": RADIO_SIZE,
         "--radio-icon-size": ICON_SIZE,
         "--radio-icon-color": "var(--mb-color-text-primary-inverse)",
       },
@@ -44,7 +40,6 @@ export const radioOverrides = {
   RadioIndicator: RadioIndicator.extend({
     defaultProps: {
       radius: "md",
-      size: SIZES.sm,
     },
     classNames: {
       indicator: RadioStyles.cardIndicator,
@@ -52,6 +47,7 @@ export const radioOverrides = {
     },
     vars: () => ({
       indicator: {
+        "--radio-size": RADIO_SIZE,
         "--radio-icon-size": ICON_SIZE,
       },
     }),
