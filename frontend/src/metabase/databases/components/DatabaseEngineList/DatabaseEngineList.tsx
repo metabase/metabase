@@ -149,7 +149,7 @@ const DatabaseLogo = ({ db }: { db: string }) => {
   const logo = getEngineLogo(db);
 
   return (
-    <Center h="lg" w="lg">
+    <Center h="xl" w="xl">
       {logo ? (
         <img src={logo} width="100%" />
       ) : (

@@ -161,7 +161,7 @@ function ConnectionStringDescription({
       exitDelay={0}
     >
       {(styles) => (
-        <Group style={styles} top={0} pos="absolute" h="lg" component="span">
+        <Group style={styles} top={0} pos="absolute" h="xl" component="span">
           {t`You can use a connection string to pre-fill the details below.`}
         </Group>
       )}
@@ -223,7 +223,7 @@ function ConnectionStringDescription({
     </Transition>
   );
   return (
-    <Group h="lg" pos="relative" component="span">
+    <Group h="xl" pos="relative" component="span">
       {failureMessage}
       {defaultDescription}
       {successMessage}

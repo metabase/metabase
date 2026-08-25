@@ -96,8 +96,8 @@ const CardImageWrapper = ({ database }: { database: string }) => {
   return (
     <Box
       bg="core-white"
-      h="xl"
-      w="xl"
+      h="xxl"
+      w="xxl"
       className={CS.rounded}
       style={{
         boxShadow:
@@ -109,8 +109,8 @@ const CardImageWrapper = ({ database }: { database: string }) => {
         component="img"
         src={getEngineLogo(database)}
         alt={t`${database} database logo`}
-        h="xl"
-        w="xl"
+        h="xxl"
+        w="xxl"
         p="xxs"
       />
     </Box>

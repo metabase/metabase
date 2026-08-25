@@ -43,7 +43,7 @@ export const AgentTodoListMessage = ({
           <Icon name="list" size=".75rem" mr="xxs" c="core-brand" />
           <Text size="sm" fw="bold" c="core-brand">{t`Todo List`}</Text>
         </Flex>
-        <Flex align="center" justify="center" h="md">
+        <Flex align="center" justify="center" h="lg">
           <Icon
             name={opened ? "chevrondown" : "chevronup"}
             size=".75rem"

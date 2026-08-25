@@ -193,7 +193,7 @@ export const AgentSuggestionMessage = ({
           <Text size="sm" c={isNew ? "core-blue-saturated" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
-          <Flex align="center" justify="center" h="md" w="md">
+          <Flex align="center" justify="center" h="lg" w="lg">
             <Icon name={opened ? "chevrondown" : "chevronup"} size=".75rem" />
           </Flex>
         </Flex>

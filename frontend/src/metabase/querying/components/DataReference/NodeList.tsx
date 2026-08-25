@@ -61,7 +61,7 @@ const NodeListItemName = ({ children, ...rest }: BoxPropsWithChildren) => {
   );
 };
 
-const NodeListIcon = (props: IconProps) => <Icon mt="1px" w="md" {...props} />;
+const NodeListIcon = (props: IconProps) => <Icon mt="1px" w="lg" {...props} />;
 
 const NodeListItemIcon = (props: IconProps & { disabled?: boolean }) => {
   const { disabled, ...rest } = props;

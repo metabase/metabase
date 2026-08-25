@@ -43,7 +43,7 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xxs" {...rest}>
-      <Flex mb="xl" mt="lg" w="100%" h="xl">
+      <Flex mb="xl" mt="lg" w="100%" h="xxl">
         {breadcrumbs}
 
         <Group ml="auto" gap="lg" className={S.ButtonGroup}>
