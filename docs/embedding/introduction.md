@@ -72,7 +72,7 @@ SSO requires a Pro or Enterprise plan, and everyone viewing the embedded compone
 
 If you're building a SaaS product with embedded analytics for multiple customers, you can keep customer data isolated with [Tenants](./tenants.md).
 
-Accounts for these embedded people in your Metabase count toward the [accounts billed in your Metabase plan](https://www.metabase.com/docs/latest/cloud/how-billing-works). But by letting your customers self-serve their data, you save time on developing bespoke charts. And you can charge _more_ for a premium analytics experience. If you plan on giving a lot of your customers self-service access to their data, you should consider an enterprise plan, with custom pricing that scales with your business.
+Accounts for these embedded people in your Metabase count toward the [accounts billed in your Metabase plan](https://www.metabase.com/how-billing-works). But by letting your customers self-serve their data, you save time on developing bespoke charts. And you can charge _more_ for a premium analytics experience. If you plan on giving a lot of your customers self-service access to their data, you should consider an enterprise plan, with custom pricing that scales with your business.
 
 ### Components with guest authentication
 
