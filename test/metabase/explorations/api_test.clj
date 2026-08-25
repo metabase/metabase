@@ -686,12 +686,24 @@
             "the users-table segment doesn't apply, so no segment fan-out")))))
 
 (defn- products-monthly-metric-card
-  "Metric Card with a default `:month` temporal breakout on `products.created_at`. Used to
-  exercise the time-facet variant, which fires only when the metric carries a temporal breakout."
+  "Metric Card with a curated default `:month` time dimension on `products.created_at` (and the
+  matching temporal breakout in its query). Used to exercise the time-facet variant, which fires
+  only when the metric's curated default dimension is temporal — the query breakout alone is not
+  enough."
   [user-id]
-  {:type          :metric
-   :creator_id    user-id
-   :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/aggregate (lib/count)) (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month)))))})
+  {:type               :metric
+   :creator_id         user-id
+   :dataset_query      (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :products))) (lib/aggregate (lib/count)) (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :products :created_at)) :month)))))
+   :dimensions         [{:id                    (duid "prod-created")
+                         :display-name          "Created At"
+                         :effective-type        :type/DateTime
+                         :status                :status/active
+                         :default               true
+                         :default-temporal-unit :month}]
+   :dimension_mappings [{:type         :table
+                         :table-id     (mt/id :products)
+                         :dimension-id (duid "prod-created")
+                         :target       [:field {} (mt/id :products :created_at)]}]})
 
 (defn- query-types
   [queries]
