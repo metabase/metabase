@@ -2570,3 +2570,167 @@
           (is (contains? doc-names "Standalone Doc")))
         (testing "exploration-attached documents are not (matching search / recents / collection items)"
           (is (not (contains? doc-names "Exploration Summary"))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                  EMBEDDING CARDS THE USER CAN READ BUT COULD NOT AUTHOR (UXW-5037)                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- card-embed-ast
+  "ProseMirror AST embedding a single card by id."
+  [card-id]
+  {:type "doc"
+   :content [{:type "cardEmbed" :attrs {:id card-id :name nil}}
+             {:type "paragraph"}]})
+
+(deftest post-document-embedding-existing-native-card-without-native-perms-test
+  (testing "POST /api/document/ - user without native perms can embed an existing native card they can read (UXW-5037)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {native-card-id :id} {:name          "Existing Native Card"
+                                                         :collection_id coll-id
+                                                         :dataset_query (mt/native-query
+                                                                         {:query "SELECT COUNT(*) FROM VENUES"})
+                                                         :display       :scalar}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/with-restored-data-perms!
+            (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+            (let [result (mt/user-http-request :rasta
+                                               :post 200 "document/"
+                                               {:name          "Doc referencing native card"
+                                                :collection_id coll-id
+                                                :document      (card-embed-ast native-card-id)})
+                  cloned-card (t2/select-one :model/Card :document_id (:id result))]
+              (testing "the embedded card is cloned into the document with the same query"
+                (is (some? cloned-card))
+                (is (not= native-card-id (:id cloned-card)))
+                (is (= (t2/select-one-fn :dataset_query :model/Card :id native-card-id)
+                       (:dataset_query cloned-card)))))))))))
+
+(deftest put-document-embedding-existing-native-card-without-native-perms-test
+  (testing "PUT /api/document/:id - user without native perms can embed an existing native card they can read (UXW-5037)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {native-card-id :id} {:name          "Existing Native Card"
+                                                         :collection_id coll-id
+                                                         :dataset_query (mt/native-query
+                                                                         {:query "SELECT COUNT(*) FROM VENUES"})
+                                                         :display       :scalar}
+                       :model/Document {doc-id :id} {:name          "My Doc"
+                                                     :collection_id coll-id
+                                                     :document      (documents.test-util/text->prose-mirror-ast "empty")}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/with-restored-data-perms!
+            (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+            (mt/user-http-request :rasta
+                                  :put 200 (str "document/" doc-id)
+                                  {:document (card-embed-ast native-card-id)})
+            (testing "the embedded card is cloned into the document"
+              (is (t2/exists? :model/Card :document_id doc-id)))))))))
+
+(deftest copy-document-containing-native-card-without-native-perms-test
+  (testing "POST /api/document/:id/copy - user without native perms can copy a document containing a native card (UXW-5037)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Document {doc-id :id} {:name          "Doc with native card"
+                                                     :collection_id coll-id
+                                                     :document      (documents.test-util/text->prose-mirror-ast "placeholder")}
+                       :model/Card {native-card-id :id} {:name          "Doc-owned Native Card"
+                                                         :collection_id coll-id
+                                                         :document_id   doc-id
+                                                         :dataset_query (mt/native-query
+                                                                         {:query "SELECT COUNT(*) FROM VENUES"})
+                                                         :display       :scalar}]
+          (t2/update! :model/Document doc-id {:document (card-embed-ast native-card-id)})
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/with-restored-data-perms!
+            (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+            (let [result (mt/user-http-request :rasta
+                                               :post 200 (format "document/%d/copy" doc-id)
+                                               {:collection_id coll-id})]
+              (testing "the document-owned card is copied"
+                (is (t2/exists? :model/Card :document_id (:id result)))))))))))
+
+(deftest post-document-draft-native-card-still-requires-native-perms-test
+  (testing "POST /api/document/ - client-supplied draft native cards still require native query perms"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/with-restored-data-perms!
+            (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+            (mt/user-http-request :rasta
+                                  :post 403 "document/"
+                                  {:name          "Doc with draft native card"
+                                   :collection_id coll-id
+                                   :document      (card-embed-ast -1)
+                                   :cards         {-1 {:name                   "Draft Native Card"
+                                                       :dataset_query          (mt/native-query
+                                                                                {:query "SELECT * FROM VENUES"})
+                                                       :display                "table"
+                                                       :visualization_settings {}}}})))))))
+
+(deftest post-document-embedding-unreadable-card-still-403-test
+  (testing "POST /api/document/ - embedding a card the user cannot read is still forbidden"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Collection {secret-coll-id :id} {}
+                       :model/Collection {doc-coll-id :id} {}
+                       :model/Card {native-card-id :id} {:name          "Secret Native Card"
+                                                         :collection_id secret-coll-id
+                                                         :dataset_query (mt/native-query
+                                                                         {:query "SELECT COUNT(*) FROM VENUES"})
+                                                         :display       :scalar}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) doc-coll-id)
+          (mt/user-http-request :rasta
+                                :post 403 "document/"
+                                {:name          "Doc referencing secret card"
+                                 :collection_id doc-coll-id
+                                 :document      (card-embed-ast native-card-id)}))))))
+
+(deftest cloned-native-card-query-cannot-be-edited-without-native-perms-test
+  (testing "PUT /api/card/:id - editing a document-owned card's query still requires perms to author the new query"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Document {doc-id :id} {:name          "Doc"
+                                                     :collection_id coll-id
+                                                     :document      (documents.test-util/text->prose-mirror-ast "doc")}
+                       :model/Card {cloned-card-id :id} {:name          "Cloned Native Card"
+                                                         :collection_id coll-id
+                                                         :document_id   doc-id
+                                                         :dataset_query (mt/native-query
+                                                                         {:query "SELECT COUNT(*) FROM VENUES"})
+                                                         :display       :scalar}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/with-restored-data-perms!
+            (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+            (let [query-before (t2/select-one-fn :dataset_query :model/Card :id cloned-card-id)]
+              (mt/user-http-request :rasta
+                                    :put 403 (str "card/" cloned-card-id)
+                                    {:dataset_query (mt/native-query
+                                                     {:query "SELECT * FROM ORDERS"})})
+              (testing "the card's query is unchanged"
+                (is (= query-before
+                       (t2/select-one-fn :dataset_query :model/Card :id cloned-card-id)))))))))))
+
+(deftest post-document-embedding-mbql-card-without-query-builder-perms-test
+  (testing "POST /api/document/ - view-data-only user can embed a readable MBQL card (the fix is not native-specific)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card {mbql-card-id :id} {:name          "Existing MBQL Card"
+                                                       :collection_id coll-id
+                                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                                                       :display       :scalar}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/with-restored-data-perms!
+            (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+            (let [result (mt/user-http-request :rasta
+                                               :post 200 "document/"
+                                               {:name          "Doc referencing MBQL card"
+                                                :collection_id coll-id
+                                                :document      (card-embed-ast mbql-card-id)})]
+              (is (t2/exists? :model/Card :document_id (:id result))))))))))
