@@ -146,7 +146,7 @@ export const SlackSetup = () => {
   }
 
   return (
-    <SettingsSection stackProps={{ pt: "lg" }}>
+    <SettingsSection stackProps={{ pt: "xl" }}>
       <Box>
         <SlackConnectionStatus
           isValid={isValid}

@@ -44,6 +44,6 @@ export const NonClosable = {
         This is a banner
       </Text>
     ),
-    py: "md",
+    py: "lg",
   },
 };

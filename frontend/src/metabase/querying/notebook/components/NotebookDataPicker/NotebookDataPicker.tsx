@@ -258,7 +258,7 @@ function ModernDataPicker({
         shouldHide={shouldHide}
         shouldShowLibrary={shouldShowLibrary}
         menuDropdownProps={{
-          mt: "xl",
+          mt: "xxl",
           ml: "-1rem",
         }}
       />

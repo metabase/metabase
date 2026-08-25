@@ -19,7 +19,7 @@ export const FormFooter = ({
   const groupProps = hasTopBorder
     ? {
         mt: "sm",
-        pt: "lg",
+        pt: "xl",
         className: cx(className, CS.borderTop),
       }
     : { className };

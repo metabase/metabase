@@ -54,7 +54,7 @@ const Handle = forwardRef(function Handle(
         h="xxs"
         style={{
           backgroundColor: darken("border-neutral", 0.03),
-          borderRadius: "xs",
+          borderRadius: "xxs",
         }}
       ></Box>
     </Flex>

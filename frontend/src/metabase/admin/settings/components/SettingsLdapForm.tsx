@@ -119,7 +119,7 @@ export const SettingsLdapForm = () => {
                     )}
                     description={null}
                   >
-                    <Group mt={"xs"}>
+                    <Group mt={"xxs"}>
                       <Radio value="none" label={t`None`} />
                       <Radio
                         value="ssl"

@@ -12,7 +12,7 @@ export function getSharedFieldStyleProps(type?: FieldType) {
       : undefined;
 
   return {
-    mb: "lg",
+    mb: "xl",
     ...labelProps,
   };
 }
