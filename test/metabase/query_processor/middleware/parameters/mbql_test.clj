@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -515,3 +516,26 @@
                                          :value  :week}]})]
       (is (=? ["2016-04-30T00:00:00Z" "2016-04-24T00:00:00Z" 1]
               (first (mt/rows (mt/process-query query))))))))
+
+(deftest ^:parallel temporal-unit-param-does-not-rewrite-join-condition-test
+  (testing "a temporal-unit param only updates breakouts and order bys, not join conditions (#80098)"
+    (let [mp         meta/metadata-provider
+          created-at (meta/field-metadata :orders :created-at)
+          query      (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                    [(lib/= (lib/with-temporal-bucket created-at :month)
+                                                            (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :month))]))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month))
+                         (lib/update-query-stage
+                          0 assoc :parameters
+                          [{:type   :temporal-unit
+                            :value  "year"
+                            :target [:dimension
+                                     (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
+                                     {}]}]))]
+      (is (=? {:stages [{:breakout [[:field {:temporal-unit :year} (meta/id :orders :created-at)]]
+                         :joins    [{:conditions [[:= {}
+                                                   [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                                   [:field {:temporal-unit :month} (meta/id :products :created-at)]]]}]}]}
+              (expand-parameters query))))))
