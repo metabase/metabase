@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
-import { init } from "metabase/viz-core";
 import {
   type ComputedVisualizationSettings,
   DIMENSIONS,
@@ -12,6 +11,7 @@ import {
   type RenderingContext,
   getArrayFromMapValues,
   type getPieChartOption,
+  init,
 } from "metabase/viz-core";
 
 import {
