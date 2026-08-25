@@ -185,7 +185,7 @@ To group a metric by a field that lives on a **different** table, add an explici
             "conditions": [["=", {},
                             ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]],
                             ["field", {"join-alias": "Products"},
-                             ["Sample Database", "PUBLIC", "PRODUCTS", "ID"]]]}],
+                             ["Sample Database", "PUBLIC", "PRODUCTS", "ID"]]]]}],
  "breakout": [["field", {"join-alias": "Products"},
                ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]}
 ```

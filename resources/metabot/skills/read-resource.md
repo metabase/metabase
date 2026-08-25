@@ -23,7 +23,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **The exploration loop**:
 1. `search` for a topic → every result carries a `uri` attribute.
-2. If a top hit is a container — its element name is `<collection>` or `<dashboard>` — `read_resource` on its URI to enumerate members instead of re-searching.
+2. If a top hit is a container — its element name is `<dashboard>` — `read_resource` on its URI to enumerate members instead of re-searching. (`search` never returns collections; reach those by navigating, e.g. `metabase://collection/{id}/items`.)
 3. Drill into specific items via `read_resource` for fields, sources, or details.
 4. Walk lineage when needed: `metabase://table/{id}/derived`, `metabase://model/{id}/sources`, `metabase://transform/{id}/sources` or `/target`.
 
@@ -70,7 +70,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - Need to navigate a deep tree without enumerating every leaf? → `metabase://collection/{id}/subcollections`
 
 **Best Practices:**
-- When a `search` returns a `<collection>` result, prefer `read_resource` on its URI over re-searching the same concept.
+- Collections are never `search` results — the only way to reach one is by navigating (`metabase://collections`, `metabase://collections?tree=true`, or a parent's `/subcollections`). To see what a collection holds, `read_resource` its `/items` rather than searching for the collection's name.
 
 ## Table resources
 
