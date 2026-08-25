@@ -1,4 +1,6 @@
 .root {
+  --checkbox-icon-color: var(--mb-color-text-primary-inverse);
+
   .description {
     color: var(--mb-color-text-secondary);
     font-size: var(--mantine-font-size-sm);
@@ -83,7 +85,6 @@
 
 .icon {
   width: 100%;
-  color: var(--mb-color-text-primary-inverse);
 }
 
 .labelWrapper {
