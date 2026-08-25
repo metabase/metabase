@@ -138,7 +138,7 @@
   "Lenient deserialize of an encrypted-json column that tolerates plaintext at rest, for reading legacy rows during
   migrations. Mirrors [[metabase.models.interface/encrypted-json-in]]'s inverse from before that read became strict."
   [v]
-  (let [decrypted (try (encryption/maybe-decrypt v) (catch Throwable _ v))]
+  (let [decrypted (encryption/maybe-decrypt-accepting-plaintext v)]
     (try
       (json/decode+kw decrypted)
       (catch Throwable e
@@ -1407,7 +1407,7 @@
 (defn- raw-setting-value [key]
   (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
           :value
-          (as-> v (try (encryption/maybe-decrypt v) (catch Throwable _ v)))))
+          encryption/maybe-decrypt-accepting-plaintext))
 
 (define-reversible-migration MigrateUploadsSettings
   (do (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)

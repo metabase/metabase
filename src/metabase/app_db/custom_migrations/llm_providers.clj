@@ -94,7 +94,7 @@
   [setting-key]
   (some-> (t2/query-one {:select [:value] :from :setting :where [:= :key setting-key]})
           :value
-          (as-> v (try (encryption/maybe-decrypt v) (catch Throwable _ v)))))
+          encryption/maybe-decrypt-accepting-plaintext))
 
 (defn- non-blank
   [value]
