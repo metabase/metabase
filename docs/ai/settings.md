@@ -129,7 +129,9 @@ _Embedded tab._
 
 If you're embedding the Metabot component in an app, you can point embedded Metabot at a different collection to use for creating queries. Click **Pick a different collection** to choose the collection (and its subcollections) that embedded Metabot searches for models and metrics.
 
-This setting narrows where embedded Metabot looks; it's not a permission boundary. Embedded Metabot can still reach anything the person using it has permissions for. To control what people can get to in an embed, set [data permissions](../permissions/embedding.md).
+Picking **Our analytics** is the same as picking no collection at all, so pick something narrower if you want the scoping to do anything.
+
+This setting narrows where embedded Metabot searches; it's not a permission boundary. Embedded Metabot can still read and query anything the person using it has permissions for. It also sees the items that person viewed recently, whichever collection those live in. To control what people can get to in an embed, set [data permissions](../permissions/embedding.md). See also [Set up AI chat in Metabase](../embedding/ai-chat.md#set-up-ai-chat-in-metabase).
 
 ### Prompt suggestions
 

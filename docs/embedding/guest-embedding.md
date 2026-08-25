@@ -33,7 +33,7 @@ To create a guest embed:
 3. Select **Embed**.
 4. Under **Authentication**, select **Guest**.
 5. Optional: [customize the appearance of the embed](./appearance.md)
-6. Optional: [Add parameters to the embed](./parameters.md).
+6. Optional: [set the visibility of each parameter](#configuring-parameters).
 7. Click **Publish**.
 8. Get the code snippet that the wizard generates and add it to your app.
 

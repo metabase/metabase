@@ -1,6 +1,6 @@
 ---
 title: Embed an AI chat
-summary: "Embed an AI chat component in your app so people can ask questions of their data in natural language."
+summary: "Embed an AI chat in your app with a web component or the React SDK, so people can ask questions of their data in natural language."
 redirect_from:
   - /docs/latest/embedding/sdk/ai-chat
 ---
@@ -15,6 +15,10 @@ You can embed an AI chat in your app, so people can ask questions of their data 
 
 AI chat requires an authenticated (SSO) embed. [Guest embeds](./guest-embedding.md) can't use it.
 
+## Try the AI chat demo
+
+See the [AI chat component](https://embedded-analytics-sdk-demo.metabase.com/admin/analytics/new/ask-metabot) running on the Shoppy demo site.
+
 ## Set up AI chat in Metabase
 
 Before you embed the chat, turn on embedded Metabot and tell Metabase which collection it should search:
@@ -27,16 +31,20 @@ Before you embed the chat, turn on embedded Metabot and tell Metabase which coll
 6. Turn on **Enable Embedded Metabot**. With that toggle off, your chat component won't work.
 7. Under **Collection Embedded Metabot can use**, click **Pick a different collection** and choose the collection that holds the models and metrics embedded Metabot should query.
 
-Pointing embedded Metabot at a focused collection narrows where it looks: when it goes hunting for models and metrics to build a query from, it searches that collection and its subcollections. That's a search scope, not a permission boundary. Embedded Metabot can still reach anything the person using it has permissions for, so to control what people can get to, set [data permissions](../permissions/embedding.md).
+Pointing embedded Metabot at a focused collection narrows where it looks: when it goes hunting for models and metrics to build a query from, it searches that collection and its subcollections. Picking **Our analytics** is the same as picking no collection at all, so pick something narrower if you want the scoping to do anything.
+
+That collection is a search scope, not a permission boundary. Embedded Metabot can still read and query anything the person using it has permissions for. It also sees the items that person viewed recently, whichever collection those live in. To control what people can get to, set [data permissions](../permissions/embedding.md).
 
 The **Embedded** tab configures embedded Metabot separately from the Metabot in your own Metabase, which lives on the **Internal** tab.
 
 For tips and more, see [Metabot settings](../ai/settings.md).
 
-With embedded Metabot set up, add the chat to your app:
+With embedded Metabot set up, there are two ways to add the chat to your app:
 
-- [Web component](#web-component-ai-chat)
-- [React SDK](#react-sdk-ai-chat)
+- **[Web component](#web-component-ai-chat)**: the whole chat interface, chart and all, from a single tag.
+- **[React SDK](#react-sdk-ai-chat)**: the same interface from the `MetabotQuestion` component, or the [`useMetabot`](#build-a-custom-ai-chat-ui-with-usemetabot) hook if you'd rather build the interface yourself.
+
+Either way, you [set where the chart appears](#set-where-the-chart-appears) and [let people save questions](#let-people-save-questions-metabot-creates) the same way.
 
 ## Web component AI chat
 
@@ -83,16 +91,16 @@ Use the `layout` attribute (web component) or the `layout` prop (SDK) to positio
 
 Metabot answers with ad-hoc questions, so nothing lands in your Metabase unless you say so. Turning on the save button lets people keep a question Metabot built.
 
-With a web component, turn saving on with `is-save-enabled="true"`, which is off by default. `target-collection` is optional, but it's worth setting: it picks the collection that new questions land in, so people's work doesn't scatter across your Metabase.
+With a web component, turn saving on with `is-save-enabled="true"`, which is off by default. `target-collection` is optional, but it's worth setting: it picks the collection that new questions land in, so people's work doesn't scatter across your Metabase. Setting a target collection also hides the collection picker in the save modal, so nobody has to decide where their question goes.
 
 ```html
 <metabase-metabot
   is-save-enabled="true"
-  target-collection="5"
+  target-collection="123"
 ></metabase-metabot>
 ```
 
-With the SDK, the equivalent props on `MetabotQuestion` are `isSaveEnabled` and `targetCollection`. Setting `targetCollection` also hides the collection picker in the save modal, so nobody has to decide where their question goes.
+With the SDK, the equivalent props on `MetabotQuestion` are `isSaveEnabled` and `targetCollection`.
 
 ## Build a custom AI chat UI with `useMetabot`
 
@@ -125,15 +133,19 @@ The `CurrentChart` component is bound to the latest chart the agent produced. Re
 
 {% include_file "{{ dirname }}/sdk/api/snippets/UseMetabotResult.md" snippet="properties" %}
 
-### Notes on `useMetabot`
+### Guard against null while the SDK bundle loads
 
-- **Guard against null while waiting for the SDK bundle**: `useMetabot` returns `null` until the SDK bundle has loaded and `<MetabaseProvider>` has mounted. Always guard before use. If you don't guard it, the first render will throw `Cannot read properties of null` when you reach for `metabot.messages`, `metabot.submitMessage`, etc., because the SDK ships its Metabot internals via a code-split chunk that isn't available synchronously.
-- **Bring your own Markdown renderer**: `MetabotQuestion` renders agent text messages internally, including markdown formatting, transcript scrolling, and input styling. The `useMetabot` hook hands you the raw conversation state, which means you own the rendering. In particular, agent text messages (`message.type === 'text'`) contain **markdown**: links, bold, lists, inline code. The snippets above render `message.message` as plain text for brevity, but production usage should pass the text through a markdown renderer (`react-markdown`, `markdown-to-jsx`, or your own) so links and formatting display correctly.
-- **Strip links back to Metabase**: the agent text may include links pointing back to the host Metabase, like a link to a chart it created. Those links require an authenticated Metabase session, so people viewing your app won't be able to open them. Strip them out when you render the message, or replace them with a route in your own app.
+`useMetabot` returns `null` until the SDK bundle has loaded and `<MetabaseProvider>` has mounted, so always guard before you use it. The SDK ships its Metabot internals in a code-split chunk that isn't available synchronously, which means an unguarded first render throws `Cannot read properties of null` as soon as you reach for `metabot.messages`, `metabot.submitMessage`, or anything else on the hook.
 
-## Try the AI chat demo
+### Bring your own markdown renderer
 
-You can check out a [demo of the AI chat component](https://embedded-analytics-sdk-demo.metabase.com/admin/analytics/new/ask-metabot) on our Shoppy demo site.
+`MetabotQuestion` renders agent text messages for you, markdown formatting and all, along with transcript scrolling and input styling. The `useMetabot` hook hands you the raw conversation state instead, so the rendering is yours to do.
+
+The part that's easy to miss: agent text messages (the ones where `message.type === 'text'`) contain markdown — links, bold, lists, inline code. The snippets above render `message.message` as plain text to keep them short, but in production you'll want to pass that text through a markdown renderer, like `react-markdown` or `markdown-to-jsx`, so links and formatting come out right.
+
+### Strip links back to Metabase
+
+Agent text can include links pointing back to the Metabase it's running against, like a link to a chart the agent just created. Opening one requires an authenticated Metabase session, so people viewing your app will hit a login screen. Strip those links out when you render the message, or swap them for a route in your own app.
 
 ## Further reading
 
