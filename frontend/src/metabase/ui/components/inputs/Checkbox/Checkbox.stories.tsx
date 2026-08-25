@@ -262,7 +262,7 @@ const CARD_STATES: CardState[] = [
 ];
 
 const CardTemplate: StoryFn<CheckboxProps> = () => (
-  <StoryBoard title="Checkbox.Card">
+  <StoryBoard title="Checkbox.Card" background="background_page-primary">
     <Stack gap="1.5rem">
       <StoryJsx>{"<Checkbox.Card />"}</StoryJsx>
       {CARD_STATES.map((state) => (
