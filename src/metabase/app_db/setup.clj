@@ -207,7 +207,8 @@
           (when-not (encryption/default-encryption-enabled?)
             (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {})))
           (when-not (and (encryption/possibly-encrypted-string? raw)
-                         (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw)))
+                         (u/ignore-exceptions
+                           (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw))))
             (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {})))
           (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured"))
         (if (encryption/default-encryption-enabled?)

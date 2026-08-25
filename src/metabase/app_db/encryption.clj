@@ -67,14 +67,16 @@
       :unknown
 
       (and (encryption/possibly-encrypted-string? raw)
-           (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw)))
+           (try (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw))
+                (catch Throwable _ false)))
       :valid
 
       :else
       :invalid)))
 
 (defn- reencrypt-encrypted-column!
-  "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-string-columns`.
+  "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-string-columns`. Streams the
+  rows so a large column does not have to be held in memory all at once.
 
   When `clear-undecryptable?` is true, a value that cannot be decrypted with the current key is reset to an empty
   JSON object (with a warning) instead of aborting. Only pass true when the current key is known to be correct for
@@ -82,19 +84,36 @@
   key (see `clearable-when-undecryptable`): such values are equally unreadable at runtime, so clearing them loses
   nothing that was usable."
   [conn table column encrypt-str-fn clear-undecryptable?]
-  (doseq [{:keys [id value]} (t2/select [table :id [column :value]])]
-    (when (some? value)
-      (let [decrypted (encryption/maybe-decrypt-accepting-plaintext value)]
-        ;; a value that still looks encrypted after a lenient decrypt is one we couldn't decrypt with the current key
-        (if (encryption/possibly-encrypted-string? decrypted)
-          (if clear-undecryptable?
-            (do
-              (log/warnf "Can't decrypt %s.%s for id %s with MB_ENCRYPTION_SECRET_KEY even though the key is correct for this database; resetting the value to {}. It was likely written with a different key and has been unreadable at runtime."
-                         (name table) (name column) id)
-              (t2/update! :conn conn table {:id id} {column (encrypt-str-fn "{}")}))
-            (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
-                            {:table table, :id id, :column column})))
-          (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted)}))))))
+  (run! (fn [{:keys [id value]}]
+          (when (some? value)
+            (let [decrypted (try
+                              (encryption/maybe-decrypt-accepting-plaintext value)
+                              (catch Throwable e
+                                (if clear-undecryptable?
+                                  (do
+                                    (log/warnf "Can't decrypt %s.%s for id %s with MB_ENCRYPTION_SECRET_KEY even though the key is correct for this database; resetting the value to {}. It was likely written with a different key and has been unreadable at runtime."
+                                               (name table) (name column) id)
+                                    "{}")
+                                  (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
+                                                  {:table table, :id id, :column column} e)))))]
+              (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted)}))))
+        (t2/reducible-select [table :id [column :value]])))
+
+(defn- reencrypt-encrypted-bytes-column!
+  "Re-encrypt a `^bytes` `column` for every row in `table` using `encrypt-bytes-fn`. See `encrypted-bytes-columns`.
+  Streams the rows so a large column (e.g. `stored_result.result_data`) does not have to be held in memory all at
+  once. A value that cannot be decrypted with the current key aborts rather than being re-encrypted: re-encrypting it
+  would produce `encrypt_new(encrypt_old(x))`, permanently unrecoverable."
+  [conn table column encrypt-bytes-fn]
+  (run! (fn [{:keys [id value]}]
+          (when (some? value)
+            (let [decrypted (try
+                              (encryption/maybe-decrypt-bytes-accepting-plaintext (maybe-blob->bytes value))
+                              (catch Throwable e
+                                (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
+                                                {:table table, :id id, :column column} e))))]
+              (t2/update! :conn conn table {:id id} {column (encrypt-bytes-fn decrypted)}))))
+        (t2/reducible-select [table :id [column :value]])))
 
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
@@ -121,12 +140,8 @@
           (t2/update! :conn conn :setting
                       {:key key}
                       {:value (encrypt-str-fn value)})))
-      (doseq [[table column]     encrypted-bytes-columns
-              {:keys [id value]} (t2/select [table :id [column :value]])
-              :when              (some? value)]
-        (t2/update! :conn conn table
-                    {:id id}
-                    {column (encrypt-bytes-fn (encryption/maybe-decrypt-bytes-accepting-plaintext (maybe-blob->bytes value)))}))
+      (doseq [[table column] encrypted-bytes-columns]
+        (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
       (t2/delete! :conn conn :model/QueryCache))))
 
 (defn encrypt-db

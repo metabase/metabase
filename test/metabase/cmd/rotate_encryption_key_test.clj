@@ -135,7 +135,7 @@
                     (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))
                 (testing "but not with old key"
                   (encryption-test/with-secret-key k1
-                    (is (not= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :value :model/Setting :key "nocrypt")))
                     (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database :id 1)))
                     (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/Database :id 1)))
                     (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/User :id @user-id)))

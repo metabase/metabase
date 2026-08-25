@@ -138,15 +138,14 @@
   "Lenient deserialize of an encrypted-json column that tolerates plaintext at rest, for reading legacy rows during
   migrations. Mirrors [[metabase.models.interface/encrypted-json-in]]'s inverse from before that read became strict."
   [v]
-  (let [decrypted (encryption/maybe-decrypt-accepting-plaintext v)]
-    (try
-      (json/decode+kw decrypted)
-      (catch Throwable e
-        (if (or (encryption/possibly-encrypted-string? decrypted)
-                (encryption/possibly-encrypted-bytes? decrypted))
-          (log/errorf "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?: %s" (ex-message e))
-          (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
-        v))))
+  (try
+    (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext v))
+    (catch Throwable e
+      (if (or (encryption/possibly-encrypted-string? v)
+              (encryption/possibly-encrypted-bytes? v))
+        (log/errorf "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?: %s" (ex-message e))
+        (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
+      v)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
