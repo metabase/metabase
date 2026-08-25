@@ -3,7 +3,8 @@
     "frontend/src/metabase/router/",
     "frontend/src/metabase/ui/",
     "frontend/src/metabase/redux/",
-    "frontend/src/metabase/dayjs/"
+    "frontend/src/metabase/dayjs/",
+    "frontend/src/metabase/leaflet/"
   ],
   "packages": {
     "@mantine/core/styles.css": "global",
@@ -143,6 +144,7 @@
     "frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx": "global",
     "frontend/src/metabase/embedding/embedding-iframe-sdk/embed.ts": "entry",
     "frontend/src/metabase/hooks/use-page-title.ts": "self",
+    "frontend/src/metabase/leaflet/index.ts": "self",
     "frontend/src/metabase/metabot/components/MetabotChat/MetabotFeedbackModal.tsx": "self",
     "frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPromptWidget.tsx": "self",
     "frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx": "self",
@@ -208,7 +210,6 @@
     "frontend/src/metabase/value-formatting/geography.ts": "self",
     "frontend/src/metabase/visualizations/components/ClickActions/utils.ts": "self",
     "frontend/src/metabase/visualizations/components/EChartsRenderer/EChartsRenderer.tsx": "global",
-    "frontend/src/metabase/visualizations/components/LeafletChoropleth.tsx": "self",
     "frontend/src/metabase/visualizations/components/LeafletMap.tsx": "self",
     "frontend/src/metabase/visualizations/lib/open-url.ts": "self",
     "frontend/src/metabase/visualizations/visualizations/Map/Map.tsx": "self",
