@@ -231,38 +231,37 @@
   tolerating a value that is stored as plaintext. Attempts to check whether `v` is an encrypted String, in which case
   the decrypted String is returned, or whether `v` is encrypted bytes, in which case the decrypted bytes are returned.
   Prefer the strict [[maybe-decrypt]]; use this only for values that may legitimately be plaintext at rest (rows written
-  before encryption was enabled, key rotation, the encryption-check sentinel, secrets, and settings)."
-  {:arglists '([secret-key? s])}
-  [& args]
-  ;; secret-key as an argument so that tests can pass it directly without using `with-redefs` to run in parallel
-  (let [[secret-key v]     (if (and (bytes? (first args)) (string? (second args)))
-                             args
-                             (cons default-secret-key args))
-        log-error-fn (fn [kind ^Throwable e]
-                       (log/warnf "Cannot decrypt encrypted %s. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY? %s"
-                                  kind
-                                  (ex-message e)))]
-    (cond (nil? secret-key)
-          v
+  before encryption was enabled, key rotation, the encryption-check sentinel, secrets, and settings).
 
-          (possibly-encrypted-string? v)
-          (try
-            (decrypt secret-key v)
-            (catch Throwable e
-              ;; if we can't decrypt `v`, but it *is* probably encrypted, log a warning
-              (log-error-fn "String" e)
-              v))
+  `secret-key` is accepted as an argument so tests can pass it directly instead of using `with-redefs` to run in
+  parallel."
+  ([v] (maybe-decrypt-accepting-plaintext default-secret-key v))
+  ([secret-key v]
+   (let [log-error-fn (fn [kind ^Throwable e]
+                        (log/warnf "Cannot decrypt encrypted %s. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY? %s"
+                                   kind
+                                   (ex-message e)))]
+     (cond (nil? secret-key)
+           v
 
-          (possibly-encrypted-bytes? v)
-          (try
-            (decrypt-bytes secret-key v)
-            (catch Throwable e
-              ;; if we can't decrypt `v`, but it *is* probably encrypted, log a warning
-              (log-error-fn "bytes" e)
-              v))
+           (possibly-encrypted-string? v)
+           (try
+             (decrypt secret-key v)
+             (catch Throwable e
+               ;; if we can't decrypt `v`, but it *is* probably encrypted, log a warning
+               (log-error-fn "String" e)
+               v))
 
-          :else
-          v)))
+           (possibly-encrypted-bytes? v)
+           (try
+             (decrypt-bytes secret-key v)
+             (catch Throwable e
+               ;; if we can't decrypt `v`, but it *is* probably encrypted, log a warning
+               (log-error-fn "bytes" e)
+               v))
+
+           :else
+           v))))
 
 (defn maybe-decrypt
   "Strict decrypt of a String or byte-array `v`. When `MB_ENCRYPTION_SECRET_KEY` is set, `v` must be an encrypted value
