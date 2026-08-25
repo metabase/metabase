@@ -692,8 +692,8 @@ const configs = [
     },
   },
   {
-    // The router facade is the single seam allowed to import `react-router`
-    // directly; every other file goes through `metabase/router`.
+    // The router facade is the only module allowed to import `react-router` directly.
+    // Every other file goes through `metabase/router`.
     files: ["frontend/src/metabase/router/**/*"],
     rules: {
       "no-restricted-imports": "off",
