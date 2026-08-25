@@ -473,6 +473,14 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp_tz expr 6])
 
+(def ^:private snowflake-date-part-units
+  #{:millisecond :second :minute :hour :day :week :month :quarter :year})
+
+(defn- snowflake-date-part [unit]
+  (when-not (contains? snowflake-date-part-units unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
+  (name unit))
+
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_driver hsql-form amount unit]
   ;; return type is always the same as expr type, unless expr is a DATE and you're adding something not in a DATE e.g.
@@ -484,7 +492,7 @@
                       "timestamp_ntz"
                       db-type)]
     (-> [:dateadd
-         [:raw (name unit)]
+         [:raw (snowflake-date-part unit)]
          [:inline (int amount)]
          hsql-form]
         (h2x/with-database-type-info return-type))))
@@ -577,7 +585,7 @@
         y (if (h2x/is-of-type? y "timestamptz")
             [:convert_timezone (driver-api/results-timezone-id) y]
             y)]
-    [:datediff [:raw (name unit)] x y]))
+    [:datediff [:raw (snowflake-date-part unit)] x y]))
 
 (defn- time-zoned-extract
   "Same as `extract` but converts the arg to the results time zone if it's a timestamptz."
@@ -729,9 +737,10 @@
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           [:to_timestamp_ntz
-           [:convert_timezone target-timezone hsql-form]]
+           [:convert_timezone (sql.qp/->honeysql driver target-timezone) hsql-form]]
           [:to_timestamp_ntz
-           [:convert_timezone (or source-timezone (driver-api/results-timezone-id)) target-timezone hsql-form]])
+           [:convert_timezone (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))
+            (sql.qp/->honeysql driver target-timezone) hsql-form]])
         (h2x/with-database-type-info "timestampntz"))))
 
 (defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
@@ -813,7 +822,7 @@
                           ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
                           ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
                           ;; for more info.
-                          (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
+                          (vec (sql-jdbc.sync.interface/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
 
 (defn- fallback-fields-metadata
   "When JDBC DatabaseMetaData.getColumns() fails (e.g. due to unsupported column types like UUID),

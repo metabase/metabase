@@ -6,11 +6,12 @@ import { act, screen, waitFor } from "__support__/ui";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
 import { metabotActions } from "metabase/metabot/state";
-import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
+  createTestMetabotState,
   lastReqBody,
   mockAgentEndpoint,
   setup,
+  testConversationId,
   whoIsYourFavoriteResponse,
 } from "metabase/metabot/tests/utils";
 import * as Urls from "metabase/urls";
@@ -32,13 +33,15 @@ const makeCard = (id: string, sourceTable = 1): GeneratedCard => ({
   display: "table",
 });
 
+const conversationId = testConversationId("omnibot");
+
 const cardMessage = (id: string, sourceTable = 1) =>
   // `addAgentMessage` types its payload with a non-distributive `Omit` that
   // collapses the message union to common keys, so the branch-specific `part`
   // field fails excess-property checks (see the fuller note in the
   // "maps agent.text passthrough" test below).
   ({
-    agentId: "omnibot",
+    conversationId,
     type: "data_part",
     part: {
       type: "data-generated_entity",
@@ -232,7 +235,7 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u1",
             type: "text",
             message: "hi",
@@ -260,7 +263,7 @@ describe("useMetabot", () => {
           // reducer.ts). Keeping `as any` for now — applies to every dispatch
           // below.
           metabotActions.addAgentMessage({
-            agentId: "omnibot",
+            conversationId,
             type: "text",
             message: "ok",
           } as any),
@@ -304,7 +307,7 @@ describe("useMetabot", () => {
         store.dispatch(
           // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
-            agentId: "omnibot",
+            conversationId,
             type: "tool_call",
             name: "fn",
             status: "started",
@@ -313,7 +316,7 @@ describe("useMetabot", () => {
         store.dispatch(
           // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
-            agentId: "omnibot",
+            conversationId,
             type: "edit_suggestion",
             model: "transform",
             payload: {
@@ -332,7 +335,7 @@ describe("useMetabot", () => {
         store.dispatch(
           // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
-            agentId: "omnibot",
+            conversationId,
             type: "todo_list",
             payload: [
               {
@@ -347,7 +350,7 @@ describe("useMetabot", () => {
         store.dispatch(
           // Unjustified type cast. FIXME
           metabotActions.addAgentMessage({
-            agentId: "omnibot",
+            conversationId,
             type: "text",
             message: "ok",
           } as any),
@@ -370,7 +373,7 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u1",
             type: "text",
             message: "first",
@@ -384,7 +387,7 @@ describe("useMetabot", () => {
         );
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u2",
             type: "text",
             message: "second",
@@ -439,27 +442,25 @@ describe("useMetabot", () => {
       // observe whether submitMessage would flip it back on.
       const { store } = setup({
         ui: <TestSubmit />,
-        metabotInitialState: getMetabotInitialState(),
+        metabotInitialState: createTestMetabotState(),
       });
 
       expect(
-        store.getState().metabot?.conversations?.omnibot?.messages.length,
+        store.getState().metabot?.conversations?.[conversationId]?.messages
+          .length,
       ).toBe(0);
-      expect(store.getState().metabot?.conversations?.omnibot?.visible).toBe(
-        false,
-      );
+      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
 
       await userEvent.click(screen.getByTestId("submit-btn"));
 
       await waitFor(() => {
         expect(
-          store.getState().metabot?.conversations?.omnibot?.messages.length,
+          store.getState().metabot?.conversations?.[conversationId]?.messages
+            .length,
         ).toBeGreaterThan(0);
       });
 
-      expect(store.getState().metabot?.conversations?.omnibot?.visible).toBe(
-        false,
-      );
+      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
     });
 
     it("resolves to undefined even though agent.submitInput returns an action", async () => {
@@ -526,7 +527,7 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u1",
             type: "text",
             message: "first",
@@ -547,7 +548,7 @@ describe("useMetabot", () => {
       act(() => {
         store.dispatch(
           metabotActions.addUserMessage({
-            agentId: "omnibot",
+            conversationId,
             id: "u2",
             type: "text",
             message: "second",

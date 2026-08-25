@@ -51,13 +51,14 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
 
-import { trackStackedSeriesEnabled } from "../../analytics";
 import type {
   ChartSettingEnumToggleProps,
   ChartSettingSegmentedControlProps,
 } from "../../types/widget-props";
 import { dimensionIsNumeric } from "../numeric";
 import { getMaxDimensionsSupported, getMaxMetricsSupported } from "../registry";
+
+import { trackStackedSeriesEnabled } from "./analytics";
 
 export const getSeriesDisplays = (
   transformedSeries: Series,
@@ -555,6 +556,62 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     }),
     getDefault: (_series, settings) => getDefaultShowStackValues(settings),
     readDependencies: ["graph.show_values", "stackable.stack_type"],
+  },
+  "graph.stack_value_format": {
+    getSection: () => t`Display`,
+    get title() {
+      return t`Stack value format`;
+    },
+    widget: "radio",
+    getHidden: (series, vizSettings) => {
+      const hasBars = getSeriesDisplays(series, vizSettings).some(
+        (display) => display === "bar",
+      );
+
+      if (!hasBars || vizSettings["graph.show_values"] !== true) {
+        return true;
+      }
+
+      const stackType = vizSettings["stackable.stack_type"];
+
+      // For normalized stacks ("Stack - 100%"), always show the setting
+      if (stackType === "normalized") {
+        return false;
+      }
+
+      // For regular stacked charts, only show when segment values are visible
+      if (stackType === "stacked") {
+        return !(
+          vizSettings["graph.show_stack_values"] === "series" ||
+          vizSettings["graph.show_stack_values"] === "all"
+        );
+      }
+
+      // Hide for non-stacked charts
+      return true;
+    },
+    getProps: () => ({
+      options: [
+        {
+          get name() {
+            return t`Values`;
+          },
+          value: "value",
+        },
+        {
+          get name() {
+            return t`Percentages`;
+          },
+          value: "percentage",
+        },
+      ],
+    }),
+    getDefault: () => "value",
+    readDependencies: [
+      "graph.show_values",
+      "stackable.stack_type",
+      "graph.show_stack_values",
+    ],
   },
   "graph.label_value_formatting": {
     getSection: () => t`Display`,

@@ -12,7 +12,10 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (driver/register! ::tz-driver, :abstract? true)
 
@@ -242,10 +245,10 @@
           "pre-wrapped string coerced to the report timezone for a DateTimeWithZoneID field"))))
 
 (defn- year-literal-filter-query
-  "Build a pMBQL query whose `:=` filter compares an *unbucketed* `checkins.date` against a string-valued
+  "Build a MBQL 5 query whose `:=` filter compares an *unbucketed* `checkins.date` against a string-valued
   `[:absolute-datetime {} `s` `unit`]`. Year / year-month string literals can't be expressed through the
   legacy `mbql-query` macro, so we build a valid query and swap the literal into the already-wrapped
-  pMBQL clause."
+  MBQL 5 clause."
   [s unit]
   (-> (lib/query
        meta/metadata-provider

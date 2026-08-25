@@ -23,7 +23,9 @@ const SHARED_UTILS_LEVELS = [
   ["shared/redux"],
   // U3 — the plugin registry, and instance settings over the api and store.
   ["shared/plugins", "shared/settings"],
-  // U4 — app services over the store and registry.
+  // U4 — the current user, composed over the plugin registry for application permissions.
+  ["shared/current-user"],
+  // U5 — app services over the store, registry and current user.
   [
     "shared/selectors",
     "shared/content-translation",
@@ -32,7 +34,7 @@ const SHARED_UTILS_LEVELS = [
     "shared/archive",
     "shared/hooks",
   ],
-  // U5 — composition over the levels below.
+  // U6 — composition over the levels below.
   // The store factory composes reducers, plugin middlewares, and the router.
   [
     "shared/hoc",
@@ -49,18 +51,22 @@ const SHARED_PLATFORM_LEVELS = [
   ["shared/data-grid", "shared/actions"],
   // P1 — independent peers: chart rendering and database metadata/forms.
   ["shared/visualizations", "shared/databases"],
-  // P2 — query editing and subscription editing compose visualizations.
-  // Querying and pulse have no edges between them.
-  ["shared/querying", "shared/pulse"],
+  // P2 — independent peers with no edges between them.
+  // Querying and detail-view compose visualizations. Metadata consumes detail-view from P3.
+  // detail-view keeps its enforceSharedTiers flag for one upward edge,
+  // DetailViewPage.tsx importing the nav layout constants (#79119 moves them).
+  ["shared/querying", "shared/pulse", "shared/detail-view"],
   // P3 — building blocks over querying, mutually independent.
   ["shared/metadata", "shared/parameters", "shared/questions"],
+  // P4 — the metabot agent, which transforms and nav compose.
+  // metabot keeps its enforceSharedTiers flag for its remaining upward edges:
+  // Metabot.tsx imports MainNavbar.styled, and querying imports metabot in three places.
+  ["shared/metabot"],
 ];
 
 const SHARED_DOMAIN = [
   "shared/comments",
   "shared/custom-viz",
-  "shared/detail-view",
-  "shared/metabot",
   "shared/metrics-ui",
   "shared/nav",
   "shared/notifications",

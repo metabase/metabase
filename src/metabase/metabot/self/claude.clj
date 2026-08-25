@@ -1,8 +1,6 @@
 (ns metabase.metabot.self.claude
   (:require
    [clojure.string :as str]
-   [malli.json-schema :as mjs]
-   [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
@@ -279,16 +277,11 @@
 (defn- tool->claude
   "Convert a tool definition map to Claude API format.
   Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params                     (schema/filter-schema-by-features params)
-        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
-                                     ;; strip that stuff we're appending in mu/defn
-                                     (second (str/split doc #"\n\n  " 2))
-                                     doc)]
-    {:name         (or tool-name "unknown")
-     :description  doc
-     :input_schema (mjs/transform params {:additionalProperties false})}))
+  [tool]
+  (let [{:keys [name description parameters]} (schema/tool-function tool)]
+    {:name         (or name "unknown")
+     :description  description
+     :input_schema parameters}))
 
 (defn- add-tools-cache-breakpoint
   "Attach an ephemeral cache_control marker to the last tool in `tools`.
@@ -346,17 +339,17 @@
 (def ^:private supported-models
   "Anthropic chat models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the account's `/v1/models` catalog."
-  {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000}
-   "claude-opus-5"              {:display-name "Claude Opus 5"     :max-tokens 128000}
-   "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :max-tokens 128000}
-   "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000}
-   "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :max-tokens 128000}
-   "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :max-tokens  64000}
-   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :max-tokens  32000}
-   "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000}
-   "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000}
-   "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000}
-   "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :max-tokens  64000}})
+  {"claude-fable-5"             {:display-name "Claude Fable 5"    :max-tokens 128000 :context-window 1000000}
+   "claude-opus-5"              {:display-name "Claude Opus 5"     :max-tokens 128000 :context-window 1000000}
+   "claude-opus-4-8"            {:display-name "Claude Opus 4.8"   :max-tokens 128000 :context-window 1000000}
+   "claude-opus-4-7"            {:display-name "Claude Opus 4.7"   :max-tokens 128000 :context-window 1000000}
+   "claude-opus-4-6"            {:display-name "Claude Opus 4.6"   :max-tokens 128000 :context-window 1000000}
+   "claude-opus-4-5-20251101"   {:display-name "Claude Opus 4.5"   :max-tokens  64000 :context-window  200000}
+   "claude-opus-4-1-20250805"   {:display-name "Claude Opus 4.1"   :max-tokens  32000 :context-window  200000}
+   "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :max-tokens 128000 :context-window 1000000}
+   "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :max-tokens 128000 :context-window 1000000}
+   "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :max-tokens  64000 :context-window  200000}
+   "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :max-tokens  64000 :context-window  200000}})
 
 (def ^:private default-max-tokens
   "`max_tokens` for an unresolved model — low enough to be safe on any of them."
@@ -369,13 +362,13 @@
 
 (defn- list-all-models
   "Fetch the full Anthropic model catalog (`GET /v1/models`).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
+  and throws when they are missing. Also supports `:ai-proxy?`."
   [{:keys [credentials ai-proxy?]}]
   (try
     (let [auth (core/resolve-auth "anthropic" "Anthropic"
-                                  (when-let [k (or (not-empty (:api-key credentials))
-                                                   (not-empty (llm/llm-anthropic-api-key)))]
-                                    {:url     (llm/llm-anthropic-api-base-url)
+                                  (when-let [k (not-empty (:api-key credentials))]
+                                    {:url     (:base-url credentials)
                                      :headers {"x-api-key" k}})
                                   ai-proxy?)
           res  (core/request auth {:method  :get
@@ -387,7 +380,8 @@
 
 (defn list-models
   "List the Anthropic chat models supported by this adapter (see [[supported-models]]).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
+  and throws when they are missing. Also supports `:ai-proxy?`."
   ([] (list-models {}))
   ([opts]
    {:models (->> (list-all-models opts)
@@ -405,6 +399,11 @@
   "The `max_tokens` ceiling for `model`, or nil when it isn't one we know."
   [model]
   (get-in supported-models [(strip-vendor-prefix model) :max-tokens]))
+
+(defn context-window-tokens
+  "The input context window for `model`, or nil when it isn't one we know."
+  [model]
+  (get-in supported-models [(strip-vendor-prefix model) :context-window]))
 
 (defn- claude-model-version
   "`[family major minor]` for a Claude opus/sonnet model id, or nil."
@@ -444,13 +443,18 @@
   (some? (model-thinking-config model)))
 
 (mu/defn claude-request-body
-  "Build the Anthropic Messages API request body for an LLM request."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
+  "Build the Anthropic Messages API request body for an LLM request.
+
+  A caller-supplied `:reasoning-config` is this dialect's `thinking` block and wins outright: an
+  adapter re-hosting a non-Claude model here knows its own provider's thinking shape and
+  restrictions, which the model-id-derived config and the suppression rules below cannot describe."
+  [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning? reasoning-config]
     :or   {model "claude-haiku-4-5" reasoning? true}} :- core/LLMRequestOpts]
   (let [;; forced tool choice (structured output, or "required") is incompatible
         ;; with thinking — suppress it there.
-        thinking  (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
-                    (model-thinking-config model))
+        thinking  (or reasoning-config
+                      (when-not (or (not reasoning?) schema (= "required" (some-> tool_choice name)))
+                        (model-thinking-config model)))
         input     (cond->> input
                     (nil? thinking) (remove #(= :reasoning (:type %))))
         messages  (parts->claude-messages input)
@@ -483,8 +487,10 @@
       (assoc :temperature temperature))))
 
 (mu/defn claude-raw
-  "Perform a streaming request to Claude API."
-  [{:keys [model input tools ai-proxy?] :as opts
+  "Perform a streaming request to Claude API.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing."
+  [{:keys [model input tools credentials ai-proxy?] :as opts
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [req (claude-request-body opts)]
     (with-span :info {:name       :metabot.claude/request
@@ -492,10 +498,10 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [api-key  (not-empty (llm/llm-anthropic-api-key))
+        (let [api-key  (not-empty (:api-key credentials))
               auth     (core/resolve-auth "anthropic" "Anthropic"
                                           (when api-key
-                                            {:url     (llm/llm-anthropic-api-base-url)
+                                            {:url     (:base-url credentials)
                                              :headers {"x-api-key" api-key}})
                                           ai-proxy?)
               response (core/request auth

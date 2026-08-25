@@ -118,6 +118,7 @@ describe("EE", () => {
           });
 
           H.popover().findByRole("option", { name: "daily" }).click();
+          H.selectScheduleTime();
           cy.findByRole("button", { name: "Done" }).click();
 
           dashboardSidebar().within(() => {

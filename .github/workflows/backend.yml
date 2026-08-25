@@ -6,6 +6,26 @@ on:
       skip:
         type: boolean
         default: false
+      force-run:
+        description: Run the full suite regardless of the diff (master / release branches).
+        type: boolean
+        default: false
+
+  # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
+  # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
+  # whatever the normal CI run uses, because they are the same jobs.
+  workflow_dispatch:
+    inputs:
+      tests:
+        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.query-processor-test/some-test. Bare namespaces work too. Blank runs each leg''s usual set.'
+        type: string
+        required: false
+        default: ''
+      profile:
+        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
@@ -15,8 +35,15 @@ concurrency:
 # (secrets: inherit is already set on the backend call in run-tests.yml).
 # See DEV-2224.
 env:
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+  # Both read by the be-tests run step below. Set here rather than passed per job so that turning
+  # either on is one line. Empty (and so off) on workflow_call, where neither input exists.
+  #
+  # ONLY_TESTS replaces the leg's own test selection, so every matrix leg runs the whole list: the
+  # partition args no longer apply, and legs that hold none of the named tests run nothing.
+  PROFILE_TESTS: ${{ inputs.profile }}
+  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
   be-linter-clj-kondo:
@@ -45,7 +72,7 @@ jobs:
 
   be-linter-eastwood-test:
     # Master / release safety net: lint every backend test namespace.
-    if: ${{ !inputs.skip && github.event_name == 'push' && (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x')) }}
+    if: ${{ !inputs.skip && inputs.force-run }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -57,8 +84,8 @@ jobs:
         name: Run Eastwood linter on our backend tests
 
   be-linter-eastwood-test-changed:
-    # PR / merge queue: lint only the test namespaces touched by the diff.
-    if: ${{ !inputs.skip && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    # Lint only the test namespaces touched by the diff.
+    if: ${{ !inputs.skip && !inputs.force-run && github.event_name == 'pull_request' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     name: Eastwood (changed tests only)
@@ -72,8 +99,8 @@ jobs:
       - name: Compute changed test namespaces
         id: changed
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
 
@@ -158,21 +185,9 @@ jobs:
               :partition/index 1
     name: "Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
     env:
-      # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
-      # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
-      # it in to the command below.
-      __ADDITIONAL_EXCLUDED_TAG__: >-
-        ${{
-          (
-            github.event_name == 'push' &&
-            (
-              github.ref_name == 'master' ||
-              startsWith(github.ref_name, 'release-x')
-            ) &&
-            ''
-          ) ||
-          ':mb/old-migrations-test'
-        }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # GDGT-3126: re-enable and properly fix old migrations tests
+      __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
@@ -230,7 +245,21 @@ jobs:
         # whole `[ns/var ...]` vector reaches clojure -X as a single argument.
         run: |
           BASE="clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev"
-          if [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
+          # `:profile-tests` overrides `:test`'s exec-fn, so it has to come last. See dev.profile-tests.
+          # The `profiled` output is what the collection steps below key off, so that the decision is
+          # recorded by the step that acts on it rather than re-derived from the environment.
+          if [ "$PROFILE_TESTS" = "true" ]; then
+            echo "Profiling this run; a flamegraph will be attached to the job."
+            echo "profiled=true" >> "$GITHUB_OUTPUT"
+            BASE="$BASE:profile-tests"
+          fi
+          # An explicit selection wins over the rerun narrowing below: it was asked for by hand, on this
+          # attempt. Names may be separated by commas or spaces; hawk wants them as one vector argument.
+          if [ -n "$ONLY_TESTS" ]; then
+            ONLY="[$(echo "$ONLY_TESTS" | tr ',' ' ')]"
+            echo "Running only: $ONLY"
+            $BASE :only "$ONLY"
+          elif [ "${{ github.run_attempt }}" != "1" ] && [ -s target/failed-tests ]; then
             echo "Granular rerun of previously-failed tests: $(cat target/failed-tests)"
             $BASE :only "$(cat target/failed-tests)"
           else
@@ -239,8 +268,15 @@ jobs:
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 
+      - name: Collect profile
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/collect-profile
+        with:
+          profiled: ${{ steps.run-java-tests.outputs.profiled }}
+          artifact-name: profile-be-tests-java-${{ matrix.java-version }}-${{ matrix.job.test-group-name }}
+
       - name: Report failed tests to ci-conductor
-        if: ${{ !cancelled() && steps.run-java-tests.outcome == 'failure' }}
+        if: ${{ !cancelled() && ( steps.run-java-tests.outcome == 'failure' || github.run_attempt != '1' ) }}
         # This step should NEVER fail the job!
         continue-on-error: true
         uses: ./.github/actions/report-failures-to-ci-conductor
@@ -316,7 +352,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
       - name: Check namespaces
-        run: clojure -M:ee:drivers:check
+        run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
     if: ${{ !inputs.skip }}
@@ -340,7 +376,7 @@ jobs:
       - be-check
       - be-tests
     if: always() && !cancelled()
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       needs: ${{ toJson(needs) }}

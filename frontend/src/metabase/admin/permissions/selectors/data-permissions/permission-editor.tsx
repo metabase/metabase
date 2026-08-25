@@ -8,7 +8,6 @@ import {
   getSpecialGroupType,
   isDefaultGroup,
 } from "metabase/common/utils/groups";
-import { getPlan } from "metabase/common/utils/plan";
 import {
   PLUGIN_AUDIT,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -16,7 +15,7 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { getSetting, getTokenFeature } from "metabase/settings";
+import { getPlan, getSetting, getTokenFeature } from "metabase/settings";
 import { getResponseErrorMessage } from "metabase/utils/errors";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type {

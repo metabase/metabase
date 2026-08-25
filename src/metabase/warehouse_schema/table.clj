@@ -242,13 +242,13 @@
                                         :c.source_card_id :c.created_at :c.entity_id :c.card_schema
                                         [:r.status :moderated_status]]
                             :from      [[:report_card :c]]
-                            :left-join [[{:select   [:moderated_item_id :status]
-                                          :from     [:moderation_review]
-                                          :where    [:and
-                                                     [:= :moderated_item_type "card"]
-                                                     [:= :most_recent true]]
-                                          :order-by [[:id :desc]]
-                                          :limit    1} :r]
+                            :left-join [[^:allow-subquery {:select   [:moderated_item_id :status]
+                                                           :from     [:moderation_review]
+                                                           :where    [:and
+                                                                      [:= :moderated_item_type "card"]
+                                                                      [:= :most_recent true]]
+                                                           :order-by [[:id :desc]]
+                                                           :limit    1} :r]
                                         [:= :r.moderated_item_id :c.id]]
                             :where      [:in :c.id ids]})
           dbs (if (seq cards)

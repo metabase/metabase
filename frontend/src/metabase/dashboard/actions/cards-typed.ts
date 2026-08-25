@@ -17,7 +17,7 @@ import {
   getPositionForNewDashCard,
 } from "metabase/utils/dashboard_grid";
 import { checkNotNull } from "metabase/utils/types";
-import { getDefaultSize } from "metabase/visualizations";
+import { getRegisteredDefaultSize } from "metabase/visualizations";
 import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
 import type {
   Card,
@@ -93,7 +93,7 @@ export const addDashCardToDashboard =
   (dispatch: Dispatch, getState: GetState) => {
     const display = dashcardOverrides?.card?.display;
     const dashCardSize = display
-      ? getDefaultSize(display) || DEFAULT_CARD_SIZE
+      ? getRegisteredDefaultSize(display) || DEFAULT_CARD_SIZE
       : DEFAULT_CARD_SIZE;
 
     const dashboardState = getState().dashboard;
