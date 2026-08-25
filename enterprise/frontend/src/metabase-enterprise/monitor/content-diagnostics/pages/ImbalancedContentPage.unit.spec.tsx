@@ -150,6 +150,10 @@ async function waitForListToLoad() {
   expect(await screen.findByRole("treegrid")).toBeInTheDocument();
 }
 
+function queryFilterIndicator() {
+  return document.querySelector('[class*="Indicator-indicator"]');
+}
+
 describe("ImbalancedContentPage", () => {
   it("renders findings with their content counts in the table", async () => {
     setup({ findings: FINDINGS });
@@ -337,5 +341,75 @@ describe("ImbalancedContentPage", () => {
     expect(getLastRequestUrl().searchParams.get("sort-column")).toBe(
       "content-count",
     );
+  });
+  it("marks the filter button once non-default filters are applied", async () => {
+    setup({ findings: FINDINGS });
+    await waitForListToLoad();
+
+    expect(queryFilterIndicator()).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+    const popover = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(popover).getByRole("checkbox", { name: "Models" }),
+    );
+
+    await waitFor(() => {
+      expect(queryFilterIndicator()).toBeInTheDocument();
+    });
+  });
+
+  it("keeps the active filters when moving to the next page", async () => {
+    setup({
+      findings: FINDINGS,
+      total: 50,
+      urlParams: { entityTypes: ["model"] },
+    });
+    await waitForListToLoad();
+
+    await userEvent.click(screen.getByLabelText("Next page"));
+
+    await waitFor(() => {
+      expect(getLastRequestUrl().searchParams.get("offset")).toBe("25");
+    });
+    expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
+      "model",
+    ]);
+  });
+
+  it("resets to all entity types when the last selected type is deselected", async () => {
+    const { router } = setup({
+      findings: FINDINGS,
+      urlParams: { entityTypes: ["model"] },
+    });
+    await waitForListToLoad();
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+    const popover = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(popover).getByRole("checkbox", { name: "Models" }),
+    );
+
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({});
+    });
+    const allEntityTypes = [
+      "Questions",
+      "Models",
+      "Metrics",
+      "Dashboards",
+      "Documents",
+      "Transforms",
+      "Collections",
+    ];
+    allEntityTypes.forEach((label) => {
+      expect(
+        within(popover).getByRole("checkbox", { name: label }),
+      ).toBeChecked();
+    });
   });
 });

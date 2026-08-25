@@ -129,6 +129,10 @@ async function waitForListToLoad() {
   expect(await screen.findByRole("treegrid")).toBeInTheDocument();
 }
 
+function queryFilterIndicator() {
+  return document.querySelector('[class*="Indicator-indicator"]');
+}
+
 describe("SlowContentPage", () => {
   it("renders slow findings with humanized durations in the table", async () => {
     setup({ findings: FINDINGS });
@@ -288,9 +292,19 @@ describe("SlowContentPage", () => {
     await waitFor(() => {
       expect(getUrlQuery(router)).toEqual({});
     });
-    expect(
-      within(popover).getByRole("checkbox", { name: "Dashboards" }),
-    ).toBeChecked();
+    const allEntityTypes = [
+      "Questions",
+      "Models",
+      "Metrics",
+      "Dashboards",
+      "Documents",
+      "Transforms",
+    ];
+    allEntityTypes.forEach((label) => {
+      expect(
+        within(popover).getByRole("checkbox", { name: label }),
+      ).toBeChecked();
+    });
   });
 
   it("shows the error state and suppresses the table when the request fails", async () => {
@@ -331,5 +345,41 @@ describe("SlowContentPage", () => {
       getLastRequestUrl().searchParams.get("include-personal-collections"),
     ).toBe("true");
     expect(getUrlQuery(router)).toEqual({});
+  });
+  it("marks the filter button once non-default filters are applied", async () => {
+    setup({ findings: FINDINGS });
+    await waitForListToLoad();
+
+    expect(queryFilterIndicator()).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByTestId("content-diagnostics-filter-button"),
+    );
+    const popover = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(popover).getByRole("checkbox", { name: "Models" }),
+    );
+
+    await waitFor(() => {
+      expect(queryFilterIndicator()).toBeInTheDocument();
+    });
+  });
+
+  it("keeps the active filters when moving to the next page", async () => {
+    setup({
+      findings: FINDINGS,
+      total: 50,
+      urlParams: { entityTypes: ["model"] },
+    });
+    await waitForListToLoad();
+
+    await userEvent.click(screen.getByLabelText("Next page"));
+
+    await waitFor(() => {
+      expect(getLastRequestUrl().searchParams.get("offset")).toBe("25");
+    });
+    expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
+      "model",
+    ]);
   });
 });
