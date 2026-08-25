@@ -8,10 +8,9 @@ import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProv
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import {
-  useMetabotAgent,
+  useMetabotConversation,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import type { MetabotAgentId } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   ActionIcon,
@@ -41,12 +40,12 @@ const getTitleText = () => {
 };
 
 interface MetabotGreetingProps {
-  agentId: MetabotAgentId;
+  conversationId: string;
   suggestionModels: SuggestionModel[];
 }
 
 export const MetabotGreeting = ({
-  agentId,
+  conversationId,
   suggestionModels,
 }: MetabotGreetingProps) => {
   const [title] = useState(getTitleText);
@@ -57,7 +56,7 @@ export const MetabotGreeting = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const metabot = useMetabotAgent(agentId);
+  const metabot = useMetabotConversation(conversationId);
   const { canUseNlq, hasNlqAccess } = useUserMetabotPermissions();
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery(

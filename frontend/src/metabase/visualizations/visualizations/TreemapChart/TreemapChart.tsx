@@ -17,7 +17,7 @@ import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/
 import { isOverview } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import {
-  getChartPadding,
+  getTreemapContainerPadding,
   groupHeader,
 } from "metabase/visualizations/echarts/graph/treemap/style";
 import {
@@ -274,7 +274,7 @@ const TreemapChartComponent = ({
       )}
       <Box
         className={S.root}
-        p={getChartPadding(isDashboard)}
+        p={getTreemapContainerPadding(isDashboard)}
         w="100%"
         style={{ flex: 1, minHeight: 0 }}
       >

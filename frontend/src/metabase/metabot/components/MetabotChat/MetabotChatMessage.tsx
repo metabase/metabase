@@ -276,6 +276,7 @@ export const AgentMessage = ({
         .with({ type: "turn_incomplete" }, (m) => (
           <IncompleteTurnAlert
             finishReason={m.finishReason}
+            contextWindowFull={m.contextWindowFull}
             onContinue={onContinue}
           />
         ))
@@ -511,16 +512,23 @@ const getIncompleteTurnConfig = (
 
 const IncompleteTurnAlert = ({
   finishReason,
+  contextWindowFull,
   onContinue,
 }: {
   finishReason: MetabotAgentTurnIncompleteMessage["finishReason"];
+  contextWindowFull?: boolean;
   onContinue?: (resumePrompt: string) => void;
 }) => {
   const metabotName = useSetting("metabot-name");
-  const { message, resumePrompt } = getIncompleteTurnConfig(
-    finishReason,
-    metabotName,
-  );
+  // "length" is overloaded, occurs when context window has been met (unrecoverable)
+  // or when the max_tokens has been met (recoverable)
+  const { message, resumePrompt } =
+    finishReason === "length" && contextWindowFull
+      ? {
+          message: t`This conversation has reached its maximum length and can't continue. Please start a new chat.`,
+          resumePrompt: undefined,
+        }
+      : getIncompleteTurnConfig(finishReason, metabotName);
   return (
     <AgentTurnAlert
       variant="info"

@@ -17,7 +17,6 @@ import {
   CANCEL_QUESTION_CHANGES,
   CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   CLEAR_QUERY_RESULT,
-  CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
   CLOSE_CHART_SETTINGS,
   CLOSE_CHART_TYPE,
   CLOSE_QB,
@@ -32,7 +31,6 @@ import {
   INITIALIZE_QB,
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ON_CLOSE_SUMMARY,
-  OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
   OPEN_CHART_SETTINGS,
   OPEN_CHART_TYPE,
   OPEN_DATA_REFERENCE_AT_QUESTION,
@@ -255,15 +253,6 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
         isShowingSummarySidebar: true,
       }))
       .addCase(ON_CLOSE_SUMMARY, (state) => ({
-        ...state,
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      }))
-      .addCase(OPEN_AI_QUESTION_ANALYSIS_SIDEBAR, (state) => ({
-        ...state,
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-        isShowingAIQuestionAnalysisSidebar: true,
-      }))
-      .addCase(CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR, (state) => ({
         ...state,
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       }))

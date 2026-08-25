@@ -28,16 +28,6 @@ import {
 
 registerVisualizations();
 
-const MOCK_PNG = "data:image/png;base64,test-base64";
-const MOCK_SVG = "data:image/svg+xml;base64,test-base64";
-
-jest.mock("metabase/visualizations/lib/image-exports", () => ({
-  getChartSelector: () => "#chart",
-  getChartImagePngDataUri: () => MOCK_PNG,
-  getChartSvgSelector: () => "#chart svg",
-  getVisualizationSvgDataUri: () => MOCK_SVG,
-}));
-
 const getUserIsViewing = (
   result: Awaited<ReturnType<typeof registerQueryBuilderMetabotContextFn>>,
 ) => {
@@ -140,18 +130,6 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     expect(result).toEqual({});
-  });
-
-  it("should generate an image for the current question", async () => {
-    const card = createMockCard({ display: "line" });
-    const data = createMockData({ question: new Question(card) });
-    const result = await registerQueryBuilderMetabotContextFn(data);
-
-    let chartConfig = getChartConfig(result);
-    expect(chartConfig).not.toBe(undefined);
-
-    chartConfig = chartConfig!;
-    expect(chartConfig.image_base_64).toEqual(MOCK_SVG);
   });
 
   it("should produce valid results for line charts", async () => {
@@ -349,7 +327,6 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     const chartConfig = getChartConfig(result)!;
-    expect(chartConfig.image_base_64).toEqual(MOCK_PNG);
     expect(chartConfig.series).toEqual({
       "Count by name": {
         chart_type: "funnel",

@@ -12,9 +12,9 @@ import _ from "underscore";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import CS from "metabase/css/core/index.css";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { Box, Checkbox, Group, Icon, Switch, Text, Tooltip } from "metabase/ui";
 import type {
+  DraftDashboardSubscription,
   ExportFormat,
   SubscriptionSupportingCard,
 } from "metabase-types/api";

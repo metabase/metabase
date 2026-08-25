@@ -16,9 +16,7 @@ import type {
 } from "metabase/explorations/hooks";
 import { isMetricBlock } from "metabase/explorations/hooks";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
   Button,
@@ -27,7 +25,7 @@ import {
   Icon,
   Menu,
   Stack,
-  Text,
+  Switch,
   Title,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -124,15 +122,19 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
   } = selection;
   const navigate = useNavigate();
   const [sendToast] = useToast();
-  const applicationName = useSelector(getApplicationName);
 
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [useContextualInterestingness, setUseContextualInterestingness] =
+    useState(true);
 
   const [createExploration, { isLoading: isStarting }] =
     useCreateExplorationMutation();
 
   const { messages, isDoingScience } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
+  const hasUserPrompt = messages.some(
+    (message) => message.role === "user" && message.message.trim().length > 0,
+  );
   const canStart = blocks.some(isNonEmptyBlock);
 
   const isManualDataPickingDisabled = isDoingScience;
@@ -170,10 +172,13 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
   );
 
   const handleStart = useCallback(async () => {
-    const prompt = messages
-      .filter((message) => message.role === "user")
-      .map((message) => message.message)
-      .join("\n---\n");
+    const prompt =
+      hasUserPrompt && useContextualInterestingness
+        ? messages
+            .filter((message) => message.role === "user")
+            .map((message) => message.message)
+            .join("\n---\n")
+        : "";
     const request = buildCreateExplorationRequest(
       name,
       prompt,
@@ -196,6 +201,8 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
   }, [
     createExploration,
     navigate,
+    hasUserPrompt,
+    useContextualInterestingness,
     messages,
     blocks,
     timelines,
@@ -325,15 +332,17 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       </Box>
 
       <Group justify="space-between" align="center" wrap="nowrap">
-        <Text
-          className={CS.alignSelfEnd}
-          c="text-secondary"
+        <Switch
+          style={!hasUserPrompt ? { visibility: "hidden" } : undefined}
+          checked={useContextualInterestingness}
+          onChange={(event) =>
+            setUseContextualInterestingness(event.currentTarget.checked)
+          }
           size="sm"
-          lh="1rem"
-          mb="0.5rem"
-        >{t`${applicationName} will automate running combinations of these pairings and then do a basic analysis of the results.`}</Text>
+          label={t`Use AI to analyze and order results`}
+        />
         <Button
-          className={cx(!canStart && CS.hidden)} // hide with css to make sure caption text is aligned vertically
+          className={cx(!canStart && CS.hidden)}
           size="sm"
           flex="none"
           variant="filled"

@@ -4,6 +4,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -231,6 +232,7 @@
   (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
     (case type
       "anthropic" (claude/reasoning-model? model)
+      "deepseek"  (deepseek/reasoning-model? model)
       "openai"    (openai/reasoning-model? model)
       "vllm"      (vllm/reasoning-connection? credentials)
       false)))

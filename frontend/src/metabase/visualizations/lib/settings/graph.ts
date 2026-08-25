@@ -51,13 +51,14 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
 
-import { trackStackedSeriesEnabled } from "../../analytics";
 import type {
   ChartSettingEnumToggleProps,
   ChartSettingSegmentedControlProps,
 } from "../../types/widget-props";
 import { dimensionIsNumeric } from "../numeric";
 import { getMaxDimensionsSupported, getMaxMetricsSupported } from "../registry";
+
+import { trackStackedSeriesEnabled } from "./analytics";
 
 export const getSeriesDisplays = (
   transformedSeries: Series,
