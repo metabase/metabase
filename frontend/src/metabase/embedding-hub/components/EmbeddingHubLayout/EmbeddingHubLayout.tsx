@@ -80,6 +80,11 @@ export function EmbeddingHubLayout() {
   ];
 
   const currentTab = tabs.find((tab) => isTabSelected(tab, pathname));
+  // The theme editor needs the whole area for its side-by-side editor/preview
+  // panels, unlike the rest of the Appearance tab, which caps at 800px.
+  const isThemeEditor = pathname.startsWith(
+    `${Urls.embeddingHubAppearance()}/theme/`,
+  );
 
   const upperNav = (
     <Stack component="nav" gap="0.75rem" aria-label={t`Embedding hub`}>
@@ -119,7 +124,9 @@ export function EmbeddingHubLayout() {
       upperNav={upperNav}
       lowerNav={<NewEmbedNavButton showLabel={isNavbarOpened} />}
     >
-      <EmbeddingHubContent fullWidth={currentTab?.fullWidth ?? false}>
+      <EmbeddingHubContent
+        fullWidth={(currentTab?.fullWidth ?? false) || isThemeEditor}
+      >
         <Outlet />
       </EmbeddingHubContent>
     </AreaLayout>

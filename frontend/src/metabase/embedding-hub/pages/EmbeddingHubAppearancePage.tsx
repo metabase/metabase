@@ -32,7 +32,7 @@ export function EmbeddingHubAppearancePage() {
             <Title order={4}>{t`Themes`}</Title>
 
             <EmbeddingThemeListingApp
-              basePath={Urls.embeddingHubAppearance()}
+              basePath={`${Urls.embeddingHubAppearance()}/theme`}
               showHeading={false}
             />
           </Stack>
