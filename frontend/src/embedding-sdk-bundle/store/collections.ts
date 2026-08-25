@@ -9,7 +9,7 @@ import type {
   SdkCollectionId,
 } from "../types/collection";
 
-const getUserTenantCollectionId = createSelector(
+export const getUserTenantCollectionId = createSelector(
   [getUser],
   (user) => user?.tenant_collection_id,
 );

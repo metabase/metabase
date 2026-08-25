@@ -1,12 +1,17 @@
-import { type ComponentType, useEffect } from "react";
+import { type ComponentType, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import {
   CollectionNotFoundError,
+  SdkError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import {
+  ROOT_ITEM_ID,
+  useAllCollectionsItems,
+} from "embedding-sdk-bundle/hooks/private/use-all-collections-items";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import type {
@@ -17,11 +22,20 @@ import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { ItemsTable } from "metabase/common/components/ItemsTable";
+import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { CollectionBreadcrumbsView } from "metabase/nav/components/CollectionBreadcrumbs/CollectionBreadcrumbsView";
+import { collectionToCrumbs } from "metabase/nav/components/CollectionBreadcrumbs/utils";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
-import { Icon, Stack } from "metabase/ui";
+import { Box, Icon, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
-import type { CollectionItemModel } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionItem,
+  CollectionItemModel,
+} from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
@@ -59,6 +73,16 @@ const ENTITY_NAME_MAP: Partial<
   question: "card",
   model: "dataset",
 };
+
+/**
+ * The API reports "Our analytics" as an ancestor of every top-level collection,
+ * the personal one included. Under the virtual root they are siblings, so keep
+ * the crumb only for collections really inside it.
+ */
+const getAllModeBaseCollectionId = (
+  collection: Collection,
+): CollectionId | null =>
+  collection.is_personal || collection.namespace != null ? null : "root";
 
 /**
  * @interface
@@ -115,6 +139,9 @@ export const CollectionBrowserInner = ({
 }: CollectionBrowserProps) => {
   useTrackSdkComponentMount("CollectionBrowser", null, {});
 
+  // "all" is a virtual top level, not a collection, so it never reaches a URL
+  const isAllMode = collectionId === "all";
+
   const {
     baseCollectionId,
     internalCollectionId,
@@ -128,12 +155,46 @@ export const CollectionBrowserInner = ({
   const { isBreadcrumbEnabled: isGlobalBreadcrumbEnabled, reportLocation } =
     useSdkBreadcrumbs();
 
+  const isAtVirtualRoot = isAllMode && effectiveCollectionId == null;
+
+  const {
+    items: allCollectionsItems,
+    isLoading: isLoadingAllCollections,
+    error: allCollectionsError,
+  } = useAllCollectionsItems({ enabled: isAtVirtualRoot });
+
+  // The virtual root rows are synthesized, so they carry no edit info and cannot
+  // be archived. Those columns would render empty for every row.
+  const virtualRootColumnsMap = useMemo(
+    () =>
+      getVisibleColumnsMap(
+        visibleColumns.filter(
+          (column) =>
+            !["lastEditedBy", "lastEditedAt", "archive"].includes(column),
+        ),
+      ),
+    [visibleColumns],
+  );
+
   useEffect(() => {
     setInternalCollectionId(baseCollectionId);
   }, [baseCollectionId, setInternalCollectionId]);
 
   useEffect(() => {
-    if (isGlobalBreadcrumbEnabled && !isFetchingCollection && collection) {
+    if (!isGlobalBreadcrumbEnabled || isFetchingCollection) {
+      return;
+    }
+
+    if (isAtVirtualRoot) {
+      reportLocation({
+        type: "all-collections",
+        id: "all",
+        name: t`All collections`,
+      });
+      return;
+    }
+
+    if (collection) {
       reportLocation({
         type: "collection",
         id: collection.id,
@@ -143,6 +204,7 @@ export const CollectionBrowserInner = ({
   }, [
     isGlobalBreadcrumbEnabled,
     isFetchingCollection,
+    isAtVirtualRoot,
     collection,
     reportLocation,
   ]);
@@ -157,6 +219,14 @@ export const CollectionBrowserInner = ({
         illustrationElement={<Icon name="key" size={100} />}
       />
     );
+  }
+
+  if (isAtVirtualRoot && allCollectionsError) {
+    return <SdkError message={t`Failed to load collections`} />;
+  }
+
+  if (isAtVirtualRoot && isLoadingAllCollections) {
+    return <SdkLoader />;
   }
 
   const onClickItem = (item: MetabaseCollectionItem) => {
@@ -176,29 +246,80 @@ export const CollectionBrowserInner = ({
     }
   };
 
+  const onClickVirtualRootItem = (item: CollectionItem) =>
+    onClickItem({
+      ...item,
+      id: item.id === ROOT_ITEM_ID ? "root" : item.id,
+    });
+
   const collectionTypes = visibleEntityTypes
     .map((entityType) => ENTITY_NAME_MAP[entityType])
     .filter(isNotNull);
 
+  const allModeCrumbs = [
+    {
+      kind: "static" as const,
+      key: "all",
+      icon: "collection" as const,
+      label: t`All collections`,
+      onClick: () => setInternalCollectionId(undefined),
+    },
+    ...(collection
+      ? collectionToCrumbs({
+          collection,
+          baseCollectionId: getAllModeBaseCollectionId(collection),
+          onClick: (item) => setInternalCollectionId(item.id),
+        })
+      : []),
+  ];
+
+  const isVirtualRootEmpty =
+    isAtVirtualRoot && allCollectionsItems.length === 0;
+
   return (
     <Stack w="100%" h="100%" gap="sm" className={className} style={style}>
-      {!isGlobalBreadcrumbEnabled && (
-        <CollectionBreadcrumbs
-          collectionId={internalCollectionId ?? undefined}
-          onClick={(item) => setInternalCollectionId(item.id)}
-          baseCollectionId={baseCollectionId}
-        />
+      {!isGlobalBreadcrumbEnabled &&
+        (isAllMode ? (
+          <CollectionBreadcrumbsView path={allModeCrumbs} />
+        ) : (
+          <CollectionBreadcrumbs
+            collectionId={internalCollectionId ?? undefined}
+            onClick={(item) => setInternalCollectionId(item.id)}
+            baseCollectionId={baseCollectionId}
+          />
+        ))}
+
+      {isVirtualRootEmpty &&
+        (EmptyContentComponent ? (
+          <EmptyContentComponent />
+        ) : (
+          <EmptyState
+            title={t`There are no collections to show`}
+            illustrationElement={<Icon name="collection" size={100} />}
+          />
+        ))}
+
+      {isAtVirtualRoot && !isVirtualRootEmpty && (
+        <Box w="100%" data-testid="all-collections-list">
+          <ItemsTable
+            items={allCollectionsItems}
+            visibleColumnsMap={virtualRootColumnsMap}
+            onClick={onClickVirtualRootItem}
+          />
+        </Box>
       )}
 
-      <CollectionItemsTable
-        collectionId={effectiveCollectionId ?? undefined}
-        onClick={onClickItem}
-        pageSize={pageSize}
-        models={collectionTypes}
-        showDashboardQuestions={showDashboardQuestions}
-        visibleColumns={visibleColumns}
-        EmptyContentComponent={EmptyContentComponent ?? undefined}
-      />
+      {!isAtVirtualRoot && (
+        <CollectionItemsTable
+          collectionId={effectiveCollectionId ?? undefined}
+          onClick={onClickItem}
+          pageSize={pageSize}
+          models={collectionTypes}
+          showDashboardQuestions={showDashboardQuestions}
+          visibleColumns={visibleColumns}
+          EmptyContentComponent={EmptyContentComponent ?? undefined}
+        />
+      )}
     </Stack>
   );
 };
