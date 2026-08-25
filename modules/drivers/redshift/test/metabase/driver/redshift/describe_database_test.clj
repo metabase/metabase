@@ -57,9 +57,41 @@
      "where schemaname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
      "  and pg_catalog.has_schema_privilege(t.schemaname, 'USAGE')"])])
 
+(defn- arms
+  "The two `UNION ALL` arms of the current table query, each as its own statement.
+
+  The query binds its schema list once per arm, so the parameters split in half: the first half belongs to the
+  `pg_class` arm, the second to the `svv_external_tables` arm."
+  [inclusion-patterns]
+  (let [[sql & params] (#'redshift/get-tables-sql inclusion-patterns)
+        pieces (str/split sql #"(?i)\nunion all\n")
+        half   (quot (count params) 2)]
+    (assert (= 2 (count pieces))
+            "the table query must be two arms joined by a single `union all` line")
+    [(into [(first pieces)] (take half params))
+     (into [(second pieces)] (drop half params))]))
+
+(defn- without-privilege-checks
+  [[sql & params]]
+  (into [(str/replace sql #"(?m)^.*has_(?:schema|table|any_column)_privilege.*$\n?" "")] params))
+
 (deftest ^:parallel outgoing-baseline-carries-no-parameters-test
   (testing "the frozen baseline must not gain the pushdown, or the live comparison measures a query against itself"
     (is (= 1 (count (outgoing-get-tables-sql))))))
+
+(deftest ^:parallel derived-variants-test
+  (testing "each arm carries its own copy of the schema parameters"
+    (let [[pg-class external] (arms "spectrum,public")]
+      (is (str/includes? (first pg-class) "pg_catalog.pg_class"))
+      (is (str/includes? (first external) "svv_external_tables"))
+      (is (= ["spectrum" "public"] (rest pg-class)))
+      (is (= ["spectrum" "public"] (rest external)))))
+  (testing "the diagnostic variant drops every privilege check and keeps the parameters"
+    (let [[pg-class] (arms "spectrum")
+          stripped   (without-privilege-checks pg-class)]
+      (is (not= pg-class stripped))
+      (is (not (re-find #"privilege" (first stripped))))
+      (is (= (rest pg-class) (rest stripped))))))
 
 (defn- timed-query
   [spec statement]
@@ -77,6 +109,26 @@
 (defn- run-current-query
   [spec inclusion-patterns]
   (timed-query spec (#'redshift/get-tables-sql inclusion-patterns)))
+
+(defn- run-full-query
+  [spec inclusion-patterns]
+  (timed-query spec (#'redshift/get-tables-sql inclusion-patterns)))
+
+(defn- run-pg-class-arm
+  [spec inclusion-patterns]
+  (timed-query spec (first (arms inclusion-patterns))))
+
+(defn- run-external-arm
+  [spec inclusion-patterns]
+  (timed-query spec (second (arms inclusion-patterns))))
+
+(defn- run-pg-class-arm-without-privileges
+  [spec inclusion-patterns]
+  (timed-query spec (without-privilege-checks (first (arms inclusion-patterns)))))
+
+(defn- run-external-arm-without-privileges
+  [spec inclusion-patterns]
+  (timed-query spec (without-privilege-checks (second (arms inclusion-patterns)))))
 
 (def ^:private measurement-rounds 3)
 
@@ -109,3 +161,37 @@
         (is (seq (:rows current)))
         (is (= (set (filter syncable? (:rows outgoing)))
                (set (filter syncable? (:rows current)))))))))
+
+(def ^:private breakdown-rounds 2)
+
+;; A measurement harness for one open question: `describe-database` costs 15-36s per call and pushing the schema
+;; filter into SQL did not move it, so the time is server-side, not rows on the wire. Experiment 1 times each `union
+;; all` arm on its own; experiment 2 times the `pg_class` arm with the privilege functions removed, which says
+;; whether restricting rows in a CTE ahead of those checks is the fix. The no-privilege variants are diagnostic and
+;; must never ship: without them Metabase would sync tables the connecting user cannot read.
+(deftest describe-database-cost-breakdown-test
+  (mt/test-driver :redshift
+    (let [spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+          inclusion-patterns (first (driver.s/db-details->schema-filter-patterns (mt/db)))]
+      ;; whichever query runs first pays for opening the pooled connection, which is larger than the difference
+      ;; being measured
+      (run-full-query spec inclusion-patterns)
+      (let [rounds (vec (repeatedly breakdown-rounds
+                                    #(hash-map :full             (run-full-query spec inclusion-patterns)
+                                               :pg-class         (run-pg-class-arm spec inclusion-patterns)
+                                               :external         (run-external-arm spec inclusion-patterns)
+                                               :pg-class-no-priv (run-pg-class-arm-without-privileges spec inclusion-patterns)
+                                               :external-no-priv (run-external-arm-without-privileges spec inclusion-patterns))))
+            rows   (fn [variant] (:rows (variant (first rounds))))]
+        (doseq [variant [:full :pg-class :external :pg-class-no-priv :external-no-priv]]
+          (log/infof "%s: %d rows, ms %s"
+                     (name variant)
+                     (count (rows variant))
+                     (mapv #(Math/round ^double (:ms (variant %))) rounds)))
+        (is (seq (rows :pg-class)))
+        (is (seq (rows :external)))
+        (is (= (count (rows :full))
+               (+ (count (rows :pg-class)) (count (rows :external))))
+            "the arms must partition the full query, or the split is measuring something else")
+        (is (>= (count (rows :pg-class-no-priv)) (count (rows :pg-class)))
+            "dropping the privilege filters can only add rows")))))
