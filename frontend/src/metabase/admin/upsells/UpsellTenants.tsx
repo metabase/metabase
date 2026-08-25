@@ -10,12 +10,13 @@ import { Stack } from "metabase/ui";
 
 export const UpsellTenants = ({
   align = "center",
+  source: location = "people-tenants",
 }: {
   align?: "center" | "flex-start";
+  source?: string;
 }) => {
   const hasTenants = useHasTokenFeature("tenants");
   const campaign = "tenants";
-  const location = "people-tenants";
   const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
     url: UPGRADE_URL,
     campaign,
