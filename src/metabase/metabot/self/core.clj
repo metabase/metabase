@@ -15,6 +15,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable InputStream)
@@ -659,7 +660,7 @@
 (defn- invalid-arguments-message
   "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match."
   [schema arguments]
-  (when-let [error (mc/explain schema arguments)]
+  (when-let [error (mr/explain schema arguments)]
     (let [humanized (me/humanize error)]
       (str "Invalid tool arguments: "
            (if (map? humanized)
