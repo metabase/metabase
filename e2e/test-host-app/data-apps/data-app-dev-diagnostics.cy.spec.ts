@@ -129,8 +129,12 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
     });
 
     it("keeps the buffer across a page reload, with continuous event ids", () => {
+      // Stale-inclusive on both sides: a rebuild between the reads would
+      // withhold the first session's entries and fake an emptied buffer.
+      const bufferUrl = `${DIAGNOSTICS_URL}?includeStale=true`;
+
       readDiagnosticsUntil(
-        DIAGNOSTICS_URL,
+        bufferUrl,
         "the first page session's blocked entry",
         (report) =>
           report.entries.some((entry) => entry.kind === "blocked-network"),
@@ -155,7 +159,7 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
         // session's events under its own id sequence, so a reader that
         // consumed up to N never skips or re-reads anything.
         readDiagnosticsUntil(
-          DIAGNOSTICS_URL,
+          bufferUrl,
           "the reloaded page's own events appended after the first session's",
           (report) =>
             report.entries.some(
