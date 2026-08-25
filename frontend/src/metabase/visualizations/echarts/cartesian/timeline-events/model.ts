@@ -73,8 +73,10 @@ export const buildTimelineEventClusters = (
     const lastCluster = _.last(clusters);
 
     if (lastCluster != null) {
+      const lastGroupDate =
+        lastCluster.groups[lastCluster.groups.length - 1].date;
       const intervalsDiff =
-        dayjs.utc(group.date).diff(dayjs.utc(lastCluster.date), interval.unit) /
+        dayjs.utc(group.date).diff(dayjs.utc(lastGroupDate), interval.unit) /
         interval.count;
       const pixelDiff = intervalsDiff * intervalWidth;
 

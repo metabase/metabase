@@ -25,11 +25,8 @@ interface TimelineEventChipProps {
   centerY: number;
   selectedEventIds: TimelineEventId[];
   hidden?: boolean;
-  popoverDisabled?: boolean;
   zIndex?: number;
   className?: string;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
   onGroupHover?: (group: TimelineEventGroup | null) => void;
@@ -45,11 +42,8 @@ export const TimelineEventChip = ({
   centerY,
   selectedEventIds,
   hidden = false,
-  popoverDisabled = false,
   zIndex,
   className,
-  onMouseEnter,
-  onMouseLeave,
   onFocus,
   onBlur,
   onGroupHover,
@@ -117,7 +111,6 @@ export const TimelineEventChip = ({
       openDelay={50}
       closeDelay={150}
       shadow="md"
-      disabled={popoverDisabled}
       classNames={{ dropdown: S.bridgeDropdown }}
     >
       <HoverCard.Target>
@@ -132,19 +125,14 @@ export const TimelineEventChip = ({
           data-testid="timeline-event-chip"
           data-selected={isSelected}
           data-hidden={hidden}
+          aria-hidden={hidden}
           tabIndex={hidden ? -1 : undefined}
           aria-label={
             isSingleEvent ? events[0].name : t`${events.length} events`
           }
           onClick={canSelect ? handleChipClick : undefined}
-          onMouseEnter={() => {
-            onGroupHover?.(group);
-            onMouseEnter?.();
-          }}
-          onMouseLeave={() => {
-            onGroupHover?.(null);
-            onMouseLeave?.();
-          }}
+          onMouseEnter={() => onGroupHover?.(group)}
+          onMouseLeave={() => onGroupHover?.(null)}
           onFocus={onFocus}
           onBlur={onBlur}
         >

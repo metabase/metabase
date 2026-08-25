@@ -22,7 +22,7 @@ export const TIMELINE_ICON_TO_SMALL_ICON_MAP = {
 
 export interface PositionedTimelineEventCluster {
   cluster: TimelineEventCluster;
-  x: number;
+  memberXs: number[];
 }
 
 export const getTimelineEventGroupIconName = (
@@ -39,6 +39,15 @@ interface PositioningInput {
   xAxisIndex: number;
 }
 
+const toPixelX = (
+  chartInstance: EChartsType,
+  xAxisIndex: number,
+  date: string,
+): number => {
+  const pixel = chartInstance.convertToPixel({ xAxisIndex }, date);
+  return Array.isArray(pixel) ? pixel[0] : pixel;
+};
+
 export const getPositionedTimelineEventClusters = ({
   timelineEventsModel,
   chartInstance,
@@ -48,14 +57,20 @@ export const getPositionedTimelineEventClusters = ({
   const { left, right } = plotBounds;
 
   return timelineEventsModel.flatMap((cluster) => {
-    const pixel = chartInstance.convertToPixel({ xAxisIndex }, cluster.date);
-    const x = Array.isArray(pixel) ? pixel[0] : pixel;
+    const anchorX = toPixelX(chartInstance, xAxisIndex, cluster.date);
 
-    if (!Number.isFinite(x) || x < left || x > right) {
+    if (!Number.isFinite(anchorX) || anchorX < left || anchorX > right) {
       return [];
     }
 
-    return [{ cluster, x }];
+    const memberXs = cluster.groups.map((group) => {
+      const memberX = toPixelX(chartInstance, xAxisIndex, group.date);
+      return Number.isFinite(memberX)
+        ? Math.min(Math.max(memberX, left), right)
+        : anchorX;
+    });
+
+    return [{ cluster, memberXs }];
   });
 };
 
@@ -66,5 +81,9 @@ export const arePositionedClustersEqual = (
   a.length === b.length &&
   a.every((item, index) => {
     const other = b[index];
-    return item.cluster === other.cluster && item.x === other.x;
+    return (
+      item.cluster === other.cluster &&
+      item.memberXs.length === other.memberXs.length &&
+      item.memberXs.every((x, memberIndex) => x === other.memberXs[memberIndex])
+    );
   });

@@ -126,7 +126,7 @@ export const TimelineEventsBand = ({
           height: TIMELINE_BAND_HEIGHT,
         }}
       />
-      {positionedClusters.map(({ cluster, x }) => {
+      {positionedClusters.map(({ cluster, memberXs }) => {
         const isHidden =
           expandedClusterDate != null && expandedClusterDate !== cluster.date;
 
@@ -135,7 +135,7 @@ export const TimelineEventsBand = ({
             <TimelineEventChip
               key={cluster.date}
               group={cluster.groups[0]}
-              x={x}
+              x={memberXs[0]}
               centerY={centerY}
               hidden={isHidden}
               selectedEventIds={selectedTimelineEventIds ?? []}
@@ -152,7 +152,7 @@ export const TimelineEventsBand = ({
           <TimelineEventStack
             key={cluster.date}
             cluster={cluster}
-            x={x}
+            memberXs={memberXs}
             centerY={centerY}
             plotBounds={{ left: plotLeft, right: plotRight }}
             hidden={isHidden}

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import {
   TIMELINE_BAND_HEIGHT,
@@ -17,9 +17,11 @@ import S from "./TimelineEventsBand.module.css";
 // an open popover) does not collapse the stack.
 const STACK_COLLAPSE_DELAY_MS = 150;
 
+const MAX_PEEKING_MEMBERS = 4;
+
 interface TimelineEventStackProps {
   cluster: TimelineEventCluster;
-  x: number;
+  memberXs: number[];
   centerY: number;
   plotBounds: { left: number; right: number };
   isExpanded: boolean;
@@ -45,7 +47,7 @@ const getSpreadCenter = (
 
 export const TimelineEventStack = ({
   cluster,
-  x,
+  memberXs,
   centerY,
   plotBounds,
   isExpanded,
@@ -68,18 +70,18 @@ export const TimelineEventStack = ({
   const onExpandedChangeRef = useRef(onExpandedChange);
   onExpandedChangeRef.current = onExpandedChange;
 
-  const cancelCollapse = () => {
+  const cancelCollapse = useCallback(() => {
     window.clearTimeout(collapseTimeoutRef.current);
-  };
+  }, []);
 
-  const scheduleCollapse = () => {
+  const scheduleCollapse = useCallback(() => {
     cancelCollapse();
     collapseTimeoutRef.current = window.setTimeout(() => {
       if (!isPointerInsideRef.current) {
         onExpandedChangeRef.current(false);
       }
     }, STACK_COLLAPSE_DELAY_MS);
-  };
+  }, [cancelCollapse]);
 
   const handlePointerEnter = () => {
     isPointerInsideRef.current = true;
@@ -97,6 +99,10 @@ export const TimelineEventStack = ({
     onExpandedChange(true);
   };
 
+  // React's mouse-leave tracking is unreliable across the members' portaled
+  // popovers (moving chip → popover → chart never reports leaving the stack),
+  // so while expanded the pointer is tracked at the document level instead:
+  // anything hovered outside the stack and its popovers collapses it.
   useEffect(() => {
     if (!isExpanded) {
       return;
@@ -124,11 +130,9 @@ export const TimelineEventStack = ({
     return () => {
       document.removeEventListener("mouseover", handleDocumentMouseOver);
     };
-    // the handler only touches refs, so it needs no other dependencies
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isExpanded]);
+  }, [isExpanded, cancelCollapse, scheduleCollapse]);
 
-  useEffect(() => cancelCollapse, []);
+  useEffect(() => cancelCollapse, [cancelCollapse]);
 
   const availableWidth = plotBounds.right - plotBounds.left;
   const spreadStep =
@@ -139,11 +143,23 @@ export const TimelineEventStack = ({
         )
       : 0;
   const spreadWidth = chipWidth + (count - 1) * spreadStep;
-  const spreadCenter = getSpreadCenter(x, spreadWidth, plotBounds);
+  const clusterMidpointX = (memberXs[0] + memberXs[memberXs.length - 1]) / 2;
+  const spreadCenter = getSpreadCenter(
+    clusterMidpointX,
+    spreadWidth,
+    plotBounds,
+  );
+  const collapsedExtent =
+    Math.min(count - 1, MAX_PEEKING_MEMBERS) * stackCollapsedOffset;
+  const collapsedAnchorX = Math.min(
+    memberXs[0],
+    plotBounds.right - collapsedExtent,
+  );
   const getMemberX = (index: number) =>
     isExpanded
       ? spreadCenter + (index - (count - 1) / 2) * spreadStep
-      : x - (count - 1 - index) * stackCollapsedOffset;
+      : collapsedAnchorX +
+        Math.min(index, MAX_PEEKING_MEMBERS) * stackCollapsedOffset;
 
   return (
     <div

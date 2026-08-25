@@ -1,7 +1,7 @@
+import { useDebouncedCallback } from "@mantine/hooks";
 import type { EChartsOption } from "echarts";
 import type { EChartsType } from "echarts/core";
-import debounce from "lodash.debounce";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -46,18 +46,9 @@ export function useTimelineEventsHover({
   const selectedTimelineEventIdsRef = useRef(selectedTimelineEventIds);
   selectedTimelineEventIdsRef.current = selectedTimelineEventIds;
 
-  const applyMarkerLineDebounced = useMemo(
-    () =>
-      debounce(
-        (applyMarkerLine: () => void) => applyMarkerLine(),
-        MARKER_LINE_UPDATE_DELAY_MS,
-      ),
-    [],
-  );
-
-  useEffect(
-    () => () => applyMarkerLineDebounced.cancel(),
-    [applyMarkerLineDebounced],
+  const applyMarkerLineDebounced = useDebouncedCallback(
+    (applyMarkerLine: () => void) => applyMarkerLine(),
+    MARKER_LINE_UPDATE_DELAY_MS,
   );
 
   useEffect(() => {

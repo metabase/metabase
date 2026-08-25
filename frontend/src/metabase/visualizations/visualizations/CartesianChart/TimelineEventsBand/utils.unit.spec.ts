@@ -86,10 +86,11 @@ describe("TimelineEventsBand utils", () => {
       },
     ];
 
-    it("maps clusters to pixel positions and drops out-of-range clusters", () => {
+    it("maps clusters to member pixel positions and drops out-of-range clusters", () => {
       const chartInstance = createChartInstance({
         "2025-01-01T00:00:00Z": 120,
         "2025-02-01T00:00:00Z": 300,
+        "2025-02-02T00:00:00Z": 320,
         "2025-03-01T00:00:00Z": 999, // beyond bounds.right
       });
 
@@ -101,9 +102,43 @@ describe("TimelineEventsBand utils", () => {
       });
 
       expect(positioned).toEqual([
-        { cluster: timelineEventsModel[0], x: 120 },
-        { cluster: timelineEventsModel[1], x: 300 },
+        { cluster: timelineEventsModel[0], memberXs: [120] },
+        { cluster: timelineEventsModel[1], memberXs: [300, 320] },
       ]);
+    });
+
+    it("falls back to the cluster anchor for members that cannot be positioned", () => {
+      const chartInstance = createChartInstance({
+        "2025-01-01T00:00:00Z": 120,
+        "2025-02-01T00:00:00Z": 300,
+        // no entry for the second member of the second cluster
+      });
+
+      const positioned = getPositionedTimelineEventClusters({
+        timelineEventsModel,
+        chartInstance,
+        plotBounds: BOUNDS,
+        xAxisIndex: 0,
+      });
+
+      expect(positioned[1].memberXs).toEqual([300, 300]);
+    });
+
+    it("clamps member positions into the plot bounds", () => {
+      const chartInstance = createChartInstance({
+        "2025-01-01T00:00:00Z": 120,
+        "2025-02-01T00:00:00Z": 440,
+        "2025-02-02T00:00:00Z": 470, // beyond bounds.right
+      });
+
+      const positioned = getPositionedTimelineEventClusters({
+        timelineEventsModel,
+        chartInstance,
+        plotBounds: BOUNDS,
+        xAxisIndex: 0,
+      });
+
+      expect(positioned[1].memberXs).toEqual([440, 450]);
     });
 
     it("drops clusters whose pixel position is NaN", () => {
@@ -134,7 +169,7 @@ describe("TimelineEventsBand utils", () => {
       });
 
       expect(positioned).toHaveLength(1);
-      expect(positioned[0].x).toBe(200);
+      expect(positioned[0].memberXs).toEqual([200]);
     });
   });
 
@@ -152,23 +187,25 @@ describe("TimelineEventsBand utils", () => {
     it("returns true for the same clusters at the same positions", () => {
       expect(
         arePositionedClustersEqual(
-          [{ cluster, x: 120 }],
-          [{ cluster, x: 120 }],
+          [{ cluster, memberXs: [120] }],
+          [{ cluster, memberXs: [120] }],
         ),
       ).toBe(true);
     });
 
-    it("returns false when a position changes", () => {
+    it("returns false when a member position changes", () => {
       expect(
         arePositionedClustersEqual(
-          [{ cluster, x: 120 }],
-          [{ cluster, x: 121 }],
+          [{ cluster, memberXs: [120] }],
+          [{ cluster, memberXs: [121] }],
         ),
       ).toBe(false);
     });
 
     it("returns false when the number of clusters changes", () => {
-      expect(arePositionedClustersEqual([{ cluster, x: 120 }], [])).toBe(false);
+      expect(
+        arePositionedClustersEqual([{ cluster, memberXs: [120] }], []),
+      ).toBe(false);
     });
   });
 });

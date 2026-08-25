@@ -145,6 +145,39 @@ describe("TimelineEventsBand", () => {
       expect(screen.getByLabelText("Stack B")).toBeInTheDocument();
     });
 
+    it("fans collapsed members out from the anchor with a static offset", () => {
+      setup({ timelineEventsModel: stackedTimelineEventsModel });
+
+      // anchor is at 300; members offset by stackCollapsedOffset regardless
+      // of their true pixel positions
+      expect(screen.getByLabelText("Stack A")).toHaveStyle({ left: "300px" });
+      expect(screen.getByLabelText("Stack B")).toHaveStyle({ left: "306px" });
+    });
+
+    it("piles members beyond the peeking limit under the top chip, keeping the offset constant", () => {
+      const anchorDate = "2025-02-01T00:00:00Z";
+      const bigCluster: TimelineEventsModel = [
+        {
+          date: anchorDate,
+          groups: Array.from({ length: 6 }, (_, index) => ({
+            date: index === 0 ? anchorDate : `2025-02-0${index + 1}T00:00:00Z`,
+            events: [
+              createMockTimelineEvent({ id: index + 1, name: `M${index + 1}` }),
+            ],
+          })),
+        },
+      ];
+
+      setup({ timelineEventsModel: bigCluster });
+
+      const lefts = screen
+        .getAllByTestId("timeline-event-chip")
+        .map((chip) => parseFloat(chip.style.left));
+      // 4 peeking members at a constant 6px step; the rest sit exactly under
+      // the top chip
+      expect(lefts).toEqual([300, 306, 312, 318, 324, 324]);
+    });
+
     it("expands on member hover, hides other chips, and reports the entered member", async () => {
       const { onGroupHover } = setup({
         timelineEventsModel: stackedTimelineEventsModel,

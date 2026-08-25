@@ -51,7 +51,6 @@ interface SetupOpts {
   selectedEventIds?: TimelineEventId[];
   withCallbacks?: boolean;
   hidden?: boolean;
-  popoverDisabled?: boolean;
   onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
@@ -60,7 +59,6 @@ const setup = ({
   selectedEventIds = [],
   withCallbacks = true,
   hidden,
-  popoverDisabled,
   onSeeAllEvents,
 }: SetupOpts = {}) => {
   const onGroupHover = jest.fn();
@@ -75,7 +73,6 @@ const setup = ({
       centerY={120}
       selectedEventIds={selectedEventIds}
       hidden={hidden}
-      popoverDisabled={popoverDisabled}
       onGroupHover={onGroupHover}
       onOpenTimelines={withCallbacks ? onOpenTimelines : undefined}
       onSelectTimelineEvents={
@@ -259,18 +256,6 @@ describe("TimelineEventChip", () => {
         screen.queryByTestId("timeline-event-popover"),
       ).not.toBeInTheDocument();
     });
-  });
-
-  it("does not open the popover on hover when the popover is disabled", async () => {
-    setup({ eventsGroup: singleGroup, popoverDisabled: true });
-
-    await userEvent.hover(screen.getByTestId("timeline-event-chip"));
-    // outwait the popover's 50ms open delay before the negative assertion
-    await new Promise((resolve) => setTimeout(resolve, 150));
-
-    expect(
-      screen.queryByTestId("timeline-event-popover"),
-    ).not.toBeInTheDocument();
   });
 
   it("marks the chip as hidden when hidden", () => {

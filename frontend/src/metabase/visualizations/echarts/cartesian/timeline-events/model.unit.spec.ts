@@ -130,6 +130,36 @@ describe("buildTimelineEventClusters", () => {
     expect(result[1].groups).toEqual([eventGroups[2]]);
   });
 
+  it("should fold a continuous run into one cluster even when it spans more than minDistance from the anchor", () => {
+    const eventGroups: TimelineEventGroup[] = [
+      createMockTimelineEventGroup({
+        date: "2024-01-01T00:00:00Z",
+        events: [createMockTimelineEvent({ id: 1 })],
+      }),
+      createMockTimelineEventGroup({
+        date: "2024-01-02T00:00:00Z",
+        events: [createMockTimelineEvent({ id: 2 })],
+      }),
+      createMockTimelineEventGroup({
+        date: "2024-01-03T00:00:00Z",
+        events: [createMockTimelineEvent({ id: 3 })],
+      }),
+    ];
+
+    const interval = createMockTimeSeriesInterval({ count: 1, unit: "day" });
+    // each step is 20px < minDistance, but the full run spans 40px
+    const intervalWidth = 20;
+
+    const result = buildTimelineEventClusters(
+      eventGroups,
+      interval,
+      intervalWidth,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].groups).toEqual(eventGroups);
+  });
+
   it("should anchor a cluster at its earliest group's date", () => {
     const eventGroups: TimelineEventGroup[] = [
       createMockTimelineEventGroup({
