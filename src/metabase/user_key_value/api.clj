@@ -3,6 +3,7 @@
    [malli.core :as mc]
    [malli.experimental.time.transform :as mett]
    [malli.transform :as mtx]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.literal]
@@ -16,6 +17,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/namespace/:namespace/key/:key"
   "Upsert a KV-pair for the user"
+  {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]
@@ -46,6 +48,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/namespace/:namespace/key/:key"
   "Get a value for the user"
+  {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]]
@@ -55,6 +58,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; Not tagged `data-apps:base`, though the three per-key routes around it are: `useUserKeyValue`
+;; only ever reads, writes or clears one key at a time, so nothing a data app renders enumerates
+;; a whole namespace.
 (api.macros/defendpoint :get "/namespace/:namespace"
   "Returns all KV pairs in a given namespace for the current user"
   [{nmspace :namespace} :- [:map
@@ -67,6 +73,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/namespace/:namespace/key/:key"
   "Deletes a KV-pair for the user"
+  {:scope api-scope/data-app}
   [{nmspace :namespace, k :key} :- [:map
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]]

@@ -1756,12 +1756,15 @@
      otherwise defaults to `#{::scope/unrestricted}` for unrestricted access.
    - For **JWT-authenticated** requests, derives `:token-scopes` from the JWT when a
      `\"scope\"` claim is present, falls back to any pre-existing `:token-scopes` on the
-     request, and finally defaults to `#{::scope/unrestricted}` for unscoped JWTs.
+     request, and finally defaults to `#{::scope/unrestricted}` for unscoped JWTs. A request
+     [[metabase.server.middleware.data-app-scope]] already confined is the exception: its
+     narrowing is a server-side decision and a caller-supplied `\"scope\"` claim may not
+     widen it back out.
 
    This ensures downstream scope enforcement never has to special-case nil within the
    agent API."
   [handler]
-  (fn [{:keys [headers metabase-user-id token-scopes] :as request} respond raise]
+  (fn [{:keys [headers metabase-user-id token-scopes data-app-scoped?] :as request} respond raise]
     (cond
       ;; Already authenticated via X-Metabase-Session or synthetic request (e.g. MCP dispatch).
       ;; Preserve existing :token-scopes when present (MCP sets them on the synthetic request).
@@ -1794,9 +1797,11 @@
                   (log/warn "JWT scopes" (:scopes result)
                             "differ from pre-existing token-scopes" token-scopes))
                 (request/with-current-user (:id user)
-                  (handler (assoc request :token-scopes (or (:scopes result)
-                                                            token-scopes
-                                                            #{::scope/unrestricted}))
+                  (handler (assoc request :token-scopes (if data-app-scoped?
+                                                          token-scopes
+                                                          (or (:scopes result)
+                                                              token-scopes
+                                                              #{::scope/unrestricted})))
                            respond raise)))
               (respond (error-response (:error result) (:message result))))))))))
 

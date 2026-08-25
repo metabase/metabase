@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -170,6 +171,10 @@
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
 
+;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
+;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide
+;; what iframe to render, before any data-app realm exists, so the request never carries the
+;; marker. The bundle is fetched from inside that iframe, where it does.
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single enabled data app by its slug."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]]
@@ -178,6 +183,7 @@
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single enabled data app by slug. Honors
    `If-None-Match` against the content-hash ETag with a 304."
+  {:scope api-scope/data-app}
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
    _body
