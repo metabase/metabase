@@ -1,6 +1,13 @@
 import { Fragment } from "react";
 
 import { Grid, Paper, type PaperProps, Text } from "metabase/ui";
+import { getThemeOverrides } from "metabase/ui/theme";
+
+const theme = getThemeOverrides();
+
+const spacingOptions = Object.keys(theme.spacing ?? {});
+const radiusOptions = Object.keys(theme.radius ?? {});
+const shadowOptions = Object.keys(theme.shadows ?? {});
 
 const args = {
   p: "lg",
@@ -15,15 +22,15 @@ const sampleArgs = {
 
 const argTypes = {
   p: {
-    options: ["xs", "sm", "md", "lg", "xl", "xxl"],
+    options: spacingOptions,
     control: { type: "inline-radio" },
   },
   radius: {
-    options: ["xxs", "xs", "sm", "md", "lg"],
+    options: radiusOptions,
     control: { type: "inline-radio" },
   },
   shadow: {
-    options: ["xs", "xs_outline", "sm", "sm_outline", "lg_outline"],
+    options: shadowOptions,
     control: { type: "inline-radio" },
   },
   withBorder: {

@@ -32,8 +32,8 @@ export const ClickActionsView = ({
     <Stack
       data-testid="click-actions-view"
       gap="sm"
-      px="xxl"
-      py="xl"
+      px="xl"
+      py="lg"
       fw={700}
       {...divProps}
     >

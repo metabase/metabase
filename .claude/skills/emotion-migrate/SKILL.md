@@ -171,7 +171,7 @@ Create `ComponentName.module.css` alongside the component file:
 /* Use design system tokens — NEVER raw color/spacing values */
 .root {
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-sm);
   background-color: var(--mb-color-background_page-primary);
 }
 
@@ -246,7 +246,7 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 **Spacing** (`p`, `px`, `py`, `pt`, `pb`, `pl`, `pr`, `m`, `mx`, `my`, `mt`, `mb`, `ml`, `mr`):
 
-- `"xs"` = 4px, `"sm"` = 8px, `"md"` = 16px, `"lg"` = 24px, `"xl"` = 32px
+- `"none"` = 0px, `"xxxs"` = 2px, `"xxs"` = 4px, `"xs"` = 6px, `"sm"` = 8px, `"md"` = 12px, `"lg"` = 16px, `"xl"` = 24px, `"xxl"` = 32px, `"xxxl"` = 40px
 - Custom: `rem(48)` for non-standard values (import `rem` from `metabase/ui`)
 
 **Dimensions** (`w`, `h`, `maw`, `mah`, `miw`, `mih`):
@@ -289,11 +289,16 @@ Remove the old styled file entirely. Remove all imports of it from other files.
 
 **Mantine spacing** — `var(--mantine-spacing-<size>)`:
 
-- `--mantine-spacing-xs` (4px), `--mantine-spacing-sm` (8px), `--mantine-spacing-md` (16px), `--mantine-spacing-lg` (24px), `--mantine-spacing-xl` (32px)
+- `--mantine-spacing-none` (0px), `--mantine-spacing-xxxs` (2px), `--mantine-spacing-xxs` (4px), `--mantine-spacing-xs` (6px), `--mantine-spacing-sm` (8px), `--mantine-spacing-md` (12px), `--mantine-spacing-lg` (16px), `--mantine-spacing-xl` (24px), `--mantine-spacing-xxl` (32px), `--mantine-spacing-xxxl` (40px)
 
 **Mantine radius** — `var(--mantine-radius-<size>)`:
 
-- `--mantine-radius-xs` (4px), `--mantine-radius-sm` (6px), `--mantine-radius-md` (8px), `--mantine-radius-xl` (40px)
+- `--mantine-radius-none` (0px), `--mantine-radius-xxxs` (2px), `--mantine-radius-xxs` (4px), `--mantine-radius-xs` (6px), `--mantine-radius-sm` (8px), `--mantine-radius-md` (12px), `--mantine-radius-lg` (16px), `--mantine-radius-xl` (24px)
+
+**Mantine shadows (elevation)** — `var(--mantine-shadow-<size>)`:
+
+- `--mantine-shadow-xs`, `--mantine-shadow-xs_outline`, `--mantine-shadow-sm`, `--mantine-shadow-sm_outline`, `--mantine-shadow-lg_outline`
+- Light and dark modes use different shadow values (defined in `frontend/src/metabase/ui/theme.ts`)
 
 **Mantine font sizes** — `var(--mantine-font-size-<size>)`:
 
@@ -313,24 +318,35 @@ When migrating, **never carry over hardcoded `rem`/`px` values** from the origin
 
 **Spacing** — snap to the nearest Mantine spacing token:
 
-| Hardcoded value                   | Nearest token | Style prop   | CSS variable                   |
-| --------------------------------- | ------------- | ------------ | ------------------------------ |
-| `0.125rem` (2px)                  | `2px`         | `2` (number) | `2px` (keep literal, no token) |
-| `0.2rem` (3.2px), `0.25rem` (4px) | **xs** (4px)  | `"xs"`       | `var(--mantine-spacing-xs)`    |
-| `0.5rem` (8px)                    | **sm** (8px)  | `"sm"`       | `var(--mantine-spacing-sm)`    |
-| `0.75rem` (12px)                  | between sm/md | `rem(12)`    | `0.75rem` (no exact token)     |
-| `1rem` (16px)                     | **md** (16px) | `"md"`       | `var(--mantine-spacing-md)`    |
-| `1.5rem` (24px)                   | **lg** (24px) | `"lg"`       | `var(--mantine-spacing-lg)`    |
-| `2rem` (32px)                     | **xl** (32px) | `"xl"`       | `var(--mantine-spacing-xl)`    |
+| Hardcoded value                   | Nearest token | Style prop  | CSS variable                   |
+| --------------------------------- | ------------- | ----------- | ------------------------------ |
+| `0` (0px)                         | **none** (0px) | `"none"`    | `var(--mantine-spacing-none)`  |
+| `0.125rem` (2px)                  | **xxxs** (2px) | `"xxxs"`    | `var(--mantine-spacing-xxxs)`  |
+| `0.2rem` (3.2px), `0.25rem` (4px) | **xxs** (4px)  | `"xxs"`     | `var(--mantine-spacing-xxs)`   |
+| `0.375rem` (6px)                  | **xs** (6px)   | `"xs"`      | `var(--mantine-spacing-xs)`    |
+| `0.5rem` (8px)                    | **sm** (8px)   | `"sm"`      | `var(--mantine-spacing-sm)`    |
+| `0.75rem` (12px)                  | **md** (12px)  | `"md"`      | `var(--mantine-spacing-md)`    |
+| `1rem` (16px)                     | **lg** (16px)  | `"lg"`      | `var(--mantine-spacing-lg)`    |
+| `1.5rem` (24px)                   | **xl** (24px)  | `"xl"`      | `var(--mantine-spacing-xl)`    |
+| `2rem` (32px)                     | **xxl** (32px) | `"xxl"`     | `var(--mantine-spacing-xxl)`   |
+| `2.5rem` (40px)                   | **xxxl** (40px) | `"xxxl"`   | `var(--mantine-spacing-xxxl)`  |
+
+Values between steps: keep the literal (e.g. `rem(10)`), don't round to a token.
 
 **Border radius** — snap to the nearest Mantine radius token:
 
-| Hardcoded value  | Nearest token                 | CSS variable               |
-| ---------------- | ----------------------------- | -------------------------- |
-| `0.25rem` (4px)  | **xs** (4px)                  | `var(--mantine-radius-xs)` |
-| `0.375rem` (6px) | **sm** (6px)                  | `var(--mantine-radius-sm)` |
-| `0.5rem` (8px)   | **md** (8px)                  | `var(--mantine-radius-md)` |
-| `1rem`+ (16px+)  | **xl** (40px) or keep literal | `var(--mantine-radius-xl)` |
+| Hardcoded value  | Nearest token    | CSS variable                 |
+| ---------------- | ---------------- | ---------------------------- |
+| `0.125rem` (2px) | **xxxs** (2px)   | `var(--mantine-radius-xxxs)` |
+| `0.25rem` (4px)  | **xxs** (4px)    | `var(--mantine-radius-xxs)`  |
+| `0.375rem` (6px) | **xs** (6px)     | `var(--mantine-radius-xs)`   |
+| `0.5rem` (8px)   | **sm** (8px)     | `var(--mantine-radius-sm)`   |
+| `0.75rem` (12px) | **md** (12px)    | `var(--mantine-radius-md)`   |
+| `1rem` (16px)    | **lg** (16px)    | `var(--mantine-radius-lg)`   |
+| `1.5rem` (24px)  | **xl** (24px)    | `var(--mantine-radius-xl)`   |
+
+Fully-round pills/badges (radius ≥ half the element height): keep a literal
+such as `9999px` — there is no `40px` scale step anymore.
 
 **Font sizes** — snap to the nearest Mantine font size token:
 

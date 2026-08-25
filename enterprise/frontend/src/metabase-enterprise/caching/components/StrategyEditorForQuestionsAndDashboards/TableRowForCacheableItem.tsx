@@ -56,7 +56,7 @@ export const TableRowForCacheableItem = ({
       fw={700}
       style={{ overflow: "hidden" }}
     >
-      {iconName ? <FixedSizeIcon name={iconName} /> : <Box h="sm" w="md" />}
+      {iconName ? <FixedSizeIcon name={iconName} /> : <Box h="sm" w="lg" />}
       <Ellipsified>{name}</Ellipsified>
     </Flex>
   );

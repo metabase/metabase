@@ -65,7 +65,7 @@ export const MetabotAsk = () => {
       {showGreeting ? (
         <>
           {historyAction && (
-            <Flex justify="flex-end" px="xl" pt="xl">
+            <Flex justify="flex-end" px="lg" pt="lg">
               {historyAction}
             </Flex>
           )}

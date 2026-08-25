@@ -26,6 +26,7 @@ import {
   dateTimePickerOverrides,
   dividerOverrides,
   fileInputOverrides,
+  groupOverrides,
   hoverCardOverrides,
   inputOverrides,
   kbdOverrides,
@@ -51,6 +52,7 @@ import {
   selectOverrides,
   skeletonOverrides,
   sliderOverrides,
+  stackOverrides,
   switchOverrides,
   tabsOverrides,
   textInputOverrides,
@@ -89,6 +91,38 @@ const DARK_SHADOWS = {
 };
 /* eslint-enable metabase/no-color-literals */
 
+export type ShadowScaleKey = keyof typeof LIGHT_SHADOWS;
+
+// Spacing tokens from the design system (GDGT-2486).
+const SPACING_SCALE = {
+  none: rem(0),
+  xxxs: rem(2),
+  xxs: rem(4),
+  xs: rem(6),
+  sm: rem(8),
+  md: rem(12),
+  lg: rem(16),
+  xl: rem(24),
+  xxl: rem(32),
+  xxxl: rem(40),
+};
+
+export type SpacingScaleKey = keyof typeof SPACING_SCALE;
+
+// Radius tokens from the design system (GDGT-2486).
+const RADIUS_SCALE = {
+  none: "0px",
+  xxxs: "2px",
+  xxs: "4px",
+  xs: "6px",
+  sm: "8px",
+  md: "12px",
+  lg: "16px",
+  xl: "24px",
+};
+
+export type RadiusScaleKey = keyof typeof RADIUS_SCALE;
+
 export const breakpoints = {
   xs: "23em",
   sm: "40em",
@@ -113,28 +147,8 @@ export const getThemeOverrides = (
     colorScheme,
   },
   shadows: colorScheme === "dark" ? DARK_SHADOWS : LIGHT_SHADOWS,
-  spacing: {
-    none: rem(0),
-    xxxs: rem(2),
-    xxs: rem(4),
-    xs: rem(6),
-    sm: rem(8),
-    md: rem(12),
-    lg: rem(16),
-    xl: rem(24),
-    xxl: rem(32),
-    xxxl: rem(40),
-  },
-  radius: {
-    none: "0px",
-    xxxs: "2px",
-    xxs: "4px",
-    xs: "6px",
-    sm: "8px",
-    md: "12px",
-    lg: "16px",
-    xl: "24px",
-  },
+  spacing: SPACING_SCALE,
+  radius: RADIUS_SCALE,
   defaultRadius: "xs",
   fontSizes: {
     xs: rem(11),
@@ -201,6 +215,7 @@ export const getThemeOverrides = (
     ...dateTimePickerOverrides,
     ...dividerOverrides,
     ...fileInputOverrides,
+    ...groupOverrides,
     ...inputOverrides,
     ...kbdOverrides,
     ...menuOverrides,
@@ -222,6 +237,7 @@ export const getThemeOverrides = (
     ...scrollAreaOverrides,
     ...segmentedControlOverrides,
     ...skeletonOverrides,
+    ...stackOverrides,
     ...selectOverrides,
     ...sliderOverrides,
     ...switchOverrides,

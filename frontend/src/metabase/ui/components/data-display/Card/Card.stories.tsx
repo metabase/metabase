@@ -1,4 +1,10 @@
 import { Box, Card, type CardProps, Stack, Text } from "metabase/ui";
+import { getThemeOverrides } from "metabase/ui/theme";
+
+const theme = getThemeOverrides();
+
+const spacingOptions = Object.keys(theme.spacing ?? {});
+const radiusOptions = Object.keys(theme.radius ?? {});
 
 const args = {
   p: "lg",
@@ -14,11 +20,11 @@ const sampleArgs = {
 
 const argTypes = {
   p: {
-    options: ["xs", "sm", "md", "lg", "xl"],
+    options: spacingOptions,
     control: { type: "inline-radio" },
   },
   radius: {
-    options: ["xs", "sm", "md"],
+    options: radiusOptions,
     control: { type: "inline-radio" },
   },
   withBorder: {

@@ -150,7 +150,7 @@ export const AddEditEmailSidebar = ({
           </div>
         )}
         <Schedule
-          mt="xl"
+          mt="lg"
           value={_.pick(
             channel,
             "schedule_day",
@@ -195,7 +195,7 @@ export const AddEditEmailSidebar = ({
             parameters={parameters}
           />
         )}
-        <Stack gap="xl" py="xxl" className={CS.borderTop}>
+        <Stack gap="lg" py="xl" className={CS.borderTop}>
           <Switch
             checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}

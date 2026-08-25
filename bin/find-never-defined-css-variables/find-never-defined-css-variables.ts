@@ -35,6 +35,14 @@ const knownIssues = [
   // color at runtime, so they aren't in the static @mantine/core/styles.css this script
   // reads — hence this allow-list entry.
   "--mantine-color-accent-gray-light-filled",
+
+  // Custom spacing/radius scale keys (GDGT-2486). Mantine derives
+  // `--mantine-spacing-*` / `--mantine-radius-*` variables at runtime from the
+  // theme object in frontend/src/metabase/ui/theme.ts, so they are not in the
+  // static @mantine/core/styles.css this script reads.
+  "--mantine-spacing-xxs",
+  "--mantine-spacing-xxl",
+  "--mantine-radius-xxs",
 ];
 
 interface UsageMap {
