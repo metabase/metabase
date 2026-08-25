@@ -108,9 +108,25 @@ Re-aggregate — average daily total by month:
 - Within the **same stage**, refer to your own aggregation with `["aggregation", {}, <idx>]` (see Aggregation references above). In a **later** stage, use the cross-stage string-name form against the previous stage's output.
 - Joins, expressions, filters, aggregation, breakout, order-by, limit are all valid in later stages.
 
-## Rates and ratios (numerator ÷ denominator) — always two stages
+## Rates and ratios (numerator ÷ denominator)
 
-A rate like **open rate**, **bounce rate**, **conversion rate**, or **% of total** divides one aggregation by another. You **cannot** divide two aggregations inside a single stage's `expressions` — that produces a *non-aggregation expression* error. Compute the numerator and denominator as separate aggregations in **stage 1**, then divide them in **stage 2**.
+A rate like **open rate**, **bounce rate**, **conversion rate**, or **% of total** divides one aggregation by another. What you **cannot** do is divide two aggregations inside `expressions:` — a custom column is computed per row, so aggregations aren't allowed there and you get a *non-aggregation expression* error. Two shapes do work:
+
+**One stage — divide inside `aggregation:`** (simplest when the ratio is all you need). An arithmetic clause over aggregations is itself a valid aggregation:
+
+```json
+{"lib/type": "mbql/query",
+ "stages": [{"lib/type": "mbql.stage/mbql",
+             "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+             "aggregation": [["/", {},
+                              ["count-where", {},
+                               ["<", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 50]],
+                              ["count", {}]]],
+             "breakout": [["field", {"temporal-unit": "month"},
+                           ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]}]}
+```
+
+**Two stages** — use this when you also want the numerator and denominator as their own columns, or when the ratio needs further post-aggregation work. Compute them as separate aggregations in **stage 1**, then divide in **stage 2**.
 
 Worked example — share of small orders per month (`count of orders under $50 ÷ total orders`):
 
