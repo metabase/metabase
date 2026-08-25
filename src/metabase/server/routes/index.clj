@@ -96,8 +96,20 @@
       (subs uri (count base))
       uri)))
 
-(defn- preload-tag [file]
-  (format "<link rel=\"preload\" href=\"%s\" as=\"%s\">"
+(defn- preload-tag
+  "A preload hint for one file the page's chunk needs.
+
+  `preload` rather than `prefetch`, because this is for the navigation in hand:
+  a prefetch is held back until the browser is idle, which is after the load
+  these hints are meant to speed up.
+
+  `fetchpriority=\"low\"` because the page's chunk is wanted a moment after the
+  app is, not before it. Without it these fetch at the same high priority as the
+  entry scripts and take bandwidth from them, so the shell renders later. Low
+  still starts with the document, which is the point: the alternative is a fetch
+  that cannot begin until the app has parsed and run."
+  [file]
+  (format "<link rel=\"preload\" href=\"%s\" as=\"%s\" fetchpriority=\"low\">"
           (hiccup.util/escape-html file)
           (if (str/ends-with? file ".css") "style" "script")))
 
