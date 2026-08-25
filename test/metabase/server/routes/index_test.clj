@@ -96,16 +96,16 @@
                                     (constantly (mapv #'index/compile-entry manifest))}
                      (fn [] (#'index/route-preload-tags uri))))]
     (testing "a wildcard covers the section below it"
-      (is (= (str "<link rel=\"preload\" href=\"app/dist/dashboard.js\" as=\"script\">"
-                  "<link rel=\"preload\" href=\"app/dist/dashboard.css\" as=\"style\">")
+      (is (= (str "<link rel=\"preload\" href=\"app/dist/dashboard.js\" as=\"script\" fetchpriority=\"low\">"
+                  "<link rel=\"preload\" href=\"app/dist/dashboard.css\" as=\"style\" fetchpriority=\"low\">")
              (tags-for "/dashboard/42"))))
     (testing "the first matching row wins"
-      (is (= "<link rel=\"preload\" href=\"app/dist/metabot-query-builder.js\" as=\"script\">"
+      (is (= "<link rel=\"preload\" href=\"app/dist/metabot-query-builder.js\" as=\"script\" fetchpriority=\"low\">"
              (tags-for "/question/ask")))
-      (is (= "<link rel=\"preload\" href=\"app/dist/query-builder.js\" as=\"script\">"
+      (is (= "<link rel=\"preload\" href=\"app/dist/query-builder.js\" as=\"script\" fetchpriority=\"low\">"
              (tags-for "/question/12-orders"))))
     (testing "the home page matches only the whole path"
-      (is (= "<link rel=\"preload\" href=\"app/dist/home.js\" as=\"script\">"
+      (is (= "<link rel=\"preload\" href=\"app/dist/home.js\" as=\"script\" fetchpriority=\"low\">"
              (tags-for "/")))
       (is (nil? (tags-for "/xyzzy"))))
     (testing "a section does not claim a URL that merely starts with its name"
