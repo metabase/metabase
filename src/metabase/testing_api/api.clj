@@ -198,7 +198,9 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 (api.macros/defendpoint :post "/mark-stale"
-  "Mark the card or dashboard as stale"
+  "Backdate an entity's activity so the staleness checks treat it as stale. Cards and dashboards carry
+  the timestamp directly, a document is stale once it has not been viewed since the cutoff, and a
+  transform is stale once it was created before the cutoff with no later run. Intended only for E2E tests."
   [_route-params
    _query-params
    {:keys [id model date-str]} :- [:map
@@ -215,7 +217,14 @@
                (t/minus (t/local-date) (t/months 7)))]
     (case model
       "card"      (t2/update! :model/Card :id id {:last_used_at date})
-      "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
+      "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date})
+      "document"  (t2/update! :model/Document :id id {:last_viewed_at date})
+      "transform" (do
+                    (t2/update! :model/Transform :id id {:created_at date})
+                    ;; collapsed to a zero-length run so backdating staleness can't also make the
+                    ;; transform look slow
+                    (t2/update! :model/TransformRun :transform_id id {:start_time date :end_time date}))
+      (throw (ex-info (str "unknown model: '" model "'") {:status 400})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
