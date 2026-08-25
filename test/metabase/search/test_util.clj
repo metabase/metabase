@@ -32,11 +32,16 @@
   "Like [[with-temp-index-table]], but always runs `body`, even when the app DB cannot support an index.
 
   Use this for tests that cover both indexed and non-indexed behavior. Wrapping such a test in
-  [[with-temp-index-table]] would skip it entirely on MySQL and MariaDB."
+  [[with-temp-index-table]] would skip it entirely on MySQL and MariaDB.
+
+  The table belongs to the app DB, so app-DB support is the condition. [[metabase.search.core/supports-index?]] is
+  true for any active engine; with semantic search enabled on MySQL or MariaDB, it can select the wrong branch."
   [& body]
   `(let [thunk# (fn [] ~@body)]
-     (if (search/supports-index?)
-       (with-temp-index-table (thunk#))
+     (if (search.engine/supported-engine? :search.engine/appdb)
+       (search.index/with-temp-index-table
+         ;; Ingestion must run on this thread so it uses the index table created here.
+         (with-sync-search-indexing (thunk#)))
        (thunk#))))
 
 (defmacro with-appdb-search-if-available*
