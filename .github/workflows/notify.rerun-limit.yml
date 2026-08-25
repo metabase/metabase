@@ -29,39 +29,19 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-          AUTHOR: ${{ github.event.workflow_run.head_commit.author.name }}
-          AUTHOR_LOGIN: ${{ github.event.workflow_run.head_commit.author.username }}
           COMMIT: ${{ github.event.workflow_run.head_sha }}
           RUN_NAME: ${{ github.event.workflow_run.name }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
+          TRIGGERING_ACTOR_LOGIN: ${{ github.event.workflow_run.triggering_actor.login }}
         with:
           script: |
             const { mentionUserByGithubLogin, sendSlackMessage } = require(`${{ github.workspace }}/release/dist/index.cjs`);
 
             const ATTEMPT = Number(process.env.ATTEMPT);
-            const AUTHOR = process.env.AUTHOR;
             const COMMIT = process.env.COMMIT;
             const RUN_NAME = process.env.RUN_NAME;
             const RUN_URL = process.env.RUN_URL;
-
-            let authorLogin = process.env.AUTHOR_LOGIN;
-
-            const { owner, repo } = context.repo;
-
-            // Get commit details to find author information as this isn't required in the
-            // workflow_run payload.
-            if (!authorLogin) {
-              try {
-                const { data: commit } = await github.rest.repos.getCommit({
-                  owner,
-                  repo,
-                  ref: COMMIT,
-                });
-                authorLogin = commit?.author?.login ?? '';
-              } catch (error) {
-                console.warn(`Failed to find commit details for ${COMMIT}: ${error.message}`);
-              }
-            }
+            const TRIGGERING_ACTOR_LOGIN = process.env.TRIGGERING_ACTOR_LOGIN;
 
             await sendSlackMessage({
               channelName: 'engineering-ci',
@@ -71,7 +51,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": `:shame-conga: Workflow Rerun Limit Exceeded :shame-conga:`,
+                    "text": `:rotating_light: Workflow Rerun Limit Exceeded :rotating_light:`,
                     "emoji": true,
                   }
                 },
@@ -83,7 +63,7 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": `<${RUN_URL}|${RUN_NAME}> has re-run ${ATTEMPT - 1} times for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit by ${AUTHOR} (${mentionUserByGithubLogin(authorLogin)}).`
+                      "text": `<${RUN_URL}|${RUN_NAME}> has been re-run ${ATTEMPT - 1} times by ${mentionUserByGithubLogin(TRIGGERING_ACTOR_LOGIN)} for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit.`
                     },
                   },
                   {
