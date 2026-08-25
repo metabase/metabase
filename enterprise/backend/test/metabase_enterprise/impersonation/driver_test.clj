@@ -248,11 +248,10 @@
   [_driver {:keys [details]}]
   details)
 
-(def ^:private ^:dynamic *impersonation-databases*
+(def ^:private impersonation-databases
   "Databases built by [[impersonation-database!]], keyed by `[driver source-database-id]`.
 
-  Rebound per run by the `:once` fixture below, which deletes whatever ends up in here. The root binding is what lets
-  a single `deftest` run from the REPL, where fixtures do not run."
+  Emptied by the `:once` fixture below, which deletes whatever ended up in here."
   (atom {}))
 
 (defn- impersonation-database!
@@ -266,7 +265,7 @@
   [driver]
   (let [source-db (mt/db)
         cache-key [driver (u/the-id source-db)]]
-    (or (get @*impersonation-databases* cache-key)
+    (or (get @impersonation-databases cache-key)
         (let [database (first (t2/insert-returning-instances!
                                :model/Database
                                (merge (t2.with-temp/with-temp-defaults :model/Database)
@@ -277,7 +276,7 @@
             (t2/update! :model/Database :id (u/the-id database)
                         (assoc-in database [:details :role] (impersonation-default-role driver))))
           (sync/sync-database! database {:scan :schema})
-          (swap! *impersonation-databases* assoc cache-key database)
+          (swap! impersonation-databases assoc cache-key database)
           database))))
 
 (defmacro ^:private with-impersonation-db!
@@ -296,15 +295,14 @@
          (driver/notify-database-updated driver/*driver* database#)))))
 
 (use-fixtures :once (fn [thunk]
-                      (binding [*impersonation-databases* (atom {})]
-                        (try
-                          (thunk)
-                          (finally
-                            (when-let [ids (seq (map u/the-id (vals @*impersonation-databases*)))]
-                              ;; the linter's concern is a fixture racing tests that share the rows it touches; these
-                              ;; ids were created by this namespace and are deleted after its last test finishes.
-                              #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-                              (t2/delete! :model/Database :id [:in ids])))))))
+                      (try
+                        (thunk)
+                        (finally
+                          (when-let [ids (seq (map u/the-id (vals (first (reset-vals! impersonation-databases {})))))]
+                            ;; the linter's concern is a fixture racing tests that share the rows it touches; these
+                            ;; ids were created by this namespace and are deleted after its last test finishes.
+                            #_{:clj-kondo/ignore [:metabase/validate-deftest]}
+                            (t2/delete! :model/Database :id [:in ids]))))))
 
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
