@@ -277,14 +277,11 @@
   (mt/with-premium-features #{:data-apps-preview}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (create-app!)
-      (let [database-id (mt/id)
-            table-id    (mt/id :venues)
-            group-id    (t2/select-one-fn :permission_group_id :model/DataApp :name "demo")]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :put 403 "apps/demo/resources/permissions"
-                                     {:table_ids [table-id]})))
-        (is (not= :unrestricted (view-data-permission group-id database-id table-id))
-            "the refused call granted nothing")))))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 "apps/demo/resources/permissions"
+                                   {:table_ids [(mt/id :venues)]})))
+      (is (nil? (t2/select-one-fn :permission_group_id :model/DataApp :name "demo"))
+          "the refused call did not create permission resources"))))
 
 (deftest superuser-can-create-or-reuse-a-data-app-draft-test
   (mt/with-premium-features #{:data-apps-preview}
