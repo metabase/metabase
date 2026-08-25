@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { skipToken, useListCollectionsTreeQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
@@ -9,7 +10,7 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { ExpandedCollection } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
-import type { CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 export const SHARED_TENANT_COLLECTIONS_ROOT_ID: CollectionId =
   "shared-tenant-collections-root";
@@ -42,15 +43,35 @@ export function useCollectionsWithTenants(
         }
       : skipToken,
   );
+  const { data: tenantSpecificCollections } = useListCollectionsTreeQuery(
+    isTenantsActive
+      ? {
+          namespace: PLUGIN_TENANTS.TENANT_SPECIFIC_NAMESPACE,
+          "exclude-archived": true,
+        }
+      : skipToken,
+  );
 
   return useMemo(() => {
-    if (!isTenantsActive || !sharedTenantCollections?.length) {
+    if (!isTenantsActive) {
       return collectionsById;
+    }
+
+    const collectionsWithTenantSpecific = mergeTenantSpecificCollections(
+      collectionsById,
+      getExpandedCollectionsById(
+        flattenCollectionTree(tenantSpecificCollections ?? []),
+        userPersonalCollectionId,
+      ),
+    );
+
+    if (!sharedTenantCollections?.length) {
+      return collectionsWithTenantSpecific;
     }
 
     // Unjustified type cast. FIXME
     const sharedCollectionsById = getExpandedCollectionsById(
-      sharedTenantCollections,
+      flattenCollectionTree(sharedTenantCollections),
       userPersonalCollectionId,
     );
 
@@ -60,17 +81,40 @@ export function useCollectionsWithTenants(
       ) ?? "";
 
     return mergeSharedCollections(
-      collectionsById,
+      collectionsWithTenantSpecific,
       sharedCollectionsById,
       displayName,
     );
   }, [
     isTenantsActive,
     sharedTenantCollections,
+    tenantSpecificCollections,
     collectionsById,
     userPersonalCollectionId,
   ]);
 }
+
+/**
+ * Flatten the nested collection tree into a flat collection list.
+ */
+export const flattenCollectionTree = (
+  collections: Collection[],
+): Collection[] =>
+  collections.flatMap((collection) => [
+    collection,
+    ...flattenCollectionTree(collection.children ?? []),
+  ]);
+
+/**
+ * Add tenant-specific collections without replacing the root collection.
+ */
+export const mergeTenantSpecificCollections = (
+  baseCollectionsById: Record<CollectionId, ExpandedCollection>,
+  tenantSpecificCollectionsById: Record<CollectionId, ExpandedCollection>,
+): Record<CollectionId, ExpandedCollection> => ({
+  ...baseCollectionsById,
+  ..._.omit(tenantSpecificCollectionsById, ROOT_COLLECTION.id),
+});
 
 /**
  * Merge shared tenant collections into the base collections map,

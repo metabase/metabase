@@ -14,7 +14,9 @@ import {
 import {
   COLLECTIONS_TOP_LEVEL_ID,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
+  flattenCollectionTree,
   mergeSharedCollections,
+  mergeTenantSpecificCollections,
   useCollectionsWithTenants,
 } from "./use-collections-with-tenants";
 
@@ -111,6 +113,58 @@ describe("useCollectionsWithTenants", () => {
     expect(result.current).toHaveProperty(
       String(SHARED_TENANT_COLLECTIONS_ROOT_ID),
     );
+  });
+});
+
+describe("mergeTenantSpecificCollections", () => {
+  it("merges tenant-specific collections without replacing Our Analytics", () => {
+    const ourAnalytics = createMockExpandedCollection({
+      ...ROOT_COLLECTION,
+      path: [],
+    });
+    const tenantCollection = createMockExpandedCollection({
+      id: 100,
+      name: "Tenant collection: Acme",
+      location: "/",
+      path: [ROOT_COLLECTION.id],
+      namespace: "tenant-specific",
+    });
+    const tenantSpecificRoot = createMockExpandedCollection({
+      ...ROOT_COLLECTION,
+      name: "Collections",
+      path: [],
+    });
+
+    const collectionsById = mergeTenantSpecificCollections(
+      { [ROOT_COLLECTION.id]: ourAnalytics },
+      {
+        [ROOT_COLLECTION.id]: tenantSpecificRoot,
+        [tenantCollection.id]: tenantCollection,
+      },
+    );
+
+    expect(collectionsById[ROOT_COLLECTION.id]).toBe(ourAnalytics);
+    expect(collectionsById[tenantCollection.id]).toBe(tenantCollection);
+  });
+});
+
+describe("flattenCollectionTree", () => {
+  it("includes nested collections", () => {
+    const tenantCollection = createMockCollection({
+      id: 100,
+      name: "Tenant collection: Acme",
+      children: [
+        createMockCollection({
+          id: 101,
+          name: "Tenant questions",
+          children: [],
+        }),
+      ],
+    });
+
+    expect(
+      flattenCollectionTree([tenantCollection]).map(({ id }) => id),
+    ).toEqual([100, 101]);
   });
 });
 
