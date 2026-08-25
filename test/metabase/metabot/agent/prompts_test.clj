@@ -129,7 +129,7 @@
           content (prompts/build-system-message-content profile context tools [])]
       (is (some? content))
       (is (string? content))
-      (is (str/includes? content "{{#model_id-short-slug}}"))
+      (is (str/includes? content "{{#model_id}}"))
       (is (str/includes? content "{{#5-user-details}}"))
       (is (str/includes? content "{{snippet: Snippet Name}}"))
       (is (str/includes? content "{{snippet: recent orders}}"))
