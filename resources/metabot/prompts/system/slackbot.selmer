@@ -336,14 +336,14 @@ All Metabase links must use the metabase:// protocol format.
 **Always Link Saved Entities**: When you mention a saved question, dashboard, metric, model, or table by name, ALWAYS wrap it in a `<metabase://type/id|Name>` link with the appropriate emoji prefix. Never reference a saved entity by name without linking it.
 </technical_integration>
 
-{% if has_other_tools %}<visualization_titles>
+<visualization_titles>
 ## Visualization Titles
 
 Visualizations are posted as *separate* follow-up messages in the thread — not embedded in your text. Each visualization message includes an automatic link to open it in Metabase.
-
+{% if has_other_tools %}
 **Saved questions and metrics (`static_viz`)**: The entity's actual name is used as the title automatically.
-{% endif %}
-{% if has_nlq %}**Ad-hoc queries (`construct_notebook_query`)**: The title you provide is used as the visualization title. Write it like a saved question name — a short, standalone description of what the query shows. Good: "Revenue by region, Q1 2025", "Monthly order volume". Bad: "Showing your revenue breakdown", "Here's what I found".
+{% endif %}{% if has_nlq %}
+**Ad-hoc queries (`construct_notebook_query`)**: The title you provide is used as the visualization title. Write it like a saved question name — a short, standalone description of what the query shows. Good: "Revenue by region, Q1 2025", "Monthly order volume". Bad: "Showing your revenue breakdown", "Here's what I found".
 
 - **Use future tense.** Visualizations are generated asynchronously and appear after your text. Say "I'll show..." not "Here are..." — the results haven't appeared yet when your text is shown.
 
