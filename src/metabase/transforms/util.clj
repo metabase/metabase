@@ -57,7 +57,7 @@
   checked too. Throws when no user is bound: every caller must establish one, a scheduled run included."
   [query]
   (when-not api/*current-user-id*
-    (throw (ex-info "source-query-permissions-ok? requires a current user; bind one before checking a transform source"
+    (throw (ex-info "A transform needs to be run with a bound user"
                     {})))
   (try
     (qp.setup/with-qp-setup [query query]
