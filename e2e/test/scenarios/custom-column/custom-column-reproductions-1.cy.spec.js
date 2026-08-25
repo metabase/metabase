@@ -486,7 +486,10 @@ describe("issue 20229", () => {
   }
 
   function unselectColumn(column) {
-    cy.findByText(column).siblings().find(".Icon-check").click({ force: true });
+    cy.findByText(column)
+      .siblings()
+      .find('input[type="checkbox"]')
+      .click({ force: true });
   }
 
   beforeEach(() => {

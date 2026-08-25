@@ -74,7 +74,6 @@ const SegmentQuestionsInner = ({
     <div style={style} className={CS.full}>
       <ReferenceHeader
         name={t`Questions about ${segment.name}`}
-        type="questions"
         headerIcon={modelIconMap.segment}
       />
       <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>

@@ -2,13 +2,10 @@ const {
   SIDE_EFFECT_PATHS,
 } = require("../build/shared/rspack/side-effect-free-modules.js");
 
-// The options `metabase/no-module-side-effects` runs with in eslint.config.mjs.
-// The registry scan (scripts/side-effect-files.js) uses the same object, so a file is in
-// frontend/lint/side-effect-files.json exactly when the configured rule reports it.
+// Options for metabase/no-module-side-effects, shared by eslint.config.mjs and the registry generator.
 const NO_MODULE_SIDE_EFFECTS_OPTIONS = {
   sideEffectPaths: SIDE_EFFECT_PATHS,
-  // Alias roots that resolve inside the repo (the tsconfig `paths` roots),
-  // so a module-scope call into them counts as our own code
+  // Calls into these count as our own code, which we trust to only return a value.
   internalModules: [
     "metabase",
     "metabase-lib",
@@ -24,4 +21,16 @@ const NO_MODULE_SIDE_EFFECTS_OPTIONS = {
   ],
 };
 
-module.exports = { NO_MODULE_SIDE_EFFECTS_OPTIONS };
+// Files the rule never runs on, in eslint.config.mjs and in the registry generator alike.
+const NO_MODULE_SIDE_EFFECTS_IGNORES = [
+  "**/*.unit.spec.*",
+  "**/*.stories.*",
+  "**/tests/**",
+  "**/__support__/**",
+  "**/*.d.ts",
+];
+
+module.exports = {
+  NO_MODULE_SIDE_EFFECTS_OPTIONS,
+  NO_MODULE_SIDE_EFFECTS_IGNORES,
+};

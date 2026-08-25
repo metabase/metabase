@@ -35,7 +35,7 @@ env:
   # Consumed by the report-failures-to-ci-conductor step in fe-tests-unit. Absent
   # (e.g. fork PRs without secret access) the reporter no-ops. Matches the other
   # suite workflows (backend, drivers, e2e, app-db, semantic-search).
-  CI_CONDUCTOR_BASE_URL: ${{ secrets.CI_CONDUCTOR_BASE_URL }}
+  CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
 
 jobs:
@@ -116,7 +116,7 @@ jobs:
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
       - name: Report failed tests to ci-conductor
-        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+        if: ${{ !cancelled() && ( steps.fe-tests.outcome == 'failure' || github.run_attempt != '1' ) }}
         # This step should NEVER fail the job!
         continue-on-error: true
         uses: ./.github/actions/report-failures-to-ci-conductor

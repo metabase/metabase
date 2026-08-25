@@ -4,7 +4,9 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.deepseek :as deepseek]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.vllm :as vllm]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -221,12 +223,18 @@
   :doc        false)
 
 (defn- llm-provider-streams-reasoning?
-  "Whether a model reference names a model that streams its reasoning back to us."
+  "Whether a model reference names a model that streams its reasoning back to us.
+
+  Anthropic and OpenAI answer from the model name, because thinking is requested in the request body. vLLM answers
+  from what its connect-time probe observed and recorded on the connection — the flag depends on the operator's
+  `--reasoning-parser` as well as on the model, so the name cannot settle it."
   [model-ref]
-  (let [{:keys [type model]} (llm.provider/resolve-model-ref model-ref)]
+  (let [{:keys [type model credentials]} (llm.provider/resolve-model-ref model-ref)]
     (case type
       "anthropic" (claude/reasoning-model? model)
+      "deepseek"  (deepseek/reasoning-model? model)
       "openai"    (openai/reasoning-model? model)
+      "vllm"      (vllm/reasoning-connection? credentials)
       false)))
 
 (defsetting llm-metabot-supports-reasoning?

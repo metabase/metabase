@@ -1,4 +1,23 @@
-import { isValidIso8601 } from "metabase/visualizations/lib/date-validation";
+import {
+  isTimezoneNaiveWallClock,
+  isValidIso8601,
+} from "metabase/visualizations/lib/date-validation";
+
+describe("isTimezoneNaiveWallClock", () => {
+  it.each([
+    ["2025-04-01", true],
+    ["2025-03-30 00:00:00", true],
+    ["2025-03-30T00:00:00", true],
+    ["20250401", true],
+    ["2025-03-30T00:00:00Z", false],
+    ["2025-03-30T00:00:00+08:00", false],
+    ["2025-03-30T00:00:00-11:00", false],
+    ["2019-W33", false],
+    ["2024-365", false],
+  ])("%s → %s", (value, expected) => {
+    expect(isTimezoneNaiveWallClock(value)).toBe(expected);
+  });
+});
 
 describe("isValidIso8601", () => {
   // examples from https://en.wikipedia.org/wiki/ISO_8601

@@ -5,9 +5,8 @@ import _ from "underscore";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getTimelineName } from "metabase/common/utils/timelines";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { ActionIcon, Icon, Menu, TextInput } from "metabase/ui";
+import { ActionIcon, Button, Icon, Menu, TextInput } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -21,7 +20,6 @@ import {
   ModalBody,
   ModalRoot,
   ModalToolbar,
-  ModalToolbarLink,
 } from "./TimelineDetailsModal.styled";
 
 export interface TimelineDetailsModalProps {
@@ -99,11 +97,13 @@ const TimelineDetailsModal = ({
             onChange={handleSearchChange}
           />
           {canWrite && !isArchive && (
-            <ModalToolbarLink
-              className={ButtonsS.Button}
+            <Button
+              component={ForwardRefLink}
               to={Urls.newEventInCollection(timeline)}
               role="button"
-            >{t`Create event`}</ModalToolbarLink>
+              flex="0 0 auto"
+              ml="md"
+            >{t`Create event`}</Button>
           )}
         </ModalToolbar>
       )}

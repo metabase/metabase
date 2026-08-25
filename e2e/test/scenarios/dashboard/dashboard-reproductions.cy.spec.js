@@ -2246,7 +2246,9 @@ describe("issue 64138", () => {
       })
       .within(() => {
         cy.findByLabelText("Zoom in").should("not.exist");
-        cy.findByText("Set as default view").should("be.visible").click();
+        // the update button is disabled until the map is panned, so only
+        // assert that it is shown while the zoom controls are hidden
+        cy.findByText("Set as default view").should("be.visible");
       });
 
     cy.log("hovering marker icons should not open their tooltips");

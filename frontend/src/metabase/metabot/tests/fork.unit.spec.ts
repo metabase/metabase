@@ -6,6 +6,7 @@ import { forkConversation } from "metabase/metabot/state";
 import * as Urls from "metabase/urls";
 
 import {
+  conversationIdForAgent,
   conversationTitle,
   createMockSSEStream,
   createPauses,
@@ -66,9 +67,7 @@ describe("metabot > fork", () => {
     );
 
     await waitFor(() =>
-      expect(
-        store.getState().metabot.conversations.omnibot?.conversationId,
-      ).toBe("forked-convo-id"),
+      expect(conversationIdForAgent(store)).toBe("forked-convo-id"),
     );
     expect(await screen.findByText("Conversation forked")).toBeInTheDocument();
 
@@ -77,8 +76,7 @@ describe("metabot > fork", () => {
 
   it("shows an error toast and keeps the original conversation when forking fails", async () => {
     const { store, lastMessage } = await setupWithReply();
-    const originalConversationId =
-      store.getState().metabot.conversations.omnibot?.conversationId;
+    const originalConversationId = conversationIdForAgent(store);
     mockForkEndpoint({}, 400);
 
     await userEvent.click(await forkButton(lastMessage));
@@ -86,9 +84,7 @@ describe("metabot > fork", () => {
     expect(
       await screen.findByText("Failed to fork conversation"),
     ).toBeInTheDocument();
-    expect(store.getState().metabot.conversations.omnibot?.conversationId).toBe(
-      originalConversationId,
-    );
+    expect(conversationIdForAgent(store)).toBe(originalConversationId);
   });
 
   it("navigates to the forked conversation when forking on the ask page", async () => {
@@ -111,6 +107,7 @@ describe("metabot > fork", () => {
         Urls.metabotConversation("forked-convo-id"),
       ),
     );
+    expect(conversationIdForAgent(store, "ask")).toBe("forked-convo-id");
   });
 
   it("does not offer to fork earlier messages while a response is streaming", async () => {
