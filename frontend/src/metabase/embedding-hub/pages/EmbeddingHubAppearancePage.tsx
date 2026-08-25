@@ -10,13 +10,9 @@ import { Card, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 /**
- * The embedding theme editor plus the appearance settings that show up inside
- * an embed. One tab, not two -- there is no separate Themes tab in the design.
- *
- * Gated as a whole. The two halves are technically gated on different features
- * -- themes on `embedding_simple`, the appearance settings on `whitelabel` --
- * but in practice they arrive together, so a partial state is not worth
- * building.
+ * Combines the embedding theme editor and the branding settings into one tab.
+ * Both are gated on `hasSimpleEmbedding`, even though the branding settings
+ * alone gate on `whitelabel`, since the two features ship together.
  */
 export function EmbeddingHubAppearancePage() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
