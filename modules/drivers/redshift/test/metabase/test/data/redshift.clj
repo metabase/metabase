@@ -230,30 +230,24 @@
 ;;; --------------------------------- Destruction ----------------------------------
 
 (defn- drop-orphan-schemas!
-  "Drop every schema classified by [[orphan-schemas]] as expired/old. Per-entry
-  try/catch: never let one orphan block the rest.
+  "Drop every schema classified by [[orphan-schemas]] as expired/old, returning each name or the exception that
+  stopped it. Never let one orphan block the rest.
 
   Takes the orphan-map directly so callers can preview-then-drop without
-  re-querying. Caller owns the Statement.
-
-  Returns the schema names actually dropped; reporting attempts instead would let a failed sweep claim a full haul."
+  re-querying. Caller owns the Statement."
   [^java.sql.Statement stmt orphans]
-  (let [drop-sql (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
-    (into []
-          (keep (fn [[fmt-str schema]]
-                  (log/infof fmt-str schema)
-                  (try
-                    (.execute stmt (drop-sql schema))
-                    schema
-                    (catch Throwable e
-                      (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e))
-                      nil))))
-          (for [[k fmt-str] [[:old                "Dropping old data schema: %s"]
-                             [:expired-cache      "Dropping expired cache schema: %s"]
-                             [:lacking-created-at "Dropping cache without created-at info: %s"]
-                             [:old-style-cache    "Dropping old cache schema without `cache_info` table: %s"]]
-                schema       (get orphans k)]
-            [fmt-str schema]))))
+  (mapv (fn [[fmt-str schema]]
+          (log/infof fmt-str schema)
+          (try
+            (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema))
+            schema
+            (catch Exception e e)))
+        (for [[k fmt-str] [[:old                "Dropping old data schema: %s"]
+                           [:expired-cache      "Dropping expired cache schema: %s"]
+                           [:lacking-created-at "Dropping cache without created-at info: %s"]
+                           [:old-style-cache    "Dropping old cache schema without `cache_info` table: %s"]]
+              schema       (get orphans k)]
+          [fmt-str schema])))
 
 (defn- delete-old-schemas!
   "Remove unneeded schemas from redshift. Local databases are thrown away after

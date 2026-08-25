@@ -387,14 +387,9 @@
 
 (defn- old-dataset-names
   "Names of test datasets older than `hours`: tracked ones nothing has accessed in that long, plus untracked ones
-  created that long ago. Pure -- reads and returns names, deletes nothing, so it doubles as the preview for a dry run.
+  created that long ago. Excludes the current `test-data`, which [[destroy-dataset!]] refuses to delete anyway.
 
-  Split out of [[delete-old-datasets!]] (with the fixed 14 days made a parameter) so the nightly sweep
-  ([[tx/gc-orphans!]]) runs this same enumeration on its own threshold instead of carrying a second, subtly different
-  copy of it.
-
-  Excludes the current `test-data`, which [[destroy-dataset!]] refuses to delete anyway -- keeping it out here means
-  the sweep doesn't report a spurious failure for it every single night."
+  Shared by [[delete-old-datasets!]] and the nightly sweep ([[tx/gc-orphans!]]), which differ only in `hours`."
   [hours]
   (let [current-test-data (test-dataset-id (tx/get-dataset-definition
                                             (data.impl/resolve-dataset-definition *ns* 'test-data)))]
@@ -416,17 +411,14 @@
                     hours))))
 
 (defn- drop-datasets!
-  "Delete each named dataset, returning the ones actually deleted. Catches per dataset -- usually a concurrent run
-  got there first, which must not abandon the rest of the sweep."
+  "Delete each named dataset, returning each name or the exception that stopped it."
   [dataset-ids]
-  (into []
-        (keep (fn [dataset-id]
-                (try
-                  (destroy-dataset! dataset-id)
-                  dataset-id
-                  (catch Throwable e
-                    (log/warnf "Failed to delete %s, skipping: %s" dataset-id (ex-message e))
-                    nil))))
+  (mapv (fn [dataset-id]
+          (try
+            (destroy-dataset! dataset-id)
+            dataset-id
+            ;; usually just another job deleting the same dataset at the same time
+            (catch Exception e e)))
         dataset-ids))
 
 (defn delete-old-datasets! []

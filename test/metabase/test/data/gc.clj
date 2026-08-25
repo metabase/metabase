@@ -28,13 +28,21 @@
                  (str/split (or drivers "") #",")))
       default-drivers))
 
-(defn- report! [driver collected]
-  (log/infof "[%s] %d object(s) collected%s"
-             (name driver) (count collected)
-             (if (seq collected) (str ": " (str/join ", " collected)) ""))
-  ;; so the morning after is legible without digging through logs
-  (when-let [summary-file (System/getenv "GITHUB_STEP_SUMMARY")]
-    (spit summary-file (format "- **%s** — %d collected\n" (name driver) (count collected)) :append true)))
+(defn- report!
+  "Log and summarize one driver's results, returning the exceptions among them."
+  [driver results]
+  (let [{failures true, collected false} (group-by #(instance? Exception %) results)]
+    (log/infof "[%s] %d collected, %d failed%s"
+               (name driver) (count collected) (count failures)
+               (if (seq collected) (str ": " (str/join ", " collected)) ""))
+    (doseq [^Exception e failures]
+      (log/errorf "[%s] %s" (name driver) (ex-message e)))
+    ;; so the morning after is legible without digging through logs
+    (when-let [summary-file (System/getenv "GITHUB_STEP_SUMMARY")]
+      (spit summary-file
+            (format "- **%s** — %d collected, %d failed\n" (name driver) (count collected) (count failures))
+            :append true))
+    failures))
 
 (defn gc-orphans!
   "Sweep orphaned test data from each driver's shared cloud account.
@@ -44,8 +52,7 @@
   `:temp-data-hours` (default 2) is the TTL for per-run garbage, `:fixture-hours` (default 72) for datasets runs
   share. Floored at [[min-temp-data-hours]] and [[min-fixture-hours]].
 
-  Enumeration failures fail the job; individual drops that fail are logged and skipped, usually meaning another run
-  got there first."
+  Failures don't stop the sweep, but they are reported per object and fail the job at the end."
   [{:keys [drivers temp-data-hours fixture-hours]}]
   (let [options {:temp-data-hours (or temp-data-hours min-temp-data-hours)
                  :fixture-hours   (or fixture-hours 72)}]
@@ -58,5 +65,8 @@
     ;; we want the extensions, not their before-run hooks: Redshift's creates a session schema, which this job would
     ;; then leak nightly
     (binding [tx/*skip-before-run?* true]
-      (doseq [driver (parse-drivers drivers)]
-        (report! driver (tx/gc-orphans! driver options))))))
+      (let [failures (into [] (mapcat #(report! % (tx/gc-orphans! % options))) (parse-drivers drivers))]
+        ;; fail loudly rather than going green having deleted nothing
+        (when (seq failures)
+          (throw (ex-info (format "%d object(s) could not be deleted" (count failures))
+                          {:errors (mapv ex-message failures)})))))))

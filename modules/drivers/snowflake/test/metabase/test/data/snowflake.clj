@@ -117,10 +117,12 @@
 (defn- old-dataset-names
   "Names of test databases old enough to delete, oldest first.
 
-  `isolate_` names are per-run and age from `created`. `sha_` names are shared and age from `accessed_at`, which is
-  only trustworthy for them: the tracking table is keyed on dataset hash and its MERGE never updates `name`, so an
-  `isolate_` row keeps the first run's name while later runs keep refreshing its `accessed_at` -- ageing on that
-  would make the first leaked database per dataset immortal.
+  [[qualified-db-name]] gives CI runs an `isolate_` name built from a random int -- per-run, never reused, so they
+  age from `created`. Everything else is a `sha_` name from a local run, content-addressed and reused, so those age
+  from `accessed_at` when the tracking table knows them.
+
+  `accessed_at` is only trustworthy for `sha_`: the tracking table is keyed on dataset hash and its MERGE never
+  updates `name`, so an `isolate_` row keeps the first run's name while later runs keep refreshing its `accessed_at`.
 
   Compares timestamps directly; `timestampdiff` counts boundary crossings, so an hour bucket calls a 10:59 database
   two hours old at 12:01."
@@ -141,9 +143,6 @@
                       fixture-hours)])))
 
 ;;; --------------------------------- Destruction ----------------------------------
-;;;
-;;; The whole-orchestration entry point ([[delete-old-test-data!]]) is the glue
-;;; and gets called from `tx/create-db!`.
 
 (defn- with-write-stmt!
   "Open a write-capable Snowflake connection + Statement, call `f` with the stmt,
@@ -159,68 +158,26 @@
        (apply f stmt args)))))
 
 (defn- drop-datasets!
-  "Drop each named test database and un-track it, returning the names actually dropped -- reporting attempts instead
-  would let a sweep that failed throughout still claim a full haul. Shared with [[tx/gc-orphans!]]."
+  "Drop each named test database and un-track it, returning each name or the exception that stopped it."
   [dataset-names]
-  (if (empty? dataset-names)
-    []
-    (with-write-stmt!
-      (fn [^java.sql.Statement stmt]
-        (into []
-              (keep (fn [dataset-name]
-                      #_{:clj-kondo/ignore [:discouraged-var]}
-                      (println "[Snowflake] Deleting old dataset:" dataset-name)
-                      (try
-                        (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
-                        (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
-                                               dataset-name))
-                        dataset-name
-                        ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
-                        ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
-                        ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
-                        (catch Throwable e
-                          #_{:clj-kondo/ignore [:discouraged-var]}
-                          (println "[Snowflake] Error deleting old dataset:" (ex-message e))
-                          nil))))
-              dataset-names)))))
-
-(defn- drop-old-datasets!
-  "Drop test datasets (databases) that are too old."
-  []
-  (drop-datasets! (old-dataset-names {:temp-data-hours (* 5 24), :fixture-hours (* 5 24)})))
-
-(defn- delete-old-test-data!
-  "Delete old test data: datasets (databases) prefixed by sha_ that haven't been
-   accessed in a while."
-  []
-  ;; the printlns are on purpose because we want them to show up when running tests, even on CI, to make sure this
-  ;; stuff is working correctly. We can change it to `log` in the future when we're satisfied everything is working as
-  ;; intended -- Cam
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println "[Snowflake] deleting old test data...")
-  ;; disabling this temporarily as it has caused very difficult-to-debug failures
-  ;; in CI. even tho the datasets *have* been accessed recently, they are still
-  ;; being deleted and reinserted, with race conditions that cause some data to be
-  ;; inserted three times. this does mean that if datasets change, old versions
-  ;; will not be cleaned up automatically and will need to be manually GCed.
-  ;; local testing shows that identifying old datasets works correctly, but
-  ;; sometimes randomly in CI it seems to decide that datasets are old and
-  ;; deletes them even tho they are not old.
-  #_(drop-old-datasets!))
-
-(defonce ^:private deleted-old-test-data?
-  (atom false))
-
-(defn- delete-old-test-data-if-needed!
-  "Call [[delete-old-test-data!]], only if we haven't done so already."
-  []
-  (when (compare-and-set! deleted-old-test-data? false true)
-    (delete-old-test-data!)))
+  (with-write-stmt!
+    (fn [^java.sql.Statement stmt]
+      (mapv (fn [dataset-name]
+              #_{:clj-kondo/ignore [:discouraged-var]}
+              (println "[Snowflake] Deleting old dataset:" dataset-name)
+              (try
+                (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";" dataset-name))
+                (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
+                                       dataset-name))
+                dataset-name
+                ;; usually just another job deleting the same dataset at the same time
+                (catch Exception e e)))
+            dataset-names))))
 
 ;;; --------------------------------- Orphan GC ----------------------------------
 ;;;
-;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`); same enumeration and dropping as
-;;; [[drop-old-datasets!]], shorter thresholds.
+;;; Nightly sweep (`.github/workflows/test.cleanup-dwh-data.yml`). This replaces the old in-process cleanup, which
+;;; ran on every job and was disabled for causing hard-to-debug CI failures.
 
 (defmethod tx/gc-orphans! :snowflake
   [_driver options]
@@ -240,8 +197,6 @@
   [driver db-def & options]
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
-    ;; clean up any old test data (datasets)
-    (delete-old-test-data-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
@@ -443,7 +398,6 @@
                                         ORDER BY end_time DESC limit 64"])
   ;; preview what the nightly sweep would collect, at its own thresholds
   (old-dataset-names {:temp-data-hours 2, :fixture-hours 72})
-  (drop-old-datasets!)
   (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
   ;; Tracked databases ordered by age
   (->> ["select d.name, d.accessed_at, i.created, timestampdiff('minute', i.created, d.accessed_at) as diff, timestampdiff('minute', i.created, current_timestamp()) as age
