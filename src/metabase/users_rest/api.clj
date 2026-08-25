@@ -595,9 +595,8 @@
                                                                                     :password old_password})))
                   "old_password"
                   (tru "Invalid password")))
+    ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
     (auth-identity/set-password! id password)
-    ;; changing a password invalidates the user's existing sessions; a self-change gets a fresh one below
-    (t2/delete! :model/Session :user_id id)
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)
       (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking! user (request/device-info request) :provider/password)

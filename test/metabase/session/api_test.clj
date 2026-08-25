@@ -498,6 +498,22 @@
                 (mt/client :post 400 "session/reset_password" {:token    token
                                                                :password "whateverUP12!!"})))))))
 
+(deftest reset-password-from-token-invalidates-sessions-test
+  (testing "POST /api/session/reset_password deletes the user's existing sessions"
+    (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "password")
+      (let [session (auth-identity/create-session-with-auth-tracking!
+                     user
+                     {:device_id "reset-test-device" :embedded false :token_exchange false
+                      :device_description "Test" :ip_address "127.0.0.1"}
+                     :provider/password)
+            token   (auth-identity/create-password-reset! (:id user))]
+        (is (some? (t2/select-one :model/Session :id (:id session)))
+            "sanity check: the session exists before the reset")
+        (mt/client :post 200 "session/reset_password" {:token token :password "whateverUP12!!"})
+        (is (nil? (t2/select-one :model/Session :id (:id session)))
+            "the pre-existing session should be deleted after resetting the password via token")))))
+
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"

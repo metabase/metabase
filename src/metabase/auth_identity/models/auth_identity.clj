@@ -95,6 +95,9 @@
   authoritative credential store. This is the only supported way to set a user's password; the User model itself no
   longer stores, hashes, or mirrors passwords.
 
+  Always deletes the user's existing sessions: changing a password must invalidate every session authenticated with the
+  old one. A caller that wants the acting user to stay logged in should create a fresh session afterward.
+
   `opts` may contain `:expires-at`, an instant after which the credential is no longer valid (used by time-limited
   support-access grants)."
   ([user-id  :- ms/PositiveInt
@@ -108,11 +111,15 @@
                   [:expires-at {:optional true} [:maybe (ms/InstanceOfClass java.time.temporal.Temporal)]]]]]
    ;; always write :expires_at (nil unless an expiry was requested) so setting a password clears any stale expiry a
    ;; prior support-access grant left behind — otherwise `authenticate` would reject the new password as expired
-   (let [attrs {:credentials {:plaintext_password password}
-                :expires_at  (:expires-at opts)}]
-     (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
-       (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
-       (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs))))))
+   ;; the credential write and the session delete must be atomic: if either fails the password must not change while
+   ;; sessions authenticated with the old one survive
+   (t2/with-transaction [_]
+     (let [attrs {:credentials {:plaintext_password password}
+                  :expires_at  (:expires-at opts)}]
+       (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
+         (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
+         (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs))))
+     (t2/delete! :model/Session :user_id user-id))))
 
 (mu/defn reset-token-hash :- [:maybe :string]
   "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`
