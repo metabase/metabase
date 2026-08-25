@@ -65,6 +65,23 @@
   (when (some :channel handlers)
     (api/check-403 (mi/can-write? :model/Channel))))
 
+(defn- handler-touches-template?
+  [{:keys [template template_id]}]
+  (or (map? template) (some? template_id)))
+
+(defn- check-handler-templates!
+  "Validate the templates carried by a notification request's `handlers`: reject internal-only
+  handlebars-resource templates (400), and require the same permission as writing a `ChannelTemplate`
+  directly (403) for any template the request creates, overwrites, or deletes. `existing-handlers`
+  (nil on create) hold templates an update may overwrite or delete, so a template on either side
+  gates the write."
+  ([handlers] (check-handler-templates! handlers nil))
+  ([handlers existing-handlers]
+   (check-no-resource-templates! handlers)
+   (when (or (some handler-touches-template? handlers)
+             (some handler-touches-template? existing-handlers))
+     (api/check-403 (mi/can-write? :model/ChannelTemplate)))))
+
 (defn get-notification
   "Get a notification by id."
   [id]
@@ -208,7 +225,7 @@
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification
   "Create a new notification, return the created notification."
   [_route _query body :- ::CreateNotificationParams request]
-  (check-no-resource-templates! (:handlers body))
+  (check-handler-templates! (:handlers body))
   (create-notification!
    (-> body
        (update :payload_type keyword)
@@ -252,9 +269,9 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
    body :- ::NotificationApiInput]
-  (check-no-resource-templates! (:handlers body))
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
+    (check-handler-templates! (:handlers body) (:handlers existing-notification))
     (models.notification/update-notification! existing-notification body)
     (when (card-notification? existing-notification)
       (notify-notification-updates! body existing-notification))
