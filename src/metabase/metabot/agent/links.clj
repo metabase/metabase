@@ -32,28 +32,18 @@
 
 (defn ->legacy-mbql
   "Normalize a MBQL 5 query to legacy MBQL. Frontend /question# URLs require legacy
-  MBQL format; non-MBQL 5 values pass through unchanged.
-
-  A query is treated as MBQL 5 when it is a map carrying either `:lib/type` or the
-  structural `:stages` marker. The `:stages`-without-`:lib/type` case is real: a
-  query that round-trips through the frontend's viewing context (`user_is_viewing`
-  / `chart_configs`) comes back as MBQL 5 stripped of its internal `:lib/*` keys
-  (`:lib/type`, `:lib/uuid`, `:lib/metadata`). Guarding only on `:lib/type` (the
-  old behavior) let such a query fall through unchanged, so the raw MBQL 5 leaked
-  into the `/question#<base64>` hash and the frontend crashed with \"Stage 0 does
-  not exist\" (BOT-1604 follow-up).
-
-  Normalizing against `::lib.schema/query` re-stamps `:lib/type`/`:lib/uuid` and
-  restores canonical enum values, so the subsequent `->legacy-MBQL` conversion
-  succeeds whether the query arrived fresh from a tool (keyword `:lib/type`),
-  rehydrated from JSON state (string enum values), or serialized by the frontend
-  (no `:lib/*` keys at all) — with one exception: a `:lib/*`-stripped query whose
-  positional refs (e.g. an order-by on the query's own aggregation) no longer
-  resolve after normalize still fails conversion. In that case the raw,
-  unconverted MBQL 5 is returned rather than raising."
+  MBQL format; non-MBQL 5 values pass through unchanged. A MBQL 5 query that fails
+  conversion is also returned unchanged rather than raising."
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (if (and (map? query) (or (:lib/type query) (:stages query)))
+  (if (and (map? query)
+           ;; `:stages` alone (no `:lib/type`) also counts: a query round-tripped through
+           ;; the frontend's viewing context (`user_is_viewing` / `chart_configs`) comes
+           ;; back MBQL 5 but stripped of its internal `:lib/*` keys. Guarding on
+           ;; `:lib/type` alone let such a query fall through unconverted, leaking raw
+           ;; MBQL 5 into the `/question#<base64>` hash and crashing the frontend with
+           ;; "Stage 0 does not exist" (BOT-1604 follow-up).
+           (or (:lib/type query) (:stages query)))
     (try
       (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
       (catch Exception e
