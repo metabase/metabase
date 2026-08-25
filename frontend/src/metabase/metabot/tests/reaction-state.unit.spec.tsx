@@ -11,7 +11,7 @@ import { createMockTransform } from "metabase-types/api/mocks";
 import { newConversationButton, setup } from "./utils";
 
 describe("metabot > reaction state", () => {
-  it("should clear navigateToPath and suggestedTransforms when resetting omnibot conversation", async () => {
+  it("should clear navigateToPath and suggestedTransforms when starting a new omnibot conversation", async () => {
     const { store } = setup();
     const getReactions = () => getMetabotReactionsState(store.getState());
 

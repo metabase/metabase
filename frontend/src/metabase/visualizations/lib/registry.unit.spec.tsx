@@ -4,7 +4,7 @@ import React, { Component, Suspense } from "react";
 import type { VisualizationDisplay } from "metabase-types/api";
 
 import {
-  getVisualizationComponent,
+  getRegisteredComponent,
   loadVisualizationComponents,
   registerVisualization,
 } from "./registry";
@@ -48,7 +48,7 @@ describe("registerVisualization", () => {
       registerVisualization(definition, () => Promise.resolve(Chart)),
     ).toThrow(/already registered/);
 
-    expect(getVisualizationComponent(display)).toBeDefined();
+    expect(getRegisteredComponent(display)).toBeDefined();
   });
 });
 
@@ -64,7 +64,7 @@ describe("a chunk that fails to download", () => {
       return Promise.reject(new Error("chunk load failed"));
     });
 
-    const failing = getVisualizationComponent(display);
+    const failing = getRegisteredComponent(display);
     render(
       <ChunkErrorBoundary>
         <Suspense fallback={<div>loading</div>}>
@@ -84,7 +84,7 @@ describe("a chunk that fails to download", () => {
 
     // A new object, so the next render downloads again rather than reusing a
     // lazy React has permanently marked as rejected.
-    const retried = getVisualizationComponent(display);
+    const retried = getRegisteredComponent(display);
     expect(retried).toBeDefined();
     expect(retried).not.toBe(failing);
   });
@@ -100,6 +100,6 @@ describe("loadVisualizationComponents", () => {
     registerVisualization(definition, () => Promise.resolve(Chart));
     await loadVisualizationComponents();
 
-    expect(getVisualizationComponent(display)).toBe(Chart);
+    expect(getRegisteredComponent(display)).toBe(Chart);
   });
 });

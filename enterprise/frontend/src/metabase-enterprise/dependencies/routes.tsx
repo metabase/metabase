@@ -1,7 +1,9 @@
 import { Route } from "metabase/router";
 
+import { loadDependencyGraphPage } from "./lazy";
+
 const dependencyGraphPage = () =>
-  import("./pages/DependencyGraphPage").then(({ DependencyGraphPage }) => ({
+  loadDependencyGraphPage().then(({ DependencyGraphPage }) => ({
     Component: DependencyGraphPage,
   }));
 

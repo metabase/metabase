@@ -42,7 +42,7 @@
 
 (def non-blob-columns
   "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
-  [:id :name :display_name :bundle_path :enabled :allowed_hosts
+  [:id :name :display_name :description :bundle_path :enabled :allowed_hosts
    :bundle_hash :last_synced_sha :last_synced_at :sync_error
    :created_at :updated_at])
 

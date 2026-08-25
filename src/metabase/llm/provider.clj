@@ -144,6 +144,25 @@
                      :advanced? true
                      :default   "https://api.moonshot.ai/v1"
                      :help      (deferred-tru "Point this at the .cn platform to use it instead; keys are not interchangeable between the two.")}]}
+   {:type          "deepseek"
+    :label         (deferred-tru "DeepSeek")
+    :default-model "deepseek-v4-pro"
+    :mini-model    "deepseek-v4-flash"
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     ;; No `:prefix`: DeepSeek keys carry the same `sk-` an OpenAI key does, so matching on it
+                     ;; would claim OpenAI keys while rejecting nothing.
+                     :required?   true
+                     :placeholder "sk-..."
+                     :docs-url    "https://platform.deepseek.com/api_keys"}
+                    {:key       :base-url
+                     :normalize strip-trailing-slashes
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.deepseek.com"
+                     :help      (deferred-tru "The root both surfaces hang off; leave off any /anthropic or /v1 path.")}]}
    {:type          "google"
     ;; "Google Gemini Enterprise" (nearly the official "Gemini Enterprise Agent Platform" name), not "Google
     ;; Gemini": the Gemini API is a separate surface with its own credentials, and may become a provider type of
@@ -265,6 +284,25 @@
                      :type      :password
                      :advanced? true
                      :help      (deferred-tru "Only needed for temporary credentials.")}]}
+   {:type          "vllm"
+    :label         (deferred-tru "vLLM")
+    ;; A vLLM server serves whatever the operator loaded it with, so there is no model to default to: the one a
+    ;; new connection starts on comes from the catalog that connecting fetches (see
+    ;; [[metabase.metabot.self.vllm/list-models]]).
+    :default-model nil
+    :fields        [{:key         :base-url
+                     :normalize   strip-trailing-slashes
+                     :label       (deferred-tru "API base URL")
+                     :type        :text
+                     :required?   true
+                     :placeholder "http://vllm.internal:8000/v1"
+                     :help        (deferred-tru "Your server''s OpenAI-compatible API. It should end in /v1.")}
+                    {:key      :api-key
+                     :label    (deferred-tru "API key")
+                     :type     :password
+                     ;; not required: a server started without --api-key takes no key, and a base URL on its own
+                     ;; is a complete configuration
+                     :help     (deferred-tru "Only needed if you started your server with --api-key.")}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
@@ -470,6 +508,9 @@
    "moonshot"   {:type     "moonshot"
                  :settings {:api-key  {:setting :llm-moonshot-api-key :credential? true}
                             :base-url {:setting :llm-moonshot-api-base-url}}}
+   "deepseek"   {:type     "deepseek"
+                 :settings {:api-key  {:setting :llm-deepseek-api-key :credential? true}
+                            :base-url {:setting :llm-deepseek-api-base-url}}}
    "google"     {:type     "google"
                  :settings {:service-account-key {:setting :llm-google-service-account-key :credential? true}
                             :oauth-access-token  {:setting :llm-google-oauth-access-token :credential? true}
@@ -487,7 +528,12 @@
                  :settings {:access-key-id     {:setting :llm-bedrock-access-key-id :credential? true}
                             :secret-access-key {:setting :llm-bedrock-secret-access-key :credential? true}
                             :session-token     {:setting :llm-bedrock-session-token}
-                            :region            {:setting :llm-bedrock-region}}}})
+                            :region            {:setting :llm-bedrock-region}}}
+   "vllm"       {:type     "vllm"
+                 ;; the base URL is the credential here, unlike Azure's: a server started without --api-key takes
+                 ;; no key, so the URL alone brings a usable connection into existence
+                 :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
+                            :api-key  {:setting :llm-vllm-api-key}}}})
 
 (defn- env-supplied-fields
   "The `:config` fields the environment supplies for one [[single-provider-settings]] group:

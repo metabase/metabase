@@ -97,7 +97,6 @@ function AuditTableVisualizationInner({
           {isSelectable && (
             <th>
               <Checkbox
-                size="sm"
                 checked={Object.values(rowChecked).some((elem) => elem)}
                 onChange={() => onAllSelectClick?.({ rows })}
               />
@@ -139,7 +138,6 @@ function AuditTableVisualizationInner({
             {isSelectable && (
               <td>
                 <Checkbox
-                  size="sm"
                   checked={rowChecked[String(row[ROW_ID_IDX])] ?? false}
                   onChange={() => onRowSelectClick?.({ row, rowIndex })}
                 />
