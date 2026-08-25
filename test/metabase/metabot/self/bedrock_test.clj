@@ -104,15 +104,19 @@
            (bedrock/list-models))))))
 
 (deftest list-models-chain-refresh-failure-test
-  (testing "a chain failure that is not an SdkClientException (an STS rejection on refresh) gets the same translation"
+  (testing "a provider that was found but could not hand over credentials (an STS rejection on refresh) is not
+            reported as a missing key pair, which would send an operator off to create long-lived keys"
     (mt/with-dynamic-fn-redefs [bedrock/chain-credentials
                                 (fn [] (throw (-> (SdkException/builder)
                                                   (.message "User: arn:aws:sts::123456789012:assumed-role/x is not authorized")
                                                   (.build))))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"none were found by the AWS default credentials chain"
-           (bedrock/list-models))))))
+           #"found a provider but could not get credentials from it"
+           (bedrock/list-models)))
+      (is (= :credentials-unavailable
+             (try (bedrock/list-models)
+                  (catch clojure.lang.ExceptionInfo e (:error-code (ex-data e)))))))))
 
 (deftest list-models-session-token-without-pair-test
   (testing "a session token without its key pair throws instead of silently signing as the ambient identity"
