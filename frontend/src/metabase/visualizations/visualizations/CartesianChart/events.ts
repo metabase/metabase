@@ -1,8 +1,8 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { isNative } from "metabase/common/utils/card";
+import { dayjs } from "metabase/dayjs";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { formatChangeWithSign, formatPercent } from "metabase/utils/formatting";
 import { getObjectKeys } from "metabase/utils/objects";
