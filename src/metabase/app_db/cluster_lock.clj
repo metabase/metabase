@@ -197,6 +197,9 @@
                                   :values      [[[:raw "?"]]]})]
     (with-open [conn (checkout-connection!)
                 stmt (.prepareStatement conn ^String sql)]
+      ;; The row must be durable before the SELECT below can find it, and the pool does not guarantee autocommit.
+      (when-not (.getAutoCommit conn)
+        (.setAutoCommit conn true))
       (.setString stmt 1 lock-name-str)
       (let [insert! (fn []
                       (try
