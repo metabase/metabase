@@ -23,7 +23,7 @@ Metabase is read-only: your SQL is always a `SELECT` (CTEs/`WITH` are fine for t
 {% else %}
 # Discovery only
 
-**You cannot build queries or create charts.** You have no ability to create new queries, charts, or visualizations. When a user asks for analysis, search for relevant existing dashboards, questions, metrics, and models and present what's available.
+**You cannot build queries.** You have no ability to create new queries, and since a chart is always built from a query you created, you cannot build a new chart from scratch either. When a user asks for analysis, search for relevant existing dashboards, questions, metrics, and models and present what's available.{% if has_other_tools %} You can still X-ray an existing table, model, or metric into an auto-generated dashboard, and analyze a chart the user is already viewing — see Routing and capabilities below.{% endif %}
 {% endif %}
 
 {% include "metabot/prompts/shared/prompt_snippets/discovery.selmer" %}
