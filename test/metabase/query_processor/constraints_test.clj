@@ -32,6 +32,8 @@
 (deftest ^:parallel max-results-userland-query-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Do max results constraints work when running a userland query e.g. like we use for endpoints like `POST /api/dataset`?"
+      ;; `:constraints` are applied by the server after [[qp/userland-query-with-default-constraints]], which drops
+      ;; whatever the query arrived with so the server's own limits are the ones that count
       (is (= [["Red Medicine"]
               ["Stout Burgers & Beers"]
               ["The Apple Pan"]
@@ -39,12 +41,26 @@
               ["Brite Spot Family Restaurant"]]
              (mt/rows
               (qp/process-query
-               (qp/userland-query-with-default-constraints
-                {:database    (mt/id)
-                 :type        :native
-                 :native      (native-query)
-                 :constraints {:max-results 5}}
-                {:context :question}))))))))
+               (-> {:database (mt/id)
+                    :type     :native
+                    :native   (native-query)}
+                   (qp/userland-query-with-default-constraints {:context :question})
+                   (assoc :constraints {:max-results 5})))))))))
+
+(deftest ^:parallel userland-query-drops-request-supplied-options-test
+  (testing "constraints and non-caller-settable middleware options on the incoming query are dropped"
+    (let [query (qp/userland-query-with-default-constraints
+                 {:database    1
+                  :type        :native
+                  :native      {:query "SELECT 1"}
+                  :constraints {:max-results 10000, :max-results-bare-rows 10000}
+                  :middleware  {:disable-max-results?   true
+                                :ignore-cached-results? true}}
+                 {:context :question})]
+      (is (nil? (:constraints query)))
+      (is (nil? (get-in query [:middleware :disable-max-results?])))
+      (testing "options a caller may legitimately set are kept"
+        (is (true? (get-in query [:middleware :ignore-cached-results?])))))))
 
 (deftest ^:parallel override-limit-test
   (mt/test-drivers (mt/normal-drivers)

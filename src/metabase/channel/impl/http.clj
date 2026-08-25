@@ -18,14 +18,12 @@
   many columns) is truncated."
   1200)
 
-(def ^:private string-or-keyword
-  [:or :string :keyword])
-
-(def ^:private HTTPDetails
+(def HTTPDetails
+  "Schema for the connection `:details` of a `:channel/http` channel."
   [:map {:closed true}
    [:url                           ms/Url]
    [:auth-method                   [:enum "none" "header" "query-param" "request-body"]]
-   [:auth-info    {:optional true} [:map-of string-or-keyword :any]]
+   [:auth-info    {:optional true} ms/Map]
    ;; used by the frontend to display the auth info properly
    [:fe-form-type {:optional true} [:enum "api-key" "bearer" "basic" "none"]]
    ;; request method

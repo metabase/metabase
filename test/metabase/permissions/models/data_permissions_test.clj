@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as impl]
+   [metabase.config.core :as config]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -56,6 +57,38 @@
                ExceptionInfo
                #"Invalid permission value :invalid-value for permission type :perms/create-queries"
                (data-perms/set-database-permission! group-id database-id :perms/create-queries :invalid-value))))))))
+
+(deftest set-database-permission!-implied-rows-are-not-duplicated-test
+  (testing "Blocking view-data implies `:perms/transforms :no` both directly and via the implied
+            `create-queries :no`; the implied row must only be written once (UXW-4927)"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
+                   :model/Database         {database-id :id} {}]
+      (mt/with-restored-data-perms-for-group! group-id
+        (data-perms/set-database-permission! group-id database-id :perms/view-data :blocked)
+        (is (= 1 (t2/count :model/DataPermissions
+                           :db_id     database-id
+                           :group_id  group-id
+                           :perm_type :perms/transforms)))))))
+
+(deftest set-table-permission!-implied-rows-are-not-duplicated-test
+  (testing "Coalescing table perms to a DB-level row must not duplicate the implied view-data row:
+            the coalesced `create-queries` row implies DB-level `view-data :unrestricted`, and the
+            recursive table-level view-data call coalesces to that same row (UXW-4927)"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
+                   :model/Database         {database-id :id} {}
+                   :model/Table            {table-id-1 :id}  {:db_id database-id}
+                   :model/Table            {table-id-2 :id}  {:db_id database-id}]
+      (mt/with-restored-data-perms-for-group! group-id
+        ;; Start from a clean slate so we exercise the no-existing-db-permission path
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        ;; This call makes all tables agree on :query-builder, so both the create-queries rows and the
+        ;; implied view-data rows coalesce to DB-level rows
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
+        (is (= 1 (t2/count :model/DataPermissions
+                           :db_id     database-id
+                           :group_id  group-id
+                           :perm_type :perms/view-data)))))))
 
 (deftest set-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
@@ -457,6 +490,44 @@
           (is (= :no (data-perms/full-schema-permission-for-user
                       user-id-1 :perms/create-queries database-id-1 "schema_1"))))))))
 
+(deftest schema-permission-for-user-test
+  (testing "schema-permission-for-user returns the most permissive table-level value within the schema"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id}     {}
+                   :model/User                       {user-id :id}      {}
+                   :model/PermissionsGroupMembership {}                  {:user_id  user-id
+                                                                          :group_id group-id}
+                   :model/Database                   {database-id :id}  {}
+                   :model/Table                      {table-id-1 :id}   {:db_id database-id :schema "schema_1"}
+                   :model/Table                      {table-id-2 :id}   {:db_id database-id :schema "schema_1"}]
+      (mt/with-no-data-perms-for-all-users!
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (testing "one table at :query-builder + one at :no => :query-builder (least restrictive wins)"
+          (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+          (is (= :query-builder
+                 (data-perms/schema-permission-for-user
+                  user-id :perms/create-queries database-id "schema_1")))))))
+  (testing "databases whose tables have Table.schema = NULL (regression for #46542)"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id}     {}
+                   :model/User                       {user-id :id}      {}
+                   :model/PermissionsGroupMembership {}                  {:user_id  user-id
+                                                                          :group_id group-id}
+                   :model/Database                   {database-id :id}  {}
+                   :model/Table                      {table-id-1 :id}   {:db_id database-id :schema nil}
+                   :model/Table                      {table-id-2 :id}   {:db_id database-id :schema nil}]
+      (mt/with-no-data-perms-for-all-users!
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
+        (testing "called with nil schema-name"
+          (is (= :query-builder
+                 (data-perms/schema-permission-for-user
+                  user-id :perms/create-queries database-id nil))))
+        (testing "called with empty-string schema-name (nil and \"\" are equivalent)"
+          (is (= :query-builder
+                 (data-perms/schema-permission-for-user
+                  user-id :perms/create-queries database-id ""))))))))
+
 (deftest most-permissive-database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/User                       {user-id-1 :id}     {}
@@ -585,11 +656,15 @@
             (mt/with-premium-features #{}
               (data-perms/set-database-permission! group-id db-id-2 :perms/view-data :blocked)
               (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
-                (is (= :unrestricted (t2/select-one-fn :perm_value
-                                                       :model/DataPermissions
-                                                       :db_id     new-db-id
-                                                       :group_id  group-id
-                                                       :perm_type :perms/view-data))))))))
+                ;; When EE code is on the classpath the new database fails CLOSED to :blocked for the
+                ;; blocked group regardless of token features (UXW-4927); only a true OSS jar (no EE
+                ;; code at all) falls back to :unrestricted.
+                (is (= (if config/ee-available? :blocked :unrestricted)
+                       (t2/select-one-fn :perm_value
+                                         :model/DataPermissions
+                                         :db_id     new-db-id
+                                         :group_id  group-id
+                                         :perm_type :perms/view-data))))))))
       (t2/delete! :model/DataPermissions :group_id group-id)
       (testing "Query permissions... "
         (testing "A new database gets `query-builder-and-native` query permissions if a group only has `query-builder-and-native` for other databases"

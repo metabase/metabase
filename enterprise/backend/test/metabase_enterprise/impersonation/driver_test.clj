@@ -12,6 +12,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
@@ -106,6 +107,21 @@
                  clojure.lang.ExceptionInfo
                  #"Conflicting sandboxing and impersonation policies found."
                  (impersonation.driver/connection-impersonation-role (mt/db))))))))))
+
+(deftest connection-impersonation-role-test-10
+  (testing "Rejects a role attribute equal to the driver's default-role sentinel (case-insensitively)"
+    (with-redefs [driver.sql/default-database-role (constantly "NONE")]
+      (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                     :attributes     {"impersonation_attr" "none"}}
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Connection impersonation attribute is invalid: role must not be the database default role."
+             (impersonation.driver/connection-impersonation-role (mt/db)))))
+      (testing "but a normal role value is still returned unchanged"
+        (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                       :attributes     {"impersonation_attr" "impersonation_role"}}
+          (is (= "impersonation_role"
+                 (impersonation.driver/connection-impersonation-role (mt/db)))))))))
 
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres

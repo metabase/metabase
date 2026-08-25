@@ -259,3 +259,23 @@
         (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id)))
       (testing "New group should NOT have permissions for the destination database"
         (is (not (t2/exists? :model/DataPermissions :group_id group-id :db_id destination-db-id)))))))
+
+(deftest manage-db-user-can-update-destination-database-test
+  (testing "PUT /api/database/:id on a routed destination honors manage-database perms held on its router database"
+    ;; The permission lives on the router database; the destination itself carries no grant of its own. Without
+    ;; `:advanced-permissions`, `current-user-can-write-db?` falls back to the OSS superuser check, so the grant would
+    ;; be a no-op and the assertions below would pass for the wrong reason.
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
+                     :model/Database {dest :id} {:router_database_id db-id :name "Destination DB 1"}]
+        (mt/with-no-data-perms-for-all-users!
+          (testing "without manage-database perms on the router the update is refused"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (str "database/" dest) {:name "Renamed"})))
+            (is (= "Destination DB 1" (t2/select-one-fn :name :model/Database :id dest))))
+          (perms/set-database-permission! (perms/all-users-group) db-id :perms/manage-database :yes)
+          (testing "with manage-database perms on the router the update succeeds"
+            (is (=? {:id dest}
+                    (mt/user-http-request :rasta :put 200 (str "database/" dest) {:name "Renamed"})))
+            (is (= "Renamed" (t2/select-one-fn :name :model/Database :id dest)))))))))

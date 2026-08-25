@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -29,7 +30,7 @@
   "Validate that an MBQL 5 segment definition has the correct structure."
   [definition]
   (when (seq definition)
-    (mu/validate-throw ::segments.schema/segment definition)
+    (mu/validate-throw ::segments.schema/definition definition)
     definition))
 
 (defn- normalize-segment-definition
@@ -38,14 +39,20 @@
   - MBQL 5 full queries (passed through)
   - MBQL 4 full queries (from serialization - converted to MBQL 5)
   - MBQL 4 fragments (for backward compat during migration - wrapped then converted)
-  Empty seqs are normalized to `{}`."
+  Empty seqs are normalized to `{}`. Top-level keys may be keywords or strings (as read back from the app DB)."
   [definition table-id database-id]
   (if (seq definition)
     (u/prog1 (-> (case (lib/normalized-mbql-version definition)
-                   (:mbql-version/mbql5 :mbql-version/legacy)
+                   ;; keys come out of the app DB as strings; normalize them against the schema first so that
+                   ;; `normalize-query` sees an MBQL 5 query rather than an opaque map
+                   :mbql-version/mbql5
+                   (lib/normalize ::lib.schema/query definition)
+
+                   :mbql-version/legacy
                    definition
                    ;; default MBQL4 fragment
-                   (let [definition
+                   (let [definition (update-keys definition keyword)
+                         definition
                          (if (:aggregation definition)
                            (do
                              (log/warn "Stripping :aggregation from MBQL4 segment definition during migration"
@@ -61,9 +68,12 @@
 
 (def ^:private transform-segment-definition
   "Transform for segment definitions. Only handles JSON serialization/deserialization.
-  Normalization and validation happen in before-insert and after-select hooks."
+  Normalization and validation happen in before-insert and after-select hooks.
+
+  Keys are left as strings for the schema-driven normalization in the after-select hook to keywordize, the same way
+  Card `dataset_query` is handled."
   {:in mi/json-in
-   :out mi/json-out-with-keywordization})
+   :out mi/json-out-without-keywordization})
 
 (t2/deftransforms :model/Segment
   {:definition transform-segment-definition})

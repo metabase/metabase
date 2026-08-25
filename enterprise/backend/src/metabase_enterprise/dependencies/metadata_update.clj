@@ -196,6 +196,7 @@
 (methodical/defmethod events/publish-event! ::update-card-dependents-metadata
   [_ {{:keys [id dataset_query]} :object :keys [previous-object]}]
   (when (and (premium-features/has-feature? :dependencies)
+             (seq dataset_query)
              (not (lib/any-native-stage? dataset_query)))
     (async/submit!
      (fn []

@@ -9,6 +9,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.resolution :as models.resolution]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -25,6 +26,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -40,6 +42,20 @@
    [:token EncodedToken]
    [:param-key ms/NonBlankString]
    [:prefix ms/NonBlankString]])
+
+(def QueryParams
+  "Malli schema for the raw query-string parameter map of the embed query and param-values endpoints: dashboard/card
+  parameter slugs (or parameter IDs, for the param-values endpoints) mapped to values exactly as they come off the
+  query string, plus the optional `:parameters` JSON blob (see [[parse-query-params]]). Keys that don't read cleanly
+  as keywords (e.g. slugs starting with a digit) arrive as strings (see [[normalize-query-params]])."
+  [:map-of [:or :keyword :string] [:maybe [:or :string [:sequential :string]]]])
+
+(def ParsedQueryParams
+  "Malli schema for [[QueryParams]] after the `:parameters` JSON blob has been decoded. Same shape, but the values are
+  real JSON scalars rather than query-string text -- telling `4` from `\"4\"` is why the blob exists. Values are held
+  to `::lib.schema.parameter/parameter.value`, which is a scalar or a list of scalars and never a collection: a
+  structured value is normalized into MBQL further down and would become query structure rather than a bound value."
+  [:map-of [:or :keyword :string] [:maybe [:ref ::lib.schema.parameter/parameter.value]]])
 
 (comment
   ;; load dynamic model resolution code... should already be loaded by [[metabase.core.init]] so this is mostly here for
@@ -149,13 +165,15 @@
   contains serialized JSON with parameter values. If this object cannot be found or parsed, we fallback to plain query
   string parameters."
   [query-params]
-  (or (try
-        (when-let [parameters (:parameters query-params)]
-          (json/decode+kw parameters))
-        (catch Throwable _
-          nil))
-      query-params
-      {}))
+  (let [parsed (when-let [parameters (:parameters query-params)]
+                 (try
+                   (json/decode+kw parameters)
+                   (catch Throwable _
+                     nil)))]
+    (when (and (some? parsed)
+               (not (mr/validate ParsedQueryParams parsed)))
+      (throw (ex-info (tru "Invalid parameter values") {:status-code 400})))
+    (or parsed query-params {})))
 
 (mu/defn normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
@@ -349,6 +367,41 @@
                 :constraints constraints
                 :qp          qp
                 options))))
+
+(defn- tile-slug->value
+  "Turn the `:parameters` a map-tile request carries -- parameter *values*, keyed by parameter id -- into the
+  slug->value map the embedding rules are written in terms of."
+  [object-parameters parameter-values]
+  (let [id->slug (into {} (map (juxt :id :slug)) object-parameters)]
+    (into {}
+          (map (fn [{:keys [id value]}]
+                 [(keyword (or (get id->slug id)
+                               (throw (ex-info (tru "Invalid query params: could not determine slug for parameter with ID {0}"
+                                                    (pr-str id))
+                                               {:status-code 400}))))
+                  value]))
+          parameter-values)))
+
+(defn tile-parameters-for-card
+  "The parameters an embedded Card's map tile should run with.
+
+  The tile endpoints take a parameter list where the query endpoints take a query string, but the embedding rules are
+  the same and are applied here as [[process-query-for-card-with-params]] applies them: the JWT's values are merged in
+  whether or not the caller sent them, and the caller may only supply parameters `embedding_params` marks enabled."
+  [card token-params parameter-values]
+  (let [parameters (resolve-card-parameters card)]
+    (apply-slug->value parameters
+                       (validate-and-merge-params (:embedding_params card)
+                                                  token-params
+                                                  (tile-slug->value parameters parameter-values)))))
+
+(defn tile-parameters-for-dashboard
+  "The parameters an embedded Dashboard's map tile should run with. See [[tile-parameters-for-card]]."
+  [dashboard token-params parameter-values]
+  (resolve-dashboard-parameters dashboard
+                                (validate-and-merge-params (:embedding_params dashboard)
+                                                           token-params
+                                                           (tile-slug->value (:parameters dashboard) parameter-values))))
 
 (defn process-tiles-query-for-card
   "Like [[metabase.tiles.api/process-tiles-query-for-card]], but takes a pre-loaded Card entity and runs with database

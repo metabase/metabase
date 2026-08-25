@@ -50,9 +50,9 @@
          ;; Use seconds for granularity in the fraction.
          (if (= :mysql db-type)
            [:coalesce
-            [[:timestampdiff [:raw "SECOND"] from-column to-column]]
+            [[:timestampdiff ^:allow-raw-sql [:raw "SECOND"] from-column to-column]]
             [:* ceiling (double seconds-in-a-day)]]
-           [[:raw "EXTRACT(epoch FROM (" [:- to-column from-column] [:raw "))"]]])
+           [[::h2x/extract :epoch [:- to-column from-column]]])
          [:inline (double seconds-in-a-day)]]]
        [:inline 0]]
       ceiling])))
@@ -67,9 +67,10 @@
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
   (let [one-day-ago (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)]
+    ^:allow-subquery
     {:select [[[:case
                 ;; Transforms get a hardcoded 1-day last_viewed_at because we don't track views on them
-                [:= :search_index.model [:inline "transform"]]
+                [:= :search_index.model "transform"]
                 one-day-ago
                 :else
                 [:max :recent_views.timestamp]]
@@ -80,8 +81,8 @@
               [:= (cast-to-text :recent_views.model_id) :search_index.model_id]
               [:= :recent_views.model
                [:case
-                [:= :search_index.model [:inline "dataset"]] [:inline "card"]
-                [:= :search_index.model [:inline "metric"]] [:inline "card"]
+                [:= :search_index.model "dataset"] "card"
+                [:= :search_index.model "metric"] "card"
                 :else :search_index.model]]]}))
 
 (defn model-rank-expr
@@ -111,8 +112,8 @@
   "Score an item based on whether it has been bookmarked."
   (let [match-clause (fn [m] [[:and
                                (if-let [sms (bookmarked-sub-models (keyword m))]
-                                 [:in :search_index.model (mapv (fn [k] [:inline (name k)]) sms)]
-                                 [:= :search_index.model [:inline m]])
+                                 [:in :search_index.model (mapv name sms)]
+                                 [:= :search_index.model m])
                                [:!= nil (keyword (str m "_bookmark." m "_id"))]]
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
@@ -123,8 +124,8 @@
     [(keyword table-name)
      [:and
       (if-let [sms (bookmarked-sub-models model)]
-        [:in :search_index.model (mapv (fn [m] [:inline (name m)]) sms)]
-        [:= :search_index.model [:inline model-name]])
+        [:in :search_index.model (mapv name sms)]
+        [:= :search_index.model model-name])
       [:= (keyword (str table-name ".user_id")) user-id]
       [:= :search_index.model_id (cast-to-text (keyword (str table-name "." model-name "_id")))]]]))
 

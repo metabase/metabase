@@ -16,6 +16,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.markdown :as markdown]))
 
+(def SlackDetails
+  "Schema for the connection `:details` of a `:channel/slack` channel. The frontend only sends these to
+  `POST /api/channel/test`, to check that the globally configured Slack integration can post to `:channel`."
+  [:map {:closed true}
+   [:channel :string]])
+
 (defn- notification-recipient->channel
   "Returns the Slack channel target for a raw-value notification recipient.
   Prefers the immutable `:channel_id` (e.g. \"C0ABC123\") over the display `:value`

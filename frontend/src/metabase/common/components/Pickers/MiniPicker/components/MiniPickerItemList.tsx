@@ -12,7 +12,6 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
-import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
@@ -277,11 +276,11 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 
   const { data, isLoading, isFetching } = useListCollectionItemsQuery({
     id: parent.id === null ? "root" : parent.id,
-    include_can_run_adhoc_query: true,
   });
 
-  const allItems = data?.data?.filter(canCollectionCardBeUsed) ?? [];
-  const items: CollectionItem[] = allItems.filter((item) => !isHidden(item));
+  const items: CollectionItem[] = (data?.data ?? []).filter(
+    (item) => !isHidden(item),
+  );
 
   if (isLoading || isFetching) {
     return <MiniPickerListLoader />;

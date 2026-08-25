@@ -101,6 +101,7 @@
  lib.metadata/transforms
  lib.schema.common/instance-of-class
  lib.schema.temporal-bucketing/date-bucketing-units
+ lib.schema.temporal-bucketing/datetime-interval-units
  lib.types.isa/temporal?
  match/match-one
  match/match-many

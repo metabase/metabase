@@ -65,7 +65,7 @@
       (is (not (contains? serialized :creator_id))))))
 
 (deftest revert-to-revision-document-test
-  (testing "Document reversion uses default implementation"
+  (testing "Document reversion restores the serialized fields"
     (mt/with-temp [:model/Document {doc-id :id, :as document} {:name "Original Document"
                                                                :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Original content"}]}]}
                                                                :creator_id (mt/user->id :crowberto)}]
@@ -98,4 +98,39 @@
       (is (contains? excluded-columns :updated_at))
       (is (contains? excluded-columns :collection_id))
       (is (contains? excluded-columns :collection_position))
-      (is (= 8 (count excluded-columns)) "Should exclude exactly 5 metadata fields"))))
+      (is (contains? excluded-columns :public_uuid))
+      (is (contains? excluded-columns :made_public_by_id))
+      (is (= 10 (count excluded-columns)) "Should exclude exactly 10 metadata fields"))))
+
+(deftest revert-does-not-restore-public-sharing-test
+  (testing "reverting a Document cannot resurrect a public link an admin revoked"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Public Document"
+                                                   :document {:type "doc" :content []}
+                                                   :creator_id (mt/user->id :crowberto)}]
+        (let [public-uuid (str (random-uuid))
+              _           (t2/update! :model/Document doc-id {:public_uuid       public-uuid
+                                                              :made_public_by_id (mt/user->id :crowberto)})
+              serialized  (revision/serialize-instance :model/Document doc-id
+                                                       (t2/select-one :model/Document :id doc-id))]
+          (testing "the snapshot does not capture the public sharing columns"
+            (is (not (contains? serialized :public_uuid)))
+            (is (not (contains? serialized :made_public_by_id))))
+          ;; an admin revokes the public link, then the document is edited
+          (t2/update! :model/Document doc-id {:name              "Private Document"
+                                              :public_uuid       nil
+                                              :made_public_by_id nil})
+          (testing "reverting to the snapshot restores content but leaves the link revoked"
+            (revision/revert-to-revision! :model/Document doc-id (mt/user->id :rasta) serialized)
+            (let [reverted (t2/select-one :model/Document :id doc-id)]
+              (is (= "Public Document" (:name reverted)))
+              (is (nil? (:public_uuid reverted)))
+              (is (nil? (:made_public_by_id reverted)))))
+          (testing "even a legacy snapshot that still carries the columns cannot reinstate them"
+            (revision/revert-to-revision! :model/Document doc-id (mt/user->id :rasta)
+                                          (assoc serialized
+                                                 :public_uuid       public-uuid
+                                                 :made_public_by_id (mt/user->id :crowberto)))
+            (let [reverted (t2/select-one :model/Document :id doc-id)]
+              (is (nil? (:public_uuid reverted)))
+              (is (nil? (:made_public_by_id reverted))))))))))

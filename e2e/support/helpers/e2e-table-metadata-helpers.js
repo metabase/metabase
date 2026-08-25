@@ -3,7 +3,8 @@
  * @param {string} segment.name
  * @param {TableId} segment.table_id
  * @param {string|null} [segment.description]
- * @param {object} segment.definition
+ * @param {object} segment.definition - a filter-only query in either legacy MBQL or MBQL 5 form; the
+ *   API accepts both and normalizes to MBQL 5 on save, so fixtures written in either form keep working
  */
 export const createSegment = ({
   name,

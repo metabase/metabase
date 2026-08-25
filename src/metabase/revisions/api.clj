@@ -1,7 +1,12 @@
 (ns metabase.revisions.api
   (:require
+   [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
+   [metabase.parameters.params :as params]
+   [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.revisions.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
@@ -44,6 +49,74 @@
     (when (api/read-check instance)
       (revision/revisions+details model id))))
 
+(defn- dashcard-card-ids
+  "The Card ids a stored dashcard references, as its own Card and as series."
+  [dashcard]
+  (cons (:card_id dashcard) (:series dashcard)))
+
+(defn- revision-card-references
+  "Every Card id the `revision` of a Dashboard or Card references: the Cards its dashcards show, as their own Card and
+  as series, and the Cards its parameters draw their values from."
+  [revision]
+  (let [{:keys [cards parameters]} (:object revision)]
+    (into (set (queries/values-source-card-ids parameters))
+          (comp (mapcat dashcard-card-ids) (filter pos-int?))
+          cards)))
+
+(defn- stored-card-references
+  "[[revision-card-references]] for `model` with `id` as it is stored right now."
+  [model id]
+  (let [parameter-cards (set (t2/select-fn-vec :card_id :model/ParameterCard
+                                               :parameterized_object_type (if (= model :model/Dashboard)
+                                                                            "dashboard"
+                                                                            "card")
+                                               :parameterized_object_id   id))]
+    (if (= model :model/Dashboard)
+      (into parameter-cards
+            (concat (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id id)
+                    (t2/select-fn-vec :card_id :model/DashboardCardSeries
+                                      {:where [:in :dashboardcard_id
+                                               ^:allow-subquery {:select [:id]
+                                                                 :from   [(t2/table-name :model/DashboardCard)]
+                                                                 :where  [:= :dashboard_id id]}]})))
+      parameter-cards)))
+
+(defn- revision-parameter-field-ids
+  "The Field ids the parameters stored in a `revision` of `model` name through their `:target`s. For a Dashboard those
+  targets live on the dashcards' `:parameter_mappings` and resolve against the Card each mapping belongs to; for a
+  Card they live on its own parameters and resolve against the query in the revision."
+  [model revision]
+  (let [{:keys [cards parameters dataset_query]} (:object revision)
+        resolve-target (fn [target query]
+                         (when target
+                           (params/param-target->field-id target {:dataset_query query})))]
+    (case model
+      :model/Card
+      (into [] (keep #(resolve-target (:target %) dataset_query)) parameters)
+
+      :model/Dashboard
+      (let [mappings       (for [dashcard cards
+                                 mapping  (:parameter_mappings dashcard)]
+                             mapping)
+            card-ids       (into #{} (keep :card_id) mappings)
+            card-id->query (when (seq card-ids)
+                             (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))]
+        (into [] (keep (fn [{:keys [target card_id]}]
+                         (resolve-target target (card-id->query card_id))))
+              mappings))
+
+      nil)))
+
+(defn- check-new-revision-card-references
+  "Check what a revert would restore, the same way saving it through its own API would be checked: a Card reference
+  the object does not have yet must be readable by whoever restores it, and the Fields its parameters name must be
+  ones they could query."
+  [model id revision]
+  (doseq [card-id (set/difference (revision-card-references revision)
+                                  (stored-card-references model id))]
+    (api/read-check :model/Card card-id))
+  (query-perms/check-parameter-field-permissions (revision-parameter-field-ids model revision)))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -64,6 +137,17 @@
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards
       ;; doesn't actually check important stuff like this.
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)))
+    ;; Segment/Measure re-derive :table_id from the reverted :definition in before-update, so make sure the reverting
+    ;; user may write the destination table before it is relocated there.
+    (when (contains? #{:model/Transform :model/Segment :model/Measure} model)
+      (api/check-403 (mi/can-write? (merge instance (:object revision)))))
+    (when (contains? #{:model/Dashboard :model/Card} model)
+      (collection/check-allowed-to-change-collection instance (:object revision))
+      (when (api/column-will-change? :dashboard_id instance (:object revision))
+        (doseq [dashboard-id (keep identity [(:dashboard_id instance)
+                                             (:dashboard_id (:object revision))])]
+          (api/write-check :model/Dashboard dashboard-id)))
+      (check-new-revision-card-references model id revision))
     ;; ok, we're g2g
     (revision/revert!
      {:entity      model

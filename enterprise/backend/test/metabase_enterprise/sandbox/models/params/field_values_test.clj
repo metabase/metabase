@@ -40,8 +40,10 @@
           (let [new-query (mt/mbql-query categories
                             {:filter [:and [:> $id 1] [:< $id 4]]})]
             (Thread/sleep 1)
-            (t2/update! :model/Card card-id {:dataset_query new-query
-                                             :updated_at    (t/local-date-time)}))
+            ;; only an admin may rewrite the question a sandbox is built out of
+            (mt/with-test-user :crowberto
+              (t2/update! :model/Card card-id {:dataset_query new-query
+                                               :updated_at    (t/local-date-time)})))
           (params.field-values/get-or-create-field-values!
            (t2/select-one :model/Field :id (mt/id :categories :id)))
           (is (= [(range 4 6)

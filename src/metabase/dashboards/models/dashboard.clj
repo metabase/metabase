@@ -21,6 +21,7 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -292,24 +293,55 @@
   (cond
     ;; If this is a pre-existing card, just return it
     (and (integer? (:id card)) (t2/select-one :model/Card :id (:id card)))
-    card
+    (do
+      (api/read-check :model/Card (:id card))
+      card)
 
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
-    (let [card (first (t2/insert-returning-instances!
+    (let [;; The caller must be allowed to run this query. Without this check a non-admin could persist a card
+          ;; whose query they cannot run, because this path never calls the permission check that
+          ;; `POST /api/card` enforces.
+          _    (query-perms/check-run-permissions-for-query (:dataset_query card))
+          card (first (t2/insert-returning-instances!
                        :model/Card
                        (-> card
                            (update :result_metadata #(or % (-> card
                                                                :dataset_query
                                                                legacy-result-metadata-for-query)))
-                           ;; Xrays populate this in their transient cards
-                           (dissoc :id :can_run_adhoc_query))))]
+                           ;; Strip sharing/embedding keys: a transient-dashboard save must never mass-assign a
+                           ;; public link or embedding config -- those go through their own permission-gated
+                           ;; endpoints.
+                           (dissoc :id
+                                   :public_uuid :made_public_by_id
+                                   :enable_embedding :embedding_params)
+                           ;; the saver owns the Card it creates, whatever the request claimed
+                           (assoc :creator_id api/*current-user-id*))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
+      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+
+(defn- check-dashcard-parameter-mapping-permissions
+  "Read the destination Fields a set of dashcards' `:parameter_mappings` name and check the current user may query
+  them -- the same data-permission gate `POST`/`PUT /api/dashboard` enforce, which the transient-save path otherwise
+  skips."
+  [dashcards]
+  (let [mappings       (for [{:keys [card_id parameter_mappings]} dashcards
+                             mapping parameter_mappings]
+                         (assoc mapping ::card-id (or (:card_id mapping) card_id)))
+        card-ids       (into #{} (keep ::card-id) mappings)
+        card-id->query (when (seq card-ids)
+                         (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+        field-ids      (into []
+                             (keep (fn [{:keys [target] ::keys [card-id]}]
+                                     (when target
+                                       (params/param-target->field-id target {:dataset_query (card-id->query card-id)}))))
+                             mappings)]
+    (query-perms/check-parameter-field-permissions field-ids)))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
+  (queries/check-parameter-source-card-permissions (:parameters dashboard))
   (t2/with-transaction [_conn]
     (let [{dashcards      :dashcards
            tabs           :tabs
@@ -318,30 +350,36 @@
                              :model/Dashboard
                              (-> dashboard
                                  (dissoc :dashcards :tabs :rule :related
-                                         :transient_name :transient_filters :param_fields :more)
+                                         :transient_name :transient_filters :param_fields :more
+                                         ;; never mass-assign public-sharing/embedding on a transient save
+                                         :public_uuid :made_public_by_id
+                                         :enable_embedding :embedding_params)
                                  (assoc :description description
-                                        :collection_id parent-collection-id))))
-          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
-      (add-dashcards! dashboard
-                      (for [dashcard dashcards]
-                        (let [card     (some-> dashcard :card
-                                               (assoc :dashboard_id (:id dashboard)
-                                                      :collection_id parent-collection-id)
-                                               save-card!)
-                              series   (some->> dashcard
-                                                :series
-                                                (mapv (fn [card]
-                                                        (-> card
-                                                            (assoc :collection_id parent-collection-id)
-                                                            save-card!))))
-                              dashcard (-> dashcard
-                                           (dissoc :card :id :creator_id)
-                                           (update :parameter_mappings
-                                                   (partial map #(assoc % :card_id (:id card))))
-                                           (assoc :series series)
-                                           (update :dashboard_tab_id (or old->new-tab-id {}))
-                                           (assoc :card_id (:id card)))]
-                          dashcard)))
+                                        :collection_id parent-collection-id
+                                        ;; the saver owns the Dashboard it creates, whatever the request claimed
+                                        :creator_id api/*current-user-id*))))
+          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)
+          dashcards-to-add (for [dashcard dashcards]
+                             (let [card     (some-> dashcard :card
+                                                    (assoc :dashboard_id (:id dashboard)
+                                                           :collection_id parent-collection-id)
+                                                    save-card!)
+                                   series   (some->> dashcard
+                                                     :series
+                                                     (mapv (fn [card]
+                                                             (-> card
+                                                                 (assoc :collection_id parent-collection-id)
+                                                                 save-card!))))
+                                   dashcard (-> dashcard
+                                                (dissoc :card :id :creator_id)
+                                                (update :parameter_mappings
+                                                        (partial map #(assoc % :card_id (:id card))))
+                                                (assoc :series series)
+                                                (update :dashboard_tab_id (or old->new-tab-id {}))
+                                                (assoc :card_id (:id card)))]
+                               dashcard))]
+      (check-dashcard-parameter-mapping-permissions dashcards-to-add)
+      (add-dashcards! dashboard dashcards-to-add)
       (cond-> dashboard
         (collections/remote-synced-collection? parent-collection-id) collections/check-non-remote-synced-dependencies))))
 
@@ -349,7 +387,7 @@
   [:map
    [:id ms/NonBlankString]
    [:name ms/NonBlankString]
-   [:mappings [:maybe [:set ::parameters.schema/parameter-mapping]]]])
+   [:mappings [:maybe [:set ::parameters.schema/parameter-mapping-with-dashcard]]]])
 
 (mu/defn dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration

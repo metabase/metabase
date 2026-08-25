@@ -23,7 +23,8 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -206,6 +207,58 @@
                                                                     :type  :number/between
                                                                     :value [5 5]}]})))))))))
 
+(defn- two-field-filter-query
+  "A native query with one exact-match Field Filter (`email` / `:text`) and one permissive one
+  (`src` / `:string/contains`), the shape used to reproduce."
+  []
+  (-> (lib/native-query (mt/metadata-provider) "SELECT COUNT(*) FROM PEOPLE WHERE {{email}} AND {{src}}")
+      (lib/with-template-tags
+        {"email" {:id "_EMAIL_" :name "email" :display-name "Email" :type :dimension
+                  :dimension   (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :people :email)))
+                  :widget-type :text}
+         "src"   {:id "_SRC_" :name "src" :display-name "Source" :type :dimension
+                  :dimension   (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :people :source)))
+                  :widget-type :string/contains}})))
+
+(deftest name-cannot-launder-target-widget-type-test
+  (testing "a parameter's :type must be allowed for the template tag its :target points at, not for the tag it names"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (two-field-filter-query)}]
+        ;; `:id "_EMAIL_"` matches the exact-match tag's real id, so `enrich-parameters-from-card` forces the target to
+        ;; the locked `email` column -- but the request keeps `:name "src"` (the permissive tag) and `:string/contains`.
+        ;; Before the fix, validation keyed on `:name` and let the permissive operator through onto `email`.
+        (let [attack {:parameters [{:id     "_EMAIL_"
+                                    :name   "src"
+                                    :type   :string/contains
+                                    :target [:dimension [:template-tag "email"]]
+                                    :value  ["@"]}]}]
+          (testing "authenticated POST /api/card/:id/query"
+            (is (=? {:cause #"Invalid parameter value type :string/contains for parameter \"email\".*"}
+                    (mt/user-http-request :rasta :post (format "card/%d/query" card-id) attack))))
+          (testing "anonymous GET /api/public/card/:uuid/query (error body is sanitized, so assert on the 400)"
+            (mt/with-temporary-setting-values [enable-public-sharing true]
+              (let [uuid (str (random-uuid))]
+                (t2/update! :model/Card card-id {:public_uuid uuid, :made_public_by_id (mt/user->id :crowberto)})
+                (is (= "An error occurred."
+                       (client/client :get 400 (format "public/card/%s/query" uuid)
+                                      :parameters (json/encode (:parameters attack))))))))
+          (testing "the honest exact-match request on email still works"
+            (is (= [1]
+                   (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                       {:parameters [{:id     "_EMAIL_"
+                                                                      :name   "email"
+                                                                      :type   :text
+                                                                      :target [:dimension [:template-tag "email"]]
+                                                                      :value  "borer-hudson@yahoo.com"}]})))))
+          (testing "a permissive operator on the tag that actually declares it still works"
+            (is (=? [pos-int?]
+                    (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                        {:parameters [{:id     "_SRC_"
+                                                                       :name   "src"
+                                                                       :type   :string/contains
+                                                                       :target [:dimension [:template-tag "src"]]
+                                                                       :value  ["oo"]}]}))))))))))
+
 (deftest ^:parallel bad-viz-settings-should-still-work-test
   (testing "We should still be able to run a query that has Card bad viz settings referencing a column not in the query (#34950)"
     (mt/with-temp [:model/Card card {:dataset_query
@@ -232,7 +285,7 @@
         (is (= [[100]] (mt/rows result)))))))
 
 (deftest nested-query-permissions-test
-  (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
+  (testing "Reading a Card is not enough to run it when its source query is a Card we cannot read"
     (mt/with-no-data-perms-for-all-users!
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection allowed-collection    {}
@@ -264,12 +317,14 @@
                      clojure.lang.ExceptionInfo
                      #"\QYou don't have permissions to do that.\E"
                      (process-query-for-card parent-card))))
-              (testing "Should be able to run the child Card (#15131)"
+              (testing "Should not be able to run the child Card either, since it reads the parent"
                 (is (not (mi/can-read? parent-card)))
                 (is (mi/can-read? allowed-collection))
                 (is (mi/can-read? child-card))
-                (is (= [[1] [2]]
-                       (mt/rows (process-query-for-card child-card))))))))))))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to view Card"
+                     (mt/rows (process-query-for-card child-card))))))))))))
 
 (deftest ^:parallel updates-metadata-provider
   (testing "should set the previous results metadata to the store"
@@ -406,3 +461,115 @@
           (is (= (mapv name->id tag-names)
                  (mapv :id result))
               "Parameters should be returned in the same order as card.parameters"))))))
+
+(deftest ^:synchronized parameter-target-comes-from-the-card-test
+  (testing "a supplied parameter's :target is ignored -- the Card's own declared target is used"
+    (mt/with-temp [:model/Card card {:dataset_query (mt/native-query
+                                                     {:query "SELECT * FROM venues WHERE price = {{price}}"
+                                                      :template-tags
+                                                      {"price" {:name         "price"
+                                                                :display-name "Price"
+                                                                :type         :dimension
+                                                                :dimension    [:field (mt/id :venues :price) nil]
+                                                                :widget-type  :number/=
+                                                                :id           "abc"}}})
+                                     :parameters    [{:id     "abc"
+                                                      :name   "price"
+                                                      :slug   "price"
+                                                      :type   :number/=
+                                                      :target [:dimension [:template-tag "price"]]}]}]
+      (let [forged   [:dimension [:field (mt/id :venues :name) {:source-field (mt/id :venues :category_id)}]
+                      {:stage-number 1}]
+            supplied [{:id "abc", :name "price", :type :number/=, :value 1, :target forged}]
+            enrich   #(#'qp.card/enrich-parameters-from-card
+                       supplied
+                       (qp.card/combined-parameters-and-template-tags card))]
+        (testing "the Card's target wins over the one the request sent"
+          (is (= [:dimension [:template-tag "price"]]
+                 (:target (first (enrich))))))
+        (testing "the dashboard path still supplies its own targets, which it resolved from dashcard mappings"
+          (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
+            (is (= forged (:target (first (enrich)))))))
+        (testing "a parameter the Card accounts for no way at all is dropped, not filtered on"
+          (is (= []
+                 (#'qp.card/enrich-parameters-from-card
+                  [{:id "nope", :name "nope", :type :number/=, :value 1, :target forged}]
+                  (qp.card/combined-parameters-and-template-tags card)))))))))
+
+(deftest ^:synchronized temporal-unit-parameter-target-test
+  (testing "a temporal-unit template tag is a parameter the Card declares, so its target comes from the Card"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query (mt/native-query
+                                    {:query         "SELECT count(*), {{unit}} AS unit FROM CHECKINS GROUP BY unit"
+                                     :template-tags {"unit" {:id           "unit-tag"
+                                                             :name         "unit"
+                                                             :display-name "Unit"
+                                                             :type         :temporal-unit
+                                                             :dimension    [:field (mt/id :checkins :date) nil]}}})}]
+      (let [run!      (fn [status target]
+                        (mt/user-http-request :crowberto :post status (format "card/%d/query" card-id)
+                                              {:parameters [{:id     "unit-tag"
+                                                             :name   "unit"
+                                                             :type   :temporal-unit
+                                                             :target target
+                                                             :value  "year"}]}))
+            ungrouped (count (mt/rows (mt/user-http-request :crowberto :post 202
+                                                            (format "card/%d/query" card-id) {})))]
+        (testing "the Card declares the tag as a parameter, so the value groups by the tag's own dimension"
+          (is (< (count (mt/rows (run! 202 [:dimension [:template-tag "unit"]])))
+                 ungrouped)))
+        (testing "and a target naming a column instead makes no difference -- the Card's target is used either way"
+          (is (= (count (mt/rows (run! 202 [:dimension [:template-tag "unit"]])))
+                 (count (mt/rows (run! 202 [:dimension [:field (mt/id :checkins :date) nil]]))))))))))
+
+(deftest ^:synchronized supplied-parameter-target-does-not-filter-test
+  (testing "POST /api/card/:id/query a supplied :target cannot redirect a parameter at another column"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:dataset_query (mt/native-query
+                                    {:query         "SELECT * FROM venues WHERE {{cat}}"
+                                     :template-tags {"cat" {:id           "cat-tag"
+                                                            :name         "cat"
+                                                            :display-name "Category"
+                                                            :type         :dimension
+                                                            :dimension    [:field (mt/id :venues :category_id) nil]
+                                                            :widget-type  :number/=}}})}]
+      (let [run!      (fn [target]
+                        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id)
+                                              {:parameters [(cond-> {:id "cat-tag", :name "cat", :type :number/=, :value [2]}
+                                                              target (assoc :target target))]}))
+            row-count #(count (mt/rows %))
+            declared  (row-count (run! [:dimension [:template-tag "cat"]]))]
+        (testing "sanity: the template tag filters on category_id"
+          (is (pos? declared)))
+        (testing "a target naming a different column is replaced by the Card's own"
+          (is (= declared
+                 (row-count (run! [:dimension [:field (mt/id :venues :name) nil]])))))
+        (testing "and so is one carrying a source-field and an extra stage"
+          (is (= declared
+                 (row-count (run! [:dimension
+                                   [:field (mt/id :venues :name) {:source-field (mt/id :venues :category_id)}]
+                                   {:stage-number 1}])))))))))
+
+(deftest ^:synchronized row-limit-ignores-stored-query-options-test
+  (testing "the row limit does not change when a Card's stored query carries :middleware or :constraints"
+    (mt/with-temporary-setting-values [unaggregated-query-row-limit 5]
+      (doseq [[label stored] [["middleware"  (assoc-in (mt/mbql-query venues) [:middleware :disable-max-results?] true)]
+                              ["constraints" (assoc (mt/mbql-query venues) :constraints {:max-results           10000
+                                                                                         :max-results-bare-rows 10000})]]]
+        (testing (str "\n" label)
+          (mt/with-temp [:model/Card card {:dataset_query stored}]
+            (testing "\nPOST /api/card/:id/query"
+              (is (= 5 (count (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card))))))))
+            (testing "\nPOST /api/dashboard/:id/dashcard/:dashcard-id/card/:card-id/query"
+              (mt/with-temp [:model/Dashboard     dashboard {}
+                             :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
+                (is (= 5 (count (mt/rows (mt/user-http-request :rasta :post 202
+                                                               (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                                       (:id dashboard) (:id dashcard) (:id card))))))))))
+          (mt/with-temporary-setting-values [enable-public-sharing true]
+            (mt/with-temp [:model/Card card {:dataset_query     stored
+                                             :public_uuid       (str (random-uuid))
+                                             :made_public_by_id (mt/user->id :crowberto)}]
+              (testing "\nGET /api/public/card/:uuid/query"
+                (is (= 5 (count (mt/rows (mt/user-http-request :rasta :get 202
+                                                               (format "public/card/%s/query" (:public_uuid card)))))))))))))))

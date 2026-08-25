@@ -576,11 +576,11 @@
                                       :collection_id :database_id :table_id]
                                      {:where    [:and
                                                  [:= :archived false]
-                                                 [:exists {:select 1
-                                                           :from   [[:report_dashboardcard :dc]]
-                                                           :where  [:and
-                                                                    [:= :dc.card_id :report_card.id]
-                                                                    [:= :dc.dashboard_id dashboard-id]]}]]
+                                                 [:exists ^:allow-subquery {:select 1
+                                                                            :from   [[:report_dashboardcard :dc]]
+                                                                            :where  [:and
+                                                                                     [:= :dc.card_id :report_card.id]
+                                                                                     [:= :dc.dashboard_id dashboard-id]]}]]
                                       :order-by [[:%lower.name :asc]]})
                           (filter mi/can-read?)
                           (mapv present-card))]

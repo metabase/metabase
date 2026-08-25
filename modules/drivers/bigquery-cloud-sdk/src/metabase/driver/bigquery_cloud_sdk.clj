@@ -24,9 +24,10 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv some empty? not-empty]]
+   [metabase.util.performance :refer [every? mapv some empty? not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -89,8 +90,33 @@
   '("https://www.googleapis.com/auth/bigquery"
     "https://www.googleapis.com/auth/drive"))
 
+(def ^:private default-api-host
+  "Where `BigQueryOptions` sends API calls when no alternate `:host` is configured."
+  "bigquery.googleapis.com")
+
+(def ^:private default-token-uri
+  "Where `ServiceAccountCredentials` exchanges the signed JWT when the credentials JSON names no `token_uri`."
+  "https://oauth2.googleapis.com/token")
+
+(defn- service-account-token-uri
+  "The URI [[bigquery.common/service-account-json->service-account-credential]] will POST a signed assertion to.
+  `ServiceAccountCredentials/fromStream` honors a `token_uri` out of the credentials JSON, so this is a destination
+  chosen by whoever supplied the credentials rather than a fixed Google endpoint."
+  [service-account-json]
+  (or (when-not (str/blank? service-account-json)
+        (not-empty (get (json/decode service-account-json) "token_uri")))
+      default-token-uri))
+
+(defmethod driver/connection-hosts :bigquery-cloud-sdk
+  [_driver {:keys [host service-account-json]}]
+  (driver/hosts-from-details
+   {:api-host   (if (str/blank? host) default-api-host host)
+    :token-host (service-account-token-uri service-account-json)}
+   [:api-host :token-host]))
+
 (mu/defn- database-details->client
   ^BigQuery [details :- :map]
+  (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
         ;; Check if we should impersonate a different service account
         ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
@@ -141,22 +167,74 @@
   [{:keys [project-id] :as details}]
   (or project-id (bigquery.common/database-details->credential-project-id details)))
 
+(def ^:private exact-dataset-id-re
+  "Matches an inclusion-filter segment that names one dataset outright.
+
+  [[metabase.driver.sync/schema-pattern->re-pattern]] compiles a segment into a regex, expanding an unescaped `*`
+  into `.*` and passing every other character through as regex source. A segment of only `\\w` characters therefore
+  contains no wildcard and no regex syntax, so it matches itself and nothing else -- and `\\w` is also exactly the
+  character set BigQuery permits in a dataset ID. A leading underscore is excluded on top of that: BigQuery calls such
+  a dataset *hidden* and omits it from `datasets.list` unless `all=true`, which we never pass, so a scan would never
+  turn one up even though a name lookup finds it.
+
+  All of that has to hold for a name lookup to select the same datasets a scan would;
+  [[metabase.driver.bigquery-cloud-sdk-test/exactly-named-datasets-agrees-with-scan-test]] pins that agreement."
+  #"[a-zA-Z0-9]\w*")
+
+(defn- exactly-named-datasets
+  "The dataset IDs an inclusion filter names outright, or `nil` when evaluating the filter requires a scan.
+
+  Blank patterns mean \"include everything\", so they fall through to the scan."
+  [{:keys [dataset-filters-type dataset-filters-patterns]}]
+  (when (= "inclusion" dataset-filters-type)
+    (let [segments (map str/trim (str/split (str dataset-filters-patterns) #","))]
+      (when (every? #(re-matches exact-dataset-id-re %) segments)
+        ;; a scan yields each dataset once however many segments matched it
+        (distinct segments)))))
+
+(defn- dataset-exists?
+  [^BigQuery client project-id dataset-id]
+  (some? (.getDataset client (DatasetId/of project-id dataset-id) (u/varargs BigQuery$DatasetOption))))
+
+(defn- assert-project-reachable!
+  "Throws whatever listing would have thrown when `project-id` is unreachable.
+
+  `.getDataset` answers 404 with `nil`, so a name lookup that comes back empty cannot tell \"no such dataset\" from
+  \"no such project\" -- and callers rely on the difference: [[driver/can-connect?]] reports a bad project as a
+  connection failure, and sync must not read an unreachable project as one holding no tables. `.listDatasets` throws
+  in that case, and a single-row page is enough to provoke it."
+  [^BigQuery client project-id]
+  (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption [(BigQuery$DatasetListOption/pageSize 1)]))
+  nil)
+
 (defn- list-datasets
-  "Fetch all datasets given database `details`, applying dataset filters if specified."
+  "Fetch all datasets given database `details`, applying dataset filters if specified.
+
+  When the filter names its datasets outright they are fetched by name. Listing is paginated over every dataset in
+  the project, which is unrelated to how many the filter keeps -- 3400 datasets took ~18s, past the
+  [[metabase.driver.settings/db-connection-timeout-ms]] budget that `can-connect?` runs under."
   [{:keys [dataset-filters-type dataset-filters-patterns] :as details} & {:keys [logging-schema-exclusions?]}]
   (let [client (database-details->client details)
-        project-id (get-project-id details)
-        datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
-        inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
-        exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
-    (for [^Dataset dataset (.iterateAll datasets)
-          :let [dataset-id (.. dataset getDatasetId getDataset)]
-          :when ((if logging-schema-exclusions?
-                   sql-jdbc.describe-database/include-schema-logging-exclusion
-                   driver.s/include-schema?) inclusion-patterns
-                                             exclusion-patterns
-                                             dataset-id)]
-      dataset-id)))
+        project-id (get-project-id details)]
+    (if-let [named (exactly-named-datasets details)]
+      ;; `logging-schema-exclusions?` has nothing to report on this path: it logs datasets the filter rejected, and
+      ;; here every dataset looked at was named by the filter. Stays lazy past the first hit so `can-connect?` costs
+      ;; one round trip.
+      (let [found (seq (filter #(dataset-exists? client project-id %) named))]
+        (when-not found
+          (assert-project-reachable! client project-id))
+        found)
+      (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+            inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
+            exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
+        (for [^Dataset dataset (.iterateAll datasets)
+              :let [dataset-id (.. dataset getDatasetId getDataset)]
+              :when ((if logging-schema-exclusions?
+                       sql-jdbc.describe-database/include-schema-logging-exclusion
+                       driver.s/include-schema?) inclusion-patterns
+                                                 exclusion-patterns
+                                                 dataset-id)]
+          dataset-id)))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details]
@@ -737,6 +815,30 @@
   page, then adaptive sizing) by default, but override for testing."
   nil)
 
+(def ^:private max-sql-query-length-chars
+  "BigQuery's maximum standard SQL query length, in characters — counting comments and whitespace exactly as
+  BigQuery does. BigQuery rejects jobs above this with a raw 400 `INVALID_ARGUMENT` ('The query is too large ...').
+  See
+  https://cloud.google.com/bigquery/quotas#query_limits ('Maximum query length: 1 MB')."
+  (* 1024 1024))
+
+(defn- validate-query-length!
+  "Throw a localized `invalid-query` error if `sql` exceeds [[max-sql-query-length-chars]], before the request
+  reaches BigQuery. `sql` is the final payload — Metabase's `-- remark` comment, appended in
+  [[driver/execute-reducible-query]], is already included — so it is counted exactly as BigQuery will count it. The
+  raw 400 from BigQuery remains a fallback if this limit ever drifts from BigQuery's own."
+  [^String sql parameters]
+  (let [len (count sql)]
+    (when (> len max-sql-query-length-chars)
+      (throw
+       (ex-info
+        (tru (str "This query is too large for BigQuery ({0} characters; the maximum is {1}). "
+                  "Try reducing the number of selected fields, filter values, or rewriting the query to make it shorter.")
+             len max-sql-query-length-chars)
+        {:type       driver-api/qp.error-type.invalid-query
+         :sql        sql
+         :parameters parameters})))))
+
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                   {:type driver-api/qp.error-type.invalid-query, :sql sql, :parameters parameters}
@@ -893,6 +995,7 @@
 (defn- execute-bigquery
   [respond database-details ^String sql parameters cancel-chan]
   {:pre [(not (str/blank? sql))]}
+  (validate-query-length! sql parameters)
   ;; Kicking off two async jobs:
   ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
   ;; - Running the BigQuery execution in another thread, since it's blocking.
@@ -1242,7 +1345,7 @@
         dataset-id (DatasetId/of project-id schema)]
     (when-not (.getDataset client dataset-id (u/varargs BigQuery$DatasetOption))
       ;; Dataset doesn't exist, try to create it
-      (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
+      (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (sql.u/quote-name :bigquery-cloud-sdk :table schema))]]]
         (driver/execute-raw-queries! driver conn-spec sql)))))
 
 (defmethod driver/schema-exists? :bigquery-cloud-sdk

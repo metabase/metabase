@@ -435,7 +435,7 @@
           (t2/insert! :model/RemoteSyncObject
                       [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "created" :status_changed_at (t/offset-date-time)}
                        {:model_type "Card" :model_id card-id :model_name "Test Card" :status "updated" :status_changed_at (t/offset-date-time)}
-                       {:model_type "Card" :model_id 999 :model_name "Test Card2" :status "deleted" :status_changed_at (t/offset-date-time)}])
+                       {:model_type "Card" :model_id Integer/MAX_VALUE :model_name "Test Card2" :status "deleted" :status_changed_at (t/offset-date-time)}])
           (is (= 3 (t2/count :model/RemoteSyncObject)))
           (let [test-files {"main" {"collections/main/test_collection/test_collection.yaml"
                                     (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
@@ -451,7 +451,7 @@
                               (= coll-id (:model_id %))) entries))
               (is (some #(and (= "Card" (:model_type %))
                               (= card-id (:model_id %))) entries))
-              (is (not (some #(= 999 (:model_id %)) entries))))))))))
+              (is (not (some #(= Integer/MAX_VALUE (:model_id %)) entries))))))))))
 
 (deftest export!-updates-all-statuses-to-synced-test
   (testing "export! updates all RemoteSyncObject entries to synced status"

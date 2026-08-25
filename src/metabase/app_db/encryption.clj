@@ -25,7 +25,7 @@
       (doseq [[key value] (t2/select-fn->fn :key :value :model/Setting)]
         (case key
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)
-                                                                                       [:raw "current_timestamp"])]
+                                                                                       (h2x/current-datetime-honeysql-form db-type))]
                                     (t2/update! :conn conn :setting {:key key} {:value current-timestamp-as-string-honeysql}))
           "encryption-check" (t2/update! :conn conn :setting {:key key} {:value (if encrypting? (encrypt-str-fn (str (random-uuid))) "unencrypted")})
           (t2/update! :conn conn :setting

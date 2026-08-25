@@ -6,7 +6,9 @@
 
   Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; they usually
   use [[userland-query]] or [[userland-query-with-default-constraints]] (see below)."
+  (:refer-clojure :exclude [select-keys])
   (:require
+   [medley.core :as m]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.debug :as qp.debug]
@@ -21,7 +23,8 @@
    [metabase.query-processor.setup :as qp.setup]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys]]))
 
 (def around-middleware
   "Middleware that goes AROUND [[process-query]]. Does extra stuff like handling `:internal` Audit v1 queries or saving
@@ -105,20 +108,37 @@
     info  :- [:maybe ::lib.schema.info/info]]
    (-> query
        (assoc-in [:middleware :userland-query?] true)
-       (update :info merge info))))
+       (cond-> info (update :info merge info)))))
+
+(def ^:private userland-query-middleware-options
+  "The only `:middleware` options a caller may set on a query they submit
+  to [[userland-query-with-default-constraints]]. Everything else in there is the query processor's own plumbing.
+
+  An allowlist rather than a blocklist, because the cost of the two mistakes is not symmetric: forgetting to allow an
+  option breaks a feature visibly, while forgetting to block one silently hands out whatever that option controls.
+  These two are what the frontend and the embedding SDK actually send."
+  #{:js-int-to-string? :ignore-cached-results?})
 
 (mu/defn userland-query-with-default-constraints :- ::qp.schema/any-query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query. QP behavior changes are the same
   as those for [[userland-query]], *plus* the default userland constraints (limits) are applied --
   see [[qp.constraints/add-default-userland-constraints]].
 
-  This ultimately powers most of the REST API entrypoints into the QP."
+  This ultimately powers most of the REST API entrypoints into the QP, so it makes those defaults actually win: the
+  caller's own `:constraints` and any `:middleware` option outside [[userland-query-middleware-options]] are dropped
+  first, so the default userland row cap is applied.
+
+  The internal callers that legitimately lift the cap -- [[disable-max-results]] for persisted-model refresh and
+  referenced-card compilation, and `lib/disable-default-limit` for transforms -- build their queries in process and
+  hand them straight to the QP, so they are unaffected."
   ([query]
    (userland-query-with-default-constraints query nil))
 
   ([query :- ::qp.schema/any-query
     info  :- [:maybe ::lib.schema.info/info]]
    (-> query
+       (dissoc :constraints)
+       (m/update-existing :middleware select-keys userland-query-middleware-options)
        (userland-query info)
        (assoc-in [:middleware :add-default-userland-constraints?] true))))
 ;; test

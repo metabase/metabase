@@ -49,6 +49,19 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+(defmethod driver/host-carrying-parameters :snowflake
+  [_driver]
+  ["proxyHost" "host"])
+
+(defmethod driver/connection-hosts :snowflake
+  [_driver {:keys [account host use-hostname]}]
+  (driver/hosts-from-details
+   {:host (if (and use-hostname (string? host) (not (str/blank? host)))
+            host
+            (when (string? account)
+              (str account ".snowflakecomputing.com")))}
+   [:host]))
+
 (doseq [[feature supported?] {:connection-impersonation               true
                               :connection-impersonation-requires-role true
                               :rename                                 true
@@ -380,6 +393,17 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp_tz expr 6])
 
+(def ^:private snowflake-date-part-units
+  "Allow-list of the temporal units this driver emits as Snowflake `DATEADD`/`DATEDIFF` tokens. These are interpolated
+  through `[:raw …]`, so a unit reaching a sink here must be a member of this closed set before
+  `(name unit)` is emitted."
+  #{:millisecond :second :minute :hour :day :week :month :quarter :year})
+
+(defn- snowflake-date-part [unit]
+  (when-not (contains? snowflake-date-part-units unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
+  (name unit))
+
 (defmethod sql.qp/add-interval-honeysql-form :snowflake
   [_driver hsql-form amount unit]
   ;; return type is always the same as expr type, unless expr is a DATE and you're adding something not in a DATE e.g.
@@ -391,7 +415,7 @@
                       "timestamp_ntz"
                       db-type)]
     (-> [:dateadd
-         [:raw (name unit)]
+         [:raw (snowflake-date-part unit)]
          [:inline (int amount)]
          hsql-form]
         (h2x/with-database-type-info return-type))))
@@ -484,7 +508,7 @@
         y (if (h2x/is-of-type? y "timestamptz")
             [:convert_timezone (driver-api/results-timezone-id) y]
             y)]
-    [:datediff [:raw (name unit)] x y]))
+    [:datediff [:raw (snowflake-date-part unit)] x y]))
 
 (defn- time-zoned-extract
   "Same as `extract` but converts the arg to the results time zone if it's a timestamptz."
@@ -636,9 +660,10 @@
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           [:to_timestamp_ntz
-           [:convert_timezone target-timezone hsql-form]]
+           [:convert_timezone (sql.qp/->honeysql driver target-timezone) hsql-form]]
           [:to_timestamp_ntz
-           [:convert_timezone (or source-timezone (driver-api/results-timezone-id)) target-timezone hsql-form]])
+           [:convert_timezone (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))
+            (sql.qp/->honeysql driver target-timezone) hsql-form]])
         (h2x/with-database-type-info "timestampntz"))))
 
 (defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
