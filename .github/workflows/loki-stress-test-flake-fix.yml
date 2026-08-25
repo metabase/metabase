@@ -25,6 +25,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       story_files: ${{ steps.detect.outputs.story_files }}
+      dropped_files: ${{ steps.detect.outputs.dropped_files }}
       should_run: ${{ steps.detect.outputs.should_run }}
     steps:
       - name: Detect changed story files
@@ -48,12 +49,43 @@ jobs:
             return 0
           }
 
+          # Drop story files whose default export is loki-skipped, because loki then finds no stories in them and fails every run.
+          # Only the `export default {` block is read, so a per-story skip or a named `export default meta` is not detected.
+          drop_skipped_files() {
+            local ref="$1"
+            local files="$2"
+            local kept=()
+            DROPPED=()
+            for file in $(echo "$files" | tr ',' '\n'); do
+              if gh api "repos/${{ github.repository }}/contents/$file?ref=$ref" --jq '.content' \
+                  | base64 -d \
+                  | sed -n '/^export default {/,/^};/p' \
+                  | tr -d ' \n' \
+                  | grep -q 'loki:{skip:true}'; then
+                DROPPED+=("$file")
+              else
+                kept+=("$file")
+              fi
+            done
+            KEPT=$(IFS=','; echo "${kept[*]}")
+            DROPPED_LIST=$(IFS=','; echo "${DROPPED[*]}")
+            for file in "${DROPPED[@]}"; do
+              echo "Dropping $file: its default export has loki skip set, so it contains no stories loki can run"
+            done
+          }
+
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             FILES=$(echo "${{ inputs.story_files }}" | tr ',' '\n' | xargs -n1 | paste -sd',')
             if ! validate_paths "$FILES"; then
               exit 1
             fi
-            echo "story_files=$FILES" >> "$GITHUB_OUTPUT"
+            drop_skipped_files "${{ github.sha }}" "$FILES"
+            if [[ -z "$KEPT" ]]; then
+              echo "::error::Every requested story file is loki-skipped: $DROPPED_LIST"
+              exit 1
+            fi
+            echo "story_files=$KEPT" >> "$GITHUB_OUTPUT"
+            echo "dropped_files=$DROPPED_LIST" >> "$GITHUB_OUTPUT"
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -79,7 +111,16 @@ jobs:
           fi
 
           echo "Changed story files: $FILES"
-          echo "story_files=$FILES" >> "$GITHUB_OUTPUT"
+          drop_skipped_files "${{ github.event.pull_request.head.sha }}" "$FILES"
+          if [[ -z "$KEPT" ]]; then
+            echo "Every changed story file is loki-skipped, nothing to stress test"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Story files to stress test: $KEPT"
+          echo "story_files=$KEPT" >> "$GITHUB_OUTPUT"
+          echo "dropped_files=$DROPPED_LIST" >> "$GITHUB_OUTPUT"
           echo "should_run=true" >> "$GITHUB_OUTPUT"
 
   workflow-summary:
@@ -93,6 +134,7 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
           STORY_FILES: ${{ needs.detect-changed-stories.outputs.story_files }}
+          DROPPED_FILES: ${{ needs.detect-changed-stories.outputs.dropped_files }}
           BURN_IN: ${{ inputs.burn_in || 10 }}
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -109,6 +151,13 @@ jobs:
               echo "- \`$file\`"
             done
             echo ''
+            if [[ -n "${DROPPED_FILES}" ]]; then
+              echo '**Skipped (every story is loki-skipped):**'
+              echo "${DROPPED_FILES}" | tr ',' '\n' | while read -r file; do
+                echo "- \`$file\`"
+              done
+              echo ''
+            fi
             echo "**Burn-in:** ${BURN_IN} runs"
             echo ''
             if [[ "${EVENT_NAME}" == "pull_request" ]]; then
