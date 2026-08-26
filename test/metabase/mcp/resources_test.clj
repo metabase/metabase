@@ -79,7 +79,7 @@
     (is (= {:result {:_meta {:ui {:resourceUri "ui://metabase/example.html"}}}}
            (mcp.resources/without-ui-credential
             {:result {:_meta {:ui                   {:resourceUri "ui://metabase/example.html"}
-                              :com.metabase/mcp-ui {:credential "secret"}}}})))))
+                              :com.metabase/mcp-apps {:credential "secret"}}}})))))
 
 (deftest builtin-construct-query-resource-test
   (testing "the construct-query reference is registered as a public markdown resource"

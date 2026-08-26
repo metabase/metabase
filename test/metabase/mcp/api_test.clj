@@ -837,13 +837,13 @@
                                                     {"mcp-session-id" session-id})
                                        [:body :result])]
           (is (= "credential-1"
-                 (get-in visualize-result [:_meta :com.metabase/mcp-ui :credential])))
+                 (get-in visualize-result [:_meta :com.metabase/mcp-apps :credential])))
           (is (= session-id
-                 (get-in visualize-result [:_meta :com.metabase/mcp-ui :sessionId])))
+                 (get-in visualize-result [:_meta :com.metabase/mcp-apps :sessionId])))
           (is (= "credential-2"
-                 (get-in drill-result [:_meta :com.metabase/mcp-ui :credential])))
+                 (get-in drill-result [:_meta :com.metabase/mcp-apps :credential])))
           (is (= session-id
-                 (get-in drill-result [:_meta :com.metabase/mcp-ui :sessionId])))
+                 (get-in drill-result [:_meta :com.metabase/mcp-apps :sessionId])))
           (is (not (str/includes? (pr-str (select-keys visualize-result [:content :structuredContent]))
                                   "credential-1")))
           (is (not (str/includes? (pr-str (select-keys drill-result [:content :structuredContent]))
@@ -878,11 +878,11 @@
                                                     :arguments {}})
                                   {"mcp-session-id" session-id})
                                  [:body :result])
-          credential     (get-in result [:_meta :com.metabase/mcp-ui :credential])]
+          credential     (get-in result [:_meta :com.metabase/mcp-apps :credential])]
       (is (string? credential))
-      (is (= session-id (get-in result [:_meta :com.metabase/mcp-ui :sessionId])))
+      (is (= session-id (get-in result [:_meta :com.metabase/mcp-apps :sessionId])))
       (is (= "refresh_visualize_query_ui_credential"
-             (get-in result [:_meta :com.metabase/mcp-ui :refreshTool])))
+             (get-in result [:_meta :com.metabase/mcp-apps :refreshTool])))
       (is (not (str/includes? (pr-str (select-keys result [:content :structuredContent]))
                               credential))))))
 
@@ -1755,7 +1755,7 @@
                                                                       {:name      "visualize_query"
                                                                        :arguments {:query "card__1"}})
                                                      {"mcp-session-id" session-id})
-                credential  (get-in tool-result [:body :result :_meta :com.metabase/mcp-ui :credential])
+                credential  (get-in tool-result [:body :result :_meta :com.metabase/mcp-apps :credential])
                 headers     {"x-metabase-mcp-ui-auth" credential}]
             (is (string? credential))
             (is (= 200 (:status (client/client-full-response :get 200 "user/current"
