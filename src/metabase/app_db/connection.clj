@@ -4,6 +4,7 @@
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
+   [metabase.config.core :as config]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -277,16 +278,24 @@
                             (if (= *transaction-depth* 1)
                               ;; The body committed the transaction, so the savepoint is gone. H2 and MySQL do this
                               ;; implicitly for DDL. Those writes are already durable; discard anything still pending.
-                              ;; TODO (Chris 2026-08-18) -- Consider rejecting DDL in rollback-only transactions and
-                              ;; fixing each caller.
-                              ;; The existing SQL guard does not cover raw SQL, and savepoints can also disappear in
-                              ;; ordinary nested transactions. Callers such as search's `drop-table!` use the ambient
-                              ;; connection; moving that DDL could block on locks held by the caller.
-                              (do
-                                (log/warnf (str "Could not roll back a rollback-only transaction (%s). Something in"
-                                                " it committed the transaction -- DDL commits implicitly on H2 and"
-                                                " MySQL -- so its writes up to that point are already durable.")
-                                           (ex-message rollback-e))
+                              (let [message (format (str "Could not roll back a rollback-only transaction (%s)."
+                                                         " Something in it committed the transaction -- DDL commits"
+                                                         " implicitly on H2 and MySQL -- so its writes up to that"
+                                                         " point are already durable.")
+                                                    (ex-message rollback-e))]
+                                ;; Every top-level `with-temp` is one of these scopes, so in a test the durable rows
+                                ;; leak into every later test. Fail here rather than in the unrelated test that
+                                ;; trips over them. Throwing covers every way the savepoint can go -- raw SQL DDL,
+                                ;; HoneySQL DDL, a deadlock -- which a guard on the SQL we build cannot: callers
+                                ;; such as search's `drop-table!` send raw SQL over the ambient connection.
+                                ;; The exceptional exit below rolls the connection back.
+                                (when config/is-test?
+                                  (throw (ex-info (str message " Those writes will leak into every later test."
+                                                       " Run the DDL outside the rollback-only scope, or on its"
+                                                       " own connection.")
+                                                  {}
+                                                  rollback-e)))
+                                (log/warn message)
                                 (rollback-connection!))
                               ;; In a nested scope, propagate the error. `rollback!` has marked the transaction tree
                               ;; as unsafe to commit.
