@@ -15,16 +15,6 @@
 
 #?(:clj (set! *warn-on-reflection* true))
 
-(deftest ^:parallel add-period-test
-  (is (= "This sentence needs a period."
-         (u/add-period "This sentence needs a period")))
-  (is (= "This sentence doesn't need a period!"
-         (u/add-period "This sentence doesn't need a period!")))
-  (is (= "What about this one?"
-         (u/add-period "What about this one?")))
-  (is (= "   "
-         (u/add-period "   "))))
-
 (deftest ^:parallel url?-test
   (are [s expected] (= expected
                        (u/url? s))

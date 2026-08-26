@@ -112,8 +112,9 @@
 (defn- field-docs-sentence
   "A link to the provider's own instructions for filling the field in, or nil when there is nothing to link to."
   [{:keys [docs-url]}]
+  ;; the words the admin form's own link uses, so the page and the UI agree; the `?` terminates it, so no period
   (when docs-url
-    (str (md/link "Where to find this" docs-url) ".")))
+    (md/link "Where do I find this?" docs-url)))
 
 (defn- field-env-var-sentence
   "How to set the field without writing JSON into the setting, or nil when no environment variable configures it."
@@ -139,11 +140,16 @@
 (defn- known-models-table
   "A `{model-id {:display-name ... :context-window ...}}` allow-list as a table, ordered by model ID."
   [models]
-  (md/table ["Model" "Model ID" "Context window (tokens)"]
-            (for [[model-id {:keys [display-name context-window]}] (sort-by key models)]
-              [(or display-name model-id)
-               (md/code model-id)
-               (if context-window (thousands context-window) "—")])))
+  ;; the context window column is dropped when nothing in the table publishes one — DeepSeek would otherwise get a
+  ;; column of dashes, which reads as missing data rather than as a column that doesn't apply
+  (let [sorted   (sort-by key models)
+        windows? (boolean (some (comp :context-window val) sorted))
+        row      (fn [[model-id {:keys [display-name context-window]}]]
+                   (cond-> [(or display-name model-id) (md/code model-id)]
+                     windows? (conj (if context-window (thousands context-window) "—"))))]
+    (md/table (cond-> ["Model" "Model ID"]
+                windows? (conj "Context window (tokens)"))
+              (map row sorted))))
 
 (defn- fixed-models-table
   "A registry-pinned `[{:id ... :display_name ...} ...]` catalog as a table, ordered by ID."
@@ -194,17 +200,17 @@
 
 (defn- provider-doc
   "Everything the page says about one provider type, read out of the registry into plain data."
-  [{:keys [type fields managed? singleton? required-any] :as provider-type}]
+  [{:keys [type fields default-model mini-model managed? singleton? required-any] :as provider-type}]
   (let [fields-index (fields-by-key fields)]
     {:type          type
      :label         (label provider-type)
-     :default-model (llm.provider/default-model type)
-     :mini-model    (llm.provider/mini-model type)
+     :default-model default-model
+     :mini-model    mini-model
      :managed?      (boolean managed?)
      :singleton?    (boolean singleton?)
      :fields        (vec fields)
      :fields-index  fields-index
-     :env-vars      (into {} (llm.provider/connection-env-vars type))
+     :env-vars      (llm.provider/connection-env-vars type)
      :required-any  required-any
      :model-source  (model-source provider-type fields-index)}))
 
@@ -234,12 +240,22 @@
 
 (defn- credentials-section
   "What an admin has to enter to connect, and which combinations of it are enough."
-  [{provider-label :label, :keys [fields fields-index env-vars required-any]}]
+  [{provider-label :label, :keys [type fields fields-index env-vars managed? required-any]}]
   (md/paragraphs
-   [(if (seq fields)
+   [(cond
+      (seq fields)
       (md/labeled-block "Credentials:"
                         (md/bullets (map #(field-entry % fields-index (get env-vars (:key %))) fields)))
-      "Metabase authenticates this connection with your instance's license token, so there's no API key to enter.")
+
+      ;; only the managed provider has nothing to enter; saying so about any other type would tell an admin their
+      ;; credentials are Metabase's problem when they are not
+      managed?
+      "Metabase authenticates this connection with your instance's license token, so there's no API key to enter."
+
+      :else
+      (throw (ex-info (str "No credential fields for provider type " (pr-str type)
+                           ". Give it a :fields key in the registry, or mark it :managed?.")
+                      {:provider type})))
     (required-any-sentence provider-label required-any fields-index)]))
 
 (defn- provider-section

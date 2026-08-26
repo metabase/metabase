@@ -74,8 +74,8 @@
     (is (nil? (#'ai-provider-dox/field-default-sentence api-key-field)))))
 
 (deftest field-entry-test
-  (testing "a required field names itself, links to its docs, and gives its environment variable"
-    (is (= (str "**API key** (required). [Where to find this](https://example.com/keys). "
+  (testing "a required field names itself, links to its docs in the admin form's own words, and gives its env var"
+    (is (= (str "**API key** (required). [Where do I find this?](https://example.com/keys) "
                 "Set it with `MB_LLM_EXAMPLE_API_KEY`.")
            (#'ai-provider-dox/field-entry api-key-field (index [api-key-field]) "MB_LLM_EXAMPLE_API_KEY"))))
   (testing "a field with no environment variable simply omits it"
@@ -129,11 +129,19 @@
                     "Anthropic")]
       (is (str/includes? markdown "| Context window (tokens) |"))
       (is (str/includes? markdown "| 200,000"))))
-  (testing "a model with no context window still gets a row"
+  (testing "a model with no context window still gets a row, dashed out under its neighbours"
     (is (str/includes? (#'ai-provider-dox/models-markdown
-                        [:known {"deepseek-v4-pro" {:display-name "DeepSeek V4 Pro"}}]
+                        [:known {"deepseek-v4-flash" {:display-name "DeepSeek V4 Flash"}
+                                 "deepseek-v4-pro"   {:display-name "DeepSeek V4 Pro" :context-window 131072}}]
                         "DeepSeek")
                        "| —")))
+  (testing "a provider that publishes no context windows at all loses the column, rather than showing dashes"
+    (let [markdown (#'ai-provider-dox/models-markdown
+                    [:known {"deepseek-v4-pro" {:display-name "DeepSeek V4 Pro"}}]
+                    "DeepSeek")]
+      (is (str/includes? markdown "| Model "))
+      (is (not (str/includes? markdown "Context window")))
+      (is (not (str/includes? markdown "—")))))
   (testing "a registry-pinned catalog becomes a table with no context window column"
     (let [markdown (#'ai-provider-dox/models-markdown
                     [:fixed [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}]]

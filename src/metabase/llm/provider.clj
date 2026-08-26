@@ -536,9 +536,7 @@
                             :api-key  {:setting :llm-vllm-api-key}}}})
 
 (defn connection-env-vars
-  "The environment variables that configure a connection of `type-name`, as `[[config-field \"MB_LLM_...\"] ...]` in the
-  order the type declares its fields. A vector rather than a map so the order survives into
-  [[metabase.cmd.ai-provider-dox]]'s generated docs.
+  "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.
 
   Returns nil for a type no per-provider variable configures — the managed provider, which holds no credentials of
   its own, is the only one today. Setting these is the supported way to configure a single connection without writing
@@ -546,7 +544,7 @@
   [type-name]
   (when-let [{:keys [settings]} (get single-provider-settings type-name)]
     (not-empty
-     (into []
+     (into {}
            (keep (fn [{field-key :key}]
                    (when-let [setting-kw (get-in settings [field-key :setting])]
                      [field-key (setting/env-var-name setting-kw)])))
