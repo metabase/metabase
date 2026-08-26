@@ -157,6 +157,18 @@
            (sql/format {:select [[(h2x/cast "date) UNION SELECT 1 --" "toucan")]]}
                        {:quoted true, :dialect :ansi})))))
 
+(deftest ^:parallel raw-type-name?-test
+  (are [expected sql-type] (= expected (h2x/raw-type-name? sql-type))
+    true  "timestamp"
+    true  :varchar
+    true  "double precision"
+    true  "decimal(10, 2)"
+    true  "VARCHAR(10)"
+    false "integer); select 1 --"
+    false "\"quoted\""
+    false "schema.type"
+    false "decimal(10, 2); --"))
+
 (defn- ->sql [expr]
   (sql/format {:select [[expr]]} {:quoted false}))
 

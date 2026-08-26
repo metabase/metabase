@@ -211,9 +211,10 @@
                              :name                  (:dimension/name field)
                              ;; joined columns skip the FieldValues model's transforms, so decrypt by hand
                              :values                (mi/json-out-with-keywordization
-                                                     (encryption/maybe-decrypt (:values/values field)))
+                                                     (encryption/maybe-decrypt-accepting-plaintext
+                                                      (:values/values field)))
                              :human-readable-values (mi/json-out-without-keywordization
-                                                     (encryption/maybe-decrypt
+                                                     (encryption/maybe-decrypt-accepting-plaintext
                                                       (:values/human-readable-values field)))}}))))
 
 ;;;

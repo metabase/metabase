@@ -355,10 +355,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Field
-                    :model/QueryCache
-                    :model/Secret
-                    :model/Setting}}
+   :model-imports #{:model/Field :model/QueryCache :model/Setting}}
 
   appearance
   {:team "UX West"
@@ -1364,7 +1361,6 @@
   metabot
   {:team    "Metabot"
    :api     #{metabase.metabot.api
-              metabase.metabot.api.entity-analysis
               metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
@@ -2052,6 +2048,7 @@
            dashboards
            events
            lib
+           lib-be
            models
            parameters
            queries
@@ -2138,8 +2135,7 @@
   secrets
   {:team "Graphy"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}
-   :model-exports #{:model/Secret}}
+   :uses #{api driver models premium-features util}}
 
   segments
   {:team "Graphy"
@@ -3422,7 +3418,7 @@
            warehouse-schema
            enterprise/sandbox}
    :model-exports #{:model/ConnectionImpersonation}
-   :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
+   :model-imports #{:model/DataPermissions :model/Database :model/PermissionsGroupMembership}}
 
   enterprise/internal-stats
   {:team "UX West"
@@ -3769,6 +3765,7 @@
            embedding
            premium-features
            request
+           server
            session
            settings
            sso

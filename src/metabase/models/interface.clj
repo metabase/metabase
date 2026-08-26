@@ -306,37 +306,39 @@
   (comp encryption/maybe-encrypt json-in))
 
 (defn encrypted-json-out
-  "Deserialize encrypted json."
+  "Deserialize encrypted json, requiring the value to be encrypted when `MB_ENCRYPTION_SECRET_KEY` is set (see
+  [[encryption/maybe-decrypt]]): a plaintext value at rest is rejected. A value that decrypts (or, with no key set,
+  passes through) but is not valid JSON is logged and returned as-is rather than crashing the read."
   [v]
   (let [decrypted (encryption/maybe-decrypt v)]
     (try
-      (json/decode+kw decrypted)
+      (some-> decrypted json/decode+kw)
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
           (log/error "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
+          (log/errorf "Error parsing JSON: %s" (ex-message e)))
         v))))
 
-;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
-;; cache the decrypted JSON for one hour
-(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
+(def ^:private cached-encrypted-json-out
+  (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
 
 (def transform-encrypted-json
-  "Transform for encrypted json."
+  "Encrypted-json transform. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
 (defn transform-encrypted
   "Wrap `transform` so its serialized value is encrypted at rest. Reading is unchanged for rows written before the
-  column was encrypted: [[encryption/maybe-decrypt]] passes plaintext through."
+  column was encrypted, which the backfill task may not have reached yet:
+  [[encryption/maybe-decrypt-accepting-plaintext]] passes plaintext through."
   [transform]
   {:in  (fn [v]
           (let [serialized ((:in transform) v)]
             ;; `maybe-encrypt` returns nil for an empty string, which would null the column instead of storing it
             (cond-> serialized
               (seq serialized) encryption/maybe-encrypt)))
-   :out (comp (:out transform) encryption/maybe-decrypt)})
+   :out (comp (:out transform) encryption/maybe-decrypt-accepting-plaintext)})
 
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
@@ -490,9 +492,9 @@
     v))
 
 (def transform-secret-value
-  "Transform for secret value."
+  "Transform for secret value. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
+   :out (comp encryption/maybe-decrypt-bytes maybe-blob->bytes)})
 
 #_(defn decompress
     "Decompress `compressed-bytes`."

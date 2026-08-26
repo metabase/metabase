@@ -1321,6 +1321,16 @@ databaseChangeLog:
             tableName: data_permissions
             constraintName: idx_unique_data_permissions
 
+  - changeSet:
+      id: v58.2026-08-25T00:00:00
+      author: ranquild
+      comment: >-
+        Encrypt any plaintext auth_identity.credentials rows written by the v58 password/SSO backfill (raw SQL that
+        bypassed encryption), so the credentials column can be read strictly once MB_ENCRYPTION_SECRET_KEY is set.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptAuthIdentityCredentials
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

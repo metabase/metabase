@@ -136,17 +136,17 @@
   (comp encryption/maybe-encrypt json-in))
 
 (defn- encrypted-json-out
-  "Should mirror [[metabase.models.interface/encrypted-json-out]]"
+  "Lenient deserialize of an encrypted-json column that tolerates plaintext at rest, for reading legacy rows during
+  migrations. Mirrors [[metabase.models.interface/encrypted-json-in]]'s inverse from before that read became strict."
   [v]
-  (let [decrypted (encryption/maybe-decrypt v)]
-    (try
-      (json/decode+kw decrypted)
-      (catch Throwable e
-        (if (or (encryption/possibly-encrypted-string? decrypted)
-                (encryption/possibly-encrypted-bytes? decrypted))
-          (log/errorf "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?: %s" (ex-message e))
-          (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
-        v))))
+  (try
+    (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext v))
+    (catch Throwable e
+      (if (or (encryption/possibly-encrypted-string? v)
+              (encryption/possibly-encrypted-bytes? v))
+        (log/errorf "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?: %s" (ex-message e))
+        (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
+      v)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -1407,7 +1407,7 @@
 (defn- raw-setting-value [key]
   (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
           :value
-          encryption/maybe-decrypt))
+          encryption/maybe-decrypt-accepting-plaintext))
 
 (define-reversible-migration MigrateUploadsSettings
   (do (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)
@@ -2244,6 +2244,18 @@
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
 
+(define-migration EncryptAuthIdentityCredentials
+  (when (encryption/default-encryption-enabled?)
+    (run! (fn [{:keys [id credentials]}]
+            (when (and (string? credentials)
+                       (not (str/blank? credentials))
+                       (not (encryption/possibly-encrypted-string? credentials)))
+              (t2/query {:update :auth_identity
+                         :set    {:credentials (encryption/maybe-encrypt credentials)}
+                         :where  [:= :id id]})))
+          (t2/reducible-query {:select [:id :credentials]
+                               :from   [:auth_identity]}))))
+
 ;; Forward is a no-op: encrypting is done off the boot path by `metabase.app-db.task.encryption-backfill`, because
 ;; `metabase_field` can hold millions of rows and a migration that long blocks startup. Rollback has to stay here
 ;; though, since a downgraded version needs to find plaintext the moment it starts.
@@ -2252,7 +2264,7 @@
 ;; back past this point should decrypt every column encrypted since, not just the ones known when it was written.
 ;;
 ;; Intentionally not using define-reversible-migration, to avoid wrapping that rollback in one transaction. Partial
-;; completion is safe either way: `maybe-decrypt` reads plaintext and ciphertext alike.
+;; completion is safe either way: `maybe-decrypt-accepting-plaintext` reads plaintext and ciphertext alike.
 (defrecord EncryptDwhDerivedColumns []
   CustomTaskChange
   (execute [_ _database])
@@ -2267,4 +2279,4 @@
   ;; hand these back to the older version as plaintext it can read
   (rollback [_ _database]
     (when (should-execute-change?)
-      (mdb.encryption/rewrite-dwh-derived-columns! encryption/maybe-decrypt nil nil 500))))
+      (mdb.encryption/rewrite-dwh-derived-columns! encryption/maybe-decrypt-accepting-plaintext nil nil 500))))

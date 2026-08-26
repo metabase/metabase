@@ -29,6 +29,7 @@ describe("ProviderTypeIcon", () => {
     "mistral",
     "zai",
     "moonshot",
+    "deepseek",
     "google",
     "azure",
     "bedrock",
@@ -37,6 +38,13 @@ describe("ProviderTypeIcon", () => {
 
     expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
     expect(screen.getByRole("presentation")).toBeInTheDocument();
+  });
+
+  it("falls back to a generic icon for vLLM, which is a server rather than a vendor", () => {
+    renderWithProviders(<ProviderTypeIcon type="vllm" />);
+
+    expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
+    expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
   });
 
   it("falls back to a generic icon for a type the frontend does not know yet", () => {

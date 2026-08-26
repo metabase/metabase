@@ -219,6 +219,8 @@ config:
     llm-bedrock-secret-access-key: null
     llm-bedrock-session-token: null
     llm-connection-timeout-ms: 10000
+    llm-deepseek-api-base-url: https://api.deepseek.com
+    llm-deepseek-api-key: null
     llm-google-api-base-url: https://aiplatform.googleapis.com
     llm-google-location: null
     llm-google-oauth-access-token: null
@@ -240,6 +242,9 @@ config:
     llm-rate-limit-per-ip: 100
     llm-rate-limit-per-user: 20
     llm-request-timeout-ms: 120000
+    llm-vllm-api-base-url: null
+    llm-vllm-api-key: null
+    llm-vllm-request-timeout-ms: 300000
     llm-zai-api-base-url: https://api.z.ai/api/paas/v4
     llm-zai-api-key: null
     loading-message: doing-science

@@ -49,7 +49,9 @@
                                                                [{:type :start :id "msg-1"}
                                                                 {:type :text :text "Hello from native agent!"}
                                                                 {:type  :usage       :usage {:promptTokens 10 :completionTokens 5}
-                                                                 :model "test-model" :id    "msg-1"}]))
+                                                                 :model "test-model" :id    "msg-1"
+                                                                 :finish-reason "length"}]))
+                                      metabot.self/context-window-tokens (constantly 1000)
                                       conversation-title/ensure-title! (constantly {:status :ready
                                                                                     :title  "Orders by Month"})]
             (testing "Native agent streaming request"
@@ -76,9 +78,12 @@
                     (let [text-deltas (filter #(= "text-delta" (:type %)) events)]
                       (is (= "Hello from native agent!"
                              (apply str (map :delta text-deltas)))))
-                    (is (=? {:messageMetadata {:usage {:inputTokens 10 :outputTokens 5 :totalTokens 15}}}
+                    (is (=? {:finishReason "length"
+                             :messageMetadata {:usage               {:inputTokens 10 :outputTokens 5 :totalTokens 15}
+                                               :contextTokens       15
+                                               :contextWindowTokens 1000}}
                             (u/seek #(= "finish" (:type %)) events))
-                        "finish event carries accumulated usage"))
+                        "finish event carries accumulated and final-call context usage"))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
                   ;; Native agent stores parts in the v2 at-rest format
@@ -122,7 +127,7 @@
           lookups         (atom 0)
           lines           (mapv #(self.core/format-sse-event {:type "text-delta" :id "txt-1" :delta %})
                                 ["a" "b" "c" "d"])]
-      (with-redefs [metabot.persistence/conversation-title (fn [_] (swap! lookups inc) nil)]
+      (mt/with-dynamic-fn-redefs [metabot.persistence/conversation-title (fn [_] (swap! lookups inc) nil)]
         (is (= lines
                (into [] (#'api/inject-title-events-xf
                          {:status :pending :future title-future}

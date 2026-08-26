@@ -45,12 +45,12 @@
 
 (defn- read-progress
   "Per-column progress, or nil to start from scratch. Stored as JSON with plain string keys and values, so it survives
-  the round trip unchanged, and read back through `maybe-decrypt` because key rotation re-encrypts every `setting`
-  row including this one."
+  the round trip unchanged, and read plaintext-tolerantly because key rotation re-encrypts every `setting` row,
+  including this one."
   []
   (when-let [raw (t2/select-one-fn :value :setting :key progress-key)]
     (try
-      (json/decode (encryption/maybe-decrypt raw))
+      (json/decode (encryption/maybe-decrypt-accepting-plaintext raw))
       (catch Throwable e
         ;; unreadable progress just means starting over; the sweep skips rows it already converted
         (log/warn e "Could not read encryption backfill progress, starting from the beginning")
