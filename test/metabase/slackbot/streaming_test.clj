@@ -173,9 +173,9 @@
                        "revenue-by-month"
                        "Revenue by month"
                        huge-link)]
-        (is (nil? (tu/oversized-section-error blocks))
+        (is (nil? (tu/oversized-block-error blocks))
             "Slack no longer rejects the whole message")
-        (is (some? (tu/oversized-section-error
+        (is (some? (tu/oversized-block-error
                     [{:type "section"
                       :text {:type "mrkdwn"
                              :text (str "📊 <https://metabase.example.com" huge-link "|Revenue by month>")}}]))
