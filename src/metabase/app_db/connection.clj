@@ -226,8 +226,7 @@
                           (recur)))
                       ;; commit; after-commit side effects run after the transaction bindings unwind
                       (.commit connection))
-                    ;; nested transaction succeeded; release its savepoint so it doesn't stay open (as a live
-                    ;; subtransaction on postgres) for the rest of the outer transaction
+                    ;; nested transaction succeeded; release its savepoint so it doesn't stay open
                     (.releaseSavepoint connection savepoint))
                   result)
                 (catch Throwable txn-e
