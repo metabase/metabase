@@ -9,6 +9,7 @@ import {
   resolveGoalSegments,
 } from "metabase/visualizations/lib/dynamic-goals";
 import { truncateText } from "metabase/visualizations/lib/text";
+import { DEFAULT_GAUGE_RANGE } from "metabase/visualizations/visualizations/Gauge/constants";
 import {
   getSegmentsRange,
   getValue,
@@ -67,12 +68,7 @@ export default function GaugeContainer({
   const segments = resolveGoalSegments(data, goalSegments, getColor)
     .map(fixSwappedMinMax)
     .sort(gaugeSorter);
-  const range = getSegmentsRange(segments);
-
-  if (range == null) {
-    throw new Error("Gauge has no valid ranges");
-  }
-
+  const range = getSegmentsRange(segments) ?? DEFAULT_GAUGE_RANGE;
   const [segmentMinValue, segmentMaxValue] = range;
 
   const center: Position = [
@@ -86,16 +82,16 @@ export default function GaugeContainer({
     return formatNumber(value, columnSettings);
   };
 
-  const segmentMinMaxLabels: GaugeLabelData[] = segments
-    .flatMap((segmentDatum) => {
-      return [segmentDatum.min, segmentDatum.max];
-    })
+  const segmentMinMaxLabels: GaugeLabelData[] = [
+    ...range,
+    ...segments.flatMap((segment) => [segment.min, segment.max]),
+  ]
     // gauge segments could be continuous i.e. the current max and the next min is the same value.
     // So we should remove duplicate elements.
     .reduce(removeDuplicateElements, [])
-    .map((segmentValue, index, segmentValues): GaugeLabelData => {
-      const isMinSegmentValue = index === 0;
-      const isMaxSegmentValue = index === segmentValues.length - 1;
+    .map((segmentValue): GaugeLabelData => {
+      const isMinSegmentValue = segmentValue === segmentMinValue;
+      const isMaxSegmentValue = segmentValue === segmentMaxValue;
       const segmentValueAngle =
         START_ANGLE +
         calculateRelativeValueAngle(

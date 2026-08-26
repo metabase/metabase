@@ -6,6 +6,7 @@ import type { GoalSegment } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import GaugeContainer from "./GaugeContainer";
+import { GAUGE_INNER_RADIUS, GAUGE_OUTER_RADIUS } from "./constants";
 
 const getColor = createColorGetter();
 
@@ -119,6 +120,39 @@ describe("GaugeContainer", () => {
     expect(getNeedleTransform(overlapped)).toBe(needleTransform);
   });
 
+  it("puts the range's own bounds in the endpoint slots when segments overlap", () => {
+    const root = setup({
+      segments: [
+        { min: 0, max: 100, color: RED },
+        { min: 50, max: 60, color: GREEN },
+      ],
+    });
+
+    expect(getEndpointLabels(root)).toEqual(["0", "100"]);
+    expect(getLabels(root)).toEqual(["0", "100", "50", "60", "42"]);
+  });
+
+  it("draws a nested segment on top of the segment containing it", () => {
+    const nested = { min: 50, max: 60, color: RED };
+    const outer = { min: 0, max: 100, color: GREEN };
+
+    expect(getSegmentFills(setup({ segments: [nested, outer] }))).toEqual([
+      GREEN,
+      RED,
+    ]);
+    expect(
+      getSegmentFills(setup({ segments: [{ ...nested, min: 0 }, outer] })),
+    ).toEqual([GREEN, RED]);
+  });
+
+  it("renders an empty gauge over the default range when no segment has both bounds", () => {
+    const root = setup({ segments: [{ min: null, max: null, color: GREEN }] });
+
+    expect(getSegmentFills(root)).toEqual([]);
+    expect(getEndpointLabels(root)).toEqual(["0", "1"]);
+    expect(getEndpointLabels(setup())).toEqual(["0", "1"]);
+  });
+
   describe("unresolvable segments", () => {
     it("throws for a reference nothing has answered yet", () => {
       expect(() =>
@@ -193,13 +227,6 @@ describe("GaugeContainer", () => {
         }),
       ).toThrow("Couldn't resolve one of this gauge's ranges");
     });
-
-    it("throws when no segment has both bounds", () => {
-      expect(() =>
-        setup({ segments: [{ min: null, max: null, color: GREEN }] }),
-      ).toThrow("Gauge has no valid ranges");
-      expect(() => setup()).toThrow("Gauge has no valid ranges");
-    });
   });
 });
 
@@ -223,4 +250,22 @@ function getNeedleTransform(root: HTMLElement) {
   return root
     .querySelector('g[transform^="rotate("]')
     ?.getAttribute("transform");
+}
+
+const ENDPOINT_LABEL_X = (GAUGE_INNER_RADIUS + GAUGE_OUTER_RADIUS) / 2;
+
+function getLabels(root: HTMLElement, selector = "text") {
+  const texts = Array.from(
+    root.querySelectorAll(selector),
+    (label) => label.textContent,
+  );
+  // OutlinedText renders every label twice
+  return texts.filter((_, index) => index % 2 === 0);
+}
+
+function getEndpointLabels(root: HTMLElement) {
+  return [
+    ...getLabels(root, `text[x="${-ENDPOINT_LABEL_X}"]`),
+    ...getLabels(root, `text[x="${ENDPOINT_LABEL_X}"]`),
+  ];
 }
