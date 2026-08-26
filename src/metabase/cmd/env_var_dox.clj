@@ -100,17 +100,15 @@
 (defn- format-paid
   "Does the variable require a paid license?"
   [env-var]
-  (if (nil? (:feature env-var))
-    ""
+  (when (:feature env-var)
     paid-message))
 
 (defn- format-export
   "Whether the variable is exported in serialization settings."
   [env-var]
-  (if (true? (:export? env-var))
+  (when (true? (:export? env-var))
     (str (md/link "Exported as" "../installation-and-operation/serialization.md")
-         ": " (md/code (:munged-name env-var)) ".")
-    ""))
+         ": " (md/code (:munged-name env-var)) ".")))
 
 (defn- format-doc
   "Includes additional documentation for an environment variable, if it exists.
@@ -137,10 +135,8 @@
     (not (settable-in-config-file? env-var))
     "Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md)."
 
-    (= (:visibility env-var) :internal)
-    ""
-
-    :else
+    ;; an internal setting has no config-file name to give, and nothing else to say either
+    (not= (:visibility env-var) :internal)
     (str (md/link "Configuration file name" "./config-file.md") ": " (md/code (:munged-name env-var)))))
 
 (defn- format-env-var-entry
@@ -215,8 +211,6 @@
 (defn prep-dox
   "Preps the environment variable docs for printing."
   []
-  ;; the intro resource ends in its own newline, so joining as paragraphs reproduces the blank line the page has
-  ;; always carried between the intro and the first entry
   (md/document (concat [(format-intro)]
                        (format-env-var-docs (get-settings))
                        [(non-defsetting-env-vars)])))

@@ -79,19 +79,21 @@
        "."))
 
 (defn- field-condition-sentence
-  "The condition that reveals a field, or nil when it is always shown. Reads the labels [[provider-doc]] resolved,
-  not the raw `:show-when` — by the time a field is rendered its siblings are out of reach."
-  [{:keys [condition]}]
-  (when-let [{:keys [controlling-label value-label]} condition]
-    (str "Only when " (md/bold controlling-label) " is " (md/bold value-label) ".")))
+  "The condition that reveals a field, or nil when it is always shown."
+  [{:keys [show-when]} fields-index]
+  (when-let [{:keys [field value]} show-when]
+    (let [controlling (field-at fields-index field)]
+      (str "Only when " (md/bold (label controlling))
+           " is " (md/bold (option-label controlling value)) "."))))
 
 (defn- field-requires-sentence
-  "The siblings a field cannot be set without, or nil when it stands on its own. Reads the labels [[provider-doc]]
-  resolved, like [[field-condition-sentence]] — the registry keys `:requires` by field, not by entry, so by the time
-  a field is rendered the map it came from is out of reach."
-  [{:keys [requires-labels]}]
-  (when (seq requires-labels)
-    (str "Only together with " (str/join " and " (map md/bold requires-labels)) ".")))
+  "The siblings a field cannot be set without, or nil when it stands on its own. The registry keys `:requires` by
+  field, so this takes the whole map rather than anything hung off the field itself."
+  [{:keys [key]} requires fields-index]
+  (when-let [dependency-keys (seq (get requires key))]
+    (str "Only together with "
+         (str/join " and " (map #(md/bold (field-label fields-index %)) dependency-keys))
+         ".")))
 
 (defn- field-hosted-sentence
   "What Metabase Cloud asks of a field that a self-hosted Metabase does not, or nil when the two agree.
@@ -139,22 +141,40 @@
     (str "Set it with " (md/code env-var) ".")))
 
 (defn- field-entry
-  "One credential field as a Markdown bullet. `env-var` is the environment variable that sets this field, or nil when
-  none does."
-  [field env-var]
+  "One credential field as a Markdown bullet, rendered against its provider's `ctx`: the type's `:requires` map, the
+  environment variables that configure it, and its fields indexed by key."
+  [field {:keys [requires env-vars fields-index]}]
   (md/sentences
    [(field-name-sentence field)
-    (field-condition-sentence field)
-    (field-requires-sentence field)
+    (field-condition-sentence field fields-index)
+    (field-requires-sentence field requires fields-index)
     (md/sentence (:help field))
     ;; straight after `:help`, which on Bedrock is the keyless mode this qualifies
     (field-hosted-sentence field)
     (field-options-sentence field)
     (field-default-sentence field)
     (field-docs-sentence field)
-    (field-env-var-sentence env-var)]))
+    (field-env-var-sentence (get env-vars (:key field)))]))
 
 ;;;; Models
+
+(defn- model-source
+  "Where a provider type's models come from, as `[:known models]`, `[:fixed models]`, `[:deployments field-labels]`, or
+  `[:dynamic]`. Throws when the type matches none of them."
+  [{:keys [type] :as provider-type} fields-index]
+  (or (some->> (metabot.self/known-models type) not-empty (vector :known))
+      (some->> (llm.provider/fixed-models type) not-empty (vector :fixed))
+      (some->> (llm.provider/model-fields type) not-empty
+               (mapv #(field-label fields-index %))
+               (vector :deployments))
+      (when (contains? dynamic-catalog-types type)
+        [:dynamic])
+      ;; a provider registered without its models wired up would otherwise ship a section that lists nothing
+      (throw (ex-info (str "No model source for provider type " (pr-str type)
+                           ". Add it to metabase.metabot.self/known-models, give it a :models or :model-fields key"
+                           " in the registry, or name it in dynamic-catalog-types.")
+                      {:provider type
+                       :registry-keys (vec (keys provider-type))}))))
 
 (defn- known-models-table
   "A `{model-id {:display-name ... :context-window ...}}` allow-list as a table, ordered by model ID."
@@ -196,79 +216,6 @@
     :dynamic     (str "Metabase lists whichever models your " provider-label " server is serving, so what you can "
                       "pick depends on how you started it.")))
 
-;;;; Gathering
-
-;;; Everything a field says about a sibling — a `:show-when` condition, a `:requires` entry, a `:required-any` group,
-;;; the fields a model is composed from — is resolved to labels here, so nothing downstream needs the field index.
-;;; That also means [[field-at]]'s throw fires while reading the registry, where a renamed key is the obvious cause,
-;;; rather than halfway through rendering a page.
-
-(defn- model-source
-  "Where a provider type's models come from, as `[:known models]`, `[:fixed models]`, `[:deployments field-labels]`, or
-  `[:dynamic]`. Throws when the type matches none of them."
-  [{:keys [type] :as provider-type} fields-index]
-  (or (some->> (metabot.self/known-models type) not-empty (vector :known))
-      (some->> (llm.provider/fixed-models type) not-empty (vector :fixed))
-      (some->> (llm.provider/model-fields type) not-empty
-               (mapv #(field-label fields-index %))
-               (vector :deployments))
-      (when (contains? dynamic-catalog-types type)
-        [:dynamic])
-      ;; a provider registered without its models wired up would otherwise ship a section that lists nothing
-      (throw (ex-info (str "No model source for provider type " (pr-str type)
-                           ". Add it to metabase.metabot.self/known-models, give it a :models or :model-fields key"
-                           " in the registry, or name it in dynamic-catalog-types.")
-                      {:provider type
-                       :registry-keys (vec (keys provider-type))}))))
-
-(defn- field-condition
-  "The labels [[field-condition-sentence]] renders a field's `:show-when` from, or nil when the field is always shown."
-  [{:keys [show-when]} fields-index]
-  (when-let [{:keys [field value]} show-when]
-    (let [controlling (field-at fields-index field)]
-      {:controlling-label (label controlling)
-       :value-label       (option-label controlling value)})))
-
-(defn- field-requires
-  "The labels [[field-requires-sentence]] renders a field's entry in the type's `:requires` map from, or nil when
-  nothing else has to accompany it."
-  [{:keys [key]} requires fields-index]
-  (when-let [dependency-keys (seq (get requires key))]
-    (mapv #(field-label fields-index %) dependency-keys)))
-
-(defn- resolved-fields
-  "`fields` with every reference to a sibling — a `:show-when` condition, a `:requires` entry — replaced by the
-  labels that render it."
-  [fields requires fields-index]
-  (mapv (fn [field]
-          (let [condition       (field-condition field fields-index)
-                requires-labels (field-requires field requires fields-index)]
-            (cond-> field
-              condition       (assoc :condition condition)
-              requires-labels (assoc :requires-labels requires-labels))))
-        fields))
-
-(defn- resolved-required-any
-  "`required-any` groups with each field key replaced by that field's label."
-  [required-any fields-index]
-  (mapv (fn [field-keys] (mapv #(field-label fields-index %) field-keys))
-        required-any))
-
-(defn- provider-doc
-  "Everything the page says about one provider type, read out of the registry into plain data."
-  [{:keys [type fields default-model mini-model managed? singleton? required-any requires] :as provider-type}]
-  (let [fields-index (fields-by-key fields)]
-    {:type                type
-     :label               (label provider-type)
-     :default-model       default-model
-     :mini-model          mini-model
-     :managed?            (boolean managed?)
-     :singleton?          (boolean singleton?)
-     :fields              (resolved-fields fields requires fields-index)
-     :env-vars            (llm.provider/connection-env-vars type)
-     :required-any-labels (resolved-required-any required-any fields-index)
-     :model-source        (model-source provider-type fields-index)}))
-
 ;;;; Sections
 
 (defn- provider-facts
@@ -289,46 +236,53 @@
 
 (defn- required-any-sentence
   "The `:required-any` credential groups spelled out, or nil for a type that has none."
-  [provider-label required-any-labels]
+  [provider-label required-any fields-index]
   ;; the per-field `(optional)` markers on their own would read as though none of the credentials were needed
-  (when (seq required-any-labels)
-    (let [group (fn [labels] (str/join " and " (map md/bold labels)))]
-      (str provider-label " needs either " (str/join ", or " (map group required-any-labels)) "."))))
+  (when (seq required-any)
+    (let [group (fn [field-keys]
+                  (str/join " and " (map #(md/bold (field-label fields-index %)) field-keys)))]
+      (str provider-label " needs either " (str/join ", or " (map group required-any)) "."))))
 
 (defn- credentials-section
   "What an admin has to enter to connect, and which combinations of it are enough."
-  [{provider-label :label, :keys [type fields env-vars managed? required-any-labels]}]
-  (md/paragraphs
-   [(cond
-      (seq fields)
-      (md/labeled-block "Credentials:"
-                        (md/bullets (map #(field-entry % (get env-vars (:key %))) fields)))
+  [{:keys [type fields managed? required-any requires] :as provider-type} fields-index]
+  (let [ctx {:requires     requires
+             :env-vars     (llm.provider/connection-env-vars type)
+             :fields-index fields-index}]
+    (md/paragraphs
+     [(cond
+        (seq fields)
+        (md/labeled-block "Credentials:" (md/bullets (map #(field-entry % ctx) fields)))
 
-      ;; only the managed provider has nothing to enter; saying so about any other type would tell an admin their
-      ;; credentials are Metabase's problem when they are not
-      managed?
-      "Metabase authenticates this connection with your instance's license token, so there's no API key to enter."
+        ;; only the managed provider has nothing to enter; saying so about any other type would tell an admin their
+        ;; credentials are Metabase's problem when they are not
+        managed?
+        "Metabase authenticates this connection with your instance's license token, so there's no API key to enter."
 
-      :else
-      (throw (ex-info (str "No credential fields for provider type " (pr-str type)
-                           ". Give it a :fields key in the registry, or mark it :managed?.")
-                      {:provider type})))
-    (required-any-sentence provider-label required-any-labels)]))
+        :else
+        (throw (ex-info (str "No credential fields for provider type " (pr-str type)
+                             ". Give it a :fields key in the registry, or mark it :managed?.")
+                        {:provider type})))
+      (required-any-sentence (label provider-type) required-any fields-index)])))
 
 (defn- provider-section
   "One provider's section of the page: heading, facts, models, then credentials."
-  [{provider-label :label, models :model-source, :as doc}]
-  (md/paragraphs
-   [(md/heading 2 provider-label)
-    (provider-facts doc)
-    (md/labeled-block "Supported models:" (models-markdown models provider-label))
-    (credentials-section doc)]))
+  [{:keys [fields] :as provider-type}]
+  (let [fields-index   (fields-by-key fields)
+        provider-label (label provider-type)]
+    (md/paragraphs
+     [(md/heading 2 provider-label)
+      (provider-facts provider-type)
+      (md/labeled-block "Supported models:"
+                        (models-markdown (model-source provider-type fields-index) provider-label))
+      (credentials-section provider-type fields-index)])))
 
 (defn- document-markdown
+  "The whole page: the `intro` resource, then a section per registered provider type."
   [intro provider-types]
   (when (empty? provider-types)
     (throw (ex-info "No provider types found; metabase.llm.provider's registry likely moved or changed shape" {})))
-  (md/document (cons (str/trimr intro) (map (comp provider-section provider-doc) provider-types))))
+  (md/document (cons intro (map provider-section provider-types))))
 
 ;;;; Entry point
 

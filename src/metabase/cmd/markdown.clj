@@ -68,14 +68,16 @@
   (str/join " " (remove str/blank? parts)))
 
 (defn paragraphs
-  "Join the non-blank parts with blank lines between them."
+  "Join the non-blank parts with blank lines between them, each trimmed of its own surrounding whitespace — a
+  resource that carries a trailing newline doesn't open an extra blank line."
   [parts]
-  (str/join "\n\n" (remove str/blank? parts)))
+  (->> parts
+       (map #(str/trim (str %)))
+       (remove str/blank?)
+       (str/join "\n\n")))
 
 (defn document
-  "`parts` as a finished page: joined as [[paragraphs]] and terminated with exactly one newline. Callers decide for
-  themselves whether to trim a part first — a resource that carries its own trailing newline contributes an extra
-  blank line, which some pages want and others don't."
+  "`parts` as a finished page: joined as [[paragraphs]] and terminated with exactly one newline."
   [parts]
   (str (paragraphs parts) "\n"))
 

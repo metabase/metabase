@@ -27,6 +27,10 @@
     (is (= "One. Two." (md/sentences ["One." nil "" "Two."])))
     (is (= "One.\n\nTwo." (md/paragraphs ["One." nil "" "Two."])))
     (is (= "- One\n- Two" (md/bullets ["One" nil "" "Two"]))))
+  (testing "each paragraph is trimmed, so a resource carrying its own trailing newline opens no extra blank line"
+    (is (= "Intro\n\nBody" (md/paragraphs ["Intro\n" "\nBody\n"])))
+    (testing "only at the ends: a table or a bullet list keeps the newlines inside it"
+      (is (= "- One\n- Two\n\nBody" (md/paragraphs ["- One\n- Two\n" "Body"])))))
   (testing "nothing to join is the empty string, so a caller can pass the result straight to `paragraphs`"
     (is (= "" (md/sentences [])))
     (is (= "" (md/paragraphs [nil ""])))
@@ -55,8 +59,8 @@
 (deftest ^:parallel document-test
   (testing "a finished page ends in exactly one newline"
     (is (= "One.\n\nTwo.\n" (md/document ["One." nil "Two."]))))
-  (testing "a part carrying its own trailing newline keeps the extra blank line it adds — trimming is the caller's call"
-    (is (= "Intro\n\n\nBody\n" (md/document ["Intro\n" "Body"])))))
+  (testing "a part carrying its own trailing newline is trimmed by [[md/paragraphs]] rather than by its caller"
+    (is (= "Intro\n\nBody\n" (md/document ["Intro\n" "Body"])))))
 
 (deftest ^:parallel labeled-block-test
   (testing "a label line over the block it introduces"
