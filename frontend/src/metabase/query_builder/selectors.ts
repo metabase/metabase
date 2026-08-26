@@ -26,7 +26,7 @@ import { createRawSeries } from "metabase/visualizations/lib/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getCollectionTimelinesVisibility,
-  getSavedTimelineEventsVisibility,
+  getRecordedTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import { getTimeseriesXAxis } from "metabase/visualizations/lib/timeseries-x-axis";
@@ -814,13 +814,11 @@ export const getFilteredTimelines = createSelector(
   filterTimelinesByXAxis,
 );
 
-// A question shows the events it has recorded in its settings. Until it has
-// recorded any (a new question, or one saved before events were recorded),
-// it shows the timelines of its collection.
+// Falls back to the collection's timelines until the question records a selection.
 export const getTimelineEventsVisibility = createSelector(
   [
     (state: State) =>
-      getSavedTimelineEventsVisibility(getQuestion(state)?.settings()),
+      getRecordedTimelineEventsVisibility(getQuestion(state)?.settings()),
     (state: State) => getQuestion(state)?.collectionId(),
     getTransformedTimelines,
   ],

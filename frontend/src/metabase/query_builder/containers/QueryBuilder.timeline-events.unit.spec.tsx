@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { act, screen, waitFor, within } from "__support__/ui";
+import { showTimeline } from "metabase/query_builder/actions/timelines";
 import { onOpenTimelines } from "metabase/redux/query-builder";
 import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import { checkNotNull } from "metabase/utils/types";
@@ -23,7 +24,10 @@ import { TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD, setup } from "./test-utils";
 
 registerVisualizations();
 
-const CARD = TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD;
+const CARD = createMockCard({
+  ...TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
+  display: "line",
+});
 
 const RC1 = createMockTimelineEvent({
   id: 99,
@@ -40,7 +44,6 @@ const RC2 = createMockTimelineEvent({
 
 const TIMELINE = createMockTimeline({
   id: 1,
-  // The question's collection, so the timeline is shown by default.
   collection_id: CARD.collection_id,
   events: [RC1, RC2],
 });
@@ -73,17 +76,14 @@ const setupWithTimelines = async (visibility?: TimelineEventsVisibility) => {
 
 describe("QueryBuilder > timeline events", () => {
   it("shows the collection's events when the timelines resolve after the question loads (GHY-3839)", async () => {
-    // Delay /api/timeline so it resolves *after* the question and bookmarks have
-    // loaded. The events shown are derived from the fetched timelines, so they
-    // must appear whenever the timelines arrive.
+    // Delay /api/timeline so it resolves after the question has loaded.
     const { store } = await setup({
       card: CARD,
       timelines: [TIMELINE],
       timelinesDelay: 200,
     });
 
-    // Guard the race: the timelines must not have loaded yet. If this fails,
-    // bump the delay — otherwise the test wouldn't exercise the late resolve.
+    // If this fails, bump the delay — otherwise the late resolve isn't exercised.
     expect(getFetchedTimelines(store.getState())).toHaveLength(0);
     expect(getVisibleEventIds(store)).toHaveLength(0);
 
@@ -125,8 +125,7 @@ describe("QueryBuilder > timeline events", () => {
     const store = await setupWithTimelines();
     expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
 
-    // The footer's Events button only renders for time series results, which
-    // the mocked dataset isn't, so open the sidebar directly.
+    // The footer's Events button only renders for time series results.
     await act(async () => {
       store.dispatch(onOpenTimelines());
     });
@@ -159,5 +158,43 @@ describe("QueryBuilder > timeline events", () => {
         "timeline.excluded_timeline_event_ids": [],
       }),
     );
+  });
+
+  it("saving a display that cannot show events records nothing", async () => {
+    const { store } = await setup({
+      card: createMockCard({ ...CARD, display: "table" }),
+      timelines: [TIMELINE],
+    });
+    await waitFor(() => {
+      expect(getFetchedTimelines(store.getState())).toHaveLength(1);
+    });
+    const state = store.getState();
+
+    const question = getSubmittableQuestion(
+      state,
+      checkNotNull(getQuestion(state)),
+    );
+
+    expect(question.settings()).not.toHaveProperty(
+      "timeline.selected_timeline_ids",
+    );
+  });
+
+  it("re-showing a timeline keeps events outside the chart's range", async () => {
+    const store = await setupWithTimelines({
+      "timeline.selected_timeline_ids": [],
+      "timeline.excluded_timeline_event_ids": [],
+    });
+
+    await act(async () => {
+      store.dispatch(showTimeline(TIMELINE));
+    });
+
+    expect(
+      checkNotNull(getQuestion(store.getState())).settings()[
+        "timeline.excluded_timeline_event_ids"
+      ],
+    ).toEqual([]);
+    expect(getVisibleEventIds(store)).toEqual([RC1.id, RC2.id]);
   });
 });

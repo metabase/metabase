@@ -6,14 +6,14 @@ import { t } from "ttag";
 import { isActionDashCard } from "metabase/actions/utils";
 import { openEventsSidebar } from "metabase/dashboard/actions";
 import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
-import { isTimelineEventsDashCard } from "metabase/dashboard/timeline-events";
+import { getIsTimelineEventsDashCard } from "metabase/dashboard/timeline-events";
 import {
   isHeadingDashCard,
   isLinkDashCard,
   supportsInlineParameters,
 } from "metabase/dashboard/utils";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Icon } from "metabase/ui";
 import {
   isQuestionDashCard,
@@ -98,6 +98,9 @@ function DashCardActionsPanelInner({
     getVisualizationRaw(series) ?? {};
 
   const dispatch = useDispatch();
+  const isTimelineEventsDashCard = useSelector((state) =>
+    dashcard ? getIsTimelineEventsDashCard(state, dashcard.id) : false,
+  );
 
   const buttons = [];
 
@@ -262,7 +265,7 @@ function DashCardActionsPanelInner({
       );
     }
 
-    if (dashcard && withTimelineEvents && isTimelineEventsDashCard(dashcard)) {
+    if (dashcard && withTimelineEvents && isTimelineEventsDashCard) {
       buttons.push(
         <DashCardActionButton
           key="events"

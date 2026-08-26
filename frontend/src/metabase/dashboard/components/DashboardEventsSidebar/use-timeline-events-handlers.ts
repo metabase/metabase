@@ -41,9 +41,13 @@ export const useTimelineEventsHandlers = ({
           hideTimelineEvents(visibility, events, context),
         ),
       onShowTimeline: (timeline: Timeline) =>
-        updateVisibility((visibility) => showTimelines(visibility, [timeline])),
+        updateVisibility((visibility, context) =>
+          showTimelines(visibility, [timeline], context),
+        ),
       onHideTimeline: (timeline: Timeline) =>
-        updateVisibility((visibility) => hideTimelines(visibility, [timeline])),
+        updateVisibility((visibility, context) =>
+          hideTimelines(visibility, [timeline], context),
+        ),
       onSelectEvents: (events: TimelineEvent[]) =>
         dispatch(
           selectTimelineEvents({

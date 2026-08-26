@@ -9,6 +9,8 @@ import { shallowEqual } from "react-redux";
 import {
   getCurrentDashcards,
   getDashboard,
+  getDashcardData,
+  getDashcardDataMap,
   getDashcards,
 } from "metabase/dashboard/selectors";
 import type {
@@ -19,7 +21,7 @@ import type {
 import { getTimelineEventsVisibilityContext } from "metabase/timelines/panel/selectors";
 import {
   aggregateVisibleEventIds,
-  getSavedTimelineEventsVisibility,
+  getRecordedTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import type {
@@ -29,7 +31,10 @@ import type {
   TimelineEventsVisibility,
 } from "metabase-types/api";
 
-import { isTimelineEventsDashCard } from "./utils";
+import {
+  canDashCardDisplayTimelineEvents,
+  computeDashCardTimeseriesXAxis,
+} from "./utils";
 
 const NO_EVENTS: TimelineEvent[] = [];
 const NO_EVENT_IDS: TimelineEventId[] = [];
@@ -40,14 +45,13 @@ export const getDashboardCollectionId = (state: State) =>
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
 
-// What a viewer toggled in this session wins over what the question saved.
 const resolveDashCardVisibility = (
   overrides: DashboardTimelineEventsState["overrides"],
   dashcards: DashboardState["dashcards"],
   dashcardId: DashCardId,
 ): TimelineEventsVisibility | undefined =>
   overrides[dashcardId] ??
-  getSavedTimelineEventsVisibility(
+  getRecordedTimelineEventsVisibility(
     dashcards[dashcardId]?.card?.visualization_settings,
   );
 
@@ -60,6 +64,30 @@ export const getDashCardTimelineEventsVisibility = (
     getDashcards(state),
     dashcardId,
   );
+
+export const getDashCardTimeseriesXAxis = createCachedSelector(
+  [
+    (state: State, dashcardId: DashCardId) => getDashcards(state)[dashcardId],
+    (state: State, dashcardId: DashCardId) =>
+      getDashcardData(state, dashcardId),
+  ],
+  (dashcard, dashcardData) =>
+    dashcard ? computeDashCardTimeseriesXAxis(dashcard, dashcardData) : null,
+)((_state, dashcardId) => dashcardId);
+
+// Events only render on a time series axis, so a categorical cartesian chart
+// must not offer the events UI.
+export const getIsTimelineEventsDashCard = (
+  state: State,
+  dashcardId: DashCardId,
+) => {
+  const dashcard = getDashcards(state)[dashcardId];
+  return (
+    dashcard != null &&
+    canDashCardDisplayTimelineEvents(dashcard) &&
+    getDashCardTimeseriesXAxis(state, dashcardId) != null
+  );
+};
 
 const createStableEventsSelector = createSelectorCreator({
   memoize: lruMemoize,
@@ -89,10 +117,17 @@ export const getDashCardSelectedTimelineEventIds = (
 };
 
 export const getTimelineEventsDashCardIds = createSelector(
-  [(state: State) => getCurrentDashcards(state)],
-  (dashcards) => {
+  [(state: State) => getCurrentDashcards(state), getDashcardDataMap],
+  (dashcards, dashcardDataMap) => {
     return dashcards
-      .filter(isTimelineEventsDashCard)
+      .filter(
+        (dashcard) =>
+          canDashCardDisplayTimelineEvents(dashcard) &&
+          computeDashCardTimeseriesXAxis(
+            dashcard,
+            dashcardDataMap[dashcard.id],
+          ) != null,
+      )
       .map((dashcard) => dashcard.id);
   },
 );

@@ -30,8 +30,6 @@ export const deselectTimelineEvents = createAction(
 export const openEventsSidebar = (props: EventsSidebarProps = {}) =>
   setSidebar({ name: SIDEBAR_NAME.events, props });
 
-// Which events a chart shows is saved with its question; a dashboard viewer
-// can only change it for their own session.
 export const updateDashCardsTimelineEventsVisibility =
   (dashcardIds: DashCardId[], update: TimelineEventsVisibilityUpdate) =>
   (dispatch: Dispatch, getState: GetState) => {

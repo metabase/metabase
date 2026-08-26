@@ -6,7 +6,7 @@ import {
 
 import {
   aggregateVisibleEventIds,
-  getSavedTimelineEventsVisibility,
+  getRecordedTimelineEventsVisibility,
   hideTimelineEvents,
   hideTimelines,
   resolveVisibleTimelineEvents,
@@ -117,36 +117,36 @@ describe("resolveVisibleTimelineEvents", () => {
   });
 });
 
-describe("getSavedTimelineEventsVisibility", () => {
+describe("getRecordedTimelineEventsVisibility", () => {
   it("reads a recorded selection out of the card settings", () => {
     const settings = {
       "graph.dimensions": ["CREATED_AT"],
       [SELECTED]: [releases.id],
       [EXCLUDED]: [rc2.id],
     };
-    expect(getSavedTimelineEventsVisibility(settings)).toBe(settings);
+    expect(getRecordedTimelineEventsVisibility(settings)).toBe(settings);
   });
 
   it("treats an empty selection as recorded", () => {
     const settings = { [SELECTED]: [] };
-    expect(getSavedTimelineEventsVisibility(settings)).toBe(settings);
+    expect(getRecordedTimelineEventsVisibility(settings)).toBe(settings);
   });
 
   it("is undefined when nothing was ever recorded", () => {
-    expect(getSavedTimelineEventsVisibility(undefined)).toBeUndefined();
-    expect(getSavedTimelineEventsVisibility({})).toBeUndefined();
+    expect(getRecordedTimelineEventsVisibility(undefined)).toBeUndefined();
+    expect(getRecordedTimelineEventsVisibility({})).toBeUndefined();
     expect(
-      getSavedTimelineEventsVisibility({ [EXCLUDED]: [] }),
+      getRecordedTimelineEventsVisibility({ [EXCLUDED]: [] }),
     ).toBeUndefined();
   });
 });
 
 describe("showing and hiding timelines", () => {
   it("shows a timeline and hides it again without leaving anything behind", () => {
-    const shown = showTimelines({}, [releases]);
+    const shown = showTimelines({}, [releases], context);
     expect(visibleNames(shown)).toEqual(["RC1", "RC2"]);
 
-    expect(hideTimelines(shown, [releases])).toEqual({
+    expect(hideTimelines(shown, [releases], context)).toEqual({
       [SELECTED]: [],
       [EXCLUDED]: [],
     });
@@ -160,10 +160,9 @@ describe("showing and hiding timelines", () => {
     );
     expect(visibleNames(visibility)).toEqual(["RC2"]);
 
-    expect(visibleNames(showTimelines(visibility, [releases]))).toEqual([
-      "RC1",
-      "RC2",
-    ]);
+    expect(
+      visibleNames(showTimelines(visibility, [releases], context)),
+    ).toEqual(["RC1", "RC2"]);
   });
 });
 
@@ -239,6 +238,40 @@ describe("aggregateVisibleEventIds", () => {
     ).toEqual({
       visibleEventIds: [rc2.id],
       partiallyVisibleEventIds: [rc1.id, launch.id],
+    });
+  });
+
+  it("treats every event as partially visible when one chart shows none", () => {
+    expect(aggregateVisibleEventIds([[rc1.id, rc2.id], []])).toEqual({
+      visibleEventIds: [],
+      partiallyVisibleEventIds: [rc1.id, rc2.id],
+    });
+  });
+});
+
+describe("toggling a timeline filtered to the chart's x-axis", () => {
+  // The sidebar hands over a timeline whose events were narrowed to the
+  // chart's range; the events outside it must not be recorded as excluded.
+  const filteredReleases = { ...releases, events: [rc2] };
+
+  it("does not exclude the events outside the range when showing", () => {
+    expect(showTimelines({}, [filteredReleases], context)).toEqual({
+      [SELECTED]: [releases.id],
+      [EXCLUDED]: [],
+    });
+  });
+
+  it("brings back the events outside the range when re-showing", () => {
+    const hidden = hideTimelineEvents(
+      { [SELECTED]: [releases.id] },
+      [rc1],
+      context,
+    );
+    expect(hidden[EXCLUDED]).toEqual([rc1.id]);
+
+    expect(showTimelines(hidden, [filteredReleases], context)).toEqual({
+      [SELECTED]: [releases.id],
+      [EXCLUDED]: [],
     });
   });
 });

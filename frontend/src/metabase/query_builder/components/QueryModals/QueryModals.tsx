@@ -11,6 +11,7 @@ import { type ToastArgs, useToast } from "metabase/common/hooks";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
+import { showTimelineEvents } from "metabase/query_builder/actions/timelines";
 import { updateUrl } from "metabase/query_builder/actions/url";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
@@ -25,15 +26,32 @@ import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
-import EditEventModal from "metabase/timelines/panel/containers/EditEventModal";
-import MoveEventModal from "metabase/timelines/panel/containers/MoveEventModal";
-import NewEventModal from "metabase/timelines/panel/containers/NewEventModal";
+import {
+  type TimelineEventModalState,
+  TimelineEventModals,
+} from "metabase/timelines/panel/components/TimelineEventModals";
 import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
+
+const getTimelineEventModalState = (
+  modal: QueryModalType,
+  eventId: number,
+): TimelineEventModalState | null => {
+  switch (modal) {
+    case MODAL_TYPES.NEW_EVENT:
+      return { type: "new" };
+    case MODAL_TYPES.EDIT_EVENT:
+      return { type: "edit", eventId };
+    case MODAL_TYPES.MOVE_EVENT:
+      return { type: "move", eventId };
+    default:
+      return null;
+  }
+};
 
 interface QueryModalsProps {
   modal: QueryModalType;
@@ -305,48 +323,16 @@ export function QueryModals({
         </Modal>
       );
     case MODAL_TYPES.NEW_EVENT:
-      return (
-        <Modal
-          opened
-          onClose={onCloseModal}
-          size="lg"
-          withCloseButton={false}
-          padding={0}
-        >
-          <NewEventModal
-            cardId={question.id()}
-            collectionId={question.collectionId()}
-            onClose={onCloseModal}
-          />
-        </Modal>
-      );
     case MODAL_TYPES.EDIT_EVENT:
-      return (
-        <Modal
-          opened
-          onClose={onCloseModal}
-          size="lg"
-          withCloseButton={false}
-          padding={0}
-        >
-          <EditEventModal eventId={modalContext} onClose={onCloseModal} />
-        </Modal>
-      );
     case MODAL_TYPES.MOVE_EVENT:
       return (
-        <Modal
-          opened
+        <TimelineEventModals
+          modal={getTimelineEventModalState(modal, modalContext)}
+          cardId={question.id()}
+          collectionId={question.collectionId() ?? null}
+          onEventCreated={(event) => dispatch(showTimelineEvents([event]))}
           onClose={onCloseModal}
-          size="lg"
-          withCloseButton={false}
-          padding={0}
-        >
-          <MoveEventModal
-            eventId={modalContext}
-            collectionId={question.collectionId()}
-            onClose={onCloseModal}
-          />
-        </Modal>
+        />
       );
     case MODAL_TYPES.PREVIEW_QUERY:
       return <PreviewQueryModal onClose={onCloseModal} />;

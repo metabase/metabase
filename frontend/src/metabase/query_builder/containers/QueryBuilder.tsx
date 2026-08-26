@@ -338,7 +338,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const params = useParams();
   useFavicon({ favicon: props.pageFavicon ?? null });
   const navigationType = useNavigationType();
-  // The events shown on the chart are derived from the fetched timelines.
+  // Fetches the timelines the chart's events are derived from.
   useListTimelinesQuery({ include: "events" });
   const { data: bookmarks = [] } = useListBookmarksQuery();
   const [createBookmarkMutation] = useCreateBookmarkMutation();

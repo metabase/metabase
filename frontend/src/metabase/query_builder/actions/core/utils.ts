@@ -1,10 +1,11 @@
 import _ from "underscore";
 
 import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
+import { canDisplayTimelineEvents } from "metabase/visualizations";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getCollectionTimelinesVisibility,
-  getSavedTimelineEventsVisibility,
+  hasRecordedTimelineEventsVisibility,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -45,7 +46,10 @@ export function recordTimelineEventsVisibility(
   question: Question,
   timelines: Timeline[],
 ): Question {
-  if (getSavedTimelineEventsVisibility(question.settings()) != null) {
+  if (
+    !canDisplayTimelineEvents(question.display()) ||
+    hasRecordedTimelineEventsVisibility(question.settings())
+  ) {
     return question;
   }
   const visibility = getCollectionTimelinesVisibility(

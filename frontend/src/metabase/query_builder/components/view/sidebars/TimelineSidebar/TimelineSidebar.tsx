@@ -1,6 +1,10 @@
 import { useCallback, useMemo } from "react";
 
 import {
+  hideTimeline,
+  showTimeline,
+} from "metabase/query_builder/actions/timelines";
+import {
   getTimeseriesDataInterval,
   getUiControls,
 } from "metabase/query_builder/selectors";
@@ -82,12 +86,12 @@ export const TimelineSidebar = ({
   );
 
   const handleShowTimeline = useCallback(
-    (timeline: Timeline) => onShowTimelineEvents(timeline.events ?? []),
-    [onShowTimelineEvents],
+    (timeline: Timeline) => dispatch(showTimeline(timeline)),
+    [dispatch],
   );
   const handleHideTimeline = useCallback(
-    (timeline: Timeline) => onHideTimelineEvents(timeline.events ?? []),
-    [onHideTimelineEvents],
+    (timeline: Timeline) => dispatch(hideTimeline(timeline)),
+    [dispatch],
   );
 
   return (

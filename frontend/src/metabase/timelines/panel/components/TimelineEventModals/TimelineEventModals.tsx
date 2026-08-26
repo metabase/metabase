@@ -7,7 +7,12 @@ import EditEventModal from "metabase/timelines/panel/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/panel/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/panel/containers/NewEventModal";
 import { Modal } from "metabase/ui";
-import type { CollectionId, TimelineEventId } from "metabase-types/api";
+import type {
+  CardId,
+  CollectionId,
+  TimelineEvent,
+  TimelineEventId,
+} from "metabase-types/api";
 
 export type TimelineEventModalState =
   | { type: "new" }
@@ -23,11 +28,15 @@ const getModalLabel = (type: TimelineEventModalState["type"]) =>
 
 export function TimelineEventModals({
   modal,
+  cardId,
   collectionId,
+  onEventCreated,
   onClose,
 }: {
   modal: TimelineEventModalState | null;
+  cardId?: CardId;
   collectionId: CollectionId | null;
+  onEventCreated?: (event: TimelineEvent) => void;
   onClose: () => void;
 }) {
   // The edit/move containers render nothing until the event arrives, so the
@@ -42,7 +51,12 @@ export function TimelineEventModals({
 
   const content = match(modal)
     .with({ type: "new" }, () => (
-      <NewEventModal collectionId={collectionId} onClose={onClose} />
+      <NewEventModal
+        cardId={cardId}
+        collectionId={collectionId}
+        onEventCreated={onEventCreated}
+        onClose={onClose}
+      />
     ))
     .with({ type: "edit" }, ({ eventId }) => (
       <EditEventModal eventId={eventId} onClose={onClose} />

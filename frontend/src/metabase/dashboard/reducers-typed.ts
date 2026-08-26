@@ -216,6 +216,8 @@ export const timelineEvents = createReducer(
   (builder) => {
     builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.timelineEvents);
     builder.addCase(RESET, () => INITIAL_DASHBOARD_STATE.timelineEvents);
+    // Any change that unmounts the events sidebar leaves the selection
+    // highlighted with no UI able to clear it.
     builder.addCase(CLOSE_SIDEBAR, (state) => {
       state.selection = null;
     });
@@ -223,6 +225,9 @@ export const timelineEvents = createReducer(
       if (name !== SIDEBAR_NAME.events) {
         state.selection = null;
       }
+    });
+    builder.addCase(SET_EDITING_DASHBOARD, (state) => {
+      state.selection = null;
     });
     builder.addCase(setDashCardTimelineEventsVisibility, (state, action) => {
       state.overrides = { ...state.overrides, ...action.payload };
