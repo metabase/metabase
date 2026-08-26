@@ -87,9 +87,9 @@
                         :permission/metabot-nlq            :yes
                         :permission/metabot-other-tools    :no})]
     (testing "dashboard guidance included when permitted"
-      (is (re-find #"X-ray auto-generated dashboards" with-other)))
+      (is (re-find #"You can create dashboards two ways" with-other)))
     (testing "dashboard guidance excluded when not permitted"
-      (is (not (re-find #"X-ray auto-generated dashboards" without-other))))
+      (is (not (re-find #"You can create dashboards two ways" without-other))))
     (testing "explicit denial for other tools is included when not permitted"
       (is (re-find #"You cannot create dashboards or documents" without-other)))))
 

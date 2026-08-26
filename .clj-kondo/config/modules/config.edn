@@ -1446,6 +1446,8 @@
               audit-app
               channel
               collections
+              config
+              dashboards
               documents
               driver
               events

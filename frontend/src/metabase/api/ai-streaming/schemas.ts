@@ -97,9 +97,9 @@ export type GeneratedCard = {
 
 export type GeneratedDashboard = {
   type: "dashboard";
-  id?: number;
+  id?: number | string;
   title: string;
-  url: string;
+  url?: string;
 };
 
 export type GeneratedEntity = GeneratedCard | GeneratedDashboard;
@@ -111,7 +111,8 @@ export type SavedEntityDestination =
 
 export type EntitySavedValue = {
   chart_id: string;
-  card_id: number;
+  card_id?: number;
+  dashboard_id?: number;
   destination: SavedEntityDestination;
   tool_call_id?: string;
   title?: string;

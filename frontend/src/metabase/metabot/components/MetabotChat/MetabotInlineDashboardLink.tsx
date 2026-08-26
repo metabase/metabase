@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { GeneratedDashboard } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { Anchor, Flex, Icon } from "metabase/ui";
+import { Anchor, Flex, Icon, Text } from "metabase/ui";
 
 export function MetabotInlineDashboardLink({
   value: { title, url },
@@ -19,15 +19,21 @@ export function MetabotInlineDashboardLink({
       data-testid="metabot-inline-dashboard-link"
     >
       <Icon name="dashboard" c="brand" />
-      <Anchor
-        component={ForwardRefLink}
-        to={url}
-        fw="bold"
-        truncate
-        aria-label={t`Open dashboard`}
-      >
-        {title}
-      </Anchor>
+      {url != null ? (
+        <Anchor
+          component={ForwardRefLink}
+          to={url}
+          fw="bold"
+          truncate
+          aria-label={t`Open dashboard`}
+        >
+          {title}
+        </Anchor>
+      ) : (
+        <Text fw="bold" truncate>
+          {title}
+        </Text>
+      )}
     </Flex>
   );
 }
