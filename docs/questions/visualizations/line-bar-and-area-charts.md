@@ -38,7 +38,13 @@ If you're trying to group a number by a column that has a lot of possible values
 
 ![Row chart](../images/row.png)
 
-A bar chart grouped by a number is a histogram. Each bar covers a range of values, called a bin. To change the number of bins, see [summarizing and grouping](../query-builder/summarizing-and-grouping.md).
+### Histograms
+
+A bar chart grouped by a number is a histogram. Where a regular bar chart compares categories, a histogram shows the distribution of values across a continuous range. Each bar covers a range of values, called a bin, and its height represents the count of records in that bin.
+
+To change the number of bins, see [summarizing and grouping](../query-builder/summarizing-and-grouping.md).
+
+Metabase sets the x-axis scale to **Histogram** automatically, so the bars sit flush against each other to show a continuous range.
 
 ![Histogram](../images/histogram.png)
 
@@ -188,19 +194,18 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 
 - Show label (the label for the axis)
 - Rename the axis
-- Show lines and marks
-- Scale: Timeseries or Ordinal. Timeseries limits the number of values the chart displays. Ordinal lists every value in the series along the x-axis. Use ordinal when you're plotting steps in a sequence.
+- Show lines and tick marks: **Hide**, **Show**, **Compact**, **Rotate 45°**, or **Rotate 90°**
+- Scale: **Timeseries**, **Linear**, **Histogram**, or **Ordinal**, depending on what you group by. Ordinal lists every value in the series along the x-axis. Use ordinal when you're plotting steps in a sequence.
 
 ### Y-axis
 
 - Show label (the label for the axis)
 - Rename the axis
 - Split y-axis when necessary
-- Auto y-axis range. When not toggled on, you can set the y-axis range (its min and max values).
-- Scale: Linear, power, or log. Use a log scale to show the rate of change over time, like when your data grows or shrinks exponentially.
-- Show lines and marks
-- Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
-  ![y-axis unpinned from zero](../images/unpinned-from-zero-y-axis.png)
+- Auto y-axis range. When not toggled on, you can set the y-axis range (its **Min** and **Max** values).
+- Scale: **Linear**, **Power**, or **Log**. Use a log scale to show the rate of change over time, like when your data grows or shrinks exponentially.
+- Show lines and tick marks: **Hide** or **Show**
+- Number of tick marks
 
 ## Chart legend
 
@@ -224,4 +229,5 @@ You can't hide the legend or change its position on the chart.
 
 ## Further reading
 
-- [Visualize your data as a histogram](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/histograms)
+- [Summarizing and grouping](../query-builder/summarizing-and-grouping.md)
+- [Trend charts](./trend.md)
