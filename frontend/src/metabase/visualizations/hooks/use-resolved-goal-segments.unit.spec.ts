@@ -85,7 +85,7 @@ describe("useResolvedGoalSegments", () => {
   });
 
   it("fails when the resolving query fails", async () => {
-    fetchMock.post("path:/api/dataset", 500);
+    setupCardDataset({ status: 500 });
 
     const { result } = setup(DATA, DYNAMIC_SEGMENTS);
 
