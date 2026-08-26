@@ -363,9 +363,7 @@ describe("scenarios > embedding > embedding hub > authentication", () => {
       // Card copy is unit-tested next to the component; this is what needs a
       // real browser -- the upsell rendering in place of the real form.
       H.main().within(() => {
-        cy.findByText("Secure your embeds with single sign-on").should(
-          "be.visible",
-        );
+        cy.findByTestId("embedding-hub-upsell").should("be.visible");
 
         cy.log("nothing configurable renders below the paywall");
         cy.findByLabelText("JWT Identity Provider URI *").should("not.exist");

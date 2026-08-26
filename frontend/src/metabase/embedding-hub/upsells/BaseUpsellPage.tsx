@@ -35,7 +35,7 @@ export function BaseUpsellPage({
   });
 
   return (
-    <DottedBackground px={0} py="2rem">
+    <DottedBackground px={0} py="2rem" data-testid="embedding-hub-upsell">
       <Stack align="flex-start" className={S.UpsellPageContent}>
         <LineDecorator>
           <UpsellCardContent
