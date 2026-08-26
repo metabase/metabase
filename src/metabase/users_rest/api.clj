@@ -28,7 +28,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -469,6 +468,8 @@
                                               :non-nil [:first_name :last_name :email :password :login_attributes :tenant_id])
                           @api/*current-user*
                           (= source "setup"))))]
+      (when-let [password (:password body)]
+        (auth-identity/set-password! new-user-id password))
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
       (when (= source "setup")
         (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))
@@ -667,17 +668,19 @@
                                        [:old_password {:optional true} [:maybe :string]]]
    request]
   (check-self-or-superuser id)
-  (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],
+  (api/let-404 [user (t2/select-one [:model/User :id :email :last_login],
                                     :id id,
                                     :type :personal,
                                     :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
-      (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
+      (api/checkp (true? (:success? (auth-identity/authenticate :provider/password {:email    (:email user)
+                                                                                    :password old_password})))
                   "old_password"
                   (tru "Invalid password")))
-    (t2/update! :model/AuthIdentity :provider "password" :user_id id {:credentials {:plaintext_password password}})
+    ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
+    (auth-identity/set-password! id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)
       (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking! user (request/device-info request) :provider/password)
@@ -701,7 +704,7 @@
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated
-                             {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id id))})
+                             {:object (assoc user :token (auth-identity/reset-token-hash id))})
       {:password_reset_url password-reset-url})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

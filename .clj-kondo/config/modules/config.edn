@@ -1906,7 +1906,7 @@
            setup
            system
            util}
-   :model-imports #{:model/AuthIdentity :model/User}}
+   :model-imports #{:model/User}}
 
   sso
   {:team "UX West"
@@ -2151,11 +2151,9 @@
            tenants
            util}
    :model-exports #{:model/User :model/UserParameterValue}
-   :model-imports #{:model/AuthIdentity
-                    :model/Dashboard
+   :model-imports #{:model/Dashboard
                     :model/Database
                     :model/PermissionsGroupMembership
-                    :model/Session
                     :model/Tenant}}
 
   users-rest
@@ -2180,8 +2178,7 @@
            users
            util
            enterprise/advanced-permissions}
-   :model-imports #{:model/AuthIdentity
-                    :model/Card
+   :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Database
@@ -2414,6 +2411,7 @@
    :uses #{api
            api-keys
            app-db
+           auth-identity
            driver
            permissions
            premium-features
