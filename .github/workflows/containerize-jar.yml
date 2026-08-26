@@ -16,8 +16,8 @@ on:
       commit:
         type: string
       release:
-        type: string
-        default: 'false'
+        type: boolean
+        default: false
       build-args:
         type: string
   workflow_dispatch:
@@ -40,11 +40,8 @@ on:
         type: string
       release:
         description: Whether this is a release artifact (uses metabase-release- prefix)
-        type: choice
-        options:
-          - "false"
-          - "true"
-        default: "false"
+        type: boolean
+        default: false
 
 jobs:
   containerize:
@@ -88,8 +85,8 @@ jobs:
     - name: Login to Docker Hub
       uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
-        username: ${{ inputs.release == 'true' && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
-        password: ${{ inputs.release == 'true' && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
+        username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
+        password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
     - name: Set up QEMU
       if: contains(steps.platforms.outputs.result, 'arm')
       uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
@@ -126,8 +123,8 @@ jobs:
     - name: Login to Docker Hub
       uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
-        username: ${{ inputs.release == 'true' && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
-        password: ${{ inputs.release == 'true' && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
+        username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
+        password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
     - name: Pull the container image
       run: docker pull ${{ inputs.repo }}:${{ inputs.tag }}
     - name: Launch container
@@ -146,8 +143,8 @@ jobs:
     - name: Login to Docker Hub
       uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
-        username: ${{ inputs.release == 'true' && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
-        password: ${{ inputs.release == 'true' && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
+        username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
+        password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
     - name: Pull the container image
       run: docker pull ${{ inputs.repo }}:${{ inputs.tag }}
     - name: Launch container

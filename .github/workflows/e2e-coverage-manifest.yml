@@ -48,13 +48,26 @@ jobs:
           name: instrumented-uberjar
           path: target/uberjar/metabase.jar
           retention-days: 1
+      # Regenerate the OpenAPI spec from this SHA's defendpoint definitions so
+      # route normalization in the merge job matches against the endpoints
+      # that actually served this run, not the checked-in file (which is only
+      # refreshed by the label-gated openapi-check workflow and drifts).
+      - name: Generate OpenAPI route table
+        run: bun run generate-openapi
+      - name: Upload OpenAPI route table
+        uses: actions/upload-artifact@v7
+        with:
+          name: openapi-spec
+          path: resources/openapi/openapi.json
+          retention-days: 1
 
   # Fixed-N sharding — coverage doesn't need the PR matrix-builder's tag/edition
   # groups, just an even split of the regular spec set. The shard count lives in
   # one place (SHARDS below); the matrix is generated from it.
   setup:
     name: Build shard matrix
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       count: ${{ steps.gen.outputs.count }}
@@ -130,6 +143,15 @@ jobs:
       - name: Unzip previous manifest
         if: steps.prev.outputs.found == 'true'
         run: unzip -o prev-manifest.zip -d prev-manifest
+      # Overwrites the checked-out resources/openapi/openapi.json with the one
+      # generated from this run's SHA. If the artifact is somehow missing, the
+      # checked-in file is still there and the builder falls back to it.
+      - name: Download OpenAPI route table
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: openapi-spec
+          path: resources/openapi
       # GITHUB_SHA (the master commit this nightly built from) is stamped into
       # the manifest as `builtAt`, so a PR can later pick the manifest closest
       # to its own point in history. See resolve-coverage-manifest.mjs.
@@ -137,9 +159,25 @@ jobs:
         env:
           PREV_MANIFEST: ${{ steps.prev.outputs.found == 'true' && 'prev-manifest/spec-file-manifest.json' || '' }}
         run: node e2e/coverage/build-coverage-manifest.mjs
-      - name: Upload manifest
+      # Manifest routes are stored table-independent; consumers match them
+      # against an endpoint spec at selection time. Ship this run's generated
+      # spec alongside so they can choose it over their checkout's copy.
+      # Copied into e2e/coverage so the artifact stays flat — the backfill
+      # step expects the manifests at the archive root.
+      - name: Include OpenAPI spec in artifact
+        run: |
+          if [ -f resources/openapi/openapi.json ]; then
+            cp resources/openapi/openapi.json e2e/coverage/openapi.json
+          fi
+      # All files share one artifact so the per-test manifest always travels
+      # with the spec manifest it was built from (backfill and PR-side
+      # resolution read them as siblings).
+      - name: Upload manifests
         uses: actions/upload-artifact@v7
         with:
           name: spec-file-manifest
-          path: e2e/coverage/spec-file-manifest.json
+          path: |
+            e2e/coverage/spec-file-manifest.json
+            e2e/coverage/spec-test-manifest.json
+            e2e/coverage/openapi.json
           retention-days: 30

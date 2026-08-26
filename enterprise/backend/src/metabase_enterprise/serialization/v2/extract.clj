@@ -4,7 +4,6 @@
   See the detailed descriptions of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
    [clojure.set :as set]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.dependency-validation :as dependency-validation]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.collections.models.collection :as collection]
@@ -159,9 +158,11 @@
                             ;; so cards that reference them can still be exported and imported correctly
                             (and analytics-cards (contains? by-model "Card"))
                             (update "Card" (fn [ids] (vec (remove analytics-cards ids)))))
+          ;; FieldUserSettings has a non-standard PK (field_id, not id) — use the right column.
+          pk-col          (fn [model] (if (= model "FieldUserSettings") :field_id :id))
           extract-by-ids  (fn [[model ids]]
                             (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                   :where          [:in :id ids]})))
+                                                                   :where          [:in (pk-col model) ids]})))
           extract-all     (fn [model]
                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]
       (eduction cat
@@ -174,7 +175,6 @@
 (defn extract
   "Returns a reducible stream of entities to serialize"
   [opts]
-  (serdes.backfill/backfill-ids!)
   (extract-subtrees opts))
 
 (comment

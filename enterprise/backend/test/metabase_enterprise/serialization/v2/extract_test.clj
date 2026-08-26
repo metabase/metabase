@@ -1132,6 +1132,69 @@
                  (t2/count :model/FieldUserSettings)
                  (count (filter #{"FieldUserSettings"} models)))))))))
 
+(deftest table-descendants-user-edits-only-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database {db-id    :id} {:name "DB"}
+                       :model/Table    {table-id :id} {:name "T" :db_id db-id}
+                       :model/Field    {f1-id    :id} {:name "F1" :table_id table-id}
+                       :model/Field    {f2-id    :id} {:name "F2" :table_id table-id}
+                       :model/Field    {f3-id    :id} {:name "F3" :table_id table-id}]
+      (testing "without user-edits-only: all fields returned as Field descendants"
+        (let [desc (serdes/descendants "Table" table-id {})]
+          (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id]}
+                 (set (keys desc))))))
+      (testing "with user-edits-only and no FieldUserSettings rows: no field descendants"
+        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
+          (is (empty? (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
+      (testing "with user-edits-only and one FieldUserSettings row: only that field appears as FieldUserSettings"
+        (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "edited"})
+        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
+          (is (= #{["FieldUserSettings" f2-id]}
+                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
+        (t2/delete! :model/FieldUserSettings :field_id f2-id))
+      (testing "with user-edits-only and all fields edited: all appear as FieldUserSettings, not Field"
+        (t2/insert! :model/FieldUserSettings {:field_id f1-id})
+        (t2/insert! :model/FieldUserSettings {:field_id f2-id})
+        (t2/insert! :model/FieldUserSettings {:field_id f3-id})
+        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
+          (is (= #{["FieldUserSettings" f1-id] ["FieldUserSettings" f2-id] ["FieldUserSettings" f3-id]}
+                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc)))))))
+      (testing "Field and FieldUserSettings are leaf nodes in the descendants graph"
+        ;; Table's descendants method is the only source of field-level entries; if Field ever
+        ;; grows its own descendants (e.g. Field -> FieldUserSettings), traversal would visit
+        ;; every field and full exports would change shape. Cement the leaf-ness here.
+        (doseq [opts [{} {:user-edits-only true}]]
+          (is (empty? (serdes/descendants "Field" f1-id opts)))
+          (is (empty? (serdes/descendants "FieldUserSettings" f1-id opts))))))))
+
+(deftest user-edits-only-extract-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database    {db-id    :id} {:name "DB"}
+                       :model/Collection  {coll-id  :id} {:name "Library" :type "library-data"}
+                       :model/Table       {table-id :id} {:name "T" :db_id db-id
+                                                          :is_published true
+                                                          :collection_id coll-id}
+                       :model/Field       _              {:name "F1" :table_id table-id}
+                       :model/Field       {f2-id    :id} {:name "F2" :table_id table-id}
+                       :model/FieldUserSettings _ {:field_id f2-id :description "curated"}]
+      (testing "targeting the collection with user-edits-only: produces FieldUserSettings, not Field"
+        (let [entities (into [] (extract/extract {:targets         [["Collection" coll-id]]
+                                                  :user-edits-only true
+                                                  :no-data-model   true}))
+              by-model (group-by (comp :model last :serdes/meta) entities)]
+          (is (contains? by-model "FieldUserSettings") "should include FieldUserSettings")
+          (is (not (contains? by-model "Field")) "should not include Field")
+          (is (= #{"F2"}
+                 (set (map #(-> % :serdes/meta (nth 2) :id) (by-model "FieldUserSettings"))))
+              "only the edited field's FieldUserSettings (identified by field name in path)")
+          (is (some #(= "T" (:name %)) (by-model "Table")) "the table itself is included")))
+      (testing "without user-edits-only: produces Field, not FieldUserSettings"
+        (let [entities (into [] (extract/extract {:targets       [["Collection" coll-id]]
+                                                  :no-data-model true}))
+              by-model (group-by (comp :model last :serdes/meta) entities)]
+          (is (contains? by-model "Field") "should include Field")
+          (is (not (contains? by-model "FieldUserSettings")) "should not include FieldUserSettings"))))))
+
 (deftest cards-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
@@ -1187,6 +1250,46 @@
       (testing "Nullable transformations are omitted"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id-2))]
           (is (not (contains? ser :made_public_by_id))))))))
+
+(deftest parameters-with-deleted-source-card-test
+  (testing (str "A parameter whose values-source Card is gone — e.g. it was hard-deleted along with its Database — "
+                "exports with the source dropped rather than knocking the whole entity out of the export (GHY-3259)")
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc
+        [:model/Collection {coll-id :id}   {:name "Dropdowns"}
+         ;; non-H2 engine so the Database isn't filtered out of the export before we delete it
+         :model/Database   {db-id :id}     {:name "Doomed Database" :engine :postgres}
+         :model/Card       {source-id :id} {:name          "Dropdown List Options"
+                                            :database_id   db-id
+                                            :collection_id coll-id}
+         :model/Card       _               {:name          "Card with dropdown"
+                                            :collection_id coll-id
+                                            :parameters    [{:id                   "abc"
+                                                             :type                 "category"
+                                                             :name                 "CATEGORY"
+                                                             :values_source_type   "card"
+                                                             :values_source_config {:card_id source-id}}]}
+         :model/Dashboard  _               {:name          "Dashboard with dropdown"
+                                            :collection_id coll-id
+                                            :parameters    [{:id                   "def"
+                                                             :type                 "category"
+                                                             :name                 "CATEGORY"
+                                                             :values_source_type   "card"
+                                                             :values_source_config {:card_id source-id}}]}]
+        ;; deleting a Database hard-deletes its Cards, leaving the parameters above pointing at a row that is gone
+        (t2/delete! :model/Database :id db-id)
+        (is (not (t2/exists? :model/Card :id source-id))
+            "deleting the Database should have taken its Card with it")
+        (let [ser      (into [] (extract/extract {:targets       [["Collection" coll-id]]
+                                                  :no-settings   true
+                                                  :no-data-model true}))
+              by-model (group-by (comp :model last :serdes/meta) (remove #(instance? Exception %) ser))]
+          (is (empty? (filter #(instance? Exception %) ser))
+              "nothing should be skipped because of the dangling reference")
+          (is (= [{:id "abc" :type :category :name "CATEGORY" :position 0}]
+                 (:parameters (first (get by-model "Card")))))
+          (is (= [{:id "def" :type :category :name "CATEGORY" :position 0}]
+                 (:parameters (first (get by-model "Dashboard"))))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test

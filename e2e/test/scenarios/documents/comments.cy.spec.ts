@@ -575,8 +575,14 @@ describe("document comments", () => {
     cy.get<DocumentId>("@documentId").then((documentId) => {
       H.visitDocumentComment(documentId, PARAGRAPH_ID);
 
+      // The empty sidebar's new-thread composer autofocuses when it
+      // mounts — wait for that to settle so it can't steal focus back
+      // after we click into the document below.
+      Comments.getNewThreadInput().find(".ProseMirror-focused").should("exist");
+
       cy.get("main").within(() => {
         H.documentContent().click();
+        H.documentContent().find(".ProseMirror-focused").should("exist");
 
         cy.realType("test");
         cy.findByRole("button", { name: "Save" }).should("exist");
@@ -1375,40 +1381,36 @@ describe("document comments", () => {
 
       cy.realType("> blockquote");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 1);
 
       Comments.getNewThreadInput().type("1. ol");
       cy.realPress("Enter");
       cy.realType("two");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 2);
 
       Comments.getNewThreadInput().type("- ul");
       cy.realPress("Enter");
       cy.realType("b");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 3);
 
       Comments.getNewThreadInput().type("```");
       cy.realPress("Enter");
       cy.realType("code");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 4);
 
+      cy.intercept("GET", "/api/document/*").as("reloadedDocument");
+      cy.intercept("GET", "/api/comment?*").as("reloadedComments");
       cy.reload();
+      cy.wait(["@reloadedDocument", "@reloadedComments"]);
 
       H.getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
       H.getOrderedList("ol", Comments.getSidebar()).should("be.visible");
       H.getBulletList("ul", Comments.getSidebar()).should("be.visible");
       H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
     });
-  });
-
-  it("should remove ?new=true from the url after creating a comment", () => {
-    startNewCommentIn1ParagraphDocument();
-
-    cy.url().should("include", "?new=true");
-
-    cy.realType("Test");
-    cy.realPress([META_KEY, "Enter"]);
-
-    cy.url().should("not.include", "?new=true");
   });
 
   describe("email notifications", () => {

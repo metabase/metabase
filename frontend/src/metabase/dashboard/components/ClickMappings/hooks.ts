@@ -5,7 +5,7 @@ import { getDashcardData, getParameters } from "metabase/dashboard/selectors";
 import {
   getTargetsForDashboard,
   getTargetsForQuestion,
-} from "metabase/parameters/utils/click-behavior";
+} from "metabase/dashboard/utils/click-behavior";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";

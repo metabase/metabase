@@ -7,13 +7,12 @@ import { useQuestionListQuery } from "metabase/common/hooks";
 import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
-import visualizations from "metabase/visualizations";
+import { visualizations } from "metabase/visualizations";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
@@ -49,10 +48,6 @@ const mapStateToProps = (
   metadata: getMetadata(state),
 });
 
-const mapDispatchToProps = {
-  ...metadataActions,
-};
-
 interface SegmentQuestionsInnerProps {
   style: React.CSSProperties;
   table: StubbedTable;
@@ -79,7 +74,6 @@ const SegmentQuestionsInner = ({
     <div style={style} className={CS.full}>
       <ReferenceHeader
         name={t`Questions about ${segment.name}`}
-        type="questions"
         headerIcon={modelIconMap.segment}
       />
       <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
@@ -119,6 +113,5 @@ const SegmentQuestionsInner = ({
 
 export const SegmentQuestions = connect(
   mapStateToProps,
-  mapDispatchToProps,
   // Unjustified type cast. FIXME
 )(SegmentQuestionsInner as unknown as React.ComponentType);

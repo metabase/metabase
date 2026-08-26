@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { logUnavailableCustomVizMessage } from "embedding-sdk-bundle/lib/log-unavailable-custom-viz";
+import {
+  ensureMetabaseProviderPropsStore,
+  useMetabaseProviderPropsStore,
+} from "embedding-sdk-bundle/lib/provider-props-store";
 import { api } from "metabase/api/client";
 import type { IconData } from "metabase/common/utils/icon";
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
+import {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   CustomVizPluginId,
@@ -23,12 +29,24 @@ import { CustomVizSettingWidget } from "../../metabase-enterprise/custom_viz/com
 import type { LoadCustomVizPluginOptions } from "../../metabase-enterprise/custom_viz/custom-viz-plugins";
 import {
   loadCustomVizPlugin as eeLoadCustomVizPlugin,
+  loadCustomVizPluginForDisplay as eeLoadCustomVizPluginForDisplay,
   useAutoLoadCustomVizPlugin as eeUseAutoLoadCustomVizPlugin,
   useCustomVizPlugins as eeUseCustomVizPlugins,
   unregisterCustomVizDisplay,
   useCustomVizPlugins,
 } from "../../metabase-enterprise/custom_viz/custom-viz-plugins";
+import type { SandboxMode } from "../../metabase-enterprise/custom_viz/sandbox";
 import { isWidgetMount } from "../../metabase-enterprise/custom_viz/widget-mount";
+
+/**
+ * EAJS has no eval-permissive page CSP in production, so its plugin sandbox
+ * uses the hosted donor document (served with a per-document eval CSP). The
+ * react-sdk npm package runs on the customer's own page and inherits its
+ * CSP, so "blank" (about:blank) works there.
+ */
+export function getSdkSandboxMode(): SandboxMode {
+  return isEmbeddingEajs() ? "hosted" : "blank";
+}
 
 /**
  * Allowlist of plugin identifiers from the `allowedCustomVisualizations`
@@ -137,37 +155,21 @@ export function initializeSdkCustomVizPlugin() {
       }
       return eeLoadCustomVizPlugin(plugin, {
         ...options,
-        // Note: in the future we might want to check the domain to check if we need "blank" or "sandbox" mode, to support data apps
-        sandboxMode: "blank",
+        sandboxMode: getSdkSandboxMode(),
       });
     },
 
     loadCustomVizPluginForDisplay: async (
       dispatch: DispatchFn,
       display: string,
-    ): Promise<string | null> => {
+    ): Promise<LoadCustomVizPluginForDisplayResult> => {
       if (!isCustomVizAllowed(display, getAllowlist())) {
-        return null;
+        return { status: "unavailable" };
       }
-      const identifier = display.slice("custom:".length);
-      const action = dispatch(
-        customVizPluginApi.endpoints.listCustomVizPlugins.initiate(undefined),
-      );
-      try {
-        const plugins = await action.unwrap();
-        const plugin = plugins.find((p) => p.identifier === identifier);
-        if (!plugin) {
-          warnUnknownCustomViz(display);
-          return null;
-        }
-        return await eeLoadCustomVizPlugin(plugin, {
-          sandboxMode: "blank",
-        });
-      } catch {
-        return null;
-      } finally {
-        action.unsubscribe();
-      }
+      return eeLoadCustomVizPluginForDisplay(dispatch, display, {
+        sandboxMode: getSdkSandboxMode(),
+        onMessage: logUnavailableCustomVizMessage,
+      });
     },
 
     useAutoLoadCustomVizPlugin: (display: string | undefined) => {
@@ -183,7 +185,8 @@ export function initializeSdkCustomVizPlugin() {
       }, [display, allowed]);
 
       return eeUseAutoLoadCustomVizPlugin(allowed ? display : undefined, {
-        sandboxMode: "blank",
+        sandboxMode: getSdkSandboxMode(),
+        onMessage: logUnavailableCustomVizMessage,
       });
     },
 

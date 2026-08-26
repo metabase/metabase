@@ -2,7 +2,17 @@
   "Manipulate the prose mirror ast for documents"
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]))
+   [clojure.walk :as walk]
+   [metabase.util.malli.registry :as mr]))
+
+(mr/def ::ast
+  "Schema for a prose-mirror document AST as it arrives at the API."
+  [:map
+   {:decode/normalize (fn [ast]
+                        (cond-> ast
+                          (map? ast) walk/keywordize-keys))
+    :closed           false}
+   [:type :string]])
 
 (def card-embed-type
   "Type of a card-embed node"
@@ -74,9 +84,45 @@
        (remove str/blank?)
        (str/join " ")))
 
+(defn node-entity-id
+  "The referenced entity id carried by a `smartLink` (`:entityId`) or `cardEmbed` (`:id`) node, or nil.
+
+   Returning the id only when it is a positive integer keeps any downstream Toucan lookup parameterized."
+  [{:keys [type attrs]}]
+  (let [id (if (= smart-link-type type) (:entityId attrs) (:id attrs))]
+    (when (pos-int? id)
+      id)))
+
 (defn card-ids
   "Get all card-ids"
   [document]
   (collect-ast document #(when (and (= card-embed-type (:type %))
                                     (pos-int? (-> % :attrs :id)))
                            (-> % :attrs :id))))
+
+(defn insert-card-embed
+  "Insert an embed for the card with `card-id` into the document's prose-mirror ast.
+
+  The embed is a `resizeNode`-wrapped `cardEmbed` node, the same shape the document editor
+  produces. `index` is a 0-based position among the ast's top-level blocks (0 inserts at the
+  very top); a `nil` index appends the embed at the end and out-of-range indexes are clamped.
+
+  Args:
+  - doc - a :model/Document, this will check that the content-type is valid for prose mirror
+  - card-id - the id of an existing card to embed
+  - index - 0-based top-level block position, or nil to append
+
+  Returns:
+  - the document with its :document ast updated"
+  [{:keys [document] :as doc} card-id index]
+  (assert-prose-mirror doc)
+  (let [blocks (vec (:content document))
+        at     (if (int? index)
+                 (-> index (max 0) (min (count blocks)))
+                 (count blocks))
+        embed  {:type    "resizeNode"
+                :content [{:type  card-embed-type
+                           :attrs {:id card-id}}]}]
+    (assoc doc :document
+           (assoc (or document {:type "doc"})
+                  :content (into (conj (subvec blocks 0 at) embed) (subvec blocks at))))))

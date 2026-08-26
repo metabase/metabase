@@ -1,9 +1,5 @@
-import {
-  type SandboxRealm,
-  isHostAllowed,
-  makeSandboxFetch,
-  makeSandboxXhr,
-} from "./allowed-hosts";
+import { isHostAllowed, makeSandboxFetch } from "./allowed-hosts";
+import type { SandboxRealm } from "./types";
 
 const u = (href: string) => new URL(href);
 
@@ -38,7 +34,7 @@ describe("isHostAllowed", () => {
     expect(isHostAllowed(u("https://notexample.com/"), allow)).toBe(false);
   });
 
-  it("matches an explicit port exactly; an entry without a port matches any", () => {
+  it("matches an explicit port exactly", () => {
     expect(
       isHostAllowed(u("https://api.example.com:8443/"), [
         "https://api.example.com:8443",
@@ -49,11 +45,21 @@ describe("isHostAllowed", () => {
         "https://api.example.com:8443",
       ]),
     ).toBe(false);
-    // an entry without a port matches any port
+  });
+
+  it("does not treat a portless entry as any port, as CSP does not", () => {
+    // The browser evaluates the same `allowed_hosts` through `connect-src`,
+    // where a host-source without a port means the scheme's default port only.
+    // Allowing any port here would let the sandbox fire a request the browser
+    // then blocks — reported as a CSP violation, sending the author after the
+    // wrong fix.
     expect(
       isHostAllowed(u("https://api.example.com:8443/"), [
         "https://api.example.com",
       ]),
+    ).toBe(false);
+    expect(
+      isHostAllowed(u("https://api.example.com/"), ["https://api.example.com"]),
     ).toBe(true);
   });
 
@@ -120,52 +126,69 @@ describe("makeSandboxFetch", () => {
     )!;
 
     await expect(sandboxFetch(`${origin}/api/user/current`)).rejects.toThrow(
-      /Metabase origin/,
+      /reachable only via the SDK/,
     );
     // A relative URL resolves to the Metabase origin too.
     await expect(sandboxFetch("/api/user/current")).rejects.toThrow(
-      /Metabase origin/,
+      /reachable only via the SDK/,
     );
     expect(realFetch).not.toHaveBeenCalled();
   });
 });
 
-describe("makeSandboxXhr", () => {
-  // jsdom's window origin is http://localhost — treat that as the Metabase origin.
-  const mbOrigin = window.location.origin;
-
-  it("returns null for an empty allowlist", () => {
-    expect(makeSandboxXhr(window, [], "sales")).toBeNull();
+describe("onBlocked reporting", () => {
+  const base = "https://mb.example.com/embed/apps/sales";
+  const origin = "https://mb.example.com";
+  const fakeWindow = (fetch: typeof global.fetch): SandboxRealm => ({
+    fetch,
+    XMLHttpRequest,
+    location: { href: base, origin },
   });
 
-  it("gates open() against the allowlist", () => {
-    const SandboxXhr = makeSandboxXhr(
-      window,
+  it("reports a blocked fetch, and stays silent when no listener is given", async () => {
+    const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
+    const onBlocked = jest.fn();
+
+    const reporting = makeSandboxFetch(
+      fakeWindow(realFetch),
       ["https://api.example.com"],
       "sales",
-    );
-    expect(SandboxXhr).not.toBeNull();
+      onBlocked,
+    )!;
+    await expect(reporting("https://evil.example.org/x")).rejects.toThrow();
 
-    const xhr = new SandboxXhr!();
-    expect(() => xhr.open("GET", "https://evil.example.org/")).toThrow(
-      /blocked XMLHttpRequest/,
+    expect(onBlocked).toHaveBeenCalledWith(
+      // `type: "network"` is added a layer up, in `distortions.ts`.
+      expect.objectContaining({
+        api: "fetch",
+        url: "https://evil.example.org/x",
+        reason: expect.stringContaining("not in allowed_hosts"),
+      }),
     );
-    // Allowed host: open() should not throw.
-    expect(() => xhr.open("GET", "https://api.example.com/data")).not.toThrow();
-  });
 
-  it("always blocks the Metabase origin, even if it's in allowed_hosts", () => {
-    const SandboxXhr = makeSandboxXhr(
-      window,
-      [mbOrigin, "https://api.example.com"],
+    // Production passes no listener; that path must be unchanged.
+    const silent = makeSandboxFetch(
+      fakeWindow(realFetch),
+      ["https://api.example.com"],
       "sales",
     )!;
-    const xhr = new SandboxXhr();
-    expect(() => xhr.open("GET", `${mbOrigin}/api/user/current`)).toThrow(
-      /Metabase origin/,
-    );
-    expect(() => xhr.open("GET", "/api/user/current")).toThrow(
-      /Metabase origin/,
-    );
+    await expect(silent("https://evil.example.org/x")).rejects.toThrow();
+    expect(realFetch).not.toHaveBeenCalled();
+  });
+
+  it("still blocks when the listener throws", async () => {
+    const realFetch = jest.fn(() => Promise.resolve(new Response("ok")));
+    const sandboxFetch = makeSandboxFetch(
+      fakeWindow(realFetch),
+      ["https://api.example.com"],
+      "sales",
+      () => {
+        throw new Error("listener exploded");
+      },
+    )!;
+
+    // A broken reporter must not become a way through the allowlist.
+    await expect(sandboxFetch("https://evil.example.org/")).rejects.toThrow();
+    expect(realFetch).not.toHaveBeenCalled();
   });
 });

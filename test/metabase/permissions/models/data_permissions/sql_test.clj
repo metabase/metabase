@@ -50,12 +50,10 @@
                    :model/Table table2 {:db_id (:id db)}
                    :model/PermissionsGroup group {}
                    :model/User user {}
-                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}
-                   :model/DataPermissions _ {:db_id (:id db)
-                                             :table_id nil
-                                             :group_id (:id group)
-                                             :perm_type :perms/view-data
-                                             :perm_value :unrestricted}]
+                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
+      ;; set (rather than insert) the db-level perm: the group's default rows already cover this DB,
+      ;; and data_permissions has a unique constraint per scope
+      (perms/set-database-permission! (:id group) (:id db) :perms/view-data :unrestricted)
       (let [user-info {:user-id (:id user) :is-superuser? false}
             permission-mapping {:perms/view-data :unrestricted}
             query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
@@ -185,17 +183,11 @@
                    :model/Table inactive-table {:db_id (:id db) :active false}
                    :model/PermissionsGroup group {}
                    :model/User user {}
-                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}
-                   :model/DataPermissions _ {:db_id (:id db)
-                                             :table_id nil
-                                             :group_id (:id group)
-                                             :perm_type :perms/view-data
-                                             :perm_value :unrestricted}
-                   :model/DataPermissions _ {:db_id (:id db)
-                                             :table_id nil
-                                             :group_id (:id group)
-                                             :perm_type :perms/create-queries
-                                             :perm_value :query-builder}]
+                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
+      ;; set (rather than insert) the db-level perms: the group's default rows already cover this DB,
+      ;; and data_permissions has a unique constraint per scope
+      (perms/set-database-permission! (:id group) (:id db) :perms/view-data :unrestricted)
+      (perms/set-database-permission! (:id group) (:id db) :perms/create-queries :query-builder)
       (let [user-info {:user-id (:id user) :is-superuser? false}
             permission-mapping {:perms/view-data :unrestricted
                                 :perms/create-queries :query-builder}]
@@ -218,12 +210,10 @@
                    :model/Table inactive-table {:db_id (:id db) :active false}
                    :model/PermissionsGroup group {}
                    :model/User user {}
-                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}
-                   :model/DataPermissions _ {:db_id (:id db)
-                                             :table_id nil
-                                             :group_id (:id group)
-                                             :perm_type :perms/view-data
-                                             :perm_value :unrestricted}]
+                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
+      ;; set (rather than insert) the db-level perm: the group's default rows already cover this DB,
+      ;; and data_permissions has a unique constraint per scope
+      (perms/set-database-permission! (:id group) (:id db) :perms/view-data :unrestricted)
       (let [user-info {:user-id (:id user) :is-superuser? false}
             permission-mapping {:perms/view-data :unrestricted}]
         (testing "default includes inactive tables"

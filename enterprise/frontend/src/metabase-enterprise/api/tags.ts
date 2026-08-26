@@ -25,7 +25,6 @@ import {
   type SupportAccessGrant,
   type TableDependencyNode,
   type TransformDependencyNode,
-  type Workspace,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -51,7 +50,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "ai-controls-usage-group-limits",
   "ai-controls-usage-tenant-limits",
   "data-complexity-scores",
-  "workspace",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -257,16 +255,4 @@ export function provideSourceReplacementRunListTags(
     listTag("source-replacement-run"),
     ...runs.flatMap(provideSourceReplacementRunTags),
   ];
-}
-
-export function provideWorkspaceTags(
-  workspace: Workspace,
-): TagDescription<EnterpriseTagType>[] {
-  return [idTag("workspace", workspace.id)];
-}
-
-export function provideWorkspaceListTags(
-  workspaces: Workspace[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("workspace"), ...workspaces.flatMap(provideWorkspaceTags)];
 }

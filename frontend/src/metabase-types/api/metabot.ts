@@ -2,10 +2,14 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
+  CreateCardRequest,
   DashboardId,
+  DatabaseId,
   DatasetQuery,
   DraftTransform,
+  PaginationRequest,
   PaginationResponse,
+  ResearchPlanContext,
   RowValue,
   SuggestedTransform,
   Transform,
@@ -49,6 +53,7 @@ export type MetabotChatContext = {
   default_database_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
+  research_plan?: ResearchPlanContext;
 };
 
 export type MetabotTool = {
@@ -82,7 +87,6 @@ export type MetabotSeriesConfig = {
 };
 
 export type MetabotChartConfig = {
-  image_base_64?: string;
   title?: string | null;
   description?: string | null;
   data?: Array<{
@@ -162,47 +166,29 @@ export type MetabotAgentResponse = {
   state?: MetabotStateContext;
 };
 
-export type MetabotProvider =
-  | "metabase"
-  | "anthropic"
-  | "azure"
-  | "bedrock"
-  | "openai"
-  | "openrouter";
+export type MetabotConversation = {
+  conversation_id: string;
+  created_at: string;
+  title: string | null;
+  user_id: number | null;
+  profile_id: string | null;
+  message_count: number;
+  last_message_at: string | null;
+  forked_from_conversation_id: string | null;
+};
 
-export interface BedrockCredentials {
-  "access-key-id"?: string | null;
-  "secret-access-key"?: string | null;
-  region?: string | null;
-  "session-token"?: string | null;
-}
+export type MetabotConversationTitleResponse =
+  | { status: "ready"; title: string }
+  | { status: "pending"; title: null }
+  | { status: "missing"; title: null };
 
-export interface AzureCredentials {
-  "api-key"?: string | null;
-  "base-url"?: string | null;
-}
+export type ListMetabotConversationsRequest = PaginationRequest & {
+  profile_id?: string | null;
+};
 
-/** One permissive map mirroring the backend's request schema: Bedrock sends AWS key
- * material, Azure sends an API key and base URL. */
-export interface MetabotCredentials
-  extends BedrockCredentials, AzureCredentials {}
-
-export interface MetabotSettingsResponse {
-  value: string | null;
-  "credentials-error"?: string | null;
-  models: {
-    id: string;
-    display_name: string;
-    group?: string | null;
-  }[];
-}
-
-export interface UpdateMetabotSettingsRequest {
-  provider: MetabotProvider;
-  model?: string;
-  "api-key"?: string | null;
-  credentials?: MetabotCredentials | null;
-}
+export type ListMetabotConversationsResponse = PaginationResponse & {
+  data: MetabotConversation[];
+};
 
 /* Metabot - Suggested Prompts */
 
@@ -335,9 +321,22 @@ export interface MetabotGenerateContentRequest {
 }
 
 export interface MetabotGenerateContentResponse {
-  draft_card: (UnsavedCard & { name?: string }) | null;
+  draft_card: (UnsavedCard & { name?: string; database_id: DatabaseId }) | null;
   description: string;
   error: string | null;
+}
+
+/* Metabot v3 - Conversations */
+
+export interface SaveMetabotEntityRequest {
+  conversation_id: string;
+  chart_id: string;
+  card: CreateCardRequest;
+}
+
+export interface ForkMetabotConversationRequest {
+  conversation_id: string;
+  message_id: string;
 }
 
 /* Metabot v3 - Data Part Types */

@@ -34,7 +34,7 @@ function setup({ fieldId, rows }: SetupOpts) {
     }
   }
 
-  const store = getStore(reducers, undefined, createMockState());
+  const store = getStore(reducers, createMockState());
 
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (

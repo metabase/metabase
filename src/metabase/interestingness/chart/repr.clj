@@ -19,9 +19,11 @@
 (defn- quarter-of-year [^LocalDate date]
   (inc (quot (dec (.getMonthValue date)) 3)))
 
-(defn- generate-temporal-context
+(defn temporal-context
   "Generate temporal context string for the current date.
-  Helps the LLM understand recency of data points."
+  Helps the LLM understand recency of data points. Callers that build a multi-chart prompt
+  should include this once at the prompt level and pass `:omit-temporal-context? true` to
+  [[generate-representation]] so it isn't repeated per chart."
   []
   (let [now (LocalDate/now)
         day-name (.getDisplayName (.getDayOfWeek now) TextStyle/FULL (Locale/getDefault))
@@ -75,6 +77,7 @@
     :flat "flat"
     :decreasing "decreasing"
     :strongly-decreasing "strongly decreasing"
+    :no-clear-trend "no clear trend"
     (name direction)))
 
 (defn- volatility-level-text
@@ -167,11 +170,17 @@
          "**Mean**: " (format-number mean) " | **Std Dev**: " (format-number std-dev))))
 
 (defn- render-trend
-  "Render trend information."
+  "Render trend information. For `:no-clear-trend`, present the raw endpoints
+  without a confident percent headline — the first→last percent is a misleading
+  endpoint artifact when the slope and the endpoints disagree or the series is
+  pathologically noisy."
   [{:keys [direction overall-change-pct start-value end-value]}]
-  (str "**Trend**: " (trend-direction-text direction)
-       " (" (format-pct overall-change-pct) " overall, "
-       "from " (format-number start-value) " to " (format-number end-value) ")"))
+  (if (= direction :no-clear-trend)
+    (str "**Trend**: no clear trend (high variance or non-monotonic; first "
+         (format-number start-value) " to last " (format-number end-value) ")")
+    (str "**Trend**: " (trend-direction-text direction)
+         " (" (format-pct overall-change-pct) " overall, "
+         "from " (format-number start-value) " to " (format-number end-value) ")")))
 
 (defn- render-volatility
   "Render volatility information."
@@ -226,6 +235,12 @@
                 significant-changes most-recent-change]} series-stats
         sections [(str "## Series: " series-name)
                   (render-series-summary series-stats)
+                  ;; Calibration warnings (small values, high variance, sparse data) — same
+                  ;; helper that categorical/scatter use; previously omitted for time-series,
+                  ;; which let downstream consumers (e.g. exploration summarization) cite
+                  ;; exaggerated percentage changes for series with values like 1 → 418
+                  ;; without realizing the small base made the % unreliable.
+                  (render-data-characteristics-note series-stats)
                   (render-trend trend)
                   (when is-cumulative "**Note**: Data appears to be cumulative")
                   (when volatility (render-volatility volatility))
@@ -419,11 +434,14 @@
 
 (mu/defn generate-representation :- :string
   "Generate markdown representation for chart statistics.
-  Dispatches based on chart type."
-  [{:keys [stats] :as context} :- ::stats.types/generate-repr-context]
+  Dispatches based on chart type. Pass `:omit-temporal-context? true` in `context` to skip
+  the per-chart temporal header for time-series charts (useful when a caller embeds many
+  charts in one prompt and prepends [[temporal-context]] once instead)."
+  [{:keys [stats omit-temporal-context?] :as context} :- ::stats.types/generate-repr-context]
   (case (:chart-type stats)
     :time-series  (generate-chart-representation context "Time Series" render-time-series
-                                                 [(generate-temporal-context)])
+                                                 (when-not omit-temporal-context?
+                                                   [(temporal-context)]))
     :categorical  (generate-chart-representation context "Categorical" render-categorical-series nil)
     :scatter      (generate-chart-representation context "Scatter" render-scatter-series nil)
     :histogram    (generate-chart-representation context "Histogram" render-histogram-series nil)

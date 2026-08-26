@@ -177,7 +177,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -229,22 +228,37 @@
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
-(defn is-permissions-for-object?
-  "Does `permissions-path` grant *full* access for `path`?"
-  [permissions-path path]
-  (str/starts-with? path permissions-path))
+(defn- granting-paths
+  "The permissions paths that grant full access to `path` — `path` itself and each of its ancestors, most specific
+  first:
 
-(defn set-has-full-permissions?
-  "Does `permissions-set` grant *full* access to object with `path`?"
-  ^Boolean [permissions-set path]
-  (boolean (perf/some #(is-permissions-for-object? % path) permissions-set)))
+    (granting-paths \"/a/b/c/\") ; => [\"/a/b/c/\" \"/a/b/\" \"/a/\" \"/\"]
+
+  Every permissions path ends in a slash (see this namespace's docstring), so a granted path is a prefix of `path`
+  exactly when it is one of these. There is only one per segment of `path`, which is what lets
+  [[set-has-full-permissions?]] answer with a handful of hash lookups instead of a scan of every path the User was
+  granted. A `path` that does not end in a slash can have no descendants, so it only ever matches itself."
+  [^String path]
+  (loop [acc (cond-> (transient [])
+               (not (str/ends-with? path "/")) (conj! path))
+         i   (.lastIndexOf path (int \/))]
+    (if (neg? i)
+      (persistent! acc)
+      (recur (conj! acc (.substring path 0 (inc i)))
+             (.lastIndexOf path (int \/) (dec i))))))
+
+(mu/defn set-has-full-permissions? :- :boolean
+  "Does `permissions-set` grant *full* access to object with `path`? A `nil` `permissions-set` grants nothing."
+  [permissions-set :- [:maybe [:set :string]]
+   path            :- :string]
+  (boolean (and permissions-set
+                (some permissions-set (granting-paths path)))))
 
 (mu/defn set-has-full-permissions-for-set? :- :boolean
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
-  [permissions-set paths-set]
-  (let [permissions (or (:as-vec (meta permissions-set))
-                        permissions-set)]
-    (every? (partial set-has-full-permissions? permissions) paths-set)))
+  [permissions-set :- [:maybe [:set :string]]
+   paths-set       :- [:set :string]]
+  (every? #(set-has-full-permissions? permissions-set %) paths-set))
 
 (mu/defn set-has-application-permission-of-type? :- :boolean
   "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"
@@ -272,6 +286,21 @@
      #{(path-fn (or collection-id
                     {:metabase.collections.models.collection.root/is-root? true
                      :namespace                                collection-namespace}))})))
+
+(mu/defn collection-read-access-group-ids :- [:set ms/PositiveInt]
+  "Set of `PermissionsGroup` ids holding a stored read (or read-write) permission row for the collection with
+  `collection-id`, or for the Root Collection when `collection-id` is `nil`. Reflects explicit grant rows only, so
+  groups whose access is implicit don't appear: the Administrators group never does (it has no stored collection
+  rows in normal operation), and collections that don't use grant rows at all (personal collections and their
+  descendants, trash) return an empty set."
+  [collection-id :- [:maybe ms/PositiveInt]]
+  (let [collection-or-root (or collection-id
+                               {:metabase.collections.models.collection.root/is-root? true})]
+    (or (t2/select-fn-set :group_id :model/Permissions
+                          {:where [:in :object
+                                   [(permissions.path/collection-read-path collection-or-root)
+                                    (permissions.path/collection-readwrite-path collection-or-root)]]})
+        #{})))
 
 (doto :perms/use-parent-collection-perms
   (derive ::mi/read-policy.full-perms-for-perms-set)
@@ -398,7 +427,7 @@
     (clear-current-user-cached-permissions!)
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
-      (log/error e (u/format-color 'red "Failed to grant permissions"))
+      (log/error (u/format-color 'red "Failed to grant permissions: %s" (ex-message e)))
       ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
       ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
       ;; to pass when they shouldn't. Don't allow this during tests

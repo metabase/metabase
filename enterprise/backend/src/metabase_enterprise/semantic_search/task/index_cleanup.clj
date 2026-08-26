@@ -78,7 +78,7 @@
              :left-join [[(keyword metadata-table-name) :meta]
                          [:= :meta.table_name stored-name]]
              :where [:and
-                     [:like :t.table_name [:inline like-pattern]]
+                     [:like :t.table_name ^:allow-raw-sql [:inline like-pattern]]
                      [:= :meta.table_name nil]
                      [:= :t.table_type [:inline "BASE TABLE"]]
                      [:= :t.table_schema (if schema
@@ -112,7 +112,7 @@
   (let [retention-cutoff (t/minus (t/instant) (t/hours (semantic.settings/repair-table-retention-hours)))
         repair-tables-sql (-> {:select [:t.table_name]
                                :from [[:information_schema.tables :t]]
-                               :where (scope-where-to-schema [:and [:like :t.table_name [:inline "repair_%"]]] schema)}
+                               :where (scope-where-to-schema [:and [:like :t.table_name ^:allow-raw-sql [:inline "repair_%"]]] schema)}
                               (sql/format :quoted true))
         all-repair-tables (->> (jdbc/execute! pgvector repair-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                (map :table_name))
@@ -204,7 +204,7 @@
           (when (pos? deleted-count)
             (log/infof "Cleaned up %d old tombstone records from gate table" deleted-count)))))
     (catch Exception e
-      (log/error e "Failed to clean up tombstone records from gate table"))))
+      (log/errorf "Failed to clean up tombstone records from gate table: %s" (ex-message e)))))
 
 (defn- drop-index-table!
   "Drops one stale/orphaned index table, isolating failures: one undroppable table (e.g. one with a
@@ -220,10 +220,10 @@
       (if (= "42P01" (.getSQLState e))
         (do (log/infof "Skipping %s semantic search index %s: table no longer exists" kind table-name)
             :missing)
-        (do (log/warnf e "Failed to drop %s semantic search index %s" kind table-name)
+        (do (log/warnf "Failed to drop %s semantic search index %s: %s" kind table-name (ex-message e))
             :failed)))
     (catch Exception e
-      (log/warnf e "Failed to drop %s semantic search index %s" kind table-name)
+      (log/warnf "Failed to drop %s semantic search index %s: %s" kind table-name (ex-message e))
       :failed)))
 
 (defn- cleanup-stale-indexes!

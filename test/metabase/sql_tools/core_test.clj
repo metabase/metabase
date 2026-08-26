@@ -61,6 +61,25 @@
                   {:table (mt/id :products)}}
                 (sql-tools/referenced-tables driver/*driver* query))))))))
 
+(deftest referenced-tables-fetches-only-named-tables-test
+  (testing "GHY-4251: referenced-tables looks up only the Tables the SQL names, never the Database's whole catalog.
+           Fetching the catalog per entity made dependency analysis scale with warehouse size instead of query size,
+           OOM-killing instances with ~20k synced tables."
+    (sql-tools.tu/test-parser-backends
+     (mt/test-driver :h2
+       (let [catalog-fetches (atom 0)
+             all-tables      lib.metadata/tables]
+         (with-redefs [lib.metadata/tables (fn [mp] (swap! catalog-fetches inc) (all-tables mp))]
+           (testing "the referenced table still resolves"
+             ;; H2 stores table names upper-cased while the query spells them lower-case, so this also covers the
+             ;; case-folding that makes an exact name match unusable (the same mismatch Snowflake has).
+             (is (= #{{:table (mt/id :orders)}}
+                    (sql-tools/referenced-tables driver/*driver*
+                                                 (lib/native-query (mt/metadata-provider)
+                                                                   "select id from orders")))))
+           (testing "and it did so without fetching the catalog"
+             (is (zero? @catalog-fetches)))))))))
+
 ;;; ------------------------------------------------ replace-names -------------------------------------------------
 
 (deftest ^:parallel replace-names-table-test
@@ -241,4 +260,14 @@
         (str "SELECT 1; " values-query) false false
         (str "SET ROLE none; " values-query) false false
         (str values-query "; SELECT 1") false false
-        (str values-query "; SET ROLE none") false false))))
+        (str values-query "; SET ROLE none") false false)))
+  (testing "we don't remove large IN lists, tuple lists, or arrays when validating impersonated queries"
+    (doseq [query [(str "SELECT x FROM t WHERE x IN (" (str/join ", " (range 105)) ")")
+                   (str "SELECT x FROM t WHERE (x, y) IN (" (str/join ", " (map #(format "(%d, %d)" % %) (range 105))) ")")
+                   (str "SELECT x FROM t WHERE x = ANY(ARRAY[" (str/join ", " (range 105)) "])")]]
+      (are [sql is-single-stmt? allowed-stmt-type?]
+           (= {:is-single-stmt? is-single-stmt? :allowed-stmt-type? allowed-stmt-type? :sql sql}
+              (sql-tools/is-single-stmt-of-type? :postgres sql "read"))
+        query true true
+        (str "SELECT 1; " query) false false
+        (str query "; SELECT 1") false false))))

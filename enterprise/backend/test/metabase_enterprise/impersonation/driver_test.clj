@@ -111,6 +111,21 @@
                  #"Conflicting sandboxing and impersonation policies found."
                  (impersonation.driver/connection-impersonation-role (mt/db))))))))))
 
+(deftest connection-impersonation-role-test-10
+  (testing "Rejects a role attribute equal to the driver's default-role sentinel (case-insensitively)"
+    (with-redefs [driver.sql/default-database-role (constantly "NONE")]
+      (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                     :attributes     {"impersonation_attr" "none"}}
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Connection impersonation attribute is invalid: role must not be the database default role."
+             (impersonation.driver/connection-impersonation-role (mt/db)))))
+      (testing "but a normal role value is still returned unchanged"
+        (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                       :attributes     {"impersonation_attr" "impersonation_role"}}
+          (is (= "impersonation_role"
+                 (impersonation.driver/connection-impersonation-role (mt/db)))))))))
+
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres
     (mt/with-premium-features #{:advanced-permissions}
@@ -1186,10 +1201,8 @@
           (is (re-find #"single select statement" (ex-message thrown))))))))
 
 (deftest ^:parallel validate-impersonated-query-keys-on-allow-write-flag-test
-  (testing "validate-impersonated-query* derives read-vs-write from :impersonation/allow-write?"
-    (let [query   (fn [sql allow-write?]
-                    (cond-> {:stages [{:lib/type :mbql.stage/native :native sql}]}
-                      allow-write? (assoc :impersonation/allow-write? true)))
+  (testing "validate-impersonated-query* derives read-vs-write from *impersonation-allow-write?*"
+    (let [query   (fn [sql] {:stages [{:lib/type :mbql.stage/native :native sql}]})
           outcome (fn [q]
                     (try
                       (driver.sql/validate-impersonated-query* :postgres q)
@@ -1197,9 +1210,10 @@
                       (catch clojure.lang.ExceptionInfo _ :rejected)))
           select  "SELECT 1 AS x"
           write   "UPDATE t SET x = 1 WHERE id = -1"]
-      (testing "without :impersonation/allow-write?: SELECT allowed, write rejected"
-        (is (= :ok       (outcome (query select false))))
-        (is (= :rejected (outcome (query write  false)))))
-      (testing "with :impersonation/allow-write? true: write allowed, SELECT rejected"
-        (is (= :ok       (outcome (query write  true))))
-        (is (= :rejected (outcome (query select true))))))))
+      (testing "unbound: SELECT allowed, write rejected"
+        (is (= :ok       (outcome (query select))))
+        (is (= :rejected (outcome (query write)))))
+      (testing "bound true: write allowed, SELECT rejected"
+        (binding [driver.settings/*impersonation-allow-write?* true]
+          (is (= :ok       (outcome (query write))))
+          (is (= :rejected (outcome (query select)))))))))

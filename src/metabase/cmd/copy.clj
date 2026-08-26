@@ -140,6 +140,14 @@
     :model/MetabotUsedTable
     :model/MetabotPrompt
     :model/OsiAiContext
+    ;; 62+
+    :model/Exploration
+    :model/ExplorationThread
+    :model/ExplorationBlock
+    :model/ExplorationPage
+    :model/ExplorationThreadTimeline
+    :model/ExplorationQuery
+    :model/ExplorationBookmark
     ;; 63+
     :model/McpFeedback]
    (when config/ee-available?
@@ -149,10 +157,7 @@
       :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation
-      :model/CustomVizPlugin
-      :model/Workspace
-      :model/WorkspaceDatabase
-      :model/TableRemapping])))
+      :model/CustomVizPlugin])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -179,7 +184,7 @@
     (let [{:keys [cols vals]} (objects->columns+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
-      (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
+      (log/errorf "Error inserting chunk: %s" (ex-message e))
       (throw e))))
 
 (def ^:dynamic *copy-h2-database-details*
@@ -228,6 +233,10 @@
     :model/Field
     ;; unique_field_helper is a computed/generated column
     (map #(dissoc % :unique_field_helper))
+
+    :model/DataPermissions
+    ;; unique_perms_helper is a computed/generated column
+    (map #(dissoc % :unique_perms_helper))
 
     ;; else
     identity))
@@ -357,7 +366,6 @@
         (let [save-point (.setSavepoint conn)]
           (try
             (letfn [(add-batch! [^String sql]
-                      (log/debug (u/colorize :yellow sql))
                       (.addBatch stmt sql))]
               ;; do these in reverse order so child rows get deleted before parents
               (doseq [table-name (map t2/table-name (reverse entities))]

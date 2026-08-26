@@ -1,4 +1,7 @@
 name: Cross-branch migration test
+description: >-
+  Boot Metabase on the base branch to migrate the app db, then boot the PR branch against the
+  same db, verifying the PR's migrations apply cleanly on top of the base branch's schema.
 
 inputs:
   base-ref: ## Base branch PR came from

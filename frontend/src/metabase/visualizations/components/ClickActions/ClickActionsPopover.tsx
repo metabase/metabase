@@ -1,8 +1,8 @@
-import type { LocationDescriptorObject } from "history";
 import { Component } from "react";
 
 import { connect } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
+import type { Path } from "metabase/router";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
 import { getEventTarget } from "metabase/utils/dom";
 import { performAction } from "metabase/visualizations/lib/action";
@@ -29,7 +29,7 @@ interface ChartClickActionsProps {
     question?: Question,
   ) => void;
   onUpdateQuestion?: (question: Question) => void;
-  onSameOriginNavigation?: (location: LocationDescriptorObject) => void;
+  onSameOriginNavigation?: (location: Partial<Path>) => void;
   onClose?: () => void;
 }
 

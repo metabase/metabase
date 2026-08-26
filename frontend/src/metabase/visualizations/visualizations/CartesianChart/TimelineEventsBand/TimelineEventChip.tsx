@@ -1,8 +1,10 @@
 import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { Box, HoverCard, Icon, Text, UnstyledButton } from "metabase/ui";
 import { TIMELINE_EVENTS_BAND } from "metabase/visualizations/echarts/cartesian/constants/style";
+import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import S from "./TimelineEventsBand.module.css";
@@ -24,21 +26,33 @@ interface TimelineEventChipProps {
   eventsGroup: PositionedTimelineEventGroup;
   centerY: number;
   selectedEventIds: TimelineEventId[];
+  onGroupHover?: (group: TimelineEventGroup | null) => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
+  onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
 export const TimelineEventChip = ({
   eventsGroup,
   centerY,
   selectedEventIds,
+  onGroupHover,
   onOpenTimelines,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
+  onSeeAllEvents,
 }: TimelineEventChipProps) => {
   const { group, x } = eventsGroup;
   const { events } = group;
+
+  // Remounting the hover card via a fresh key is how an action taken from the
+  // popover (e.g. "See all", which opens a sidebar) dismisses it: a hover-only
+  // card would otherwise linger under the cursor after the chart re-lays-out,
+  // and controlling `opened` fights Mantine's own hover handling. A remounted
+  // card starts closed and only re-opens on a new hover.
+  const [popoverKey, setPopoverKey] = useState(0);
+  const dismissPopover = () => setPopoverKey((key) => key + 1);
 
   const isSingleEvent = events.length === 1;
   const hasMoreThanMax = events.length > MAX_VISIBLE_EVENTS;
@@ -68,10 +82,22 @@ export const TimelineEventChip = ({
     }
   };
 
-  const showSeeAll = hasMoreThanMax && canSelect;
+  // "See all" hands the whole cluster to `onSeeAllEvents` when provided (its
+  // host renders the full list); otherwise it falls back to the select/open
+  // behavior used by the query builder's timeline sidebar.
+  const showSeeAll = hasMoreThanMax && (canSelect || onSeeAllEvents != null);
+  const handleSeeAll = () => {
+    dismissPopover();
+    if (onSeeAllEvents) {
+      onSeeAllEvents(events);
+    } else {
+      handleSelect();
+    }
+  };
 
   return (
     <HoverCard
+      key={popoverKey}
       position="top"
       offset={POPOVER_OFFSET}
       openDelay={50}
@@ -89,6 +115,8 @@ export const TimelineEventChip = ({
             isSingleEvent ? events[0].name : t`${events.length} events`
           }
           onClick={canSelect ? handleChipClick : undefined}
+          onMouseEnter={() => onGroupHover?.(group)}
+          onMouseLeave={() => onGroupHover?.(null)}
         >
           {isSingleEvent ? (
             <Icon name={getTimelineEventGroupIconName(group)} size={12} />
@@ -113,7 +141,7 @@ export const TimelineEventChip = ({
               {showSeeAll && (
                 <UnstyledButton
                   className={S.seeAllButton}
-                  onClick={handleSelect}
+                  onClick={handleSeeAll}
                 >
                   {t`See all`}
                 </UnstyledButton>

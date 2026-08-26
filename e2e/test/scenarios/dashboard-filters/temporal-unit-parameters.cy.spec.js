@@ -356,7 +356,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should connect a parameter to a metric", () => {
-      H.createQuestion({ ...singleBreakoutQuestionDetails, type: "metric" });
+      H.createQuestion({
+        ...singleBreakoutQuestionDetails,
+        type: "metric",
+      }).then(({ body: metric }) => {
+        cy.request("GET", `/api/metric/${metric.id}`);
+      });
       H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );
@@ -366,7 +371,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       addQuestion(singleBreakoutQuestionDetails.name);
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
-      H.popover().findByText("Created At: Month").click();
+      H.popover().findByText("Created At").click();
       H.saveDashboard();
       H.filterWidget().click();
       H.popover().findByText("Year").click();
@@ -380,7 +385,13 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     });
 
     it("should connect multiple parameters to a card with multiple breakouts and drill thru", () => {
-      H.createQuestion(multiBreakoutQuestionDetails);
+      H.createQuestion({
+        ...multiBreakoutQuestionDetails,
+        visualization_settings: {
+          "table.pivot": true,
+          "table.pivot_column": "CREATED_AT_2",
+        },
+      });
       H.createDashboard(dashboardDetails).then(({ body: dashboard }) =>
         H.visitDashboard(dashboard.id),
       );

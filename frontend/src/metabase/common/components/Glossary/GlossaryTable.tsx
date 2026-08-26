@@ -2,12 +2,11 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { EmptyState } from "metabase/actions/containers/ActionPicker/ActionPicker.styled";
 import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { useMetabotName } from "metabase/metabot/hooks";
+import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
@@ -19,6 +18,8 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type { SortDirection } from "metabase-types/api";
+
+import { EmptyState } from "../EmptyState";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
@@ -46,7 +47,7 @@ export function GlossaryTable({
   onDelete,
 }: GlossaryTableProps) {
   const [isCreating, setIsCreating] = useState(false);
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingField, setEditingField] = useState<GlossaryField | null>(null);
   const [deletingItem, setDeletingItem] = useState<GlossaryItem | null>(null);
@@ -125,10 +126,12 @@ export function GlossaryTable({
         }
         emptyBody={
           <Center>
-            <EmptyState
-              message={t`No terms yet`}
-              illustrationElement={<NoObjectError mb="-1.5rem" />}
-            />
+            <Box mb="md">
+              <EmptyState
+                message={t`No terms yet`}
+                illustrationElement={<NoObjectError mb="-1.5rem" />}
+              />
+            </Box>
           </Center>
         }
         sortColumnName={sortColumnName}

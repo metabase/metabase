@@ -3,8 +3,6 @@ import _ from "underscore";
 import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
 
-import { checkNotNull } from "./types";
-
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
 // Always on on most other non mobile platforms
@@ -59,8 +57,17 @@ export function isObscured(
 }
 
 export function getSitePath(): string {
-  const siteUrl = checkNotNull(MetabaseSettings.get("site-url"));
-  return new URL(siteUrl).pathname.toLowerCase();
+  const siteUrl = MetabaseSettings.get("site-url");
+
+  if (!siteUrl) {
+    return "/";
+  }
+
+  try {
+    return new URL(siteUrl).pathname.toLowerCase();
+  } catch {
+    return "/";
+  }
 }
 
 export function getWithSiteUrl(url: string): string {
@@ -105,14 +112,22 @@ const getOrigin = (url: string): string | null => {
   }
 };
 
-export function getPathnameWithoutSubPath(pathname: string): string {
+export function getPathnameWithoutSubPath(
+  pathname: string,
+  siteUrl?: string,
+): string {
+  const sitePath =
+    siteUrl === undefined ? getSitePath() : getUrlPathname(siteUrl);
   const pathnameSections = pathname.split("/");
-  const sitePathSections = getSitePath().split("/");
+  const sitePathSections = sitePath.split("/");
 
   return isPathnameContainSitePath(pathnameSections, sitePathSections)
     ? "/" + pathnameSections.slice(sitePathSections.length).join("/")
     : pathname;
 }
+
+const getUrlPathname = (url: string): string =>
+  url ? new URL(url).pathname.toLowerCase() : "";
 
 function isPathnameContainSitePath(
   pathnameSections: string[],
@@ -120,7 +135,7 @@ function isPathnameContainSitePath(
 ): boolean {
   for (let index = 0; index < sitePathSections.length; index++) {
     const sitePathSection = sitePathSections[index].toLowerCase();
-    const pathnameSection = pathnameSections[index].toLowerCase();
+    const pathnameSection = pathnameSections[index]?.toLowerCase();
 
     if (sitePathSection !== pathnameSection) {
       return false;
@@ -262,4 +277,17 @@ export function openSaveDialog(fileName: string, fileContent: Blob): void {
 
   URL.revokeObjectURL(url);
   link.remove();
+}
+
+// Double rAF is needed here to ensure we actually paint the next frame.
+// First rAF will be called on the next frame BEFORE painting,
+// and the second rAF is scheduled to run AFTER the first frame is painted, but BEFORE the next frame is painted.
+export function waitUntilNextFramePainted() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(async () => {
+      requestAnimationFrame(async () => {
+        resolve();
+      });
+    });
+  });
 }

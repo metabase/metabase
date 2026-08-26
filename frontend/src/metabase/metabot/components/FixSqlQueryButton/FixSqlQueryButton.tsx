@@ -6,11 +6,11 @@ import { getMetabotManagedProviderLimitToastProps } from "metabase/metabot/compo
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import {
   useMetabotAgent,
-  useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useDispatch } from "metabase/redux";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
+import { useSetting } from "metabase/settings";
 import { Button } from "metabase/ui";
 
 import { trackQueryFixClicked } from "../../analytics";
@@ -20,7 +20,7 @@ export function FixSqlQueryButton() {
   const dispatch = useDispatch();
   const { hasSqlGenerationAccess, canUseSqlGeneration } =
     useUserMetabotPermissions();
-  const metabotName = useMetabotName();
+  const metabotName = useSetting("metabot-name");
   const [sendToast] = useToast();
   const { submitInput, isDoingScience } = useMetabotAgent("sql");
 

@@ -1,0 +1,29 @@
+import { useMemo } from "react";
+
+import { useGetAdhocQueryQuery } from "metabase/api";
+import type { Query } from "metabase-lib";
+import * as Lib from "metabase-lib";
+import type { Dataset, DatasetQuery } from "metabase-types/api";
+
+type AdhocQueryResult = {
+  data: Dataset | undefined;
+  jsQuery: DatasetQuery | null;
+  isFetching: boolean;
+  error: unknown;
+};
+
+export function useAdhocBreakoutQuery(query: Query | null): AdhocQueryResult {
+  const jsQuery = useMemo(
+    // Unjustified type cast. FIXME
+    () => (query ? (Lib.toJsQuery(query) as DatasetQuery) : null),
+    [query],
+  );
+
+  const { data, isFetching, error } = useGetAdhocQueryQuery(
+    // Unjustified type cast. FIXME
+    jsQuery ?? ({} as DatasetQuery),
+    { skip: !jsQuery },
+  );
+
+  return { data, jsQuery, isFetching, error };
+}

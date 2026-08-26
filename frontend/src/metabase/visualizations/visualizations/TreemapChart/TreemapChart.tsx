@@ -17,7 +17,7 @@ import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/
 import { isOverview } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import {
-  getChartPadding,
+  getTreemapContainerPadding,
   groupHeader,
 } from "metabase/visualizations/echarts/graph/treemap/style";
 import {
@@ -37,7 +37,7 @@ import { useLabelMeasurement } from "./use-label-measurement";
 import { usePointerTracking } from "./use-pointer-tracking";
 import { useTreemapNavigation } from "./use-treemap-navigation";
 
-export const TreemapChart = ({
+const TreemapChartComponent = ({
   rawSeries,
   settings,
   fontFamily,
@@ -274,7 +274,7 @@ export const TreemapChart = ({
       )}
       <Box
         className={S.root}
-        p={getChartPadding(isDashboard)}
+        p={getTreemapContainerPadding(isDashboard)}
         w="100%"
         style={{ flex: 1, minHeight: 0 }}
       >
@@ -292,4 +292,7 @@ export const TreemapChart = ({
   );
 };
 
-Object.assign(TreemapChart, TREEMAP_CHART_DEFINITION);
+export const TreemapChart = Object.assign(
+  TreemapChartComponent,
+  TREEMAP_CHART_DEFINITION,
+);

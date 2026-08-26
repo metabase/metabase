@@ -33,7 +33,7 @@
     (try
       (json/decode+kw arguments)
       (catch Exception e
-        (log/warn e "Failed to decode tool call arguments" {:arguments arguments})
+        (log/warnf "Failed to decode tool call arguments: %s" (ex-message e))
         arguments))
     arguments))
 
@@ -134,7 +134,7 @@
   "Extract AISDK parts from a step, filtering out non-message types."
   [step]
   (->> (:parts step)
-       (filter #(#{:text :tool-input :tool-output} (:type %)))))
+       (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))
 
 (defn- messages-with-injected-context
   "Returns messages from memory and injects context into the most recent one."
@@ -187,15 +187,20 @@
 
   Parameters:
   - context: Context map from API (with user_is_viewing, user_recently_viewed, etc.)
-  - profile: Profile map with :prompt-template key
+  - profile: Profile map with :prompt-template key. May carry a `:system-prompt-context` fn of the
+    request context that returns extra, feature-specific template vars — this is how a profile
+    injects its own system-prompt content without the generic agent knowing what it is.
   - tools: Tool registry map (name -> var)
 
   Returns message map with {:role \"system\" :content \"...\"}."
   [context profile tools]
-  (let [content (prompts/build-system-message-content
-                 profile
-                 {:sql_dialect (user-context/extract-sql-dialect context)}
-                 tools
-                 (:capabilities context))]
+  (let [profile-context (when-let [ctx-fn (:system-prompt-context profile)]
+                          (ctx-fn context))
+        content         (prompts/build-system-message-content
+                         profile
+                         (merge {:sql_dialect (user-context/extract-sql-dialect context)}
+                                profile-context)
+                         tools
+                         (:capabilities context))]
     {:role    "system"
      :content content}))

@@ -1,5 +1,5 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Outlet } from "metabase/router";
+import { Outlet, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
@@ -13,13 +13,8 @@ type DataModelSegmentDependenciesPageParams = {
   segmentId: string;
 };
 
-type DataModelSegmentDependenciesPageProps = {
-  params: DataModelSegmentDependenciesPageParams;
-};
-
-export function DataModelSegmentDependenciesPage({
-  params,
-}: DataModelSegmentDependenciesPageProps) {
+export function DataModelSegmentDependenciesPage() {
+  const params = useParams<DataModelSegmentDependenciesPageParams>();
   const { isLoading, error, segment, table, tabUrls, onRemove } =
     useDataModelSegmentPage(params);
 

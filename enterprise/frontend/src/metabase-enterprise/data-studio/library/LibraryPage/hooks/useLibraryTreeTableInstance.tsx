@@ -4,11 +4,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { useBuildSnippetTree } from "metabase/data-studio/common/hooks/use-build-snippet-tree";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isEmptyStateData } from "metabase/data-studio/common/utils";
 import { useSelector } from "metabase/redux";
-import { useRouter } from "metabase/router";
+import { useSearchParams } from "metabase/router";
 import {
   EntityNameCell,
   Flex,
@@ -23,6 +24,7 @@ import type { Collection } from "metabase-types/api";
 
 import { ActionCell } from "../components/ActionCell";
 import { EmptyStateAction } from "../components/EmptyStateAction";
+import { getTreeRowHref } from "../utils";
 
 import { useErrorHandling } from "./useErrorHandling";
 import { useLibraryCollectionTree } from "./useLibraryCollectionTree";
@@ -42,21 +44,20 @@ export function useLibraryTreeTableInstance({
   searchQuery,
   onPublishTableClick,
 }: Params) {
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const expandedIdsFromUrl = useMemo(() => {
-    const rawIds = location.query?.expandedId;
-    if (!rawIds) {
+    const ids = searchParams.getAll("expandedId");
+    if (ids.length === 0) {
       return null;
     }
 
-    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
     // Unjustified type cast. FIXME
     return _.object(
       ids.map((id) => [`collection:${id}`, true]),
     ) as ExpandedState;
-  }, [location.query?.expandedId]);
+  }, [searchParams]);
   const { libraryCollection, tableCollection, metricCollection } =
     useLibraryCollections(collections);
 
@@ -147,7 +148,7 @@ export function useLibraryTreeTableInstance({
             );
           }
 
-          return (
+          const nameCell = (
             <EntityNameCell
               data-testid={`${row.original.model}-name`}
               icon={row.original.icon}
@@ -167,6 +168,25 @@ export function useLibraryTreeTableInstance({
                 )
               }
             />
+          );
+
+          const href = getTreeRowHref(row);
+          if (href === null) {
+            return nameCell;
+          }
+          return (
+            <Link
+              to={href}
+              style={{
+                display: "flex",
+                flex: 1,
+                minWidth: 0,
+                textDecoration: "none",
+                color: "inherit",
+              }}
+            >
+              {nameCell}
+            </Link>
           );
         },
       },
@@ -312,10 +332,15 @@ export function useLibraryTreeTableInstance({
     emptyMessage = t`No results for "${searchQuery}"`;
   }
 
+  const allRows = treeTableInstance.table.getCoreRowModel().flatRows;
+
   return {
     treeTableInstance,
+    allRows,
     isChildrenLoading,
     isLoading,
     emptyMessage,
+    refreshTableCollections,
+    refreshMetricCollections,
   };
 }

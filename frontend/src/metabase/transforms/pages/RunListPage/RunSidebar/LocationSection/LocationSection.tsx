@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Link } from "metabase/router";
 import { Anchor, Breadcrumbs, FixedSizeIcon, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { TransformRun } from "metabase-types/api";

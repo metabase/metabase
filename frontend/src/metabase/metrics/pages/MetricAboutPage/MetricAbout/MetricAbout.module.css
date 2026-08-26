@@ -6,6 +6,10 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--default-border-radius);
 }
 
 .exploreButtonOverlay {
@@ -15,14 +19,22 @@
   z-index: 1;
 }
 
+.dimensionSelectContainer {
+  align-items: center;
+  display: flex;
+  flex: 0 0 1.5rem;
+  justify-content: center;
+  margin-bottom: var(--mantine-spacing-md);
+  max-width: 100%;
+}
+
 .descriptionSection {
   overflow: auto;
 }
 
 .visualizationPanel {
-  background-color: var(--mb-color-background_page-primary);
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--default-border-radius);
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   /* keeps the embedded visualization non-interactive (no tooltips/hover) */
   pointer-events: none;

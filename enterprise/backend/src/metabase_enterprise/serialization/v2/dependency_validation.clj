@@ -9,7 +9,6 @@
   Historically this was the collection-id, Card-only \"escape analysis\"; it is now a general dependency-satisfaction
   check driven by [[metabase.models.serialization/serialization-dependencies]]."
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models.serialization :as serdes]
@@ -21,16 +20,12 @@
 
 (defn- collection-label [coll-id]
   (if coll-id
-    (let [collection (t2/hydrate (t2/select-one :model/Collection :id coll-id) :ancestors)
-          names      (->> (conj (:ancestors collection) collection)
-                          (map :name)
-                          (str/join " > "))]
-      (format "%d: %s" coll-id names))
+    (str coll-id)
     "[no collection]"))
 
 (defn- entity-label [{:keys [model id]}]
-  (let [entity (t2/select-one [model :collection_id :name] :id id)]
-    (format "%s %d (%s from collection %s)" (name model) id (:name entity) (collection-label (:collection_id entity)))))
+  (let [entity (t2/select-one [model :collection_id] :id id)]
+    (format "%s %d (from collection %s)" (name model) id (collection-label (:collection_id entity)))))
 
 (defn- resize-batch
   [[model batch]]

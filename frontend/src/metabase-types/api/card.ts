@@ -1,5 +1,3 @@
-import type { CurrencyStyle } from "metabase/utils/formatting";
-import type { TimeOnlyOptions } from "metabase/utils/formatting/types";
 import type { IconName } from "metabase-types/api";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
@@ -18,6 +16,7 @@ import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
+import type { CurrencyStyle, TimeOnlyOptions } from "./formatting";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
@@ -78,6 +77,8 @@ export interface Card<
   dashboard_id: DashboardId | null;
   document_id?: DocumentId | null;
   document?: CardDocumentInfo | null;
+  metabot_conversation_id?: string | null;
+  metabot_chart_id?: string | null;
   dashboard_count: number | null;
   parameter_usage_count?: number | null;
 
@@ -240,6 +241,7 @@ export type TableColumnOrderSetting = {
 
 export type StackType = "stacked" | "normalized" | null;
 export type StackValuesDisplay = "total" | "all" | "series";
+export type StackValueFormat = "value" | "percentage";
 
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];
@@ -251,6 +253,9 @@ export type BoxPlotShowValuesMode = "median" | "all";
 export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
+
+export type MapType = "region" | "pin" | "heat" | "grid";
+export type PinMapStyle = "tiles" | "markers" | "grid" | "heat";
 
 export type ColumnSettings = TimeOnlyOptions & {
   _column_title_full?: string;
@@ -309,6 +314,9 @@ export type VisualizationSettings = {
 
   /** Show aggregate labels for stacked chart segments. */
   "graph.show_stack_values"?: StackValuesDisplay;
+
+  /** Render stacked chart segment labels as raw values or as percentages of the stack. */
+  "graph.stack_value_format"?: StackValueFormat;
 
   /** Limit the number of categories before grouping the rest into an "Other" bucket. */
   "graph.max_categories_enabled"?: boolean;
@@ -520,6 +528,16 @@ export type VisualizationSettings = {
   /** Show median values, all values, or no value labels. */
   "boxplot.show_values_mode"?: BoxPlotShowValuesMode;
 
+  /** Map settings */
+  "map.type"?: MapType;
+  "map.pin_type"?: PinMapStyle;
+  "map.latitude_column"?: string;
+  "map.longitude_column"?: string;
+  "map.metric_column"?: string;
+  "map.center_latitude"?: number;
+  "map.center_longitude"?: number;
+  "map.zoom"?: number;
+
   /** Columns selected for custom list view. */
   "list.columns"?: ListViewColumns;
 
@@ -566,10 +584,10 @@ export type CardQueryMetadata = {
   fields: Field[];
 };
 
-export interface ListCardsRequest {
+export type ListCardsRequest = {
   f?: CardFilterOption;
   model_id?: CardId;
-}
+};
 
 export interface GetCardRequest {
   id: CardId | EntityToken;

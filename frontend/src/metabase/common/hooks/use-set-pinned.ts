@@ -5,6 +5,7 @@ import {
   useUpdateCardMutation,
   useUpdateDashboardMutation,
   useUpdateDocumentMutation,
+  useUpdateExplorationMutation,
 } from "metabase/api";
 import type {
   Card,
@@ -12,6 +13,7 @@ import type {
   CollectionItem,
   Dashboard,
   Document,
+  Exploration,
 } from "metabase-types/api";
 
 type Pinnable<M extends string, T extends { id: unknown }> = {
@@ -24,7 +26,8 @@ export type PinnableItem =
   | Pinnable<"dataset", Card>
   | Pinnable<"metric", Card>
   | Pinnable<"dashboard", Dashboard>
-  | Pinnable<"document", Document>;
+  | Pinnable<"document", Document>
+  | Pinnable<"exploration", Exploration>;
 
 export type PinnableModel = PinnableItem["model"];
 
@@ -34,6 +37,7 @@ const PINNABLE_MODELS = new Set<PinnableModel>([
   "metric",
   "dashboard",
   "document",
+  "exploration",
 ]);
 
 export function isPinnable<T extends { model: string }>(
@@ -58,6 +62,7 @@ export function useSetPinned() {
   const [updateCard] = useUpdateCardMutation();
   const [updateDashboard] = useUpdateDashboardMutation();
   const [updateDocument] = useUpdateDocumentMutation();
+  const [updateExploration] = useUpdateExplorationMutation();
 
   return useCallback(
     (item: PinnableItem, pinned: boolean | number) => {
@@ -75,8 +80,11 @@ export function useSetPinned() {
         .with({ model: "document" }, ({ id }) =>
           updateDocument({ id, collection_position }),
         )
+        .with({ model: "exploration" }, ({ id }) =>
+          updateExploration({ id, collection_position }),
+        )
         .exhaustive();
     },
-    [updateCard, updateDashboard, updateDocument],
+    [updateCard, updateDashboard, updateDocument, updateExploration],
   );
 }

@@ -9,6 +9,7 @@ module.exports = {
     "^app/embed",
     "^design system",
     "^Patterns/Overlays",
+    "^Components/Inputs/Checkbox (Overview|Checkbox\\.Card)",
     "^Components/Inputs/DatePicker Dates range",
     "^Components/Parameters/DatePicker",
     "^Components/Buttons/Button Compact size, custom color",
@@ -22,6 +23,7 @@ module.exports = {
     "^App/Palette",
     "^viz/GridMapPdfExport",
     "ParameterValueWidget",
+    "^Explorations/ExplorationGroupVisualization",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

@@ -3,8 +3,8 @@ import _ from "underscore";
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { slugify } from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
-import { slugify } from "metabase/visualizations/lib/formatting";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -34,7 +34,8 @@ type ExtendedMapping = DashboardParameterMapping & {
   card: Card;
 };
 
-export type NewParameterOpts = Pick<Parameter, "name" | "type" | "sectionId">;
+export type NewParameterOpts = Pick<Parameter, "name" | "type"> &
+  Partial<Omit<Parameter, "name" | "type">>;
 
 export function createParameter(
   opts: NewParameterOpts,
@@ -58,11 +59,10 @@ export function createParameter(
   }
 
   const parameter: Parameter = {
+    ...opts,
     name: "",
     slug: "",
     id: generateParameterId(),
-    type: opts.type,
-    sectionId: opts.sectionId,
   };
 
   return setParameterName(parameter, name);

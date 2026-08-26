@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -52,6 +53,26 @@
               (is (or (re-find #"(?i)INTO\s+.*my_table.*FROM" sql)
                       (re-find #"(?i)CREATE\s+TABLE.*AS" sql)
                       (re-find #"(?i)CREATE\s+.*TABLE" sql))))))))))
+
+(deftest ^:parallel compile-transform-output-db-preserves-dashes-test
+  (testing "a dashed catalog in :output-db compiles verbatim -- where schema == database the CI
+            catalog is named test-data; munged to test_data, the CTAS targets a nonexistent database
+            (MySQL error 1049)."
+    ;; Only the shared `:sql` implementation reads :output-db. Drivers that override
+    ;; compile-transform qualify their target differently and drop it, so they exclude themselves.
+    ;; `the-initialized-driver`, not `the-driver`: a driver registers from its plugin manifest with
+    ;; its namespace unloaded, and only initialization runs the manifest's `load-namespace` step. Ask
+    ;; `get-method` before that and every override still reads as the `:sql` default.
+    (doseq [driver (map driver/the-initialized-driver (descendants driver/hierarchy :sql-jdbc))
+            :when  (identical? (get-method driver/compile-transform driver)
+                               (get-method driver/compile-transform :sql))]
+      (testing driver
+        (let [[sql] (driver/compile-transform driver {:query        {:query "SELECT 1"}
+                                                      :output-db    "test-data"
+                                                      :output-table :some_out_tbl})]
+          (is (re-find #"test-data" sql) "dashed catalog must be quoted verbatim")
+          (is (not (re-find #"test_data" sql)) "the dash must not be munged to an underscore")
+          (is (re-find #"some_out_tbl" sql) "the bare output-table segment is still present"))))))
 
 (deftest compile-drop-table-contract-test
   (testing "compile-drop-table should return [sql params] format"
@@ -224,6 +245,33 @@
         (lib/aggregate (lib/count))
         qp/process-query mt/rows ffirst)))
 
+(defn- warehouse-row-count
+  "Row count read straight off the warehouse, bypassing Metabase sync."
+  [schema table]
+  (let [sql (format "SELECT count(*) AS c FROM %s" (sql.u/quote-name driver/*driver* :table schema table))]
+    (-> (qp/process-query {:database (mt/id) :type :native :native {:query sql}})
+        mt/rows ffirst long)))
+
+(deftest transform-target-name-special-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms-basic}
+      (testing "a target name containing special characters is created and its rows round-trip"
+        (transforms.tu/with-transform-cleanup! [target {:type     :table
+                                                        :schema   (t2/select-one-fn :schema :model/Table (mt/id :venues))
+                                                        :name     "qcq_a\\`b"
+                                                        :database (mt/id)}]
+          (let [expected (venues-row-count)
+                details  {:db-id          (mt/id)
+                          :database       (mt/db)
+                          :transform-type :table
+                          :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
+                          :query          (transforms-base.u/compile-source
+                                           {:source {:type "query" :query (venues-source-query)} :target target} nil)
+                          :output-schema  (:schema target)
+                          :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}]
+            (driver/run-transform! driver/*driver* details {})
+            (is (= expected (warehouse-row-count (:schema target) (:name target))))))))))
+
 (deftest run-transform!-ctas-rows-affected-reflects-rows-written-test
   ;; Characterizes the CTAS row count per driver. BigQuery, Snowflake, and Redshift are excluded; they
   ;; declare `:transforms/accurate-rows-affected false`, so the transforms layer skips emitting
@@ -274,3 +322,47 @@
               (is (= written (:rows-affected insert-result))
                   (format "%s: INSERT :rows-affected (%s) should equal %s — failure means the driver also undercounts DML"
                           driver/*driver* (pr-str (:rows-affected insert-result)) written)))))))))
+
+(deftest transform-target-in-dashed-schema-round-trips-test
+  ;; H2 only -- no `drop-schema!` multimethod exists, so a wider sweep would litter shared CI accounts.
+  (mt/test-driver :h2
+    (mt/with-premium-features #{:transforms-basic}
+      (let [dashed-schema "dashed-schema-probe"
+            conn-spec     (driver/connection-spec driver/*driver* (mt/db))
+            quoted-schema (sql.u/quote-name driver/*driver* :schema dashed-schema)
+            execute!      #(driver/execute-raw-queries! driver/*driver* conn-spec [[%]])]
+        (execute! (str "CREATE SCHEMA IF NOT EXISTS " quoted-schema))
+        (try
+          (transforms.tu/with-transform-cleanup! [target {:type     :table
+                                                          :schema   dashed-schema
+                                                          :name     "dashed_table_probe"
+                                                          :database (mt/id)}]
+            (let [target-table (:name target)
+                  exists?      #(driver/table-exists? driver/*driver* (mt/db)
+                                                      {:schema dashed-schema, :name target-table})]
+              (driver/create-table! driver/*driver* (mt/id) (keyword dashed-schema target-table)
+                                    {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})
+              (is (exists?) "the target table is created in the dashed schema")
+              (transforms.tu/drop-target! target)
+              (is (not (exists?)) "and dropping the transform target actually drops the table")))
+          (finally
+            ;; with-transform-cleanup! has dropped the table by now, so the schema is empty
+            (execute! (str "DROP SCHEMA IF EXISTS " quoted-schema))))))))
+
+(deftest rename-table-special-characters-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :rename)
+    (mt/with-premium-features #{:transforms-basic}
+      ;; the dash is the case a user actually hits: an unquoted identifier silently becomes
+      ;; `rnq_a_b`, so the rename lands on a different table instead of failing
+      (doseq [dst ["rnq_a`b\\" "rnq-a-b"]]
+        (testing (str "renaming a table to " (pr-str dst) " keeps it as a single queryable table")
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :venues))
+                src    (str "rnq_src_" (subs (str (random-uuid)) 0 8))]
+            (try
+              (driver/create-table! driver/*driver* (mt/id) (keyword schema src)
+                                    {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})
+              (driver/rename-table! driver/*driver* (mt/id) (keyword schema src) (keyword schema dst))
+              (is (= 0 (warehouse-row-count schema dst)))
+              (finally
+                (transforms.tu/drop-target! {:type :table :schema schema :name dst})
+                (transforms.tu/drop-target! {:type :table :schema schema :name src})))))))))

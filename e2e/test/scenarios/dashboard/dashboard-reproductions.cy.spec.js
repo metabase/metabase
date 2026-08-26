@@ -47,7 +47,7 @@ describe("issue 12578", () => {
 
     // Without tick the dashboard header will not load
     cy.tick();
-    cy.findByLabelText("Auto Refresh").click();
+    H.openDashboardMenu("Auto-refresh");
     H.popover().findByText("1 minute").click();
 
     // Mock slow card request
@@ -388,8 +388,12 @@ describe("issue 16559", () => {
     H.openQuestionsSidebar();
     H.sidebar().findByText("Orders, Count").click();
     cy.wait("@cardQuery");
-    cy.button("Save").click();
-    cy.wait("@saveDashboard");
+    // Use the canonical save helper so we deterministically wait for the whole
+    // save-and-settle sequence (PUT + query_metadata reload, edit-bar gone, all
+    // dashcards loaded). The previous ad-hoc `Save` click only awaited the PUT,
+    // so the "More info" click below raced the trailing re-render and was
+    // dropped, leaving the sidesheet closed.
+    H.saveDashboard();
 
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
@@ -842,9 +846,12 @@ describe("issue 31697", () => {
     name: "Orders segment",
     description: "All orders with a total under $100.",
     definition: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+      },
     },
   };
 
@@ -2239,7 +2246,9 @@ describe("issue 64138", () => {
       })
       .within(() => {
         cy.findByLabelText("Zoom in").should("not.exist");
-        cy.findByText("Set as default view").should("be.visible").click();
+        // the update button is disabled until the map is panned, so only
+        // assert that it is shown while the zoom controls are hidden
+        cy.findByText("Set as default view").should("be.visible");
       });
 
     cy.log("hovering marker icons should not open their tooltips");

@@ -15,80 +15,21 @@ This page covers what you can embed. For theming your embeds, see [Appearance](.
 
 ## Dashboard
 
-To render a dashboard:
-
-```html
-<metabase-dashboard dashboard-id="1" with-title="true" with-downloads="false">
-</metabase-dashboard>
-```
-
-### Attributes
-
-{% include_file "{{ dirname }}/eajs/snippets/MetabaseDashboardAttributes.md" snippet="properties" %}
-
-For all modular embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md), including content from translation dictionaries.
-
-If you surround your attribute value with double quotes, make sure to use single quotes:
-
-```html
-<metabase-dashboard
-  dashboard-id="1"
-  initial-parameters="{ 'productId': '42' }"
-></metabase-dashboard>
-```
-
-If you surround your attribute value with double quotes, make sure to use single quotes:
-
-```html
-<metabase-dashboard
-  dashboard-id="1"
-  hidden-parameters="['productId']"
-></metabase-dashboard>
-```
+- [Embed a dashboard](./dashboard.md)
+- [Dashboard component reference](./dashboard-reference.md), for `<metabase-dashboard>` attributes and SDK props
 
 ## Question
 
-To render a question (chart):
-
-```html
-<metabase-question question-id="1"></metabase-question>
-```
-
-You can also use the question component to create new questions:
-
-- `question-id="new"` — opens the visual query builder.
-- `question-id="new-native"` — opens the SQL editor.
-
-For example, to embed the SQL editor:
-
-```html
-<metabase-question question-id="new-native"></metabase-question>
-```
-
-### Attributes
-
-{% include_file "{{ dirname }}/eajs/snippets/MetabaseQuestionAttributes.md" snippet="properties" %}
+- [Embed a chart](./chart.md)
+- [Embed a query editor](./query-builder.md)
+- [Question component reference](./question-reference.md), for `<metabase-question>` attributes and SDK props
 
 ## Browser
 
 {% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embedding=true%}
 
-Browser component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
-
-To render a collection browser so people can navigate a collection and open dashboards or questions:
-
-```html
-<metabase-browser
-  initial-collection="14"
-  read-only="false"
-  collection-entity-types="['collection', 'dashboard']"
->
-</metabase-browser>
-```
-
-### Attributes
-
-{% include_file "{{ dirname }}/eajs/snippets/MetabaseBrowserAttributes.md" snippet="properties" %}
+- [Embed a collection browser](./browser.md)
+- [Browser component reference](./browser-reference.md), for `<metabase-browser>` attributes and SDK props
 
 ## AI chat
 
@@ -123,4 +64,5 @@ If you're using the [modular embedding SDK](./sdk/introduction.md), you can prov
 ## Further reading
 
 - [Appearance](./appearance.md)
+- [Custom visualizations in embeds](./custom-visualizations.md)
 - [Modular embedding SDK](./sdk/introduction.md).

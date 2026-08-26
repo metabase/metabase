@@ -30,6 +30,45 @@
      (mt/with-current-user (mt/user->id :rasta)
        ~@body)))
 
+(deftest ^:parallel first-non-forked-user-message-test
+  (testing "returns the first non-blank user message from a replayable, live turn"
+    (let [deleted-at (t/offset-date-time)]
+      (is (= {:content "keep this prompt" :profile-id "internal"}
+             (metabot-persistence/first-non-forked-user-message
+              [{:id 1 :role :user :profile_id "default"
+                :data [{:type "text" :text "errored prompt"}]}
+               {:id 2 :role :assistant :finished true :error "boom" :data []}
+               {:id 3 :role :user :profile_id "default" :deleted_at deleted-at
+                :data [{:type "text" :text "deleted prompt"}]}
+               {:id 4 :role :assistant :finished true :data []}
+               {:id 5 :role :user :profile_id "default"
+                :data [{:type "text" :text "in-flight prompt"}]}
+               {:id 6 :role :assistant :finished nil :data []}
+               {:id 7 :role :user :profile_id "default"
+                :data [{:type "text" :text "  "}]}
+               {:id 8 :role :assistant :finished true :data []}
+               {:id 9 :role :user :profile_id "internal"
+                :data [{:type "text" :text "keep this prompt"}]}
+               {:id 10 :role :assistant :finished false :data []}])))))
+  (testing "returns nil when no live replayable turn has a non-blank user message"
+    (is (nil? (metabot-persistence/first-non-forked-user-message
+               [{:id 1 :role :user :data [{:type "text" :text "failed"}]}
+                {:id 2 :role :assistant :finished true :error "boom" :data []}]))))
+  (testing "skips messages cloned from the source conversation on a fork"
+    (is (= {:content "the new direction" :profile-id "default"}
+           (metabot-persistence/first-non-forked-user-message
+            [{:id 1 :role :user :profile_id "default" :forked_from_message_id 100
+              :data [{:type "text" :text "inherited prompt"}]}
+             {:id 2 :role :assistant :finished true :forked_from_message_id 101 :data []}
+             {:id 3 :role :user :profile_id "default"
+              :data [{:type "text" :text "the new direction"}]}
+             {:id 4 :role :assistant :finished true :data []}]))))
+  (testing "returns nil for a fork with no post-fork user message yet"
+    (is (nil? (metabot-persistence/first-non-forked-user-message
+               [{:id 1 :role :user :profile_id "default" :forked_from_message_id 100
+                 :data [{:type "text" :text "inherited prompt"}]}
+                {:id 2 :role :assistant :finished true :forked_from_message_id 101 :data []}])))))
+
 (deftest ^:parallel message->chat-messages-test
   (testing "text part on a user row renders as a user message"
     (let [result (metabot-persistence/message->chat-messages
@@ -104,10 +143,10 @@
 
 (deftest ^:parallel message->chat-messages-test-9
   (testing "data parts are converted to data_part chat messages"
-    (let [blocks [{:type "data-navigate_to" :data "/question/1"}
+    (let [blocks [{:type "data-generated_entity" :data {:type "dashboard" :url "/auto/dashboard/table/1"}}
                   {:type "data-todo_list"   :data [{:id "t1"}]}
                   {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}]]
-      (is (=? [{:role "agent" :type "data_part" :part {:type "data-navigate_to" :data "/question/1"}}
+      (is (=? [{:role "agent" :type "data_part" :part {:type "data-generated_entity" :data {:type "dashboard" :url "/auto/dashboard/table/1"}}}
                {:role "agent" :type "data_part" :part {:type "data-todo_list"   :data [{:id "t1"}]}}
                {:role "agent" :type "data_part" :part {:type "data-code_edit"   :data {:buffer_id "b" :value "v"}}}]
               (metabot-persistence/message->chat-messages {:role :assistant :data blocks}))))))
@@ -128,6 +167,26 @@
     (is (= "hi" (:message (nth result 0))))
     (is (= "hello!" (:message (nth result 1))))
     (is (= {:output "ok"} (json/decode+kw (:result (nth result 2)))))))
+
+(deftest ^:parallel messages->chat-messages-active-placeholder-test
+  (testing "an in-flight assistant placeholder becomes a trailing turn_in_progress message"
+    (let [result (metabot-persistence/messages->chat-messages
+                  [{:role :user :data [{:type "text" :text "hi"}]}
+                   {:id 2 :role :assistant :external_id "a1"
+                    :created_at (t/offset-date-time) :finished nil :data []}])]
+      (is (= ["user" "agent"] (map :role result)))
+      (is (= ["text" "turn_in_progress"] (map :type result)))
+      (is (= "a1" (:externalId (second result)))))))
+
+(deftest ^:parallel messages->chat-messages-stale-placeholder-test
+  (testing "a placeholder past the grace window is an aborted (finished=false) turn, not in-progress"
+    (let [result (metabot-persistence/messages->chat-messages
+                  [{:role :user :data [{:type "text" :text "hi"}]}
+                   {:id 2 :role :assistant :external_id "a1"
+                    :created_at (t/minus (t/offset-date-time) (t/hours 1))
+                    :finished nil :data []}])]
+      (is (not-any? #(= "turn_in_progress" (:type %)) result))
+      (is (false? (:finished (last result)))))))
 
 (deftest ^:parallel messages->flat-messages-test
   (let [deleted-at (t/offset-date-time)
@@ -270,6 +329,16 @@
            (metabot-persistence/parts->storable-content
             [{:type :tool-input :id "c1" :function "search" :arguments {}}
              {:type :tool-output :id "c1" :result nil}])))))
+
+(deftest ^:parallel parts->storable-content-drops-reasoning-test
+  (testing "reasoning parts are dropped and don't warn as unknown"
+    (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
+      (is (= [{:type "text" :text "hi" :state "done"}]
+             (metabot-persistence/parts->storable-content
+              [{:type :reasoning :id "r1" :text "thinking"}
+               {:type :reasoning :id "r1" :text "" :provider-metadata {:anthropic {:signature "s"}}}
+               {:type :text :text "hi"}])))
+      (is (not-any? #(re-find #"Dropping internal part" (:message %)) (logs))))))
 
 (deftest ^:parallel parts->storable-content-emits-step-start-boundaries-test
   (testing "each :start becomes a step-start boundary, in stream order"
@@ -498,18 +567,19 @@
              [{:type :text :text "ok"}])))
         ;; conversation-detail uses production reader ordering — the errored pair drops,
         ;; leaving just the retry turn.
-        (let [{:keys [chat_messages]} (metabot-persistence/conversation-detail conversation-id)]
+        (let [{:keys [messages]} (metabot-persistence/conversation-detail conversation-id)]
           (is (= [["user" "retry"] ["agent" "ok"]]
-                 (mapv (juxt :role :message) chat_messages))))))))
+                 (mapv (juxt :role :message) messages))))))))
 
 (deftest placeholder-still-active-uses-nil-finished-marker-test
   (testing "the in-flight predicate keys off finished IS NULL (not :data emptiness or :error)"
     (let [recent (java.time.OffsetDateTime/now)
           stale  (.minusHours recent 2)
           base   {:role :assistant :data [] :error nil}]
-      (testing "finished=nil + recent created_at → filtered"
-        (is (= [] (metabot-persistence/messages->chat-messages
-                   [(assoc base :finished nil :created_at recent)]))))
+      (testing "finished=nil + recent created_at → in-progress turn"
+        (is (=? [{:type "turn_in_progress" :role "agent"}]
+                (metabot-persistence/messages->chat-messages
+                 [(assoc base :finished nil :created_at recent)]))))
       (testing "finished=nil + stale created_at → not filtered (renders aborted stub)"
         (is (=? [{:type "text" :message "" :finished false}]
                 (metabot-persistence/messages->chat-messages
@@ -550,7 +620,7 @@
                   :created-at (.plusSeconds now 3)
                   :deleted-at now})
         (let [detail (metabot-persistence/conversation-detail conversation-id)
-              texts  (mapv :message (:chat_messages detail))]
+              texts  (mapv :message (:messages detail))]
           (is (= conversation-id (:conversation_id detail)))
           (is (= ["first" "second"] texts)))))))
 
@@ -727,7 +797,7 @@
             (testing "conversation-detail shows the prompt exactly once"
               (metabot-persistence/finalize-assistant-turn!
                assistant-msg-id [{:type :text :text "retried reply"}])
-              (let [messages (:chat_messages (metabot-persistence/conversation-detail conversation-id))]
+              (let [messages (:messages (metabot-persistence/conversation-detail conversation-id))]
                 (is (= ["hi" "retried reply"] (map :message messages)))))))))))
 
 (deftest retry-turn-deletes-all-trailing-assistant-rows-test
@@ -992,10 +1062,10 @@
           (is (true? (:finished row))
               "an errored turn still finalizes as finished"))))))
 
-(deftest messages-chat-messages-skips-in-flight-placeholders-test
+(deftest messages-chat-messages-in-flight-placeholders-test
   (testing "in-flight placeholders (assistant role, finished=nil, recent created_at)
-            are filtered out of the chat-message conversion, so a mid-stream read does not
-            render a stub 'Response was interrupted' alert"
+            become a trailing turn_in_progress message, so a resumed mid-stream read
+            renders a 'Response in progress…' row"
     (let [recent      (java.time.OffsetDateTime/now)
           ;; Comfortably outside the grace window so the test isn't sensitive
           ;; to the exact value of `placeholder-grace-period-ms`.
@@ -1004,9 +1074,10 @@
           stale-stub  {:role :assistant :data [] :finished nil :error nil :created_at stale}
           user-msg    {:role :user :data [{:type "text" :text "hi"}]}
           done-asst   {:role :assistant :data [{:type "text" :text "done"}] :finished true}]
-      (testing "in-flight placeholder is skipped; surrounding messages still render"
-        (is (= ["hi" "done"]
-               (mapv :message (metabot-persistence/messages->chat-messages [user-msg done-asst placeholder])))))
+      (testing "in-flight placeholder renders as turn_in_progress; surrounding messages still render"
+        (let [out (metabot-persistence/messages->chat-messages [user-msg done-asst placeholder])]
+          (is (= ["hi" "done" nil] (mapv :message out)))
+          (is (= ["text" "text" "turn_in_progress"] (mapv :type out)))))
       (testing "stale placeholder (older than grace window) still renders as the aborted-turn stub"
         (let [out (metabot-persistence/messages->chat-messages [user-msg stale-stub])]
           (is (= 2 (count out)))

@@ -1,4 +1,5 @@
 import { Icon, Tabs, type TabsProps } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 const args = {
   orientation: "horizontal",
@@ -25,7 +26,12 @@ const tabs = [
   { value: "segments", label: "Segments", icon: "segment" },
   { value: "actions", label: "Actions", icon: "bolt", disabled: true },
   { value: "filters", label: "Filters", icon: "filter" },
-];
+] satisfies {
+  value: string;
+  label: string;
+  icon: IconName;
+  disabled?: boolean;
+}[];
 
 const DefaultTemplate = (args: TabsProps) => (
   <Tabs {...args}>
@@ -52,8 +58,7 @@ const IconsTemplate = (args: TabsProps) => (
           key={tab.value}
           value={tab.value}
           disabled={tab.disabled}
-          // Unjustified type cast. FIXME
-          leftSection={<Icon name={tab.icon as keyof typeof Icon} />}
+          leftSection={<Icon name={tab.icon} />}
         >
           {tab.label}
         </Tabs.Tab>

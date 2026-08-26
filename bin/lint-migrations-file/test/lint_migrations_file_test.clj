@@ -398,3 +398,40 @@
                                                                                   :remarks "none"
                                                                                   :type "timestamp with time zone"}}]}}]
                                      :rollback nil))))))
+
+(deftest ^:parallel require-table-scoped-existence-preconditions-test
+  (testing "foreignKeyConstraintExists without foreignKeyTableName is rejected"
+    (is-thrown-with-error-info?
+     "Migration 'v49.2024-01-01T10:30:00' has foreignKeyConstraintExists precondition without foreignKeyTableName: without it Liquibase snapshots the entire schema to answer the check (~2s per precondition on a large postgres appdb)"
+     {:id "v49.2024-01-01T10:30:00"}
+     (validate
+      (mock-change-set
+       :preConditions [{:onFail "MARK_RAN"}
+                       {:not [{:foreignKeyConstraintExists {:foreignKeyName "fk_my_table_other_id"}}]}]))))
+  (testing "foreignKeyConstraintExists with foreignKeyTableName passes"
+    (is (= :ok
+           (validate
+            (mock-change-set
+             :preConditions [{:onFail "MARK_RAN"}
+                             {:not [{:foreignKeyConstraintExists {:foreignKeyName      "fk_my_table_other_id"
+                                                                  :foreignKeyTableName "my_table"}}]}])))))
+  (testing "indexExists without tableName is rejected, including in flat-map not form"
+    (is-thrown-with-error-info?
+     "Migration 'v49.2024-01-01T10:30:00' has indexExists precondition without tableName: without it Liquibase snapshots the entire schema to answer the check (~2s per precondition on a large postgres appdb)"
+     {:id "v49.2024-01-01T10:30:00"}
+     (validate
+      (mock-change-set
+       :preConditions [{:not {:indexExists {:indexName "idx_my_table_other_id"}}}]))))
+  (testing "indexExists with tableName passes"
+    (is (= :ok
+           (validate
+            (mock-change-set
+             :preConditions [{:not {:indexExists {:indexName "idx_my_table_other_id"
+                                                  :tableName "my_table"}}}])))))
+  (testing "primaryKeyExists without tableName is still rejected (previous rule subsumed)"
+    (is-thrown-with-error-info?
+     "Migration 'v49.2024-01-01T10:30:00' has primaryKeyExists precondition without tableName: without it Liquibase snapshots the entire schema to answer the check (~2s per precondition on a large postgres appdb)"
+     {:id "v49.2024-01-01T10:30:00"}
+     (validate
+      (mock-change-set
+       :preConditions [{:primaryKeyExists {:primaryKeyName "pk_my_table"}}])))))

@@ -16,8 +16,8 @@
   "keyword to use for locking document updates that can deadlock"
   ::document-statistics-lock)
 
-(derive ::document-read :metabase/event)
-(derive :event/document-read ::document-read)
+(events/derive! ::document-read :metabase/event)
+(events/derive! :event/document-read ::document-read)
 
 (def ^:private update-document-last-viewed-at-interval-seconds 20)
 
@@ -39,7 +39,7 @@
                             :updated_at :updated_at} ;; setting last_viewed_at should not update the updated_at column
                    :where  [:in :id (keys document-id->timestamp)]}))
       (catch Exception e
-        (log/error e "Failed to update document last_viewed_at")))))
+        (log/errorf "Failed to update document last_viewed_at: %s" (ex-message e))))))
 
 (def ^:private update-document-last-viewed-at-queue
   (delay (grouper/start!
@@ -68,4 +68,4 @@
       ;; Update recent views alongside existing view log functionality
       (activity-feed/update-users-recent-views! user-id :model/Document object-id :view)
       (catch Throwable e
-        (log/warnf e "Failed to process document view event. %s" topic)))))
+        (log/warnf "Failed to process document view event. %s: %s" topic (ex-message e))))))

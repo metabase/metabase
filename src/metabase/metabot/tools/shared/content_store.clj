@@ -13,7 +13,7 @@
 
   `default-store` is the standard agent / tool-path store — `unchecked-app-db-content-store`
   wrapped with `read-checked`. Use this as the content store for any agent or tool path that
-  runs under an authenticated request. The symmetry across all five methods (both
+  runs under an authenticated request. The symmetry across all six methods (both
   `-by-entity-id` import-direction and `-by-id` export-direction) is intentional: the export
   direction may surface entity_ids of Cards / Measures / Segments referenced inside an
   exported query body, and a missing check on those branches is exactly the N1 ACL gap that
@@ -36,12 +36,13 @@
 
 (defn read-checked
   "Wrap `store` so every lookup applies `api/read-check` when `api/*current-user-id*` is
-  bound. Symmetric across all five `ContentStore` methods."
+  bound. Symmetric across all six `ContentStore` methods."
   [store]
   (reify resolve.mp/ContentStore
     (card-by-entity-id    [_ eid] (maybe-read-check (resolve.mp/card-by-entity-id    store eid)))
     (measure-by-entity-id [_ eid] (maybe-read-check (resolve.mp/measure-by-entity-id store eid)))
     (segment-by-entity-id [_ eid] (maybe-read-check (resolve.mp/segment-by-entity-id store eid)))
+    (card-by-id           [_ id]  (maybe-read-check (resolve.mp/card-by-id           store id)))
     (measure-by-id        [_ id]  (maybe-read-check (resolve.mp/measure-by-id        store id)))
     (segment-by-id        [_ id]  (maybe-read-check (resolve.mp/segment-by-id        store id)))))
 

@@ -19,7 +19,7 @@ describe("baseQuery (RTK Query adapter)", () => {
     { method: "POST", retry: true },
     { method: "PUT", retry: false },
     { method: "DELETE", retry: false },
-  ])("passes retry=$retry for $method", async ({ method, retry }) => {
+  ] as const)("passes retry=$retry for $method", async ({ method, retry }) => {
     const requestSpy = jest.spyOn(api, "request").mockResolvedValue({});
 
     await baseQuery({ method, url: "/api/thing" }, ctx, {});
@@ -41,6 +41,17 @@ describe("baseQuery (RTK Query adapter)", () => {
         retry: true,
       }),
     );
+  });
+
+  it("returns an error when the URL is not configured", async () => {
+    const requestSpy = jest.spyOn(api, "request").mockResolvedValue({});
+
+    const result = await baseQuery({ url: null }, ctx, {});
+
+    expect(result).toEqual({
+      error: new Error("API request URL is not configured"),
+    });
+    expect(requestSpy).not.toHaveBeenCalled();
   });
 
   it("forwards the lifecycle abort signal to the client", async () => {

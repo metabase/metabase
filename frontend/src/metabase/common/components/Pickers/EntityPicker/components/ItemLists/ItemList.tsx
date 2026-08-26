@@ -5,9 +5,9 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsTenantUser } from "metabase/selectors/user";
 import {
   Box,
   type BoxProps,
@@ -21,7 +21,7 @@ import {
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
-import { ItemListLoader } from "../LoadingSpinner";
+import { ItemListLoader } from "../ItemListLoader";
 
 const PickerColumn = ({
   children,

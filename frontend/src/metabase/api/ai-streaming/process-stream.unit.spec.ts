@@ -6,6 +6,9 @@ import { createMockReadableStream, createMockSSEStream } from "./test-utils";
 const getMockedCallbacks = () => ({
   onStart: jest.fn(),
   onTextPart: jest.fn(),
+  onReasoningStart: jest.fn(),
+  onReasoningDelta: jest.fn(),
+  onReasoningEnd: jest.fn(),
   onDataPart: jest.fn(),
   onToolInputStart: jest.fn(),
   onToolInputAvailable: jest.fn(),
@@ -98,11 +101,29 @@ describe("processChatResponse", () => {
     ]);
   });
 
-  it("should ignore unhandled event types", async () => {
+  it("should fire reasoning callbacks and not append reasoning to result", async () => {
     const mockStream = createMockSSEStream([
-      // Unjustified type cast. FIXME
-      { type: "reasoning-start", id: "r1" } as unknown as SSEEvent,
+      { type: "reasoning-start", id: "r1" },
+      { type: "reasoning-delta", id: "r1", delta: "Think" },
+      { type: "reasoning-delta", id: "r1", delta: "ing" },
+      { type: "reasoning-end", id: "r1" },
     ]);
+    const config = getMockedCallbacks();
+
+    const result = await processChatResponse(mockStream, config);
+    expect(config.onReasoningStart).toHaveBeenCalledTimes(1);
+    expect(config.onReasoningDelta).toHaveBeenCalledTimes(1);
+    expect(config.onReasoningDelta).toHaveBeenCalledWith(
+      expect.objectContaining({ delta: "Thinking" }),
+    );
+    expect(config.onReasoningEnd).toHaveBeenCalledTimes(1);
+    expect(config.onError).not.toHaveBeenCalled();
+    expect(result.data).toEqual([]);
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it("should ignore unhandled event types", async () => {
+    const mockStream = createMockSSEStream([{ type: "start-step" }]);
     const config = getMockedCallbacks();
     await expect(processChatResponse(mockStream, config)).resolves.toBeTruthy();
     expect(config.onError).not.toHaveBeenCalled();
@@ -146,6 +167,27 @@ describe("processChatResponse", () => {
     ]);
   });
 
+  it("forwards a streamed title on tool-input-available", async () => {
+    const config = getMockedCallbacks();
+    await processChatResponse(
+      createMockSSEStream([
+        {
+          type: "tool-input-available",
+          toolCallId: "x",
+          toolName: "read_resource",
+          input: {},
+          title: "Inspecting [Orders](metabase://dashboard/5)",
+        },
+      ]),
+      config,
+    );
+    expect(config.onToolInputAvailable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Inspecting [Orders](metabase://dashboard/5)",
+      }),
+    );
+  });
+
   it("should call onToolInputStart for tool-input-start events", async () => {
     const config = getMockedCallbacks();
     await processChatResponse(
@@ -186,18 +228,24 @@ describe("processChatResponse", () => {
     ).rejects.toBeTruthy();
   });
 
-  it("should forward each text delta to onTextPart", async () => {
+  it("should smooth text deltas word by word", async () => {
     const config = getMockedCallbacks();
-    const mockStream = createMockSSEStream([
-      { type: "text-start", id: "t1" },
-      { type: "text-delta", id: "t1", delta: "You, but " },
-      { type: "text-delta", id: "t1", delta: "don't tell anyone." },
-      { type: "text-end", id: "t1" },
-    ]);
+    await processChatResponse(
+      createMockSSEStream([
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+        { type: "text-end", id: "t1" },
+      ]),
+      config,
+    );
 
-    await processChatResponse(mockStream, config);
-    expect(config.onTextPart).toHaveBeenNthCalledWith(1, "You, but ");
-    expect(config.onTextPart).toHaveBeenNthCalledWith(2, "don't tell anyone.");
+    expect(config.onTextPart.mock.calls.map(([delta]) => delta)).toEqual([
+      "You, ",
+      "but ",
+      "don't ",
+      "tell ",
+      "anyone.",
+    ]);
   });
 
   it("should resolve with partial response for aborted requests", async () => {

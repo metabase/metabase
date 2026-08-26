@@ -18,7 +18,7 @@
       (try
         (f)
         (catch Exception e
-          (log/error e (str "Error in " label)))))))
+          (log/error (str "Error in " label ":") (ex-message e)))))))
 
 (def ^:private active-poll-states
   "Set of poll states that currently have a running polling thread."
@@ -49,7 +49,7 @@
                                         (poll-fn)
                                         (catch InterruptedException e (throw e))
                                         (catch Exception e
-                                          (log/errorf e "Error in %s polling loop" label)
+                                          (log/errorf "Error in %s polling loop: %s" label (ex-message e))
                                           false))]
                       (when-not found-work?
                         (locking notify (.wait ^Object notify (long wait-ms)))))

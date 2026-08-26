@@ -48,15 +48,6 @@
     (mi/perms-objects-set dashboard read-or-write)))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-(defmethod serdes/hash-fields :model/DashboardTab
-  [_dashboard-tab]
-  [:name
-   (comp serdes/identity-hash
-         #(t2/select-one :model/Dashboard :id %)
-         :dashboard_id)
-   :position
-   :created_at])
-
 (defmethod serdes/generate-path "DashboardTab" [_ dashcard]
   [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
    (serdes/infer-self-path "DashboardTab" dashcard)])

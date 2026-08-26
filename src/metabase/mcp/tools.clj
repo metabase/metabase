@@ -391,7 +391,11 @@
    (cond-> {:request-method   method
             :uri              path
             :metabase-user-id api/*current-user-id*
-            :token-scopes     token-scopes}
+            :token-scopes     token-scopes
+            ;; Marks this as MCP's synthetic in-process dispatch so the Agent API usage recorder
+            ;; skips it — these calls are already counted in mcp_tool_call_log; recording them as
+            ;; agent_api_call_log rows too would double-count.
+            :agent-api-internal-request? true}
      ;; POST/PUT/PATCH carry params in the body; GET/DELETE carry them as query params.
      (and (seq params) (#{:post :put :patch} method))    (assoc :body params)
      (and (seq params) (not (#{:post :put :patch} method))) (assoc :query-params params))

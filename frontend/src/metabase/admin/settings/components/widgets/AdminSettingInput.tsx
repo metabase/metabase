@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
-import { useAdminSetting } from "metabase/api/utils";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useAdminSetting } from "metabase/settings";
 import {
   Box,
   type BoxProps,

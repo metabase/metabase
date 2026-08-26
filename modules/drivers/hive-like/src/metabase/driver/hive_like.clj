@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
@@ -21,12 +22,41 @@
 (set! *warn-on-reflection* true)
 
 (driver/register! :hive-like
-                  :parent #{:sql-mbql5 :sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
+                  :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
                   :abstract? true)
 
-(doseq [[feature supported?] {:now           true
-                              :datetime-diff true}]
+(doseq [[feature supported?] {:now                 true
+                              :datetime-diff       true
+                              :native-pivot-tables true}]
   (defmethod driver/database-supports? [:hive-like feature] [_driver _feature _db] supported?))
+
+;; Hive-family dialects support `GROUPING SETS` and single-arg `GROUPING(x)`, but their `GROUPING_ID(a, b, ...)`
+;; requires the arg order to exactly match the `GROUP BY` column order — and `[[metabase.driver.sql.pivot]]`
+;; reverses the args so `bit 0 = first breakout` (the Postgres/Oracle/SQL Server convention). To keep
+;; that convention without tripping Spark's `GROUPING_ID_COLUMN_MISMATCH` check, synthesize the bitmask from
+;; single-arg `GROUPING(x)` calls instead.
+(defmethod sql.pivot/pivot-grouping-hsql :hive-like
+  [_driver exprs]
+  (sql.pivot/synthesise-grouping-bitmask exprs))
+
+;; Spark's analyzer rejects join-qualified column refs in ORDER BY after `GROUP BY GROUPING SETS`, even
+;; when the same refs are valid in the SELECT list — Postgres/Oracle/SQL Server tolerate this via lenient
+;; re-resolution through the SELECT, Spark doesn't. Delegate to the `:sql` implementation and then rewrite
+;; the ORDER BY as 1-based positional references, which Spark accepts and which is standard SQL.
+(defmethod sql.qp/apply-top-level-clause [:hive-like :pivot]
+  [driver clause honeysql-form {:keys [breakout] :as pivot-ctx}]
+  (let [result             ((get-method sql.qp/apply-top-level-clause [:sql :pivot])
+                            driver clause honeysql-form pivot-ctx)
+        ;; SELECT layout after the parent runs: [breakout-1..n, pivot-grouping, aggs...].
+        pivot-grouping-pos (inc (count breakout))
+        breakout-positions (range 1 pivot-grouping-pos)
+        ;; The parent installs `GROUP BY [[::sql.pivot/grouping-sets set1 set2 ...]]`; more than one set
+        ;; means the pivot-grouping bitmask varies per row and needs to lead the ORDER BY.
+        multi-set?         (some? (nnext (first (:group-by result))))]
+    (assoc result :order-by
+           (into (if multi-set? [[[:inline pivot-grouping-pos] :asc]] [])
+                 (map (fn [p] [[:inline p] :asc]))
+                 breakout-positions))))
 
 (defmethod driver/escape-alias :hive-like
   [driver s]
@@ -245,7 +275,7 @@
   ;; Because Spark SQL doesn't support parameterized queries (e.g. `?`) convert the entire String to hex and decode.
   ;; e.g. encode `abc` as `decode(unhex('616263'), 'utf-8')` to prevent SQL injection
   (case *inline-param-style*
-    :friendly (str \' (sql.u/escape-sql s :backslashes) \')
+    :friendly (sql.u/quote-literal s :backslashes)
     :paranoid (format "decode(unhex('%s'), 'utf-8')" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first

@@ -5,6 +5,7 @@
   OSS shims live in [[metabase.entity-retrieval.mirror]]; the background sync they nudge is the
   [[metabase-enterprise.entity-retrieval.task.sync]] Quartz job."
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [honey.sql :as sql]
@@ -13,7 +14,10 @@
    [metabase-enterprise.entity-retrieval.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as embedding]
+   [metabase-enterprise.semantic-search.embedding-health :as embedding-health]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -29,65 +33,195 @@
   [[metabase-enterprise.entity-retrieval.task.sync]]."
   (jobs/key "metabase-enterprise.entity-retrieval.sync.job"))
 
-(defn pgvector-configured?
-  "True when a dedicated pgvector store is configured (MB_PGVECTOR_DB_URL).
-  Deliberately excludes pgvector-on-the-app-db: entity retrieval's tables are not yet schema-isolated
-  (bare `library_entity_index*` names, dropped and recreated on rebuild), so it stays dedicated-only
-  until they are.
-  The sync task gates scheduling on this rather than [[available?]], so the periodic safety net exists
-  even when the library-retrieval feature is turned on after startup (a common onboarding flow).
-  A plain URL check, not [[metabase-enterprise.semantic-search.db.datasource/pgvector-mode]]: mode
-  resolution can probe the app db, which a dedicated-only scheduling gate has no business doing."
+(defn- licensed?
+  "Without a library, there is nothing one is entitled to retrieve."
   []
-  (semantic.db.datasource/dedicated-url-configured?))
+  (and (premium-features/has-feature? :library)
+       (premium-features/has-feature? :library-retrieval)))
+
+(defn pgvector-schedulable?
+  "Whether this instance could have a pgvector store: a dedicated one, or an app db that might host one.
+  Env and license only, never a query -- the sync task schedules on this, and resolving
+  [[metabase-enterprise.semantic-search.db.datasource/pgvector-mode]] would probe the app db of instances
+  that can't use the answer.
+  Licensing an app-db instance post-boot needs a restart before the job schedules."
+  []
+  (or (semantic.db.datasource/dedicated-url-configured?)
+      (and (licensed?)
+           (= :postgres (mdb/db-type)))))
+
+(def ^:private schema-privilege-sql
+  "NULL when the schema does not exist, otherwise whether this role may both use it and create in it.
+  Two calls rather than `'USAGE, CREATE'`: a comma-separated list reads as OR, which USAGE alone passes."
+  "SELECT CASE WHEN to_regnamespace(?) IS NULL THEN NULL
+              ELSE has_schema_privilege(?, 'USAGE') AND has_schema_privilege(?, 'CREATE')
+         END AS privileged")
+
+(defn- app-db-schema-usable?*
+  "Whether this role can hold the index in [[index-table/index-schema]].
+  Privileges, not existence: USAGE without CREATE passes a mere existence check, then fails in
+  [[index-table/ensure-tables!]].
+  A database failure reads as unusable, so an outage can't throw out of the fire-and-forget
+  [[request-entity-sync!]]."
+  []
+  (let [schema index-table/index-schema]
+    (try
+      (if-some [privileged (:privileged (jdbc/execute-one!
+                                         (mdb/data-source)
+                                         [schema-privilege-sql schema schema schema]
+                                         {:builder-fn jdbc.rs/as-unqualified-lower-maps}))]
+        privileged
+        ;; Not there yet -- can this role create it? Rolled back, so nothing is persisted here.
+        (do
+          (jdbc/with-transaction [tx (mdb/data-source) {:rollback-only true}]
+            (jdbc/execute! tx [(format "CREATE SCHEMA IF NOT EXISTS %s" (semantic.util/quote-ident schema))]))
+          true))
+      (catch InterruptedException e
+        (throw e))
+      (catch Exception e
+        (log/debugf "The application database user cannot host the library retrieval schema: %s" (ex-message e))
+        false))))
+
+(defonce ^{:doc "Set once [[app-db-schema-usable?*]] has answered yes. Rebound by tests."}
+  app-db-schema-confirmed?
+  (atom false))
+
+(def ^:private retry-app-db-schema-probe
+  "[[app-db-schema-usable?*]], re-run at most every five minutes."
+  (memoize/ttl app-db-schema-usable?* :ttl/threshold (* 5 60 1000)))
+
+;; A latch that closes once we detect the necessary schema.
+;; This way we retry until the resource is ready, but don't leave it disabled for TTL on transient failures.
+(defn- app-db-schema-usable?
+  "Whether this role can hold the index, cached. [[available?]] asks on every write nudge and every search,
+  and the underlying check can attempt DDL."
+  []
+  (swap! app-db-schema-confirmed? #(or % (retry-app-db-schema-probe))))
+
+(defn pgvector-configured?
+  "Whether a pgvector store is resolvable, dedicated or on the app db.
+  The app-db arm checks this feature's own schema: semantic search's predicate answers for
+  `semantic_search`, so a role that can use that one but not create ours would read as ready and then fail
+  every reconcile.
+  Probes the app db, so check the license first (see [[available?]])."
+  []
+  (and (semantic.db.datasource/pgvector-configured?)
+       (or (semantic.db.datasource/dedicated-url-configured?)
+           (app-db-schema-usable?))))
+
+(defn- embedder-configured?
+  "Whether an embedding backend is configured: without one we can neither index nor retrieve."
+  []
+  (embedding/embedding-supported? (embedding/get-configured-model)))
 
 (defn available?
-  "Whether the entity-retrieval mirror can run right now. All four must hold:
-    - a pgvector store is configured (somewhere to hold the index),
-    - the license includes `:library-retrieval` (the tool is entitled),
-    - the license includes `:library`: retrieval operates over library entities, so the tool is meaningless
-      without it (the index would have nothing to hold) — enforced here so a token granting
-      `:library-retrieval` alone degrades to \"unavailable\" explicitly, not silently via an empty index,
-    - an embedding backend is configured (see [[embedding/embedding-supported?]]): without one, both
-      reconcile and query embedding would throw, so we gate rather than fail mid-run.
-  The feature and config checks can flip at runtime (token/settings entered post-boot), so callers
-  re-evaluate per use."
+  "Whether the entity-retrieval mirror can run right now:
+  - We have this feature
+  - We have somewhere to store embedding vectors
+  - We have some way to compute embedding vectors
+
+  Re-evaluate this per use, as this configuration is dynamic."
   []
-  ;; entitlement first: short-circuit on the license flags for instances that can't use the answer, before
-  ;; the config check (here a cheap dedicated-URL string check, not the app-db pgvector probe)
-  (and (premium-features/has-feature? :library)
-       (premium-features/has-feature? :library-retrieval)
+  ;; License first: [[pgvector-configured?]] can probe the app db, and an unlicensed instance must not.
+  (and (licensed?)
        (pgvector-configured?)
-       (embedding/embedding-supported? (embedding/get-configured-model))))
+       (embedder-configured?)))
 
-(defn- index-ready?
-  "Whether the library entity index can serve a query right now: its meta row matches the configured
-  embedding model and schema version, and it holds at least one document.
-  A mismatched meta row (a model/dimension/format change whose rebuild hasn't run yet), a missing or empty
-  vectors table, or any query error all read as not-ready.
-  The compatibility check is what keeps a stale index from being offered: querying a vectors table built for
-  a different model returns nothing (or errors) rather than answering, so the agent must get the
-  general-search fallback instead."
+(defn- resolved-configured-model
+  "Resolve the global setting to the immutable embedding space used by persisted library vectors."
   []
-  (boolean
-   (try
-     (let [ds (semantic.db.datasource/ensure-initialized-data-source!)]
-       (and (index-table/index-compatible? ds (embedding/get-configured-model))
-            (seq (jdbc/execute! ds [(format "SELECT 1 FROM \"%s\" LIMIT 1" index-table/*vectors-table*)]))))
-     (catch Throwable _ false))))
+  (embedding/resolve-model (embedding/get-configured-model)))
 
-;; OSS-callable surface used to decide whether to OFFER the retrieve_library_entities tool: it must
-;; be able to actually answer, so beyond config + license the index has to be built for the current model and
-;; populated. (The write/reconcile path gates on the looser [[available?]] instead, so an empty or stale
-;; index can still be rebuilt.) Runs unconditionally rather than gating on :feature — the OSS fallback
-;; `false` already covers the unlicensed case.
+(defn- resolved-configured-model-for-search
+  []
+  (try
+    (resolved-configured-model)
+    (catch clojure.lang.ExceptionInfo e
+      ;; Readiness can change after the tool is offered (for example settings can select an unavailable model).
+      ;; Domain/configuration failures should make this optional retrieval path disappear, while JVM errors and
+      ;; other unexpected exception types still escape.
+      (log/warn e "configured embedding model could not be resolved; returning no library results")
+      nil)))
+
+(defn- missing-table-error?
+  "Whether we threw due to a Postgres undefined_table error (42P01), i.e. the indexes don't exist yet.
+  Expected before the first build or after a manual drop awaiting heal.
+  The SQLState comes from the database itself, so this is not a connectivity fault."
+  [e]
+  (boolean (some #(and (instance? SQLException %)
+                       (= "42P01" (.getSQLState ^SQLException %)))
+                 (u/full-exception-chain e))))
+
+(defn- dependencies
+  "Entity retrieval's necessary conditions, as a `{:store, :embedder, :licenses}` map of booleans.
+  `:store` reads false when unlicensed rather than being resolved, which would query the app db."
+  []
+  (let [licensed (licensed?)]
+    {:store    (and licensed (pgvector-configured?))
+     :embedder (embedder-configured?)
+     :licenses licensed}))
+
+(defn- index-populated? [ds]
+  (boolean (seq (jdbc/execute! ds [(format "SELECT 1 FROM %s LIMIT 1" (index-table/vectors-table-sql))]))))
+
+(defn- probe-index
+  "The `:index` map — `{:status <enum>}`, plus `:error` on `:unreachable`. A compatible metadata row is
+  reported as missing when its vectors table is gone; population is otherwise probed only when requested."
+  [probe-populated?]
+  (try
+    (let [ds              (semantic.db.datasource/ensure-initialized-data-source!)
+          metadata-status (index-table/index-status ds (resolved-configured-model))
+          status          (if (and (= :compatible metadata-status)
+                                   (not (index-table/vectors-table-exists? ds)))
+                            :missing
+                            metadata-status)]
+      {:status (if (and (= :compatible status) probe-populated?)
+                 (if (index-populated? ds) :populated :empty)
+                 status)})
+    (catch InterruptedException e
+      (throw e))
+    (catch Exception e
+      ;; A missing table is the ordinary absent-index state, not a store fault.
+      (if (missing-table-error? e)
+        {:status :missing}
+        ;; DEBUG: entity-retrieval-available? probes per tool-offering request, so a pgvector outage would
+        ;; WARN-flood the logs; the :unreachable status and the health check already carry the signal.
+        (do (log/debugf "entity-retrieval index probe failed: %s" (ex-message e))
+            {:status :unreachable, :error (ex-message e)})))))
+
+(defn retrieval-status
+  "Entity-retrieval health, decomposed into dependencies and index state:
+
+    {:dependencies {:store <bool>, :embedder <bool>, :licenses <bool>}
+     :index        {:status <enum>}}   ; present only when every dependency holds
+
+  `:status` is one of:
+  - `:missing`      nothing built yet
+  - `:incompatible` built for a different model/schema — rebuild pending
+  - `:compatible`   matches the current model; population not probed
+  - `:empty`        compatible, holds no vectors
+  - `:populated`    compatible, holds ≥1 vector
+  - `:unreachable`  the store threw while probing; carries `:error`
+
+  Pass `probe-populated?` false to stop at `:compatible` and skip the population query."
+  ([] (retrieval-status true))
+  ([probe-populated?]
+   (let [deps (dependencies)]
+     (cond-> {:dependencies deps}
+       (every? val deps) (assoc :index (probe-index probe-populated?))))))
+
 (defenterprise entity-retrieval-available?
-  "EE impl: pgvector configured + library-retrieval licensed AND the index is ready (built for the current
-  model and populated), so the tool is offered only when it can serve a query (otherwise the agent
-  gets the general-search fallback)."
-  :feature :none
+  "Is there a non-empty compatible index, and are we able to use it?"
+  :feature :library-retrieval
   []
-  (and (available?) (index-ready?)))
+  (if-not (= :populated (get-in (retrieval-status) [:index :status]))
+    false
+    (if (embedding/embedder-circuit-untrusted?)
+      (do
+        ;; Keep serving the fallback until a throttled background trial has actually closed the breaker.
+        (embedding-health/request-circuit-recovery!)
+        false)
+      true)))
 
 ;;; ----------------------------------------- Reconcile scheduling -----------------------------------------
 ;;;
@@ -159,7 +293,7 @@
   (let [ds        (semantic.db.datasource/ensure-initialized-data-source!)
         waited-ms (elapsed-ms scheduled)
         started   (u/start-timer)
-        diff      (reconcile/reconcile! ds embedding/get-configured-model)
+        diff      (reconcile/reconcile! ds resolved-configured-model)
         ran-ms    (elapsed-ms started)]
     (record-run! "full" diff ran-ms)
     {:index     (select-keys diff [:inserted :deleted :unchanged])
@@ -178,11 +312,11 @@
     (doseq [[entity-type entity-local-id :as entity-key] dirty]
       (try
         (let [started (u/start-timer)
-              diff    (reconcile/reconcile-entity! ds embedding/get-configured-model entity-type entity-local-id)]
+              diff    (reconcile/reconcile-entity! ds resolved-configured-model entity-type entity-local-id)]
           (record-run! "targeted" diff (elapsed-ms started)))
         (catch Throwable e
-          (log/error e "library entity index: targeted reconcile failed; re-queuing"
-                     entity-type entity-local-id)
+          (log/error "library entity index: targeted reconcile failed; re-queuing"
+                     entity-type entity-local-id (ex-message e))
           (locking run-lock (swap! dirty-entities conj entity-key)))))))
 
 (defn reconcile-full-coalesced!
@@ -255,54 +389,81 @@
                               (format "WHEN doc_type = '%s' THEN %s" (name k) w)))]
     (format "(%s) - (CASE %s ELSE 0.0 END)" distance-expr cases)))
 
-(defenterprise search
+(defn- index-compatible?
+  [connectable model]
+  (try
+    (= :compatible (index-table/index-status connectable model))
+    (catch SQLException e
+      (if (= "42P01" (.getSQLState e))
+        false
+        (throw e)))))
+
+(defenterprise search-unfiltered
   "Find the library-entity documents best matching `user-search-prompt`, up to `limit`, ranked by a
   blended score (cosine similarity plus a slight doc_type bump).
   Each result is shaped `{:entity {:model :id} :doc_type :doc_text :score}`, best score first; the caller
   dedupes the (many-per-entity) docs down to distinct entities.
-  Returns [] when the pgvector store is unconfigured."
+  Returns [] when the pgvector store is unconfigured.
+
+  Hits are not permission-filtered — see [[metabase.entity-retrieval.mirror/search-unfiltered]] for what a
+  caller owes the current user."
   :feature :library-retrieval
   [user-search-prompt limit]
   (if-not (available?)
     []
     (let [pgvector  (semantic.db.datasource/ensure-initialized-data-source!)
           limit     (or limit default-limit)
-          model     (embedding/get-configured-model)
-          embedding (embedding/get-embedding model user-search-prompt
-                                             {:type :query :record-tokens? true})
-          lit       (index-table/format-embedding embedding)
-          distance  (str "doc_embedding <=> " lit)
-          rows      (try
-                      (jdbc/execute!
-                       pgvector
-                       (-> (sql.helpers/select :entity_type :entity_local_id :doc_type :doc_text
-                                               [[:raw distance] :distance])
-                           (sql.helpers/from (keyword index-table/*vectors-table*))
-                           ;; Exact scan, no HNSW: the blended order-by can't use an ANN index, and the
-                           ;; library set is tiny.
-                           (sql.helpers/order-by [[:raw (ranking-sql distance)] :asc])
-                           (sql.helpers/limit limit)
-                           (sql/format {:quoted true}))
-                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-                      (catch SQLException e
-                        ;; Only the index-not-ready states degrade to no results — the index, not the agent,
-                        ;; is at fault and the next reconcile heals it:
-                        ;;   42P01  vectors table doesn't exist yet (pre-first-build; expected at boot, stay quiet)
-                        ;;   22000  stored vectors incompatible with the query vector (a dimension/format change
-                        ;;          awaiting rebuild — e.g. a vector(OLD) column vs a vector(NEW) literal)
-                        ;; Any other SQL error — a connection loss or pgvector outage — propagates so the tool
-                        ;; reports the search as unavailable rather than as an empty library.
-                        (case (.getSQLState e)
-                          "42P01" []
-                          "22000" (do (log/warn e "library entity index incompatible with the query vector; returning no results")
-                                      [])
-                          (do (analytics/inc! :metabase-entity-retrieval/search-failed)
-                              (throw e)))))]
-      (->> rows
-           (map (fn [row]
-                  {:entity   {:model (:entity_type row) :id (:entity_local_id row)}
-                   :doc_type (:doc_type row)
-                   :doc_text (:doc_text row)
-                   :score    (score row)}))
-           (sort-by (comp :total_score :score) >)
-           vec))))
+          model     (resolved-configured-model-for-search)]
+      ;; Check compatibility under a short non-blocking read lock. Even metadata-table DDL can otherwise block this
+      ;; preflight behind reconcile before we reach the protected query path. The later locked recheck remains
+      ;; authoritative because a reconcile can begin while the embedding is generated.
+      (if-not (and model
+                   (true? (reconcile/with-index-read-lock pgvector #(index-compatible? % model))))
+        []
+        (let [embedding (embedding/get-embedding model (embedding/prefix-search-query model user-search-prompt)
+                                                 {:type :query :record-tokens? true})
+              lit       (index-table/format-embedding embedding)
+              distance  (str "doc_embedding <=> " lit)]
+          (or
+           (reconcile/with-index-read-lock
+             pgvector
+             (fn [conn]
+               ;; The compatibility check and query share the reconcile lock and connection. A setting change
+               ;; after the tool was offered must never query same-width vectors from another immutable space.
+               (if-not (index-compatible? conn model)
+                 []
+                 (let [rows (try
+                              (jdbc/execute!
+                               conn
+                               (-> (sql.helpers/select :entity_type :entity_local_id :doc_type :doc_text
+                                                       [[:raw distance] :distance])
+                                   (sql.helpers/from (keyword (index-table/vectors-table)))
+                                   ;; Exact scan, no HNSW: the blended order-by can't use an ANN index, and the
+                                   ;; library set is tiny.
+                                   (sql.helpers/order-by [[:raw (ranking-sql distance)] :asc])
+                                   (sql.helpers/limit limit)
+                                   (sql/format {:quoted true}))
+                               {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+                              (catch SQLException e
+                                ;; Only the index-not-ready states degrade to no results — the index, not the agent,
+                                ;; is at fault and the next reconcile heals it:
+                                ;;   42P01  vectors table doesn't exist yet (pre-first-build; expected at boot, stay quiet)
+                                ;;   22000  stored vectors incompatible with the query vector (a dimension/format change
+                                ;;          awaiting rebuild — e.g. a vector(OLD) column vs a vector(NEW) literal)
+                                ;; Any other SQL error — a connection loss or pgvector outage — propagates so the tool
+                                ;; reports the search as unavailable rather than as an empty library.
+                                (case (.getSQLState e)
+                                  "42P01" []
+                                  "22000" (do (log/warnf "library entity index incompatible with the query vector; returning no results: %s" (ex-message e))
+                                              [])
+                                  (do (analytics/inc! :metabase-entity-retrieval/search-failed)
+                                      (throw e)))))]
+                   (->> rows
+                        (map (fn [row]
+                               {:entity   {:model (:entity_type row) :id (:entity_local_id row)}
+                                :doc_type (:doc_type row)
+                                :doc_text (:doc_text row)
+                                :score    (score row)}))
+                        (sort-by (comp :total_score :score) >)
+                        vec)))))
+           []))))))

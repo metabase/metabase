@@ -21,6 +21,11 @@ export const DataStudio = {
   breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
   Transforms: {
     header: () => cy.findByTestId("transforms-header"),
+    sectionHeader: () => cy.findByTestId("transforms-section-header"),
+    transformsTab: () =>
+      DataStudio.Transforms.sectionHeader().findByText("Transforms"),
+    jobsTab: () => DataStudio.Transforms.sectionHeader().findByText("Jobs"),
+    runsTab: () => DataStudio.Transforms.sectionHeader().findByText("Runs"),
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
     editTransform: () => cy.findByRole("button", { name: "Edit" }),
@@ -158,9 +163,20 @@ export const DataStudio = {
       DataStudio.Library.allTableItems().contains(name),
     result: (name: string) =>
       libraryPage().findByText(name).closest('[role="row"]'),
+    rowCheckbox: (name: string) =>
+      DataStudio.Library.result(name).findByRole("checkbox"),
+    selectRow: (name: string) => DataStudio.Library.rowCheckbox(name).check(),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string | RegExp) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
+    expandCollection: (name: string) =>
+      DataStudio.Library.result(name)
+        .findByRole("button", { name: "Expand" })
+        .click(),
+    collapseCollection: (name: string) =>
+      DataStudio.Library.result(name)
+        .findByRole("button", { name: "Collapse" })
+        .click(),
     emptyStateRow: (description: string | RegExp) =>
       libraryPage().contains('[data-testid="empty-state-row"]', description),
   },

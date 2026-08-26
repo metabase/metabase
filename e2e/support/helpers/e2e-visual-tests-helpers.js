@@ -1,5 +1,6 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { color as getColor } from "metabase/ui/colors";
+import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style.ts";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
 import { TREND_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/trend-line.ts";
 
@@ -56,6 +57,20 @@ export function timelineEventChip(label) {
   return cy.get(`[data-testid="timeline-event-chip"][aria-label="${label}"]`);
 }
 
+export function timelineEventMarkerLine() {
+  const lineWidth = CHART_STYLE.timelineEvents.selectionLineWidth;
+  return echartsContainer()
+    .find(`path[stroke-width='${lineWidth}'][fill='none']`)
+    .filter((_, element) => {
+      // a vertical line is drawn as "M x y1 L x y2" — two points with the same x
+      const coordinates = (element.getAttribute("d") ?? "")
+        .split(/[ML\s,]+/)
+        .filter(Boolean);
+      const [x1, , x2] = coordinates;
+      return coordinates.length === 4 && x1 === x2;
+    });
+}
+
 export function chartGridLines() {
   return echartsContainer().find(
     "path[stroke='var(--mb-color-cartesian-grid-line)'][fill='none']",
@@ -98,6 +113,12 @@ export function cartesianChartCircleWithColor(color) {
 
 export function cartesianChartCircleWithColors(colors) {
   return colors.map((color) => cartesianChartCircleWithColor(color));
+}
+
+export function cartesianChartCircleWithFillColor(color) {
+  return echartsContainer()
+    .find(`path[d="${CIRCLE_PATH}"]`)
+    .filter((_, element) => getComputedStyle(element).fill === color);
 }
 
 export function otherSeriesChartPaths() {

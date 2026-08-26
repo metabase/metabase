@@ -10,7 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-(derive :event/persisted-model-refresh-error ::event)
+(events/derive! :event/persisted-model-refresh-error ::event)
 
 ;; Maps the Quartz job-data `"type"` value (set by `database-trigger` /
 ;; `individual-trigger` in [[metabase.model-persistence.task.persist-refresh]]) to the

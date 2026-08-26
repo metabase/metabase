@@ -1,9 +1,7 @@
-import crossfilter from "crossfilter";
 import * as d3 from "d3";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCoordinate,
   isDate,
@@ -15,6 +13,7 @@ import type {
   CardId,
   DatasetColumn,
   DatasetData,
+  JsonQuery,
   RowValues,
   Series,
   SingleSeries,
@@ -178,30 +177,52 @@ export function isSameSeries(
   );
 }
 
+interface CardinalityCacheEntry {
+  rowCount: number;
+  columnCardinalityMap: Map<string, number>;
+}
+
 // cache computed cardinalities since they are computationally expensive
-const cardinalityCache = new Map<string, number>();
+const cardinalityCache = new WeakMap<JsonQuery, CardinalityCacheEntry>();
+
+function computeColumnCardinality(rows: RowValues[], colIndex: number): number {
+  return new Set(rows.map((row) => row[colIndex])).size;
+}
 
 export function getColumnCardinality(
-  cols: DatasetColumn[],
   rows: RowValues[],
-  index: number,
+  colIndex: number,
+  colName: string,
+  jsonQuery?: JsonQuery,
 ): number {
-  const col = cols[index];
-  const key = getColumnKey(col);
-
-  if (!cardinalityCache.has(key) && rows) {
-    const dataset = crossfilter(rows);
-    cardinalityCache.set(
-      key,
-      dataset
-        .dimension((d) => d[index])
-        .group()
-        .size(),
-    );
+  if (!jsonQuery) {
+    return computeColumnCardinality(rows, colIndex);
   }
 
-  // ok to cast since the code above will put the value in the map if it's not there
-  return cardinalityCache.get(key) as number;
+  let cardinalityCacheEntry = cardinalityCache.get(jsonQuery);
+
+  if (
+    !cardinalityCacheEntry ||
+    // check the row count to guard against jsonQuery being copied onto a series with changed data
+    cardinalityCacheEntry.rowCount !== rows.length
+  ) {
+    cardinalityCacheEntry = {
+      rowCount: rows.length,
+      columnCardinalityMap: new Map<string, number>(),
+    };
+    cardinalityCache.set(jsonQuery, cardinalityCacheEntry);
+  }
+
+  const { columnCardinalityMap } = cardinalityCacheEntry;
+
+  const cachedCardinality = columnCardinalityMap.get(colName);
+  if (cachedCardinality !== undefined) {
+    return cachedCardinality;
+  }
+
+  const computedCardinality = computeColumnCardinality(rows, colIndex);
+  columnCardinalityMap.set(colName, computedCardinality);
+  return computedCardinality;
 }
 
 const extentCache = new WeakMap<DatasetColumn, ReturnType<typeof d3.extent>>();
@@ -284,7 +305,7 @@ export function getSingleSeriesDimensionsAndMetrics(
   metrics: string[] | [null];
   bubble?: null;
 } {
-  const { data } = series;
+  const { data, json_query: jsonQuery } = series;
   if (!data) {
     return {
       dimensions: [null],
@@ -316,8 +337,18 @@ export function getSingleSeriesDimensionsAndMetrics(
       // if the series dimension is a date but the axis dimension is not then swap them
       dimensions.reverse();
     } else if (
-      getColumnCardinality(cols, rows, cols.indexOf(dimensions[0])) <
-      getColumnCardinality(cols, rows, cols.indexOf(dimensions[1]))
+      getColumnCardinality(
+        rows,
+        cols.indexOf(dimensions[0]),
+        dimensions[0].name,
+        jsonQuery,
+      ) <
+      getColumnCardinality(
+        rows,
+        cols.indexOf(dimensions[1]),
+        dimensions[1].name,
+        jsonQuery,
+      )
     ) {
       // if the series dimension is higher cardinality than the axis dimension then swap them
       dimensions.reverse();
@@ -326,7 +357,12 @@ export function getSingleSeriesDimensionsAndMetrics(
 
   if (
     dimensions.length > 1 &&
-    getColumnCardinality(cols, rows, cols.indexOf(dimensions[1])) > MAX_SERIES
+    getColumnCardinality(
+      rows,
+      cols.indexOf(dimensions[1]),
+      dimensions[1].name,
+      jsonQuery,
+    ) > MAX_SERIES
   ) {
     dimensions.pop();
   }
@@ -418,17 +454,23 @@ export function getCardKey(cardId: CardId | undefined) {
 
 const PIVOT_SENSIBLE_MAX_CARDINALITY = 16;
 
-export const getDefaultPivotColumn = (
-  cols: DatasetColumn[],
-  rows: RowValues[],
-) => {
+export const getDefaultPivotColumn = (series: SingleSeries) => {
+  const {
+    data: { cols, rows },
+    json_query: jsonQuery,
+  } = series;
   const columnsWithCardinality = cols
     .map((column, index) => {
       if (!isDimension(column)) {
         return null;
       }
 
-      const cardinality = getColumnCardinality(cols, rows, index);
+      const cardinality = getColumnCardinality(
+        rows,
+        index,
+        column.name,
+        jsonQuery,
+      );
       if (cardinality > PIVOT_SENSIBLE_MAX_CARDINALITY) {
         return null;
       }
@@ -488,7 +530,10 @@ function findSankeyColumnPair(
   };
 }
 
-export function findSensibleSankeyColumns(data: DatasetData | null) {
+export function findSensibleSankeyColumns(
+  data: DatasetData | null,
+  jsonQuery?: JsonQuery,
+) {
   if (!data?.cols || !data?.rows) {
     return null;
   }
@@ -522,7 +567,12 @@ export function findSensibleSankeyColumns(data: DatasetData | null) {
           uniqueValues.size > 0 &&
           uniqueValues.size <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY
         ) {
-          const cardinality = getColumnCardinality(cols, rows, index);
+          const cardinality = getColumnCardinality(
+            rows,
+            index,
+            col.name,
+            jsonQuery,
+          );
           if (
             cardinality > 0 &&
             cardinality <= MAX_REASONABLE_SANKEY_DIMENSION_CARDINALITY

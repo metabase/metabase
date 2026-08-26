@@ -25,7 +25,10 @@ function mapRedshiftValues(parsedValues: RegexFields) {
     ["details.port", port],
     ["details.user", UID],
     ["details.password", PWD],
-    ["details.additional-options", objectToString(parsedValues.params)],
+    [
+      "details.additional-options",
+      objectToString(parsedValues.params, ["UID", "PWD"]),
+    ],
   ]);
 
   if (fieldsMap.get("details.additional-options")) {

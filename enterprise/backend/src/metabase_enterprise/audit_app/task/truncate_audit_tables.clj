@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit-app.task.truncate-audit-tables
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise audit-models-to-truncate
@@ -11,6 +12,10 @@
   `metabase-enterprise.mcp.task.mcp-usage-trimmer` (keyed on `ai-usage-max-retention-days`)."
   :feature :audit-app
   []
-  [{:model :model/QueryExecution :timestamp-col :started_at}
-   {:model :model/AuditLog       :timestamp-col :timestamp}
-   {:model :model/ViewLog        :timestamp-col :timestamp}])
+  ;; postgres has partitioned query_execution; we detach partitions instead of deleting
+  (if (= :postgres (mdb/db-type))
+    [{:model :model/AuditLog       :timestamp-col :timestamp}
+     {:model :model/ViewLog        :timestamp-col :timestamp}]
+    [{:model :model/QueryExecution :timestamp-col :started_at}
+     {:model :model/AuditLog       :timestamp-col :timestamp}
+     {:model :model/ViewLog        :timestamp-col :timestamp}]))

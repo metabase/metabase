@@ -177,6 +177,7 @@ export const {
   useUnsubscribeFromNotificationMutation,
   useSendUnsavedNotificationMutation,
   useAdminListNotificationsQuery,
+  useLazyAdminListNotificationsQuery,
   useBulkNotificationActionMutation,
   useAdminNotificationDetailQuery,
   useUnsubscribeFromNotificationByEmailMutation,

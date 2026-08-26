@@ -85,7 +85,6 @@
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -198,7 +197,7 @@
   > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
   where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MBQL 5."
   [query-map]
-  (-> (lib.query/->legacy-MBQL query-map)
+  (-> (lib.convert/->legacy-MBQL query-map)
       fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export append-stage
@@ -644,11 +643,17 @@
 (defn ^:export with-temporal-bucket
   "Add the specified `bucketing-option` to `a-clause-or-column`, returning an updated form of the clause or column.
 
-  If `bucketing-option` is `nil` (JS `undefined` or `null`), any existing temporal bucketing is removed.
+  `bucketing-option` may be a bucket object (from [[available-temporal-buckets]]) or a unit name string
+  (e.g. `\"day\"`, `\"default\"`). The string `\"default\"` sets an explicit no-truncation bucket that
+  survives the `auto-bucket-datetimes` middleware; contrast with `nil` (JS `undefined` or `null`), which
+  removes the bucket entirely and lets the middleware add `:day` back.
 
   > **Code health:** Healthy"
   [a-clause-or-column bucketing-option]
-  (lib.core/with-temporal-bucket a-clause-or-column bucketing-option))
+  (lib.core/with-temporal-bucket
+    a-clause-or-column
+    (cond-> bucketing-option
+      (string? bucketing-option) keyword)))
 
 (defn ^:export available-temporal-buckets
   "Get a list of available temporal bucketing options for `a-clause-or-column` in the context of `a-query`
