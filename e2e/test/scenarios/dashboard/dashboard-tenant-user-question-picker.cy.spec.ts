@@ -122,21 +122,22 @@ describe("scenarios > dashboard > tenant users using question picker", () => {
       cy.intercept({
         method: "GET",
         pathname: "/api/collection/tree",
-        query: { namespace: "shared-tenant-collection" },
+        query: {
+          namespace: "shared-tenant-collection",
+          "exclude-archived": "true",
+        },
       }).as("sharedTenantCollections");
-
-      cy.intercept({
-        method: "GET",
-        pathname: "/api/collection/tree",
-        query: { namespace: "tenant-specific" },
-      }).as("tenantSpecificCollections");
 
       H.visitDashboard(id);
       H.editDashboard();
       H.openQuestionsSidebar();
 
       cy.wait("@sharedTenantCollections");
-      cy.wait("@tenantSpecificCollections");
+
+      H.sidebar()
+        .findByTestId("breadcrumbs")
+        .should("contain", "Collections")
+        .and("contain", "My personal collection");
 
       H.sidebar().findByTestId("breadcrumbs").findByText("Collections").click();
 
