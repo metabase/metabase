@@ -8,7 +8,7 @@ module.exports = {
     "^visualizations/shared",
     "^app/embed",
     "^design system",
-    "^Components/Overlays/Menu Hover states",
+    "^Components/Overlays/Menu Hover state",
     "^Components/Overlays/Popover Opened",
     "^Components/Overlays/Modal Opened",
     "^Components/Overlays/HoverCard Opened",
