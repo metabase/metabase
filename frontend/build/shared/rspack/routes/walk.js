@@ -1,12 +1,15 @@
 /* eslint-env node */
 
 /**
- * Walking the route tree as source, collecting the chunk each URL needs.
+ * Walking the route tree as source.
+ *
+ * Every route is reported, whether or not it loads its page on demand, so that
+ * callers can ask different questions of the same walk: which chunk serves a
+ * URL, which parameters a URL takes, which routes exist at all.
  *
  * Conditionals are over-approximated: both branches are taken, so a route only
- * some instances reach still gets a row. For preload hints that is the harmless
- * direction, and it is what lets this see the enterprise routes that building
- * the tree in a test cannot.
+ * some instances reach is still reported. That is what lets this see the
+ * enterprise routes that building the tree in a test cannot.
  */
 const ts = require("typescript");
 
@@ -14,6 +17,22 @@ module.exports = { createWalker };
 
 function createWalker(resolver) {
   const { deref, chunkOf, constantString } = resolver;
+
+  /** The parameters a pattern takes, in the order they appear. */
+  const paramsOf = (pattern) =>
+    pattern
+      .split("/")
+      .filter((segment) => segment.startsWith(":"))
+      .map((segment) => segment.slice(1));
+
+  /**
+   * One entry per route, not per URL. An index route and the layout it sits in
+   * share a pattern and are reported separately, because they can load
+   * different chunks.
+   */
+  const record = (out, route) => {
+    out.push({ ...route, params: paramsOf(route.pattern) });
+  };
 
   const join = (prefix, segment) => {
     if (!segment) {
@@ -277,13 +296,20 @@ function createWalker(resolver) {
       const here = join(prefix, segment);
       let chunks = inherited;
       const lazyAttr = attrs.lazy?.expression || attrs.lazy;
+      let chunk = null;
       if (lazyAttr) {
-        const chunk = chunkFor(lazyAttr, file, notes);
+        chunk = chunkFor(lazyAttr, file, notes);
         if (chunk) {
           chunks = [...new Set([...inherited, chunk])];
-          out.push({ pattern: here, chunks });
         }
       }
+      record(out, {
+        pattern: here,
+        chunks,
+        chunk,
+        file,
+        isLazy: Boolean(lazyAttr),
+      });
       const children = ts.isJsxElement(node) ? node.children : [];
       for (const child of children) {
         walk(child, file, here, chunks, out, notes, depth + 1, bindings);
@@ -315,13 +341,20 @@ function createWalker(resolver) {
       }
       const here = join(prefix, stringOf(props.path, file, bindings));
       let chunks = inherited;
+      let chunk = null;
       if (props.lazy) {
-        const chunk = chunkFor(props.lazy, file, notes);
+        chunk = chunkFor(props.lazy, file, notes);
         if (chunk) {
           chunks = [...new Set([...inherited, chunk])];
-          out.push({ pattern: here, chunks });
         }
       }
+      record(out, {
+        pattern: here,
+        chunks,
+        chunk,
+        file,
+        isLazy: Boolean(props.lazy),
+      });
       if (props.children) {
         walk(
           props.children,

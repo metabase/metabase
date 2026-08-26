@@ -1,6 +1,8 @@
 /* eslint-env node */
 
 /**
+ * Turning the route tree into preload rows.
+ *
  * One row per place the chunks change, rather than one row per route.
  *
  * The backend takes the first row that matches, and rows are sorted deepest
@@ -127,4 +129,12 @@ function coalesce(routes) {
   return sortBySpecificity(rows);
 }
 
-module.exports = { coalesce };
+/**
+ * Rows for the routes that load their page on demand. A route with no chunk of
+ * its own still inherits its parents', which is what a nested page needs.
+ */
+function preloadRows(routes) {
+  return coalesce(routes.filter((route) => route.chunks.length > 0));
+}
+
+module.exports = { preloadRows };

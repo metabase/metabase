@@ -3,7 +3,8 @@ const path = require("path");
 
 const { sources } = require("@rspack/core");
 
-const { deriveRoutePreloads } = require("./route-preloads/derive");
+const { preloadRows } = require("./route-preloads-rows");
+const { readRoutes } = require("./routes");
 
 const MANIFEST_FILENAME = "route-preloads.json";
 
@@ -30,9 +31,8 @@ function groupFiles(group, initialFiles) {
  * Writes `route-preloads.json`: which files the page each URL renders needs.
  *
  * The rows are derived from the route files on every build, so nothing is
- * checked in and nothing can drift. Deriving reads source rather than importing
- * the app, which keeps this out of the loaders and the ClojureScript build; see
- * `route-preloads/derive.js`.
+ * checked in and nothing can drift. `routes/` reads the tree out of source, and
+ * `route-preloads-rows.js` keeps the ones with a chunk and coalesces them.
  *
  * Development skips it. The hints only pay for themselves on a real network,
  * and the backend serves the page without them when the manifest is absent.
@@ -68,7 +68,7 @@ class RoutePreloadManifest {
               }
             }
 
-            const { rows } = deriveRoutePreloads(this.root);
+            const rows = preloadRows(readRoutes(this.root).routes);
 
             const missing = [];
             const entries = rows.map((route) => {
