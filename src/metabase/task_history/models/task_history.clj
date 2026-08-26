@@ -99,12 +99,15 @@
    :db_engine  "metabase_database.engine"})
 
 (defn- order-by-fragment
-  "ORDER BY fragment for [[all]]. A secondary `id DESC` key makes ordering deterministic for
-  low-cardinality columns."
+  "ORDER BY fragment for [[all]]: selects among the `sort-col->sql` literals -- `col`/`dir` are
+  lookup keys and never appear in the result, so an unexpected value throws rather than reaching
+  the SQL. A secondary `id DESC` key makes ordering deterministic for low-cardinality columns."
   [col dir]
-  (str (sort-col->sql col)
-       (case dir :asc " ASC" :desc " DESC")
-       ", task_history.id DESC"))
+  (let [col-sql (or (sort-col->sql col)
+                    (throw (ex-info "Invalid sort column" {:sort_column col})))]
+    (str col-sql
+         (case dir :asc " ASC" :desc " DESC")
+         ", task_history.id DESC")))
 
 (def ^:private available-sort-columns
   (set (keys sort-col->sql)))
