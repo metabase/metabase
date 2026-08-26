@@ -11,9 +11,9 @@
      runs this against every app-db (H2, MySQL, Postgres); per-dialect equality to the same
      golden implementation implies the dialects also agree with each other."
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [dev.raw-splice :as raw-splice]
    [java-time.api :as t]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task-history.models.task-history-queries :as queries]
@@ -23,32 +23,13 @@
 (set! *warn-on-reflection* true)
 
 ;;;; 1. Lint: the raw-splice surface of SQL-in-files
-
-(def ^:private raw-splice-allowlist
-  "HugSQL `.sql` files may contain raw-splice params ONLY if listed here. Currently empty: even
-  dynamic ORDER BY is expressed with value params (CASE no-op sort keys in `list-tasks`), so no
-  query needs a splice. Adding an entry requires that every value passed to the param comes from
-  a closed set of dev-authored string literals, never from input."
-  {})
-
-(defn- raw-splice-params
-  "Return the set of raw-splice param names (`:sql:x`, `:snip:x`, and their `*` variants) used in
-  SQL text `s`. SQL comment lines are ignored so prose about the params doesn't count."
-  [s]
-  (->> (str/split-lines s)
-       (remove #(str/starts-with? (str/triml %) "--"))
-       (mapcat #(re-seq #":(?:sql|snip)\*?:([^\s,)]+)" %))
-       (into #{} (map second))))
+;;;;
+;;;; Logic + allowlist are shared with the fast pre-CI check `./bin/mage lint-raw-splices`;
+;;;; see [[dev.raw-splice]] and mage/resources/raw-splice-allowlist.edn.
 
 (deftest raw-splice-lint-test
-  (doseq [^java.io.File f (file-seq (io/file "src"))
-          :when (and (.isFile f) (str/ends-with? (.getName f) ".sql"))
-          :let [path    (.getPath f)
-                splices (raw-splice-params (slurp f))]]
-    (testing path
-      (is (= (get raw-splice-allowlist path #{})
-             splices)
-          "Raw-splice params (:sql:/:snip:) in .sql files must match the allowlist exactly."))))
+  (is (= [] (vec (raw-splice/violations)))
+      "Raw-splice params (:sql:/:snip:) in .sql files must match the allowlist exactly."))
 
 (deftest hostile-sort-params-test
   (testing "hostile sort values are inert: they ride as bound params, match no CASE line, and
