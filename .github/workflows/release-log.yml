@@ -1,6 +1,8 @@
 name: Update Release Log
 run-name: Update Release Log ${{ inputs.version || github.ref_name }}
 
+# some other changes
+
 on:
   push:
     branches:
