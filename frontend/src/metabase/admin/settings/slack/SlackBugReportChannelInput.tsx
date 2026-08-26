@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateSlackSettingsMutation } from "metabase/api";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Box, Text, TextInput } from "metabase/ui";
 
+import { useUpdateSlackSettingsMutation } from "../api/slack";
 import { SettingHeader } from "../components/SettingHeader";
 
 const getSlackError = (err: unknown): string =>
+  // Unjustified type cast. FIXME
   (err as { data?: { errors?: { "slack-bug-report-channel"?: string } } })?.data
     ?.errors?.["slack-bug-report-channel"] ?? t`Failed to update channel`;
 
@@ -36,7 +38,7 @@ export const SlackBugReportChannelInput = () => {
       await updateSlackSettings({ "slack-bug-report-channel": value }).unwrap();
       sendToast({
         message: t`Slack bug report channel updated`,
-        toastColor: "success",
+        toastColor: "feedback-positive",
       });
     } catch (err) {
       setError(getSlackError(err));

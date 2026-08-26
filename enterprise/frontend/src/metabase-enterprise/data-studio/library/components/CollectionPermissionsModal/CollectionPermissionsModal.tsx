@@ -1,9 +1,10 @@
 import CollectionPermissionsModalBase from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { skipToken, useListCollectionsQuery } from "metabase/api";
-import { Modal } from "metabase/common/components/Modal";
 import type { CollectionPermissionsModalProps } from "metabase/plugins";
+import { Modal } from "metabase/ui";
 
 export function CollectionPermissionsModal({
+  opened,
   collectionId,
   namespace,
   onClose,
@@ -13,7 +14,13 @@ export function CollectionPermissionsModal({
   );
 
   return (
-    <Modal onClose={onClose}>
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      size="lg"
+      withCloseButton={false}
+      padding={0}
+    >
       <CollectionPermissionsModalBase
         params={{ slug: String(collectionId) }}
         namespace={namespace ?? null}

@@ -10,6 +10,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.sync.interface :as i]
+   [metabase.sync.settings :as sync.settings]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -197,31 +198,53 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn- fields-to-fingerprint :- [:maybe [:sequential i/FieldInstance]]
-  "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
-   This should include NEW fields that are active and visible."
-  [table :- i/TableInstance]
+  "Return up to `limit` Fields belonging to `table` for which we should generate (and save) fingerprints, ordered by
+  id so the selection is stable across syncs. This should include NEW fields that are active and visible."
+  [table :- i/TableInstance
+   limit :- ms/PositiveInt]
   (seq (t2/select :model/Field
-                  (honeysql-for-fields-that-need-fingerprint-updating table))))
+                  (assoc (honeysql-for-fields-that-need-fingerprint-updating table)
+                         :order-by [[:id :asc]]
+                         :limit    limit))))
+
+(mu/defn- warn-too-many-fields!
+  "Log that `table` has more fields to fingerprint than fingerprint-max-fields-per-table (`limit`), so only the first
+  `limit` are fingerprinted and the rest skipped -- fingerprinting that many Fields at once can exhaust the heap (this
+  has OOM'd instances syncing document databases like Mongo with very large/dynamic schemas)."
+  [table :- i/TableInstance
+   limit :- ms/PositiveInt]
+  (log/warnf (str "Table %s has more than fingerprint-max-fields-per-table (%d) fields to fingerprint; fingerprinting "
+                  "the first %d and skipping the rest. Raise MB_FINGERPRINT_MAX_FIELDS_PER_TABLE to fingerprint more.")
+             (sync-util/name-for-logging table) limit limit))
+
+(mu/defn- fingerprint-fields-of-table!
+  "Fingerprint the (non-empty) `fields` of `table`. On a non-transient error, advance their fingerprint version so we
+  don't re-attempt every sync; transient errors are left untouched to retry next sync."
+  [table  :- i/TableInstance
+   fields :- [:sequential i/FieldInstance]]
+  (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
+  (let [stats (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                (fingerprint-fields! table fields))]
+    (if-let [throwable (:throwable stats)]
+      (do
+        (when-not (sync-util/transient-exception? throwable)
+          (mark-fingerprinting-failed! fields))
+        (merge (empty-stats-map 0) stats))
+      stats)))
 
 (mu/defn fingerprint-table!
-  "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
+  "Generate and save fingerprints for the Fields in `table` that have not been previously analyzed. At most
+  [[metabase.sync.settings/fingerprint-max-fields-per-table]] fields are processed; if the table has more eligible
+  fields, the rest are skipped (with a warning) so we don't load a huge number of Fields into memory at once."
   [table :- i/TableInstance]
   (tracing/with-span :sync "sync.fingerprint.table" {:db/id (:db_id table) :sync/table (:name table)}
-    (if-let [fields (fields-to-fingerprint table)]
-      (do
-        (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
-        (let [stats
-              (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                (fingerprint-fields! table fields))]
-          (if-let [throwable (:throwable stats)]
-            (do
-              ;; transient connection/environment errors abort this run and retry on the next sync; for any other
-              ;; (permanent) error, give up so we don't re-attempt every sync.
-              (when-not (sync-util/transient-exception? throwable)
-                (mark-fingerprinting-failed! fields))
-              (merge (empty-stats-map 0) stats))
-            stats)))
-      (empty-stats-map 0))))
+    (let [limit  (sync.settings/fingerprint-max-fields-per-table)
+          fields (fields-to-fingerprint table (inc limit))]
+      (when (> (count fields) limit)
+        (warn-too-many-fields! table limit))
+      (if-let [fields (seq (take limit fields))]
+        (fingerprint-fields-of-table! table fields)
+        (empty-stats-map 0)))))
 
 (def ^:private LogProgressFn
   [:=> [:cat :string [:schema i/TableInstance]] :any])

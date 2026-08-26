@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
-import { skipToken, useListSubscriptionsQuery } from "metabase/api";
+import { skipToken, useListSubscriptionsQuery, userApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useSetArchive } from "metabase/archive/hooks";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { ScheduleChangeProp } from "metabase/common/components/SchedulePicker";
+import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
 import { Sidebar } from "metabase/common/components/Sidebar";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   cancelEditingPulse,
@@ -19,10 +21,8 @@ import {
   getPulseFormInput,
 } from "metabase/notifications/pulse/selectors";
 import { NEW_PULSE_TEMPLATE, cleanPulse, createChannel } from "metabase/pulse";
-import { connect } from "metabase/redux";
-import type { DraftDashboardSubscription, State } from "metabase/redux/store";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { UserApi } from "metabase/services";
+import { connect, useDispatch } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -32,6 +32,7 @@ import type {
   ChannelType,
   Dashboard,
   DashboardSubscription,
+  DraftDashboardSubscription,
   ScheduleSettings,
   SubscriptionSupportingCard,
   User,
@@ -116,6 +117,7 @@ const getEditingPulseWithDefaults = (
 const mapStateToProps = (state: State, props: { dashboard: Dashboard }) => ({
   isAdmin: getUserIsAdmin(state),
   pulse: getEditingPulseWithDefaults(state, props),
+  // Unjustified type cast. FIXME
   formInput: getPulseFormInput(state) as ChannelApiResponse,
   user: getUser(state),
 });
@@ -177,6 +179,7 @@ function DashboardSubscriptionsSidebarInner({
   onCancel,
   loading: isSubscriptionListLoading,
 }: DashboardSubscriptionsSidebarInnerProps) {
+  const dispatch = useDispatch();
   const archive = useSetArchive();
   const [editingMode, setEditingMode] = useState<EditingMode>(
     EDITING_MODES.LIST_PULSES_OR_NEW_PULSE,
@@ -224,7 +227,12 @@ function DashboardSubscriptionsSidebarInner({
         // We don't need the the list of users in modular embedding/SDK context because we will hard code the recipient to the logged in user.
         setUsers([]);
       } else {
-        setUsers((await UserApi.list()).data);
+        const { data } = await runRtkEndpoint(
+          undefined,
+          dispatch,
+          userApi.endpoints.listUserRecipients,
+        );
+        setUsers(data);
       }
     }
     fetchUsers();
@@ -338,6 +346,7 @@ function DashboardSubscriptionsSidebarInner({
       return;
     }
 
+    // Unjustified type cast. FIXME
     const cleanedPulse = cleanPulse(pulse, formInput.channels as ChannelSpecs);
     cleanedPulse.name = dashboard.name;
 

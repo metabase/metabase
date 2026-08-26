@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Anchor, Text } from "metabase/ui";
 
 const Container = styled.div`
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   margin-top: 1.5rem;

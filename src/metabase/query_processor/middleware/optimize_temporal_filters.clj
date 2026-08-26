@@ -299,11 +299,11 @@
           (u/prog1 (optimize-clause query path clause)
             (if <>
               (when-not (= clause <>)
-                (log/tracef "Optimized clause %s to %s" (pr-str clause) (pr-str <>)))
+                (log/trace "Optimized temporal filter clause"))
               ;; if for some reason `optimize-clause` doesn't return an optimized clause, log and error and use
               ;; the original. `can-optimize-clause?` shouldn't have said we could optimize this clause in the first
               ;; place
-              (log/error "Error optimizing temporal clause: optimize-clause unexpectedly returned nil" (pr-str clause)))))
+              (log/error "Error optimizing temporal clause: optimize-clause unexpectedly returned nil"))))
         clause)))
 
 (mu/defn optimize-temporal-clauses :- ::lib.schema/query

@@ -148,6 +148,7 @@ export const setupSdkDashboard = async ({
   isEmailConfigured = false,
   isSlackConfigured = false,
 }: SetupSdkDashboardOptions) => {
+  // Unjustified type cast. FIXME
   const useLocaleMock = useLocale as jest.Mock;
   useLocaleMock.mockReturnValue({ isLocaleLoading });
 
@@ -193,7 +194,7 @@ export const setupSdkDashboard = async ({
   setupNotificationChannelsEndpoints({
     email: { configured: isEmailConfigured },
     slack: { configured: isSlackConfigured },
-  } as any);
+  });
 
   setupDatabasesEndpoints([createMockDatabase()]);
 

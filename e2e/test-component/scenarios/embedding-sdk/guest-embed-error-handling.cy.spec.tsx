@@ -58,6 +58,7 @@ describe("scenarios > embedding-sdk > guest-embed-error-handling", () => {
       cy.signOut();
 
       const token = await getSignedJwtForResource({
+        // Unjustified type cast. FIXME
         resourceId: questionId as unknown as number,
         resourceType: "question",
       });

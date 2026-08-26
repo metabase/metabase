@@ -109,7 +109,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
                   <Icon
                     aria-hidden
                     name={icon}
-                    c={value === type ? "brand" : "text-primary"}
+                    c={value === type ? "core-brand" : "text-primary"}
                   />
                 }
                 onClick={() => handleDisplayTypeChange(type)}
@@ -131,7 +131,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
                     <Icon
                       aria-hidden
                       name="chart_layout_default"
-                      c={!isStacked ? "brand" : "text-primary"}
+                      c={!isStacked ? "core-brand" : "text-primary"}
                     />
                   }
                   onClick={() => handleSplitChannelsChange(false)}
@@ -146,7 +146,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
                     <Icon
                       aria-hidden
                       name="chart_layout_stack"
-                      c={isStacked ? "brand" : "text-primary"}
+                      c={isStacked ? "core-brand" : "text-primary"}
                     />
                   }
                   onClick={() => {

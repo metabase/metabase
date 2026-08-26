@@ -2,10 +2,6 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
-  useRegenerateApiKeyMutation,
-  useUpdateApiKeyMutation,
-} from "metabase/api";
-import {
   Form,
   FormErrorMessage,
   FormGroupWidget,
@@ -16,6 +12,11 @@ import {
 import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
+
+import {
+  useRegenerateApiKeyMutation,
+  useUpdateApiKeyMutation,
+} from "../../api/api-key";
 
 import S from "./EditApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";
@@ -70,7 +71,7 @@ const RegenerateKeyModal = ({
             </Stack>
             {/* TODO: swap for the planned metabase/ui Alert variant once it lands. */}
             <Paper
-              bg="background-secondary"
+              bg="background_page-secondary"
               radius="md"
               px="md"
               py="sm"
@@ -160,6 +161,7 @@ export const EditApiKeyModal = ({
                     input: {
                       // override the disabled-gray so the masked key stays readable in both themes
                       color: "var(--mb-color-text-primary) !important",
+                      // Unjustified type cast. FIXME
                       fontFamily: fontFamilyMonospace as string,
                     },
                   }}

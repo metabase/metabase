@@ -1,0 +1,402 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 0,
+      "collection_position": null,
+      "source_card_id": null,
+      "table_id": null,
+      "can_run_adhoc_query": true,
+      "result_metadata": [
+        {
+          "database_type": "CHARACTER VARYING",
+          "semantic_type": null,
+          "lib/deduplicated-name": "LABEL",
+          "lib/original-name": "LABEL",
+          "name": "LABEL",
+          "lib/source": "source/native",
+          "lib/source-column-alias": "LABEL",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "LABEL",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "lib/desired-column-alias": "LABEL",
+          "display_name": "LABEL",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 15,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "percent-blank": 0,
+                "average-length": 25.533333333333335,
+                "mode-fraction": 0.06666666666666667,
+                "top-3-fraction": 0.2
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "database_type": "BIGINT",
+          "semantic_type": null,
+          "lib/deduplicated-name": "value",
+          "lib/original-name": "value",
+          "name": "value",
+          "lib/source": "source/native",
+          "lib/source-column-alias": "value",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "value",
+            {
+              "base-type": "type/BigInteger"
+            }
+          ],
+          "effective_type": "type/BigInteger",
+          "lib/desired-column-alias": "value",
+          "display_name": "value",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 15,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "skewness": 0,
+                "min": 1,
+                "q1": 4,
+                "q3": 12,
+                "excess-kurtosis": -1.1999999999999997,
+                "zero-fraction": 0,
+                "mode-fraction": 0.06666666666666667,
+                "top-3-fraction": 0.2,
+                "max": 15,
+                "sd": 4.47213595499958,
+                "avg": 8
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "embedding_type": null,
+      "dependency_analysis_version": 0,
+      "creator": {
+        "email": "kevin.kelleher@metabase.com",
+        "first_name": "Kevin",
+        "is_data_analyst": false,
+        "last_login": "2026-06-12T12:04:40.797893Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Kelleher",
+        "tenant_id": null,
+        "date_joined": "2026-01-07T22:26:30.692014Z",
+        "common_name": "Kevin Kelleher"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "card_schema": 23,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": 6,
+      "query_type": "native",
+      "name": "UXW 4474 long label bug for Loki",
+      "last_query_start": null,
+      "is_remote_synced": false,
+      "dashboard_count": 0,
+      "document_id": null,
+      "last_used_at": "2026-06-12T20:40:10.317029Z",
+      "dashboard": null,
+      "type": "question",
+      "dimensions": null,
+      "average_query_time": null,
+      "creator_id": 1,
+      "can_restore": false,
+      "moderation_reviews": [],
+      "updated_at": "2026-06-12T20:40:10.317029Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "lib/type": "mbql/query",
+        "database": 1,
+        "stages": [
+          {
+            "lib/type": "mbql.stage/native",
+            "native": "SELECT\n    CASE WHEN X <= 1 THEN 'Short label ' || x ELSE 'Really loooooooong label ' || x END AS label,\n    x AS \"value\"\nFROM SYSTEM_RANGE(1, 15)"
+          }
+        ]
+      },
+      "dimension_mappings": null,
+      "id": 930,
+      "legacy_query": null,
+      "parameter_mappings": [],
+      "can_manage_db": true,
+      "display": "bar",
+      "archived_directly": false,
+      "entity_id": "Sv76MfJdZHgka8Jo1EsWp",
+      "param_fields": {},
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 1,
+        "email": "kevin.kelleher@metabase.com",
+        "first_name": "Kevin",
+        "last_name": "Kelleher",
+        "timestamp": "2026-06-12T20:40:10.367112Z"
+      },
+      "visualization_settings": {
+        "graph.x_axis.scale": "ordinal",
+        "graph.dimensions": [
+          "LABEL"
+        ],
+        "graph.metrics": [
+          "value"
+        ]
+      },
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "kevin_kelleher_s_personal_collection",
+        "archive_operation_id": null,
+        "name": "Kevin Kelleher's Personal Collection",
+        "is_remote_synced": false,
+        "personal_owner_id": 1,
+        "type": null,
+        "is_sample": false,
+        "id": 6,
+        "archived_directly": null,
+        "entity_id": "JNVXeRiI0n1JvPH29Siez",
+        "location": "/",
+        "namespace": null,
+        "is_personal": true,
+        "created_at": "2026-01-07T22:27:02.302189Z"
+      },
+      "metabase_version": "vLOCAL_DEV (06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5)",
+      "parameters": [],
+      "dashboard_id": null,
+      "created_at": "2026-06-12T20:40:10.317029Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "can_delete": false
+    },
+    "data": {
+      "rows": [
+        [
+          "Short label 1",
+          1
+        ],
+        [
+          "Really loooooooong label 2",
+          2
+        ],
+        [
+          "Really loooooooong label 3",
+          3
+        ],
+        [
+          "Really loooooooong label 4",
+          4
+        ],
+        [
+          "Really loooooooong label 5",
+          5
+        ],
+        [
+          "Really loooooooong label 6",
+          6
+        ],
+        [
+          "Really loooooooong label 7",
+          7
+        ],
+        [
+          "Really loooooooong label 8",
+          8
+        ],
+        [
+          "Really loooooooong label 9",
+          9
+        ],
+        [
+          "Really loooooooong label 10",
+          10
+        ],
+        [
+          "Really loooooooong label 11",
+          11
+        ],
+        [
+          "Really loooooooong label 12",
+          12
+        ],
+        [
+          "Really loooooooong label 13",
+          13
+        ],
+        [
+          "Really loooooooong label 14",
+          14
+        ],
+        [
+          "Really loooooooong label 15",
+          15
+        ]
+      ],
+      "results_timezone": "UTC",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "database_type": "CHARACTER VARYING",
+            "semantic_type": null,
+            "lib/deduplicated-name": "LABEL",
+            "lib/original-name": "LABEL",
+            "name": "LABEL",
+            "lib/source": "source/native",
+            "lib/source-column-alias": "LABEL",
+            "source": "native",
+            "field_ref": [
+              "field",
+              "LABEL",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "lib/desired-column-alias": "LABEL",
+            "display_name": "LABEL",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 15,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "percent-blank": 0,
+                  "average-length": 25.533333333333335,
+                  "mode-fraction": 0.06666666666666667,
+                  "top-3-fraction": 0.2
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "database_type": "BIGINT",
+            "semantic_type": null,
+            "lib/deduplicated-name": "value",
+            "lib/original-name": "value",
+            "name": "value",
+            "lib/source": "source/native",
+            "lib/source-column-alias": "value",
+            "source": "native",
+            "field_ref": [
+              "field",
+              "value",
+              {
+                "base-type": "type/BigInteger"
+              }
+            ],
+            "effective_type": "type/BigInteger",
+            "lib/desired-column-alias": "value",
+            "display_name": "value",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 15,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "skewness": 0,
+                  "min": 1,
+                  "q1": 4,
+                  "q3": 12,
+                  "excess-kurtosis": -1.1999999999999997,
+                  "zero-fraction": 0,
+                  "mode-fraction": 0.06666666666666667,
+                  "top-3-fraction": 0.2,
+                  "max": 15,
+                  "sd": 4.47213595499958,
+                  "avg": 8
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          }
+        ]
+      },
+      "format-rows?": true,
+      "pivot-export-options": {
+        "show-row-totals": true,
+        "show-column-totals": true
+      },
+      "cols": [
+        {
+          "database_type": "CHARACTER VARYING",
+          "lib/deduplicated-name": "LABEL",
+          "lib/original-name": "LABEL",
+          "name": "LABEL",
+          "lib/source": "source/native",
+          "lib/source-column-alias": "LABEL",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "LABEL",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "lib/desired-column-alias": "LABEL",
+          "display_name": "LABEL",
+          "base_type": "type/Text"
+        },
+        {
+          "database_type": "BIGINT",
+          "lib/deduplicated-name": "value",
+          "lib/original-name": "value",
+          "name": "value",
+          "lib/source": "source/native",
+          "lib/source-column-alias": "value",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "value",
+            {
+              "base-type": "type/BigInteger"
+            }
+          ],
+          "effective_type": "type/BigInteger",
+          "lib/desired-column-alias": "value",
+          "display_name": "value",
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "lib/type": "mbql.stage/native",
+        "query": "SELECT\n    CASE WHEN X <= 1 THEN 'Short label ' || x ELSE 'Really loooooooong label ' || x END AS label,\n    x AS \"value\"\nFROM SYSTEM_RANGE(1, 15)"
+      },
+      "is_sandboxed": false,
+      "insights": null
+    }
+  }
+]

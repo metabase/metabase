@@ -10,6 +10,7 @@ import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
 
 import {
   extractFailedTests,
+  recordFailedTestsForQuarantine,
   reportFailedTestsToConductor,
 } from "./ci_conductor";
 import * as ciTasks from "./ci_tasks";
@@ -25,6 +26,7 @@ import {
   startCustomVizDevServer,
   stopCustomVizDevServer,
 } from "./helpers/e2e-custom-viz-dev-server-tasks";
+import { buildDataApp } from "./helpers/e2e-data-app-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
 import {
   startMockLlmServer,
@@ -32,15 +34,136 @@ import {
 } from "./helpers/e2e-mock-llm-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
+const coverageTask = require("@cypress/code-coverage/task");
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 const cypressSplit = require("cypress-split");
 
+const {
+  sideEffectFreeModulesPlugin,
+} = require("../../frontend/build/shared/esbuild/side-effect-free-modules-plugin");
+
+const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
+// The Cypress config process runs with cwd = this file's directory
+// (e2e/support), so @cypress/code-coverage writes .nyc_output/out.json here.
+// NYC_OUTPUT_FILE is anchored to __dirname to read from that same place;
+// COVERAGE_MANIFEST_RAW_DIR points at e2e/coverage-manifest-raw, which the
+// nightly workflow uploads.
+const COVERAGE_MANIFEST_RAW_DIR = path.resolve(
+  __dirname,
+  "../coverage-manifest-raw",
+);
+const NYC_OUTPUT_FILE = path.resolve(__dirname, ".nyc_output/out.json");
+
+// Function metadata (name + line per Istanbul function index), accumulated
+// across the specs this process runs and shipped with the raw shard artifact.
+// The f-counter indices in the per-spec/per-test entries are only meaningful
+// against the exact instrumented bundle that produced them; this file makes
+// the artifact self-describing for offline analysis (test-overlap heat maps)
+// without rebuilding that bundle. Named uniquely per process so shard
+// artifacts can merge into one directory without clobbering each other —
+// consumers shallow-merge all fnmap-*.json (same file => identical entries).
+const FNMAP_FILE = path.join(
+  COVERAGE_MANIFEST_RAW_DIR,
+  `fnmap-${require("node:crypto").randomUUID()}.json`,
+);
+
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = !!process.env.CI;
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
+
+// Per-test capture state, fed by the recordTestCapture task that the
+// support-file afterEach calls (e2e/support/per-test-capture.js). Each entry
+// is one test attempt: { title, f: {file: {fnIdx: firedCount}}, routes,
+// pages }. The function counts arrive already per-test — the support file
+// reads them from the app windows' Istanbul counters and zeroes those after
+// each flush.
+let perTestEntries = [];
+
+const perTestCaptureTasks = {
+  recordTestCapture({ title, f, routes, pages }) {
+    perTestEntries.push({ title, f, routes, pages });
+    return null;
+  },
+
+  resetTestCapture() {
+    perTestEntries = [];
+    return null;
+  },
+};
+
+// Records name + line for every instrumented function in files this process
+// hasn't seen yet. The metadata is identical for a given file across specs
+// (same bundle), so first sighting wins.
+function appendFnMap(coverage) {
+  let fnMap = {};
+  try {
+    fnMap = JSON.parse(fs.readFileSync(FNMAP_FILE, "utf8"));
+  } catch {
+    // First spec of the run.
+  }
+  let changed = false;
+  for (const [file, fileCov] of Object.entries(coverage)) {
+    if (fnMap[file] || !fileCov.fnMap) {
+      continue;
+    }
+    const entry = {};
+    for (const [idx, fn] of Object.entries(fileCov.fnMap)) {
+      entry[idx] = {
+        name: fn.name,
+        line: fn.decl?.start?.line ?? fn.loc?.start?.line ?? null,
+      };
+    }
+    fnMap[file] = entry;
+    changed = true;
+  }
+  if (changed) {
+    fs.writeFileSync(FNMAP_FILE, JSON.stringify(fnMap));
+  }
+}
+
+// Persists raw __coverage__ counters per spec, plus the per-test breakdown
+// (function deltas and API routes). The manifest builder reads these later,
+// applies baseline subtraction, and maps surviving files to modules. We
+// delete .nyc_output/out.json between specs so each entry reflects only that
+// spec's execution — @cypress/code-coverage otherwise accumulates.
+function writeSpecCoverageEntry(spec) {
+  // Consume the per-test state up front so a missing/corrupt out.json can't
+  // leak one spec's tests into the next spec's entry.
+  const tests = perTestEntries;
+  perTestEntries = [];
+
+  if (!fs.existsSync(NYC_OUTPUT_FILE)) {
+    return;
+  }
+
+  const coverage = JSON.parse(fs.readFileSync(NYC_OUTPUT_FILE, "utf8"));
+
+  fs.mkdirSync(COVERAGE_MANIFEST_RAW_DIR, { recursive: true });
+  appendFnMap(coverage);
+
+  // The manifest builder only needs per-file function counters to compute the
+  // baseline greater-delta. Drop statement/branch maps and counters, and drop
+  // files where no function was invoked. Cuts each entry from ~25MB to <200KB.
+  const trimmed = {};
+  for (const [file, fc] of Object.entries(coverage)) {
+    if (!Object.values(fc.f || {}).some((c) => c > 0)) {
+      continue;
+    }
+    trimmed[file] = { f: fc.f };
+  }
+
+  fs.mkdirSync(COVERAGE_MANIFEST_RAW_DIR, { recursive: true });
+  const entryName = spec.relative.replace(/[\\/]/g, "__") + ".json";
+  fs.writeFileSync(
+    path.join(COVERAGE_MANIFEST_RAW_DIR, entryName),
+    JSON.stringify({ spec: spec.relative, coverage: trimmed, tests }),
+  );
+
+  fs.unlinkSync(NYC_OUTPUT_FILE);
+}
 
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
@@ -72,6 +195,9 @@ const defaultConfig = {
     feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
       ? { enabled: true, url: process.env["FE_HEALTHCHECK_URL"] }
       : undefined,
+    // Lets @cypress/code-coverage/support skip its hooks entirely on
+    // uninstrumented runs, instead of logging a warning on every spec.
+    coverage: isInstrumented,
   },
 
   allowCypressEnv: false,
@@ -116,7 +242,11 @@ const defaultConfig = {
         loader: {
           ".svg": "text",
         },
-        plugins: [NodeModulesPolyfillPlugin(), assetsResolverPlugin],
+        plugins: [
+          NodeModulesPolyfillPlugin(),
+          assetsResolverPlugin,
+          sideEffectFreeModulesPlugin,
+        ],
         sourcemap: "inline",
       }),
     );
@@ -126,9 +256,11 @@ const defaultConfig = {
      ********************************************************************/
 
     on("before:browser:launch", (browser = {}, launchOptions) => {
-      //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
-        launchOptions.args.push("--auto-open-devtools-for-tabs");
+        // Open dev tools in Chrome by default when in headed mode
+        if (browser.isHeaded) {
+          launchOptions.args.push("--auto-open-devtools-for-tabs");
+        }
         launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
@@ -163,6 +295,8 @@ const defaultConfig = {
       stopMockLlmServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
+      buildDataApp,
+      ...perTestCaptureTasks,
     });
 
     /********************************************************************
@@ -182,6 +316,10 @@ const defaultConfig = {
       collectFailingTests(on, config);
     }
 
+    if (isInstrumented) {
+      coverageTask(on, config);
+    }
+
     // Surface the resolved Cypress retry ceiling so the ci-conductor reporter
     // can include it in the payload (CYPRESS_RETRIES isn't otherwise set in CI;
     // the value lives in mainConfig.retries.runMode). DEV-1999.
@@ -198,7 +336,10 @@ const defaultConfig = {
         // a hard backstop around everything — extraction, payload build, and
         // the request. The reporter also handles its own errors internally.
         try {
-          await reportFailedTestsToConductor(extractFailedTests(spec, results));
+          const failedTests = extractFailedTests(spec, results);
+          // Persist ultimate failures for the post-run quarantine gate (DEV-2082).
+          recordFailedTestsForQuarantine(failedTests);
+          await reportFailedTestsToConductor(failedTests);
         } catch (error) {
           console.error("[ci-conductor] reporting failed (ignored)", error);
         }
@@ -211,6 +352,19 @@ const defaultConfig = {
         if (results && results.video && results.stats.failures === 0) {
           // delete the video if the spec passed
           fs.unlinkSync(results.video);
+        }
+      }
+
+      if (isInstrumented) {
+        // Don't let a bad/partial coverage file abort the nightly shard - at
+        // worst we lose this spec's entry, not the whole run.
+        try {
+          writeSpecCoverageEntry(spec);
+        } catch (error) {
+          console.error(
+            "[coverage] failed to write spec entry (ignored)",
+            error,
+          );
         }
       }
     });

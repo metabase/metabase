@@ -142,6 +142,7 @@ export function MultiAutocomplete({
   } = useMultiAutocomplete({
     values: value,
     data: sortedData,
+    selectFirstOptionOnChange,
     parseValue,
     onChange,
     onSearchChange,
@@ -157,7 +158,7 @@ export function MultiAutocomplete({
         </Text>
       }
     >
-      <Icon c="text-tertiary" name="info" />
+      <Icon c="text-disabled" name="info" />
     </Tooltip>
   );
 

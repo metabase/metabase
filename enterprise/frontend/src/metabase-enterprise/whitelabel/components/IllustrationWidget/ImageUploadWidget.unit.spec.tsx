@@ -7,6 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
@@ -14,6 +15,8 @@ import type {
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { ImageUploadWidget } from "./ImageUploadWidget";
+
+const DEFAULT_LOGO_URL = "app/assets/img/logo.png";
 
 async function setup({
   name,
@@ -26,15 +29,16 @@ async function setup({
   description?: React.ReactNode;
   settings?: Partial<EnterpriseSettings>;
 }) {
-  const settings = createMockSettings({
-    "application-logo-url": "app/assets/img/logo.png",
+  const settingValues = {
+    "application-logo-url": DEFAULT_LOGO_URL,
     ...settingOverrides,
-  });
+  };
+  const settings = createMockSettings(settingValues);
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([
     {
       key: "application-logo-url",
-      default: "app/assets/img/logo.png",
+      default: DEFAULT_LOGO_URL,
       is_env_setting: false,
       description: "The logo of the application",
       env_name: "METABASE_APPLICATION_LOGO_URL",
@@ -44,9 +48,16 @@ async function setup({
 
   renderWithProviders(
     <ImageUploadWidget name={name} title={title} description={description} />,
+    { storeInitialState: { settings: createMockSettingsState(settingValues) } },
   );
 
   await screen.findByText(title);
+
+  const isDefaultLogo =
+    settingValues["application-logo-url"] === DEFAULT_LOGO_URL;
+  await screen.findByText(
+    isDefaultLogo ? "No file chosen" : "Remove uploaded image",
+  );
 }
 
 describe("ImageUploadWidget", () => {
@@ -68,7 +79,9 @@ describe("ImageUploadWidget", () => {
       },
     });
 
-    expect(screen.getByText("Remove uploaded image")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Remove uploaded image"),
+    ).toBeInTheDocument();
   });
 
   it("shows an image preview", async () => {
@@ -80,7 +93,7 @@ describe("ImageUploadWidget", () => {
       },
     });
 
-    expect(screen.getByLabelText("Image preview")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Image preview")).toBeInTheDocument();
   });
 
   it("can remove an uploaded image", async () => {
@@ -92,7 +105,7 @@ describe("ImageUploadWidget", () => {
       },
     });
 
-    await userEvent.click(screen.getByLabelText("close icon"));
+    await userEvent.click(await screen.findByLabelText("close icon"));
 
     const [{ url, body }] = await findRequests("PUT");
 

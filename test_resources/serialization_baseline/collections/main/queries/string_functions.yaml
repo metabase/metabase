@@ -549,7 +549,7 @@ result_metadata:
   qp/implicit-field?: true
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: HeLFZSVb4Jm25p4tWfVP9
   label: string_functions

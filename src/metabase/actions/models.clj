@@ -121,17 +121,40 @@
 
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
+(defn- query->database-id
+  [query]
+  (when (map? query)
+    (:database query)))
+
+(defn- derive-query-action-database-id
+  "For `:query` actions, `:database_id` is wholly derived from the database the query executes against: it is
+  redundant metadata that must track `(:database dataset_query)`, exactly as a Card's `database_id` tracks its query
+  ([[metabase.queries.models.card/populate-query-fields]]).
+
+  On update the query may not be part of the change, so `fallback-query` (the existing action's query) supplies the
+  database so that a `:database_id`-only change can't repoint it. A no-op for non-query actions and when no query is
+  available."
+  ([action-row]
+   (derive-query-action-database-id action-row nil))
+  ([{action-type :type, query :dataset_query, :as action-row} fallback-query]
+   (if-let [query-db-id (and (= action-type :query)
+                             (or (query->database-id query)
+                                 (query->database-id fallback-query)))]
+     (assoc action-row :database_id query-db-id)
+     action-row)))
+
 ;;; TODO (Cam 10/2/25) -- this should just be the default Toucan 2 insert behavior for an action
 (mu/defn- insert*! :- ::actions.schema/id
   [action-data :- ::actions.schema/action.for-insert]
-  (t2/with-transaction [_conn]
-    (let [action (first (t2/insert-returning-instances! :model/Action (select-keys action-data action-columns)))
-          model  (type->model (:type action))
-          row    (-> (apply dissoc action-data action-columns)
-                     (assoc :action_id (:id action))
-                     (cond-> (= (:type action) :implicit) (dissoc :database_id)))]
-      (t2/insert! model row)
-      (:id action))))
+  (let [action-data (derive-query-action-database-id action-data)]
+    (t2/with-transaction [_conn]
+      (let [action (first (t2/insert-returning-instances! :model/Action (select-keys action-data action-columns)))
+            model  (type->model (:type action))
+            row    (-> (apply dissoc action-data action-columns)
+                       (assoc :action_id (:id action))
+                       (cond-> (= (:type action) :implicit) (dissoc :database_id)))]
+        (t2/insert! model row)
+        (:id action)))))
 
 (mu/defn insert! :- ::actions.schema/id
   "Inserts an Action and related type table. Returns the action id."
@@ -141,20 +164,23 @@
 (mu/defn- update*!
   [{:keys [id] :as updates} :- ::actions.schema/action.for-update
    existing-action          :- ::actions.schema/action]
-  (t2/with-transaction [_conn]
-    (when-let [action-row (not-empty (select-keys updates action-columns))]
-      (t2/update! :model/Action id action-row))
-    (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
-                                     (= (or (:type updates) (:type existing-action))
-                                        :implicit)
-                                     (dissoc :database_id)))]
-      (let [type-row       (assoc type-row :action_id id)
-            existing-model (type->model (:type existing-action))]
-        (if (and (:type updates) (not= (:type updates) (:type existing-action)))
-          (let [new-model (type->model (:type updates))]
-            (t2/delete! existing-model :action_id id)
-            (t2/insert! new-model (assoc type-row :action_id id)))
-          (t2/update! existing-model id type-row))))))
+  (let [updates (derive-query-action-database-id
+                 (assoc updates :type (or (:type updates) (:type existing-action)))
+                 (:dataset_query existing-action))]
+    (t2/with-transaction [_conn]
+      (when-let [action-row (not-empty (select-keys updates action-columns))]
+        (t2/update! :model/Action id action-row))
+      (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
+                                       (= (or (:type updates) (:type existing-action))
+                                          :implicit)
+                                       (dissoc :database_id)))]
+        (let [type-row       (assoc type-row :action_id id)
+              existing-model (type->model (:type existing-action))]
+          (if (and (:type updates) (not= (:type updates) (:type existing-action)))
+            (let [new-model (type->model (:type updates))]
+              (t2/delete! existing-model :action_id id)
+              (t2/insert! new-model (assoc type-row :action_id id)))
+            (t2/update! existing-model id type-row)))))))
 
 (mu/defn update!
   "Updates an Action and the related type table.
@@ -417,9 +443,6 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/hash-fields :model/Action [_action]
-  [:name (serdes/hydrated-hash :model) :created_at])
-
 (defmethod serdes/generate-path "QueryAction" [_ _] nil)
 (defmethod serdes/make-spec "QueryAction" [_model-name _opts]
   {:copy      []
@@ -457,7 +480,7 @@
                                         :import serdes/import-visualization-settings}}
    :defaults  {:archived false}})
 
-(defmethod serdes/dependencies "Action" [action]
+(defmethod serdes/deserialization-dependencies "Action" [action]
   (set
    (concat
     ;; other stuff is implicitly referenced through a Card
@@ -467,7 +490,19 @@
       (let [{:keys [database_id dataset_query]} (first (:query action))]
         (concat
          [[{:model "Database" :id database_id}]]
-         (serdes/mbql-deps dataset_query)))))))
+         (serdes/mbql-deps false dataset_query)))))))
+
+(defmethod serdes/serialization-dependencies "Action" [_model-name {:keys [id model_id type]}]
+  ;; Serialization runs on the raw entity, whose query lives in the `query_action` child table (`:type` is a keyword
+  ;; here, not a string), so the query is fetched rather than read from a nested `:query` key.
+  (set
+   (concat
+    (when model_id [[{:model "Card" :id model_id}]])
+    (when (= type :query)
+      (when-let [{:keys [database_id dataset_query]} (t2/select-one :model/QueryAction :action_id id)]
+        (concat
+         (when database_id [[{:model "Database" :id database_id}]])
+         (serdes/mbql-deps true dataset_query)))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
   [{:label "actions"} {:label (:name action) :key (:entity_id action)}])

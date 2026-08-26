@@ -1,15 +1,15 @@
 import cx from "classnames";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useListDatabasesQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { getEngineLogo } from "metabase/databases/utils/engine";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { newDatabase } from "metabase/urls";
@@ -64,15 +64,26 @@ export const BrowseDatabases = () => {
           <BrowseGrid data-testid="database-browser">
             {databases &&
               databases.length > 0 &&
-              databases.map((database) => (
-                <BrowseCard
-                  to={Urls.browseDatabase(database)}
-                  key={database.id}
-                  title={database.name}
-                  icon="database"
-                  size="lg"
-                />
-              ))}
+              databases.map((database) => {
+                const hasNameCollision = databases.some(
+                  (db) => db.id !== database.id && db.name === database.name,
+                );
+
+                // in case of name collisions, use id-slug url for uniqueness
+                const databaseUrl = hasNameCollision
+                  ? Urls.browseDatabase(database)
+                  : Urls.permalinkDatabase(database);
+
+                return (
+                  <BrowseCard
+                    to={databaseUrl}
+                    key={database.id}
+                    title={database.name}
+                    icon="database"
+                    size="lg"
+                  />
+                );
+              })}
             {isAdmin && <AddDatabaseCard />}
           </BrowseGrid>
         </Flex>
@@ -84,7 +95,7 @@ export const BrowseDatabases = () => {
 const CardImageWrapper = ({ database }: { database: string }) => {
   return (
     <Box
-      bg="white"
+      bg="core-white"
       h="xl"
       w="xl"
       className={CS.rounded}

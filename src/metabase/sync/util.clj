@@ -43,7 +43,7 @@
    (when (and (premium-features/any-transforms-enabled?) (:name table))
      (str/starts-with? (u/lower-case-en (:name table)) transform-temp-table-prefix))))
 
-(derive ::event :metabase/event)
+(events/derive! ::event :metabase/event)
 
 (def ^:private sync-event-topics
   #{:event/sync-begin
@@ -58,14 +58,14 @@
     :event/sync-metadata-end})
 
 (doseq [topic sync-event-topics]
-  (derive topic ::event))
+  (events/derive! topic ::event))
 
 (def ^:private Topic
   [:and
    events/Topic
    [:fn
     {:error/message "Sync event deriving from :metabase.sync.util/event"}
-    #(isa? % ::event)]])
+    #(events/isa? % ::event)]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
@@ -241,7 +241,7 @@
      (catch Throwable e
        (if (and *log-exceptions-and-continue?* (not (transient-exception? e)))
          (do
-           (log/warn e message)
+           (log/warn message (ex-message e))
            e)
          (throw e))))))
 
@@ -262,7 +262,7 @@
        (catch Throwable e
          (if *log-exceptions-and-continue?*
            (do
-             (log/warn e message)
+             (log/warn message (ex-message e))
              {:throwable e})
            (throw e)))))
 
@@ -503,10 +503,10 @@
             (t2/reducible-select :model/Table
                                  {:select    [:t.*]
                                   :from      [[(t2/table-name :model/Table) :t]]
-                                  :left-join [[{:select   [:table_id
-                                                           [[:min :last_analyzed] :earliest_last_analyzed]]
-                                                :from     [(t2/table-name :model/Field)]
-                                                :group-by [:table_id]} :sub]
+                                  :left-join [[^:allow-subquery {:select   [:table_id
+                                                                            [[:min :last_analyzed] :earliest_last_analyzed]]
+                                                                 :from     [(t2/table-name :model/Field)]
+                                                                 :group-by [:table_id]} :sub]
                                               [:= :t.id :sub.table_id]]
                                   :where     [:and sync-tables-clause [:= :t.db_id (u/the-id database-or-id)]]
                                   :order-by  [[:sub.earliest_last_analyzed :asc]]})))
@@ -600,21 +600,26 @@
 
 (def ^:private StepDefinition
   "Defines a step. `:sync-fn` runs the step, returns a map that contains step specific metadata. `log-summary-fn`
-  takes that metadata and turns it into a string for logging"
+  takes that metadata and turns it into a string for logging. `:essential?` marks a step whose failure leaves the
+  database unusable (e.g. field sync), so initial sync should be reported as failed rather than complete."
   [:map
    [:sync-fn        [:=> [:cat StepRunMetadata] i/DatabaseInstance]]
    [:step-name      :string]
-   [:log-summary-fn [:maybe LogSummaryFunction]]])
+   [:log-summary-fn [:maybe LogSummaryFunction]]
+   [:essential?     :boolean]])
 
 (defn create-sync-step
   "Creates and returns a step suitable for `run-step-with-metadata`. See `StepDefinition` for more info."
   ([step-name sync-fn]
-   (create-sync-step step-name sync-fn nil))
+   (create-sync-step step-name sync-fn nil false))
   ([step-name sync-fn log-summary-fn]
+   (create-sync-step step-name sync-fn log-summary-fn false))
+  ([step-name sync-fn log-summary-fn essential?]
    {:sync-fn        sync-fn
     :step-name      step-name
     :log-summary-fn (when log-summary-fn
-                      (comp str log-summary-fn))}))
+                      (comp str log-summary-fn))
+    :essential? (boolean essential?)}))
 
 (mu/defn- run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
@@ -687,6 +692,13 @@
   [step-results]
   (when-let [caught-exception (:throwable step-results)]
     (transient-exception? caught-exception)))
+
+(defn step-failed?
+  "Given the results of a sync step, returns truthy if the step recorded an exception (transient or not). A failure of
+  an essential step (e.g. field sync) leaves the database unusable, so initial sync should be reported as failed rather
+  than complete."
+  [step-results]
+  (some? (:throwable step-results)))
 
 (mu/defn run-sync-operation
   "Run `sync-steps` and log a summary message"

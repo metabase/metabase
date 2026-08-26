@@ -1,21 +1,26 @@
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import type {
+  MetricPageParams,
+  MetricPageProps,
+} from "metabase/common/metrics/types";
+import { useParams } from "metabase/router";
 
 import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
-import type { MetricPageProps } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 
 import { MetricAbout } from "./MetricAbout";
 
 export function MetricAboutPage({
-  params,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
 }: MetricPageProps) {
+  const { cardId } = useParams<MetricPageParams>();
+
   return (
-    <MetricPageCard cardId={params.cardId}>
+    <MetricPageCard cardId={cardId}>
       {(card) => (
         <PageContainer data-testid="metric-about-page" gap="xl">
           <MetricPageShell

@@ -73,6 +73,19 @@
       {:before-sync f-before
        :after-sync  (f (mt/db))})))
 
+(deftest limit-fields-to-sync-test
+  (testing "caps the synced fields to sync-max-fields-per-table, keeping the first by name"
+    (mt/with-temp [:model/Table table {}]
+      (let [limit-fields (fn [db-metadata] (#'sync-fields/limit-fields-to-sync table db-metadata))
+            field        (fn [nm] {:name nm :database-type "varchar" :base-type :type/Text :database-position 0})
+            three        #{(field "c") (field "a") (field "b")}]
+        (testing "over the limit -> only the first N by name are kept"
+          (mt/with-temporary-setting-values [sync-max-fields-per-table 2]
+            (is (= #{"a" "b"} (set (map :name (limit-fields three)))))))
+        (testing "within the limit -> all kept unchanged"
+          (mt/with-temporary-setting-values [sync-max-fields-per-table 100]
+            (is (= three (limit-fields three)))))))))
+
 (deftest renaming-fields-test
   (testing "make sure we can identify case changes on a field (#7923)"
     (let [db-state (with-test-db-before-and-after-altering

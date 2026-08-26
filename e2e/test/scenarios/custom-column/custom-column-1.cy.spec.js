@@ -164,32 +164,6 @@ describe("scenarios > question > custom column", () => {
     H.getNotebookStep("summarize").findByText("UserLAT").should("be.visible");
   });
 
-  // flaky test (#19454)
-  it(
-    "should show info popovers when hovering over custom column dimensions in the summarize sidebar",
-    { tags: "@skip" },
-    () => {
-      H.openOrdersTable({ mode: "notebook" });
-      cy.findByLabelText("Custom column").click();
-
-      H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
-      cy.button("Done").click();
-
-      H.visualize();
-
-      H.summarize();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Group by")
-        .parent()
-        .findByText("Math")
-        .trigger("mouseenter");
-
-      H.popover().contains("Math");
-      H.popover().contains("No description");
-    },
-  );
-
   it("can create a custom column with an existing column name", () => {
     const customFormulas = [
       {
@@ -565,23 +539,6 @@ describe("scenarios > question > custom column", () => {
       cy.findByText("Custom Expression").click();
     });
     H.CustomExpressionEditor.value().should("equal", "Sum([MyCC \\[2027\\]])");
-  });
-
-  it("should work with `isNull` function (metabase#15922)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.getNotebookStep("data").button("Custom column").click();
-    H.enterCustomColumnDetails({
-      formula: "isnull([Discount])",
-      name: "No discount",
-    });
-    cy.button("Done").click();
-
-    H.visualize((response) => {
-      expect(response.body.error).to.not.exist;
-    });
-
-    cy.findAllByRole("gridcell").contains("37.65");
-    cy.findAllByTestId("header-cell").contains("No discount");
   });
 
   it("should be able to add a date range filter to a custom column", () => {

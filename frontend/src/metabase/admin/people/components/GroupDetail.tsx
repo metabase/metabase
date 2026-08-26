@@ -4,18 +4,19 @@ import { msgid, ngettext, t } from "ttag";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
-  canEditMembership,
-  getGroupNameLocalized,
-  isAdminGroup,
-  isDefaultGroup,
-} from "metabase/admin/utils/groups";
-import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useToast } from "metabase/common/hooks/use-toast";
+import {
+  canEditMembership,
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/common/utils/groups";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Text } from "metabase/ui";
@@ -57,9 +58,7 @@ export const GroupDetail = ({
         ),
       );
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      setAlertMessage(errorMessage);
+      setAlertMessage(getErrorMessage(error));
     }
   };
 

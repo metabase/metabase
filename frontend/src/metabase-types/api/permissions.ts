@@ -1,5 +1,6 @@
 import type {
   CollectionId,
+  Database,
   DatabaseId,
   SchemaName,
   TableId,
@@ -46,6 +47,15 @@ export enum DataPermissionValue {
 export type PermissionsGraph = {
   groups: GroupsPermissions;
   revision: number;
+};
+
+// The `groups`/`revision` pair is always present; advanced-permissions plugins
+// (sandboxing, impersonation, …) append their own top-level keys, hence the
+// open index signature.
+export type UpdatePermissionsGraphRequest = {
+  groups: GroupsPermissions;
+  revision: number;
+  [key: string]: unknown;
 };
 
 export type GroupsPermissions = {
@@ -138,6 +148,12 @@ export type FieldsPermissions =
   | DataPermissionValue.SANDBOXED
   | DataPermissionValue.BLOCKED;
 
+export type UpdateCollectionPermissionsGraphRequest = {
+  namespace?: string | null;
+  revision: number;
+  groups: CollectionPermissions;
+};
+
 export type CollectionPermissionsGraph = {
   groups: CollectionPermissions;
   revision: number;
@@ -187,6 +203,13 @@ export type PermissionEntityId = DatabaseEntityId &
   Partial<Omit<TableEntityId, "databaseId">>;
 
 export type EntityWithGroupId = PermissionEntityId & { groupId: number };
+
+/**
+ * A database as the permissions tree sees it: the API database, with `tables`
+ * from `GET /api/database/:id/metadata` and `router_user_attribute` from
+ * `GET /api/database`. Neither endpoint returns both.
+ */
+export type PermissionsDatabase = Database;
 
 export type PermissionSubject = "schemas" | "tables" | "fields";
 

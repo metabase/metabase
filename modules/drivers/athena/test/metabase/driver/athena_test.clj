@@ -142,6 +142,17 @@
       "cn-north-1"     "//athena.cn-north-1.amazonaws.com.cn:443"
       "cn-northwest-1" "//athena.cn-northwest-1.amazonaws.com.cn:443")))
 
+(deftest ^:parallel connection-hosts-test
+  (are [details expected] (= expected (driver/connection-hosts :athena details))
+    {:region "us-east-1"}
+    ["athena.us-east-1.amazonaws.com"]
+
+    {:region "cn-north-1"}
+    ["athena.cn-north-1.amazonaws.com.cn"]
+
+    {:region "us-east-1" :hostname "athena.internal.example"}
+    ["athena.internal.example"]))
+
 (deftest ^:parallel athena-subname-uses-hostname-test
   (mt/test-driver :athena
     (doseq [[test-desc details exp-subname]
@@ -338,30 +349,30 @@
             (is (str/starts-with? result "SELECT"))))))))
 
 (deftest describe-table-works-without-get-table-metadata-permission-test
-  (testing "`describe-table` works if the AWS user's IAM policy doesn't include athena:GetTableMetadata permissions")
-  (mt/test-driver :athena
-    (mt/dataset airports
-      (let [catalog "AwsDataCatalog" ; The bug only happens when :catalog is not nil
-            details (assoc (:details (mt/db))
-                           ;; these credentials are for a user that doesn't have athena:GetTableMetadata permissions
-                           :access_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-access-key)
-                           :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
-                           :catalog catalog)]
-        (mt/with-temp [:model/Database db {:engine :athena, :details details}]
-          (sync/sync-database! db {:scan :schema})
-          (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
-            (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
-              ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
-              ;; undo the changes in https://github.com/metabase/metabase/pull/44032
-              (is (empty? (sql-jdbc.execute/do-with-connection-with-options
-                           :athena
-                           db
-                           nil
-                           (fn [^java.sql.Connection conn]
-                             (let [metadata (.getMetaData conn)]
-                               (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
-            (testing "`describe-table` returns the fields anyway"
-              (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
+  (testing "`describe-table` works if the AWS user's IAM policy doesn't include athena:GetTableMetadata permissions"
+    (mt/test-driver :athena
+      (mt/dataset airports
+        (let [catalog "AwsDataCatalog" ; The bug only happens when :catalog is not nil
+              details (assoc (:details (mt/db))
+                             ;; these credentials are for a user that doesn't have athena:GetTableMetadata permissions
+                             :access_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-access-key)
+                             :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
+                             :catalog catalog)]
+          (mt/with-temp [:model/Database db {:engine :athena, :details details}]
+            (sync/sync-database! db {:scan :schema})
+            (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
+              (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
+                ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
+                ;; undo the changes in https://github.com/metabase/metabase/pull/44032
+                (is (empty? (sql-jdbc.execute/do-with-connection-with-options
+                             :athena
+                             db
+                             nil
+                             (fn [^java.sql.Connection conn]
+                               (let [metadata (.getMetaData conn)]
+                                 (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
+              (testing "`describe-table` returns the fields anyway"
+                (is (not-empty (:fields (driver/describe-table :athena db table))))))))))))
 
 (deftest describe-table-falls-back-to-describe-on-duplicate-jdbc-columns-test
   (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441, GHY-3273)"

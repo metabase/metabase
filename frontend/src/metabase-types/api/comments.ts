@@ -1,11 +1,17 @@
 import type { DocumentContent } from "./document";
+import type { TimelineId } from "./timeline";
 import type { BaseUser, User, UserId } from "./user";
 
 export type CommentId = number;
 
-export type CommentEntityType = "document";
+export type CommentEntityType = "document" | "exploration";
 
 export type EntityId = string | number;
+
+export interface CommentContext {
+  timeline_id?: TimelineId;
+  [key: string]: unknown;
+}
 
 export interface Comment {
   id: CommentId;
@@ -13,7 +19,7 @@ export interface Comment {
 
   target_type: CommentEntityType;
   target_id: EntityId;
-  child_target_id: EntityId | null;
+  child_target_id: string | null;
 
   creator: BaseUser;
   content: DocumentContent;
@@ -27,6 +33,7 @@ export interface Comment {
   reactions: CommentReaction[];
 
   version: number;
+  context?: CommentContext | null;
 }
 
 export interface CommentReaction {
@@ -40,19 +47,25 @@ export type MentionableUser = Pick<
   "id" | "common_name" | "first_name" | "last_name"
 >;
 
+export interface CommentTarget {
+  target_id: EntityId;
+  target_type: CommentEntityType;
+}
+
 /** request types below */
 
-export interface ListCommentsRequest {
+export type ListCommentsRequest = {
   target_type: CommentEntityType;
   target_id: EntityId;
-}
+};
 
 export interface CreateCommentRequest {
   target_id: EntityId;
   target_type: CommentEntityType;
-  child_target_id: EntityId | null;
+  child_target_id: string | null;
   parent_comment_id: CommentId | null;
   content: DocumentContent;
+  context?: CommentContext | null;
 }
 
 export interface UpdateCommentRequest {
@@ -70,6 +83,6 @@ export interface DeleteReactionRequest {
   id: CommentId;
 }
 
-export interface ListMentionsRequest {
+export type ListMentionsRequest = {
   limit: number;
-}
+};

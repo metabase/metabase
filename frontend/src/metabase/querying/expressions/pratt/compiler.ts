@@ -68,6 +68,7 @@ function fallbackResolver(
   _node?: Node,
 ) {
   return {
+    // Unjustified type cast. FIXME
     operator: "dimension" as Lib.ExpressionOperator,
     options: {},
     args: [name],

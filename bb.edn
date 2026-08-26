@@ -1,7 +1,8 @@
 {:min-bb-version "1.12.212"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
- :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src"]
+ ;; dev/src is here for tasks whose logic is shared with JVM tests (e.g. dev.kondo-ratchet)
+ :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src" "dev/src"]
  ;; use Git version of dep temporarily until a new release > 0.16.4 is cut
  :deps {dev.weavejester/cljfmt {:git/sha "075eae26e3c8dad433b88f05927bcd50e3571328"
                                 :git/url "https://github.com/weavejester/cljfmt"} ;; run cljfmt from bb
@@ -12,7 +13,7 @@
         org.babashka/json {:mvn/version "0.1.6"} ;; json parsing
         table/table {:mvn/version "0.5.0"} ;; table printing
         }
- :pods {org.babashka/postgresql {:version "0.1.0"}}
+ ;; No :pods key on purpose: tasks lazily load only what they need.
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
@@ -95,11 +96,12 @@
                                       :description "Files or directories to fix unused requires in"}]]
    :task (task! (fix/fix-files parsed))}
 
-  check
-  {:doc "Checks whether we can compile all source files (and finds circular dependencies)"
-   :examples [["./bin/mage check"]]
-   :requires [[mage.check]]
-   :task (task! (mage.check/check (:arguments parsed)))}
+  load-namespaces
+  {:doc "Checks that every shipped namespace loads without :dev dependencies (and finds circular dependencies)"
+   :examples [["./bin/mage load-namespaces"]]
+   :requires [[mage.load-namespaces]]
+   :arg-schema [:tuple]
+   :task (task! (mage.load-namespaces/load-namespaces))}
 
   codespell
   {:doc "Check for misspellings in the source code."
@@ -265,6 +267,41 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
+  fix-modules-config
+  {:doc "Regenerate .clj-kondo/config/modules/config.edn so it passes metabase.core.modules-test."
+   :examples [["./bin/mage fix-modules-config" "Fix the modules config (uses the running dev REPL if available, else a JVM)"]
+              ["./bin/mage fix-modules-config --port 59498" "Use the dev REPL on a specific nREPL port"]]
+   ;; Cold-JVM fallback invokes `clojure -X:dev dev.modules-config/fix-config!`.
+   :options [["-p" "--port PORT" "nREPL port to use, defaults to value in .nrepl-port"]]
+   :requires [[mage.modules]]
+   :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
+
+  fix-kondo-ratchets
+  {:doc "Lower the per-linter ignore budgets in .clj-kondo/ratchets.edn to match the source tree."
+   :examples [["./bin/mage fix-kondo-ratchets" "Ratchet budgets down (never raises one; over-budget linters are only warned about)"]
+              ["./bin/mage fix-kondo-ratchets --seed :some-linter" "Also set :some-linter's budget to its actual count, for landing a new linter"]]
+   :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
+   :requires [[dev.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
+
+  kondo-redundant-ignores
+  {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
+   :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]
+              ["./bin/mage kondo-redundant-ignores --fix" "Also remove them from source (restores + marks [kondo-keep] any that re-trigger)"]
+              ["./bin/mage kondo-redundant-ignores --fix --audit" "Recheck [kondo-keep] sites too, unmarking any now truly redundant"]]
+   :options [["-f" "--fix" "Remove the candidate ignores from source"]
+             ["-a" "--audit" "Include sites marked [kondo-keep] instead of skipping them"]]
+   :requires [[mage.kondo-ratchet]]
+   :task (task! (mage.kondo-ratchet/redundant-ignores parsed))}
+
+  kondo-insert-ignores
+  {:doc "Insert inline ignores at every site a linter flags -- for landing a new linter without a big-bang fix."
+   :examples [["./bin/mage kondo-insert-ignores :metabase/new-linter" "Insert ignores everywhere the linter fires, then seed its budget"]
+              ["./bin/mage kondo-insert-ignores :equals-true test/metabase/pulse" "Only under the given paths"]]
+   :arg-schema [:sequential [:string {:name "linter-then-paths"}]]
+   :requires [[mage.kondo-ratchet]]
+   :task (task! (mage.kondo-ratchet/insert-ignores (:arguments parsed)))}
+
   ls
   {:doc "List all mage public and private tasks"
    :examples [["./bin/mage ls" "List all tasks"]]
@@ -355,10 +392,11 @@
 
   -driver-decisions
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."
-   :examples [["./bin/mage -driver-decisions --git-ref=master --is-master-or-release=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
-              ["./bin/mage -driver-decisions --pr-labels=ci:all-cloud-drivers" "Run all cloud drivers via label"]
+   :examples [["./bin/mage -driver-decisions --git-ref=master --force-run=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
+              ["./bin/mage -driver-decisions --pr-labels=ci:run-all-cloud-drivers" "Run all cloud drivers via label"]
               ["./bin/mage -driver-decisions --pr-labels=ci:run-mysql-mariadb" "Force-run a specific driver via label"]
               ["./bin/mage -driver-decisions --pr-labels=ci:run-all-drivers" "Force-run all drivers via label"]
+              ["./bin/mage -driver-decisions --only-driver=bigquery" "Run only the BigQuery job, whatever the other rules say"]
               ["./bin/mage -driver-decisions --github-output-only" "Output only GITHUB_OUTPUT format (for CI)"]]
    :requires [[clojure.string :as str]
               [table.core :as table]
@@ -370,38 +408,37 @@
         "# How we decide to run a driver's tests. For each driver, we check these conditions in order (first match wins):\n"
         (with-out-str
           (table/table [["Priority" "Condition" "Result" "Reason"]
-                        ["1"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
-                        ["2"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
-                        ["3"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
-                        ["4"    "Driver is quarantined"                   "SKIP" "driver is quarantined"]
-                        ["4(a)" "...and has break-quarantine-X label"     "RUN"  "anti-quarantine label present"]
-                        ["5"    "On master or release branch"             "RUN"  "master/release branch"]
-                        ["6"    "Cloud driver + ci:all-cloud-drivers"     "RUN"  "ci:all-cloud-drivers label"]
-                        ["7"
-                         "Cloud driver + its files changed"
-                         "RUN"
-                         (str "any of " (pr-str driver-triggers) " affected by cloud-driver module changes")]
-                        ["8"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
-                        ["9"    "Cloud driver + driver deps affected"     "RUN"  "driver module affected by shared code changes"]
-                        ["10"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
-                        ["11"
+                        ["0"    "--only-driver=DRIVER was passed"         "RUN/SKIP" "only that one driver runs"]
+                        ["1"    "Global force-run"                        "RUN"  "master/release branch or ci:run-all label"]
+                        ["2"    "Global skip (no backend changes)"        "SKIP" "workflow skip (no backend changes)"]
+                        ["3"    "Driver is :h2 or :postgres"              "RUN"  "H2/Postgres always run"]
+                        ["4"    "ci:run-all-drivers or ci:run-DRIVER"     "RUN"  "ci:run-all-drivers or ci:run-DRIVER label"]
+                        ["5"    "Driver's own modules/drivers/* files changed" "RUN" "driver files changed"]
+                        ["6"    "Cloud driver + ci:run-all-cloud-drivers" "RUN"  "ci:run-all-cloud-drivers label"]
+                        ["7"    "Cloud driver + query-processor updated"  "RUN"  "query-processor module updated"]
+                        ["8"    "Cloud driver + driver deps affected"     "RUN"  "driver module affected by shared code changes"]
+                        ["9"    "Cloud driver, no relevant changes"       "SKIP" "no relevant changes for cloud driver"]
+                        ["10"
                          (str (pr-str driver-triggers) " module deps affected")
                          "RUN"
                          (str "any of " (pr-str driver-triggers) " affected by module changes")]
-                        ["12"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
+                        ["11"   "Self-hosted driver, not affected"        "SKIP" "driver module not affected"]]))
+        "\nThis table decides only WHETHER a driver runs. Whether its failures GATE is a separate\n"
+        "question, answered at the end of the job by ci-conductor's quarantine rules.\n"
         "\n\n## Labels of Interest\n\n"
         "These PR labels influence driver test decisions:\n\n"
-        "  ci:run-all-drivers        Force-run ALL drivers (overrides quarantine)\n"
-        "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb (overrides quarantine)\n"
-        "  ci:all-cloud-drivers      Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
-        "  break-quarantine-DRIVER   Un-quarantine a specific driver, e.g. break-quarantine-mysql\n"
+        "  ci:run-all-drivers        Force-run ALL drivers\n"
+        "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb\n"
+        "  ci:run-all-cloud-drivers  Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
+        "\nTo let a driver run but not gate, add a suite-quarantine rule in CI Conductor instead.\n"
         "\n## All Drivers\n\n"
         (str/join ", " (map name (sort mage.modules/all-drivers)))
         "\n")))
    :options [[nil "--git-ref REF" "The git ref to compute changed modules against"]
-             [nil "--is-master-or-release MASTER_OR_RELEASE"]
+             [nil "--force-run FORCE_RUN" "Run every driver regardless of the diff"]
              [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
              [nil "--skip SKIP"]
+             [nil "--only-driver DRIVER" "Run only this driver's job, ignoring every other rule"]
              [nil "--github-output-only" "Only output GITHUB_OUTPUT format (no human-readable output)"]]
 
    :task (task! (mage.modules/-main parsed))}

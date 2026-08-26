@@ -16,6 +16,8 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockSingleSeries,
+  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
 import type { Extent } from "../types";
@@ -95,16 +97,19 @@ const savedMultiseriesCard: Card = {
   dataset_query: breakoutMultiseriesQuery,
 };
 const derivedMultiseriesCard = createMockCard({
+  // Unjustified type cast. FIXME
   id: null as unknown as CardId, // id is not present when drilling through series / multiseries
   dataset_query: derivedBreakoutMultiseriesQuery,
   display: savedCard.display,
 });
 const newCard = createMockCard({
+  // Unjustified type cast. FIXME
   id: null as unknown as CardId, // id is not present when drilling through series / multiseries
   dataset_query: baseQuery,
   display: "line",
 });
 const modifiedNewCard = createMockCard({
+  // Unjustified type cast. FIXME
   id: null as unknown as CardId, // id is not present when drilling through series / multiseries
   dataset_query: derivedQuery,
   display: "line",
@@ -176,16 +181,55 @@ describe("metabase/visualization/lib/utils", () => {
 
   describe("getColumnCardinality", () => {
     it("should get column cardinality", () => {
-      const cols = [createMockColumn({})];
       const rows = [[1], [2], [3], [3]];
-      expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
+      expect(getColumnCardinality(rows, 0, "n")).toEqual(3);
     });
 
-    it("should get column cardinality for frozen column", () => {
-      const cols = [createMockColumn({})];
-      const rows = [[1], [2], [3], [3]];
-      Object.freeze(cols[0]);
-      expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
+    it("should not reuse cardinality across different query executions with the same column name", () => {
+      const jsonQueryA = createMockStructuredDatasetQuery();
+      const jsonQueryB = createMockStructuredDatasetQuery();
+
+      expect(
+        getColumnCardinality([["a"], ["b"]], 0, "category", jsonQueryA),
+      ).toEqual(2);
+      expect(
+        getColumnCardinality([["x"], ["y"], ["z"]], 0, "category", jsonQueryB),
+      ).toEqual(3);
+    });
+
+    it("should reuse cardinality for the same query execution when a remapped column is dropped", () => {
+      const jsonQuery = createMockStructuredDatasetQuery();
+      const preRemapRows = [
+        [1, "Alice", 10],
+        [1, "Alice", 10],
+        [2, "Bob", 10],
+      ];
+      const postRemapRows = [
+        [1, 10],
+        [1, 10],
+        [2, 11], // this is a purposely different value to ensure we're hitting the cache
+      ];
+
+      expect(getColumnCardinality(preRemapRows, 1, "name", jsonQuery)).toEqual(
+        2,
+      );
+      expect(getColumnCardinality(preRemapRows, 2, "count", jsonQuery)).toEqual(
+        1,
+      );
+      expect(
+        getColumnCardinality(postRemapRows, 1, "count", jsonQuery),
+      ).toEqual(1);
+    });
+
+    it("should not reuse cardinality when the same json query is attached to series with a different row count", () => {
+      const jsonQuery = createMockStructuredDatasetQuery();
+
+      expect(
+        getColumnCardinality([["a"], ["b"]], 0, "category", jsonQuery),
+      ).toEqual(2);
+      expect(
+        getColumnCardinality([["x"], ["y"], ["z"]], 0, "category", jsonQuery),
+      ).toEqual(3);
     });
   });
 
@@ -389,7 +433,11 @@ describe("metabase/visualization/lib/utils", () => {
         n % highCardinality,
       ]);
 
-      expect(getDefaultPivotColumn(cols, rows)).toBeNull();
+      expect(
+        getDefaultPivotColumn(
+          createMockSingleSeries({}, { data: { cols, rows } }),
+        ),
+      ).toBeNull();
     });
 
     it("returns lowest cardinality column from ones where it is <= 16", () => {
@@ -406,9 +454,11 @@ describe("metabase/visualization/lib/utils", () => {
         n % lowestCardinality,
       ]);
 
-      expect(getDefaultPivotColumn(cols, rows)).toEqual(
-        lowestCardinalityColumn,
-      );
+      expect(
+        getDefaultPivotColumn(
+          createMockSingleSeries({}, { data: { cols, rows } }),
+        ),
+      ).toEqual(lowestCardinalityColumn);
     });
 
     it("ignores low cardinality non-dimension columns", () => {
@@ -421,7 +471,11 @@ describe("metabase/visualization/lib/utils", () => {
       ];
       const rows = _.range(lowCardinality).map((n) => [n, 1]);
 
-      expect(getDefaultPivotColumn(cols, rows)).toEqual(lowCardinalityColumn);
+      expect(
+        getDefaultPivotColumn(
+          createMockSingleSeries({}, { data: { cols, rows } }),
+        ),
+      ).toEqual(lowCardinalityColumn);
     });
   });
 

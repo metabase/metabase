@@ -8,7 +8,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -140,7 +139,7 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    parsed-query          :- [:sequential :metabase.lib.parameters.parse/parsed-token]
    param->value          :- [:maybe [:map-of string? any?]]]
-  (log/tracef "Substituting params\n%s\nin query:\n%s" (u/pprint-to-str param->value) (u/pprint-to-str parsed-query))
+  (log/tracef "Substituting %d params in query" (count param->value))
   (let [[sql args missing] (try
                              (substitute* metadata-providerable param->value parsed-query false)
                              (catch Throwable e
@@ -149,7 +148,7 @@
                                                 :params       param->value
                                                 :parsed-query parsed-query}
                                                e))))]
-    (log/tracef "=>%s\n%s" sql (pr-str args))
+    (log/tracef "Substituted %d params" (count args))
     (when (seq missing)
       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
                       {:type    driver-api/qp.error-type.missing-required-parameter

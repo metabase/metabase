@@ -37,6 +37,7 @@ function setup({
     dataset: 0,
     metric: 0,
     segment: 0,
+    transform: 0,
   });
 
   mockEndpointsCb?.(database);
@@ -186,6 +187,15 @@ describe("DatabaseConnectionInfoSection", () => {
       expect(
         screen.queryByText(/Re-scan field values/i),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Sample database", () => {
+    it("should disable editing the connection details", async () => {
+      setup({ database: createMockDatabase({ is_sample: true }) });
+      expect(
+        await screen.findByRole("button", { name: /Edit connection details/i }),
+      ).toBeDisabled();
     });
   });
 });

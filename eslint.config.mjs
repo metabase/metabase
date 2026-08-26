@@ -23,10 +23,19 @@ import i18nextPlugin from "eslint-plugin-i18next";
 import ttagPlugin from "eslint-plugin-ttag";
 
 import boundaries from "eslint-plugin-boundaries";
+import {
+  SIDE_EFFECT_FREE_PATHS,
+  SIDE_EFFECT_PATHS,
+} from "./frontend/build/shared/rspack/side-effect-free-modules.js";
 import metabasePlugin from "./frontend/lint/eslint-plugin-metabase/index.js";
+import {
+  NO_MODULE_SIDE_EFFECTS_IGNORES,
+  NO_MODULE_SIDE_EFFECTS_OPTIONS,
+} from "./frontend/lint/no-module-side-effects-options.js";
 import {
   elements as boundaryElements,
   enforcedRules as boundaryRules,
+  getPublicApiModules,
 } from "./frontend/lint/module-boundaries.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,18 +45,67 @@ const shouldLintCssModules =
 
 const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
 
+// ttag string extraction only understands contexts chained inline, e.g. c("...").t`...`;
+// a c() call stored in a variable silently drops its strings from the .pot file.
+const unchainedTtagContextRestriction = {
+  selector:
+    "CallExpression[callee.name=c]:not(MemberExpression > CallExpression)",
+  message:
+    "Unchained ttag c() — its strings are dropped from the translation template. Chain it inline: c('context').t`...`",
+};
+
+const DAYJS_RESTRICTED_IMPORT_MESSAGE =
+  "Please import dayjs from `metabase/dayjs` instead.";
+const dayjsRestrictedPath = {
+  name: "dayjs",
+  message: DAYJS_RESTRICTED_IMPORT_MESSAGE,
+};
+const dayjsRestrictedPattern = {
+  group: ["dayjs/*"],
+  message: DAYJS_RESTRICTED_IMPORT_MESSAGE,
+};
+const dayjsExtendRestriction = {
+  selector:
+    'CallExpression[callee.object.name="dayjs"][callee.property.name="extend"]',
+  message: "Register dayjs plugins in `metabase/dayjs`, not locally.",
+};
+
+const e2eRestrictedConfig = {
+  paths: [
+    {
+      name: "metabase-types/api/mocks/presets",
+      message: "Please use e2e/support/cypress_sample_database instead",
+    },
+  ],
+  patterns: [
+    {
+      group: [
+        "**/enterprise/frontend/src/embedding-sdk-package",
+        "**/enterprise/frontend/src/embedding-sdk-package/*",
+      ],
+      message: "Please use SDK package name - '@metabase/embedding-sdk-react'",
+    },
+  ],
+};
+
 const baseMetabaseRestrictedConfig = {
   patterns: [
     { group: ["metabase-enterprise"] },
     { group: ["metabase-enterprise/*"] },
     { group: ["cljs/metabase.lib*"] },
     { group: ["/embedding-sdk-package"] },
+    dayjsRestrictedPattern,
   ],
   paths: [
+    dayjsRestrictedPath,
     {
       name: "react-redux",
       importNames: ["useSelector", "useDispatch", "connect"],
       message: "Please import from `metabase/redux` instead.",
+    },
+    {
+      name: "react-router",
+      message: "Please import routing from `metabase/router` instead.",
     },
     {
       name: "@mantine/core",
@@ -83,6 +141,10 @@ const configs = [
       "e2e/tmp/**",
       "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "**/custom-viz/fixtures/example_custom_viz_plugin/**",
+      // The data-app dev entry is served verbatim to the consumer's Vite (it
+      // imports `@metabase/embedding-sdk-react/*` + a virtual config module), so
+      // it can't be resolved/linted in this repo.
+      "enterprise/frontend/src/embedding-sdk-package/data-app-dev-entry.tsx",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
@@ -151,6 +213,11 @@ const configs = [
     rules: {
       // Base ESLint rules
       strict: ["error", "never"],
+      "no-restricted-syntax": [
+        "error",
+        unchainedTtagContextRestriction,
+        dayjsExtendRestriction,
+      ],
       "no-undef": "error",
       "no-var": "warn",
       "no-unused-vars": [
@@ -211,7 +278,7 @@ const configs = [
       "react/no-is-mounted": "error",
       "react/prefer-es6-class": "error",
       "react/display-name": "warn",
-      "react/prop-types": "error",
+      "react/prop-types": "off",
       "react/no-did-mount-set-state": "off",
       "react/no-did-update-set-state": "off",
       "react/no-find-dom-node": "off",
@@ -287,15 +354,12 @@ const configs = [
     ],
     plugins: {
       boundaries,
+      metabase: metabasePlugin,
     },
     settings: {
       "boundaries/elements": boundaryElements,
-      "boundaries/ignore": [
-        "**/*.unit.spec.*",
-        "**/e2e/**",
-        "*.stories.*",
-        "test/**",
-      ],
+      "boundaries/ignore": ["**/e2e/**", "test/**"],
+      "boundaries/dependency-nodes": ["import", "dynamic-import"],
     },
     rules: {
       "boundaries/element-types": [
@@ -306,6 +370,14 @@ const configs = [
           message: "${file.type} cannot import from ${dependency.type}",
         },
       ],
+      // Modules flagged `enforcePublicApi` in module-boundaries.mjs must be imported through their index.
+      // Their own files must import relatively.
+      "metabase/enforce-module-public-api": [
+        "error",
+        { modules: getPublicApiModules() },
+      ],
+      // Every file frontend/src/ and enterprise/frontend/src/ must belong to a declared module.
+      "boundaries/no-unknown-files": "error",
     },
   },
   {
@@ -326,6 +398,7 @@ const configs = [
     files: [
       "**/*.unit.spec.*",
       "frontend/src/metabase/admin/**/*",
+      "frontend/src/metabase/monitor/tools/**/*",
       "frontend/src/metabase/setup/**/*",
       "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
       "enterprise/frontend/src/metabase-enterprise/embedding/**/*",
@@ -373,8 +446,8 @@ const configs = [
       parser: tseslint.parser,
     },
     rules: {
+      "metabase/no-unjustified-type-casts": "error",
       "prefer-rest-params": "off",
-      "react/prop-types": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",
       "@typescript-eslint/no-inferrable-types": "off",
       "@typescript-eslint/no-explicit-any": "off",
@@ -453,6 +526,10 @@ const configs = [
     plugins: {
       cypress: cypressPlugin,
       "chai-friendly": chaiFriendlyPlugin,
+      // Declared here so the metabase and import rules below also resolve for non-JS/TS e2e files
+      // which don't match the `**/*.{js,ts,...}` base.
+      metabase: metabasePlugin,
+      import: importXPlugin,
     },
     rules: {
       "metabase/no-unscoped-text-selectors": "error",
@@ -471,22 +548,8 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          paths: [
-            {
-              name: "metabase-types/api/mocks/presets",
-              message: "Please use e2e/support/cypress_sample_database instead",
-            },
-          ],
-          patterns: [
-            {
-              group: [
-                "**/enterprise/frontend/src/embedding-sdk-package",
-                "**/enterprise/frontend/src/embedding-sdk-package/*",
-              ],
-              message:
-                "Please use SDK package name - '@metabase/embedding-sdk-react'",
-            },
-          ],
+          paths: [...e2eRestrictedConfig.paths, dayjsRestrictedPath],
+          patterns: [...e2eRestrictedConfig.patterns, dayjsRestrictedPattern],
         },
       ],
       "import/no-unresolved": [
@@ -507,6 +570,8 @@ const configs = [
   {
     files: ["e2e/test-component/**/*.ts", "e2e/test-component/**/*.tsx"],
     rules: {
+      // Component tests may not import `metabase/` code, so the dayjs facade rule does not apply.
+      "no-restricted-imports": ["error", e2eRestrictedConfig],
       "@typescript-eslint/no-restricted-imports": [
         "warn",
         {
@@ -542,6 +607,13 @@ const configs = [
     },
   },
   {
+    // Standalone Node service — console logging is appropriate here.
+    files: ["frontend/src/static-viz-server/**/*.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
     files: ["frontend/src/metabase/**/*"],
     plugins: {
       ttag: fixupPluginRules(ttagPlugin),
@@ -563,18 +635,14 @@ const configs = [
       "ttag/no-module-declaration": "error",
       "no-restricted-syntax": [
         "error",
+        unchainedTtagContextRestriction,
+        dayjsExtendRestriction,
         {
           selector: "Literal[value=/mb-base-color-/]",
           message:
             "You may not use base colors in the application, use semantic colors instead. (see colors.module.css)",
         },
       ],
-    },
-  },
-  {
-    files: ["frontend/src/metabase/app.js"],
-    rules: {
-      "import/no-duplicates": "off",
     },
   },
   {
@@ -611,17 +679,40 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/ui/**/*.{js,jsx,ts,tsx}"],
+    // The router facade is the single seam allowed to import `react-router`
+    // directly; every other file goes through `metabase/router`.
+    files: ["frontend/src/metabase/router/**/*"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
+  {
+    // The dayjs facade is the only place that imports `dayjs` and its plugins
+    // directly; every other file goes through `metabase/dayjs`.
+    files: ["frontend/src/metabase/dayjs/**/*"],
+    rules: {
+      "no-restricted-imports": "off",
+      "no-restricted-syntax": ["error", unchainedTtagContextRestriction],
+    },
+  },
+  {
+    files: ["frontend/src/metabase/ui/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [
-            "metabase-enterprise",
-            "metabase-enterprise/*",
-            "cljs/metabase.lib*",
+            { group: ["metabase-enterprise"] },
+            { group: ["metabase-enterprise/*"] },
+            { group: ["cljs/metabase.lib*"] },
+            dayjsRestrictedPattern,
           ],
           paths: [
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            dayjsRestrictedPath,
             {
               name: "@emotion/styled",
               message: "Please style components using css modules.",
@@ -643,14 +734,19 @@ const configs = [
         "error",
         {
           patterns: [
-            "metabase-enterprise",
-            "metabase-enterprise/*",
-            "cljs/metabase.lib*",
-            "/embedding-sdk-package",
-            "/embedding-sdk-bundle",
-            "/embedding-sdk-shared",
-            "metabase/entities",
-            "metabase/entities/*",
+            {
+              group: [
+                "metabase-enterprise",
+                "metabase-enterprise/*",
+                "cljs/metabase.lib*",
+                "/embedding-sdk-package",
+                "/embedding-sdk-bundle",
+                "/embedding-sdk-shared",
+                "metabase/entities",
+                "metabase/entities/*",
+              ],
+            },
+            dayjsRestrictedPattern,
           ],
           paths: [
             {
@@ -658,6 +754,11 @@ const configs = [
               importNames: ["useSelector", "useDispatch", "connect"],
               message: "Please import from `metabase/redux` instead.",
             },
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            dayjsRestrictedPath,
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
@@ -690,10 +791,13 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
+          paths: [dayjsRestrictedPath],
           patterns: [
+            dayjsRestrictedPattern,
             {
               group: [
                 "metabase/*",
+                "!metabase/dayjs",
                 "!metabase/env",
                 "!metabase/utils",
                 "!metabase/querying",
@@ -759,7 +863,10 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/embedding-sdk-bundle/test/**/*"],
+    files: [
+      "frontend/src/embedding-sdk-bundle/test/**/*",
+      "frontend/src/embedding-sdk-shared/test/storybook-themes.ts",
+    ],
     rules: {
       "metabase/no-color-literals": "off",
     },
@@ -830,8 +937,14 @@ const configs = [
               group: ["__support__/**", "!__support__/metadata"],
               message: TEST_FILES_NAME_PATTERN_ERROR_MESSAGE,
             },
+            dayjsRestrictedPattern,
           ],
           paths: [
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            dayjsRestrictedPath,
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
@@ -903,8 +1016,13 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          patterns: [{ group: ["cljs/metabase.lib*"] }],
+          patterns: [{ group: ["cljs/metabase.lib*"] }, dayjsRestrictedPattern],
           paths: [
+            {
+              name: "react-router",
+              message: "Please import routing from `metabase/router` instead.",
+            },
+            dayjsRestrictedPath,
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
@@ -941,8 +1059,8 @@ const configs = [
       "**/.storybook/**",
       "**/jest/**",
       "**/test/**",
-      "**/*.spec.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx}",
+      "**/*.spec.{ts,tsx}",
+      "**/*.stories.{ts,tsx}",
     ],
     rules: {
       "metabase/no-external-references-for-sdk-package-code": [
@@ -1021,7 +1139,7 @@ const configs = [
     },
   },
   {
-    files: ["docs/**/snippets/**/*.{ts,tsx,js,jsx}"],
+    files: ["docs/**/snippets/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-var-requires": "off",
@@ -1044,7 +1162,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/lint/**/*.js"],
+    files: ["frontend/lint/**/*.js", "frontend/lint/**/*.mjs"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -1067,6 +1185,7 @@ const configs = [
       "rspack.*.js",
       "bin/**/*.js",
       ".github/scripts/**/*.js",
+      ".github/scripts/**/*.mjs",
     ],
     languageOptions: {
       globals: {
@@ -1088,6 +1207,72 @@ const configs = [
     rules: {
       // Disable new v9 rule - fixing this is out of scope for eslint upgrade
       "storybook/no-renderer-packages": "off",
+    },
+  },
+
+  // ============================================
+  // SIDE-EFFECT-FREE MODULES
+  // ============================================
+  {
+    // Run the lint on the directories rspack treats as side-effect-free
+    files: SIDE_EFFECT_FREE_PATHS.map(
+      (dir) => `${path.relative(__dirname, dir)}/**/*.{ts,tsx,js,jsx}`,
+    ),
+    ignores: [
+      ...SIDE_EFFECT_PATHS.map((entry) =>
+        entry.endsWith(path.sep)
+          ? `${path.relative(__dirname, entry)}/**`
+          : path.relative(__dirname, entry),
+      ),
+      ...NO_MODULE_SIDE_EFFECTS_IGNORES,
+    ],
+    rules: {
+      "metabase/no-module-side-effects": [
+        "error",
+        NO_MODULE_SIDE_EFFECTS_OPTIONS,
+      ],
+    },
+  },
+
+  // ============================================
+  // BASE API OBJECT ACCESS
+  // ============================================
+  {
+    // Endpoints are injected into the one `Api` object at import time by the
+    // file that owns them, so they exist only once that file has been
+    // evaluated. Reaching them by name through the base object works only while
+    // something else imports the owner, and a side-effect-free api module lets
+    // production shake the owner away. Consumers go through the owner's
+    // exports instead.
+    files: [
+      "frontend/src/**/*.{ts,tsx,js,jsx}",
+      "enterprise/frontend/src/**/*.{ts,tsx,js,jsx}",
+    ],
+    ignores: [
+      // TODO(no-base-api-access): createMockState composes the whole store, so redux/store/mocks belongs in test support.
+      // It moves there when the store roots are composed explicitly, and this ignore goes with it.
+      "frontend/src/metabase/redux/store/mocks/api.ts",
+    ],
+    rules: {
+      "metabase/no-base-api-access": [
+        "error",
+        {
+          // Where an endpoint is declared is a path question: the api module, or a module's `api/` folder or `api.ts`.
+          allowInjectionIn: [
+            `${__dirname}/frontend/src/metabase/api/**`,
+            "**/api/**",
+            "**/api.ts",
+          ],
+          // Reaching an endpoint by name is never fine in product code, whatever the file is called.
+          // Test support seeds the cache by endpoint name, after importing the whole api index so every owner has run.
+          allowReachIn: [
+            `${__dirname}/frontend/src/metabase/api/**`,
+            `${__dirname}/frontend/test/**`,
+            "**/__support__/**",
+            "**/*.unit.spec.*",
+          ],
+        },
+      ],
     },
   },
 ];

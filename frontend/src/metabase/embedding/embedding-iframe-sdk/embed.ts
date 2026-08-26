@@ -1,6 +1,6 @@
-import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-bundle/errors";
-import * as MetabaseErrors from "embedding-sdk-bundle/errors";
 import type { SqlParameterValues } from "embedding-sdk-bundle/types";
+import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
+import * as MetabaseErrors from "embedding-sdk-shared/errors";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
   EmbedAuthManager,
@@ -25,6 +25,7 @@ import type {
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
 } from "./types/embed";
+import { listenForEajsMessages } from "./utils/post-message";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
 // Import EE Iframe Embedding script plugins
@@ -55,12 +56,14 @@ export const setupConfigWatcher = () => {
         return Reflect.get(target, prop, receiver);
       },
       set(metabaseConfig, prop, newValue) {
+        // Unjustified type cast. FIXME
         metabaseConfig[prop as string] = newValue;
         updateAllEmbeds({ [prop]: newValue });
         return true;
       },
     });
 
+  // Unjustified type cast. FIXME
   let currentConfig = (window as any).metabaseConfig || {};
   let proxyConfig: Record<string, unknown> = createProxy(currentConfig);
 
@@ -116,6 +119,7 @@ const raiseError = (message: string) => {
 function assertFieldCanBeUpdated(
   newValues: Partial<SdkIframeEmbedElementSettings>,
 ) {
+  // Unjustified type cast. FIXME
   const currentConfig = (window as any).metabaseConfig || {};
   for (const field of DISABLE_UPDATE_FOR_KEYS) {
     if (
@@ -137,6 +141,7 @@ function assertValidMetabaseConfigField(
   for (const field in newValues) {
     if (
       !ALLOWED_EMBED_SETTING_KEYS_MAP.base.includes(
+        // Unjustified type cast. FIXME
         field as AllowedMetabaseConfigKey,
       )
     ) {
@@ -161,6 +166,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     Set<SdkIframeEmbedEventHandler>
   > = new Map();
   private _authManager: EmbedAuthManager | null = null;
+  private _removeMessageListener: (() => void) | null = null;
 
   ["custom-context"]: unknown;
 
@@ -170,6 +176,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   get globalSettings() {
+    // Unjustified type cast. FIXME
     return (window as any).metabaseConfig || {};
   }
 
@@ -177,16 +184,18 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   get properties(): SdkIframeEmbedElementSettings {
     const attributesConverted = this._attributeNames.reduce(
       (acc, attr) => {
-        const attrValue = this.getAttribute(attr as string);
+        const attrValue = this.getAttribute(attr);
         if (attrValue !== null) {
-          const key = attributeToSettingKey(attr as string);
+          const key = attributeToSettingKey(attr);
           acc[key] = parseAttributeValue(attrValue);
         }
         return acc;
       },
+      // Unjustified type cast. FIXME
       {} as Record<string, unknown>,
     );
 
+    // Unjustified type cast. FIXME
     return {
       ...this.globalSettings,
       ...attributesConverted,
@@ -202,7 +211,8 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     options?: boolean | AddEventListenerOptions,
   ): void {
     if (type === "ready") {
-      const eventType = type as SdkIframeEmbedEvent["type"];
+      const eventType = type;
+      // Unjustified type cast. FIXME
       const handler = listener as SdkIframeEmbedEventHandler;
       if (!this._eventHandlers.has(eventType)) {
         this._eventHandlers.set(eventType, new Set());
@@ -219,11 +229,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     // Fall back to the native HTMLElement event mechanism for all other events.
-    super.addEventListener(
-      type,
-      listener as EventListenerOrEventListenerObject,
-      options,
-    );
+    super.addEventListener(type, listener, options);
   }
 
   removeEventListener(
@@ -232,7 +238,8 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     options?: boolean | EventListenerOptions,
   ): void {
     if (type === "ready") {
-      const eventType = type as SdkIframeEmbedEvent["type"];
+      const eventType = type;
+      // Unjustified type cast. FIXME
       const handler = listener as SdkIframeEmbedEventHandler;
       const handlers = this._eventHandlers.get(eventType);
 
@@ -246,17 +253,14 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return;
     }
 
-    super.removeEventListener(
-      type,
-      listener as EventListenerOrEventListenerObject,
-      options,
-    );
+    super.removeEventListener(type, listener, options);
   }
 
   /**
    * Send a message with the new settings
    */
   _updateSettings(settings: Partial<SdkIframeEmbedElementSettings>) {
+    // Unjustified type cast. FIXME
     const newValues = {
       ...this.properties,
       ...settings,
@@ -278,7 +282,8 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   destroy() {
-    window.removeEventListener("message", this._handleMessage);
+    this._removeMessageListener?.();
+    this._removeMessageListener = null;
     this._isEmbedReady = false;
     this._eventHandlers.clear();
     this._authManager = null;
@@ -324,19 +329,19 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return;
     }
 
+    // Unjustified type cast. FIXME
     const key = attributeToSettingKey(
       attrName,
     ) as keyof SdkIframeEmbedElementSettings;
-    if (
-      (DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key as string)
-    ) {
+    // Unjustified type cast. FIXME
+    if ((DISABLE_UPDATE_FOR_KEYS as readonly string[]).includes(key)) {
       console.error(`${key} cannot be updated after the embed is created`);
       return;
     }
 
     this._updateSettings({
       [key]: parseAttributeValue(newVal),
-    } as Partial<SdkIframeEmbedElementSettings>);
+    });
   }
 
   private _emitEvent(event: SdkIframeEmbedEvent) {
@@ -367,7 +372,15 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     this._iframe.setAttribute("data-metabase-embed", "true");
 
-    window.addEventListener("message", this._handleMessage);
+    // Chrome blocks the Clipboard API in cross-origin iframes unless the host
+    // explicitly delegates the permission (e.g. copying a Metabot answer).
+    this._iframe.setAttribute("allow", "clipboard-write");
+
+    this._removeMessageListener = listenForEajsMessages({
+      messageSource: "iframe-content",
+      iframe: this._iframe,
+      handler: this._handleMessage,
+    });
 
     this.appendChild(this._iframe);
   }
@@ -418,19 +431,8 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
   }
 
-  private _handleMessage = async (
-    event: MessageEvent<SdkIframeEmbedTagMessage>,
-  ) => {
-    if (event.source !== this._iframe?.contentWindow) {
-      // ignore messages from other iframes
-      return;
-    }
-
-    if (!event.data) {
-      return;
-    }
-
-    if (event.data.type === "metabase.embed.iframeReady") {
+  private _handleMessage = async (message: SdkIframeEmbedTagMessage) => {
+    if (message.type === "metabase.embed.iframeReady") {
       if (this._isEmbedReady) {
         return;
       }
@@ -453,17 +455,16 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       this._emitEvent({ type: "ready" });
     }
 
-    if (event.data.type === "metabase.embed.requestSessionToken") {
+    if (message.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
     }
 
-    if (event.data.type === "metabase.embed.requestGuestTokenRefresh") {
-      await this._refreshGuestToken(event.data.data.expiredToken);
+    if (message.type === "metabase.embed.requestGuestTokenRefresh") {
+      await this._refreshGuestToken(message.data.expiredToken);
     }
 
-    // Note: if we wrap other functions like this, let's come up with a generic utility function
-    if (event.data.type === "metabase.embed.handleLink") {
-      const { url, requestId } = event.data.data;
+    if (message.type === "metabase.embed.handleLink") {
+      const { url, requestId } = message.data;
       const handleLink = this.globalSettings.pluginsConfig?.handleLink;
 
       let handled = false;
@@ -485,15 +486,15 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       );
     }
 
-    if (event.data.type === "metabase.embed.parametersChange") {
+    if (message.type === "metabase.embed.parametersChange") {
       this.dispatchEvent(
-        new CustomEvent("parameters-change", { detail: event.data.data }),
+        new CustomEvent("parameters-change", { detail: message.data }),
       );
     }
 
-    if (event.data.type === "metabase.embed.sqlParametersChange") {
+    if (message.type === "metabase.embed.sqlParametersChange") {
       this.dispatchEvent(
-        new CustomEvent("sql-parameters-change", { detail: event.data.data }),
+        new CustomEvent("sql-parameters-change", { detail: message.data }),
       );
     }
   };
@@ -511,10 +512,12 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
             return acc;
           }
 
+          // Unjustified type cast. FIXME
           acc[key as keyof typeof acc] = value;
 
           return acc;
         },
+        // Unjustified type cast. FIXME
         {} as Message["data"],
       );
 
@@ -691,6 +694,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return undefined;
     }
 
+    // Unjustified type cast. FIXME
     return parsed as T;
   }
 
@@ -728,7 +732,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       // synced with the caller's intent.
       this._updateSettings({
         [settingKey]: value,
-      } as Partial<SdkIframeEmbedElementSettings>);
+      });
 
       return;
     }
@@ -760,6 +764,7 @@ function createCustomElement<
   attributeNames: U,
   decorate?: (Base: ConcreteEmbedElementConstructor<U>) => C,
 ): C {
+  // Unjustified type cast. FIXME
   const Base = class extends MetabaseEmbedElement<U> {
     protected _componentName: string = componentName;
     protected _attributeNames: U = attributeNames;
@@ -769,6 +774,7 @@ function createCustomElement<
     }
   } as unknown as ConcreteEmbedElementConstructor<U>;
 
+  // Unjustified type cast. FIXME
   const CustomEmbedElement = (decorate ? decorate(Base) : Base) as C;
 
   if (typeof window !== "undefined" && !customElements.get(componentName)) {
@@ -857,7 +863,9 @@ const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
 
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
+  // Unjustified type cast. FIXME
   (window as any)["metabase.embed"] = {
+    // Unjustified type cast. FIXME
     ...(window as any)["metabase.embed"],
   };
 }

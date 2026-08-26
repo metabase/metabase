@@ -6,6 +6,7 @@ export * from "./Ellipsified";
 export * from "./Image";
 export * from "./Indicator";
 export * from "./Kbd";
+export * from "./KeyboardShortcut";
 export * from "./SortableHeaderPill";
 export * from "./Stepper";
 export * from "./Timeline";

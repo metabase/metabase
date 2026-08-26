@@ -4,10 +4,7 @@ import { MODAL_TYPES } from "metabase/querying/constants";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Button, Flex } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
-import type {
-  CustomClickActionWithCustomView,
-  LegacyDrill,
-} from "metabase/visualizations/types";
+import type { LegacyDrill } from "metabase/visualizations/types";
 
 import { nativeDrillFallback } from "./utils";
 
@@ -44,6 +41,6 @@ export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
           </Flex>
         );
       },
-    } as CustomClickActionWithCustomView,
+    },
   ];
 };

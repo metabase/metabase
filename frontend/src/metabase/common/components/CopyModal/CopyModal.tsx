@@ -1,10 +1,9 @@
 import { dissoc } from "icepick";
 import { t } from "ttag";
 
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { CopyDashboardFormConnected } from "metabase/common/components/CopyDashboardForm";
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import { DocumentCopyForm } from "metabase/documents/components/DocumentCopyForm/DocumentCopyForm";
+import { DocumentCopyForm } from "metabase/common/components/DocumentCopyForm/DocumentCopyForm";
 import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
 import { Modal } from "metabase/ui";
 
@@ -38,8 +37,6 @@ export function CopyModal(props: CopyModalProps) {
     name: resolvedObjectWithDefaultCollection.name + " - " + t`Duplicate`,
   };
 
-  useEscapeToCloseModal(onClose);
-
   return (
     <Modal
       title={
@@ -47,7 +44,6 @@ export function CopyModal(props: CopyModalProps) {
       }
       opened
       onClose={onClose}
-      closeOnEscape={false}
     >
       {entityType === "dashboards" && (
         <CopyDashboardFormConnected

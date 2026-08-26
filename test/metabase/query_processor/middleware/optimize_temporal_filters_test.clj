@@ -16,7 +16,10 @@
    [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-clauses]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.date-2 :as u.date]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (driver/register! ::timezone-driver, :abstract? true)
 
@@ -535,14 +538,13 @@
                                   (lib/interval 2 :day))
                                  (lib/relative-datetime -1 :week)
                                  (lib/relative-datetime 0 :week))))]
-      (is (=? {:query {:filter [:between
-                                [:+ [:field (meta/id :orders :created-at) {}]
-                                 [:interval 2 :day]]
-                                [:relative-datetime -1 :week]
-                                [:relative-datetime 0 :week]]}}
-              (-> query
-                  optimize-temporal-clauses/optimize-temporal-clauses
-                  lib/->legacy-MBQL))))))
+      (is (=? {:stages [{:filters [[:between {}
+                                    [:+ {}
+                                     [:field {} (meta/id :orders :created-at)]
+                                     [:interval {} 2 :day]]
+                                    [:relative-datetime {} -1 :week]
+                                    [:relative-datetime {} 0 :week]]]}]}
+              (optimize-temporal-clauses/optimize-temporal-clauses query))))))
 
 (deftest ^:parallel optimize-date-equals-date-filters-test
   (doseq [unit     [:day :default]

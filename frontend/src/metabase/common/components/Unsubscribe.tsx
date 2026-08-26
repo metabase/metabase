@@ -1,19 +1,21 @@
-import type { Location } from "history";
 import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
+import {
+  useUndoUnsubscribeFromNotificationByEmailMutation,
+  useUndoUnsubscribeFromPulseMutation,
+  useUnsubscribeFromNotificationByEmailMutation,
+  useUnsubscribeFromPulseMutation,
+} from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
+import { useSearchParams } from "metabase/router";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import {
-  NotificationUnsubscribeApi,
-  PulseUnsubscribeApi,
-} from "metabase/services";
 import { Button, Center, Stack, Text } from "metabase/ui";
 
 import {
@@ -36,17 +38,17 @@ const SUBSCRIPTION = {
 
 type Subscription = (typeof SUBSCRIPTION)[keyof typeof SUBSCRIPTION];
 
-export const UnsubscribePage = ({
-  location,
-}: UnsubscribeProps): JSX.Element => {
+export const UnsubscribePage = (): JSX.Element => {
+  const [searchParams] = useSearchParams();
   const [subscriptionChange, setSubscriptionChange] = useState<Subscription>(
     SUBSCRIPTION.UNSUBSCRIBE,
   );
 
-  const hash = location?.query?.hash;
-  const email = location?.query?.email;
-  const pulseId = location?.query?.["pulse-id"];
-  const notificationHandlerId = location?.query?.["notification-handler-id"];
+  const hash = searchParams.get("hash") ?? undefined;
+  const email = searchParams.get("email") ?? undefined;
+  const pulseId = searchParams.get("pulse-id") ?? undefined;
+  const notificationHandlerId =
+    searchParams.get("notification-handler-id") ?? undefined;
 
   const { data, isLoading, error } = useUnsubscribeRequest({
     hash,
@@ -180,6 +182,13 @@ function useUnsubscribeRequest({
     return undefined;
   }, [hash, email, pulseId, notificationHandlerId]);
 
+  const [unsubscribeFromPulse] = useUnsubscribeFromPulseMutation();
+  const [undoUnsubscribeFromPulse] = useUndoUnsubscribeFromPulseMutation();
+  const [unsubscribeFromNotification] =
+    useUnsubscribeFromNotificationByEmailMutation();
+  const [undoUnsubscribeFromNotification] =
+    useUndoUnsubscribeFromNotificationByEmailMutation();
+
   const {
     value: data,
     loading: isLoading,
@@ -189,17 +198,27 @@ function useUnsubscribeRequest({
       throw new Error(ERRORS.MISSING_REQUIRED_PARAMETERS);
     }
 
-    const api = notificationHandlerId
-      ? NotificationUnsubscribeApi
-      : PulseUnsubscribeApi;
+    const isUnsubscribe = subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE;
 
-    const method =
-      subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE
-        ? api.unsubscribe
-        : api.undo_unsubscribe;
+    const triggers = notificationHandlerId
+      ? {
+          unsubscribe: unsubscribeFromNotification,
+          undo: undoUnsubscribeFromNotification,
+        }
+      : { unsubscribe: unsubscribeFromPulse, undo: undoUnsubscribeFromPulse };
 
-    return await method(params);
-  }, [params, subscriptionChange]);
+    const unsubscribe = isUnsubscribe ? triggers.unsubscribe : triggers.undo;
+
+    return await unsubscribe(params).unwrap();
+  }, [
+    params,
+    subscriptionChange,
+    notificationHandlerId,
+    unsubscribeFromPulse,
+    undoUnsubscribeFromPulse,
+    unsubscribeFromNotification,
+    undoUnsubscribeFromNotification,
+  ]);
 
   return { data, isLoading, error };
 }
@@ -241,17 +260,6 @@ function ErrorDisplay() {
       <Text fz="md">{t`Please give it a minute and try again`}</Text>
     </Stack>
   );
-}
-
-type UnsubscribeQueryString = Partial<{
-  hash: string;
-  email: string;
-  "pulse-id": string;
-  "notification-handler-id": string;
-}>;
-
-interface UnsubscribeProps {
-  location: Location<UnsubscribeQueryString>;
 }
 
 interface SubscriptionDetailProps {

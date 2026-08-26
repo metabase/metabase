@@ -1,3 +1,4 @@
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   getCollectionIdSlugFromReference,
@@ -7,7 +8,7 @@ import type {
   MetabaseDashboard,
   SdkCollectionId,
 } from "embedding-sdk-bundle/types";
-import { useGetCollectionQuery } from "metabase/api";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import { useLocale } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
@@ -68,9 +69,14 @@ const CreateDashboardModalInner = ({
       : undefined,
   );
 
-  const { isLoading: isCollectionQueryLoading } = useGetCollectionQuery({
-    id: collectionIdSlug,
-  });
+  const { isLoading: isCollectionQueryLoading } = useGetCollectionQuery(
+    // To avoid `/api/collection/undefined` and 404.
+    collectionIdSlug === null || collectionIdSlug === undefined
+      ? skipToken
+      : { id: collectionIdSlug },
+  );
+
+  useTrackSdkComponentMount("CreateDashboardModal", null, {});
 
   if (isLocaleLoading || isCollectionQueryLoading) {
     return null;

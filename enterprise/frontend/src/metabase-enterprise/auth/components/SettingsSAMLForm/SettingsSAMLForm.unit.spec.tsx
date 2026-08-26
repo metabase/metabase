@@ -42,6 +42,7 @@ const setup = async (
   });
 };
 
+// Unjustified type cast. FIXME
 const fields = [
   { label: /SAML Identity Provider URL/i, value: "https://example.test" },
   { label: /SAML Identity Provider Certificate/i, value: "abc-123" },

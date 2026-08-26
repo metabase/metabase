@@ -268,7 +268,7 @@ Since: v51.3
 
 If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_DB_QUERY_TIMEOUT_MINUTES](#mb_db_query_timeout_minutes).
 
-In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Application logs](../monitor/application-logs.md).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -493,6 +493,13 @@ Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
+
+### `MB_SESSION_SECRET_KEY`
+
+Type: string<br>
+Default: `null`
+
+When set, session keys are stored in the application database signed with this secret, so a valid session cannot be created or used with database access alone. Requirement: minimum 16 characters. Setting or changing this value logs out all active sessions.
 
 ### `MB_SETUP_TOKEN`
 

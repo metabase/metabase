@@ -8,7 +8,7 @@ import {
 } from "metabase/common/utils/timelines";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { IconName, Timeline } from "metabase-types/api";
+import type { Timeline } from "metabase-types/api";
 
 import {
   CardBody,
@@ -38,7 +38,7 @@ const TimelineCard = ({
 
   return (
     <CardRoot to={!timeline.archived ? timelineUrl : ""}>
-      <CardIcon name={timeline.icon as unknown as IconName} />
+      <CardIcon name={timeline.icon} />
       <CardBody>
         <CardTitle>{getTimelineName(timeline)}</CardTitle>
         {timeline.description && (

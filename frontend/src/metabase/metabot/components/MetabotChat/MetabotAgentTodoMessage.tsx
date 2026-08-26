@@ -80,7 +80,7 @@ export const AgentTodoListMessage = ({
                       justify="center"
                       mr="sm"
                     >
-                      <Icon name="check" size=".7rem" c="white" />
+                      <Icon name="check" size=".7rem" c="core-white" />
                     </Flex>
                   ))
                   .with("in_progress", () => (
@@ -90,7 +90,7 @@ export const AgentTodoListMessage = ({
                       justify="center"
                       mr="sm"
                     >
-                      <Icon name="arrow_right" size=".6rem" c="white" />
+                      <Icon name="arrow_right" size=".6rem" c="core-white" />
                     </Flex>
                   ))
                   .with("cancelled", () => (
@@ -101,7 +101,7 @@ export const AgentTodoListMessage = ({
                       justify="center"
                       mr="sm"
                     >
-                      <Icon name="close" size=".7rem" c="white" />
+                      <Icon name="close" size=".7rem" c="core-white" />
                     </Flex>
                   ))
                   .exhaustive()}

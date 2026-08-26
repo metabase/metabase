@@ -11,7 +11,7 @@ import {
   trackDataStudioTableFieldValuesDiscardStarted,
   trackDataStudioTableFieldsRescanStarted,
   trackDataStudioTableSchemaSyncStarted,
-} from "metabase/data-studio/analytics";
+} from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -73,7 +73,7 @@ export function TableActionsMenu({ table }: Props) {
   };
 
   // Without sync actions and find-and-replace, the menu would hold only
-  // "View Schema", so render it directly as a button instead of a single-item menu.
+  // "View schema", so render it directly as a button instead of a single-item menu.
   if (!showSyncItems && !showReplaceItem) {
     return (
       <Button
@@ -82,7 +82,7 @@ export function TableActionsMenu({ table }: Props) {
         size="md"
         leftSection={<Icon name="network" size={16} />}
       >
-        {t`View Schema`}
+        {t`View schema`}
       </Button>
     );
   }
@@ -103,7 +103,7 @@ export function TableActionsMenu({ table }: Props) {
             to={schemaViewerUrl}
             leftSection={<Icon name="network" />}
           >
-            {t`View Schema`}
+            {t`View schema`}
           </Menu.Item>
 
           {showSyncItems && (

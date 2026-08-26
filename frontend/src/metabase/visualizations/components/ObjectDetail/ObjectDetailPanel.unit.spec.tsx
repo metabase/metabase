@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupActionsEndpoints,
   setupCardDataset,
   setupDatabasesEndpoints,
+  setupPrefetchActionValuesEndpoint,
 } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -233,10 +233,6 @@ const actionsFromDatabaseWithDisabledActions = actions.map((action) => ({
   ...action,
   database_id: databaseWithActionsDisabled.id,
 }));
-
-function setupPrefetch() {
-  fetchMock.get(`path:/api/action/${implicitUpdateAction.id}/execute`, {});
-}
 
 function setup(
   options: Partial<ObjectDetailProps> &
@@ -476,7 +472,7 @@ describe("ObjectDetailPanel", () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
     setup({ question: mockDataset });
-    setupPrefetch();
+    setupPrefetchActionValuesEndpoint(implicitUpdateAction.id, {});
 
     expect(
       screen.queryByTestId("action-execute-modal"),
@@ -558,8 +554,8 @@ describe("ObjectDetailPanel", () => {
 async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
   const actionsMenu = await screen.findByTestId("actions-menu");
   await userEvent.click(actionsMenu);
-  const popover = await screen.findByRole("dialog");
-  const action = within(popover).queryByText(name);
+  const menu = await screen.findByRole("menu");
+  const action = within(menu).queryByText(name);
   return action;
 }
 

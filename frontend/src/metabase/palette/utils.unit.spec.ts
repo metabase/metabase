@@ -1,9 +1,9 @@
-import type { LocationDescriptor } from "history";
+import type { To } from "metabase/router";
 
 import type { PaletteActionImpl } from "./types";
 import {
-  locationDescriptorToURL,
   navigateActionIndex,
+  navigationTargetToURL,
   processResults,
   processSection,
 } from "./utils";
@@ -21,6 +21,7 @@ const createMockAction = ({
   section = "basic",
   disabled,
 }: mockAction): PaletteActionImpl =>
+  // Unjustified type cast. FIXME
   ({ id, name, section, disabled }) as PaletteActionImpl;
 
 describe("command palette utils", () => {
@@ -125,55 +126,25 @@ describe("command palette utils", () => {
       expect(result).toHaveLength(0);
     });
 
-    it("should sort basic actions according to their order of registration", () => {
-      // Random order of basic actions
-      const actionIds = [
-        "navigate-embed-js",
-        "create-new-question",
-        "navigate-trash",
-        "create-new-metric",
-        "navigate-home",
-        "create-new-native-query",
-        "navigate-browse-database",
-        "create-new-dashboard",
-        "navigate-user-settings",
+    it("should preserve the relevance order kbar computed for basic actions", () => {
+      // kbar returns basic actions already sorted by search relevance. For a
+      // query like "New c", "New collection" should rank first, so we must not
+      // re-sort by a static registration order (metabase#76055).
+      const relevanceOrderedIds = [
         "create-new-collection",
-        "navigate-browse-model",
-        "download-diagnostics",
+        "create-new-native-query",
         "create-new-document",
-        "navigate-admin-settings",
-        "navigate-personal-collection",
         "create-new-model",
-        "navigate-browse-metric",
       ];
 
-      const actionsList = actionIds.map((id) =>
+      const actionsList = relevanceOrderedIds.map((id) =>
         createMockAction({ id, name: id }),
       );
 
       const result = processResults(actionsList, true);
       expect(result).toEqual([
         "Actions",
-        createMockAction({
-          id: "create-new-question",
-          name: "create-new-question",
-        }),
-        createMockAction({
-          id: "create-new-native-query",
-          name: "create-new-native-query",
-        }),
-        createMockAction({
-          id: "create-new-dashboard",
-          name: "create-new-dashboard",
-        }),
-        createMockAction({
-          id: "create-new-document",
-          name: "create-new-document",
-        }),
-        createMockAction({
-          id: "create-new-collection",
-          name: "create-new-collection",
-        }),
+        ...relevanceOrderedIds.map((id) => createMockAction({ id, name: id })),
       ]);
     });
   });
@@ -283,49 +254,45 @@ describe("command palette utils", () => {
     });
   });
 
-  describe("locationDescriptorToURL", () => {
-    it(`should return the string if locationDescriptor is a string`, () => {
-      expect(locationDescriptorToURL("/a/b/c")).toBe(`/a/b/c`);
+  describe("navigationTargetToURL", () => {
+    it(`should return the string if the target is a string`, () => {
+      expect(navigationTargetToURL("/a/b/c")).toBe(`/a/b/c`);
     });
 
-    it("should return the correct URL when a LocationDescriptor is provided", () => {
-      const locationDescriptor: LocationDescriptor = { pathname: "/a/b/c" };
-      expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c`);
+    it("should return the correct URL when an object target is provided", () => {
+      const target: To = { pathname: "/a/b/c" };
+      expect(navigationTargetToURL(target)).toBe(`/a/b/c`);
     });
 
-    it("should return the correct URL when query is provided", () => {
-      const locationDescriptor = {
+    it("should return the correct URL when search is provided", () => {
+      const target = {
         pathname: "/a/b/c",
-        query: { en: "hello", es: "hola" },
+        search: "?en=hello&es=hola",
       };
-      expect(locationDescriptorToURL(locationDescriptor)).toBe(
-        `/a/b/c?en=hello&es=hola`,
-      );
+      expect(navigationTargetToURL(target)).toBe(`/a/b/c?en=hello&es=hola`);
     });
 
     it("should return the correct URL when pathname and hash are provided", () => {
-      const locationDescriptor = { pathname: "/a/b/c", hash: "top" };
-      expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c#top`);
+      const target = { pathname: "/a/b/c", hash: "top" };
+      expect(navigationTargetToURL(target)).toBe(`/a/b/c#top`);
     });
 
-    it("should return the correct URL with pathname, query, and hash", () => {
-      const locationDescriptor = {
+    it("should return the correct URL with pathname, search, and hash", () => {
+      const target = {
         pathname: "/a/b/c",
-        query: { en: "hello", es: "hola" },
+        search: "?en=hello&es=hola",
         hash: "top",
       };
-      expect(locationDescriptorToURL(locationDescriptor)).toBe(
-        `/a/b/c?en=hello&es=hola#top`,
-      );
+      expect(navigationTargetToURL(target)).toBe(`/a/b/c?en=hello&es=hola#top`);
     });
 
     it("should handle empty values appropriately", () => {
-      const locationDescriptor: LocationDescriptor = {
+      const target: To = {
         pathname: "/a/b/c",
-        query: undefined,
+        search: undefined,
         hash: undefined,
       };
-      expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c`);
+      expect(navigationTargetToURL(target)).toBe(`/a/b/c`);
     });
   });
 });

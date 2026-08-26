@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
+   [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.test :as mt]))
 
 (deftest create-sql-query-output-test
@@ -16,7 +17,8 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
           (let [result (agent-sql/create-sql-query-tool
                         {:database_id db-id
-                         :sql_query   "SELECT 1"})
+                         :sql_query   "SELECT 1"
+                         :title       "Results"})
                 output   (:output result)
                 query-id (get-in result [:structured-output :query-id])]
             (is (string? output))
@@ -38,11 +40,44 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
           (let [result (agent-sql/create-sql-query-tool
                         {:database_id db-id
-                         :sql_query   "SELECT ="})
+                         :sql_query   "SELECT ="
+                         :title       "Results"})
                 output   (:output result)]
             (is (string? output))
             (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
             (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
+
+(defn- create-sql-query-in-code-editor
+  [args]
+  (binding [shared/*memory-atom* (atom {:context {:user_is_viewing [{:type    "code_editor"
+                                                                     :buffers [{:id "buf-1"}]}]}})]
+    (agent-sql/create-sql-query-code-edit-tool (merge {:sql_query "SELECT 1"
+                                                       :title     "Results"}
+                                                      args))))
+
+(deftest create-sql-query-code-edit-agent-error-output-test
+  (testing "create_sql_query in the code editor returns agent errors as output instead of throwing"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [{:keys [output]} (create-sql-query-in-code-editor {:database_id Integer/MAX_VALUE})]
+        (is (str/includes? output "not found"))))))
+
+(deftest create-sql-query-code-edit-permission-error-output-test
+  (testing "create_sql_query in the code editor returns a permission failure as output with its status code"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [output status-code]} (create-sql-query-in-code-editor {:database_id db-id})]
+            (is (= 403 status-code))
+            (is (str/includes? output "permissions"))))))))
+
+(deftest create-sql-query-code-edit-unexpected-error-test
+  (testing "create_sql_query in the code editor rethrows non-agent errors so they stay tracked as failures"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                  (fn [& _] (throw (ex-info "boom" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"boom"
+             (create-sql-query-in-code-editor {:database_id 1})))))))
 
 (deftest edit-sql-query-output-test
   (testing "edit_sql_query output includes edit-specific instructions with query ID"
@@ -59,7 +94,8 @@
                               {:query_id  query-id
                                :checklist "- [x] checked"
                                :edits     [{:old_string "SELECT *"
-                                            :new_string "SELECT id"}]}))
+                                            :new_string "SELECT id"}]
+                               :title     "Results"}))
                   output   (:output result)]
               (is (string? output))
               (testing "includes query XML with edited content and correct attributes"
@@ -87,7 +123,8 @@
                               {:query_id  query-id
                                :checklist "- [x] checked"
                                :edits     [{:old_string "SELECT *"
-                                            :new_string "SELECT ="}]}))
+                                            :new_string "SELECT ="}]
+                               :title     "Results"}))
                   output   (:output result)]
               (is (string? output))
               (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
@@ -107,7 +144,8 @@
                              (agent-sql/replace-sql-query-tool
                               {:query_id  query-id
                                :checklist "- [x] checked"
-                               :new_query "SELECT 2"}))
+                               :new_query "SELECT 2"
+                               :title     "Results"}))
                   output   (:output result)]
               (is (string? output))
               (testing "includes query XML with replaced content and correct attributes"
@@ -134,7 +172,39 @@
                                                   (agent-sql/replace-sql-query-tool
                                                    {:query_id  query-id
                                                     :checklist "- [x] checked"
-                                                    :new_query "SELECT ="}))]
+                                                    :new_query "SELECT ="
+                                                    :title     "Results"}))]
               (is (string? output))
               (is (str/starts-with? instructions "The SQL query has a syntax error"))
               (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
+
+(deftest edit-sql-query-viz-part-test
+  (testing "edit_sql_query emits a generated_entity card unless an open code-editor buffer wins"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {:as db} {:engine :h2}]
+          (mt/with-db db
+            (let [mp       (mt/metadata-provider)
+                  query-id "test-inline-q"
+                  query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)
+                  run      (fn [context]
+                             (let [memory (atom {:state   {:queries {query-id query}}
+                                                 :context context})]
+                               (binding [shared/*memory-atom* memory]
+                                 (agent-sql/edit-sql-query-tool
+                                  {:query_id  query-id
+                                   :checklist "- [x] checked"
+                                   :edits     [{:old_string "SELECT *" :new_string "SELECT id"}]
+                                   :title     "Results"}))))]
+              (testing "no code-editor buffer -> a single generated_entity (native) part"
+                (let [parts  (:data-parts (run {}))
+                      entity (:data (first parts))]
+                  (is (= 1 (count parts)))
+                  (is (= "generated_entity" (:data-type (first parts))))
+                  (is (= "card" (:type entity)))
+                  (is (= :native (get-in entity [:query :query :type])))))
+              (testing "an open code-editor buffer wins"
+                (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
+                                                                  :buffers [{:id "buf-1"}]}]}))]
+                  (is (= 1 (count parts)))
+                  (is (= "code_edit" (:data-type (first parts)))))))))))))

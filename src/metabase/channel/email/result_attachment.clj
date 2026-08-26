@@ -1,6 +1,7 @@
 (ns metabase.channel.email.result-attachment
   (:require
    [clojure.java.io :as io]
+   [metabase.channel.render.util :as render.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -31,10 +32,13 @@
 
   Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
   [^OutputStream os                                              :- (ms/InstanceOfClass OutputStream)
-   {:keys [export-format format-rows? pivot?], :as _options}     :- [:map
-                                                                     [:export-format :keyword]
-                                                                     [:format-rows?  {:optional true} [:maybe :boolean]]
-                                                                     [:pivot?        {:optional true} [:maybe :boolean]]]
+   {:keys [export-format format-rows? pivot? csv-include-bom?]
+    :or   {csv-include-bom? true}
+    :as   _options}                                              :- [:map
+                                                                     [:export-format    :keyword]
+                                                                     [:format-rows?     {:optional true} [:maybe :boolean]]
+                                                                     [:pivot?           {:optional true} [:maybe :boolean]]
+                                                                     [:csv-include-bom? {:optional true} [:maybe :boolean]]]
    {{:keys [rows]} :data, database-id :database_id, :as results} :- [:map
                                                                      [:database_id ::lib.schema.id/database]]]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
@@ -51,6 +55,7 @@
                       (-> results
                           (assoc-in [:data :format-rows?] format-rows?)
                           (assoc-in [:data :pivot?] pivot?)
+                          (assoc-in [:data :csv-include-bom?] csv-include-bom?)
                           (assoc-in [:data :ordered-cols] ordered-cols))
                       viz-settings')
         (perf/reduce (fn [_ i row]
@@ -88,7 +93,7 @@
 (defn result-attachment
   "Create result attachments for an email. `creator-id` is the subscription creator, whose download
   permissions gate the attachment at send time."
-  [{{original-card-name :name format-rows :format_rows pivot-results :pivot_results :as card} :card
+  [{{format-rows :format_rows pivot-results :pivot_results :as card} :card
     dashcard :dashcard
     result :result
     :as part}
@@ -98,15 +103,15 @@
              (not= (perms/download-perms-level (:dataset_query card) creator-id) :no))
     (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
           result            (:result (maybe-realize-data-rows part))
-          visualizer-title (when (and dashcard (get-in dashcard [:visualization_settings :visualization]))
-                             (not-empty (get-in dashcard [:visualization_settings :visualization :settings :card.title])))
-          filename-prefix  (or visualizer-title original-card-name)]
+          ;; the dashboard-level title override (incl. the visualizer's) names the attachment, matching the card's
+          ;; displayed title; falls back to the card's own name (see [[render.util/dashcard-title]]).
+          filename-prefix  (render.util/dashcard-title card dashcard)]
       (when-not (:render/too-large? result)
         (->>
          [(when-let [temp-file (and (:include_csv card)
                                     (create-temp-file-or-throw! "csv"))]
             (with-open [os (io/output-stream temp-file)]
-              (stream-api-results-to-export-format! os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
+              (stream-api-results-to-export-format! os {:export-format :csv :format-rows? format-rows :pivot? pivot-results :csv-include-bom? true} result))
             (create-result-attachment-map "csv" filename-prefix temp-file))
           (when-let [temp-file (and (:include_xls card)
                                     (create-temp-file-or-throw! "xlsx"))]

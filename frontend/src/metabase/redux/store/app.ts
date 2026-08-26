@@ -1,6 +1,15 @@
-import type { ChecklistItemValue } from "metabase/home/components/Onboarding/types";
 import type { Table } from "metabase-types/api";
 import type { CollectionId } from "metabase-types/api/collection";
+
+export type ChecklistItemValue =
+  | "database"
+  | "invite"
+  | "ai"
+  | "query"
+  | "dashboard"
+  | "alert"
+  | "data-studio"
+  | "permissions";
 
 export interface AppErrorDescriptor {
   status: number;

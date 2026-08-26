@@ -74,10 +74,16 @@
   (cheshire/generate-stream obj writer opt-map))
 
 (defn decode
-  "Decode a value from a JSON from a string, InputStream, or Reader."
+  "Decode a value from a JSON from a string, InputStream, or Reader.
+
+  For strings this uses `cheshire/parse-string-strict`, NOT `parse-string`: for a top-level JSON array `parse-string`
+  returns a *lazy* seq that retains the Jackson parser (and its ~8KB read buffers) until fully realized -- so e.g.
+  every Field's `nfc_path` (a JSON array) would pin a parser, and a wide table's worth of them costs >1GB. The strict
+  variant realizes the value and releases the parser; laziness buys nothing here anyway since the source string is
+  already fully in memory."
   ([source] (decode source nil))
   ([source key-fn]
-   (cond (string? source) (cheshire/parse-string source key-fn)
+   (cond (string? source) (cheshire/parse-string-strict source key-fn)
          (instance? Reader source) (cheshire/parse-stream source key-fn)
          (instance? InputStream source) (with-open [r (io/reader source)]
                                           (cheshire/parse-stream r key-fn))

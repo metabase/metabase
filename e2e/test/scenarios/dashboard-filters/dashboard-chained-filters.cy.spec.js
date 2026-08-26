@@ -92,7 +92,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       const valuesWidget = () =>
         has_field_values === "search"
-          ? cy.findByRole("listbox")
+          ? H.selectDropdown()
           : cy.findByTestId("field-values-widget");
 
       valuesWidget().within(() => {
@@ -271,7 +271,7 @@ describe("scenarios > dashboard > chained filter", () => {
               .parent()
               .findByText("ID")
               .click();
-            H.popover().findByText("UUID").should("be.visible");
+            H.selectDropdown().findByText("UUID").should("be.visible");
           });
         });
       });

@@ -79,7 +79,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
     };
 
     return (
-      <Flex h="100%" direction="column" bg="background-primary" ref={ref}>
+      <Flex h="100%" direction="column" bg="background_page-primary" ref={ref}>
         <MetricEditorHeader
           question={question}
           isDirty={isDirty}

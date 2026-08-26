@@ -62,7 +62,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 ## Collection resources
 
 - `metabase://collection/{id}` — basic collection info
-- `metabase://collection/{id}/items` — direct children (mix of subcollections, cards, models, metrics, dashboards)
+- `metabase://collection/{id}/items` — direct children (mix of subcollections, cards, models, metrics, dashboards, documents)
 - `metabase://collection/{id}/subcollections` — only the subcollections (useful for orientation in deep trees)
 
 **Examples:**
@@ -140,7 +140,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 ## Dashboard resources
 
 - `metabase://dashboard/{id}` — dashboard details
-- `metabase://dashboard/{id}/items` — cards on the dashboard (each rendered as a `metabase://question/{id}` URI you can drill into)
+- `metabase://dashboard/{id}/items` — everything on the dashboard in layout order: question cards (each rendered as a `metabase://question/{id}` URI you can drill into) plus headings, text cards, and action buttons
 
 **Examples:**
 - Want to understand what a dashboard contains before recommending it? → `metabase://dashboard/158`
@@ -148,6 +148,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **Best Practices:**
 - Treat dashboards as containers — when search returns a dashboard hit (`is_container="true"`), use `/items` to list its cards instead of re-searching for the same concept.
+- Every dashcard entry carries a `dashcard_id` — the handle `update_dashboard` `remove`/`move`/`update_text` mutations take. Headings and text cards show as `virtual_heading`/`virtual_text` with their text as the description; action buttons show as `action` (with a `uri` to their backing model when readable). On multi-tab dashboards the list opens with a `<tabs>` block naming every tab — empty ones included — with the `tab_id` that `add` mutations accept, and dashcard entries carry their tab's `tab_id`, grouped in tab order.
 - Fetch dashboard details to confirm it contains the information the user is looking for before recommending it.
 - Prefer verified dashboards when they match the user's request.
 

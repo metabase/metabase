@@ -1,9 +1,11 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useParams } from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useTransformWithPolling } from "../../hooks/use-transform-with-polling";
 
@@ -13,19 +15,21 @@ type TransformSettingsPageParams = {
   transformId: string;
 };
 
-type TransformTargetPageProps = {
-  params: TransformSettingsPageParams;
-};
-
-export const TransformSettingsPage = ({ params }: TransformTargetPageProps) => {
+export const TransformSettingsPage = () => {
+  const params = useParams<TransformSettingsPageParams>();
   const transformId = Urls.extractEntityId(params.transformId);
   const {
     transform,
     isLoading: isLoadingTransform,
     error: transformError,
   } = useTransformWithPolling(transformId);
-  const { readOnly, isLoadingDatabases, databasesError } =
-    useTransformPermissions({ transform });
+  const {
+    readOnly,
+    permissionsReadOnly,
+    remoteSyncReadOnly,
+    isLoadingDatabases,
+    databasesError,
+  } = useTransformPermissions({ transform });
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
@@ -40,7 +44,13 @@ export const TransformSettingsPage = ({ params }: TransformTargetPageProps) => {
   return (
     <PageContainer data-testid="transforms-target-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
-      <TransformSettingsSection transform={transform} readOnly={readOnly} />
+      <TransformDisconnectedDatabaseBanner transform={transform} />
+      <TransformSettingsSection
+        transform={transform}
+        readOnly={readOnly}
+        permissionsReadOnly={permissionsReadOnly}
+        remoteSyncReadOnly={remoteSyncReadOnly}
+      />
     </PageContainer>
   );
 };

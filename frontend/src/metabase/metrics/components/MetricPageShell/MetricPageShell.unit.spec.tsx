@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupCollectionsEndpoints } from "__support__/server-mocks/collection";
 import { setupMetricEndpoint } from "__support__/server-mocks/metric";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
 import { createMockCard, createMockCollection } from "metabase-types/api/mocks";
 import { createMockMetric } from "metabase-types/api/mocks/metric";
 
@@ -27,20 +27,20 @@ function setup() {
   setupListNotificationEndpoints({ card_id: card.id }, []);
   fetchMock.delete(`path:/api/card/${card.id}`, 200);
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path="/"
-      component={() => <MetricPageShell card={card} urls={metricUrls} />}
+      element={<MetricPageShell card={card} urls={metricUrls} />}
     />,
     { withRouter: true, withUndos: true },
   );
 
-  return { history };
+  return { router };
 }
 
 describe("MetricPageShell", () => {
   it("navigates to /trash with a success toast after permanently deleting the metric", async () => {
-    const { history } = setup();
+    const { router } = setup();
 
     await userEvent.click(await screen.findByText("Delete permanently"));
     await userEvent.click(
@@ -48,7 +48,7 @@ describe("MetricPageShell", () => {
     );
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe("/trash");
+      expect(router?.location.pathname).toBe("/trash");
     });
 
     expect(

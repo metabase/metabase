@@ -1,9 +1,10 @@
-import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   createMockCard,
   createMockTableColumnOrderSetting,
 } from "metabase-types/api/mocks";
+
+import { registerVisualization } from "../registry";
 
 import {
   extendCardWithDashcardSettings,
@@ -11,7 +12,6 @@ import {
   sanitizeDashcardSettings,
 } from "./typed-utils";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
 describe("mergeSettings (metabase#14597)", () => {
@@ -74,7 +74,11 @@ describe("mergeSettings (metabase#14597)", () => {
       name: "DISCOUNT",
     });
 
-    it("should remove columns that don't appear in the first settings", () => {
+    const RENAMED_QUANTITY_COLUMN = createMockTableColumnOrderSetting({
+      name: "QUANTITY_RENAMED",
+    });
+
+    it("should keep added columns that only appear in the second settings (#76136)", () => {
       expect(
         mergeSettings(
           {
@@ -85,7 +89,26 @@ describe("mergeSettings (metabase#14597)", () => {
           },
         ),
       ).toEqual({
-        "table.columns": [ID_COLUMN, QUANTITY_COLUMN],
+        "table.columns": [ID_COLUMN, QUANTITY_COLUMN, TAX_COLUMN],
+      });
+    });
+
+    it("should keep replacement columns that only appear in the second settings (#76136)", () => {
+      expect(
+        mergeSettings(
+          {
+            "table.columns": [ID_COLUMN, QUANTITY_COLUMN],
+          },
+          {
+            "table.columns": [ID_COLUMN, { ...TAX_COLUMN, enabled: false }],
+          },
+        ),
+      ).toEqual({
+        "table.columns": [
+          ID_COLUMN,
+          { ...TAX_COLUMN, enabled: false },
+          QUANTITY_COLUMN,
+        ],
       });
     });
 
@@ -124,6 +147,29 @@ describe("mergeSettings (metabase#14597)", () => {
           DISCOUNT_COLUMN,
           { ...ID_COLUMN, enabled: false },
           QUANTITY_COLUMN,
+          TAX_COLUMN,
+        ],
+      });
+    });
+
+    it("should preserve second settings order when columns are replaced", () => {
+      expect(
+        mergeSettings(
+          {
+            "table.columns": [ID_COLUMN, RENAMED_QUANTITY_COLUMN],
+          },
+          {
+            "table.columns": [
+              QUANTITY_COLUMN,
+              { ...ID_COLUMN, enabled: false },
+            ],
+          },
+        ),
+      ).toEqual({
+        "table.columns": [
+          QUANTITY_COLUMN,
+          { ...ID_COLUMN, enabled: false },
+          RENAMED_QUANTITY_COLUMN,
         ],
       });
     });
@@ -186,6 +232,7 @@ describe("sanitizeDashcardSettings", () => {
       "card.title": "Custom Title",
     };
 
+    // Unjustified type cast. FIXME
     const vizSettingsDefs = {
       "graph.dimensions": { dashboard: false },
       "graph.metrics": { dashboard: false },
@@ -207,6 +254,7 @@ describe("sanitizeDashcardSettings", () => {
       unknownSetting: "value",
     };
 
+    // Unjustified type cast. FIXME
     const vizSettingsDefs = {
       "graph.dimensions": { dashboard: false },
     } as any;
@@ -225,6 +273,7 @@ describe("sanitizeDashcardSettings", () => {
       "card.description": "Description",
     };
 
+    // Unjustified type cast. FIXME
     const vizSettingsDefs = {
       "graph.dimensions": { dashboard: false },
       "graph.goal_value": {}, // no dashboard property
@@ -245,6 +294,7 @@ describe("sanitizeDashcardSettings", () => {
       "graph.metrics": ["count"],
     };
 
+    // Unjustified type cast. FIXME
     const vizSettingsDefs = {
       "graph.dimensions": { dashboard: false },
       "graph.metrics": { dashboard: false },
@@ -257,6 +307,7 @@ describe("sanitizeDashcardSettings", () => {
 
   it("should handle empty settings", () => {
     const settings = {};
+    // Unjustified type cast. FIXME
     const vizSettingsDefs = {
       "graph.dimensions": { dashboard: false },
     } as any;

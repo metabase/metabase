@@ -64,7 +64,7 @@ const setupState = ({
   setupNotificationChannelsEndpoints({
     slack: { configured: isSlackSetup },
     email: { configured: isEmailSetup },
-  } as any);
+  });
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
@@ -80,6 +80,7 @@ const setupState = ({
 
   return createMockState({
     settings: mockSettings(settingValues),
+    // Unjustified type cast. FIXME
     currentUser: {
       ...user,
       permissions: {
@@ -148,14 +149,12 @@ export async function setupQuestionSharingMenu({
     { storeInitialState: state },
   );
 
-  // QuestionSharingMenu eagerly mounts QuestionPublicLinkPopover, whose
-  // useAsync hook flips its loading state shortly after mount. Wait for the
-  // sharing menu button to settle so that async update stays wrapped in act.
-  // Some scenarios (models, archived questions) render nothing at all, so we
-  // only wait when the button is expected to appear.
+  // Wait for the admin menu button to settle so async endpoint mocks resolve
+  // inside act. Non-admin menus render synchronously, and model/archived
+  // questions render nothing at all.
   const isModel = questionOverrides.type === "model";
   const isArchived = questionOverrides.archived === true;
-  if (!isModel && !isArchived) {
+  if (isAdmin && !isModel && !isArchived) {
     await screen.findByTestId("sharing-menu-button");
   }
 }

@@ -1,12 +1,12 @@
 import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { useStoreUrl } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
+  FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
 import {
@@ -94,10 +94,10 @@ export const LicenseTokenForm = ({
           </Box>
           <Flex gap="sm">
             <FormSubmitButton
-              title={t`Activate`}
-              activeTitle={t`Activating`}
+              label={t`Activate`}
+              activeLabel={t`Activating`}
               disabled={!!errors.license_token}
-              primary
+              variant="filled"
             />
           </Flex>
           <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xl" mb="md" />
@@ -108,7 +108,7 @@ export const LicenseTokenForm = ({
               px={0}
               fw="normal"
             >{t`I'll activate later`}</Button>
-            <Text c="text-tertiary" size="sm">
+            <Text c="text-disabled" size="sm">
               {t`You won't have access to paid features until you activate.`}
             </Text>
           </Box>

@@ -11,6 +11,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -21,8 +22,11 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -129,10 +133,6 @@
   (-> dashboard
       migrate-parameters-list
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
-
-(defmethod serdes/hash-fields :model/Dashboard
-  [_dashboard]
-  [:name (serdes/hydrated-hash :collection) :created_at])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -311,24 +311,45 @@
   (cond
     ;; If this is a pre-existing card, just return it
     (and (integer? (:id card)) (t2/select-one :model/Card :id (:id card)))
-    card
+    (do
+      (api/read-check :model/Card (:id card))
+      card)
 
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
-    (let [card (first (t2/insert-returning-instances!
+    (let [_    (query-perms/check-run-permissions-for-query (:dataset_query card))
+          card (first (t2/insert-returning-instances!
                        :model/Card
                        (-> card
                            (update :result_metadata #(or % (-> card
                                                                :dataset_query
                                                                legacy-result-metadata-for-query)))
-                           ;; Xrays populate this in their transient cards
-                           (dissoc :id :can_run_adhoc_query))))]
+                           (dissoc :id
+                                   :public_uuid :made_public_by_id
+                                   :enable_embedding :embedding_params)
+                           (assoc :creator_id api/*current-user-id*))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
+      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+
+(defn- check-dashcard-parameter-mapping-permissions
+  [dashcards]
+  (let [mappings       (for [{:keys [card_id parameter_mappings]} dashcards
+                             mapping parameter_mappings]
+                         (assoc mapping ::card-id (or (:card_id mapping) card_id)))
+        card-ids       (into #{} (keep ::card-id) mappings)
+        card-id->query (when (seq card-ids)
+                         (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+        field-ids      (into []
+                             (keep (fn [{:keys [target] ::keys [card-id]}]
+                                     (when target
+                                       (params/param-target->field-id target {:dataset_query (card-id->query card-id)}))))
+                             mappings)]
+    (query-perms/check-parameter-field-permissions field-ids)))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
+  (queries/check-parameter-source-card-permissions (:parameters dashboard))
   (t2/with-transaction [_conn]
     (let [{dashcards      :dashcards
            tabs           :tabs
@@ -337,30 +358,34 @@
                              :model/Dashboard
                              (-> dashboard
                                  (dissoc :dashcards :tabs :rule :related
-                                         :transient_name :transient_filters :param_fields :more)
+                                         :transient_name :transient_filters :param_fields :more
+                                         :public_uuid :made_public_by_id
+                                         :enable_embedding :embedding_params)
                                  (assoc :description description
-                                        :collection_id parent-collection-id))))
-          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
-      (add-dashcards! dashboard
-                      (for [dashcard dashcards]
-                        (let [card     (some-> dashcard :card
-                                               (assoc :dashboard_id (:id dashboard)
-                                                      :collection_id parent-collection-id)
-                                               save-card!)
-                              series   (some->> dashcard
-                                                :series
-                                                (mapv (fn [card]
-                                                        (-> card
-                                                            (assoc :collection_id parent-collection-id)
-                                                            save-card!))))
-                              dashcard (-> dashcard
-                                           (dissoc :card :id :creator_id)
-                                           (update :parameter_mappings
-                                                   (partial map #(assoc % :card_id (:id card))))
-                                           (assoc :series series)
-                                           (update :dashboard_tab_id (or old->new-tab-id {}))
-                                           (assoc :card_id (:id card)))]
-                          dashcard)))
+                                        :collection_id parent-collection-id
+                                        :creator_id api/*current-user-id*))))
+          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)
+          dashcards-to-add (for [dashcard dashcards]
+                             (let [card     (some-> dashcard :card
+                                                    (assoc :dashboard_id (:id dashboard)
+                                                           :collection_id parent-collection-id)
+                                                    save-card!)
+                                   series   (some->> dashcard
+                                                     :series
+                                                     (mapv (fn [card]
+                                                             (-> card
+                                                                 (assoc :collection_id parent-collection-id)
+                                                                 save-card!))))
+                                   dashcard (-> dashcard
+                                                (dissoc :card :id :creator_id)
+                                                (update :parameter_mappings
+                                                        (partial map #(assoc % :card_id (:id card))))
+                                                (assoc :series series)
+                                                (update :dashboard_tab_id (or old->new-tab-id {}))
+                                                (assoc :card_id (:id card)))]
+                               dashcard))]
+      (check-dashcard-parameter-mapping-permissions dashcards-to-add)
+      (add-dashcards! dashboard dashcards-to-add)
       (cond-> dashboard
         (collections/remote-synced-collection? parent-collection-id) collections/check-non-remote-synced-dependencies))))
 
@@ -368,7 +393,7 @@
   [:map
    [:id ms/NonBlankString]
    [:name ms/NonBlankString]
-   [:mappings [:maybe [:set ::parameters.schema/parameter-mapping]]]])
+   [:mappings [:maybe [:set ::parameters.schema/parameter-mapping-with-dashcard]]]])
 
 (mu/defn dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration
@@ -407,7 +432,7 @@
                                :dashcard     ...
                                :target       [:dimension [:field-id 264]]}}}}"
   [_model k dashboards]
-  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card])]
+  (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card :series])]
     (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
 
 (defmethod mi/exclude-internal-content-hsql :model/Dashboard
@@ -442,21 +467,27 @@
                :show_in_getting_started false}})
 
 (defn- serdes-deps-dashcard
-  [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
+  [allow-int-ids? {:keys [action_id card_id parameter_mappings visualization_settings series]}]
   (set
    (concat
-    (mapcat serdes/mbql-deps parameter_mappings)
-    (serdes/visualization-settings-deps visualization_settings)
+    (mapcat #(serdes/mbql-deps allow-int-ids? %) parameter_mappings)
+    (serdes/visualization-settings-deps allow-int-ids? visualization_settings)
     (when card_id   #{[{:model "Card" :id card_id}]})
     (when action_id #{[{:model "Action" :id action_id}]})
     (for [s series] [{:model "Card" :id (:card_id s)}]))))
 
-(defmethod serdes/dependencies "Dashboard"
-  [{:keys [collection_id dashcards parameters]}]
-  (->> (map serdes-deps-dashcard dashcards)
+(defn- dashboard-deps
+  "The serdes dependencies of a Dashboard as `:serdes/meta` paths. Expects `:dashcards` (with `:series`) inlined — the
+  ingested shape, which the raw path hydrates first. `allow-int-ids?` selects raw-appdb vs serialized ref semantics. Shared by
+  [[serdes/deserialization-dependencies]] (allow-int-ids? false) and [[serdes/serialization-dependencies]] (allow-int-ids? true)."
+  [allow-int-ids? {:keys [collection_id dashcards parameters]}]
+  (->> (map #(serdes-deps-dashcard allow-int-ids? %) dashcards)
        (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
-       (set/union (serdes/parameters-deps parameters))))
+       (set/union (serdes/parameters-deps allow-int-ids? parameters))))
+
+(defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
+  (dashboard-deps false dashboard))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id _opts]
   (let [dashcards (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
@@ -490,6 +521,13 @@
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
 
+(defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
+  ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps
+  ;; expects, then reuse the same walk as deserialization.
+  (dashboard-deps true (-> dashboard
+                           (t2/hydrate :dashcards)
+                           (update :dashcards #(t2/hydrate % :series)))))
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search/define-spec "dashboard"
@@ -503,6 +541,7 @@
                   :last-viewed-at true
                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
                   :verified       [:= "verified" :mr.status]
+                  :official-collection [:= "official" :collection.authority_level]
                   :view-count     true
                   :created-at     true
                   :updated-at     true
@@ -532,3 +571,35 @@
                                                         [:= :mr.moderated_item_type "dashboard"]
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}})
+
+(defmethod staleness/find-stale-query :model/Dashboard
+  [_model args]
+  ^:allow-subquery {:select [:report_dashboard.id
+                             [(h2x/literal "Dashboard") :model]
+                             [:report_dashboard.name :name]
+                             [:last_viewed_at :last_used_at]]
+                    :from :report_dashboard
+                    :left-join [:pulse [:and
+                                        [:= :pulse.archived false]
+                                        [:= :pulse.dashboard_id :report_dashboard.id]]
+                                :collection [:= :collection.id :report_dashboard.collection_id]
+                                :moderation_review [:and
+                                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
+                                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                                    [:= :moderation_review.most_recent true]
+                                                    [:= :moderation_review.status (h2x/literal "verified")]]]
+                    :where [:and
+                            [:= :pulse.id nil]
+                            [:= :moderation_review.id nil]
+                            [:= :report_dashboard.archived false]
+                            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
+                            ;; find things only in regular collections, not the `instance-analytics` collection.
+                            [:= :collection.type nil]
+                            (when (embed.settings/some-embedding-enabled?)
+                              [:= :report_dashboard.enable_embedding false])
+                            (when (setting/get :enable-public-sharing)
+                              [:= :report_dashboard.public_uuid nil])
+                            [:or
+                             (when (contains? (:collection-ids args) nil)
+                               [:is :report_dashboard.collection_id nil])
+                             [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})

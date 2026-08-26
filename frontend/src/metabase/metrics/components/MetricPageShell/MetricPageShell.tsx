@@ -1,15 +1,15 @@
 import type { ReactNode } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { useNavigate } from "metabase/router";
 import type { Card } from "metabase-types/api";
 
-import type { MetricUrls } from "../../types";
 import { CollectionBreadcrumbs } from "../CollectionBreadcrumbs";
 import { MetricHeader } from "../MetricHeader";
 
@@ -33,6 +33,7 @@ export function MetricPageShell({
   const [updateCard] = useUpdateCardMutation();
   const [deleteCard] = useDeleteCardMutation();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   return (
     <>
@@ -47,14 +48,14 @@ export function MetricPageShell({
           onMove={(collection: CollectionPickerValueItem) =>
             updateCard({
               id: card.id,
-              collection_id: collection.id as number,
+              collection_id: collection.id,
               archived: false,
             })
           }
           onDeletePermanently={async () => {
             try {
               await deleteCard(card.id).unwrap();
-              dispatch(push("/trash"));
+              navigate("/trash");
               dispatch(
                 addUndo({
                   message: t`This item has been permanently deleted.`,

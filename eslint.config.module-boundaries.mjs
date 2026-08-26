@@ -11,7 +11,10 @@ import { globalIgnores, defineConfig } from "eslint/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-import { elements as boundaryElements, rules as boundaryRules } from "./frontend/lint/module-boundaries.mjs";
+import {
+  elements as boundaryElements,
+  rules as boundaryRules,
+} from "./frontend/lint/module-boundaries.mjs";
 
 // dummy plugins to keep eslint from complaining about missing plugins and settings
 const alwaysPassingRule = {
@@ -29,37 +32,27 @@ const alwaysPassingRule = {
   },
 };
 
+// Resolve any rule name to the always-passing stub, so eslint-disable
+// directives don't error with "Definition for rule ... was not found".
 const alwaysPassingPlugin = {
-  rules: {
-    "no-module-declaration": alwaysPassingRule,
-    "no-default-export": alwaysPassingRule,
-    "no-color-literals": alwaysPassingRule,
-    order: alwaysPassingRule,
-    "rules-of-hooks": alwaysPassingRule,
-    "no-unconditional-metabase-links-render": alwaysPassingRule,
-    "no-literal-string": alwaysPassingRule,
-    "no-literal-metabase-strings": alwaysPassingRule,
-    "no-require-imports": alwaysPassingRule,
-    "no-external-references-for-sdk-package-code": alwaysPassingRule,
-    "exhaustive-deps": alwaysPassingRule,
-    "no-unused-vars": alwaysPassingRule,
-    "no-unused-expressions": alwaysPassingRule,
-    "ban-ts-comment": alwaysPassingRule,
-    "no-empty-object-type": alwaysPassingRule,
-    "no-commonjs": alwaysPassingRule,
-    "consistent-type-imports": alwaysPassingRule,
-  },
+  rules: new Proxy(
+    {},
+    {
+      get: () => alwaysPassingRule,
+      has: () => true,
+    },
+  ),
 };
 
 export default defineConfig([
-  globalIgnores(["**/*.unit.spec.*", "**/e2e/**", "*.stories.*", "test/**"]),
+  globalIgnores(["**/e2e/**", "test/**"]),
   {
     linterOptions: {
       reportUnusedDisableDirectives: "off",
     },
     files: [
-      "frontend/src/**/*.{js,jsx,ts,tsx}",
-      "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
+      "frontend/src/**/*.{ts,tsx}",
+      "enterprise/frontend/src/**/*.{ts,tsx}",
     ],
     languageOptions: {
       parser: tseslint.parser,
@@ -76,17 +69,16 @@ export default defineConfig([
       i18next: alwaysPassingPlugin,
       "react-hooks": alwaysPassingPlugin,
       "@typescript-eslint": alwaysPassingPlugin,
+      "testing-library": alwaysPassingPlugin,
+      jest: alwaysPassingPlugin,
+      "jest-dom": alwaysPassingPlugin,
       boundaries,
       react,
     },
     settings: {
       "boundaries/elements": boundaryElements,
-      "boundaries/ignore": [
-        "**/*.unit.spec.*",
-        "**/e2e/**",
-        "*.stories.*",
-        "test/**",
-      ],
+      "boundaries/ignore": ["**/e2e/**", "test/**"],
+      "boundaries/dependency-nodes": ["import", "dynamic-import"],
       "import-x/resolver": {
         node: true,
         webpack: {
@@ -110,6 +102,8 @@ export default defineConfig([
           rules: boundaryRules,
         },
       ],
+      // Every file frontend/src/ and enterprise/frontend/src/ must belong to a declared module.
+      "boundaries/no-unknown-files": "error",
     },
   },
 ]);

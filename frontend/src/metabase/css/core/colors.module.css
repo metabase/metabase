@@ -31,17 +31,17 @@
 
 /** Non-whitelabeled Metabase brand color */
 .textMetabaseBrand {
-  color: var(--mb-color-metabase-brand);
+  color: var(--mb-color-core-metabase_brand);
 }
 
 .textSuccess {
-  color: var(--mb-color-success);
+  color: var(--mb-color-feedback-positive);
 }
 
 /* error */
 
 .textError {
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }
 
 .textSlate {
@@ -49,11 +49,11 @@
 }
 
 .textSlateLight {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .textLight {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .textMedium,
@@ -75,20 +75,20 @@
 }
 
 .textTertiary {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .bgBrandHover:hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 .bgLight,
 .bgLightHover:hover {
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .bgMediumHover:hover {
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
 }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
@@ -98,7 +98,7 @@
 }
 
 .bgWhite {
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 }
 
 .textTooltipSecondary {

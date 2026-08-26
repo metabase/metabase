@@ -1,19 +1,18 @@
-import { fireEvent, render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 
 describe("password reveal", () => {
-  it("should toggle the visibility state when hide / show are clicked", () => {
-    render(<PasswordReveal password="password" />);
-    expect(screen.queryByText("Hide")).not.toBeInTheDocument();
+  it("masks the temporary password", () => {
+    renderWithProviders(<PasswordReveal password="password" />);
 
-    fireEvent.click(screen.getByText("Show"));
-
-    expect(screen.getByText("Hide")).toBeInTheDocument();
-    expect(screen.queryByText("Show")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Temporary password")).toHaveAttribute(
+      "type",
+      "password",
+    );
   });
 
-  it("should render a copy button", () => {
-    render(<PasswordReveal password="password" />);
+  it("renders a copy button", () => {
+    renderWithProviders(<PasswordReveal password="password" />);
     expect(screen.getByTestId("copy-button")).toBeInTheDocument();
   });
 });

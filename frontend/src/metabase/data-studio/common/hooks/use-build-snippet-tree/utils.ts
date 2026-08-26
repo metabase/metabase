@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   coerceCollectionId,
   isRootCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { createEmptyStateItem } from "metabase/data-studio/common/utils";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";

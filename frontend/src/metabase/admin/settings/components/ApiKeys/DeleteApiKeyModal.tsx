@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useDeleteApiKeyMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -10,6 +9,8 @@ import {
 } from "metabase/forms";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import type { ApiKey } from "metabase-types/api";
+
+import { useDeleteApiKeyMutation } from "../../api/api-key";
 
 export const DeleteApiKeyModal = ({
   onClose,
@@ -34,13 +35,13 @@ export const DeleteApiKeyModal = ({
             <FormErrorMessage />
             <Group justify="flex-end">
               <Button
-                color="error"
+                color="feedback-negative"
                 onClick={onClose}
               >{t`No, don't delete`}</Button>
               <FormSubmitButton
                 label={t`Delete API key`}
                 variant="filled"
-                color="error"
+                color="feedback-negative"
               />
             </Group>
           </Stack>

@@ -1,7 +1,7 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useAdminSetting } from "metabase/settings";
 import { useMantineTheme } from "metabase/ui";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
@@ -18,6 +18,7 @@ export const ColorSettingsWidget = () => {
   const themeColors = Object.fromEntries(
     Object.entries(theme.colors).map(([colorName, color]) => [
       colorName,
+      // Unjustified type cast. FIXME
       color[theme.primaryShade as number],
     ]),
   );

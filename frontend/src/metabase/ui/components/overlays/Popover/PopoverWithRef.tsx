@@ -4,7 +4,6 @@ import {
   forwardRef,
   useLayoutEffect,
   useMemo,
-  useRef,
 } from "react";
 
 import { Popover, type PopoverProps } from "./index";
@@ -22,28 +21,31 @@ export const PopoverWithRef = ({
     anchorEl: Element | null;
     popoverContentTestId?: string;
   }) => {
-  const anchorRef = useRef(anchorEl);
-  anchorRef.current = anchorEl;
-
   const Target = useMemo(() => {
     return forwardRef(function Target(
-      _props: unknown,
+      { anchorEl }: { anchorEl: Element | null },
       ref: Ref<Element> | null,
     ) {
       useLayoutEffect(() => {
         if (typeof ref === "function") {
-          ref(anchorRef.current);
+          ref(anchorEl);
         }
-      }, [ref]);
+      }, [ref, anchorEl]);
 
       return null;
     });
-  }, []); // should use ref to prevent new components being created
+  }, []);
+
+  // A Mantine Popover mounted with a null reference is never positioned, even
+  // if the reference is wired later — mount it only once the anchor exists
+  if (!anchorEl) {
+    return null;
+  }
 
   return (
     <Popover {...popoverProps}>
       <Popover.Target>
-        <Target />
+        <Target anchorEl={anchorEl} />
       </Popover.Target>
       <Popover.Dropdown data-testid={popoverContentTestId}>
         {children}

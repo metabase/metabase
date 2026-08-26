@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.models.interface :as mi]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
@@ -29,7 +30,7 @@
       #_{:clj-kondo/ignore [:deprecated-var]}
       (qp.metadata/legacy-result-metadata query api/*current-user-id*)
       (catch Throwable e
-        (log/errorf e "Error calculating result metadata for Card: %s" (ex-message e))
+        (log/errorf "Error calculating result metadata for Card: %s" (ex-message e))
         []))))
 
 (def ^:private metadata-sync-wait-ms
@@ -65,7 +66,7 @@ saved later when it is ready."
                             (combiner @futur)
                             (catch Throwable e
                               (future-cancel futur)
-                              (log/errorf e "Error blending model metadata: %s" (ex-message e))
+                              (log/errorf "Error blending model metadata: %s" (ex-message e))
                               metadata')))}
       {:metadata (combiner result)})))
 
@@ -166,7 +167,7 @@ saved later when it is ready."
                   (log/infof "Metadata updated asynchronously for card %s" id))
                 (log/infof "Not updating metadata asynchronously for card %s because query has changed" id)))))
         (catch Throwable e
-          (log/errorf e "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
+          (log/errorf "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
 (defn infer-metadata
   "Infer the default result_metadata to store for MBQL cards.
@@ -223,6 +224,9 @@ saved later when it is ready."
          (do
            (log/debug "Not inferring result metadata for Card: query was not updated")
            card)
+
+         (and mi/*deserializing?* (= (:type card) :model) query (seq metadata) (not-any? :id metadata))
+         (assoc card :result_metadata (or (infer-metadata-with-model-overrides query card) metadata))
 
          ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
          (or (and (not-empty changes) (contains? changes :result_metadata))

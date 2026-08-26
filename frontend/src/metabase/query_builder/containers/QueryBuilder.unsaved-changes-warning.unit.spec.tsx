@@ -2,9 +2,6 @@ import userEvent from "@testing-library/user-event";
 import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import {
-  setupCardCreateEndpoint,
-  setupCardEndpoints,
-  setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
 } from "__support__/server-mocks";
@@ -16,13 +13,8 @@ import {
   within,
 } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
-import { serializeCardForUrl } from "metabase/common/utils/card";
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
-import registerVisualizations from "metabase/visualizations/register";
-import {
-  createMockCardQueryMetadata,
-  createMockDataset,
-} from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
+import { createMockCardQueryMetadata } from "metabase-types/api/mocks";
 
 import {
   TEST_DB,
@@ -31,10 +23,8 @@ import {
   TEST_MODEL_DATASET,
   TEST_NATIVE_CARD,
   TEST_STRUCTURED_CARD,
-  TEST_UNSAVED_NATIVE_CARD,
   revertNotebookQueryChange,
   setup,
-  startNewNotebookModel,
   triggerMetadataChange,
   triggerNativeQueryChange,
   triggerNotebookQueryChange,
@@ -63,94 +53,10 @@ describe("QueryBuilder - unsaved changes warning", () => {
     setupJestCanvasMock();
   });
 
-  describe("creating models", () => {
-    it("shows custom warning modal when leaving via SPA navigation", async () => {
-      const { history } = await setup({
-        card: null,
-        initialRoute: "/model/new",
-        newModelOptionsComponent: NewModelOptions,
-      });
-
-      await startNewNotebookModel();
-
-      act(() => {
-        history.push("/redirect");
-      });
-
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
-    });
-
-    it("shows custom warning modal when leaving via Cancel button", async () => {
-      await setup({
-        card: null,
-        initialRoute: "/model/new",
-        newModelOptionsComponent: NewModelOptions,
-      });
-
-      await startNewNotebookModel();
-
-      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
-    });
-
-    it("does not show custom warning modal when saving new model", async () => {
-      await setup({
-        card: null,
-        initialRoute: "/model/new",
-        newModelOptionsComponent: NewModelOptions,
-      });
-      setupCardCreateEndpoint();
-      setupCardEndpoints(TEST_NATIVE_CARD);
-      setupCardQueryEndpoints(TEST_NATIVE_CARD, createMockDataset());
-      setupCardQueryMetadataEndpoint(
-        TEST_NATIVE_CARD,
-        createMockCardQueryMetadata({
-          databases: [TEST_DB],
-        }),
-      );
-
-      await startNewNotebookModel();
-      await waitForSaveToBeEnabled();
-
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
-      await userEvent.click(
-        within(screen.getByTestId("save-question-modal")).getByText("Save"),
-      );
-
-      await waitFor(() => {
-        expect(
-          screen.queryByTestId("save-question-modal"),
-        ).not.toBeInTheDocument();
-      });
-
-      expect(
-        screen.queryByTestId("leave-confirmation"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("shows custom warning modal when user tries to leave an ad-hoc native query", async () => {
-      const { history } = await setup({
-        card: TEST_UNSAVED_NATIVE_CARD,
-        initialRoute: `/question#${serializeCardForUrl(
-          TEST_UNSAVED_NATIVE_CARD,
-        )}`,
-      });
-
-      await triggerNativeQueryChange();
-
-      act(() => {
-        history.push("/redirect");
-      });
-
-      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
-    });
-  });
-
   describe("editing models", () => {
     describe("editing as notebook question", () => {
       it("does not show custom warning modal after editing model-based question via notebook editor and saving it", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           card: TEST_MODEL_CARD,
           initialRoute: `/model/${TEST_MODEL_CARD.id}/notebook`,
         });
@@ -174,7 +80,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         ).not.toBeInTheDocument();
 
         act(() => {
-          history.push("/redirect");
+          router.navigate("/redirect");
         });
 
         expect(
@@ -185,7 +91,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
     describe("editing queries", () => {
       it("shows custom warning modal when leaving edited query via SPA navigation", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           card: TEST_MODEL_CARD,
           initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
         });
@@ -194,14 +100,14 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await waitForSaveChangesToBeEnabled();
 
         act(() => {
-          history.push("/redirect");
+          router.navigate("/redirect");
         });
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
 
       it("does not show custom warning modal when leaving unedited query via SPA navigation", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           card: TEST_MODEL_CARD,
           initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
         });
@@ -213,7 +119,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await waitForSaveChangesToBeDisabled();
 
         act(() => {
-          history.push("/redirect");
+          router.navigate("/redirect");
         });
 
         expect(
@@ -255,13 +161,13 @@ describe("QueryBuilder - unsaved changes warning", () => {
       });
 
       it("does not show custom warning modal when saving edited query", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           card: TEST_MODEL_CARD,
           initialRoute: "/",
         });
 
         act(() => {
-          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+          router.navigate(`/model/${TEST_MODEL_CARD.id}/query`);
         });
         await waitForLoaderToBeRemoved();
 
@@ -273,7 +179,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         );
 
         await waitFor(() => {
-          expect(history.getCurrentLocation().pathname).toEqual(
+          expect(router.location.pathname).toEqual(
             `/model/${TEST_MODEL_CARD_SLUG}`,
           );
         });
@@ -283,7 +189,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         ).not.toBeInTheDocument();
 
         act(() => {
-          history.push("/redirect");
+          router.navigate("/redirect");
         });
 
         expect(
@@ -294,7 +200,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
     describe("editing metadata", () => {
       it("shows custom warning modal when leaving edited metadata via SPA navigation", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
           initialRoute: `/model/${TEST_MODEL_CARD.id}/columns`,
@@ -304,21 +210,21 @@ describe("QueryBuilder - unsaved changes warning", () => {
         await waitForSaveChangesToBeEnabled();
 
         act(() => {
-          history.push("/redirect");
+          router.navigate("/redirect");
         });
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
 
       it("does not show custom warning modal when leaving unedited metadata via SPA navigation", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
           initialRoute: `/model/${TEST_MODEL_CARD.id}/columns`,
         });
 
         act(() => {
-          history.push("/redirect");
+          router.navigate("/redirect");
         });
 
         expect(
@@ -358,14 +264,14 @@ describe("QueryBuilder - unsaved changes warning", () => {
       });
 
       it("does not show custom warning modal when saving edited metadata", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
           initialRoute: "/",
         });
 
         act(() => {
-          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+          router.navigate(`/model/${TEST_MODEL_CARD.id}/query`);
         });
         await waitForLoaderToBeRemoved();
 
@@ -384,7 +290,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         );
 
         await waitFor(() => {
-          expect(history.getCurrentLocation().pathname).toEqual(
+          expect(router.location.pathname).toEqual(
             `/model/${TEST_MODEL_CARD_SLUG}`,
           );
         });
@@ -394,7 +300,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         ).not.toBeInTheDocument();
 
         act(() => {
-          history.push("/redirect");
+          router.navigate("/redirect");
         });
 
         expect(
@@ -455,7 +361,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
   describe("creating native questions", () => {
     it("shows custom warning modal when leaving creating non-empty question via SPA navigation", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: null,
         initialRoute: "/",
       });
@@ -470,14 +376,14 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await waitForSaveToBeEnabled();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
     it("does not show custom warning modal when leaving creating empty question via SPA navigation", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: null,
         initialRoute: "/",
       });
@@ -489,7 +395,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await waitForLoaderToBeRemoved();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(
@@ -521,7 +427,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
 
     it("does not show custom warning modal when saving new question", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: null,
         initialRoute: "/",
       });
@@ -567,7 +473,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       ).not.toBeInTheDocument();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(
@@ -578,7 +484,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
   describe("editing native questions", () => {
     it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: TEST_NATIVE_CARD,
         initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
@@ -587,14 +493,14 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await waitForSaveToBeEnabled();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
     it("does not show custom warning modal when leaving edited question via SPA navigation without changing the query", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: TEST_NATIVE_CARD,
         initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
@@ -607,7 +513,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await waitForSaveToBeEnabled();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(
@@ -616,7 +522,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
 
     it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: TEST_NATIVE_CARD,
         initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
@@ -624,7 +530,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await waitForNativeQueryEditorReady();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(
@@ -653,7 +559,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
 
     it("does not show custom warning modal when saving edited question", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: TEST_NATIVE_CARD,
         initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
@@ -678,7 +584,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       ).not.toBeInTheDocument();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(
@@ -687,7 +593,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
 
     it("does not show custom warning modal when saving edited question as a new one", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: TEST_NATIVE_CARD,
         initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
       });
@@ -721,7 +627,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       ).not.toBeInTheDocument();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(
@@ -732,7 +638,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
 
   describe("editing notebook questions", () => {
     it("shows custom warning modal when leaving notebook-edited question via SPA navigation", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: TEST_STRUCTURED_CARD,
         initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
       });
@@ -740,14 +646,14 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await triggerNotebookQueryChange();
       await waitForSaveToBeEnabled();
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
     it("does not show custom warning modal when leaving visualization-edited question via SPA navigation", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: TEST_STRUCTURED_CARD,
         initialRoute: `/question/${TEST_STRUCTURED_CARD.id}`,
       });
@@ -756,7 +662,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await waitForSaveToBeEnabled();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(
@@ -765,13 +671,13 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
 
     it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: TEST_STRUCTURED_CARD,
         initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
       });
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(
@@ -803,13 +709,13 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
 
     it("does not show custom warning modal when saving edited question", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: TEST_STRUCTURED_CARD,
         initialRoute: "/",
       });
 
       act(() => {
-        history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
+        router.navigate(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
       });
       await waitForLoaderToBeRemoved();
 
@@ -833,7 +739,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       ).not.toBeInTheDocument();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(
@@ -842,7 +748,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
 
     it("does not show custom warning modal when saving edited question as a new one", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         card: TEST_STRUCTURED_CARD,
         initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
       });
@@ -876,7 +782,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       ).not.toBeInTheDocument();
 
       act(() => {
-        history.push("/redirect");
+        router.navigate("/redirect");
       });
 
       expect(

@@ -1,30 +1,37 @@
-import type {
-  Card,
-  Dashboard,
-  Database,
-  DatabaseFeature,
-  DatabaseId,
-} from "metabase-types/api";
+import { t } from "ttag";
+
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { Card, Dashboard, Database, DatabaseId } from "metabase-types/api";
 
 export const isDbModifiable = (
-  database: { id?: DatabaseId; is_attached_dwh?: boolean } | undefined,
+  database:
+    | { id?: DatabaseId; is_attached_dwh?: boolean; is_sample?: boolean }
+    | undefined,
 ) => {
-  return !(database?.id != null && database.is_attached_dwh);
+  return !(
+    database?.id != null &&
+    (database.is_attached_dwh || database.is_sample)
+  );
 };
 
-export const hasFeature = (
-  database: Pick<Database, "features">,
-  feature: DatabaseFeature,
+/**
+ * Message explaining why a non-modifiable database cannot be edited. Only
+ * meaningful when [[isDbModifiable]] returns false for the same database.
+ * The cloud-managed message names Metabase Cloud literally (not the
+ * whitelabeled name) so admins can tell platform-managed databases apart from
+ * ones managed by their own whitelabeled instance.
+ */
+export const getDbNotModifiableMessage = (
+  database: { is_sample?: boolean } | undefined,
 ) => {
-  return database.features?.includes(feature) ?? false;
+  return database?.is_sample
+    ? t`The sample database cannot be edited.`
+    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin-only: must name Metabase Cloud to distinguish it from a whitelabeled instance
+      t`This database is managed by Metabase Cloud and cannot be modified.`;
 };
 
 export const hasActionsEnabled = (database: Pick<Database, "settings">) => {
   return Boolean(database.settings?.["database-enable-actions"]);
-};
-
-export const hasWorkspacesEnabled = (database: Pick<Database, "settings">) => {
-  return Boolean(database.settings?.["database-enable-workspaces"]);
 };
 
 export const hasWritableConnectionDetails = (
@@ -94,3 +101,15 @@ export const dashboardUsesRoutingEnabledDatabases = (
 export function hasTableEditingEnabled(database: Pick<Database, "settings">) {
   return Boolean(database.settings?.["database-enable-table-editing"]);
 }
+
+/**
+ * Match a database by exact (case-sensitive) name, ignoring the virtual
+ * "Saved Questions" database; on a name collision the lowest id wins.
+ */
+export const findDatabaseByName = (databases: Database[], name: string) =>
+  databases
+    .filter(
+      (database) =>
+        database.name === name && database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID,
+    )
+    .sort((a, b) => a.id - b.id)[0];

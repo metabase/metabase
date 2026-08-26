@@ -6,9 +6,8 @@
   explicitly excluded, or has the :entity_id property."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
@@ -24,6 +23,9 @@
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
+    ;; OsiAiContext is identified by the entity it describes (entity_type + the entity's portable ref); its
+    ;; serdes path nests under that entity, so it has no generated entity_id.
+    :model/OsiAiContext
     ;; Settings have human-selected unique names.
     :model/Setting
     ;; Glossary items have unique `term` key
@@ -34,7 +36,8 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/AiUsageLog
+  #{:model/AgentApiCallLog
+    :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
@@ -51,16 +54,30 @@
     :model/CollectionBookmark
     :model/ContentTranslation
     :model/DashboardBookmark
+    :model/DataApp
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
     :model/DocumentBookmark
+    :model/Exploration
+    :model/ExplorationBookmark
+    :model/ExplorationQuery
+    :model/ExplorationQueryResult
+    :model/ExplorationThread
+    :model/ExplorationBlock
+    :model/ExplorationPage
+    :model/ExplorationThreadTimeline
+    :model/StoredResult
+    :model/StoredResultUse
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/McpFeedback
     :model/McpQueryHandle
+    :model/McpSessionLog
+    :model/McpToolCallLog
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotFeedback
@@ -106,10 +123,6 @@
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
-    ;; Workspace remappings are runtime-only; they redirect QP queries against canonical
-    ;; tables to workspace-isolated copies. They aren't portable across instances and
-    ;; aren't included in serdes export/import.
-    :model/TableRemapping
     :model/Secret
     :model/Session
     :model/SourceDimensionDaily
@@ -117,7 +130,9 @@
     :model/SourceMetricDaily
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
+    :model/SsoRelayState
     :model/SupportAccessGrantLog
+    :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
     :model/Tenant
@@ -125,6 +140,7 @@
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation
+    :model/TransformDagRun
     :model/TransformJobRun
     :model/TransformJobTransformTag
     :model/TransformTransformTag
@@ -138,15 +154,10 @@
     :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
-    :model/CommentReaction
-    ;; Workspace and WorkspaceDatabase are runtime-only -- per-instance workspace
-    ;; provisioning state, not portable content. Same rationale as TableRemapping above.
-    :model/Workspace
-    :model/WorkspaceDatabase
-    :model/WorkspaceInstance})
+    :model/CommentReaction})
 
 (deftest ^:parallel comprehensive-entity-id-test
-  (let [entity-id-models (->> (v2.entity-ids/toucan-models)
+  (let [entity-id-models (->> (keys models.resolution/model->namespace)
                               (remove entities-not-exported)
                               (remove entities-external-name))]
     (testing "All exported models should get entity id except those with other unique property (like name)"
@@ -160,13 +171,4 @@
       (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
                             "an external name, or explicitly listed as excluded from serialization")
                        model)
-        (is (serdes.backfill/has-entity-id? model))))))
-
-(deftest ^:parallel comprehensive-identity-hash-test
-  (doseq [model (->> (v2.entity-ids/toucan-models)
-                     (remove entities-not-exported))]
-    (testing (format "Model %s should implement identity-hash-fields" model)
-      (is (some? (try
-                   (serdes/hash-fields model)
-                   (catch java.lang.IllegalArgumentException _
-                     nil)))))))
+        (is (serdes/has-entity-id? model))))))

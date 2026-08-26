@@ -1,7 +1,7 @@
 import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
-} from "metabase/collections/constants";
+} from "metabase/common/collections/constants";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 
 import { DOCUMENT_LINK_MODELS } from "./constants";

@@ -1,6 +1,7 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { isNotNull } from "metabase/utils/types";
 import type {
   Alert,
   ApiKey,
@@ -46,7 +47,8 @@ import type {
   SearchResult,
   Segment,
   Table,
-  TableRemapping,
+  TableIndexEntry,
+  TableIndexRequest,
   Task,
   TaskRun,
   Timeline,
@@ -639,6 +641,12 @@ export function provideMetricDimensionValuesTags(
   return [idTag("card", metricId)];
 }
 
+export function provideMetricDimensionListTags(
+  metricId: MetricId,
+): TagDescription<TagType>[] {
+  return [listTag("metric-dimension"), idTag("metric-dimension", metricId)];
+}
+
 export function provideSnippetListTags(
   snippets: NativeQuerySnippet[],
 ): TagDescription<TagType>[] {
@@ -670,6 +678,27 @@ export function provideSubscriptionTags(
   return [idTag("subscription", subscription.id)];
 }
 
+export function provideTableIndexTags(
+  index: TableIndexRequest,
+): TagDescription<TagType>[] {
+  return [
+    idTag("table-index", index.id),
+    idTag("transform", index.transform_id),
+  ];
+}
+
+export function provideTableIndexListTags(
+  indexes: TableIndexEntry[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("table-index"),
+    ...indexes
+      .map((index) => index.request)
+      .filter(isNotNull)
+      .flatMap(provideTableIndexTags),
+  ];
+}
+
 export function provideTableListTags(
   tables: Table[],
 ): TagDescription<TagType>[] {
@@ -685,21 +714,6 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
     ...(table.measures ? provideMeasureListTags(table.measures) : []),
     ...(table.metrics ? provideCardListTags(table.metrics) : []),
-  ];
-}
-
-export function provideTableRemappingTags(
-  remapping: TableRemapping,
-): TagDescription<TagType>[] {
-  return [idTag("table-remapping", remapping.id)];
-}
-
-export function provideTableRemappingListTags(
-  remappings: TableRemapping[],
-): TagDescription<TagType>[] {
-  return [
-    listTag("table-remapping"),
-    ...remappings.flatMap(provideTableRemappingTags),
   ];
 }
 

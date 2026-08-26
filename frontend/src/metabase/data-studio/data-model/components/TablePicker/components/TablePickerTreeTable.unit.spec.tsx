@@ -31,6 +31,7 @@ describe("handleCheckboxToggle", () => {
     isDisabled,
     depth = 0,
   }: CheckboxRowParams): Row<TablePickerTreeNode> =>
+    // Unjustified type cast. FIXME
     ({
       depth,
       original: {

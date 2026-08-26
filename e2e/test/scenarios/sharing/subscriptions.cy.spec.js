@@ -51,7 +51,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       openDashboardSubscriptions();
 
       // The sidebar starts open after the method there, so test that clicking the icon closes it
-      H.openDashboardMenu("Subscriptions");
+      H.toggleDashboardSubscriptionsSidebar();
       H.sidebar().should("not.exist");
     });
   });
@@ -78,6 +78,35 @@ describe("scenarios > dashboard > subscriptions", () => {
       H.setupSMTP();
     });
 
+    it("renders an object detail as a label/value table in a subscription email", () => {
+      const questionDetails = {
+        name: "Object detail static-viz smoke",
+        native: {
+          query: "SELECT 'Hammer' AS product, 19 AS price, NULL AS discount",
+        },
+        display: "object",
+      };
+
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
+        ({ dashboardId }) => {
+          H.visitDashboard(dashboardId);
+        },
+      );
+
+      H.openAndAddEmailsToSubscriptions([
+        `${admin.first_name} ${admin.last_name}`,
+      ]);
+
+      H.sendEmailAndAssert(({ html }) => {
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        expect(html).to.include("Hammer");
+        // "Empty" (the null column) is unique to the :object renderer — a table fallback leaves it blank.
+        expect(html).to.include("Empty");
+      });
+    });
+
     describe("with no existing subscriptions", () => {
       it("should not enable subscriptions without the recipient (metabase#17657)", () => {
         openDashboardSubscriptions();
@@ -88,8 +117,8 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByPlaceholderText("Enter user names or email addresses");
 
         // Change the schedule to "Monthly"
-        cy.findByDisplayValue("Hourly").click();
-        H.popover().findByText("Monthly").click();
+        cy.findByTestId("select-frequency").click();
+        H.popover().findByText("monthly").click();
 
         H.sidebar().button("Done").should("be.disabled");
       });
@@ -98,6 +127,19 @@ describe("scenarios > dashboard > subscriptions", () => {
         createEmailSubscription();
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Emailed hourly");
+      });
+
+      it("should still send a one-off email after the frequency change clears the time", () => {
+        assignRecipient();
+
+        cy.findByTestId("select-frequency").click();
+        H.popover().findByText("weekly").click();
+
+        H.sidebar().button("Done").should("be.disabled");
+        H.sidebar().button("Send email now").should("be.enabled");
+
+        H.clickSend();
+        H.getInbox(1).its("body").should("have.length", 1);
       });
 
       it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
@@ -125,20 +167,6 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         H.popover().isRenderedWithinViewport();
       });
-
-      it(
-        "should not send attachments by default if not explicitly selected (metabase#28673)",
-        { tags: "@skip" },
-        () => {
-          openDashboardSubscriptions();
-          assignRecipient();
-
-          cy.findByLabelText("Attach results").should("not.be.checked");
-          H.sendEmailAndAssert(
-            ({ attachments }) => expect(attachments).to.be.empty,
-          );
-        },
-      );
     });
 
     describe("with existing subscriptions", () => {
@@ -155,9 +183,10 @@ describe("scenarios > dashboard > subscriptions", () => {
         openDashboardSubscriptions();
 
         H.sidebar().within(() => {
-          cy.findByPlaceholderText("Enter user names or email addresses")
-            .click()
-            .type(`${normal.first_name} ${normal.last_name}{enter}`);
+          cy.findByPlaceholderText(
+            "Enter user names or email addresses",
+          ).click();
+          H.popover().contains(normal.first_name).click();
           clickButton("Done");
 
           cy.findByLabelText("add icon").click();
@@ -302,26 +331,21 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     it("should persist attachments for dashboard subscriptions (metabase#14117)", () => {
       assignRecipient();
-      // This is extremely fragile
-      // TODO: update test once changes from `https://github.com/metabase/metabase/pull/14121` are merged into `master`
-      cy.findByLabelText("Attach results").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Questions to attach").click();
-      clickButton("Done");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Subscriptions");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Emailed hourly").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Delete this subscription").scrollIntoView();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Questions to attach");
-      cy.findAllByRole("listitem")
-        .contains("Orders")
-        .closest("li")
-        .within(() => {
-          cy.findByRole("checkbox").should("be.checked");
-        });
+
+      H.sidebar().within(() => {
+        cy.findByLabelText("Attach results")
+          .should("not.be.checked")
+          .click({ force: true }); // Input is placed behind the lable due to tooltip in label
+        cy.findByText("Questions to attach").click();
+        clickButton("Done");
+
+        cy.findByText("Subscriptions").should("exist");
+        cy.findByText("Emailed hourly").click();
+
+        cy.findByText("Delete this subscription").scrollIntoView();
+        cy.findByText("Questions to attach").should("be.visible");
+        cy.findByLabelText("Orders").should("be.checked");
+      });
     });
 
     it("should localize schedule type in the delete-confirmation modal", () => {
@@ -333,10 +357,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
       cy.reload();
 
-      H.dashboardHeader()
-        .findByLabelText("[zz] Move, trash, and more…")
-        .click();
-      H.popover().findByText("[zz] Subscriptions").click();
+      H.toggleDashboardSubscriptionsSidebar();
       H.sidebar()
         .findByText(/\[zz\] hourly/)
         .click();
@@ -350,9 +371,13 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should send only attachments without email content when 'Send only attachments' is enabled", () => {
       assignRecipient();
 
-      cy.findByLabelText("Attach results").click();
+      cy.findByLabelText("Attach results")
+        .should("not.be.checked")
+        .click({ force: true }); // Input is placed behind the lable due to tooltip in label
       cy.findByLabelText("Questions to attach").click();
-      cy.findByLabelText("Send only attachments").click();
+      cy.findByLabelText("Send only attachments")
+        .should("not.be.checked")
+        .click({ force: true }); // Input is placed behind the lable due to tooltip in label
       cy.findByLabelText("Send only attachments").should("be.checked");
 
       H.sendEmailAndAssert((email) => {
@@ -374,15 +399,16 @@ describe("scenarios > dashboard > subscriptions", () => {
       assignRecipient();
       H.sidebar().findByText("To:").click();
 
-      cy.findByDisplayValue("Hourly").click();
-      H.popover().findByText("Monthly").click();
+      cy.findByTestId("select-frequency").click();
+      H.popover().findByText("monthly").click();
 
-      cy.findByDisplayValue("First").click();
-      H.popover().findByText("15th (Midpoint)").click();
+      cy.findByTestId("select-frame").click();
+      H.popover().findByText("15th").click();
 
-      cy.findByDisplayValue("15th (Midpoint)").click();
-      H.popover().findByText("First").click();
+      cy.findByTestId("select-frame").click();
+      H.popover().findByText("first").click();
 
+      H.selectScheduleTime();
       clickButton("Done");
       // Implicit assertion (word mustn't contain string "null")
       H.sidebar().findByText(/^Emailed monthly on the first (?!null)/);
@@ -498,6 +524,40 @@ describe("scenarios > dashboard > subscriptions", () => {
         expect(email.html).to.include(questionDetails.name);
       });
     });
+
+    it("renders a region (choropleth) map as an image in a subscription email", () => {
+      const questionDetails = {
+        name: "Region map static-viz smoke",
+        native: {
+          query:
+            "SELECT 'CA' AS state, 99999 AS metric " +
+            "UNION ALL SELECT 'NY' AS state, 11111 AS metric",
+        },
+        display: "map",
+        visualization_settings: {
+          "map.type": "region",
+          "map.region": "us_states",
+          "map.dimension": "STATE",
+          "map.metric": "METRIC",
+        },
+      };
+
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
+        ({ dashboardId }) => {
+          assignRecipient({ dashboard_id: dashboardId });
+        },
+      );
+
+      H.sendEmailAndAssert(({ html }) => {
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        // The map rasterizes to a PNG <img>; a table fallback would instead leak these values as text.
+        expect(html).to.include("<img");
+        expect(html).not.to.include("99999");
+        expect(html).not.to.include("11111");
+      });
+    });
   });
 
   describe("with Slack set up", () => {
@@ -534,8 +594,8 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should allow non-admin users to create subscriptions", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openDashboardMenu();
-      H.popover().findByText("Subscriptions").should("be.visible");
+      H.toggleDashboardSubscriptionsSidebar();
+      H.sidebar().should("be.visible");
     });
 
     it("should persist the immutable Slack channel_id alongside the channel name", () => {
@@ -712,7 +772,11 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       cy.get(".container").within(() => {
         cy.findByText("Total Orders");
-        cy.findAllByText("18,760").should("have.length", 2);
+        // the scalar counts all orders, but the body-only Orders table is
+        // capped at the 2,000-row display limit so its truncation note no
+        // longer says 18,760 (GDGT-2773)
+        cy.findAllByText("18,760").should("have.length", 1);
+        cy.findByText("2,000");
       });
     });
 
@@ -842,7 +906,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
         H.openSharingMenu();
-        H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
+        H.sharingMenu().findByRole("button", { name: "Embed" }).click();
         cy.findByLabelText("Metabase account (SSO)").click();
         embedModalEnableEmbedding();
         cy.findByLabelText("Allow subscriptions").check().should("be.checked");
@@ -868,7 +932,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = ORDERS_DASHBOARD_ID) {
   // Orders in a dashboard
   H.visitDashboard(dashboard_id);
-  H.openDashboardMenu("Subscriptions");
+  H.toggleDashboardSubscriptionsSidebar();
 }
 
 function assignRecipient({
@@ -878,9 +942,9 @@ function assignRecipient({
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
 
-  cy.findByPlaceholderText("Enter user names or email addresses")
-    .type(`${user.first_name} ${user.last_name}{enter}`)
-    .blur();
+  cy.findByPlaceholderText("Enter user names or email addresses").click();
+  H.popover().contains(user.first_name).click();
+  cy.realPress("Escape");
 }
 
 function assignRecipients({

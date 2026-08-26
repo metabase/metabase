@@ -1,17 +1,19 @@
 import type { FormikHelpers } from "formik";
-import { useCallback, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
 } from "metabase/actions/containers/ActionParametersInputForm";
 import { useActionInitialValues } from "metabase/actions/hooks/use-action-initial-values";
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
-import { actionApi } from "metabase/api";
+import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { Modal } from "metabase/common/components/Modal";
+import {
+  ActionCreator,
+  loadActionCreator,
+} from "metabase/querying/action-creator";
 import { useDispatch } from "metabase/redux";
-import { PublicApi } from "metabase/services";
+import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -63,6 +65,13 @@ function ActionVizForm({
   const dispatch = useDispatch();
   const [showFormModal, setShowFormModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // The action editor is a separate chunk. Fetching it up front, and opening in
+  // a transition, keeps this card on screen until the editor is ready so the
+  // modal opens complete rather than empty.
+  useEffect(() => {
+    loadActionCreator();
+  }, []);
   const title = getFormTitle(action);
 
   // only show confirmation if there are no missing parameters
@@ -82,7 +91,9 @@ function ActionVizForm({
   };
 
   const handleActionEdit = () => {
-    setShowEditModal(true);
+    startTransition(() => {
+      setShowEditModal(true);
+    });
   };
 
   const closeEditModal = () => {
@@ -96,13 +107,7 @@ function ActionVizForm({
       return {};
     }
 
-    if (getDashboardType(dashboard.id) === "public") {
-      return PublicApi.prefetchDashcardValues({
-        dashboardId: dashboard.id,
-        dashcardId: dashcard.id,
-        parameters: JSON.stringify(dashcardParamValues),
-      });
-    }
+    const isPublic = getDashboardType(dashboard.id) === "public";
 
     return runRtkEndpoint(
       {
@@ -111,7 +116,9 @@ function ActionVizForm({
         parameters: dashcardParamValues,
       },
       dispatch,
-      actionApi.endpoints.prefetchDashcardValues,
+      isPublic
+        ? publicApi.endpoints.prefetchPublicDashcardValues
+        : actionApi.endpoints.prefetchDashcardValues,
     );
   }, [dashboard.id, dashcard.id, dashcardParamValues, dispatch]);
 
@@ -144,38 +151,39 @@ function ActionVizForm({
           focus={isEditingDashcard}
           onClick={onClick}
         />
-        {showFormModal && (
-          <ActionParametersInputModal
+        <ActionParametersInputModal
+          opened={showFormModal}
+          action={action}
+          mappedParameters={mappedParameters}
+          initialValues={initialValues}
+          title={title}
+          showEmptyState={shouldPrefetch && !hasPrefetchedValues}
+          showConfirmMessage={showConfirmMessage}
+          confirmMessage={action.visualization_settings?.confirmMessage}
+          onEdit={canEditAction ? handleActionEdit : undefined}
+          onSubmit={onModalSubmit}
+          onSubmitSuccess={handleSubmitSuccess}
+          onClose={() => setShowFormModal(false)}
+          onCancel={() => setShowFormModal(false)}
+        />
+        <Modal
+          {...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS}
+          opened={showEditModal}
+          data-testid="action-editor-modal"
+          onClose={closeEditModal}
+          size="95%"
+          withCloseButton={false}
+          padding={0}
+        >
+          <ActionCreator
             action={action}
-            mappedParameters={mappedParameters}
-            initialValues={initialValues}
-            title={title}
-            showEmptyState={shouldPrefetch && !hasPrefetchedValues}
-            showConfirmMessage={showConfirmMessage}
-            confirmMessage={action.visualization_settings?.confirmMessage}
-            onEdit={canEditAction ? handleActionEdit : undefined}
-            onSubmit={onModalSubmit}
-            onSubmitSuccess={handleSubmitSuccess}
-            onClose={() => setShowFormModal(false)}
-            onCancel={() => setShowFormModal(false)}
-          />
-        )}
-        {showEditModal && (
-          <Modal
-            wide
-            data-testid="action-editor-modal"
+            modelId={action.model_id}
+            databaseId={action.database_id}
+            actionId={action.id}
+            onSubmit={onActionEdit}
             onClose={closeEditModal}
-          >
-            <ActionCreator
-              action={action}
-              modelId={action.model_id}
-              databaseId={action.database_id}
-              actionId={action.id}
-              onSubmit={onActionEdit}
-              onClose={closeEditModal}
-            />
-          </Modal>
-        )}
+          />
+        </Modal>
       </>
     );
   }

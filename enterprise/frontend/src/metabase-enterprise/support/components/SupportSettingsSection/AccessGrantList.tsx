@@ -1,10 +1,10 @@
 import cx from "classnames";
-import dayjs, { type Dayjs } from "dayjs";
 import { c, t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Badge, Group, Icon } from "metabase/ui";
 import { useRevokeSupportAccessGrantMutation } from "metabase-enterprise/api";
@@ -26,7 +26,7 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
       title: t`Revoke access grant?`,
       message: t`This will immediately revoke the support agent's access to your instance.`,
       confirmButtonText: t`Revoke`,
-      confirmButtonProps: { color: "danger" },
+      confirmButtonProps: { color: "feedback-negative" },
       size: "sm",
       onConfirm: async () => {
         try {
@@ -74,8 +74,9 @@ export const AccessGrantList = (props: AccessGrantListProps) => {
                   ) : (
                     <Group gap="sm">
                       <Badge
-                        m={0}
+                        color="brand"
                         variant="outline"
+                        size="sm"
                         title={effectiveEndDate.format("lll")}
                       >
                         {c("{0} is the time until expiration")

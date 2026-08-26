@@ -3,19 +3,20 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { getActionItems } from "metabase/actions/utils";
 import {
   actionApi,
   datasetApi,
   skipToken,
   useListActionsQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
-import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { Modal } from "metabase/ui";
+import { Loader, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -26,7 +27,6 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 
-import { DeleteObjectModal } from "./DeleteObjectModal";
 import { ObjectDetailBody } from "./ObjectDetailBody";
 import { ObjectDetailHeader } from "./ObjectDetailHeader";
 import {
@@ -35,12 +35,7 @@ import {
   ObjectDetailLayout,
 } from "./ObjectDetailPanel.styled";
 import type { ObjectDetailProps, ObjectId } from "./types";
-import {
-  getActionItems,
-  getDisplayId,
-  getObjectName,
-  getSinglePKIndex,
-} from "./utils";
+import { getDisplayId, getObjectName, getSinglePKIndex } from "./utils";
 
 function filterByPk(
   query: Lib.Query,
@@ -163,6 +158,7 @@ export function ObjectDetailPanel({
       _.isEmpty(table.fks) &&
       !isVirtualCardId(table.id)
     ) {
+      // Unjustified type cast. FIXME
       fetchTableFks?.(table.id as ConcreteTableId);
     }
   });
@@ -267,9 +263,10 @@ export function ObjectDetailPanel({
       : skipToken,
   );
 
-  const { data: databases = [] } = useDatabaseListQuery({
-    enabled: areImplicitActionsEnabled,
-  });
+  const { data: databasesResponse } = useListDatabasesQuery(
+    areImplicitActionsEnabled ? undefined : skipToken,
+  );
+  const databases = databasesResponse?.data ?? [];
 
   const actionItems = areImplicitActionsEnabled
     ? getActionItems({
@@ -328,7 +325,7 @@ export function ObjectDetailPanel({
       <ObjectDetailContainer wide={hasRelationships} className={className}>
         {maybeLoading ? (
           <ErrorWrapper>
-            <LoadingSpinner />
+            <Loader />
           </ErrorWrapper>
         ) : hasNotFoundError ? (
           <ErrorWrapper>

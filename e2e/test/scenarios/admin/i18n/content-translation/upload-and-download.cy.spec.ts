@@ -12,7 +12,7 @@ import {
   nonAsciiFieldNames,
   portugueseFieldNames,
   stringTranslatedTwice,
-} from "./constants";
+} from "./helpers/constants";
 import {
   assertOnlyTheseTranslationsAreStored,
   generateLargeCSV,
@@ -48,6 +48,7 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
         "api/ee/content-translation/upload-dictionary",
         cy.spy().as("uploadDictionarySpy"),
       ).as("uploadDictionary");
+      // Unjustified type cast. FIXME
       H.restore("snapshot-for-upload-and-download" as any);
       cy.signInAsAdmin();
     });

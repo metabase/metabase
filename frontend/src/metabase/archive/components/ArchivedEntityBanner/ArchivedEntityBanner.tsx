@@ -40,7 +40,7 @@ export const ArchivedEntityBanner = ({
       <Box
         px="1.5rem"
         py=".75rem"
-        bg="error"
+        bg="feedback-negative"
         w="100%"
         data-testid="archive-banner"
       >

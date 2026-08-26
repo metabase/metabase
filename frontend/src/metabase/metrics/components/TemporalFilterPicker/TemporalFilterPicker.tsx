@@ -1,11 +1,11 @@
 import { type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
-import type { DimensionWithDefinition } from "metabase/metrics/types";
+import type { DimensionWithDefinition } from "metabase/common/metrics/types";
 import {
   getCommonTemporalUnits,
   isDatePickerUnit,
-} from "metabase/metrics/utils/dates";
+} from "metabase/common/metrics/utils/dates";
 import { SimpleDatePicker } from "metabase/querying/common/components/DatePicker/SimpleDatePicker";
 import type { DatePickerValue } from "metabase/querying/common/types";
 import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";

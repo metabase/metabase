@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
 import { isCartesianChart } from "metabase/visualizations";
+import { getVisualizerSeriesCardId } from "metabase/visualizations/lib/series";
 import type {
   RawSeries,
   VisualizerColumnValueSource,
@@ -51,6 +52,7 @@ export function splitVisualizerSeries(
   const allMetrics = mainCard.visualization_settings["graph.metrics"];
   const allDimensions = mainCard.visualization_settings["graph.dimensions"];
 
+  // Unjustified type cast. FIXME
   return dataSourceIds
     .map((dataSourceId, i) => {
       const columnNames = Object.keys(columnValuesMapping).filter(
@@ -116,15 +118,4 @@ export function splitVisualizerSeries(
       };
     })
     .filter(isNotNull) as RawSeries;
-}
-
-function getVisualizerSeriesCardId(seriesIndex: number) {
-  return -(seriesIndex + 1);
-}
-
-export function getVisualizerSeriesCardIndex(cardId?: number) {
-  if (!cardId) {
-    return 0;
-  }
-  return -cardId - 1;
 }

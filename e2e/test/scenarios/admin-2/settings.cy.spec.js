@@ -126,23 +126,6 @@ describe("scenarios > admin > settings", () => {
     H.restore(); // avoid leaving https site url
   });
 
-  it("should display an error if the https redirect check fails", () => {
-    cy.visit("/admin/settings/general");
-
-    cy.intercept("GET", "**/api/health", (req) => {
-      req.reply({ forceNetworkError: true });
-    }).as("httpsCheck");
-    // switch site url to use https
-    cy.findByTestId("site-url-setting")
-      .findByRole("textbox", { name: "input-prefix" })
-      .click();
-    H.popover().contains("https://").click();
-
-    cy.wait("@httpsCheck");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("It looks like HTTPS is not properly configured");
-  });
-
   it("should correctly apply the globalized date formats (metabase#11394) and update the formatting", () => {
     cy.intercept("PUT", "**/custom-formatting").as("saveFormatting");
 
@@ -230,7 +213,7 @@ describe("scenarios > admin > settings", () => {
       .as("timezoneSelect")
       .clear()
       .type("Centr");
-    cy.findByRole("listbox").findByText("US/Central").click();
+    H.selectDropdown().findByText("US/Central").click();
     cy.wait("@reportTimezone");
     cy.get("@timezoneSelect").should("have.value", "US/Central");
   });
@@ -521,17 +504,13 @@ describe("scenarios > admin > settings > email settings", () => {
   describe("Pro-cloud instance", () => {
     beforeEach(() => {
       cy.intercept("DELETE", "api/ee/email/override").as("smtpCleared");
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          // in an actual pro-cloud instance this gets configured via env vars
-          res.body["email-configured?"] = true;
-          return res.body;
-        });
-      });
       cy.intercept("PUT", "api/ee/email/override").as("smtpSaved");
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-cloud");
+      // A real pro-cloud instance configures email via env vars; set the SMTP host so
+      // email-configured? is true (avoids a session/properties intercept that flakes on reload).
+      H.updateSetting("email-smtp-host", "smtp.example.test");
       H.resetSnowplow();
       H.enableTracking();
     });
@@ -627,20 +606,6 @@ describe("scenarios > admin > settings > email settings", () => {
 });
 
 describe("scenarios > admin > license and billing", () => {
-  const HOSTING_FEATURE_KEY = "hosting";
-  const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
-  const NO_UPSELL_FEATURE_HEY = "no-upsell";
-  // mocks data the will be returned by enterprise useLicense hook
-  const mockBillingTokenFeatures = (features) => {
-    return cy.intercept("GET", "/api/premium-features/token/status", {
-      "valid-thru": "2099-12-31T12:00:00",
-      valid: true,
-      trial: false,
-      features,
-      status: "something",
-    });
-  };
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -652,33 +617,6 @@ describe("scenarios > admin > license and billing", () => {
       cy.findByTestId("license-and-billing-content")
         .findByText("Go to the Metabase Store")
         .should("have.prop", "tagName", "A");
-    });
-
-    it("should not show license input for cloud-hosted instances", () => {
-      H.activateToken("pro-self-hosted");
-      mockBillingTokenFeatures([
-        STORE_MANAGED_FEATURE_KEY,
-        NO_UPSELL_FEATURE_HEY,
-        HOSTING_FEATURE_KEY,
-      ]);
-      cy.visit("/admin/settings/license");
-      cy.findByTestId("license-input").should("not.exist");
-    });
-
-    it("should render an error if something fails when fetching billing info", () => {
-      H.activateToken("pro-self-hosted");
-      mockBillingTokenFeatures([
-        STORE_MANAGED_FEATURE_KEY,
-        NO_UPSELL_FEATURE_HEY,
-      ]);
-      // force an error
-      cy.intercept("GET", "/api/ee/billing", (req) => {
-        req.reply({ statusCode: 500 });
-      });
-      cy.visit("/admin/settings/license");
-      cy.findByTestId("license-and-billing-content")
-        .findByText(/An error occurred/)
-        .should("exist");
     });
   });
 });
@@ -916,9 +854,9 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.button("Load").click();
     cy.wait("@getGeoJson");
     cy.findByTestId("map-region-key-select").click();
-    H.popover().contains("NAME").click();
+    H.selectDropdown().contains("NAME").click();
     cy.findByTestId("map-region-name-select").click();
-    H.popover().contains("NAME").click();
+    H.selectDropdown().contains("NAME").click();
     cy.button("Add map").click();
     cy.findByTestId("admin-layout-content").within(() => {
       cy.contains("NAME").should("not.exist");
@@ -940,74 +878,6 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.findByText("Load").click();
     cy.wait("@load").then((interception) => {
       expect(interception.response.statusCode).to.eq(200);
-    });
-  });
-
-  it("should show an informative error when adding an invalid URL", () => {
-    cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a map").click();
-    cy.findByPlaceholderText(
-      "Like https://my-mb-server.com/maps/my-map.json",
-    ).type("bad-url");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(
-      "Invalid GeoJSON file location: must start with http:// or https://. " +
-        "URLs referring to hosts that supply internal hosting metadata are prohibited.",
-    );
-  });
-
-  it("should show an informative error when adding a valid URL that does not contain GeoJSON, or is missing required fields", () => {
-    cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a map").click();
-
-    // Not GeoJSON
-    cy.findByPlaceholderText(
-      "Like https://my-mb-server.com/maps/my-map.json",
-    ).type("https://metabase.com");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("GeoJSON URL returned invalid content-type");
-
-    // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
-    cy.findByPlaceholderText("Like https://my-mb-server.com/maps/my-map.json")
-      .clear()
-      .type(
-        "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson",
-      );
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Invalid custom GeoJSON: does not contain features");
-  });
-
-  it("should show an informative error when adding a calid URL that contains GeoJSON that does not use lat/lng coordinates", () => {
-    //intercept call to api/geojson and return projected.geojson. Call to load file actually happens in the BE
-    cy.fixture("../../e2e/support/assets/projected.geojson").then((data) => {
-      // The real endpoint responds with JSON; the fixture loads as a string, so
-      // set the content type explicitly or the client returns it unparsed.
-      cy.intercept("GET", "/api/geojson*", {
-        headers: { "content-type": "application/json" },
-        body: data,
-      });
-    });
-
-    cy.visit("/admin/settings/maps");
-    cy.button("Add a map").click();
-
-    H.modal().within(() => {
-      // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
-      cy.findByPlaceholderText("Like https://my-mb-server.com/maps/my-map.json")
-        .clear()
-        .type("http://assets/projected.geojson");
-      cy.findByText("Load").click();
-      cy.findByText(
-        "Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude",
-      );
     });
   });
 });

@@ -163,10 +163,40 @@
           query (lib.js/with-template-tags
                   (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
                   (add-undefined-params (clj->js snippets) snippet-name))]
-      (is (= snippets
+      (is (= (vals snippets)
              (get-in query [:stages 0 :template-tags])))
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
+
+(deftest ^:parallel template-tags-preserve-order-test
+  (let [tags (mapv (fn [i]
+                     {:name         (str "template_tag_" i)
+                      :display-name (str "Template Tag " i)
+                      :type         :number})
+                   (range 10))
+        expected-order ["template_tag_0"
+                        "template_tag_1"
+                        "template_tag_2"
+                        "template_tag_3"
+                        "template_tag_4"
+                        "template_tag_5"
+                        "template_tag_6"
+                        "template_tag_7"
+                        "template_tag_8"
+                        "template_tag_9"]]
+    (is (= expected-order
+           (mapv :name tags)))
+    (let [roundtripped-tags (-> tags
+                                (#'lib.js/template-tags-cljs->js)
+                                (#'lib.js/template-tags-js->cljs))]
+      (is (= expected-order
+             (mapv :name roundtripped-tags))))))
+
+(deftest ^:parallel template-tags-js->cljs-test
+  (testing "Should use map key as :name"
+    (is (= [{:name "tag", :display-name "Tag", :type :number}]
+           (#'lib.js/template-tags-js->cljs
+            #js {"tag" #js {"display-name" "Tag", "type" "number"}})))))
 
 (deftest ^:parallel column-metadata?-test
   (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))
@@ -385,7 +415,6 @@
 (deftest ^:parallel js=-metatest
   (testing "check js= works correctly (who tests the tests?)"
     (testing "should be true"
-      #_{:clj-kondo/ignore [:equals-true]}
       (are [a b] (= true (js= a b))
         7 7
         0 0

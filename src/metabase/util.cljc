@@ -10,7 +10,6 @@
              [clojure.pprint :as pprint]
              ^{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
-             [metabase.util.http :as u.http]
              [metabase.util.string :as u.str]
              [potemkin :as p]
              [puget.printer]
@@ -83,9 +82,7 @@
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]
-                       [u.http
-                        valid-host?]))
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -201,6 +198,12 @@
       (str/ends-with? text ":") (str (subs text 0 (dec (count text))) ".")
       :else (str text "."))))
 
+(defn trimmed-string
+  "`value` trimmed of surrounding whitespace, or nil when it is not a string or has nothing left once trimmed."
+  ^String [value]
+  (when (string? value)
+    (not-empty (str/trim value))))
+
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
   conversions, turning `ID` into `ıd`, in the Turkish locale. This function always uses the `en-US` locale."
@@ -227,6 +230,18 @@
       (upper-case-en s)
       (str (upper-case-en (subs s 0 1))
            (lower-case-en (subs s 1))))))
+
+(def ^String utf8-bom
+  "The UTF-8 byte-order mark"
+  "\ufeff")
+
+(defn strip-bom
+  "Strip a leading UTF-8 BOM from string `s`, if present. `clojure.data.csv` and many other parsers do not strip it
+  automatically, so it can leak into the first cell. Returns `s` unchanged when there is no BOM (or `s` is nil)."
+  ^String [^String s]
+  (if (and s (str/starts-with? s utf8-bom))
+    (subs s 1)
+    s))
 
 (defn truncate
   "Truncate a string to `n` characters."
@@ -1035,16 +1050,16 @@
   [nodes traverse-fn]
   (loop [to-traverse (zipmap nodes (repeat nil))
          traversed   {}]
-    (let [item        (first to-traverse)
-          found       (traverse-fn (key item))
-          traversed   (conj traversed item)
-          ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
-          ;; locations
-          to-traverse (merge-with into
-                                  (dissoc to-traverse (key item))
-                                  (apply dissoc found (keys traversed)))]
-      (if (empty? to-traverse)
-        traversed
+    (if (empty? to-traverse)
+      traversed
+      (let [item (first to-traverse)
+            found (traverse-fn (key item))
+            traversed (conj traversed item)
+            ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
+            ;; locations
+            to-traverse (merge-with into
+                                    (dissoc to-traverse (key item))
+                                    (apply dissoc found (keys traversed)))]
         (recur to-traverse traversed)))))
 
 (defn reverse-compare

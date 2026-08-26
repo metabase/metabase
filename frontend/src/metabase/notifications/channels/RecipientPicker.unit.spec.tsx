@@ -41,8 +41,8 @@ describe("recipient picker", () => {
         />,
       );
       // Now only the recipient name should be visible
-      screen.getByText("Barb");
-      expect(screen.queryByText("Dustin")).not.toBeInTheDocument();
+      expect(screen.getByText("Barb")).toBeVisible();
+      expect(screen.queryByText("Dustin")).not.toBeVisible();
     });
   });
 
@@ -59,7 +59,7 @@ describe("recipient picker", () => {
         />,
       );
 
-      await userEvent.type(await screen.findByRole("textbox"), "Na");
+      await userEvent.type(await screen.findByRole("combobox"), "Na");
       await userEvent.click(await screen.findByText("Nancy"));
 
       expect(onRecipientsChange).toHaveBeenCalledWith([
@@ -80,13 +80,31 @@ describe("recipient picker", () => {
         />,
       );
 
-      await userEvent.click(
-        (await screen.findAllByRole("img", { name: /close/ }))[2],
-      );
+      await userEvent.click((await screen.findAllByLabelText("Remove"))[2]);
 
       expect(onRecipientsChange).toHaveBeenCalledWith([
         TEST_USERS[0],
         TEST_USERS[1],
+      ]);
+    });
+
+    it("should add a matching user by typing their name and pressing enter", async () => {
+      const onRecipientsChange = jest.fn();
+
+      renderWithProviders(
+        <RecipientPicker
+          recipients={[TEST_USERS[0]]}
+          users={TEST_USERS}
+          onRecipientsChange={onRecipientsChange}
+          invalidRecipientText={() => ""}
+        />,
+      );
+
+      await userEvent.type(await screen.findByRole("combobox"), "Nancy{enter}");
+
+      expect(onRecipientsChange).toHaveBeenCalledWith([
+        TEST_USERS[0],
+        TEST_USERS[5],
       ]);
     });
 
@@ -103,7 +121,7 @@ describe("recipient picker", () => {
       );
 
       await userEvent.type(
-        await screen.findByRole("textbox"),
+        await screen.findByRole("combobox"),
         "foo@bar.com{enter}",
       );
 

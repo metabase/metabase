@@ -198,7 +198,7 @@
   NOTE: the encryption-check setting is not managed like most settings with 'defsetting' so we can manage checking the raw values in the database"
   []
   (let [raw (try (t2/select-one-fn :value :setting :key "encryption-check")
-                 (catch Throwable e (log/warn e "Error checking encryption status, assuming unencrypted")))
+                 (catch Throwable e (log/warnf "Error checking encryption status, assuming unencrypted: %s" (ex-message e))))
         looks-encrypted (not= raw "unencrypted")]
     (log/debug "Checking encryption configuration")
     (when-not (nil? raw)
@@ -206,7 +206,9 @@
         (do
           (when-not (encryption/default-encryption-enabled?)
             (throw (ex-info "Database is encrypted but the MB_ENCRYPTION_SECRET_KEY environment variable was NOT set" {})))
-          (when-not (string/valid-uuid? (encryption/maybe-decrypt raw))
+          (when-not (and (encryption/possibly-encrypted-string? raw)
+                         (u/ignore-exceptions
+                           (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw))))
             (throw (ex-info "Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains" {})))
           (log/debug "Database encrypted and MB_ENCRYPTION_SECRET_KEY correctly configured"))
         (if (encryption/default-encryption-enabled?)

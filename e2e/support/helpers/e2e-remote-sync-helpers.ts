@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 
-import type { Collection } from "metabase-types/api";
+import type { Collection, RemoteSyncTask } from "metabase-types/api";
 
 import { openCollectionItemMenu } from "./e2e-collection-helpers";
 import {
@@ -127,6 +127,7 @@ export const wrapSyncedCollectionFiles = (alias = "syncedCollectionFiles") => {
   stashChanges();
   cy.task("readDirectory", LOCAL_GIT_PATH).then((files) => {
     cy.wrap(
+      // Unjustified type cast. FIXME
       (files as string[]).filter(
         (file: string) => !file.includes(".git") && file.includes(".yaml"),
       ),
@@ -164,6 +165,7 @@ export const updateRemoteQuestion = (
 ) => {
   wrapSyncedCollectionFiles();
   cy.get("@syncedCollectionFiles").then((syncedCollectionFiles) => {
+    // Unjustified type cast. FIXME
     const questionFilePath = (
       syncedCollectionFiles as unknown as string[]
     ).find((file) => file.includes("remote_sync_test_question.yaml"));
@@ -171,6 +173,7 @@ export const updateRemoteQuestion = (
     const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
 
     cy.readFile(fullPath).then((str) => {
+      // Unjustified type cast. FIXME
       const doc = yaml.load(str) as Record<string, unknown>;
 
       assertionsFn?.(doc);
@@ -236,26 +239,22 @@ export const getPushOption = () => {
   return popover().findByRole("option", { name: /Push changes/ });
 };
 
-export const getSwitchBranchOption = () => {
-  ensureGitSyncMenuOpen();
-  return popover().findByRole("option", { name: /Switch branch/ });
-};
-
 // Mantine combobox options can drop a synthetic `.click()` if the dropdown's
 // state machine isn't fully wired yet (e.g. right after the menu opens — the
 // dropdown is visible but the option's handler isn't attached). `realClick`
 // dispatches native mouse events that Mantine processes reliably, and we then
 // verify the menu closed; if not, re-click once with a synthetic click.
 //
-// We detect "menu still open" by looking for the main-menu options
-// (Pull/Push/Switch branch) — neither "any popover visible" nor the controls'
-// `data-expanded` attribute distinguishes the main menu from follow-up popovers
-// like the branch picker that opens after clicking "Switch branch".
-const MAIN_MENU_OPTION_RE = /Pull changes|Push changes|Switch branch/;
+// We detect "menu still open" by looking for the main-menu options (Pull/Push) —
+// neither "any popover visible" nor the controls' `data-expanded` attribute
+// distinguishes the main menu from follow-up popovers.
+const MAIN_MENU_OPTION_RE = /Pull changes|Push changes/;
 const clickGitSyncOption = (
   getOption: () => Cypress.Chainable<JQuery<HTMLElement>>,
 ) => {
-  getOption().should("not.be.disabled").realClick();
+  // Clicks are swallowed while `data-combobox-disabled` is set (cleared once the git round-trips resolve)
+  getOption().should("not.have.attr", "data-combobox-disabled");
+  getOption().realClick();
   cy.get("body").then(($body) => {
     const mainMenuStillOpen =
       $body
@@ -271,8 +270,40 @@ const clickGitSyncOption = (
 
 export const clickPullOption = () => clickGitSyncOption(getPullOption);
 export const clickPushOption = () => clickGitSyncOption(getPushOption);
-export const clickSwitchBranchOption = () =>
-  clickGitSyncOption(getSwitchBranchOption);
+
+// --- Branch switching (moved from the app bar to the instance Settings panel) ---
+
+export const visitRemoteSyncSettings = () =>
+  cy.visit("/admin/settings/remote-sync");
+
+// The read-write branch switcher lives in the "Sync branch" section of the Settings page.
+export const getSettingsBranchSwitcher = () =>
+  cy.findByTestId("settings-branch-switcher");
+
+// Open the branch picker on the Settings page (navigates there first).
+const openSettingsBranchPicker = () => {
+  visitRemoteSyncSettings();
+  // The Sync branch section sits below the fold at the default viewport, and Cypress treats an element
+  // clipped by a scrollable ancestor as hidden, so scroll to it before asserting visibility.
+  getSettingsBranchSwitcher().scrollIntoView().should("be.visible").click();
+};
+
+// Create a new branch (forks the current branch and switches to it) via the Settings branch switcher.
+export const createBranchViaSettings = (name: string) => {
+  openSettingsBranchPicker();
+  popover().findByPlaceholderText("Find or create a branch...").type(name);
+  popover()
+    .findByRole("option", { name: /Create branch/ })
+    .click();
+};
+
+// Select an existing branch via the Settings branch switcher. With unsaved changes this opens the
+// choose-what-to-do modal instead of switching immediately.
+export const switchBranchViaSettings = (branch: string) => {
+  openSettingsBranchPicker();
+  popover().findByPlaceholderText("Find or create a branch...").type(branch);
+  popover().findByRole("option", { name: branch }).click();
+};
 
 // Enable tenants feature for testing
 export const enableTenants = () => {
@@ -291,6 +322,17 @@ export const createSharedTenantCollection = (name: string) => {
 export const interceptTask = () =>
   cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
 
+/**
+ * The import/export confirmation modal stays open until the user closes it (GHY-3747). Dismiss it so a
+ * subsequent interaction isn't blocked by the modal overlay. Waits for the Close button since the modal
+ * renders from the same task poll that `waitForTask` observes.
+ */
+export const closeSyncResultModal = () => {
+  cy.findByTestId("sync-success-close-button", { timeout: 10000 }).click();
+};
+
+const TASK_POLL_LIMIT = 30;
+
 export const waitForTask = (
   { taskName }: { taskName: "import" | "export" },
   retries = 0,
@@ -305,39 +347,43 @@ export const waitForTask = (
     } else if (body?.status !== "successful") {
       return waitForTask({ taskName }, retries + 1);
     }
+    // A UI-triggered sync leaves its confirmation modal open; close it so the next step can run.
+    return closeSyncResultModal();
   });
 };
 
-// Poll for task completion by actively querying the endpoint
-// Use this when the app isn't loaded yet (e.g., in setup helpers before cy.visit)
+// Poll for a task's terminal state by actively querying the endpoint; `until` is the expected status.
+// Use this when the app isn't loaded yet, or to confirm server-side settling independently of the UI.
 export const pollForTask = (
-  { taskName }: { taskName: "import" | "export" },
+  {
+    taskName,
+    until = "successful",
+  }: { taskName: "import" | "export"; until?: "successful" | "conflict" },
   retries = 0,
 ): Cypress.Chainable => {
-  if (retries > 30) {
+  if (retries > TASK_POLL_LIMIT) {
     throw Error(`Too many retries waiting for ${taskName}`);
   }
 
   return cy
-    .request("GET", "/api/ee/remote-sync/current-task")
+    .request<RemoteSyncTask | null>("GET", "/api/ee/remote-sync/current-task")
     .then((response) => {
       const { body } = response;
 
       // No task exists yet, keep waiting
       if (!body) {
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
       // Wrong task type, keep waiting
       if (body.sync_task_type !== taskName) {
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
-      // Task hasn't completed successfully yet
-      if (body.status !== "successful") {
-        // Check if it errored
+      // Task hasn't reached the expected terminal status yet
+      if (body.status !== until) {
         if (body.status === "errored") {
           throw Error(
             `Task ${taskName} failed: ${body.error_message || "Unknown error"}`,
@@ -350,11 +396,23 @@ export const pollForTask = (
           );
         }
 
+        if (body.status === "successful") {
+          throw Error(
+            `Task ${taskName} completed without the expected ${until}`,
+          );
+        }
+
+        if (body.status === "cancelled" || body.status === "timed-out") {
+          throw Error(
+            `Task ${taskName} ended with status ${body.status}: ${body.error_message || "Unknown error"}`,
+          );
+        }
+
         cy.wait(500);
-        return pollForTask({ taskName }, retries + 1);
+        return pollForTask({ taskName, until }, retries + 1);
       }
 
-      // Success!
+      // Reached the expected terminal status!
       return cy.wrap(body);
     });
 };

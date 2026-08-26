@@ -6,7 +6,6 @@ import { useLatest } from "react-use";
 import {
   GOAL_LINE_SERIES_ID,
   INDEX_KEY,
-  TIMELINE_EVENT_DATA_NAME,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   BaseCartesianChartModel,
@@ -16,7 +15,6 @@ import {
   buildBrushMirrorGraphics,
   buildClearBrushMirrorGraphics,
 } from "metabase/visualizations/echarts/cartesian/option";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
 import {
   type EChartsSeriesBrushEndEvent,
@@ -32,17 +30,17 @@ import type {
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import {
   canBrush,
+  getBrushClickObject,
   getBrushData,
   getGoalLineHoverData,
   getSeriesClickData,
   getSeriesHovered,
-  getTimelineEventsForEvent,
-  getTimelineEventsHoverData,
-  hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
-import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
+import { getVisualizerSeriesCardIndex } from "../../lib/series";
+
+import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";
 import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
 import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
@@ -52,33 +50,56 @@ function getSplitPanelGrids(option: EChartsOption) {
   return Array.isArray(grid) && grid.length > 1 ? grid : null;
 }
 
+function clearBrush(
+  chart: EChartsType | undefined,
+  option: EChartsOption | undefined,
+) {
+  if (!chart) {
+    return;
+  }
+
+  const grids = option != null ? getSplitPanelGrids(option) : null;
+  if (grids) {
+    chart.setOption(
+      { graphic: buildClearBrushMirrorGraphics(grids.length) },
+      false,
+    );
+  }
+
+  chart.dispatchAction({
+    type: "brush",
+    command: "clear",
+    areas: [],
+  });
+}
+
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
   containerRef: React.RefObject<HTMLDivElement>,
   chartModel: BaseCartesianChartModel,
-  timelineEventsModel: TimelineEventsModel | null,
   option: EChartsOption,
   renderingContext: RenderingContext,
+  hovered: CartesianHoveredObject | null,
   {
     card,
     rawSeries,
     isVisualizerCard,
     visualizerRawSeries = [],
-    selectedTimelineEventIds,
     settings,
     visualizationIsClickable,
     onChangeCardAndRun,
     onBrush,
     onVisualizationClick,
     onHoverChange,
-    onOpenTimelines,
-    onSelectTimelineEvents,
-    onDeselectTimelineEvents,
-    hovered,
     clicked,
     metadata,
     isDashboard,
   }: VisualizationProps,
+  // The ECharts instance, mirrored into state by the caller. Used as a signal
+  // to re-run chart-instance-dependent effects (e.g. brush) once it is ready,
+  // which matters because the renderer calls `onInit` only after ExplicitSize
+  // has measured it.
+  chartInstance?: EChartsType,
 ) => {
   const isBrushing = useRef<boolean>();
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
@@ -119,6 +140,8 @@ export const useChartEvents = (
 
   const optionRef = useLatest(option);
 
+  const keepBrushForClickActionsRef = useRef(false);
+
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [
       {
@@ -133,16 +156,6 @@ export const useChartEvents = (
         query: "series",
         handler: (event: EChartsSeriesMouseEvent) => {
           if (isBrushing.current) {
-            return;
-          }
-
-          if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
-            const eventData = getTimelineEventsHoverData(
-              timelineEventsModel,
-              event,
-            );
-
-            onHoverChange?.(eventData);
             return;
           }
 
@@ -171,32 +184,6 @@ export const useChartEvents = (
         eventName: "click",
         handler: (event: EChartsSeriesMouseEvent) => {
           const clickData = getSeriesClickData(chartModel, settings, event);
-
-          if (timelineEventsModel && event.name === TIMELINE_EVENT_DATA_NAME) {
-            onOpenTimelines?.();
-
-            const clickedTimelineEvents = getTimelineEventsForEvent(
-              timelineEventsModel,
-              event,
-            );
-
-            if (!clickedTimelineEvents) {
-              return;
-            }
-
-            if (
-              hasSelectedTimelineEvents(
-                clickedTimelineEvents,
-                selectedTimelineEventIds ?? [],
-              )
-            ) {
-              onDeselectTimelineEvents?.();
-              return;
-            }
-
-            onSelectTimelineEvents?.(clickedTimelineEvents);
-            return;
-          }
 
           if (!visualizationIsClickable(clickData)) {
             onOpenQuestion(clickData?.cardId);
@@ -229,16 +216,30 @@ export const useChartEvents = (
       {
         eventName: "brushEnd",
         handler: (event: EChartsSeriesBrushEndEvent) => {
-          const grids = getSplitPanelGrids(optionRef.current);
-          if (grids) {
-            const graphics = buildClearBrushMirrorGraphics(grids.length);
-            chartRef.current?.setOption({ graphic: graphics }, false);
-          }
+          let openedClickActions = false;
 
           if (onBrush) {
-            const range = event.areas[0]?.coordRange;
-            if (range) {
-              onBrush({ start: Number(range[0]), end: Number(range[1]) });
+            const chartElement = chartRef.current?.getDom();
+            if (chartElement) {
+              const clickObject = getBrushClickObject(
+                chartModel,
+                event,
+                chartElement,
+                settings,
+              );
+              if (clickObject) {
+                onBrush({
+                  clickObject,
+                  openClickActions: (clicked) => {
+                    if (!visualizationIsClickable(clicked)) {
+                      return;
+                    }
+                    openedClickActions = true;
+                    keepBrushForClickActionsRef.current = true;
+                    onVisualizationClick(clicked);
+                  },
+                });
+              }
             }
           } else {
             const eventData = getBrushData(
@@ -252,27 +253,20 @@ export const useChartEvents = (
             }
           }
 
-          chartRef.current?.dispatchAction({
-            type: "brush",
-            command: "clear",
-            areas: [],
-          });
+          if (!openedClickActions) {
+            clearBrush(chartRef.current, optionRef.current);
+          }
         },
       },
     ],
     [
       chartRef,
       onHoverChange,
-      timelineEventsModel,
       chartModel,
       hovered,
       settings,
       visualizationIsClickable,
       onVisualizationClick,
-      onOpenTimelines,
-      selectedTimelineEventIds,
-      onSelectTimelineEvents,
-      onDeselectTimelineEvents,
       onOpenQuestion,
       optionRef,
       renderingContext,
@@ -284,6 +278,13 @@ export const useChartEvents = (
       onBrush,
     ],
   );
+
+  useEffect(() => {
+    if (clicked == null && keepBrushForClickActionsRef.current) {
+      keepBrushForClickActionsRef.current = false;
+      clearBrush(chartRef.current, optionRef.current);
+    }
+  }, [clicked, chartRef, optionRef]);
 
   useEffect(
     function handleHoverStates() {
@@ -338,12 +339,32 @@ export const useChartEvents = (
         seriesIndex: hoveredEChartsSeriesIndex,
       });
 
+      // a normal hover triggers the tooltip via the tooltip option's `trigger` "item"
+      // but we may need to show the tooltip manually for highlighted items
+      let showTipTimeout: ReturnType<typeof setTimeout> | undefined;
+      if (hovered.shouldShowTooltip) {
+        // setTimeout because ChartItemTooltip/reactNodeToHtmlString uses flushSync
+        showTipTimeout = setTimeout(() => {
+          chart.dispatchAction({
+            type: "showTip",
+            dataIndex,
+            seriesIndex: hoveredEChartsSeriesIndex,
+          });
+        }, 0);
+      }
+
       return () => {
+        clearTimeout(showTipTimeout);
         chart.dispatchAction({
           type: "downplay",
           dataIndex,
           seriesIndex: hoveredEChartsSeriesIndex,
         });
+        if (hovered.shouldShowTooltip) {
+          chart.dispatchAction({
+            type: "hideTip",
+          });
+        }
       };
     },
     [
@@ -367,7 +388,14 @@ export const useChartEvents = (
   );
   const isBrushable = canBrushChart && !hovered && !clicked;
 
-  useBrush(chartRef, containerRef, canBrushChart, isBrushable, option);
+  useBrush(
+    chartRef,
+    containerRef,
+    canBrushChart,
+    isBrushable,
+    option,
+    chartInstance,
+  );
 
   const onSelectSeries = useCallback(
     (event: React.MouseEvent, seriesIndex: number) => {

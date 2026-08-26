@@ -269,7 +269,7 @@ function setup({
 }
 
 async function enterCustomExpression(expression: string) {
-  const input = screen.getByTestId("custom-expression-query-editor");
+  const input = await screen.findByTestId("custom-expression-query-editor");
   await waitFor(() => expect(input).toHaveProperty("readOnly", false));
   await userEvent.clear(input);
   await userEvent.type(input, expression);
@@ -844,6 +844,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { query, fields } = getRecentJoin();
+      // Unjustified type cast. FIXME
       const columns = fields as Lib.ColumnMetadata[];
       const reviewer = columns.find(
         (column) => Lib.displayInfo(query, 0, column).name === "REVIEWER",
@@ -934,6 +935,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(within(picker).getByText("Vendor"));
 
       const { query, fields } = getRecentJoin();
+      // Unjustified type cast. FIXME
       const columns = fields as Lib.ColumnMetadata[];
       const vendor = columns.find(
         (column) => Lib.displayInfo(query, 0, column).name === "VENDOR",

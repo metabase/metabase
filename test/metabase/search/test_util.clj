@@ -13,14 +13,12 @@
 
 (def ^:dynamic *user-ctx* nil)
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-sync-search-indexing
   "Perform all search indexing synchronously."
   [& body]
   `(binding [metabase.search.ingestion/*force-sync* true]
      ~@body))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
   "Create a temporary index table for the duration of the body."
   [& body]
@@ -30,44 +28,53 @@
        (with-sync-search-indexing
          ~@body))))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defmacro with-new-search-if-available*
+(defmacro with-appdb-search-if-available*
   "Create a temporary index table for the duration of the body."
   [& body]
-  `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/appdb)]
+  `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/appdb)
+                               ;; active-engines derives from the default engine, so pinning the default
+                               ;; would deactivate semantic; keep it active (and indexed) when supported.
+                               search.engine/active-engines (fn []
+                                                              (cond-> [:search.engine/appdb]
+                                                                (search.engine/supported-engine? :search.engine/semantic)
+                                                                (conj :search.engine/semantic)))]
      (with-temp-index-table
        (search/reindex! {:async? false :in-place? true})
        ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defmacro with-new-search-if-available-otherwise-legacy
+(defmacro with-appdb-search-if-available-otherwise-legacy
   "Create a temporary index table for the duration of the body."
   [& body]
   `(if (search/supports-index?)
-     (with-new-search-if-available* ~@body)
+     (with-appdb-search-if-available* ~@body)
      ~@body))
 
-(defmacro with-new-search-if-available-without-fallback
+(defmacro with-appdb-search-if-available-without-fallback
   "Create a temporary index table for the duration of the body.
    Only runs if the appdb search engine is supported."
   [& body]
   `(when (search.engine/supported-engine? :search.engine/appdb)
-     (with-new-search-if-available* ~@body)))
+     (with-appdb-search-if-available* ~@body)))
 
 (defmacro with-legacy-search
   "Ensure legacy search, which doesn't require an index, is used.
    Semantic queries go to :search.engine/semantic and keyword queries fall back to :search.engine/in-place."
   [& body]
   `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/in-place)
-                               search.engine/supported-engines (constantly [:search.engine/semantic :search.engine/in-place])]
+                               search.engine/supported-engines (constantly [:search.engine/semantic :search.engine/in-place])
+                               ;; active-engines derives from the default engine; semantic must stay active
+                               ;; when supported for semantic queries to reach it.
+                               search.engine/active-engines (fn []
+                                                              (when (search.engine/supported-engine? :search.engine/semantic)
+                                                                [:search.engine/semantic]))]
      ~@body))
 
-(defmacro with-new-search-and-legacy-search
+(defmacro with-appdb-search-and-legacy-search
   "Run the body twice, once with the legacy search engine, and once with the appdb search engine."
   [& body]
   `(do
      (with-legacy-search ~@body)
-     (with-new-search-if-available-without-fallback ~@body)))
+     (with-appdb-search-if-available-without-fallback ~@body)))
 
 (defmacro with-index-disabled
   "Skip any index maintenance during this test."

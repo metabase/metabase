@@ -35,7 +35,7 @@ describe("OutOfSyncOptions", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByLabelText(
-          /Force push to main \(this will overwrite the remote branch\)/,
+          /Force push to main, discarding and overwriting everything/,
         ),
       ).toBeInTheDocument();
     });
@@ -50,7 +50,7 @@ describe("OutOfSyncOptions", () => {
   });
 
   describe("switch-branch variant", () => {
-    it("shows correct options", () => {
+    it("offers push, new-branch, and discard", () => {
       setup({ variant: "switch-branch" });
       expect(screen.getAllByRole("radio")).toHaveLength(3);
       expect(
@@ -71,7 +71,7 @@ describe("OutOfSyncOptions", () => {
       expect(screen.getAllByRole("radio")).toHaveLength(3);
       expect(
         screen.getByLabelText(
-          /Force push to main \(this will overwrite the remote branch\)/,
+          /Force push to main, discarding and overwriting everything/,
         ),
       ).toBeInTheDocument();
       expect(
@@ -127,6 +127,20 @@ describe("OutOfSyncOptions", () => {
       expect(
         screen.getByLabelText(/Delete unsynced changes/),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("safe vs destructive grouping", () => {
+    it("splits options into a safe and a destructive group", () => {
+      setup({ variant: "push" });
+      expect(screen.getByText("Keep all changes")).toBeInTheDocument();
+      expect(screen.getByText(/Permanently lose changes/)).toBeInTheDocument();
+    });
+
+    it("shows only the destructive group when every option is destructive", () => {
+      setup({ variant: "pull", isRemoteSyncReadOnly: true });
+      expect(screen.getByText(/Permanently lose changes/)).toBeInTheDocument();
+      expect(screen.queryByText("Keep all changes")).not.toBeInTheDocument();
     });
   });
 });

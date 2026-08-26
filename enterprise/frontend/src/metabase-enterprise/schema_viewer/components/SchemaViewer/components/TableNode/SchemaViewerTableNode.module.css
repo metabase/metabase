@@ -1,11 +1,11 @@
 .card {
-  --node-border-color: var(--mb-color-border);
+  --node-border-color: var(--mb-color-border-neutral);
 
   position: relative;
   width: 20rem;
   border: 1px solid var(--node-border-color);
   border-radius: 0.5rem;
-  background: var(--mb-color-white);
+  background: var(--mb-color-core-white);
   box-shadow: 0 0.25rem 1.25rem 0 rgba(0, 0, 0, 0.05);
 }
 
@@ -14,7 +14,7 @@
 }
 
 .header {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .fields {

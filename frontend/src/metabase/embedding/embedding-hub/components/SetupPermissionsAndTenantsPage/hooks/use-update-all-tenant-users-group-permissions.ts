@@ -1,11 +1,16 @@
 import { useCallback, useMemo } from "react";
 
-import { Api, databaseApi, useListPermissionsGroupsQuery } from "metabase/api";
+import {
+  Api,
+  databaseApi,
+  permissionApi,
+  useListPermissionsGroupsQuery,
+} from "metabase/api";
 import { tableApi } from "metabase/api/table";
 import { listTag } from "metabase/api/tags";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { PermissionsApi } from "metabase/services";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import {
@@ -96,12 +101,15 @@ export function useUpdateAllTenantUsersGroupPermissions(): UseUpdateAllTenantUse
       )
         .unwrap()
         .then((res) => res.data.map((db) => db.id))
+        // Unjustified type cast. FIXME
         .catch(() => [] as DatabaseId[]);
 
       // get the revision number of the graph
-      const graph = await PermissionsApi.graphForGroup({
-        groupId: allTenantUsersGroupId,
-      });
+      const graph = await runRtkEndpoint(
+        allTenantUsersGroupId,
+        dispatch,
+        permissionApi.endpoints.getGroupPermissionsGraph,
+      );
 
       const groups = buildPermissionsGraph(
         allTenantUsersGroupId,
@@ -120,12 +128,16 @@ export function useUpdateAllTenantUsersGroupPermissions(): UseUpdateAllTenantUse
         attribute: "database_role",
       }));
 
-      await PermissionsApi.updateGraph({
-        groups,
-        revision: graph?.revision,
-        ...(sandboxes.length > 0 && { sandboxes }),
-        ...(impersonations.length > 0 && { impersonations }),
-      });
+      await runRtkEndpoint(
+        {
+          groups,
+          revision: graph?.revision,
+          ...(sandboxes.length > 0 && { sandboxes }),
+          ...(impersonations.length > 0 && { impersonations }),
+        },
+        dispatch,
+        permissionApi.endpoints.updatePermissionsGraph,
+      );
 
       // invalidate the onboarding checklist and group table access policies
       // so subsequent updates can find the newly created sandbox IDs

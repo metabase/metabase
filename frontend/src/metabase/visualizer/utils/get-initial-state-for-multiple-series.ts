@@ -118,9 +118,11 @@ export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
     settings: {},
     preloadedDatasets: rawSeries.reduce(
       (acc, s) => {
+        // Unjustified type cast. FIXME
         acc[s.card.id] = s as unknown as Dataset;
         return acc;
       },
+      // Unjustified type cast. FIXME
       {} as Record<number, Dataset | null | undefined>,
     ),
   };

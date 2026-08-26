@@ -1,24 +1,24 @@
 import cx from "classnames";
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
+import { dayjs } from "metabase/dayjs";
 import type {
   RevisionDiffKey,
   Revision as RevisionType,
   TableId,
   User,
 } from "metabase-types/api";
+
+import { RevisionDiff } from "./RevisionDiff";
 import {
   isCardOrDashboardRevisionDiff,
   isCardOrDashboardRevisionDiffKey,
   isDiffKey,
   isSegmentRevisionDiff,
   isSegmentRevisionDiffKey,
-} from "metabase-types/guards";
-
-import { RevisionDiff } from "./RevisionDiff";
+} from "./guards";
 
 interface Props {
   currentUser: User;

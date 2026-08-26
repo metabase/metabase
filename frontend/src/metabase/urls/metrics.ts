@@ -1,9 +1,9 @@
-import type { DimensionType } from "metabase/metrics/common/utils/dimension-types";
-import type { MetricsViewerDisplayType } from "metabase/metrics-viewer/types/viewer-state";
+import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
 import {
+  type MetricsViewerDisplayType,
   type SerializedMetricsViewerPageState,
   encodeState,
-} from "metabase/metrics-viewer/utils/url-serialization";
+} from "metabase/common/metrics-viewer";
 import type { CardId, CollectionId } from "metabase-types/api";
 
 import { card as urlForCard } from "./cards";
@@ -69,6 +69,10 @@ export function metricOverview(cardId: CardId): string {
 
 export function metricQuery(cardId: CardId): string {
   return `/metric/${cardId}/query`;
+}
+
+export function metricDimensions(cardId: CardId): string {
+  return `/metric/${cardId}/dimensions`;
 }
 
 export function metricDependencies(cardId: CardId): string {

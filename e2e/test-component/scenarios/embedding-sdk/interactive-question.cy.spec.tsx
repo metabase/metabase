@@ -2,7 +2,7 @@ const { H } = cy;
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { modal, popover } from "e2e/support/helpers";
+import { modal, popover, selectScheduleTime } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
@@ -135,6 +135,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
       cy.log("alerts modal is open");
       cy.wait("@listAlerts");
+      selectScheduleTime();
       modal().within(() => {
         cy.findByRole("heading", { name: "New alert" }).should("be.visible");
         cy.button("Done").click();
@@ -155,6 +156,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       });
 
       popover().findByRole("option", { name: "weekly" }).click();
+      selectScheduleTime();
       modal().within(() => {
         cy.button("Save changes").click();
         cy.findByRole("heading", { name: "Edit alerts" }).should("be.visible");

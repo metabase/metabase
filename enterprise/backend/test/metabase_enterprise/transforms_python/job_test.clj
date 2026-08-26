@@ -19,7 +19,7 @@
     (mt/with-temp-scheduler!
       (task/init! ::transforms.schedule/RunTransform)
       (mt/test-drivers #{:postgres}
-        (mt/with-premium-features #{:transforms-python :transforms-basic}
+        (mt/with-premium-features #{:transforms-python :transforms-basic :hosting}
           (mt/dataset transforms-dataset/transforms-test
             (transforms.tu/with-transform-cleanup! [target {:type   "table"
                                                             :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
@@ -62,7 +62,12 @@
         (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
                                                (swap! logged-messages conj {:level level :message message}))
                                     transform-run/running-run-for-transform-id (constantly nil)]
-          (#'jobs/run-transform! run-id :scheduled nil python-transform)
+          (#'jobs/run-transform! {:parent-run       [:job run-id]
+                                  :run-method       :scheduled
+                                  :user-id          nil
+                                  :add-run-activity! (constantly nil)}
+                                 (promise)
+                                 python-transform)
           (is (= 1 (count @logged-messages))
               "Should log exactly one warning")
           (is (= :warn (:level (first @logged-messages)))

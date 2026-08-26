@@ -1,10 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
-import type {
-  MetabotAgentId,
-  SlashCommand,
-} from "metabase/metabot/state/types";
+import type { SlashCommand } from "metabase/metabot/state/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
@@ -17,7 +14,7 @@ import type {
 
 export type MetabotSlashCommandHandler = (args: {
   command: SlashCommand;
-  agentId: MetabotAgentId;
+  conversationId: string;
   dispatch: Dispatch;
   getState: GetState;
 }) => boolean;
@@ -44,10 +41,13 @@ export interface InsightsMenuItemProps {
 const getDefaultPluginAudit = () => ({
   isEnabled: false,
   isAuditDb: (_db: DatabaseType) => false,
+  // Unjustified type cast. FIXME
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
+  // Unjustified type cast. FIXME
   InsightsMenuItem: PluginPlaceholder as ComponentType<InsightsMenuItemProps>,
-  getMetabotAnalyticsNavItems: (): ReactNode => null,
-  getAiAnalyticsRoutes: (): ReactNode => null,
+  isAiAuditingEnabled: false,
+  getAiAuditingRoutes: (): ReactNode => null,
+  // Unjustified type cast. FIXME
   handleMetabotSlashCommand: ((_args) => false) as MetabotSlashCommandHandler,
 });
 

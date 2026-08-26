@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
+   [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.test :as mt]
    [metabase.test.util :as test.util]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -10,6 +11,8 @@
    [metabase.transforms.util :as transforms.u]
    [toucan2.core :as t2])
   (:import
+   (java.net SocketTimeoutException)
+   (java.time Duration)
    (java.util.concurrent CountDownLatch)))
 
 (set! *warn-on-reflection* true)
@@ -172,3 +175,20 @@
                    clojure.lang.ExceptionInfo
                    #"Tables not found: missing_table"
                    (transforms-python.execute/execute-python-transform! transform {:run-method :manual}))))))))))
+
+(deftest log-poll-survives-transient-timeout-test
+  (testing "a read timeout while polling for logs is retried instead of ending the loop"
+    (let [calls (atom 0)
+          saved (atom nil)]
+      (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis 0)
+                    python-runner/get-logs
+                    (fn [run-id]
+                      (condp = (swap! calls inc)
+                        1 (throw (SocketTimeoutException. "read timed out"))
+                        2 {:status 200 :body {:execution_id run-id :events [{:message "hi"}]}}
+                        {:status 500 :body {}}))
+                    transforms-python.execute/save-log-to-transform-run-message!
+                    (fn [_run-id message-log] (reset! saved @message-log))]
+        (#'transforms-python.execute/python-message-update-loop! 42 (atom {}))
+        (is (= 3 @calls) "polling carried on past the timeout")
+        (is (= [{:message "hi"}] (:python @saved)) "and the logs that arrived after it were still captured")))))

@@ -2,8 +2,8 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import CS from "metabase/css/core/index.css";
-import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";

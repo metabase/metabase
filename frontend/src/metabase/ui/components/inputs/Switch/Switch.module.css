@@ -9,16 +9,16 @@
 
   &[data-disabled] {
     .track {
-      background-color: var(--mb-color-background-tertiary);
+      background-color: var(--mb-color-background_surface-disabled);
     }
 
     .thumb {
-      background-color: var(--mb-color-background-secondary);
+      background-color: var(--mb-color-background_surface-disabled);
     }
   }
 
   &[data-error] .track {
-    border: 1px solid var(--mb-color-accent-3);
+    border: 1px solid var(--mb-color-accent3);
   }
 
   .body {
@@ -41,12 +41,12 @@
 
   &[data-disabled] {
     .label {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
       cursor: default;
     }
 
     .description {
-      color: var(--mb-color-text-tertiary);
+      color: var(--mb-color-text-disabled);
     }
   }
 }
@@ -70,7 +70,7 @@
   padding: 0;
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: var(--mb-color-error);
+  color: var(--mb-color-feedback-negative);
 }
 
 .track {
@@ -81,7 +81,7 @@
   background-color: var(--mb-color-switch-off);
 
   input:not(:checked) + & {
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_surface-secondary);
   }
 
   input:checked + & {
@@ -89,7 +89,7 @@
   }
 
   input:disabled + & {
-    background-color: var(--mb-color-background-tertiary);
+    background-color: var(--mb-color-background_surface-disabled);
   }
 }
 
@@ -99,7 +99,7 @@
   border-radius: 1.375rem;
 
   input:disabled + * > & {
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_surface-disabled);
   }
 
   &::before {

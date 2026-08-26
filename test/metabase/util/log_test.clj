@@ -1,7 +1,9 @@
 (ns metabase.util.log-test
   (:require
    [clojure.test :refer :all]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.log.capture :as log.capture]
+   [metabase.util.log.throttle :as log.throttle])
   (:import
    (org.apache.logging.log4j ThreadContext)))
 
@@ -70,3 +72,31 @@
                         (catch Exception _ nil))
                    (/ 1 0))
                  (catch Exception e e)))))))
+
+(deftest throttle-test
+  (testing "log/throttle evaluates body at most once per interval, per call site"
+    (testing "repeated calls at one call site within the window log only once"
+      (reset! log.throttle/state {})
+      (log.capture/with-log-messages-for-level [messages [metabase.util.log-test :error]]
+        (dotimes [_ 5]
+          (log/throttle 60000
+                        (log/error "boom")))
+        (is (= 1 (count (messages))))))
+    (testing "after the window has elapsed (state cleared), the same site logs again"
+      (reset! log.throttle/state {})
+      (log.capture/with-log-messages-for-level [messages [metabase.util.log-test :error]]
+        (log/throttle 60000
+                      (log/error "boom"))
+        (is (= 1 (count (messages))))))
+    (testing "the throttled body is skipped entirely — side effects don't run when suppressed"
+      (reset! log.throttle/state {})
+      (let [calls (atom 0)]
+        (dotimes [_ 5]
+          (log/throttle 60000
+                        (swap! calls inc)))
+        (is (= 1 @calls))))
+    (testing "returns the body value when allowed, nil when throttled"
+      (reset! log.throttle/state {})
+      (is (= [:ok nil]
+             (vec (for [_ (range 2)]
+                    (log/throttle 60000 :ok))))))))

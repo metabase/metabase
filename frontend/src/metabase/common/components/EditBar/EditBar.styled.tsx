@@ -2,7 +2,6 @@ import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Icon } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
@@ -19,25 +18,6 @@ export const Root = styled(FullWidthContainer, {
   padding-bottom: 0.5rem;
   background-color: ${(props) =>
     alpha(props.admin ? "accent7" : "core-brand", 0.85)};
-
-  .${ButtonsS.Button} {
-    color: var(--mb-color-text-primary-inverse);
-    background-color: ${() => alpha("background-primary", 0.1)};
-    border: none;
-    font-size: 1em;
-    margin-left: 0.75em;
-  }
-
-  .${ButtonsS.ButtonPrimary} {
-    color: ${(props) => color(props.admin ? "text-primary" : "core-brand")};
-    background-color: var(--mb-color-background-primary);
-  }
-
-  .${ButtonsS.Button}:hover {
-    color: var(--mb-color-text-primary-inverse);
-    background-color: ${(props) =>
-      color(props.admin ? "accent7" : "core-brand")};
-  }
 `;
 
 export const EditIcon = styled(Icon)`
@@ -49,6 +29,28 @@ export const Title = styled.span`
   font-weight: 700;
 `;
 
-export const ButtonsContainer = styled.div`
+/* restyles metabase/ui buttons for the colored bar: filled = primary, subtle = secondary */
+export const ButtonsContainer = styled("div", {
+  shouldForwardProp: isPropValid,
+})<{ admin: boolean }>`
   display: flex;
+
+  button[data-variant] {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: ${() => alpha("background_page-primary", 0.1)};
+    border: none;
+    font-size: 1em;
+    margin-left: 0.75em;
+  }
+
+  button[data-variant="filled"] {
+    color: ${(props) => color(props.admin ? "text-primary" : "core-brand")};
+    background-color: var(--mb-color-background_page-primary);
+  }
+
+  button[data-variant]:hover {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: ${(props) =>
+      color(props.admin ? "accent7" : "core-brand")};
+  }
 `;

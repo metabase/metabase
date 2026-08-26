@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/vscode/devcontainers/java:21
+FROM mcr.microsoft.com/vscode/devcontainers/java:25
 
 # Set up nodesource, install node, bun, fontconfig for static viz, rlwrap for dev ergonomics
 

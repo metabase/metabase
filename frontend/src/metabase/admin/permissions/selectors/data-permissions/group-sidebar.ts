@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { getGroupNameLocalized } from "metabase/admin/utils/groups";
+import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import type { State } from "metabase/redux/store";
 import type { Group } from "metabase-types/api";
 

@@ -5,10 +5,9 @@ import { userEvent, within } from "@storybook/test";
 import { merge } from "icepick";
 import { type ComponentProps, useEffect } from "react";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { publicReducers } from "metabase/reducers-public";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -22,11 +21,8 @@ const storeInitialState = createMockState({
   settings: mockSettings(),
   entities: createMockEntitiesState({}),
 });
-const store = getStore(
-  publicReducers,
-  storeInitialState,
-  [],
-) as unknown as Store<State>;
+// Unjustified type cast. FIXME
+const store = getPublicStore(storeInitialState, []) as unknown as Store<State>;
 
 const ReduxDecorator = (Story: StoryFn) => {
   return (
@@ -36,6 +32,7 @@ const ReduxDecorator = (Story: StoryFn) => {
   );
 };
 
+// Unjustified type cast. FIXME
 export default {
   title: "Components/Parameters/DatePicker",
   component: DatePicker,

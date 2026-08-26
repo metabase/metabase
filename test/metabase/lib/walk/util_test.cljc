@@ -12,29 +12,29 @@
 
 (deftest ^:parallel all-source-table-ids-test
   (testing (str "make sure that `all-table-ids` can properly find all Tables in the query, even in cases where a map "
-                "has a `:source-table` and some of its children also have a `:source-table`"))
-  (is (= (lib.tu.macros/$ids nil
-           #{$$checkins $$venues $$users $$categories})
-         (lib.walk.util/all-source-table-ids
-          (lib/query
-           meta/metadata-provider
-           (lib.tu.macros/mbql-query nil
-             {:source-table $$checkins
-              :joins        [{:source-table $$venues
-                              :alias        "V"
-                              :condition    [:=
-                                             $checkins.venue-id
-                                             &V.venues.id]}
-                             {:source-query {:source-table $$users
-                                             :joins        [{:source-table $$categories
-                                                             :alias        "Cat"
-                                                             :condition    [:=
-                                                                            $users.id
-                                                                            &Cat.categories.id]}]}
-                              :alias        "U"
-                              :condition    [:=
-                                             $checkins.user-id
-                                             &U.users.id]}]}))))))
+                "has a `:source-table` and some of its children also have a `:source-table`")
+    (is (= (lib.tu.macros/$ids nil
+             #{$$checkins $$venues $$users $$categories})
+           (lib.walk.util/all-source-table-ids
+            (lib/query
+             meta/metadata-provider
+             (lib.tu.macros/mbql-query nil
+               {:source-table $$checkins
+                :joins        [{:source-table $$venues
+                                :alias        "V"
+                                :condition    [:=
+                                               $checkins.venue-id
+                                               &V.venues.id]}
+                               {:source-query {:source-table $$users
+                                               :joins        [{:source-table $$categories
+                                                               :alias        "Cat"
+                                                               :condition    [:=
+                                                                              $users.id
+                                                                              &Cat.categories.id]}]}
+                                :alias        "U"
+                                :condition    [:=
+                                               $checkins.user-id
+                                               &U.users.id]}]})))))))
 
 (deftest ^:parallel all-field-ids-test
   (mu/disable-enforcement
@@ -345,3 +345,51 @@
             :segment #{}
             :snippet #{snippet-id}}
            (lib/all-referenced-entity-ids [query])))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-table-test
+  (testing ":include-implicitly-joinable? adds the source Table's columns' FK-target Tables to :table"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (= #{(meta/id :orders)}
+             (:table (lib/all-referenced-entity-ids [query])))
+          "without the option, only the source Table is referenced")
+      (is (= #{(meta/id :orders) (meta/id :people) (meta/id :products)}
+             (:table (lib/all-referenced-entity-ids [query] {:include-implicitly-joinable? true})))
+          "with the option, the FK-target Tables of the source columns are included too"))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-card-test
+  (testing ":include-implicitly-joinable? adds a source Card's result-metadata columns' FK-target Tables to :table"
+    (let [card-id 1
+          mp      (lib.tu/metadata-provider-with-card-from-query
+                   meta/metadata-provider card-id
+                   (lib/query meta/metadata-provider (meta/table-metadata :orders)))
+          query   (lib/query mp (lib.metadata/card mp card-id))]
+      (is (= #{}
+             (:table (lib/all-referenced-entity-ids [query])))
+          "without the option, the Card source references no Tables")
+      (is (= #{(meta/id :people) (meta/id :products)}
+             (:table (lib/all-referenced-entity-ids [query] {:include-implicitly-joinable? true})))
+          "with the option, the Card columns' FK-target Tables are included"))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-result-metadata-fk-override-test
+  (testing ":include-implicitly-joinable? follows an FK target set on a Card's result metadata even when the raw Field
+            has no such FK"
+    (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+          returned       (lib/returned-columns products-query)
+          plain-mp       (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider 1 products-query)
+          override-mp    (lib.tu/metadata-provider-with-card-from-query
+                          meta/metadata-provider 2 products-query
+                          {:result-metadata (mapv (fn [col]
+                                                    (cond-> col
+                                                      (= (:id col) (meta/id :products :price))
+                                                      (assoc :fk-target-field-id (meta/id :people :id))))
+                                                  returned)})]
+      (is (= #{}
+             (:table (lib/all-referenced-entity-ids
+                      [(lib/query plain-mp (lib.metadata/card plain-mp 1))]
+                      {:include-implicitly-joinable? true})))
+          "PRODUCTS columns have no raw FKs, so nothing is implicitly joinable")
+      (is (= #{(meta/id :people)}
+             (:table (lib/all-referenced-entity-ids
+                      [(lib/query override-mp (lib.metadata/card override-mp 2))]
+                      {:include-implicitly-joinable? true})))
+          "the result-metadata FK-target override pulls in PEOPLE, which the raw PRODUCTS.PRICE Field does not reference"))))

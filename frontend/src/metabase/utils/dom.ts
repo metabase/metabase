@@ -3,8 +3,6 @@ import _ from "underscore";
 import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
 
-import { checkNotNull } from "./types";
-
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
 // Always on on most other non mobile platforms
@@ -59,8 +57,17 @@ export function isObscured(
 }
 
 export function getSitePath(): string {
-  const siteUrl = checkNotNull(MetabaseSettings.get("site-url"));
-  return new URL(siteUrl).pathname.toLowerCase();
+  const siteUrl = MetabaseSettings.get("site-url");
+
+  if (!siteUrl) {
+    return "/";
+  }
+
+  try {
+    return new URL(siteUrl).pathname.toLowerCase();
+  } catch {
+    return "/";
+  }
 }
 
 export function getWithSiteUrl(url: string): string {
@@ -105,14 +112,22 @@ const getOrigin = (url: string): string | null => {
   }
 };
 
-export function getPathnameWithoutSubPath(pathname: string): string {
+export function getPathnameWithoutSubPath(
+  pathname: string,
+  siteUrl?: string,
+): string {
+  const sitePath =
+    siteUrl === undefined ? getSitePath() : getUrlPathname(siteUrl);
   const pathnameSections = pathname.split("/");
-  const sitePathSections = getSitePath().split("/");
+  const sitePathSections = sitePath.split("/");
 
   return isPathnameContainSitePath(pathnameSections, sitePathSections)
     ? "/" + pathnameSections.slice(sitePathSections.length).join("/")
     : pathname;
 }
+
+const getUrlPathname = (url: string): string =>
+  url ? new URL(url).pathname.toLowerCase() : "";
 
 function isPathnameContainSitePath(
   pathnameSections: string[],
@@ -120,7 +135,7 @@ function isPathnameContainSitePath(
 ): boolean {
   for (let index = 0; index < sitePathSections.length; index++) {
     const sitePathSection = sitePathSections[index].toLowerCase();
-    const pathnameSection = pathnameSections[index].toLowerCase();
+    const pathnameSection = pathnameSections[index]?.toLowerCase();
 
     if (sitePathSection !== pathnameSection) {
       return false;
@@ -198,6 +213,13 @@ export const getEventTarget = (
   if (!target) {
     target = document.createElement("div");
     target.id = "popover-event-target";
+    // This node is the virtual anchor a Mantine Popover attaches to. Position it
+    // as a tiny, click-through box at the cursor (left/top set below from the
+    // event's viewport coords) so the popover opens at the pointer location.
+    target.style.position = "fixed";
+    target.style.width = "6px";
+    target.style.height = "6px";
+    target.style.pointerEvents = "none";
     document.body.appendChild(target);
   }
 
@@ -209,7 +231,9 @@ export const getEventTarget = (
     clientX = event.changedTouches[0].clientX;
     clientY = event.changedTouches[0].clientY;
   } else {
+    // Unjustified type cast. FIXME
     clientX = (event as MouseEvent).clientX;
+    // Unjustified type cast. FIXME
     clientY = (event as MouseEvent).clientY;
   }
 
@@ -235,6 +259,14 @@ export function redirect(url: string): void {
   window.location.href = url;
 }
 
+/**
+ * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
+ * https://github.com/jsdom/jsdom/issues/3492
+ */
+export function replaceLocation(url: string): void {
+  window.location.replace(url);
+}
+
 export function openSaveDialog(fileName: string, fileContent: Blob): void {
   const url = URL.createObjectURL(fileContent);
   const link = document.createElement("a");
@@ -245,4 +277,17 @@ export function openSaveDialog(fileName: string, fileContent: Blob): void {
 
   URL.revokeObjectURL(url);
   link.remove();
+}
+
+// Double rAF is needed here to ensure we actually paint the next frame.
+// First rAF will be called on the next frame BEFORE painting,
+// and the second rAF is scheduled to run AFTER the first frame is painted, but BEFORE the next frame is painted.
+export function waitUntilNextFramePainted() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(async () => {
+      requestAnimationFrame(async () => {
+        resolve();
+      });
+    });
+  });
 }

@@ -22,7 +22,7 @@ export const SkeletonDescription = styled(MarkdownPreview)`
 
 export const SkeletonTooltipIcon = styled(Icon)`
   display: block;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
   width: 0.75rem;
   height: 0.75rem;
 `;
@@ -46,5 +46,5 @@ export const SkeletonTooltipIconContainer = styled.div`
   bottom: -0.5rem;
   padding: 0.125rem;
   border-radius: 0.5rem;
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
 `;

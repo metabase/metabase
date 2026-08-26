@@ -70,7 +70,7 @@ Reference a field on a related table directly — when the source has exactly on
 - If the FK column lives on a previous stage's output, write `{"source-field-name": "<col>"}` (not auto-filled).
 - If multiple explicit joins all expose the target FK, `:ambiguous-fk-via-join` lists them — set `{"source-field-join-alias": "<alias>"}` to pick one.
 
-**Tip:** discover FKs with `entity_details` / `read_resource metabase://table/<id>/fields`. FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"` — always look for one before assuming a column lives on the current table.
+**Tip:** discover FKs with `read_resource metabase://table/<id>/fields`. FK columns are tagged `fk_target_fully_qualified_name="schema.table.field"` — always look for one before assuming a column lives on the current table.
 
 ## Multi-stage queries
 
@@ -104,7 +104,7 @@ Re-aggregate — average daily total by month:
 ]
 ```
 
-- Cross-stage refs use a **string name** in slot 3 (e.g. `["field", {}, "count"]`). The name is whatever the previous stage's aggregation/breakout/field produced (`count`, `sum`, or the source field's name).
+- Cross-stage refs use a **string name** in slot 3 (e.g. `["field", {}, "count"]`). The name is whatever the previous stage's aggregation/breakout/field produced (`count`, `sum`, or the source field's name). A `distinct` (count-of-distinct-values) aggregation produces a column named **`count`** — reference it as `["field", {}, "count"]`, not `"distinct"`.
 - Within the **same stage**, refer to your own aggregation with `["aggregation", {}, <idx>]` (see Aggregation references above). In a **later** stage, use the cross-stage string-name form against the previous stage's output.
 - Joins, expressions, filters, aggregation, breakout, order-by, limit are all valid in later stages.
 
@@ -135,7 +135,7 @@ Stage 2 references each stage-1 aggregation by the **output column name** it pro
 
 ## Saved questions and models (`source-card`)
 
-Instead of `source-table`, use `source-card` to query an existing question or model. The value is the card's **portable entity id** — a 21-char opaque string reported by `entity_details` and search tools as `portable_entity_id`.
+Instead of `source-table`, use `source-card` to query an existing question or model. The value is the card's **portable entity id** — a 21-char opaque string reported by search and `read_resource` as `portable_entity_id`.
 
 1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
@@ -162,13 +162,35 @@ A metric is a pre-defined aggregation attached to a base table. To use one:
 
 ```json
 {"lib/type": "mbql.stage/mbql",
- "source-table": ["Analytics", "brex_enriched", "fct_cards"],
- "filters": [["!=", {}, ["field", {},
-                         ["Analytics", "brex_enriched", "fct_cards", "card_status"]], "inactive"]],
+ "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+ "filters": [[">", {}, ["field", {},
+                        ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 0]],
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
 ```
 
 Metrics are aggregations, **not sources** — never put a metric in `source-table` or `source-card`. The `metabase://metric/<id>` URIs are for reading metadata via `read_resource`, not for embedding in queries.
+
+### Breaking out a metric by a dimension on another table
+
+To group a metric by a field that lives on a **different** table, add an explicit `joins` entry and break out on the join-aliased field. Do **not** break out (or order) a metric by a field reached only through an implicit foreign-key reference — the query processor cannot resolve an implicit join against a metric aggregation and rejects the query with a 400. Source the metric's base table, reference the metric in `aggregation`, join the dimension table, and break out on the joined column:
+
+```json
+{"lib/type": "mbql.stage/mbql",
+ "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+ "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]],
+ "joins": [{"alias": "Products",
+            "strategy": "left-join",
+            "stages": [{"lib/type": "mbql.stage/mbql",
+                        "source-table": ["Sample Database", "PUBLIC", "PRODUCTS"]}],
+            "conditions": [["=", {},
+                            ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]],
+                            ["field", {"join-alias": "Products"},
+                             ["Sample Database", "PUBLIC", "PRODUCTS", "ID"]]]}],
+ "breakout": [["field", {"join-alias": "Products"},
+               ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]}
+```
+
+When the breakout dimension lives on the metric's **own** base table, no join is needed — just break out on a portable FK as in the example above.
 
 ## Using measures and segments
 

@@ -501,17 +501,22 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping("ID");
 
+      // The two auto-wire suggestion toasts stack and briefly overlap while the
+      // undo list re-measures and animates them into their final positions, so a
+      // sibling toast can transiently cover the precisely-scoped Auto-connect
+      // button. Force the click past that obstruction — the target button is
+      // already uniquely scoped via .contains(...).closest("toast-undo").
       H.undoToastList()
         .contains("Auto-connect “Orders Question” to “ID”?")
         .closest("[data-testid='toast-undo']")
         .findByRole("button", { name: "Auto-connect" })
-        .click();
+        .click({ force: true });
 
       H.undoToastList()
         .contains("Auto-connect “Reviews Question” to “ID”?")
         .closest("[data-testid='toast-undo']")
         .findByRole("button", { name: "Auto-connect" })
-        .click();
+        .click({ force: true });
 
       H.getDashboardCard(0).findByText("Products.ID").should("exist");
       H.getDashboardCard(1).findByText("Product.ID").should("exist");

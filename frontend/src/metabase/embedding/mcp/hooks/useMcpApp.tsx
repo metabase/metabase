@@ -62,6 +62,7 @@ export function useMcpApp(): McpAppState {
 
       app.ontoolinput = (params) => {
         const { query } =
+          // Unjustified type cast. FIXME
           (params.arguments as VisualizeQueryToolInput | undefined) ?? {};
 
         if (query) {
@@ -75,6 +76,7 @@ export function useMcpApp(): McpAppState {
       // Also the source of `prompt`, which visualize_query includes in structuredContent.
       app.ontoolresult = (params) => {
         const { query, prompt } =
+          // Unjustified type cast. FIXME
           (params.structuredContent as VisualizeQueryToolResult | undefined) ??
           {};
 

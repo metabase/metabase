@@ -55,7 +55,9 @@
      :fuzzy?            (.isFuzzy message)
      :plural?           (.isPlural message)
      :source-references (seq (remove str/blank? (.getSourceReferences message)))
-     :comment           (.getMsgctxt message)}))
+     ;; the `msgctxt` a message was extracted with (nil when it declares none). Part of a
+     ;; message's identity: the same `msgid` can appear under several contexts.
+     :context           (.getMsgctxt message)}))
 
 (defn po-contents
   "Contents of the PO file for a `locale`."

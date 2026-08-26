@@ -13,9 +13,13 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
+   [metabase.indexes.models.table-index :as table-index]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
@@ -47,30 +51,81 @@
   (when (api/is-data-analyst?)
     (transforms.gating/enabled-source-types)))
 
+(defn- source-query-permissions-ok?
+  "Whether the current user may run a query transform's source `query`, per the query processor's own permission
+  check. The query is preprocessed first so references that only appear after expansion (cards, snippets) are
+  checked too. Throws when no user is bound: every caller must establish one, a scheduled run included."
+  [query]
+  (when-not api/*current-user-id*
+    (throw (ex-info "A transform needs to be run with a bound user"
+                    {})))
+  (try
+    (qp.setup/with-qp-setup [query query]
+      (qp.perms/check-query-permissions* (qp.preprocess/preprocess query))
+      true)
+    (catch clojure.lang.ExceptionInfo e
+      ;; Only a permission refusal makes the source unreadable. A source that fails to preprocess for any
+      ;; other reason (a missing required parameter, a malformed query) cannot run at all, and rejecting it
+      ;; is left to validation and execution, which report the specific problem.
+      (let [data (ex-data e)]
+        (not (or (:permissions-error? data)
+                 (= 403 (:status-code data))))))))
+
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.
   Returns true if the user can query all source tables (for python transforms) or the
-  source database (for query transforms)."
+  source database (for query transforms). Returns false if the referenced source database
+  no longer exists."
+  ([transform] (source-tables-readable? transform nil))
+  ([transform models-cache]
+   (let [resolve* (fn [model id]
+                    (if models-cache
+                      (get-in models-cache [model id])
+                      (t2/select-one model id)))
+         source   (:source transform)]
+     (case (keyword (:type source))
+       :query
+       (if-let [db-id (get-in source [:query :database])]
+         (if-let [db (resolve* :model/Database db-id)]
+           (and (boolean (mi/can-query? db))
+                (source-query-permissions-ok? (:query source)))
+           false)
+         false)
+
+       :python
+       (let [source-tables (:source-tables source)]
+         (if (empty? source-tables)
+           true
+           (let [table-ids (into [] (keep :table_id) source-tables)]
+             (and (seq table-ids)
+                  (every? (fn [table-id]
+                            (when-let [table (resolve* :model/Table table-id)]
+                              (mi/can-query? table)))
+                          table-ids)))))
+
+       (throw (ex-info (str "Unknown transform source type: " (:type source)) {}))))))
+
+(defn check-source-query-permissions!
+  "Throw a 403 unless the current user may run `transform`'s source query -- see
+  [[source-query-permissions-ok?]]. Requires a bound user; the execution path binds the user the run
+  executes as before calling.
+
+  Transforms compile and run their source query directly rather than through `qp.execute/run`, so the check is
+  made here."
   [transform]
-  (let [source (:source transform)]
-    (case (keyword (:type source))
-      :query
-      (if-let [db-id (get-in source [:query :database])]
-        (boolean (mi/can-query? (t2/select-one :model/Database db-id)))
-        false)
+  (api/check-403 (source-query-permissions-ok? (get-in transform [:source :query])))
+  nil)
 
-      :python
-      (let [source-tables (:source-tables source)]
-        (if (empty? source-tables)
-          true
-          (let [table-ids (into [] (keep :table_id) source-tables)]
-            (and (seq table-ids)
-                 (every? (fn [table-id]
-                           (when-let [table (t2/select-one :model/Table table-id)]
-                             (mi/can-query? table)))
-                         table-ids)))))
-
-      (throw (ex-info (str "Unknown transform source type: " (:type source)) {})))))
+(defn prefetch-source-models
+  "Bulk-load the source databases and tables referenced by `transforms` into a
+  `{:model/Database {id db} :model/Table {id table}}` map"
+  [transforms]
+  (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
+        table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
+    {:model/Database (when (seq db-ids)
+                       (u/index-by :id (t2/select :model/Database :id [:in db-ids])))
+     :model/Table    (when (seq table-ids)
+                       (u/index-by :id (t2/select :model/Table :id [:in table-ids])))}))
 
 (defn add-source-readable
   "Add :source_readable field to a transform or collection of transforms.
@@ -84,7 +139,7 @@
 
 ;;; ------------------------------------------------- Scheduled Execution -------------------------------------------------
 
-(defn- duplicate-key-violation?
+(defn duplicate-key-violation?
   "Check if an exception is a duplicate key violation.
    Returns true for Postgres, MySQL/MariaDB, and H2 duplicate key errors."
   [e]
@@ -96,18 +151,23 @@
 (defn try-start-unless-already-running
   "Start a transform run. Throws ex-info with {:error :already-running} if another
    run is already active (duplicate key violation). Other errors are rethrown.
-   If `user-id` is provided, it will be stored with the run for attribution purposes."
-  [id run-method user-id]
-  (try
-    (transform-run/start-run! id (cond-> {:run_method run-method}
-                                   user-id (assoc :user_id user-id)))
-    (catch Exception e
-      (if (duplicate-key-violation? e)
-        (throw (ex-info "Transform is already running"
-                        {:error        :already-running
-                         :transform-id id}
-                        e))
-        (throw e)))))
+   If `user-id` is provided, it will be stored with the run for attribution purposes.
+   `parent-run`, when provided, links the run to its coordinating run as a `[type id]` tuple:
+   `[:job id]` is stored in `job_run_id`, `[:dag id]` in `dag_run_id`."
+  [id run-method user-id & {:keys [parent-run]}]
+  (let [[parent-type parent-id] parent-run]
+    (try
+      (transform-run/start-run! id (cond-> {:run_method run-method}
+                                     user-id                (assoc :user_id user-id)
+                                     (= parent-type :job)   (assoc :job_run_id parent-id)
+                                     (= parent-type :dag)   (assoc :dag_run_id parent-id)))
+      (catch Exception e
+        (if (duplicate-key-violation? e)
+          (throw (ex-info "Transform is already running"
+                          {:error        :already-running
+                           :transform-id id}
+                          e))
+          (throw e))))))
 
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling.
@@ -119,64 +179,77 @@
   - `:ex-message-fn` change how caught exceptions are presented to the user in run logs, by default the same as clojure.core/ex-message"
   [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
-  (try
-    (when (and (not (str/blank? output-schema))
-               (not (driver/schema-exists? driver db-id output-schema)))
-      (driver/create-schema-if-needed! driver conn-spec output-schema))
-    (let [source-range-params  (transforms-base.u/get-source-range-params transform)
-          transform-timeout    (transforms.settings/transform-timeout)
-          transform-timeout-ms (u/minutes->ms transform-timeout)
-          full-incremental?    (transforms-base.u/full-incremental-run? transform)
-          ;; Efficiency metrics (rows-available / rows-processed) are only meaningful when this run's
-          ;; rows-affected count can be trusted. On drivers that declare
-          ;; `:transforms/accurate-rows-affected` false, a full-rebuild (CTAS) run reports a bogus
-          ;; count, so we skip emitting efficiency metrics for those runs entirely. The INSERT path's
-          ;; count is accurate even on those drivers.
-          reliable-row-count?  (or (driver.u/supports? driver :transforms/accurate-rows-affected
-                                                       {:lib/type :metadata/database :id db-id})
-                                   (not full-incremental?))]
-      (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
-      (when-let [{:keys [rows-available] :as srp} source-range-params]
-        (tracing/add-span-attrs! :tasks
-                                 (cond-> (transforms-base.u/checkpoint-span-attrs srp)
-                                   (and reliable-row-count? rows-available)
-                                   (assoc :transform/rows-available rows-available))))
-      (canceling/chan-start-timeout-vthread! run-id transform-timeout)
-      (let [cancel-chan (a/promise-chan)
-            ret (driver.conn/with-transform-connection
-                  ;; Route through the `:transform` JDBC pool, whose `unreturnedConnectionTimeout` will be set
-                  ;; from the `*query-timeout-ms*` binding below at pool-creation time. This keeps the default
-                  ;; pool's leak-detector at `MB_DB_QUERY_TIMEOUT_MINUTES` for all non-transform traffic.
-                  (binding [qp.pipeline/*canceled-chan*          cancel-chan
-                            driver.settings/*query-timeout-ms*   transform-timeout-ms
-                            ;; Match the query timeout so a single slow socket read (or a driver that waits for
-                            ;; the full server-side query) does not get killed before the transform's own deadline.
-                            driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
-                    (canceling/chan-start-run! run-id cancel-chan)
-                    (run-transform! cancel-chan source-range-params)))]
-        (transforms-base.u/save-watermark! (:id transform) source-range-params)
-        (transform-run/succeed-started-run! run-id)
-        ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
-        ;; fail-started-run! after succeed-started-run! has already fired.
-        (when reliable-row-count?
-          (try
-            (when-some [rows-available (:rows-available source-range-params)]
-              (when-some [rp (:rows-affected (:result ret))]
-                (tracing/add-span-attrs! :tasks {:transform/rows-processed rp})
-                (transforms.instrumentation/record-incremental-rows!
-                 rows-available
-                 rp
-                 full-incremental?)))
-            (catch Throwable t
-              (log/warnf t "Failed to emit incremental-rows metric for transform %s" (:id transform)))))
-        ret))
-    (catch Throwable t
-      (if (:timeout (ex-data t))
-        (transform-run/timeout-run! run-id {:message (ex-message-fn t)})
-        (transform-run/fail-started-run! run-id {:message (ex-message-fn t)}))
-      (throw t))
-    (finally
-      (canceling/chan-end-run! run-id))))
+  (let [cancel-chan          (a/promise-chan)
+        transform-timeout    (transforms.settings/transform-timeout)
+        transform-timeout-ms (u/minutes->ms transform-timeout)]
+    (canceling/with-cancelation [run-id cancel-chan transform-timeout]
+      (try
+        (let [source-range-params (transforms-base.u/get-source-range-params transform)
+              full-incremental?   (transforms-base.u/full-incremental-run? transform)
+              full-create?        (transforms-base.u/full-create-run? transform)
+              ;; Efficiency metrics (rows-available / rows-processed) are only meaningful when this run's
+              ;; rows-affected count can be trusted. On drivers that declare
+              ;; `:transforms/accurate-rows-affected` false, a full-rebuild (CTAS) run reports a bogus
+              ;; count, so we skip emitting efficiency metrics for those runs entirely. The INSERT path's
+              ;; count is accurate even on those drivers.
+              reliable-row-count? (or (driver.u/supports? driver :transforms/accurate-rows-affected
+                                                          {:lib/type :metadata/database :id db-id})
+                                      (not full-incremental?))]
+          (when (and (not (str/blank? output-schema))
+                     (not (driver/schema-exists? driver db-id output-schema)))
+            (driver/create-schema-if-needed! driver conn-spec output-schema))
+          (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
+          (when-let [{:keys [rows-available] :as srp} source-range-params]
+            (tracing/add-span-attrs! :tasks
+                                     (cond-> (transforms-base.u/checkpoint-span-attrs srp)
+                                       (and reliable-row-count? rows-available)
+                                       (assoc :transform/rows-available rows-available))))
+          (let [ret (driver.conn/with-transform-connection
+                      ;; Route through the `:transform` JDBC pool, whose `unreturnedConnectionTimeout` will be set
+                      ;; from the `*query-timeout-ms*` binding below at pool-creation time. This keeps the default
+                      ;; pool's leak-detector at `MB_DB_QUERY_TIMEOUT_MINUTES` for all non-transform traffic.
+                      (binding [qp.pipeline/*canceled-chan*          cancel-chan
+                                driver.settings/*query-timeout-ms*   transform-timeout-ms
+                                ;; Match the query timeout so a single slow socket read (or a driver that waits for
+                                ;; the full server-side query) does not get killed before the transform's own deadline.
+                                driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms*
+                                                                          transform-timeout-ms)]
+                        (run-transform! cancel-chan source-range-params)))]
+            (when full-create?
+              ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
+              ;; stays a full rebuild that re-attempts the index).
+              (let [running-indexes (table-index/mark-runnable-indexes-running!
+                                     (:index-request-ids (:target transform)))]
+                (try
+                  (transforms-base.u/apply-target-indexes! transform)
+                  (transforms-base.u/verify-managed-indexes! transform)
+                  (finally
+                    ;; Fail any request verification couldn't settle -- whether apply/verify threw or just left it
+                    ;; running. On a throw the exception still propagates to the run-level catch.
+                    (table-index/mark-unverified-running-indexes-failed!
+                     running-indexes
+                     "Index status could not be verified after the transform completed.")))))
+            (transforms-base.u/save-watermark! (:id transform) source-range-params)
+            (transform-run/succeed-started-run! run-id)
+            ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
+            ;; fail-started-run! after succeed-started-run! has already fired.
+            (when reliable-row-count?
+              (try
+                (when-some [rows-available (:rows-available source-range-params)]
+                  (when-some [rp (:rows-affected (:result ret))]
+                    (tracing/add-span-attrs! :tasks {:transform/rows-processed rp})
+                    (transforms.instrumentation/record-incremental-rows!
+                     rows-available
+                     rp
+                     full-incremental?)))
+                (catch Throwable t
+                  (log/warnf "Failed to emit incremental-rows metric for transform %s: %s" (:id transform) (ex-message t)))))
+            ret))
+        (catch Throwable t
+          (if (:timeout (ex-data t))
+            (transform-run/timeout-run! run-id {:message (ex-message-fn t)})
+            (transform-run/fail-started-run! run-id {:message (ex-message-fn t)}))
+          (throw t))))))
 
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."

@@ -3,14 +3,20 @@ import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 
 import DataSelectorS from "./DataSelector/DataSelector.module.css";
+
+export type TriggerComponentProps = {
+  database?: Database | null;
+  table?: Table | null;
+  field?: Field | null;
+};
 
 export function Trigger({
   className,
@@ -23,7 +29,7 @@ export function Trigger({
   className?: string;
   style?: CSSProperties;
   showDropdownIcon?: boolean;
-  iconSize?: number;
+  iconSize?: number | string;
   isMantine?: boolean;
   children: ReactNode;
 }) {
@@ -56,13 +62,7 @@ export function Trigger({
   );
 }
 
-export function FieldTrigger({
-  database,
-  field,
-}: {
-  database: Database;
-  field: Field;
-}) {
+export function FieldTrigger({ database, field }: TriggerComponentProps) {
   const tc = useTranslateContent();
   if (!field || !field.table) {
     return <Text>{t`Select...`}</Text>;
@@ -81,7 +81,7 @@ export function FieldTrigger({
   );
 }
 
-export function DatabaseTrigger({ database }: { database: Database }) {
+export function DatabaseTrigger({ database }: TriggerComponentProps) {
   const tc = useTranslateContent();
   return database ? (
     <span
@@ -97,7 +97,7 @@ export function DatabaseTrigger({ database }: { database: Database }) {
   );
 }
 
-export function TableTrigger({ table }: { table: Table }) {
+export function TableTrigger({ table }: TriggerComponentProps) {
   const tc = useTranslateContent();
   return table ? (
     <span

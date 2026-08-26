@@ -16,14 +16,12 @@ dataset_query:
       ORDER BY "count" DESC
       LIMIT 10
     template-tags:
-      '#1-basic_aggregations':
-        card-id: h5F2EjHsRd73Dqqh8sAtd
+      - card-id: h5F2EjHsRd73Dqqh8sAtd
         display-name: Basic Aggregations
         id: cc000001-0000-0000-0000-000000000001
         name: '#1-basic_aggregations'
         type: card
-      'snippet: Active Product Filter':
-        display-name: 'Snippet: Active Product Filter'
+      - display-name: 'Snippet: Active Product Filter'
         id: cc000002-0000-0000-0000-000000000002
         name: 'snippet: Active Product Filter'
         snippet-id: WyQWnT23PF-SfbYLROllJ
@@ -33,7 +31,7 @@ dataset_query:
   lib/type: mbql/query
 visualization_settings:
   column_settings: null
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: HiBFSt0BNx5s5MxVDLLKB
   label: native_query___card_and_snippet_references

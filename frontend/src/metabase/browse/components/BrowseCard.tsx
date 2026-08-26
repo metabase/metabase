@@ -60,7 +60,7 @@ export const BrowseCard = ({
         root: cx(
           CS.bgBrandHover,
           CS.hoverParent,
-          CS.hoverDisplay,
+          CS.hoverVisibility,
           CS.textBrandHover,
         ),
       }}

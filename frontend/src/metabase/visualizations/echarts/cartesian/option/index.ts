@@ -24,11 +24,6 @@ import {
   buildMetricAxis,
 } from "metabase/visualizations/echarts/cartesian/option/axis";
 import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
-import {
-  type SplitPanelYExtent,
-  getTimelineEventsSeries,
-} from "metabase/visualizations/echarts/cartesian/timeline-events/option";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -39,6 +34,9 @@ import { CHART_STYLE, Z_INDEXES } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
 import { getDisplaySeriesSettingsByDataKey } from "../model/series";
 import { getBarSeriesDataLabelKey } from "../model/util";
+import type { SplitPanelYExtent } from "../timeline-events/option";
+import { getTimelineEventsSelectionSeries } from "../timeline-events/option";
+import type { TimelineEventsModel } from "../timeline-events/types";
 
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
@@ -93,6 +91,7 @@ export const buildEChartsDataset = (
 
   const dataset: Array<{ source: OptionSourceData; dimensions: string[] }> = [
     {
+      // Unjustified type cast. FIXME
       source: chartModel.transformedDataset as OptionSourceData,
       dimensions,
     },
@@ -100,6 +99,7 @@ export const buildEChartsDataset = (
 
   if (chartModel.trendLinesModel) {
     dataset.push({
+      // Unjustified type cast. FIXME
       source: chartModel.trendLinesModel.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,
@@ -160,7 +160,7 @@ export function buildGridAndSeriesOption(
   chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
   timelineEventsModel: TimelineEventsModel | null,
-  selectedTimelineEventsIds: TimelineEventId[],
+  selectedTimelineEventIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
   dataSeriesOptions: EChartsSeriesOption[],
@@ -185,31 +185,20 @@ export function buildGridAndSeriesOption(
     ? remapTrendLinesToPanels(chartModel, visibleSeries)
     : getTrendLinesOption(chartModel);
 
-  const splitPanelYExtent = isSplitPanels
-    ? getSplitPanelTimelineEventsYExtent(chartLayout, panelCount)
-    : undefined;
-
-  const timelineEventsSeries =
-    timelineEventsModel != null
-      ? getTimelineEventsSeries(
-          timelineEventsModel,
-          selectedTimelineEventsIds,
-          renderingContext,
-          splitPanelYExtent,
-        )
-      : null;
+  const timelineEventsSeries = getTimelineSelectionSeries(
+    timelineEventsModel,
+    selectedTimelineEventIds,
+    chartLayout,
+    panelCount,
+    isSplitPanels,
+    renderingContext,
+  );
 
   const seriesOption = [
     dataSeriesOptions,
     goalSeriesOption,
     trendSeriesOption,
-    isSplitPanels && timelineEventsSeries
-      ? {
-          ...timelineEventsSeries,
-          xAxisIndex: panelCount - 1,
-          yAxisIndex: panelCount - 1,
-        }
-      : timelineEventsSeries,
+    timelineEventsSeries,
   ].flatMap((option) => option ?? []);
 
   const grid: GridOption | GridOption[] = isSplitPanels
@@ -235,14 +224,14 @@ export function buildGridAndSeriesOption(
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
   chartLayout: ChartLayout,
+  hasTimelineEvents: boolean,
   timelineEventsModel: TimelineEventsModel | null,
-  selectedTimelineEventsIds: TimelineEventId[],
+  selectedTimelineEventIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
-  const hasTimelineEvents = timelineEventsModel != null;
   const isSplitPanels = chartLayout.panelHeight != null;
 
   const dataSeriesOptions = buildEChartsSeries(
@@ -257,7 +246,7 @@ export const getCartesianChartOption = (
     chartModel,
     chartLayout,
     timelineEventsModel,
-    selectedTimelineEventsIds,
+    selectedTimelineEventIds,
     settings,
     renderingContext,
     dataSeriesOptions,
@@ -289,6 +278,7 @@ export const getCartesianChartOption = (
       (series) => seriesSettingsByDataKey[series.dataKey]?.display === "bar",
     );
     if (hasAnyBarSeries) {
+      // Unjustified type cast. FIXME
       (baseXAxis as Record<string, unknown>).boundaryGap = true;
     }
 
@@ -326,6 +316,52 @@ export const getCartesianChartOption = (
     series: seriesOption,
   };
 };
+
+function getTimelineSelectionSeries(
+  timelineEventsModel: TimelineEventsModel | null,
+  selectedTimelineEventIds: TimelineEventId[],
+  chartLayout: ChartLayout,
+  panelCount: number,
+  isSplitPanels: boolean,
+  renderingContext: RenderingContext,
+): EChartsSeriesOption | null {
+  if (timelineEventsModel == null) {
+    return null;
+  }
+
+  const splitPanelYExtent = isSplitPanels
+    ? getSplitPanelTimelineEventsYExtent(chartLayout, panelCount)
+    : undefined;
+
+  const series = getTimelineEventsSelectionSeries(
+    timelineEventsModel,
+    selectedTimelineEventIds,
+    renderingContext,
+    splitPanelYExtent,
+  );
+
+  if (series == null) {
+    return null;
+  }
+
+  return isSplitPanels
+    ? { ...series, xAxisIndex: panelCount - 1, yAxisIndex: panelCount - 1 }
+    : series;
+}
+
+export function getSplitPanelTimelineEventsYExtent(
+  chartLayout: ChartLayout,
+  panelCount: number,
+): SplitPanelYExtent {
+  const panelHeight = chartLayout.panelHeight ?? 0;
+  return {
+    topY: chartLayout.padding.top,
+    bottomY:
+      chartLayout.padding.top +
+      (panelCount - 1) * (panelHeight + chartLayout.panelGap) +
+      panelHeight,
+  };
+}
 
 export function buildSplitPanelGrid(
   chartLayout: ChartLayout,
@@ -444,20 +480,6 @@ export function buildSplitPanelGoalSeries(
   }));
 }
 
-export function getSplitPanelTimelineEventsYExtent(
-  chartLayout: ChartLayout,
-  panelCount: number,
-): SplitPanelYExtent {
-  const panelHeight = chartLayout.panelHeight ?? 0;
-  return {
-    topY: chartLayout.padding.top,
-    bottomY:
-      chartLayout.padding.top +
-      (panelCount - 1) * (panelHeight + chartLayout.panelGap) +
-      panelHeight,
-  };
-}
-
 export function buildSplitPanelYAxisLabel(
   chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
@@ -537,7 +559,9 @@ export function buildPerPanelXAxes(
       nameGap: 0,
       axisLine: {
         show: true,
-        lineStyle: { color: renderingContext.getColor("border-strong") },
+        lineStyle: {
+          color: renderingContext.getColor("border-neutral-strong"),
+        },
       },
     };
   });

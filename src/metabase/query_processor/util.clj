@@ -86,16 +86,22 @@
 
   Ensure that saved metadata from datasets or source queries can remain in the results metadata. We always recompute
   metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
-  the metadata from a run from the query, and `pre-existing` should be the metadata from the database we wish to
+  the metadata from a run from the query, and `old-metadata` should be the metadata from the database we wish to
   ensure survives."
   {:deprecated "0.57.0"}
-  [fresh pre-existing]
+  [new-metadata old-metadata]
   #_{:clj-kondo/ignore [:deprecated-var]}
-  (let [by-name (m/index-by :name pre-existing)]
-    (for [col fresh]
-      (if-let [existing (get by-name (:name col))]
-        (merge col (select-keys existing preserved-keys))
-        col))))
+  (let [old-cols-by-desired-col-alias (m/index-by :lib/desired-column-alias (filter :lib/desired-column-alias old-metadata))
+        old-cols-by-name (m/index-by :name old-metadata)]
+    (for [new-col new-metadata]
+      (if-let [old-col (or (get old-cols-by-desired-col-alias (:lib/desired-column-alias new-col))
+                           ;; Only match by name if a desired column alias is missing,
+                           ;; otherwise we could match different columns with the same name
+                           (let [old-col (get old-cols-by-name (:name new-col))]
+                             (when (not-every? :lib/desired-column-alias [new-col old-col])
+                               old-col)))]
+        (merge new-col (select-keys old-col preserved-keys))
+        new-col))))
 
 (def ^:dynamic *execute-async?*
   "Whether to save QueryExecutions (and other post-execution side effects) asynchronously via the batch-processing

@@ -4,13 +4,12 @@ import type { Editor, NodeViewProps } from "@tiptap/core";
 import { useEffect, useState } from "react";
 
 import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
-import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
+import { useUnresolvedDocumentCommentsCount } from "metabase/documents/hooks/use-unresolved-document-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
   getHoveredChildTargetId,
 } from "metabase/documents/selectors";
-import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
 import { useSelector } from "metabase/redux";
 import { documentWithAnchor } from "metabase/urls";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -42,7 +41,7 @@ export function useBlockMenus({
 
   const { ref: viewportRef, isInViewport } = useNodeInViewport();
 
-  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+  const unresolvedCommentsCount = useUnresolvedDocumentCommentsCount(_id, {
     skip: !isInViewport,
   });
 
@@ -112,4 +111,23 @@ export function useBlockMenus({
     anchorRefs,
     anchorFloatingStyles,
   };
+}
+
+export function isTopLevel({
+  editor,
+  getPos,
+}: Pick<NodeViewProps, "editor" | "getPos">) {
+  if (!editor || !getPos) {
+    return false;
+  }
+
+  const { doc } = editor.state;
+  const pos = getPos();
+
+  if (pos === null || pos === undefined || pos < 0 || pos > doc.content?.size) {
+    return false;
+  }
+
+  const resolvedPos = doc.resolve(pos);
+  return resolvedPos.depth === 0;
 }

@@ -21,6 +21,7 @@ export const useAreAllDataPointsOutOfRange = (
 
   return chartModel.dataset.every((data) =>
     dataKeys.every((key) => {
+      // Unjustified type cast. FIXME
       const value = data[key] as number;
       return value === null || value < yMin || yMax < value;
     }),

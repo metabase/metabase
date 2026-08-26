@@ -64,7 +64,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   (try
     (instance? java.security.cert.X509Certificate (saml/->X509Certificate idp-cert-str))
     (catch Throwable e
-      (log/error e "Error parsing SAML identity provider certificate")
+      (log/errorf "Error parsing SAML identity provider certificate: %s" (ex-message e))
       (throw
        (Exception. (tru "Invalid identity provider certificate. Certificate should be a base-64 encoded string."))))))
 
@@ -191,7 +191,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
                false)))
 
 (defsetting saml-slo-enabled
-  (deferred-tru "Is SAML Single Log Out enabled?")
+  (deferred-tru "If enabled, Metabase will redirect users to your configured SAML Single Logout endpoint when they log out of Metabase.")
   :type    :boolean
   :default false
   :feature :sso-saml
@@ -203,8 +203,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
                false)))
 
 (defsetting saml-identity-provider-slo-uri
-  (deferred-tru "This is the URL where your users go to logout of your identity provider. Depending on which IdP you''re
-using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/slo`")
+  (deferred-tru "If SAML single logout (SLO) is enabled, Metabase will make an HTTP-Redirect SLO request to this endpoint when a user logs out of Metabase.")
   :encryption :when-encryption-key-set
   :feature    :sso-saml
   :export?    false

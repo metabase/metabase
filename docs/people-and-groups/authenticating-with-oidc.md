@@ -101,7 +101,7 @@ You can turn auto-provisioning off under **Admin settings** > **Authentication**
 
 ### How auto-provisioning works
 
-If auto-provisioning is on, when someone logs in via OIDC, Metabase will look up the account by email (case-insensitive). If an account with that email already exists, Metabase links the OIDC identity to that existing account. On each OIDC login, Metabase updates the account's name from the IdP's claims. Otherwise, Metabase will automatically create a new account.
+If auto-provisioning is on, when someone logs in via OIDC, Metabase will look up the account by email (case-insensitive). If an account with that email already exists, Metabase links the OIDC identity to that existing account (and [disables their password login](./managing.md#signing-in-via-sso-disables-your-password-login)). On each OIDC login, Metabase updates the account's name from the IdP's claims. Otherwise, Metabase will automatically create a new account.
 
 If auto-provisioning is off, and no matching account exists, the person gets an error, and can't log in.
 

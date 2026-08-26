@@ -2,9 +2,11 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli :as mu]))
@@ -315,6 +317,46 @@
              :custom-row   {"IS_OPEN" true
                             "count"   10}}
             (expecting ["IS_OPEN"] [:category :time])))))
+
+(deftest ^:parallel pivot-drill-on-metric-test
+  (testing "pivot drill offers to break out by a category on a timeseries metric-consumer query"
+    (let [metric-id 101
+          provider  (lib.tu/mock-metadata-provider
+                     meta/metadata-provider
+                     {:cards [{:lib/type      :metadata/card
+                               :type          :metric
+                               :id            metric-id
+                               :name          "Count of orders over time"
+                               :database-id   (meta/id)
+                               :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                                  (lib/aggregate (lib/count)))}]})
+          query     (-> (lib/query provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib.metadata/metric provider metric-id))
+                        (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))
+          cols       (lib/returned-columns query)
+          metric-col (m/find-first #(= (:lib/source %) :source/aggregations) cols)
+          _          (is (some? metric-col))
+          created-at (m/find-first #(= (:name %) "CREATED_AT") cols)
+          _          (is (some? created-at))
+          context    {:column     metric-col
+                      :column-ref (lib/ref metric-col)
+                      :value      100
+                      :dimensions [{:column     created-at
+                                    :column-ref (lib/ref created-at)
+                                    :value      "2027-03-01T00:00:00Z"}]}
+          pivot      (m/find-first #(= (:type %) :drill-thru/pivot)
+                                   (lib/available-drill-thrus query -1 context))]
+      (is (some? pivot))
+      (testing "breaking out by User → Source adds the expected breakout and filters the clicked month"
+        (let [source-col (m/find-first #(= (:name %) "SOURCE")
+                                       (lib/pivot-columns-for-type pivot :category))]
+          (is (some? source-col))
+          (is (=? {:stages [{:filters  [[:= {}
+                                         [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                         "2027-03-01T00:00:00Z"]]
+                             :breakout [[:field {:source-field (meta/id :orders :user-id)}
+                                         (meta/id :people :source)]]}]}
+                  (lib/drill-thru query -1 nil pivot source-col))))))))
 
 (deftest ^:parallel expression-after-aggregation-test
   (testing "custom column defined after aggregation should not offer pivot drill (#66715)"

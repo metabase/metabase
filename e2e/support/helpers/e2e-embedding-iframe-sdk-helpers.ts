@@ -3,7 +3,10 @@ import { match } from "ts-pattern";
 import { openSharingMenu } from "e2e/support/helpers/e2e-sharing-helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
-import type { CreateApiKeyResponse } from "metabase-types/api";
+import type {
+  CreateApiKeyResponse,
+  CustomVizDisplayType,
+} from "metabase-types/api";
 
 import { createApiKey, updateSetting } from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";
@@ -34,6 +37,7 @@ export interface BaseEmbedTestPageOptions {
     theme?: MetabaseTheme;
     preferredAuthMethod?: "jwt" | "saml";
     locale?: string;
+    allowedCustomVisualizations?: CustomVizDisplayType[];
   };
 
   elements: MetabaseElement[];
@@ -325,6 +329,7 @@ export const getNewEmbedConfigurationScript = ({
   useExistingUserSession,
   preferredAuthMethod,
   locale,
+  allowedCustomVisualizations,
 }: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
     instanceUrl,
@@ -335,6 +340,7 @@ export const getNewEmbedConfigurationScript = ({
     theme,
     preferredAuthMethod,
     locale,
+    allowedCustomVisualizations,
   };
 
   return `

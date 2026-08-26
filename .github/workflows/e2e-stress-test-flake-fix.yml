@@ -41,11 +41,54 @@ on:
         type: boolean
         required: false
         default: false
+  # Reusable form so other workflows (e.g. the flaky-test-fix PR auto-runner) can fan a
+  # matrix of changed specs into individual stress runs. Inputs mirror workflow_dispatch;
+  # both triggers read them via the `inputs` context.
+  workflow_call:
+    inputs:
+      spec:
+        description: "Relative path of the target spec"
+        type: string
+        required: true
+      burn_in:
+        description: "Number of times to run the test (e.g. 20)"
+        type: string
+        required: false
+        default: "20"
+      grep:
+        description: "Grep and filter tests to run in isolation"
+        type: string
+        required: false
+      mb_edition:
+        description: 'Set MB_EDITION env var to "ee" (enterprise) or "oss" (open-source)'
+        type: string
+        required: false
+        default: "ee"
+      qa_db:
+        description: "Whether to set up and include external QA databases"
+        type: boolean
+        required: false
+        default: false
+      enable_network_throttling:
+        description: "Enable network throttling simulation (4g slow like in chrome dev tools)"
+        type: boolean
+        required: false
+        default: true
+      fail_fast:
+        description: "Stop running remaining tests after the first failure"
+        type: boolean
+        required: false
+        default: false
+      build_jar:
+        description: "Build the uberjar from this branch (required to test frontend fixes) instead of downloading a prebuilt one"
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   determine-test-type:
     name: Determine test type
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       type: ${{ steps.detect.outputs.type }}
@@ -55,32 +98,45 @@ jobs:
         run: |
           SPEC='${{ inputs.spec }}'
           if [[ "$SPEC" == e2e/test-component/scenarios/embedding-sdk/* ]]; then
-            echo "type=component" >> $GITHUB_OUTPUT
+            echo "type=component" >> "$GITHUB_OUTPUT"
           else
-            echo "type=e2e" >> $GITHUB_OUTPUT
+            echo "type=e2e" >> "$GITHUB_OUTPUT"
           fi
 
   workflow-summary:
     name: Stress test inputs
     needs: [determine-test-type]
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
+        env:
+          BRANCH: ${{ github.ref_name }}
+          SPEC: ${{ inputs.spec }}
+          TEST_TYPE: ${{ needs.determine-test-type.outputs.type }}
+          BURN_IN: ${{ inputs.burn_in }}
+          GREP: ${{ inputs.grep }}
+          QA_DB: ${{ inputs.qa_db }}
+          ENABLE_NETWORK_THROTTLING: ${{ inputs.enable_network_throttling }}
+          FAIL_FAST: ${{ inputs.fail_fast }}
+          BUILD_JAR: ${{ inputs.build_jar }}
+          SENDER: ${{ github.event.sender.login }}
         run: |
-          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `test_type` (inferred): ${{ needs.determine-test-type.outputs.type }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
-          echo '- `qa_db`: "${{ inputs.qa_db }}"' >> $GITHUB_STEP_SUMMARY
-          echo '- `enable_network_throttling`: "${{ inputs.enable_network_throttling }}"' >> $GITHUB_STEP_SUMMARY
-          echo '- `fail_fast`: "${{ inputs.fail_fast }}"' >> $GITHUB_STEP_SUMMARY
-          echo '- `build_jar`: "${{ inputs.build_jar }}"' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+          {
+            echo '**Inputs:**'
+            echo ''
+            echo "- \`branch\`: $BRANCH"
+            echo "- \`spec\`: $SPEC"
+            echo "- \`test_type\` (inferred): $TEST_TYPE"
+            echo "- \`burn_in\`: $BURN_IN"
+            echo "- \`grep\`: \"$GREP\""
+            echo "- \`qa_db\`: \"$QA_DB\""
+            echo "- \`enable_network_throttling\`: \"$ENABLE_NETWORK_THROTTLING\""
+            echo "- \`fail_fast\`: \"$FAIL_FAST\""
+            echo "- \`build_jar\`: \"$BUILD_JAR\""
+            echo ''
+            echo "triggered by: @$SENDER"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   stress-test-flake-fix:
     needs: [determine-test-type]
@@ -160,13 +216,13 @@ jobs:
 
       # For all options and fine-grained control, take a look at the documentation
       # https://github.com/cypress-io/cypress/tree/develop/npm/grep
-      - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
+      - name: Stress-test ${{ inputs.spec }} ${{ inputs.burn_in }} times
         env:
-          GREP: ${{ github.event.inputs.grep }}
+          GREP: ${{ inputs.grep }}
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
           FAIL_FAST: ${{ inputs.fail_fast }}
-          SPEC: ${{ github.event.inputs.spec }}
-          BURN_IN: ${{ github.event.inputs.burn_in }}
+          SPEC: ${{ inputs.spec }}
+          BURN_IN: ${{ inputs.burn_in }}
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
           --spec "${SPEC}" \

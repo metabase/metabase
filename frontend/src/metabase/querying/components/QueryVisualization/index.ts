@@ -3,3 +3,4 @@ export {
   VisualizationRunningState,
   VisualizationDirtyState,
 } from "./QueryVisualization";
+export type { QueryVisualizationProps } from "./types";

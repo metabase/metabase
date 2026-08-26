@@ -55,7 +55,11 @@ export const ConfirmModal = ({
         {content ? <Text>{content}</Text> : null}
         <Text>{message}</Text>
         <Flex align="center" justify="space-between" gap="md">
-          {errorMessage ? <Text c="danger">{errorMessage} </Text> : <div />}
+          {errorMessage ? (
+            <Text c="feedback-negative">{errorMessage} </Text>
+          ) : (
+            <div />
+          )}
           <Flex align="center" justify="flex-end" gap="md">
             {closeButtonText && (
               <Button {...closeButtonProps} onClick={onClose}>
@@ -63,8 +67,9 @@ export const ConfirmModal = ({
               </Button>
             )}
             <Button
-              color="danger"
+              color="feedback-negative"
               variant="filled"
+              data-autofocus
               {...confirmButtonProps}
               disabled={confirmButtonProps.disabled || confirming}
               onClick={handleConfirm}

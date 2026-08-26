@@ -4,40 +4,40 @@ import {
   useGetCollectionQuery,
   useListCollectionsTreeQuery,
 } from "metabase/api";
-import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
-import type { CollectionTreeItem } from "metabase/collections/utils";
+import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
   currentUserPersonalCollections,
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import CS from "metabase/css/core/index.css";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { Box, Icon } from "metabase/ui";
 import type {
-  CardType,
   Collection,
   CollectionId,
   DatabaseId,
+  TableId,
   User,
 } from "metabase-types/api";
 
-import SavedEntityList from "./SavedEntityList";
+import type { SavedEntityType } from "../types";
+
+import { SavedEntityList } from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";
 import { CARD_INFO } from "./constants";
 import { findCollectionById } from "./utils";
 
-type SavedEntityType = Extract<CardType, "model" | "question">;
-
 interface SavedEntityPickerProps {
   type: SavedEntityType;
-  collectionId?: CollectionId;
-  tableId?: string;
-  databaseId?: DatabaseId;
+  collectionId?: CollectionId | null;
+  tableId?: TableId;
+  databaseId?: DatabaseId | null;
   onSelect: (cardId: string) => void;
   onBack: () => void;
 }
@@ -153,7 +153,7 @@ function InnerSavedEntityPicker({
     }
     // Tree erases node ids to string | number, but a selected collection
     // node's id is always a CollectionId.
-    setSelectedCollectionId(collection.id as CollectionId);
+    setSelectedCollectionId(collection.id);
   }, []);
 
   return (

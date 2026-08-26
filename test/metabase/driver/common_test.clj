@@ -73,7 +73,6 @@
 
 (deftest ^:parallel json-unfolding-default-test
   (testing "JSON Unfolding database support details behave as they're supposed to"
-    #_{:clj-kondo/ignore [:equals-true]}
     (are [details expected] (= expected
                                (driver.common/json-unfolding-default
                                 {:lib/type :metadata/database

@@ -1,7 +1,6 @@
-import { Route } from "react-router";
-
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
 import type { Collection, Table } from "metabase-types/api";
 import {
   createMockCollection,
@@ -39,7 +38,7 @@ function setup({
   });
 
   renderWithProviders(
-    <Route path="/" component={() => <TableCollection table={table} />} />,
+    <Route path="/" element={<TableCollection table={table} />} />,
     { withRouter: true },
   );
 }
@@ -62,9 +61,11 @@ describe("TableCollection", () => {
 
     // Must expand the Data root (6) AND the collection itself (8) so the
     // referenced collection is actually revealed — not just the library root.
-    expect(link).toHaveAttribute(
-      "href",
-      "/data-studio/library?expandedId=6&expandedId=8",
+    await waitFor(() =>
+      expect(link).toHaveAttribute(
+        "href",
+        "/data-studio/library?expandedId=6&expandedId=8",
+      ),
     );
   });
 

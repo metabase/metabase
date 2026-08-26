@@ -223,10 +223,6 @@
                                        :else
                                        [])))))
 
-(defmethod serdes/hash-fields :model/FieldValues
-  [_field-values]
-  [(serdes/hydrated-hash :field)])
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Utils fns                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -401,7 +397,7 @@
                   qp.reducible/default-rff)]
       {:values (-> result :data :rows)})
     (catch Throwable e
-      (log/error e "Error fetching field values")
+      (log/errorf "Error fetching field values: %s" (ex-message e))
       nil)))
 
 (defn- delete-duplicates-and-return-latest!
@@ -559,7 +555,7 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldValues" :id "0"}))
 
-(defmethod serdes/dependencies "FieldValues" [fv]
+(defmethod serdes/deserialization-dependencies "FieldValues" [fv]
   (let [db-path (first (serdes/path fv))]
     [[db-path]]))
 

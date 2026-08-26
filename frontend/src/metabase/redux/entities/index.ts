@@ -1,7 +1,6 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
-import { questionsReducer } from "./questions-reducer";
 import { tablesReducer } from "./tables-reducer";
 
 type SliceState = Record<string, unknown>;
@@ -16,8 +15,6 @@ type SliceReducer = Reducer<SliceState>;
  * `metabase/entities/UPDATE` (see `hydrateMetadataStore`).
  */
 const ENTITY_SLICE_NAMES = [
-  "collections",
-  "dashboards",
   "databases",
   "fields",
   "measures",
@@ -47,7 +44,8 @@ function mergeEntities(
       delete result[id];
     } else {
       result[id] = {
-        ...((result[id] as Record<string, unknown>) ?? {}),
+        ...(result[id] ?? {}),
+        // Unjustified type cast. FIXME
         ...(entry as Record<string, unknown>),
       };
     }
@@ -66,6 +64,7 @@ function makeSliceReducer(
 ): SliceReducer {
   return (state = {}, action: SliceAction) => {
     let nextState = state;
+    // Unjustified type cast. FIXME
     const entities = getIn(action, ["payload", "entities", sliceName]) as
       | Record<string, unknown>
       | undefined;
@@ -77,10 +76,10 @@ function makeSliceReducer(
 }
 
 const customReducers: Partial<Record<string, SliceReducer>> = {
-  questions: questionsReducer as SliceReducer,
-  tables: tablesReducer as SliceReducer,
+  tables: tablesReducer,
 };
 
+// Unjustified type cast. FIXME
 const sliceReducers = Object.fromEntries(
   ENTITY_SLICE_NAMES.map((name) => [
     name,

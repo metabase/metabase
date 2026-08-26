@@ -146,10 +146,10 @@
     (fn [object]
       (try
         (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
-          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+          (log/debugf "Parsed metadata %s %s" object-type (:id parsed))
           parsed)
         (catch #?(:cljs js/Error :clj Exception) e
-          (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
+          (log/errorf "Error parsing %s: %s" object-type (ex-message e))
           nil)))))
 
 (defmulti ^:private parse-objects
@@ -228,8 +228,7 @@
 
 (defmethod excluded-keys :field
   [_object-type]
-  #{:_comesFromEndpoint
-    :database
+  #{:database
     :metrics
     :table})
 
@@ -524,6 +523,8 @@
   [_object-type]
   (fn [k v]
     (case k
+      ;; TODO (Cam 2026-07-06) not sure this is needed since this should be done automatically as part of normalizing
+      ;; a `:metabase.lib.schema.metadata/native-query-snippet` these days
       :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map
                                               #?(:cljs (js->clj v)
                                                  :clj  v))
@@ -534,7 +535,7 @@
     (try
       (parse-objects object-type metadata)
       (catch #?(:cljs js/Error :clj Exception) e
-        (log/errorf e "Error parsing %s objects: %s" object-type (ex-message e))
+        (log/errorf "Error parsing %s objects: %s" object-type (ex-message e))
         nil))))
 
 (defn- card->metric-card

@@ -19,7 +19,10 @@ import type {
 import { isAbortError } from "metabase/api/client";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type Question from "metabase-lib/v1/Question";
-import type { ParameterValuesMap } from "metabase-types/api";
+import type {
+  ParameterValuesMap,
+  QueryVisualizationDisplayType,
+} from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 type LoadQuestionResult = Promise<
@@ -60,6 +63,7 @@ export interface LoadQuestionHookResult {
 type UseLoadQuestionParams = LoadSdkQuestionParams & {
   isGuestEmbed: boolean;
   token: EntityToken | null | undefined;
+  initialVisualization?: QueryVisualizationDisplayType;
 };
 
 export function useLoadQuestion({
@@ -70,6 +74,7 @@ export function useLoadQuestion({
   deserializedCard,
   initialSqlParameters,
   targetDashboardId,
+  initialVisualization,
 }: UseLoadQuestionParams): LoadQuestionHookResult {
   const dispatch = useSdkDispatch();
 
@@ -142,6 +147,7 @@ export function useLoadQuestion({
         parameterValues: questionState.parameterValues,
         signal: nextSignal(),
         dispatch,
+        initialVisualization,
       });
 
       mergeQuestionState(results);
@@ -185,6 +191,7 @@ export function useLoadQuestion({
     sqlParameterKey,
     questionId,
     targetDashboardId,
+    initialVisualization,
   ]);
 
   const [runQuestionState, queryQuestion] = useAsyncFn(async () => {

@@ -107,7 +107,7 @@ export interface TableMetadataQuery {
   include_editable_data_model?: boolean;
 }
 
-export interface TableListQuery {
+export type TableListQuery = {
   dbId?: DatabaseId;
   schemaName?: string;
   include_hidden?: boolean;
@@ -123,7 +123,8 @@ export interface TableListQuery {
   "owner-email"?: string | null;
   "unused-only"?: boolean | null;
   "orphan-only"?: boolean;
-}
+  "published-only"?: boolean | null;
+};
 
 export interface ForeignKey {
   origin?: Field;

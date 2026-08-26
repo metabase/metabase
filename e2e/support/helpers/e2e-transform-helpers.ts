@@ -76,6 +76,7 @@ export function waitForSucceededTransformRuns() {
 
 export function createMbqlTransform({
   sourceTable,
+  sourceSchema,
   targetTable,
   targetSchema,
   tagIds,
@@ -85,6 +86,7 @@ export function createMbqlTransform({
   collectionId,
 }: {
   sourceTable: string;
+  sourceSchema?: string | null;
   targetTable: string;
   targetSchema: string | null;
   tagIds?: TransformTagId[];
@@ -93,7 +95,11 @@ export function createMbqlTransform({
   visitTransform?: boolean;
   collectionId?: CollectionId | null;
 }) {
-  return getTableId({ databaseId, name: sourceTable }).then((tableId) => {
+  return getTableId({
+    databaseId,
+    name: sourceTable,
+    schema: sourceSchema ?? undefined,
+  }).then((tableId) => {
     return createTransform(
       {
         name,

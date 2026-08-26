@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
-import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -11,7 +11,6 @@ import type { NativeQuerySnippet, RowValue } from "metabase-types/api";
 
 import { DataReference } from "../../../../components/DataReference/DataReference";
 import { SnippetSidebar } from "../../../../components/SnippetSidebar";
-import { getSampleDatabaseId } from "../../../../selectors";
 
 import S from "./NativeQuerySidebar.module.css";
 
@@ -32,6 +31,7 @@ type NativeQuerySidebarProps = {
   parameterValues: Record<string, RowValue>;
   setParameterValues: (newParameterValues: Record<string, RowValue>) => void;
   parametersAreUserVisible?: boolean;
+  canUseSampleDatabase?: boolean;
 };
 
 export function NativeQuerySidebar({
@@ -100,6 +100,7 @@ function QueryDataReferenceSidebar({
       popDataReferenceStack={popDataReferenceStack}
       pushDataReferenceStack={pushDataReferenceStack}
       onClose={toggleDataReference}
+      databaseId={question.databaseId() ?? undefined}
     />
   );
 }
@@ -131,8 +132,12 @@ function TemplateTagsSidebar({
   parameterValues,
   parametersAreUserVisible,
   onChangeQuery,
+  canUseSampleDatabase,
 }: NativeQuerySidebarProps) {
-  const sampleDatabaseId = useSelector(getSampleDatabaseId);
+  const { data: databases } = useListDatabasesQuery();
+  const sampleDatabaseId = databases?.data.find(
+    (database) => database.is_sample,
+  )?.id;
 
   // The template-tag editor fires several query mutations within a single event
   // handler (e.g. switching a variable's type updates both the tag and its
@@ -152,7 +157,9 @@ function TemplateTagsSidebar({
       question={question}
       query={question.legacyNativeQuery()!}
       onClose={onToggleTemplateTagsSidebar}
-      sampleDatabaseId={sampleDatabaseId}
+      sampleDatabaseId={
+        canUseSampleDatabase === false ? undefined : sampleDatabaseId
+      }
       setTemplateTag={(tag) => {
         const currentQuery = latestQueryRef.current;
         const templateTags = Lib.templateTags(currentQuery);

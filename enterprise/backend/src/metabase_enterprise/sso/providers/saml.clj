@@ -65,7 +65,7 @@
     attrs))
 
 (methodical/defmethod auth-identity/authenticate :provider/saml
-  [_provider {:keys [redirect-url] :as request}]
+  [_provider {:keys [redirect-url relay-state] :as request}]
   (cond
     (not (sso-settings/saml-enabled))
     {:success? false
@@ -76,8 +76,11 @@
     (= (:request-method request) :get)
     (try
       (let [idp-url (sso-settings/saml-identity-provider-uri)
-            relay-state (when redirect-url
-                          (u/encode-base64 redirect-url))
+            ;; Callers may pass an explicit `:relay-state` (short server-side key);
+            ;; otherwise fall back to Base64-encoding the continue URL.
+            relay-state (or relay-state
+                            (when redirect-url
+                              (u/encode-base64 redirect-url)))
             response (saml/idp-redirect-response {:request-id (str "id-" (random-uuid))
                                                   :sp-name (sso-settings/saml-application-name)
                                                   :issuer (sso-settings/saml-application-name)
@@ -90,7 +93,7 @@
          :redirect-url (get-in response [:headers "location"])
          :message "Redirecting to SAML provider"})
       (catch Throwable e
-        (log/errorf e "Error generating SAML request: %s" (.getMessage e))
+        (log/errorf "Error generating SAML request: %s" (.getMessage e))
         {:success? false
          :error :saml-request-generation-failed
          :message (str (tru "Error generating SAML request"))}))
@@ -126,7 +129,7 @@
                                     (sso-settings/saml-attribute-email)))
                           {:status-code 400
                            :user-attributes (keys user-attributes)})))
-        (log/infof "Successfully authenticated SAML assertion for: %s %s" first-name last-name)
+        (log/debug "Successfully authenticated SAML assertion")
         {:success? true
          :user-data {:email email
                      :first_name first-name
@@ -138,12 +141,12 @@
                      :user-attributes user-attributes}
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e
-        (log/errorf e "SAML authentication failed: %s" (.getMessage e))
+        (log/errorf "SAML authentication failed: %s" (.getMessage e))
         {:success? false
          :error (or (:error (ex-data e)) :authentication-failed)
          :message (.getMessage e)})
       (catch Exception e
-        (log/errorf e "Unexpected error during SAML authentication: %s" (.getMessage e))
+        (log/errorf "Unexpected error during SAML authentication: %s" (.getMessage e))
         {:success? false
          :error :server-error
          :message (str (tru "Unable to log in: SAML response validation failed"))}))))

@@ -137,6 +137,7 @@ export function useTableLoader(path: TreePath) {
           // fetch the tables immediately so we can render a flattened tree.
           if (schemaName === UNNAMED_SCHEMA_NAME || schemas.length === 1) {
             schema.children = await getTables(databaseId, schemaName);
+            schema.loaded = true;
           }
           return schema;
         }) ?? [],
@@ -155,19 +156,24 @@ export function useTableLoader(path: TreePath) {
       ]);
 
       const newTree: TreeNode = rootNode(
-        databases.map((database) => ({
-          ...database,
-          children:
-            database.value.databaseId !== databaseId
-              ? database.children
-              : schemas.map((schema) => ({
-                  ...schema,
-                  children:
-                    schema.value.schemaName !== schemaName
-                      ? schema.children
-                      : tables,
-                })),
-        })),
+        databases.map((database) => {
+          if (database.value.databaseId !== databaseId) {
+            return database;
+          }
+          // We just fetched this database's schemas, so its children are
+          // complete even when the result is empty.
+          return {
+            ...database,
+            loaded: true,
+            children: schemas.map((schema) => {
+              if (schema.value.schemaName !== schemaName) {
+                return schema;
+              }
+              // We just fetched this schema's tables, so mark it loaded too.
+              return { ...schema, loaded: true, children: tables };
+            }),
+          };
+        }),
       );
       setTree((current) => {
         const merged = merge(current, newTree);

@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -92,3 +93,39 @@
       (testing "returns 404 when deleting non-existent entry"
         (is (= "Not found."
                (mt/user-http-request :crowberto :delete 404 "glossary/99999")))))))
+
+(deftest glossary-authorization-test
+  (testing "Only data analysts (or superusers) can mutate glossary entries"
+    (mt/with-model-cleanup [:model/Glossary]
+      (mt/with-temp [:model/Glossary {gid :id} {:term       "Existing"
+                                                :definition "An existing entry"
+                                                :creator_id (mt/user->id :crowberto)}]
+        (testing "regular authenticated users cannot mutate the glossary"
+          (testing "POST is forbidden"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "glossary"
+                                         {:term "Hacked" :definition "Tampered"}))))
+          (testing "PUT is forbidden"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 (str "glossary/" gid)
+                                         {:term "Hacked" :definition "Tampered"}))))
+          (testing "DELETE is forbidden"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :delete 403 (str "glossary/" gid)))))
+          (testing "the entry was not modified"
+            (is (=? {:term "Existing" :definition "An existing entry"}
+                    (t2/select-one :model/Glossary :id gid)))))
+        (testing "regular users can still read the glossary"
+          (is (mt/user-http-request :rasta :get 200 "glossary")))))
+    (testing "data analysts can mutate the glossary"
+      (mt/with-model-cleanup [:model/Glossary]
+        (mt/with-temp [:model/User {analyst-id :id} {:is_data_analyst true}
+                       :model/PermissionsGroupMembership _ {:user_id  analyst-id
+                                                            :group_id (:id (perms-group/data-analyst))}]
+          (let [{gid :id} (mt/user-http-request analyst-id :post 200 "glossary"
+                                                {:term "Analyst" :definition "Created by analyst"})]
+            (is (pos-int? gid))
+            (is (=? {:definition "Edited by analyst"}
+                    (mt/user-http-request analyst-id :put 200 (str "glossary/" gid)
+                                          {:term "Analyst" :definition "Edited by analyst"})))
+            (is (nil? (mt/user-http-request analyst-id :delete 204 (str "glossary/" gid))))))))))

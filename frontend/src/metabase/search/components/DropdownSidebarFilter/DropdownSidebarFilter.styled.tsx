@@ -14,7 +14,7 @@ export const DropdownFieldSet = styled(FieldSet)<{
     ${({ fieldHasValueOrFocus }) =>
       fieldHasValueOrFocus
         ? "var(--mb-color-core-brand)"
-        : "var(--mb-color-border)"};
+        : "var(--mb-color-border-neutral)"};
   margin: 0;
   padding: 0.5rem 0.75rem;
   cursor: pointer;

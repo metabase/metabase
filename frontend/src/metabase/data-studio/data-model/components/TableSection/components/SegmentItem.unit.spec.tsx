@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { createMockSegment } from "metabase-types/api/mocks";
 
@@ -18,7 +17,7 @@ describe("SegmentItem", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <SegmentItem segment={segment} href={segmentUrl} />}
+        element={<SegmentItem segment={segment} href={segmentUrl} />}
       />,
       { withRouter: true },
     );
@@ -41,7 +40,7 @@ describe("SegmentItem", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => <SegmentItem segment={segment} href="/test" />}
+        element={<SegmentItem segment={segment} href="/test" />}
       />,
       { withRouter: true },
     );

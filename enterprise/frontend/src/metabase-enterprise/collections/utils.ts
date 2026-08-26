@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import type {
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { useGetIconBase } from "metabase/hooks/use-icon";
 import { type ItemWithCollection, PLUGIN_LIBRARY } from "metabase/plugins";
@@ -45,7 +45,7 @@ export function getCollectionType({
 }
 
 export function isInstanceAnalyticsCollection(
-  collection?: Pick<Collection, "type">,
+  collection?: Pick<Collection, "type"> | null,
 ): boolean {
   return (
     !!collection && getCollectionType(collection).type === "instance-analytics"
@@ -67,6 +67,7 @@ export const useGetIcon = () => {
       { isTenantUser = false }: { isTenantUser?: boolean } = {},
     ): IconData => {
       const collectionType = getCollectionType({
+        // Unjustified type cast. FIXME
         type: (item.type as CollectionType) || item.collection_type,
       }).type;
       if (collectionType === "instance-analytics") {

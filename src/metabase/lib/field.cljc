@@ -13,6 +13,7 @@
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -604,16 +605,21 @@
         matching-ref (lib.equality/find-matching-ref column field-refs)]
     (if matching-ref
       (do
-        (log/debugf "Column %s already included by ref %s, doing nothing and returning the original query"
-                    (pr-str (select-keys column [:id :lib/join-alias :lib/source-column-alias]))
-                    (pr-str matching-ref))
+        (log/debugf "Column %s already included by an existing ref, doing nothing and returning the original query"
+                    (:id column))
         query)
       (let [column-ref (lib.ref/ref column)]
         (lib.util/update-query-stage populated stage-number update :fields conj column-ref)))))
 
 (defn- add-field-to-join [query stage-number column]
-  (let [column-ref   (lib.ref/ref column)
-        [join field] (first (for [join  (lib.join/joins query stage-number)
+  (let [column-ref (lib.ref/ref column)
+        join-alias (lib.join.util/current-join-alias column)
+        joins (lib.join/joins query stage-number)
+        joins (if-let [join-with-alias (and join-alias
+                                            (m/find-first #(= (:alias %) join-alias) joins))]
+                [join-with-alias]
+                joins)
+        [join field] (first (for [join  joins
                                   :let [joinables (lib.join/joinable-columns query stage-number join)
                                         field     (lib.equality/find-matching-column
                                                    query stage-number column-ref joinables)]
@@ -657,7 +663,7 @@
     (when (and (empty? (:fields stage))
                (not (#{:source/implicitly-joinable :source/joins} source)))
       (log/warnf "[add-field] stage :fields is empty, which means everything will already be included; attempt to add %s will no-op"
-                 (pr-str ((some-fn :display-name :name) column))))
+                 (:id column)))
     (-> (case source
           (:source/table-defaults
            :source/card
@@ -678,9 +684,9 @@
 
 (defn- remove-matching-ref [column refs]
   (let [match (or (lib.equality/find-matching-ref column refs)
-                  (log/warnf "[remove-matching-ref] Failed to find match for column\n%s\nin refs:\n%s"
-                             (u/pprint-to-str column)
-                             (u/pprint-to-str refs)))]
+                  (log/warnf "[remove-matching-ref] Failed to find match for column %s in %d refs"
+                             (:id column)
+                             (count refs)))]
     (remove #(= % match) refs)))
 
 (defn- exclude-field
@@ -696,7 +702,7 @@
                ;; If we couldn't find the field, return the original query unchanged.
                (< (count new-fields) (count old-fields)) (lib.util/update-query-stage stage-number assoc :fields new-fields))
       (when (= <> query)
-        (log/errorf "[exclude-field] Failed to remove field %s, query is unchanged." (pr-str ((some-fn :display-name :name) column)))))))
+        (log/errorf "[exclude-field] Failed to remove field %s, query is unchanged." (:id column))))))
 
 (defn- remove-field-from-join [query stage-number column]
   (let [join        (lib.join/resolve-join query stage-number (:lib/join-alias column))

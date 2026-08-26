@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.calculation :as calculation]
+   [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
@@ -65,6 +66,27 @@
               :segment #{}
               :table #{checkins-id venues-id users-id}}
              (calculation/calculate-deps :card card))))))
+
+(deftest ^:parallel upstream-deps-metric-dimension-mappings-test
+  (testing "a metric v2's dimension mappings contribute their columns' tables as dependencies, even
+            when the base query doesn't reference them"
+    (let [mp            (mt/metadata-provider)
+          venues-id     (mt/id :venues)
+          categories-id (mt/id :categories)
+          base-query    (-> (lib/query mp (lib.metadata/table mp venues-id))
+                            (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card metric {:type               :metric
+                                         :dataset_query      base-query
+                                         :dimension_mappings [{:type         :table
+                                                               :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                               :table-id     categories-id
+                                                               :target       [:field {} (mt/id :categories :name)]}]}]
+        (is (= {:card    #{}
+                :measure #{}
+                :segment #{}
+                :table   #{venues-id categories-id}}
+               (calculation/calculate-deps :card metric))
+            "the mapped column's table (categories) is a dependency alongside the query's own table (venues)")))))
 
 (deftest ^:parallel upstream-deps-card-implicit-join-filter-test
   (let [mp (mt/metadata-provider)
@@ -429,6 +451,23 @@
               :table #{products-id}}
              (calculation/calculate-deps :document document))))))
 
+(deftest ^:parallel upstream-deps-document-placeholder-ids-test
+  (testing "nil/zero placeholder ids in smartLink and cardEmbed nodes are not collected as deps"
+    (let [document {:content_type "application/json+vnd.prose-mirror"
+                    :document {:type "doc"
+                               :content [{:type "paragraph"
+                                          :content [{:type "smartLink"
+                                                     :attrs {:entityId nil :model "card"}}
+                                                    {:type "smartLink"
+                                                     :attrs {:entityId 0 :model "dashboard"}}
+                                                    {:type "smartLink"
+                                                     :attrs {:entityId 17 :model "card"}}]}
+                                         {:type "cardEmbed" :attrs {:id nil}}
+                                         {:type "cardEmbed" :attrs {:id 0}}
+                                         {:type "cardEmbed" :attrs {:id 23}}]}}]
+      (is (= {:card #{17 23}}
+             (calculation/calculate-deps :document document))))))
+
 (deftest upstream-deps-sandbox-test
   (mt/with-premium-features #{:sandboxes}
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "sandbox group"}
@@ -616,3 +655,25 @@
                                                                  (lib/aggregate (lib/sum-where quantity (lib/ref segment-meta))))}]
             (is (= {:measure #{} :segment #{segment-id} :table #{orders-id}}
                    (calculation/calculate-deps :measure measure)))))))))
+
+(deftest ^:parallel non-integer-ids-are-discarded-during-extraction-test
+  (testing "a document smartLink whose entityId is a map is dropped rather than forwarded"
+    (is (empty? (#'calculation/document-deps
+                 {:content_type prose-mirror/prose-mirror-content-type
+                  :document {:type "doc"
+                             :content [{:type "smartLink"
+                                        :attrs {:model "card" :entityId {:raw "x"}}}]}}))))
+  (testing "a dashcard click_behavior whose targetId is a map is dropped"
+    (let [deps (calculation/calculate-deps*
+                :dashboard
+                {:dashcards [{:visualization_settings
+                              {:click_behavior {:linkType "question"
+                                                :targetId {:raw "x"}}}}]})]
+      (is (empty? (:card deps)))
+      (is (empty? (:dashboard deps)))))
+  (testing "a legitimate integer targetId is still collected"
+    (let [deps (calculation/calculate-deps*
+                :dashboard
+                {:dashcards [{:visualization_settings
+                              {:click_behavior {:linkType "question" :targetId 7777}}}]})]
+      (is (= #{7777} (:card deps))))))

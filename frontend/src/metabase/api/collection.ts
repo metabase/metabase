@@ -1,10 +1,8 @@
-import {
-  CollectionSchema,
-  ObjectUnionSchema,
-  SnippetCollectionSchema,
-} from "metabase/schema";
+import { ObjectUnionSchema } from "metabase/schema";
 import type {
   Collection,
+  CollectionItemModel,
+  CollectionPermissionsGraph,
   CreateCollectionRequest,
   DeleteCollectionRequest,
   GetCollectionDashboardQuestionCandidatesRequest,
@@ -15,6 +13,7 @@ import type {
   ListCollectionsTreeRequest,
   MoveCollectionDashboardCandidatesRequest,
   MoveCollectionDashboardCandidatesResult,
+  UpdateCollectionPermissionsGraphRequest,
   UpdateCollectionRequest,
   getCollectionRequest,
 } from "metabase-types/api";
@@ -30,21 +29,12 @@ import {
 } from "./tags";
 import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
-const flattenCollectionTree = (tree: Collection[]): Collection[] =>
-  tree.flatMap((collection) => [
-    collection,
-    ...flattenCollectionTree(collection.children ?? []),
-  ]);
-
-// Snippet collections live in their own entity slice (`snippetCollections`),
-// so hydrating them through `CollectionSchema` would clobber regular
-// collections. Hydrate through the matching schema instead.
-const collectionSchemaForRequest = (
-  request: { namespace?: string | null } | void,
-) =>
-  request?.namespace === "snippets"
-    ? SnippetCollectionSchema
-    : CollectionSchema;
+const getCollectionItemTagModels = (
+  models: ListCollectionItemsRequest["models"],
+): CollectionItemModel[] | undefined =>
+  models?.filter(
+    (model): model is CollectionItemModel => model !== "no_models",
+  );
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -61,11 +51,6 @@ export const collectionApi = Api.injectEndpoints({
         }),
         providesTags: (collections = []) =>
           provideCollectionListTags(collections),
-        onQueryStarted: (request, lifecycle) =>
-          hydrateMetadataStore([collectionSchemaForRequest(request)])(
-            request,
-            lifecycle,
-          ),
       },
     ),
     listCollectionsTree: builder.query<
@@ -81,11 +66,6 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionListTags(collections),
         "collection-tree",
       ],
-      onQueryStarted: (request, lifecycle) =>
-        hydrateMetadataStore<Collection[]>(
-          [collectionSchemaForRequest(request)],
-          flattenCollectionTree,
-        )(request, lifecycle),
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
@@ -97,7 +77,10 @@ export const collectionApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (response, error, { models, id }) => [
-        ...provideCollectionItemListTags(response?.data ?? [], models),
+        ...provideCollectionItemListTags(
+          response?.data ?? [],
+          getCollectionItemTagModels(models),
+        ),
         { type: "collection", id: `${id}-items` },
       ],
       onQueryStarted: hydrateMetadataStore<ListCollectionItemsResponse>(
@@ -116,11 +99,26 @@ export const collectionApi = Api.injectEndpoints({
       },
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
-      onQueryStarted: (request, lifecycle) =>
-        hydrateMetadataStore(collectionSchemaForRequest(request))(
-          request,
-          lifecycle,
-        ),
+    }),
+    getCollectionPermissionsGraph: builder.query<
+      CollectionPermissionsGraph,
+      { namespace?: string } | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/collection/graph",
+        params: params ?? undefined,
+      }),
+    }),
+    updateCollectionPermissionsGraph: builder.mutation<
+      CollectionPermissionsGraph,
+      UpdateCollectionPermissionsGraphRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/collection/graph?skip-graph=true",
+        body,
+      }),
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({
@@ -220,6 +218,8 @@ export const {
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
   useGetCollectionQuery,
+  useGetCollectionPermissionsGraphQuery,
+  useUpdateCollectionPermissionsGraphMutation,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,
   useDeleteCollectionMutation,

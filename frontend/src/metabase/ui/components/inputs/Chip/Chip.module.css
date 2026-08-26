@@ -1,22 +1,77 @@
 .ChipLabel {
-  background-color: var(--mb-color-background-brand);
-  color: var(--mb-color-core-brand);
-  padding: 0.5rem 1rem;
-  display: block;
-  height: auto;
-  line-height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  height: var(--chip-size);
+  padding-inline: var(--chip-padding);
+  border-radius: 9999px;
+  font-weight: 600;
+  line-height: 1rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
 
-  &[data-checked="true"] {
-    padding-inline: 1rem;
-    background-color: var(--mb-color-core-brand);
-    color: var(--mb-color-text-primary-inverse);
-  }
+.ChipRoot .ChipLabel:not([data-disabled]) {
+  border: none;
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-primary);
+}
+
+.ChipRoot .ChipLabel:not([data-disabled]):hover {
+  background-color: var(--mb-color-background_surface-secondary-hover);
+}
+
+.ChipRoot .ChipLabel:not([data-disabled]):active {
+  background-color: var(--mb-color-background_surface-secondary-pressed);
+}
+
+.ChipRoot[data-variant="light"] .ChipLabel[data-checked]:not([data-disabled]) {
+  background-color: var(--mb-color-background_surface-brand-subtle);
+  color: var(--mb-color-text-brand-strong);
+}
+
+.ChipRoot[data-variant="light"]
+  .ChipLabel[data-checked]:not([data-disabled]):hover,
+.ChipRoot[data-variant="light"]
+  .ChipLabel[data-checked]:not([data-disabled]):active {
+  background-color: var(--mb-color-background_surface-brand-subtle-hover);
+  color: var(--mb-color-text-brand-strong-hover);
+}
+
+.ChipRoot[data-variant="filled"] .ChipLabel[data-checked]:not([data-disabled]) {
+  background-color: var(--mb-color-background_surface-brand-strong);
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.ChipRoot[data-variant="filled"]
+  .ChipLabel[data-checked]:not([data-disabled]):hover,
+.ChipRoot[data-variant="filled"]
+  .ChipLabel[data-checked]:not([data-disabled]):active {
+  background-color: var(--mb-color-background_surface-brand-strong-hover);
+}
+
+.ChipRoot .ChipLabel[data-disabled] {
+  border: none;
+  background-color: var(--mb-color-background_surface-disabled);
+  color: var(--mb-color-text-disabled);
+  cursor: default;
 }
 
 .ChipIconWrapper {
-  display: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin: 0;
 }
 
-.ChipInput {
-  display: block;
+.ChipCheckIcon {
+  width: 0.55rem;
+  height: auto;
+  color: currentColor;
 }

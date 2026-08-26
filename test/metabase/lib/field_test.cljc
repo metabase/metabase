@@ -651,6 +651,15 @@
                        (m/find-first (comp #{"myadd"} :name))
                        (lib/available-binning-strategies query)))))))
 
+(deftest ^:parallel available-binning-strategies-entity-key-test
+  (testing "PK/FK columns offer no binning strategies or temporal buckets (metabase#16787, metabase#17768)"
+    (let [query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          id      (meta/field-metadata :orders :id)
+          user-id (meta/field-metadata :orders :user-id)]
+      (is (empty? (lib/available-binning-strategies query id)))
+      (is (empty? (lib/available-binning-strategies query user-id)))
+      (is (empty? (lib/available-temporal-buckets query user-id))))))
+
 (deftest ^:parallel binning-display-info-test
   (testing "numeric binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -1912,7 +1921,7 @@
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
-    (let [name-field (lib.metadata/field meta/metadata-provider (meta/id :venues :name))
+    (let [name-field (meta/field-metadata :venues :name)
           metadata-provider (lib.tu/merged-mock-metadata-provider
                              meta/metadata-provider
                              {:fields [{:id  (meta/id :venues :id)
@@ -2580,3 +2589,52 @@
            (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "a1898aa6-4928-4e97-837d-e440ce21085e")))
     (is (nil? (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "00000000-0000-0000-0000-000000000002")))
     (is (nil? (#'lib.field/find-stage-index-and-clause-by-uuid query 0  "a1898aa6-4928-4e97-837d-e440ce21085e")))))
+
+(deftest ^:parallel add-field-to-join-disambiguated-by-join-alias-test
+  (testing "adding a column back to a join that matches a column from a joined native model works (#64779)"
+    (let [id-col (-> (meta/field-metadata :products :id)
+                     (dissoc :table-id :id :fk-target-field-id))
+          mp (lib.tu/metadata-provider-with-mock-card {:lib/type        :metadata/card
+                                                       :id              1
+                                                       :database-id     (meta/id)
+                                                       :name            "Products ID model"
+                                                       :type            :model
+                                                       :dataset-query   {:database (meta/id)
+                                                                         :type     :native
+                                                                         :native   {:query "SELECT ID FROM PRODUCTS"}}
+                                                       :result-metadata [id-col]})
+          native-model       (lib.metadata/card mp 1)
+          model-id           (-> (lib/query mp native-model) lib/returned-columns first)
+          products-table     (lib.metadata/table mp (meta/id :products))
+          products-id        (lib.metadata/field mp (meta/id :products :id))
+          reviews-table      (lib.metadata/table mp (meta/id :reviews))
+          reviews-product-id (lib.metadata/field mp (meta/id :reviews :product-id))
+          query (-> (lib/query mp products-table)
+                    (lib/join (lib/join-clause native-model [(lib/= products-id model-id)]))
+                    (lib/join (lib/join-clause reviews-table [(lib/= products-id reviews-product-id)])))
+          reviews? #(= (:lib/original-join-alias %) "Reviews")
+          query-without-reviews-cols (reduce #(lib/remove-field %1 -1 %2)
+                                             query
+                                             (filter reviews? (lib/visible-columns query)))
+          reviews-id (m/find-first #(and (= (:name %) "ID") (reviews? %))
+                                   (lib/visible-columns query-without-reviews-cols))]
+      (testing "check every reviews column has been unselected"
+        (is (= :none
+               (->> (lib/joins query-without-reviews-cols)
+                    (m/find-first #(= (:alias %) "Reviews"))
+                    (lib/join-fields)))))
+      (let [query-with-reviews-id (lib/add-field query-without-reviews-cols -1 reviews-id)
+            query-joins (lib/joins query-with-reviews-id)]
+        (testing "reviews.ID is added to the Reviews join, not the ID column in the native model join"
+          (is (=? [[:field {:join-alias "Reviews"} (meta/id :reviews :id)]]
+                  (->> query-joins
+                       (m/find-first #(= (:alias %) "Reviews"))
+                       (lib/join-fields)))))
+        (testing "the native model join remains the same"
+          (is (= :all
+                 (->> query-joins
+                      (m/find-first #(= (:alias %) "Products ID model"))
+                      (lib/join-fields)))))
+        (testing "Reviews.ID is now returned by the query"
+          (is (some #(= (:id %) (meta/id :reviews :id))
+                    (lib/returned-columns query-with-reviews-id))))))))

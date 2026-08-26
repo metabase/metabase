@@ -9,18 +9,18 @@
       background-color: color-mix(
         in srgb,
         var(--mb-color-core-filter) 10%,
-        var(--mb-color-white)
+        var(--mb-color-core-white)
       );
       border-color: color-mix(
         in srgb,
         var(--mb-color-core-filter) 40%,
-        var(--mb-color-white)
+        var(--mb-color-core-white)
       );
     }
 
     /* this prevents the divider between the button group from changing color */
     &:hover&.FiltersActive {
-      border-right-color: var(--mb-color-border);
+      border-right-color: var(--mb-color-border-neutral);
     }
   }
 }
@@ -51,12 +51,12 @@
       background-color: color-mix(
         in srgb,
         var(--mb-color-core-filter) 10%,
-        var(--mb-color-white)
+        var(--mb-color-core-white)
       );
       border-color: color-mix(
         in srgb,
         var(--mb-color-core-filter) 40%,
-        var(--mb-color-white)
+        var(--mb-color-core-white)
       );
     }
 
@@ -79,7 +79,7 @@
   background-color: color-mix(
     in srgb,
     var(--mb-color-core-filter) 15%,
-    var(--mb-color-white)
+    var(--mb-color-core-white)
   );
 }
 
@@ -93,12 +93,12 @@
     border-color: color-mix(
       in srgb,
       var(--mb-color-core-summarize) 40%,
-      var(--mb-color-white)
+      var(--mb-color-core-white)
     );
     background-color: color-mix(
       in srgb,
       var(--mb-color-core-summarize) 15%,
-      var(--mb-color-white)
+      var(--mb-color-core-white)
     );
   }
 }
@@ -113,12 +113,12 @@
     border-color: color-mix(
       in srgb,
       var(--mb-color-core-brand) 40%,
-      var(--mb-color-white)
+      var(--mb-color-core-white)
     );
     background-color: color-mix(
       in srgb,
       var(--mb-color-core-brand) 15%,
-      var(--mb-color-white)
+      var(--mb-color-core-white)
     );
   }
 }
@@ -151,7 +151,7 @@
   }
 
   &:hover {
-    background-color: var(--mb-color-background-secondary);
+    background-color: var(--mb-color-background_page-secondary);
   }
 }
 
@@ -170,7 +170,7 @@
     margin-left: 0;
     width: 100%;
     justify-content: start;
-    border-top: 1px solid var(--mb-color-border);
+    border-top: 1px solid var(--mb-color-border-neutral);
     margin-top: 1rem;
     padding: 0.5rem 1.325rem 0 1.325rem;
   }
@@ -202,7 +202,7 @@
 .ViewHeaderContainer {
   --app-subheader-height: 48px;
 
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 
@@ -234,7 +234,7 @@
 
     &:hover {
       color: var(--mb-color-core-brand);
-      background-color: var(--mb-color-background-tertiary);
+      background-color: var(--mb-color-background_page-tertiary);
     }
   }
 }

@@ -1,16 +1,21 @@
 import userEvent from "@testing-library/user-event";
 import { type ComponentProps, useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { ChartSettingsWidgetPopover } from "metabase/visualizations/components/ChartSettingsWidgetPopover";
+import { SliceNameWidget } from "metabase/visualizations/visualizations/PieChart/SliceNameWidget";
 
 import type { Widget } from "../types";
 
-type PopoverProps = ComponentProps<typeof ChartSettingsWidgetPopover>;
+import { ChartSettingSelect } from "./settings/ChartSettingSelect";
 
-const DEFAULT_PROPS: Pick<PopoverProps, "handleEndShowWidget"> = {
-  handleEndShowWidget: jest.fn(),
-};
+type PopoverProps = ComponentProps<typeof ChartSettingsWidgetPopover>;
 
 const FORMATTING_WIDGET: Widget = {
   id: "column_settings",
@@ -33,8 +38,11 @@ const STYLE_WIDGET: Widget = {
 type SetupProps = Omit<PopoverProps, "anchor" | "handleEndShowWidget">;
 
 const setup = (props: SetupProps) => {
+  const handleEndShowWidget = jest.fn();
+
   const Container = () => {
     const [anchor, setAnchor] = useState<HTMLElement>(document.body);
+    const [isOpen, setIsOpen] = useState(true);
 
     return (
       <>
@@ -47,15 +55,24 @@ const setup = (props: SetupProps) => {
         >
           Anchor
         </p>
-        <ChartSettingsWidgetPopover
-          anchor={anchor}
-          {...DEFAULT_PROPS}
-          {...props}
-        />
+        {isOpen && (
+          <ChartSettingsWidgetPopover
+            anchor={anchor}
+            handleEndShowWidget={() => {
+              handleEndShowWidget();
+              setIsOpen(false);
+            }}
+            {...props}
+          />
+        )}
       </>
     );
   };
-  return renderWithProviders(<Container />);
+
+  return {
+    ...renderWithProviders(<Container />),
+    handleEndShowWidget,
+  };
 };
 
 it("should display when an anchor is passed", async () => {
@@ -93,4 +110,110 @@ it("should change tabs when clicked", async () => {
   await userEvent.click(await screen.findByText("Style"));
 
   expect(await screen.findByText("Bar")).toBeInTheDocument();
+});
+
+describe("Select widgets", () => {
+  const onChange = jest.fn();
+
+  const SELECT_WIDGET: Widget = {
+    id: "column_settings",
+    section: "Formatting",
+    widget: () => (
+      <ChartSettingSelect
+        options={[
+          { name: "Option 1", value: "value1" },
+          { name: "Option 2", value: "value2" },
+        ]}
+        value="value1"
+        onChange={onChange}
+      />
+    ),
+    props: {},
+  };
+
+  beforeEach(() => {
+    onChange.mockClear();
+  });
+
+  it("should render the dropdown outside of the popover's scroll container", async () => {
+    setup({ widgets: [SELECT_WIDGET] });
+
+    await userEvent.click(await screen.findByTestId("chart-setting-select"));
+
+    const scrollContainer = screen.getByTestId(
+      "chart-settings-widget-popover-content",
+    );
+    const option = await screen.findByText("Option 2");
+
+    expect(scrollContainer).not.toContainElement(option);
+  });
+
+  it("should keep the popover open when an option is selected", async () => {
+    setup({ widgets: [SELECT_WIDGET] });
+
+    await userEvent.click(await screen.findByTestId("chart-setting-select"));
+    await userEvent.click(await screen.findByText("Option 2"));
+
+    expect(onChange).toHaveBeenCalledWith("value2");
+    // The popover content (and its select) remains mounted.
+    expect(
+      within(
+        screen.getByTestId("chart-settings-widget-popover-content"),
+      ).getByTestId("chart-setting-select"),
+    ).toBeInTheDocument();
+  });
+
+  it("should close the dropdown when the popover scrolls", async () => {
+    // The dropdown floats past the popover, so it must not linger detached when
+    // the popover scrolls.
+
+    setup({ widgets: [SELECT_WIDGET] });
+
+    await userEvent.click(await screen.findByTestId("chart-setting-select"));
+    expect(await screen.findByText("Option 2")).toBeInTheDocument();
+
+    fireEvent.scroll(
+      screen.getByTestId("chart-settings-widget-popover-content"),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText("Option 2")).not.toBeInTheDocument(),
+    );
+    // The popover itself stays open.
+    expect(
+      screen.getByTestId("chart-settings-widget-popover-content"),
+    ).toBeInTheDocument();
+  });
+});
+
+it("should discard pending slice name changes when Escape is pressed (#75868)", async () => {
+  const updateRowName = jest.fn();
+  const sliceNameWidget: Widget = {
+    id: "pieSliceName",
+    section: "Data",
+    widget: SliceNameWidget,
+    props: {
+      initialKey: "Widget",
+      pieRows: [
+        {
+          key: "Widget",
+          name: "Widget",
+          originalName: "Widget",
+        },
+      ],
+      updateRowName,
+    },
+  };
+  const { handleEndShowWidget } = setup({ widgets: [sliceNameWidget] });
+
+  const input = await screen.findByDisplayValue("Widget");
+  await userEvent.clear(input);
+  await userEvent.type(input, "MyNewName");
+  await userEvent.keyboard("{Escape}");
+
+  await waitFor(() => expect(handleEndShowWidget).toHaveBeenCalledTimes(1));
+  expect(updateRowName).not.toHaveBeenCalled();
+  expect(
+    screen.queryByTestId("chart-settings-widget-popover-content"),
+  ).not.toBeInTheDocument();
 });

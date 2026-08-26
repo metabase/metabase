@@ -19,8 +19,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -79,13 +78,7 @@
             breakouts    (:breakout stage)]
         (and (= (stage-count query) 1)
              (= (count aggregations) 1)
-             (or (empty? breakouts)
-                 (and (= (count breakouts) 1)
-                      (-> (lib.metadata.calculation/metadata query (first breakouts))
-                          ;; extraction units change `:effective-type` to `:type/Integer`, so remove temporal bucketing
-                          ;; before doing type checks
-                          (lib.temporal-bucket/with-temporal-bucket nil)
-                          lib.types.isa/date-or-datetime?)))))))
+             (<= (count breakouts) 1)))))
 
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
@@ -96,24 +89,23 @@
        (:database query)
        (boolean (can-run-method query card-type))))
 
-(defmulti can-save-method
+(defmulti can-save?-method
   "Returns whether the query can be saved based on first stage :lib/type."
   {:arglists '([query card-type])}
   (fn [query _card-type]
     (:lib/type (lib.util/query-stage query 0))))
 
-(defmethod can-save-method :default
+(defmethod can-save?-method :default
   [_query _card-type]
   true)
 
-;;; TODO FIXME -- boolean functions should end in `?`
-(mu/defn can-save :- :boolean
+(mu/defn can-save? :- :boolean
   "Returns whether `query` for a card of `card-type` can be saved."
   [query :- ::lib.schema/query
    card-type :- ::lib.schema.metadata/card.type]
   (and (lib.metadata/editable? query)
        (can-run query card-type)
-       (boolean (can-save-method query card-type))))
+       (boolean (can-save?-method query card-type))))
 
 (mu/defn can-preview :- :boolean
   "Returns whether the query can be previewed.
@@ -128,7 +120,7 @@
   [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
   (if-let [field-ids (match/match-many x
                        [:field
-                        (_opts :guard (and (map? _opts) (not (and (:base-type _opts) (:effective-type _opts)))))
+                        (opts :guard (and (map? opts) (not (and (:base-type opts) (:effective-type opts)))))
                         (id :guard (and (integer? id) (pos? id)))]
                        (when-not (some #{:mbql/stage-metadata} &parents)
                          id))]
@@ -176,18 +168,19 @@
 
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
-  (try
-    (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-                        (lib.convert/->mbql5 (mbql.normalize/normalize-or-throw legacy-query)))
-          mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
-          mbql5-query (add-types-to-fields mbql5-query mp)]
-      (merge
-       mbql5-query
-       (query-with-stages mp (:stages mbql5-query))))
-    (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
-                      {:legacy-query legacy-query}
-                      e)))))
+  (lib.util/recover
+   (fn []
+     (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+                         (lib.convert/->mbql5 (mbql.normalize/normalize-or-throw legacy-query)))
+           mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
+           mbql5-query (add-types-to-fields mbql5-query mp)]
+       (merge
+        mbql5-query
+        (query-with-stages mp (:stages mbql5-query)))))
+   (fn [e]
+     (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
+                     {:legacy-query legacy-query}
+                     e)))))
 
 (defmulti ^:private query-method
   "Implementation for [[query]]."
@@ -328,11 +321,6 @@
        lib.convert/->mbql5
        (query metadata-providerable)))
 
-(defn ->legacy-MBQL
-  "Convert the MBQL 5 `a-query` into a legacy MBQL query."
-  [a-query]
-  (-> a-query lib.convert/->legacy-MBQL))
-
 (mu/defn with-different-table :- ::lib.schema/query
   "Changes an existing query to use a different source table or card.
    Can be passed an integer table id or a legacy `card__<id>` string."
@@ -438,8 +426,7 @@
              {:query        (query a-query card)
               :stage-number -1}
              (do
-               (log/warn "Failed to wrap native query with MBQL; card not found" {:query   a-query
-                                                                                  :card-id card-id})
+               (log/warn "Failed to wrap native query with MBQL; card not found" {:card-id card-id})
                nil)))
       {:query        a-query
        :stage-number stage-number}))
@@ -451,13 +438,16 @@
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
 
-(defn- template-tag-stages
-  [template-tags]
-  (for [{:keys [card-id snippet-id] tag-type :type} (vals template-tags)
-        :when (#{:card :snippet} tag-type)]
-    (case tag-type
-      :card {:source-card card-id}
-      :snippet {:source-snippet-id snippet-id})))
+(mu/defn- template-tag-stages
+  ;; works with either map or sequence of template tags because Native Query Snippets still store them as a map at the
+  ;; time of this writing
+  [template-tags :- [:maybe ::lib.schema.template-tag/template-tag-map-or-sequence]]
+  (let [template-tags (lib.normalize/normalize ::lib.schema.template-tag/template-tags template-tags)]
+    (for [{:keys [card-id snippet-id] tag-type :type} template-tags
+          :when                                       (#{:card :snippet} tag-type)]
+      (case tag-type
+        :card    {:source-card card-id}
+        :snippet {:source-snippet-id snippet-id}))))
 
 (defn- stage-seq* [query-fragment]
   (cond

@@ -33,6 +33,18 @@
                   (is (= exact (#'metrics/active-index-size))))
                 (testing "returns an exact count on H2"
                   (is (= exact (#'metrics/active-index-size)))))))))))
+  (testing "is accurate immediately after a fresh index table is rotated in (no waiting for autoanalyze) -- see #75064"
+    (search.tu/with-temp-index-table
+      (binding [search.ingestion/*force-sync* true]
+        (mt/dataset test-data
+          (mt/with-temp [:model/User       {}           (when-not (t2/exists? :model/User 1) {:id 1})
+                         :model/Collection {col-id :id} {:name "Collection"}
+                         :model/Card       {}           {:name "Quarterly Forecast" :collection_id col-id}]
+            ;; a full (not in-place) reindex populates a pending table, then activates it
+            (search.engine/reindex! :search.engine/appdb {})
+            (let [exact (t2/count (search.index/active-table))]
+              (is (pos? exact))
+              (is (= exact (#'metrics/active-index-size)))))))))
   (testing "returns nil when this instance has no active index to serve from"
     (search.tu/with-temp-index-table
       (reset! @#'search.index/*indexes* {:active nil :pending nil})

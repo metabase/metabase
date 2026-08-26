@@ -5,8 +5,7 @@ import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 
 import {
   TEST_MODEL_CARD,
@@ -16,7 +15,6 @@ import {
   TEST_UNSAVED_NATIVE_CARD,
   TEST_UNSAVED_STRUCTURED_CARD,
   setup,
-  startNewNotebookModel,
   triggerMetadataChange,
   triggerNativeQueryChange,
   triggerNotebookQueryChange,
@@ -40,22 +38,6 @@ describe("QueryBuilder - beforeunload events", () => {
     HTMLElement.prototype.scrollBy = scrollBy;
 
     jest.resetAllMocks();
-  });
-
-  describe("creating models", () => {
-    it("shows custom warning modal when leaving via SPA navigation", async () => {
-      const { mockEventListener } = await setup({
-        card: null,
-        initialRoute: "/model/new",
-        newModelOptionsComponent: NewModelOptions,
-      });
-
-      await startNewNotebookModel();
-
-      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-    });
   });
 
   describe("editing models", () => {

@@ -6,6 +6,7 @@
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (deftest channel-details-is-encrypted
@@ -13,6 +14,26 @@
     (mt/with-model-cleanup [:model/Channel]
       (let [channel (t2/insert-returning-instance! :model/Channel notification.tu/default-can-connect-channel)]
         (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details :channel (:id channel))))))))
+
+(deftest channel-details-json-encoding-test
+  (testing "JSON-encoding a Channel includes :details only for callers who can write it"
+    (mt/with-temp
+      [:model/Channel channel {:name    "prod-webhook"
+                               :type    :channel/http
+                               :active  true
+                               :details {:url         "https://example.com/hook"
+                                         :auth-method "header"
+                                         :auth-info   {:Authorization "Bearer token-value"}}}]
+      (testing "a user who cannot write the channel gets no :details"
+        (mt/with-test-user :rasta
+          (let [encoded (json/encode channel)]
+            (is (not (re-find #"token-value" encoded)))
+            (is (nil? (:details (json/decode+kw encoded))))
+            (testing "but the rest of the channel is still present"
+              (is (re-find #"prod-webhook" encoded))))))
+      (testing "a user who can write the channel still gets :details"
+        (mt/with-test-user :crowberto
+          (is (re-find #"token-value" (json/encode channel))))))))
 
 (deftest deactivate-channel-test
   (mt/with-temp
@@ -55,7 +76,7 @@
         (testing "success"
           (is (some? (insert! {:details {:type    "email/handlebars-resource"
                                          :subject "Hello {{name}}"
-                                         :path    "metabase/channel/email/password_reset.hbs"}}))))
+                                         :path    "password_reset"}}))))
         (testing "invalid path"
           (is (thrown? Exception
                        (insert! {:details {:type    "email/handlebars-resource"
@@ -95,7 +116,7 @@
                                     {:channel-type :channel/email})))))))
 
 (deftest channel-template-create-logging-test
-  (testing "creating a user-provided template logs the template body"
+  (testing "creating a user-provided template logs template metadata, without leaking the template body"
     (mt/with-log-messages-for-level [messages :info]
       (mt/with-model-cleanup [:model/ChannelTemplate]
         (t2/insert-returning-instance! :model/ChannelTemplate
@@ -106,6 +127,9 @@
                                                        :body    "Secret {{password}}"}})
         (is (some (fn [{:keys [message]}]
                     (and (re-find #"ChannelTemplate create" message)
-                         (re-find #"handlebars-text" message)
-                         (re-find #"Secret" message)))
-                  (messages)))))))
+                         (re-find #"handlebars-text" message)))
+                  (messages)))
+        (testing "the template body itself is not logged"
+          (is (not (some (fn [{:keys [message]}]
+                           (re-find #"Secret" message))
+                         (messages)))))))))

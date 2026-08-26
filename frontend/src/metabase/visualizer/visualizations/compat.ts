@@ -82,11 +82,14 @@ export function groupColumnsBySuitableVizSettings(
           state,
           settings,
           datasets,
+          // Unjustified type cast. FIXME
           dataSourceColumns: columns as DatasetColumn[],
+          // Unjustified type cast. FIXME
           column: column as DatasetColumn,
         }),
       }))
       .filter((mapping) => !!mapping.slot);
+    // Unjustified type cast. FIXME
     const groupedMappings = _.groupBy(mapping, (m) => m.slot as string);
     return _.mapObject(groupedMappings, (mappings) =>
       mappings.map((m) => m.column),
