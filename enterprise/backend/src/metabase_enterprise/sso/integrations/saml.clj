@@ -125,7 +125,8 @@
         (if embedding-sdk-header?
           {:status 200
            :body {:url (:redirect-url auth-result)
-                  :method "saml"}
+                  :method "saml"
+                  :saml-popup-url (acs-url)}
            :headers {"Content-Type" "application/json"}}
           (response/redirect (:redirect-url auth-result)))
 

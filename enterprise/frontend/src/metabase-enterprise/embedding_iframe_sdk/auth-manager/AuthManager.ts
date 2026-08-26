@@ -60,10 +60,19 @@ export class EmbedAuthManager {
       preferredAuthMethod,
     });
 
-    const { method, url: responseUrl, hash } = urlResponseJson || {};
+    const {
+      method,
+      url: responseUrl,
+      hash,
+      "saml-popup-url": samlPopupUrl,
+    } = urlResponseJson || {};
 
     if (method === "saml") {
-      const sessionToken = await openSamlLoginPopup(responseUrl);
+      const sessionToken = await openSamlLoginPopup(
+        responseUrl,
+        instanceUrl,
+        samlPopupUrl,
+      );
 
       return { method, sessionToken };
     }
