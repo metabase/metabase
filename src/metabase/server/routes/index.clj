@@ -87,7 +87,7 @@
   "The request URI carries the path Metabase is mounted under; the manifest does not."
   [uri]
   (let [base (str/replace (base-href) #"/$" "")]
-    (if (and (seq base) (str/starts-with? uri base))
+    (if (str/starts-with? uri base)
       (subs uri (count base))
       uri)))
 
