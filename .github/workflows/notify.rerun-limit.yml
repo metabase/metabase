@@ -56,6 +56,9 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: COMMIT,
+            }).catch(error => {
+              core.warning(`Could not fetch pull requests for ${SHORT_COMMIT}: ${error.message}`);
+              return { data: [] };
             });
 
             const stackedPullRequest = pullRequests.find(pullRequest => pullRequest.stack);
@@ -76,6 +79,9 @@ jobs:
               channelName: CHANNEL_NAME,
               text: messageText,
               limit: 200,
+            }).catch(error => {
+              core.warning(`Could not search #${CHANNEL_NAME} for an existing message: ${error.message}`);
+              return null;
             });
 
             if (existingMessage) {
@@ -83,6 +89,8 @@ jobs:
                 channelName: CHANNEL_NAME,
                 messageId: existingMessage.id,
                 message: `:repeat: <${RUN_URL}|${RUN_NAME}> ran again: that is ${ATTEMPT - 1} re-runs for this workflow run.`,
+              }).catch(error => {
+                core.warning(`Could not post a reply to #${CHANNEL_NAME}: ${error.message}`);
               });
 
               return;
@@ -120,4 +128,6 @@ jobs:
                   }
                 ],
               }],
+            }).catch(error => {
+              core.warning(`Could not post a message to #${CHANNEL_NAME}: ${error.message}`);
             });
