@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.integrations.ldap-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.sso.integrations.ldap :as ee.ldap]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.appearance.settings :as appearance.settings]
    [metabase.auth-identity.core :as auth-identity]
@@ -87,6 +88,29 @@
                   :groups ["cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
                  (ldap/find-user "sally.brown@metabase.com"))))))))
 
+(deftest syncable-user-attributes-test
+  (testing "directory attributes are filtered and normalized like SAML/JWT attributes"
+    (mt/with-temporary-setting-values [ldap-sync-user-attributes           true
+                                       ldap-sync-user-attributes-blacklist ["userPassword" "dn" "distinguishedName"]
+                                       ldap-sync-user-attributes-allowlist []]
+      (testing "objectclass and blacklisted keys are dropped (blacklist match is case-insensitive)"
+        (is (= {"mail" "a@b.com" "extra" "x"}
+               (#'ee.ldap/syncable-user-attributes
+                {:objectclass ["top" "person"] :userpassword "secret" :mail "a@b.com" :extra "x"}))))
+      (testing "multi-value attributes are joined; nil/map values are dropped; @-prefixed keys are reserved"
+        (is (= {"multi" "a,b" "single" "s"}
+               (#'ee.ldap/syncable-user-attributes
+                {:multi ["a" "b"] :single "s" :blank nil :nested {:k 1} (keyword "@reserved") "x"})))))
+    (testing "when an allowlist is set, only allowlisted keys survive (allowlist match is case-insensitive)"
+      (mt/with-temporary-setting-values [ldap-sync-user-attributes           true
+                                         ldap-sync-user-attributes-blacklist []
+                                         ldap-sync-user-attributes-allowlist ["Mail"]]
+        (is (= {"mail" "a@b.com"}
+               (#'ee.ldap/syncable-user-attributes {:mail "a@b.com" :other "nope"})))))
+    (testing "when attribute sync is disabled nothing is returned"
+      (mt/with-temporary-setting-values [ldap-sync-user-attributes false]
+        (is (nil? (#'ee.ldap/syncable-user-attributes {:mail "a@b.com"})))))))
+
 (deftest attribute-sync-test
   (mt/with-premium-features #{:sso-ldap}
     (ldap.test/with-ldap-server!
@@ -115,6 +139,16 @@
                                "givenname" "Lucky"
                                "sn" "Pigeon"
                                "cn" "Lucky Pigeon"}
+                  :groups []}
+                 (ldap/find-user "lucky")))))
+      (testing "when an allowlist is set, only allowlisted attributes are returned"
+        (mt/with-temporary-setting-values [ldap-sync-user-attributes-allowlist ["uid" "mail"]]
+          (is (= {:dn "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
+                  :first-name "Lucky"
+                  :last-name "Pigeon"
+                  :email "lucky@metabase.com"
+                  :attributes {"uid" "lucky"
+                               "mail" "lucky@metabase.com"}
                   :groups []}
                  (ldap/find-user "lucky")))))
       (testing "if attribute sync is disabled, no attributes should come back at all"

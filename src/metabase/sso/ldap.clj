@@ -1,6 +1,7 @@
 (ns metabase.sso.ldap
   (:require
    [clj-ldap.client :as ldap]
+   [clojure.string :as str]
    [diehard.core :as dh]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap.default-implementation :as default-impl]
@@ -28,19 +29,33 @@
    :ldap-group-sync          :group-sync
    :ldap-group-base          :group-base})
 
+(defn- default-trust-store-path
+  "Path to the JVM's default CA trust store, honoring the standard
+  `javax.net.ssl.trustStore` system property and otherwise falling back to
+  `$JAVA_HOME/lib/security/cacerts`."
+  []
+  (or (not-empty (System/getProperty "javax.net.ssl.trustStore"))
+      (str/join java.io.File/separator
+                [(System/getProperty "java.home") "lib" "security" "cacerts"])))
+
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
   (let [security (keyword security)
         port     (if (string? port)
                    (Integer/parseInt port)
-                   port)]
+                   port)
+        tls?     (contains? #{:ssl :starttls} security)]
     ;; Connecting via IPv6 requires us to use this form for :host, otherwise
     ;; clj-ldap will find the first : and treat it as an IPv4 and port number
-    {:host      {:address host
-                 :port    port}
-     :bind-dn   bind-dn
-     :password  password
-     :ssl?      (= security :ssl)
-     :startTLS? (= security :starttls)}))
+    (cond-> {:host      {:address host
+                         :port    port}
+             :bind-dn   bind-dn
+             :password  password
+             :ssl?      (= security :ssl)
+             :startTLS? (= security :starttls)}
+      ;; Validate the server certificate against the operator-configured CA
+      ;; store when set, otherwise the JVM default trust store.
+      tls? (assoc :trust-store (or (sso.settings/ldap-trust-store)
+                                   (default-trust-store-path))))))
 
 (defn- settings->ldap-options []
   (details->ldap-options {:host      (sso.settings/ldap-host)
