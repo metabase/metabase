@@ -1691,7 +1691,7 @@ _DIALECT_RESERVED = {
     """.split()),
 }
 
-def _quote_reserved_identifiers(expression, dialect, dialect_name):
+def _quote_reserved_identifiers(expression, dialect):
     """Quote identifiers that collide with the target dialect's reserved words.
 
     The identifier is folded first, the way the server would have folded the bare name,
@@ -1701,8 +1701,9 @@ def _quote_reserved_identifiers(expression, dialect, dialect_name):
     not a keyword and the quoted form of a nonexistent column silently becomes a string
     literal instead of an error.
     """
+    # `dialect` may carry options (`postgres, normalization_strategy=lowercase`), so key off the class.
     reserved = (dialect.generator_class.RESERVED_KEYWORDS
-                | _DIALECT_RESERVED.get(dialect_name, frozenset()))
+                | _DIALECT_RESERVED.get(type(dialect).__name__.lower(), frozenset()))
     if reserved:
         for ident in expression.find_all(exp.Identifier):
             if not ident.quoted and ident.name.lower() in reserved:
@@ -1751,7 +1752,7 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
                 result['status'] = 'error'
                 result['error_message'] = 'Multiple SQL statements are not supported. Please provide a single query.'
             else:
-                ast = _quote_reserved_identifiers(expressions[0], write, to_dialect)
+                ast = _quote_reserved_identifiers(expressions[0], write)
                 result['transpiled_sql'] = write.generate(ast, copy=False, pretty=True)
                 result['status'] = 'success'
         except Exception as e:
