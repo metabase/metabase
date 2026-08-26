@@ -182,7 +182,7 @@
   (api/read-check app)
   (if-let [collection-id (:resource_collection_id app)]
     (api/read-check :model/Collection collection-id)
-    (throw (ex-info (tru "This data app hasn''t been published yet.")
+    (throw (ex-info (tru "This data app has not been published yet.")
                     {:status-code 409})))
   app)
 

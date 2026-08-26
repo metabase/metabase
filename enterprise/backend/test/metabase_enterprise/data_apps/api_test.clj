@@ -101,9 +101,9 @@
         (testing "an app with no resource collection is not published: neither its metadata nor its
                   bundle is served — to anyone — and a 409 lets the client show a \"not published\" screen"
           (doseq [user [:rasta :crowberto]]
-            (is (= "This data app hasn't been published yet."
+            (is (= "This data app has not been published yet."
                    (mt/user-http-request user :get 409 "apps/demo")))
-            (is (= "This data app hasn't been published yet."
+            (is (= "This data app has not been published yet."
                    (mt/user-http-request user :get 409 "apps/demo/bundle")))))))))
 
 (deftest superuser-can-manage-and-view-test
