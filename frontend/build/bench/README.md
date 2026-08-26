@@ -15,35 +15,59 @@ work a chunk layout can move around.
 
 Three states are reported, because a layout can help one and hurt another:
 
-- the first load, with an empty cache,
-- the second load, served from the HTTP cache but with V8's code cache cold,
-- the loads after that, which are the steady state a returning user sees.
+- **cold**, the first visit, with an empty cache,
+- **warm**, the second visit, served from the HTTP cache but still compiled,
+- **steady**, the visits after that, once V8 has cached the compiled code.
 
-## Running it
+The page that renders does not enter the measurement. DOMContentLoaded fires
+before the router resolves anything, so the route's own chunk is requested after
+the reading is taken.
 
-Build the variants you want to compare, and keep a copy of each build:
+## Running it against a real Metabase
+
+This is what CI does, and it is the accurate option. The document is 136 kb, most
+of it the inline settings JSON that precedes the script tags, and only a real
+backend produces it.
+
+Start a build, sign in, and measure:
+
+```
+MB_DB_FILE=/tmp/bench.db MB_JETTY_PORT=4000 java -jar target/uberjar/metabase.jar &
+SESSION_COOKIE=$(node frontend/build/bench/sign-in.js http://localhost:4000) \
+  node frontend/build/bench/matrix.js http://localhost:4000/ 8
+```
+
+`sign-in.js` creates the first user on a blank instance and signs that user in on
+a later run, so it is safe to run again while the backend is up. It seeds no
+content, because `index.html` is built from settings and the user alone.
+
+## Running it against a built tree
+
+Use this to compare two chunk layouts without booting a backend. It understates
+the cold reading, because the stub document is 2.7 kb rather than 136 kb.
 
 ```
 bun run build-release:js
 cp -R resources/frontend_client /tmp/bench-before
-```
-
-Serve each copy and measure it:
-
-```
 node frontend/build/bench/serve.js /tmp/bench-before 8099 &
-node frontend/build/bench/measure.js http://127.0.0.1:8099/ 8
+node frontend/build/bench/matrix.js http://127.0.0.1:8099/ 8
 ```
 
-Compare a second variant on another port, with `PORT_OFFSET` so the two runs do
-not share a debugging port:
+`serve.js` fills in the index template, serves a `.br` beside a file when the
+client accepts it, and answers every API call with `{}`. The app fails to render
+on that, which does not matter: the measurement is finished before the first API
+response would have been used.
+
+To measure one condition rather than the four, call `measure.js` directly:
 
 ```
-node frontend/build/bench/serve.js /tmp/bench-after 8100 &
-PORT_OFFSET=1 node frontend/build/bench/measure.js http://127.0.0.1:8100/ 8
+WARM=1 CPU_THROTTLE=4 node frontend/build/bench/measure.js http://127.0.0.1:8099/ 8
 ```
 
 ## Options
+
+`matrix.js` sets the first four itself, one condition at a time. Pass them to
+`measure.js` when you call it directly.
 
 | variable | default | what it does |
 | -- | -- | -- |
@@ -51,11 +75,23 @@ PORT_OFFSET=1 node frontend/build/bench/measure.js http://127.0.0.1:8100/ 8
 | `NETWORK_MBPS` | `10` | throughput, `0` to leave the network alone |
 | `NETWORK_LATENCY` | `40` | added latency in ms |
 | `WARM` | unset | keep the cache between runs, to measure a returning user |
+| `SESSION_COOKIE` | unset | `metabase.SESSION`, to load the page signed in |
 | `PORT_OFFSET` | `0` | added to the debugging port `9222` |
 | `CHROME_PATH` | macOS Chrome | the browser binary |
 
-## What it does not need
+## What CI records
 
-A running Metabase. `serve.js` fills in the index template and answers every API
-call with `{}`. The app fails to render on that, which does not matter: the
-measurement is finished before the first API response would have been used.
+`.github/workflows/bundle-load-stats.yml` runs the matrix on every master merge
+and appends one row per condition to the `bundle_load_times` table.
+
+The conditions are a fast and a slow network crossed with a fast and a slow CPU.
+The split matters: a slow network dominates the cold reading, because that is
+bytes on the wire, and a slow CPU dominates the warm one, because that is parse
+and execute. A change that trades bytes for execution moves one and not the
+other.
+
+Times are relative to the machine that runs them. A CI runner is slower than a
+laptop, so read a number against the same runner's history and not against a
+number from anywhere else. Each row carries `Cold spread %`, the interquartile
+spread of its cold runs, which is what tells a real regression from a busy
+runner.
