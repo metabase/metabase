@@ -246,9 +246,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Database
-                    :model/QueryCache
-                    :model/Secret
+   :model-imports #{:model/QueryCache
                     :model/Setting}}
 
   appearance
@@ -1682,8 +1680,7 @@
   secrets
   {:team "Drivers"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}
-   :model-exports #{:model/Secret}}
+   :uses #{api driver models premium-features util}}
 
   segments
   {:team "Querying"
