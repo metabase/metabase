@@ -15,8 +15,8 @@ const PLUGIN_NAME = "side-effect-free-modules";
 const mayResolveIntoDeclaredDir = (candidate) =>
   SIDE_EFFECT_FREE_PATHS.some((dir) => (candidate + path.sep).startsWith(dir));
 
-// The verdict rspack's rule reaches: a script file under a declared directory,
-// minus the recorded exceptions. Exception entries are prefixes, like the rule's exclude.
+// Decides exactly what the rspack rule decides, so every bundler agrees on every file.
+// An exception entry can name a whole directory, so exceptions match as prefixes.
 const isDeclaredSideEffectFree = (file) =>
   SCRIPT_FILE_PATTERN.test(file) &&
   SIDE_EFFECT_FREE_PATHS.some((dir) => file.startsWith(dir)) &&
