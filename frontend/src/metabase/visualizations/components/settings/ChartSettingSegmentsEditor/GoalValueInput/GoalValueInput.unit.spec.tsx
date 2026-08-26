@@ -157,7 +157,7 @@ describe("GoalValueInput", () => {
     expect(onChange).toHaveBeenCalledWith("count");
   });
 
-  it("renders a self reference as a pill with the resolved value", async () => {
+  it("renders a self reference as a pill with the resolved value", () => {
     setup({ value: "sum" });
 
     const pill = screen.getByRole("button", { name: "Change value source" });
@@ -352,7 +352,7 @@ describe("GoalValueInput", () => {
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
-  it("clears the reference with backspace", async () => {
+  it("clears the reference with backspace", () => {
     const { onChange } = setup({ value: "sum" });
 
     const pill = screen.getByRole("group", { name: "Min" });
