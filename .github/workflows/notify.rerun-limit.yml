@@ -38,7 +38,9 @@ jobs:
           TRIGGERING_ACTOR_LOGIN: ${{ github.event.workflow_run.triggering_actor.login }}
         with:
           script: |
-            const { mentionUserByGithubLogin, sendSlackMessage } = require(`${{ github.workspace }}/release/dist/index.cjs`);
+            const { findSlackMessage, mentionUserByGithubLogin, sendSlackMessage, sendSlackReply } = require(`${{ github.workspace }}/release/dist/index.cjs`);
+
+            const CHANNEL_NAME = 'engineering-ci';
 
             const ATTEMPT = Number(process.env.ATTEMPT);
             const COMMIT = process.env.COMMIT;
@@ -46,26 +48,46 @@ jobs:
             const RUN_URL = process.env.RUN_URL;
             const TRIGGERING_ACTOR_LOGIN = process.env.TRIGGERING_ACTOR_LOGIN;
 
-            // Every pull request in a stack re-runs as the stack is rebased, so a high
-            // attempt count there is not someone hammering the re-run button.
+            // Every pull request in a stack re-runs as the stack is rebased, so re-runs shouldn't trigger notifications.
             const { data: pullRequests } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
               owner: context.repo.owner,
               repo: context.repo.repo,
               commit_sha: COMMIT,
             });
 
-            // The `stack` object is present only on a pull request that belongs to a stack.
             const stackedPullRequest = pullRequests.find(pullRequest => pullRequest.stack);
-
             if (stackedPullRequest) {
               const { number, stack } = stackedPullRequest;
               core.info(`Skipping notification: PR #${number} is ${stack.position} of ${stack.size} in stack #${stack.number}.`);
               return;
             }
 
+            // Clean up PR title to avoid breaking the link to the PR in Slack
+            const pullRequest = pullRequests.find(pullRequest => pullRequest.state === 'open') ?? pullRequests[0];
+            const pullRequestLink = pullRequest
+              ? ` on <${pullRequest.html_url}|#${pullRequest.number} ${pullRequest.title.replace(/[<>|]/g, '')}>`
+              : '';
+
+            const messageText = `Workflow Retry Limit Exceeded for ${COMMIT}`;
+            const existingMessage = await findSlackMessage({
+              channelName: CHANNEL_NAME,
+              text: COMMIT,
+              limit: 200,
+            });
+
+            if (existingMessage) {
+              await sendSlackReply({
+                channelName: CHANNEL_NAME,
+                messageId: existingMessage.id,
+                message: `:repeat: <${RUN_URL}|${RUN_NAME}> ran again — that is ${ATTEMPT - 1} re-runs for this commit.`,
+              });
+
+              return;
+            }
+
             await sendSlackMessage({
-              channelName: 'engineering-ci',
-              message: 'Workflow Retry Limit Exceeded',
+              channelName: CHANNEL_NAME,
+              message: messageText,
               blocks: [
                 {
                   "type": "header",
@@ -83,7 +105,7 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": `<${RUN_URL}|${RUN_NAME}> has been re-run ${ATTEMPT - 1} times by ${mentionUserByGithubLogin(TRIGGERING_ACTOR_LOGIN)} for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit.`
+                      "text": `<${RUN_URL}|${RUN_NAME}> has been re-run ${ATTEMPT - 1} times by ${mentionUserByGithubLogin(TRIGGERING_ACTOR_LOGIN)} for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit in ${pullRequestLink}.`
                     },
                   },
                   {
