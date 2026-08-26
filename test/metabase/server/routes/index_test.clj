@@ -102,8 +102,8 @@
                    ([uri signed-in?]
                     (with-redefs-fn {#'index/route-preloads
                                      (constantly
-                                      (mapv (fn [[pattern markup signed-out?]]
-                                              [(clout/route-compile pattern) markup signed-out?])
+                                      (mapv (fn [[pattern markup render-when-signed-out?]]
+                                              [(clout/route-compile pattern) markup render-when-signed-out?])
                                             manifest))}
                       (fn [] (#'index/route-preload-tags uri signed-in?)))))]
     (testing "a wildcard covers the section below it"
