@@ -50,6 +50,11 @@
   []
   (get-in (current-memory) [:state :charts] {}))
 
+(defn current-dashboards-state
+  "Returns the current generated-dashboards state map from agent memory."
+  []
+  (get-in (current-memory) [:state :dashboards] {}))
+
 (defn current-client-ids
   "Ids of the queries and charts seeded from this request's viewing context, as opposed to
   written by the agent's own tools. A refusal to present one of these is a real access attempt

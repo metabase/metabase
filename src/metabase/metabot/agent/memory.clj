@@ -27,7 +27,7 @@
     :steps-taken    []
     :context        context
     :state          (metabot.schema/normalize-state
-                     (or state {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}))
+                     (or state {:queries {} :charts {} :dashboards {} :todos [] :transforms {} :link-registry {}}))
     :turn-state     {}}))
 
 (defn add-step
@@ -110,6 +110,25 @@
                       {:agent-error? true
                        :chart-id chart-id
                        :available-charts (keys charts)})))))
+
+;;; Dashboard Management
+
+(defn set-dashboard
+  "Store a generated dashboard definition in state by its dashboard-id."
+  [memory dashboard-id dashboard]
+  (record memory [:dashboards dashboard-id] dashboard))
+
+(defn find-dashboard
+  "Retrieve a generated dashboard by its dashboard-id. Throws if not found."
+  [memory dashboard-id]
+  (let [dashboards (get-in memory [:state :dashboards] {})]
+    (if-let [dashboard (get dashboards dashboard-id)]
+      dashboard
+      (throw (ex-info (str "Dashboard with ID " dashboard-id " not found in memory. "
+                           "Available dashboards: [" (str/join ", " (keys dashboards)) "]")
+                      {:agent-error? true
+                       :dashboard-id dashboard-id
+                       :available-dashboards (keys dashboards)})))))
 
 ;;; Transform Management
 
