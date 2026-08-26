@@ -4,4 +4,5 @@
  * turns this loader into a route-level `lazy`, and the prefetch registration
  * reuses it, so both sides always name the same module.
  */
-export const loadSchemaViewerPage = () => import("./pages/SchemaViewerPage");
+export const loadSchemaViewerPage = () =>
+  import(/* webpackChunkName: "schema-viewer" */ "./pages/SchemaViewerPage");
