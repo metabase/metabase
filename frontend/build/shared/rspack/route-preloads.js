@@ -11,6 +11,31 @@ const MANIFEST_FILENAME = "route-preloads.json";
 // `compiler.context` is the entry's directory, not the checkout.
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 
+const escapeHtml = (value) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+/**
+ * A preload hint for one file the page's chunk needs.
+ *
+ * `preload` rather than `prefetch`, because this is for the navigation in hand:
+ * a prefetch is held back until the browser is idle, which is after the load
+ * these hints are meant to speed up.
+ *
+ * `fetchpriority="low"` because the page's chunk is wanted a moment after the
+ * app is, not before it. Without it these fetch at the same high priority as the
+ * entry scripts and take bandwidth from them, so the shell renders later. Low
+ * still starts with the document, which is the point: the alternative is a fetch
+ * that cannot begin until the app has parsed and run.
+ */
+function preloadTag(file) {
+  const as = file.endsWith(".css") ? "style" : "script";
+  return `<link rel="preload" href="${escapeHtml(file)}" as="${as}" fetchpriority="low">`;
+}
+
 /**
  * The files a chunk group needs, its shared chunks included. Files already in
  * the page's own script tags are left out: they are being fetched anyway.
@@ -68,7 +93,7 @@ class RoutePreloadManifest {
             const rows = preloadRows(readRoutes(this.root).routes);
 
             const missing = [];
-            const entries = rows.map((route) => {
+            const entries = rows.flatMap((route) => {
               const files = route.chunks.flatMap((name) => {
                 const group = compilation.namedChunkGroups.get(name);
                 if (!group) {
@@ -78,10 +103,13 @@ class RoutePreloadManifest {
                 return groupFiles(group, initialFiles);
               });
 
-              return {
-                patterns: route.patterns,
-                files: [...new Set(files)].map((file) => publicPath + file),
-              };
+              // One row per pattern, carrying the markup rather than the file
+              // names, so the backend matches and writes the string it is given.
+              const html = [...new Set(files)]
+                .map((file) => preloadTag(publicPath + file))
+                .join("");
+
+              return route.patterns.map((pattern) => [pattern, html]);
             });
 
             if (missing.length > 0) {
@@ -98,7 +126,8 @@ class RoutePreloadManifest {
             // Emitted in table order: the backend takes the first match.
             compilation.emitAsset(
               MANIFEST_FILENAME,
-              new sources.RawSource(JSON.stringify(entries, null, 1)),
+              // Read by `metabase.server.routes.index`, never by a person.
+              new sources.RawSource(JSON.stringify(entries)),
             );
           },
         );

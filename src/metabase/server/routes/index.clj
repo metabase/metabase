@@ -69,18 +69,12 @@
 
 (def ^:private route-preloads-resource "frontend_client/app/dist/route-preloads.json")
 
-(defn- compile-entry
-  "Compile an entry's URL patterns once, with the same matcher the API endpoints use."
-  [entry]
-  (update entry :patterns #(mapv clout/route-compile %)))
-
-(defn- matches-route? [uri {:keys [patterns]}]
-  (boolean (some #(clout/route-matches % {:uri uri}) patterns)))
-
 (defn- load-route-preloads* []
   (when-let [resource (io/resource route-preloads-resource)]
     (try
-      (mapv compile-entry (json/decode+kw (slurp resource)))
+      ;; `[pattern markup]` pairs, in the order the patterns are to be tried.
+      (mapv (fn [[pattern markup]] [(clout/route-compile pattern) markup])
+            (json/decode (slurp resource)))
       (catch Throwable e
         ;; A page without hints is slower, not broken.
         (log/warnf e "Failed to read %s" route-preloads-resource)
@@ -96,23 +90,6 @@
       (subs uri (count base))
       uri)))
 
-(defn- preload-tag
-  "A preload hint for one file the page's chunk needs.
-
-  `preload` rather than `prefetch`, because this is for the navigation in hand:
-  a prefetch is held back until the browser is idle, which is after the load
-  these hints are meant to speed up.
-
-  `fetchpriority=\"low\"` because the page's chunk is wanted a moment after the
-  app is, not before it. Without it these fetch at the same high priority as the
-  entry scripts and take bandwidth from them, so the shell renders later. Low
-  still starts with the document, which is the point: the alternative is a fetch
-  that cannot begin until the app has parsed and run."
-  [file]
-  (format "<link rel=\"preload\" href=\"%s\" as=\"%s\" fetchpriority=\"low\">"
-          (hiccup.util/escape-html file)
-          (if (str/ends-with? file ".css") "style" "script")))
-
 (def ^:private signed-out-preload-paths
   "Paths a signed-out user renders, rather than being bounced to the login page.
 
@@ -127,13 +104,16 @@
   The page it lands on is a chunk of its own, and nothing in the document points
   at that chunk, so the browser only asks for it once the app has downloaded,
   parsed and run. These hints start that fetch while the app is still arriving.
-  The manifest is built from the route files, in the order its patterns are to be
-  tried; see `frontend/build/shared/rspack/route-preloads.js`."
+
+  The build writes the markup, so this only has to find the first pattern that
+  matches; see `frontend/build/shared/rspack/route-preloads.js`."
   [uri signed-in?]
   (let [path (strip-base-path (or uri "/"))]
     (when (or signed-in? (contains? signed-out-preload-paths path))
-      (when-let [entry (first (filter (partial matches-route? path) (load-route-preloads)))]
-        (str/join (map preload-tag (:files entry)))))))
+      (some (fn [[route markup]]
+              (when (clout/route-matches route {:uri path})
+                markup))
+            (load-route-preloads)))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
