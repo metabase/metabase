@@ -358,6 +358,7 @@
                                                              :entity_type     etype
                                                              :entity_id       eid
                                                              :entity_name     (str prefix " " nm)
+                                                             :entity_kind     etype
                                                              :finding_type    :duplicated
                                                              :duplicate_count dup-count
                                                              :details         {:normalized_name      nm
@@ -500,6 +501,26 @@
                 (let [f (finding :rasta)]
                   (is (some? f))
                   (is (= [] (get-in f [:details :duplicate_entities]))))))))))))
+
+(deftest duplicated-api-archived-folder-transform-peer-test
+  (testing "GET /duplicated keeps transform findings and peers in archived folders - folder state is not a transform lifecycle state"
+    (mt/with-premium-features #{:content-diagnostics :transforms-basic :hosting}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix (scope-prefix)
+              nm     (str prefix " Nightly Sync")]
+          (mt/with-temp [:model/Collection {archived-folder :id} {:namespace "transforms" :archived true}
+                         :model/Transform {xf-live :id}    {:name nm}
+                         :model/Transform {xf-shelved :id} {:name nm :collection_id archived-folder}]
+            (scan/scan!)
+            (let [rows  (:data (mt/user-http-request :crowberto :get 200
+                                                     "ee/content-diagnostics/duplicated" :query prefix))
+                  by-id (into {} (map (juxt :entity_id identity)) rows)]
+              (testing "the live transform's finding lists the shelved one as a peer"
+                (is (= [{:id xf-shelved :name nm :entity_type "transform"}]
+                       (get-in (by-id xf-live) [:details :duplicate_entities]))))
+              (testing "the shelved transform's own finding is served, listing the live peer"
+                (is (= [{:id xf-live :name nm :entity_type "transform"}]
+                       (get-in (by-id xf-shelved) [:details :duplicate_entities])))))))))))
 
 (deftest duplicated-api-does-not-leak-across-finding-types-test
   (testing "a duplicated finding never surfaces in /stale or /slow, and theirs never surface in /duplicated"

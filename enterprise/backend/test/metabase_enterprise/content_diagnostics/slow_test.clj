@@ -535,6 +535,7 @@
                                                              :entity_type  etype
                                                              :entity_id    eid
                                                              :entity_name  (str prefix " " nm)
+                                                             :entity_kind  etype
                                                              :finding_type :slow
                                                              :duration_ms  duration
                                                              :details      {:threshold_ms 15000}})))

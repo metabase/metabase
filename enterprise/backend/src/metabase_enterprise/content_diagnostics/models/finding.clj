@@ -18,6 +18,7 @@
    :finding_type mi/transform-keyword
    ;; nullable - card findings only
    :card_type    mi/transform-keyword
+   :entity_kind  mi/transform-keyword
    :details      mi/transform-json})
 
 (defn invalidate-superseded!
@@ -55,4 +56,4 @@
                               [:= :invalidated_at nil]
                               (into [:or] (common/entity-collection-clauses
                                            archived-types
-                                           (fn [coll-col] [:in coll-col collection-ids])))]}))))
+                                           (fn [_etype coll-col] [:in coll-col collection-ids])))]}))))

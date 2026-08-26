@@ -169,6 +169,43 @@
                   (is (some? row))
                   (is (nil? (:card_type row))))))))))))
 
+(deftest scan-denormalizes-collection-name-test
+  (testing "scan stamps entity_collection_name from scope_collection_id (root rows get the site-locale root label)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix    (scope-prefix)
+              coll-name (str prefix " Container")]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name coll-name}
+                         ;; same name in one collection → duplicated findings with a collection parent
+                         :model/Card {in-a :id} {:collection_id coll-id :name (str prefix " twin")}
+                         :model/Card {in-b :id} {:collection_id coll-id :name (str prefix " twin")}
+                         ;; same name at root → duplicated findings stamped with the root label
+                         :model/Card {root-a :id} {:collection_id nil :name (str prefix " rootless")}
+                         :model/Card {root-b :id} {:collection_id nil :name (str prefix " rootless")}
+                         ;; two top-level SAME-NAMED collections in the transforms namespace → duplicated
+                         ;; collection subjects at root (GDGT-2921 admits transforms-namespace collections
+                         ;; as duplicated subjects); their root label must be "Transforms", not the default
+                         :model/Collection {xf-a :id} {:name (str prefix " Pipeline") :namespace "transforms"}
+                         :model/Collection {xf-b :id} {:name (str prefix " Pipeline") :namespace "transforms"}]
+            (scan/scan!)
+            (let [by-entity  (t2/select-fn->fn :entity_id :entity_collection_name
+                                               :model/ContentDiagnosticsFinding
+                                               :finding_type :duplicated
+                                               :entity_id [:in [in-a in-b root-a root-b]])
+                  ;; queried separately (entity_type-scoped) so a collection id can't collide with a card
+                  ;; id from a different sequence
+                  by-xf-coll (t2/select-fn->fn :entity_id :entity_collection_name
+                                               :model/ContentDiagnosticsFinding
+                                               :finding_type :duplicated
+                                               :entity_type :collection
+                                               :entity_id [:in [xf-a xf-b]])]
+              (is (= coll-name (get by-entity in-a)))
+              (is (= coll-name (get by-entity in-b)))
+              (is (= "Our analytics" (get by-entity root-a)))
+              (is (= "Our analytics" (get by-entity root-b)))
+              (is (= "Transforms" (get by-xf-coll xf-a)))
+              (is (= "Transforms" (get by-xf-coll xf-b))))))))))
+
 (deftest scan-soft-invalidates-superseded-findings-test
   (testing "a fresh scan supersedes prior findings it no longer produces — via soft invalidation, not delete"
     (mt/with-premium-features #{:content-diagnostics}
@@ -385,24 +422,57 @@
                   card-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "s" :entity_type :card :entity_id card-id
                                                              :entity_name (str prefix "-" card-id)
+                                                             :entity_kind :question
                                                              :finding_type :stale :details {}
                                                              :detected_at (t/offset-date-time 2025 6 1)}))
                   dash-fid (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                             {:scan_id "s" :entity_type :dashboard :entity_id dash-id
                                                              :entity_name (str prefix "-" dash-id)
+                                                             :entity_kind :dashboard
                                                              :finding_type :stale :details {}
                                                              :detected_at (t/offset-date-time 2025 1 1)}))
                   order    (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
                                                                "ee/content-diagnostics/stale"
                                                                :query prefix kvs))))]
-              (testing "sort-column=entity-type - lexical card < dashboard"
-                (is (= [card-fid dash-fid] (order :sort-column "entity-type" :sort-direction "asc")))
-                (is (= [dash-fid card-fid] (order :sort-column "entity-type" :sort-direction "desc"))))
+              (testing "sort-column=entity-type - flat kind lexical: dashboard < question"
+                (is (= [dash-fid card-fid] (order :sort-column "entity-type" :sort-direction "asc")))
+                (is (= [card-fid dash-fid] (order :sort-column "entity-type" :sort-direction "desc"))))
               (testing "sort-column=detected-at - dashboard (Jan) before card (Jun)"
                 (is (= [dash-fid card-fid] (order :sort-column "detected-at" :sort-direction "asc")))
                 (is (= [card-fid dash-fid] (order :sort-column "detected-at" :sort-direction "desc"))))
               (testing "default sort = detected-at asc"
                 (is (= [dash-fid card-fid] (order)))))))))))
+
+(deftest api-sort-by-flat-entity-type-test
+  (testing "GET /stale sort-column=entity-type orders card sub-kinds as peers (dashboard < model < question)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {question-id :id} {:collection_id coll-id}
+                         :model/Card {model-id :id}    {:collection_id coll-id}
+                         :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [prefix (scope-prefix)
+                  insert (fn [row]
+                           (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                            (merge {:scan_id "s" :finding_type :stale
+                                                                    :details {}}
+                                                                   row))))
+                  ;; ids inserted in an order that differs from the expected sort, to isolate the column
+                  question-fid (insert {:entity_type :card :entity_id question-id :card_type :question
+                                        :entity_kind :question :entity_name (str prefix " q")})
+                  dash-fid     (insert {:entity_type :dashboard :entity_id dash-id
+                                        :entity_kind :dashboard :entity_name (str prefix " d")})
+                  model-fid    (insert {:entity_type :card :entity_id model-id :card_type :model
+                                        :entity_kind :model :entity_name (str prefix " m")})
+                  order (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
+                                                            "ee/content-diagnostics/stale"
+                                                            :query prefix kvs))))]
+              (is (= [dash-fid model-fid question-fid]
+                     (order :sort-column "entity-type" :sort-direction "asc")))
+              (is (= [question-fid model-fid dash-fid]
+                     (order :sort-column "entity-type" :sort-direction "desc"))))))))))
 
 (deftest api-sort-by-entity-attrs-test
   (testing "GET /stale sorts by denormalized entity columns (name / created-at / created-by / last-active-at)"
@@ -423,8 +493,11 @@
                                                                     :finding_type :stale
                                                                     :details      {}}
                                                                    row))))
+                  ;; lowercase-first "alpha" (vs capitalized "Beta") pins CASE-INSENSITIVE ordering: a
+                  ;; bytewise sort would put "Beta" (B = 0x42) before "alpha" (a = 0x61), the opposite of
+                  ;; the asserted order
                   a-fid  (insert {:entity_id           card-a
-                                  :entity_name         (str prefix " Alpha")
+                                  :entity_name         (str prefix " alpha")
                                   :entity_created_at   (t/offset-date-time 2025 1 1)
                                   :entity_creator_id   10
                                   :entity_creator_name "Amy"
@@ -438,7 +511,7 @@
                   order  (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
                                                              "ee/content-diagnostics/stale"
                                                              :query prefix kvs))))]
-              (testing "name - Alpha < Beta"
+              (testing "name - alpha < Beta, case-insensitive"
                 (is (= [a-fid b-fid] (order :sort-column "name" :sort-direction "asc")))
                 (is (= [b-fid a-fid] (order :sort-column "name" :sort-direction "desc"))))
               (testing "created-at - Jan before Jun"
@@ -448,6 +521,37 @@
                 (is (= [b-fid a-fid] (order :sort-column "created-by" :sort-direction "desc"))))
               (testing "last-active-at - Jan before Jun"
                 (is (= [b-fid a-fid] (order :sort-column "last-active-at" :sort-direction "asc")))))))))))
+
+(deftest api-sort-by-collection-name-test
+  (testing "GET /stale sorts by the denormalized entity_collection_name"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {card-a :id} {:collection_id coll-id}
+                         :model/Card {card-b :id} {:collection_id coll-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [prefix (scope-prefix)
+                  insert (fn [row]
+                           (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                            (merge {:scan_id "s" :entity_type :card
+                                                                    :finding_type :stale :details {}}
+                                                                   row))))
+                  ;; collection order (alpha < Beta) inverts entity-name order so the column under test is
+                  ;; isolated. Lowercase-first fixture pins CASE-INSENSITIVE ordering: a bytewise
+                  ;; sort would put "Beta" (B = 0x42) before "alpha" (a = 0x61).
+                  a-fid  (insert {:entity_id card-b
+                                  :entity_name (str prefix " b")
+                                  :entity_collection_name "alpha collection"})
+                  b-fid  (insert {:entity_id card-a
+                                  :entity_name (str prefix " a")
+                                  :entity_collection_name "Beta Collection"})
+                  order  (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
+                                                             "ee/content-diagnostics/stale"
+                                                             :query prefix kvs))))]
+              (is (= [a-fid b-fid] (order :sort-column "collection-name" :sort-direction "asc")))
+              (is (= [b-fid a-fid] (order :sort-column "collection-name"
+                                          :sort-direction "desc"))))))))))
 
 (deftest api-entity-types-filter-test
   (testing "GET /stale filters by entity-types (repeatable; omitted = all)"
@@ -468,6 +572,7 @@
                                   (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                                    {:scan_id "e" :entity_type etype :entity_id eid
                                                                     :entity_name (str prefix "-" eid)
+                                                                    :entity_kind etype
                                                                     :finding_type :stale :details {}})))
                   card-fid      (insert :card card-id)
                   dash-fid      (insert :dashboard dash-id)
@@ -551,6 +656,7 @@
                                                                  :entity_id   eid
                                                                  :entity_name (str prefix "-" eid)
                                                                  :card_type   card-type
+                                                                 :entity_kind (or card-type etype)
                                                                  :finding_type :stale :details {}})))
                 question-fid (insert! :card question-id :question)
                 model-fid    (insert! :card model-id :model)
@@ -609,6 +715,41 @@
                 (is (=? {:email "etl@vendor.io"
                          :type  "external"}
                         (owner-for external-fid)))))))))))
+
+(deftest api-archived-folder-transform-test
+  (testing "GET /stale serves transforms in archived folders - archiving a folder neither archives nor stops its transforms - while archived-folder cards stay hidden"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {xf-folder :id} {:name      "Shelved pipelines"
+                                                            :namespace "transforms"
+                                                            :archived  true}
+                         :model/Transform {xf-id :id} {:collection_id xf-folder}
+                         :model/Collection {card-folder :id} {:archived true}
+                         :model/Card {card-id :id} {:collection_id card-folder}]
+            (let [prefix   (scope-prefix)
+                  insert!  (fn [etype eid]
+                             (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                              {:scan_id "af" :entity_type etype :entity_id eid
+                                                               :entity_name (str prefix "-" eid)
+                                                               :finding_type :stale :details {}})))
+                  xf-fid   (insert! :transform xf-id)
+                  card-fid (insert! :card card-id)
+                  rows-for (fn [user] (:data (mt/user-http-request user :get 200
+                                                                   "ee/content-diagnostics/stale" :query prefix)))
+                  rows     (rows-for :crowberto)
+                  ids      (set (map :id rows))]
+              (testing "the archived-folder transform finding is served"
+                (is (contains? ids xf-fid)))
+              (testing "its breadcrumb names the archived folder"
+                (is (=? {:id        xf-folder
+                         :name      "Shelved pipelines"
+                         :namespace "transforms"}
+                        (get-in (finding-for rows "transform" xf-id) [:details :collection]))))
+              (testing "a card in an archived folder stays hidden"
+                (is (not (contains? ids card-fid))))
+              (testing "archived-folder inclusion does not bypass collection permissions"
+                (is (not (contains? (set (map :id (rows-for :rasta))) xf-fid)))))))))))
 
 (deftest api-threshold-days-filter-test
   (testing "GET /stale threshold-days drops findings less stale than the cutoff; never-used always passes"
@@ -670,6 +811,68 @@
                 (is (empty? (ids :query (str prefix " zzz")))))
               (testing "blank query is a no-op → all findings"
                 (is (set/subset? #{rev-fid cost-fid} (ids :query "   ")))))))))))
+
+(deftest api-response-serves-entity-kind-test
+  (testing "findings carry additive entity_kind; the entity_type/card_type pair is unchanged"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {card-a :id} {:collection_id coll-id :type :model}
+                         :model/Card {card-b :id} {:collection_id coll-id :type :model}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [prefix (scope-prefix)
+                  insert (fn [row] (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                                    (merge {:scan_id "s" :entity_type :card
+                                                                            :finding_type :stale :details {}}
+                                                                           row))))
+                  kind-fid (insert {:entity_id card-a :card_type :model :entity_kind :model
+                                    :entity_name (str prefix " new-row")})
+                  ;; pre-migration shape: entity_kind NULL, card_type present - coalesce covers it
+                  old-fid  (insert {:entity_id card-b :card_type :model
+                                    :entity_name (str prefix " old-row")})
+                  by-id    (m/index-by :id (:data (mt/user-http-request :rasta :get 200
+                                                                        "ee/content-diagnostics/stale"
+                                                                        :query prefix)))]
+              (is (= "model" (get-in by-id [kind-fid :entity_kind])))
+              (is (= "model" (get-in by-id [old-fid :entity_kind])))
+              ;; the shipped pair is untouched
+              (is (= "card"  (get-in by-id [kind-fid :entity_type])))
+              (is (= "model" (get-in by-id [kind-fid :card_type]))))))))))
+
+(deftest api-response-serves-collection-name-test
+  (testing "top-level collection_name = scan-time stored name; nil for pre-migration (NULL-column) rows"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Card {card-a :id} {:collection_id coll-id}
+                         :model/Card {card-b :id} {:collection_id nil}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+            (let [prefix  (scope-prefix)
+                  insert  (fn [row] (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                                     (merge {:scan_id "s" :entity_type :card
+                                                                             :finding_type :stale :details {}}
+                                                                            row))))
+                  in-fid   (insert {:entity_id card-a :entity_name (str prefix " in")
+                                    :scope_collection_id coll-id
+                                    :entity_collection_name "Scan Time Name"})
+                  ;; pre-migration shape: NULL entity_collection_name on a root-resident row - the
+                  ;; breadcrumb (root sentinel) passes the gate, the nil comes from the column.
+                  ;; Post-migration scans stamp root rows with the root label (pinned by
+                  ;; scan-denormalizes-collection-name-test).
+                  ;; Queried as :crowberto - the root-resident row is excluded from :rasta's response
+                  ;; entirely (root perms are stripped by with-non-admin-groups-no-root-collection-perms),
+                  ;; which would make the nil assertion vacuous rather than exercising the gate.
+                  old-fid  (insert {:entity_id card-b :entity_name (str prefix " root")})
+                  by-id    (m/index-by :id (:data (mt/user-http-request :crowberto :get 200
+                                                                        "ee/content-diagnostics/stale"
+                                                                        :query prefix)))]
+              (is (= "Scan Time Name" (get-in by-id [in-fid :collection_name])))
+              ;; presence first - `get-in` on a missing key is indistinguishable from a present nil value,
+              ;; so without this the nil assertion below would pass vacuously if the row were dropped
+              (is (some? (get by-id old-fid)))
+              (is (nil? (get-in by-id [old-fid :collection_name]))))))))))
 
 (deftest api-endpoint-is-feature-gated-test
   (testing "GET /stale is gated on the :content-diagnostics premium feature (premium-handler)"

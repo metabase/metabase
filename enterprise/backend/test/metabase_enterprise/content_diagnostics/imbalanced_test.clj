@@ -113,17 +113,24 @@
           (mt/user-http-request :rasta :get 402 "ee/content-diagnostics/imbalanced"))))))
 
 (defn- insert-imbalanced!
-  "Insert one imbalanced finding row directly (API tests exercise the read path, not the checker)."
-  [{:keys [entity-type entity-id name finding-type content-count details]
+  "Insert one imbalanced finding row directly (API tests exercise the read path, not the checker).
+  Optional keys (`:entity-kind`, `:entity-collection-name`, `:scope-collection-id`) are only needed by
+  fixtures whose assertions touch them."
+  [{:keys [entity-type entity-id entity-kind finding-type content-count details
+           entity-collection-name scope-collection-id]
+    nm    :name
     :or   {details {:threshold 5 :unit "items"}}}]
   (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
-                                   {:scan_id       "imb-api"
-                                    :entity_type   entity-type
-                                    :entity_id     entity-id
-                                    :entity_name   name
-                                    :finding_type  finding-type
-                                    :content_count content-count
-                                    :details       details})))
+                                   {:scan_id                "imb-api"
+                                    :entity_type             entity-type
+                                    :entity_id               entity-id
+                                    :entity_kind             entity-kind
+                                    :entity_name             nm
+                                    :entity_collection_name  entity-collection-name
+                                    :scope_collection_id     scope-collection-id
+                                    :finding_type            finding-type
+                                    :content_count           content-count
+                                    :details                 details})))
 
 (deftest imbalanced-api-finding-types-test
   (testing "GET /imbalanced narrows by finding-types (default all three)"
@@ -187,10 +194,10 @@
                          :model/Card {card-id :id} {:collection_id coll}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
             (let [prefix   (scope-prefix)
-                  card-fid (insert-imbalanced! {:entity-type :card :entity-id card-id
+                  card-fid (insert-imbalanced! {:entity-type :card :entity-id card-id :entity-kind :card
                                                 :name (str prefix " Card") :finding-type :empty
                                                 :content-count 0})
-                  coll-fid (insert-imbalanced! {:entity-type :collection :entity-id coll
+                  coll-fid (insert-imbalanced! {:entity-type :collection :entity-id coll :entity-kind :collection
                                                 :name (str prefix " Coll") :finding-type :sparse
                                                 :content-count 1})
                   ids      (fn [& kvs] (set (map :id (:data (apply mt/user-http-request :rasta :get 200
@@ -402,6 +409,58 @@
               (testing "an admin still gets the parent breadcrumb"
                 (is (= hidden-parent (get-in (row-for :crowberto) [:details :collection :id])))))))))))
 
+(deftest api-collection-name-permission-gate-test
+  (testing "unreadable parent → collection_name nil, even though the stored column holds the hidden name"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {parent-id :id} {:name "Hidden Parent"}
+                         :model/Collection {child-id :id} {:location (collection/location-path parent-id)}]
+            ;; child readable, parent NOT
+            (perms/grant-collection-read-permissions! (perms/all-users-group) child-id)
+            (let [prefix (scope-prefix)
+                  fid    (insert-imbalanced! {:entity-type :collection :entity-id child-id
+                                              :entity-kind :collection
+                                              :name (str prefix " child") :finding-type :empty
+                                              :content-count 0
+                                              :scope-collection-id parent-id
+                                              :entity-collection-name "Hidden Parent"})
+                  [finding] (:data (mt/user-http-request :rasta :get 200
+                                                         "ee/content-diagnostics/imbalanced"
+                                                         :query prefix))]
+              (is (=? {:id              fid
+                       :collection_name nil
+                       :details         {:collection nil}}
+                      finding)))))))))
+
+(deftest api-collection-name-relocation-gate-test
+  (testing "entity moved post-scan: the scan-time parent's name is not served when the caller cannot read it"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {hidden-id :id} {:name "Hidden Origin"}
+                         :model/Collection {public-id :id} {}
+                         ;; the card lives in the readable collection NOW; the finding row below says it
+                         ;; sat in the hidden one at scan time
+                         :model/Card {card-id :id} {:collection_id public-id}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) public-id)
+            (let [prefix (scope-prefix)
+                  fid    (insert-imbalanced! {:entity-type :card :entity-id card-id
+                                              :entity-kind :question
+                                              :name (str prefix " moved") :finding-type :empty
+                                              :content-count 0
+                                              :scope-collection-id hidden-id
+                                              :entity-collection-name "Hidden Origin"})
+                  [finding] (:data (mt/user-http-request :rasta :get 200
+                                                         "ee/content-diagnostics/imbalanced"
+                                                         :query prefix))]
+              ;; the row serves (live parent readable) but the scan-time parent's name must not - only
+              ;; its live breadcrumb is the caller's to see
+              (is (=? {:id              fid
+                       :collection_name nil
+                       :details         {:collection {:id public-id}}}
+                      finding)))))))))
+
 (deftest imbalanced-api-as-of-serves-as-a-string-test
   (testing "an evidence-dated empty serves `details.as_of` as an ISO-8601 string"
     ;; as_of round-trips through the JSON details blob, so the response schema types it ms/TemporalString -
@@ -456,3 +515,34 @@
               (is (seq (t2/select :model/ContentDiagnosticsFinding
                                   :entity_type :card :entity_id stale-card
                                   :finding_type :stale :invalidated_at nil))))))))))
+
+(deftest api-sort-by-finding-type-test
+  (testing "GET /imbalanced sorts by finding_type (alphabetical: crowded < empty < sparse)"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+          (mt/with-temp [:model/Collection {coll-a :id} {}
+                         :model/Collection {coll-b :id} {}
+                         :model/Collection {coll-c :id} {}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-a)
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-b)
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coll-c)
+            (let [prefix  (scope-prefix)
+                  insert  (fn [cid ftype]
+                            (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
+                                                             {:scan_id "s" :entity_type :collection
+                                                              :entity_kind :collection
+                                                              :entity_id cid :finding_type ftype
+                                                              :entity_name (str prefix "-" (name ftype))
+                                                              :details {:threshold 5 :unit "items"}
+                                                              :content_count 1})))
+                  sparse-fid  (insert coll-a :sparse)
+                  crowded-fid (insert coll-b :crowded)
+                  empty-fid   (insert coll-c :empty)
+                  order   (fn [& kvs] (mapv :id (:data (apply mt/user-http-request :rasta :get 200
+                                                              "ee/content-diagnostics/imbalanced"
+                                                              :query prefix kvs))))]
+              (is (= [crowded-fid empty-fid sparse-fid]
+                     (order :sort-column "finding-type" :sort-direction "asc")))
+              (is (= [sparse-fid empty-fid crowded-fid]
+                     (order :sort-column "finding-type" :sort-direction "desc"))))))))))

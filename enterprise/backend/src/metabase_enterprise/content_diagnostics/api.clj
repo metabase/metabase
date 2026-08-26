@@ -4,10 +4,10 @@
   shared read/hydration layer in `api.common` and pins its own param + response schema. The scan runs on a
   Quartz job.
 
-  Response shape: a flat identity (`id, finding_type, entity_type, card_type?, entity_id, detected_at,
-  entity_display_name`) plus a nested typed `details` merging the stored verdict with live-hydrated
-  `collection`, `description`, `owner`, `creator`, and `view_count` (the entity's usage counter, present
-  for card/dashboard/document; not collection or transform)."
+  Response shape: a flat identity (`id, finding_type, entity_type, entity_kind, card_type?, entity_id,
+  detected_at, entity_display_name, collection_name`) plus a nested typed `details` merging the stored
+  verdict with live-hydrated `collection`, `description`, `owner`, `creator`, and `view_count` (the
+  entity's usage counter, present for card/dashboard/document; not collection or transform)."
   (:require
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api.common :as api.common]
@@ -43,10 +43,9 @@
            [:type [:= :user]]]])
 
 (def ^:private FindingBase
-  "The flat identity every finding response shares: stable id/type columns, the per-finding `detected_at`
-  freshness stamp, the display name, and the denormalized `created_at`. Each finding `:merge`s its own
-  top-level column (`last_active_at` / `duration_ms` / `duplicate_count` / `content_count`) and its typed
-  `details` onto this."
+  "The flat identity every finding response shares. Each finding `:merge`s its own top-level column
+  (`last_active_at` / `duration_ms` / `duplicate_count` / `content_count`) and its typed `details` onto
+  this."
   [:map
    [:id                  :int]
    [:finding_type        :keyword]
@@ -55,13 +54,18 @@
    ;; on when given a card sub-kind (question/model/metric);
    ;; nullable (rows can predate the column, and a card deleted mid-scan stamps nil)
    [:card_type           {:optional true} [:maybe :keyword]]
+   [:entity_kind         :keyword]
    [:entity_id           :int]
    [:detected_at         ms/TemporalInstant]
    [:entity_display_name [:maybe :string]]
    ;; entity's created_at, denormalized at scan time (immutable ⇒ equals live)
    [:created_at          [:maybe ms/TemporalInstant]]
    ;; whether the caller can trash the entity (curate its collection, or delete a transform)
-   [:can_write           :boolean]])
+   [:can_write           :boolean]
+   ;; scan-time parent-collection name (the collection sort key); root rows carry the site-locale root
+   ;; label. nil when the caller cannot read the scan-time parent or the row predates the migration.
+   ;; details.collection stays the live, permission-scoped breadcrumb for navigation.
+   [:collection_name     [:maybe :string]]])
 
 (def ^:private BreadcrumbId
   "A breadcrumb collection id: a real collection id, or the literal \"root\" of the root sentinel."
@@ -208,8 +212,10 @@
 
 (def ^:private imbalanced-sort-column->field
   "Sortable imbalanced-list params → their native `content_diagnostics_finding` column: the shared base
-  plus `content-count` (always set on an imbalanced finding)."
-  (assoc api.common/base-sort-column->field :content-count :content_count))
+  plus `content-count` (always set on an imbalanced finding) and `finding-type`."
+  (assoc api.common/base-sort-column->field
+         :content-count :content_count
+         :finding-type  :finding_type))
 
 (def ^:private imbalanced-finding-types
   "The finding types the `/imbalanced` endpoint spans."
@@ -323,8 +329,9 @@
   are valid values, and `card` means any card type.
   `threshold-days` (positive int) keeps findings with `last_active_at` on or before `today -
   threshold-days` (never-used always pass). `query` case-insensitively substring-matches the entity name.
-  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`last-active-at`, default
-  `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
+  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|
+  `last-active-at`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is
+  the stable tiebreak."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types threshold-days query]
     :or   {include-personal-collections false
@@ -366,8 +373,9 @@
   their own type.
   `min-duration-ms` (positive int) keeps findings whose `duration_ms` is at least that (containers
   filter on their representative duration). `query` case-insensitively substring-matches the entity name.
-  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duration-ms`, default
-  `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
+  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|
+  `duration-ms`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the
+  stable tiebreak."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types min-duration-ms query]
     :or   {include-personal-collections false
@@ -450,8 +458,9 @@
   be questions.
   `min-duplicate-count` (positive int) keeps findings with at least that many peers. `query`
   case-insensitively substring-matches the entity name. `sort-column`
-  (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`duplicate-count`, default `detected-at`)
-  + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable tiebreak."
+  (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|`duplicate-count`,
+  default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable
+  tiebreak."
   [_route-params
    {:keys [include-personal-collections sort-column sort-direction entity-types
            min-duplicate-count query]

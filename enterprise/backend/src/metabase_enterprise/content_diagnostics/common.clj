@@ -27,9 +27,11 @@
 
 (defn entity-collection-clauses
   "For each of `entity-types`, a clause keeping findings whose entity currently lives in a collection
-  satisfying `coll-pred-fn` - a fn of the column holding the entity's collection id. Checked against the
-  entity's own table, so it reflects where the entity is now. A `:collection` subject *is* the collection, so
-  its predicate is keyed on its own `:id`. Callers combine the seq with `:or`/`:and`."
+  satisfying `coll-pred-fn` - a fn of the entity-type and the column holding the entity's collection id.
+  Checked against the entity's own table, so it reflects where the entity is now. A `:collection` subject
+  *is* the collection, so its predicate is keyed on its own `:id`. The entity-type is passed so a caller
+  can vary the predicate per type - transforms outlive their folder's archiving, so their visibility
+  differs. Callers combine the seq with `:or`/`:and`."
   [entity-types coll-pred-fn]
   (for [etype entity-types
         :let  [model (entity-type->model etype)]
@@ -38,7 +40,7 @@
      [:= :entity_type (name etype)]
      [:in :entity_id {:select [:id]
                       :from   [(t2/table-name model)]
-                      :where  (coll-pred-fn (if (= etype :collection) :id :collection_id))}]]))
+                      :where  (coll-pred-fn etype (if (= etype :collection) :id :collection_id))}]]))
 
 (def eligible-collection-where
   "The WHERE defining a collection *subject* - the finalized content-diagnostics eligibility set, stated
@@ -134,15 +136,25 @@
   [entity-type]
   (get-in entity-spec [entity-type :candidate]))
 
+(defn entity-root-namespace
+  "The namespace of the root a root-resident subject sits under (`collection-namespace` applies only to
+  collection subjects). Shared by the scan's root-label stamping and the serve layer's root breadcrumb
+  so the stored sort label and the served breadcrumb agree."
+  [entity-type collection-namespace]
+  (case entity-type
+    :collection collection-namespace
+    :transform  collection/transforms-ns
+    nil))
+
 (defn attach-entity-attrs
   "Stamp each finding with the denormalized display/sort/filter columns - `:entity-name`,
-  `:entity-created-at`, `:entity-creator-id`, `:entity-creator-name`, and (cards only) `:card-type` -
-  batch-resolved from each entity's own model (F ≪ N: one query per entity-type over just the flagged
-  ids, plus one `creator_id → common_name` lookup over the distinct creators). Values a checker has
-  already set win (e.g. the stale checker's `:entity-name` from its own query), so this only fills what
-  the checker left unset. Every covered model exposes `name`/`created_at`; `creator_id` is selected only
-  where the model has it - collections have none (a personal collection's owner is NOT a creator proxy),
-  so their creator columns stay NULL."
+  `:entity-created-at`, `:entity-creator-id`, `:entity-creator-name`, `:entity-kind`,
+  and (cards only) `:card-type` - batch-resolved from each entity's own model (F ≪ N: one query per
+  entity-type over just the flagged ids, plus one `creator_id → common_name` lookup over the distinct
+  creators). Values a checker has already set win (e.g. the stale checker's `:entity-name` from its own
+  query), so this only fills what the checker left unset. Every covered model exposes `name`/`created_at`;
+  `creator_id` is selected only where the model has it - collections have none (a personal collection's
+  owner is NOT a creator proxy), so their creator columns stay NULL."
   [findings]
   (let [attrs-by-key     (into {}
                                (for [[entity-type findings-for-type] (group-by :entity-type findings)
@@ -170,6 +182,9 @@
                       :entity-creator-name (get creator-id->name creator_id)
                       ;; report_card.type at scan time (nil for non-cards) - what `entity-types` filters
                       ;; on when given a card sub-kind
-                      :card-type           card-type}
+                      :card-type           card-type
+                      ;; flat kind: card sub-kind for cards (fallback :card if entity vanished),
+                      ;; else entity-type - one column serves filter and sort
+                      :entity-kind         (if (= entity-type :card) (or card-type :card) entity-type)}
                      finding)))
           findings)))
