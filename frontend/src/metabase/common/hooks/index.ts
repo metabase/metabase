@@ -1,4 +1,3 @@
-export * from "./entity-framework";
 export * from "./use-attached-dwh";
 export * from "./use-abortable-query";
 export * from "./use-confirmation";

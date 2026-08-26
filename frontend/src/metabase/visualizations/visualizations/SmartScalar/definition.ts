@@ -12,7 +12,7 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, DatasetData, Series } from "metabase-types/api";
+import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { MAX_COMPARISONS, VIZ_SETTINGS_DEFAULTS } from "./constants";
@@ -138,22 +138,46 @@ export const SMART_SCALAR_CHART_DEFINITION: VisualizationDefinition = {
     };
   },
 
-  isSensible({ cols, insights }: DatasetData) {
+  isSensible({ rows, cols }: DatasetData) {
     const dimensionCount = cols.filter(
       (col) => isDimension(col) && !isMetric(col),
     ).length;
-    return !!insights && insights?.length > 0 && dimensionCount === 1;
+    const dateCount = cols.filter(
+      (col) => isDate(col) || isAbsoluteDateTimeUnit(col.unit),
+    ).length;
+    const metricCount = cols.filter((col) => isMetric(col)).length;
+    return (
+      rows.length >= 1 &&
+      dimensionCount === 1 &&
+      dateCount === 1 &&
+      metricCount >= 1
+    );
   },
 
   // Smart scalars need to have a breakout
-  checkRenderable([
-    {
-      data: { insights },
-    },
-  ]: Series) {
-    if (!insights || insights.length === 0) {
+  checkRenderable(
+    [
+      {
+        data: { cols },
+      },
+    ],
+    settings,
+  ) {
+    const dateCount = cols.filter(
+      (col) => isDate(col) || isAbsoluteDateTimeUnit(col.unit),
+    ).length;
+    if (dateCount === 0) {
       throw new ChartSettingsError(
         t`Group only by a time field to see how this has changed over time`,
+      );
+    }
+
+    const metricCount = cols.filter(
+      (col) => col.name === settings["scalar.field"],
+    ).length;
+    if (metricCount === 0) {
+      throw new ChartSettingsError(
+        t`Add a metric to see how it's changed over time`,
       );
     }
   },
