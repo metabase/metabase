@@ -517,13 +517,11 @@ describe("scenarios > embedding > embedding hub > tenancy", () => {
     it("upsells rather than hiding the tab", () => {
       cy.visit("/embedding/tenancy");
 
-      cy.findByTestId("embedding-hub-main").within(() => {
-        cy.findByText("Use a multi-tenant user strategy").should("be.visible");
-        cy.findByText(
-          "Securely share data with external users and allow them to create content.",
-          { exact: false },
-        ).should("be.visible");
-      });
+      // Card copy is unit-tested next to the component; this just confirms
+      // the upsell renders in place of the real tenants surfaces.
+      cy.findByTestId("embedding-hub-main")
+        .findByText("Use a multi-tenant user strategy")
+        .should("be.visible");
     });
   });
 });
