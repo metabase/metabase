@@ -13,6 +13,7 @@ import {
   type MetabotConversationState,
   type MetabotMessage,
   getContextUsagePercent,
+  getIsConversationInProgress,
   getLastAgentMessageExternalId,
   getLongChatNotice,
   getUserPromptMessage,
@@ -20,20 +21,26 @@ import {
 
 function setup(
   messages: MetabotMessage[],
-  convoState?: Partial<Pick<MetabotConversationState, "lastTokenUsage">>,
+  convoState?: Partial<
+    Pick<
+      MetabotConversationState,
+      "conversationId" | "lastTokenUsage" | "profileOverride"
+    >
+  >,
 ): State {
   setupEnterprisePlugins();
 
+  const conversationId = convoState?.conversationId ?? "omnibot";
   const state = getMetabotInitialState();
   const visibleState = assocIn(state, ["agents", "omnibot", "visible"], true);
   const withMessages = assocIn(
     visibleState,
-    ["conversations", "omnibot", "messages"],
+    ["conversations", conversationId, "messages"],
     messages,
   );
   const withConvoState = Object.entries(convoState ?? {}).reduce(
     (acc, [key, value]) =>
-      assocIn(acc, ["conversations", "omnibot", key], value),
+      assocIn(acc, ["conversations", conversationId, key], value),
     withMessages,
   );
 
@@ -193,6 +200,21 @@ describe("metabot selectors", () => {
         const state = setup([shortMessage], usage(CONTEXT_WINDOW * 2));
         expect(getContextUsagePercent(state, "omnibot")).toBe(100);
       });
+    });
+  });
+
+  describe("getIsConversationInProgress", () => {
+    it("detects a mid-thread in-progress message for profiles like slackbot", () => {
+      const conversationId = "slackbot";
+      const state = setup(
+        [
+          createMockMetabotMessage({ status: { type: "in_progress" } }),
+          createMockMetabotMessage({ status: { type: "done" } }),
+        ],
+        { conversationId, profileOverride: "slackbot" },
+      );
+
+      expect(getIsConversationInProgress(state, conversationId)).toBe(true);
     });
   });
 });

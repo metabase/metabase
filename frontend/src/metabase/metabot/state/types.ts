@@ -59,6 +59,10 @@ export type MetabotAgentDataPartMessage = {
   metadata?: MetabotDataPartMetadata;
 };
 
+export type MetabotGeneratedCardPart = MetabotAgentDataPartMessage & {
+  part: { type: "data-generated_entity"; data: { type: "card" } };
+};
+
 export type MetabotDebugToolCallMessage = {
   id: string;
   role: "agent";
@@ -106,6 +110,7 @@ export type MetabotMessageStatus =
       type: "errored";
       error: MetabotAgentTurnError;
       display?: MetabotAgentTurnDisplayError;
+      serverStarted?: boolean;
     };
 
 export type MetabotMessagePart =

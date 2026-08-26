@@ -90,7 +90,7 @@
      [:error [:or
               :string
               [:map
-               [:message {:optional true} :string]
+               [:message {:optional true} [:maybe :string]]
                [:type    {:optional true} :string]
                [:data    {:optional true} :any]]]]]]])
 

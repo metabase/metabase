@@ -133,6 +133,24 @@ describe("AgentMessage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders extra actions on a tool-only reply in debug mode", () => {
+    setup(
+      { parts: [createMockMetabotToolCallPart()] },
+      { debug: true, extraActions: <span data-testid="picker" /> },
+    );
+
+    expect(screen.getByTestId("picker")).toBeInTheDocument();
+  });
+
+  it("does not render extra actions on a tool-only reply outside debug mode", () => {
+    setup(
+      { parts: [createMockMetabotToolCallPart()] },
+      { debug: false, extraActions: <span data-testid="picker" /> },
+    );
+
+    expect(screen.queryByTestId("picker")).not.toBeInTheDocument();
+  });
+
   describe("feedback controls", () => {
     const conversation = [
       createMockMetabotTextMessage("user", "hi"),

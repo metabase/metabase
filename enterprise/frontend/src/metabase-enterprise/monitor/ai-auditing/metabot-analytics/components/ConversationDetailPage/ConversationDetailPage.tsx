@@ -12,10 +12,10 @@ import {
 } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
 import { useBranchableMessages } from "metabase/metabot/hooks";
+import { isTextPart } from "metabase/metabot/state";
 import type {
   MetabotDebugToolCallMessage,
   MetabotMessage,
-  MetabotMessagePart,
 } from "metabase/metabot/state/types";
 import { convertSlackMessage } from "metabase/metabot/utils/slack-mrkdwn";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
@@ -255,8 +255,6 @@ function StatCard({ label, value }: { label: string; value: string }) {
     </Card>
   );
 }
-
-const isTextPart = (part: MetabotMessagePart) => part.type === "text";
 
 function FeedbackCard({
   feedback,

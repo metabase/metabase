@@ -20,6 +20,7 @@ import {
   type MetabotMessageStatus,
   forkConversation,
   isChainOfThoughtMessage,
+  isTextPart,
 } from "metabase/metabot/state";
 import { useDispatch } from "metabase/redux";
 import { useSetting } from "metabase/settings";
@@ -75,14 +76,11 @@ const isUserVisiblePart = (part: MetabotMessagePart): boolean =>
     .with({ type: "chain_of_thought" }, () => true)
     .exhaustive();
 
-const isConversationContent = (part: MetabotMessagePart) =>
-  !isChainOfThoughtMessage(part) && part.type !== "tool_call";
-
 const useMessageText = (message: MetabotMessage) =>
   useMemo(
     () =>
       message.parts
-        .filter((part) => part.type === "text")
+        .filter(isTextPart)
         .map((part) => part.message)
         .join("\n\n"),
     [message.parts],
@@ -292,57 +290,76 @@ const MessageActions = ({
 }: MessageActionsProps) => {
   const messageId = message.externalId ?? "";
   const text = useMessageText(message);
+  const actions: ReactNode[] = [];
+
+  if (text) {
+    actions.push(<CopyAction key="copy" text={text} />);
+  }
+
+  if (canGiveFeedback && setFeedbackMessage) {
+    actions.push(
+      <Tooltip key="positive-feedback" label={t`Give positive feedback`}>
+        <FeedbackButton
+          data-testid="metabot-chat-message-thumbs-up"
+          icon="thumbs_up"
+          hasBeenClicked={submittedFeedback === "positive"}
+          disabled={!!submittedFeedback}
+          onClick={() => setFeedbackMessage({ messageId, positive: true })}
+        />
+      </Tooltip>,
+      <Tooltip key="negative-feedback" label={t`Give negative feedback`}>
+        <FeedbackButton
+          data-testid="metabot-chat-message-thumbs-down"
+          icon="thumbs_down"
+          hasBeenClicked={submittedFeedback === "negative"}
+          disabled={!!submittedFeedback}
+          onClick={() => setFeedbackMessage({ messageId, positive: false })}
+        />
+      </Tooltip>,
+    );
+  }
+
+  if (onRetry) {
+    actions.push(
+      <Tooltip key="retry" label={t`Retry`}>
+        <ActionIcon
+          onClick={onRetry}
+          h="sm"
+          data-testid="metabot-chat-message-retry"
+        >
+          <Icon name="revert" size="1rem" />
+        </ActionIcon>
+      </Tooltip>,
+    );
+  }
+
+  if (extraActions) {
+    actions.push(<Fragment key="extra-actions">{extraActions}</Fragment>);
+  }
+
+  if (canFork && onFork) {
+    actions.push(
+      <Tooltip key="fork" label={t`Fork conversation`}>
+        <ActionIcon
+          h="sm"
+          data-testid="metabot-chat-message-fork"
+          loading={isForking}
+          disabled={isForking}
+          onClick={() => onFork(messageId)}
+        >
+          <Icon name="git_branch" size="1rem" />
+        </ActionIcon>
+      </Tooltip>,
+    );
+  }
+
+  if (actions.length === 0) {
+    return null;
+  }
 
   return (
     <Flex className={Styles.messageActions} align="center">
-      <CopyAction text={text} />
-      {canGiveFeedback && setFeedbackMessage && (
-        <>
-          <Tooltip label={t`Give positive feedback`}>
-            <FeedbackButton
-              data-testid="metabot-chat-message-thumbs-up"
-              icon="thumbs_up"
-              hasBeenClicked={submittedFeedback === "positive"}
-              disabled={!!submittedFeedback}
-              onClick={() => setFeedbackMessage({ messageId, positive: true })}
-            />
-          </Tooltip>
-          <Tooltip label={t`Give negative feedback`}>
-            <FeedbackButton
-              data-testid="metabot-chat-message-thumbs-down"
-              icon="thumbs_down"
-              hasBeenClicked={submittedFeedback === "negative"}
-              disabled={!!submittedFeedback}
-              onClick={() => setFeedbackMessage({ messageId, positive: false })}
-            />
-          </Tooltip>
-        </>
-      )}
-      {onRetry && (
-        <Tooltip label={t`Retry`}>
-          <ActionIcon
-            onClick={onRetry}
-            h="sm"
-            data-testid="metabot-chat-message-retry"
-          >
-            <Icon name="revert" size="1rem" />
-          </ActionIcon>
-        </Tooltip>
-      )}
-      {extraActions}
-      {canFork && onFork && (
-        <Tooltip label={t`Fork conversation`}>
-          <ActionIcon
-            h="sm"
-            data-testid="metabot-chat-message-fork"
-            loading={isForking}
-            disabled={isForking}
-            onClick={() => onFork(messageId)}
-          >
-            <Icon name="git_branch" size="1rem" />
-          </ActionIcon>
-        </Tooltip>
-      )}
+      {actions}
     </Flex>
   );
 };
@@ -380,7 +397,7 @@ export const AgentMessage = ({
   const actionsIndex =
     isStreaming || hideActions
       ? -1
-      : visibleParts.findLastIndex(isConversationContent);
+      : visibleParts.findLastIndex((part) => !isChainOfThoughtMessage(part));
 
   const actions = (
     <MessageActions

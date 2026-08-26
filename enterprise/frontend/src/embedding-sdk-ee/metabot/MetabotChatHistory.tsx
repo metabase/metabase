@@ -4,15 +4,13 @@ import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMes
 import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
-import type { MetabotMessagePart } from "metabase/metabot/state";
+import {
+  type MetabotMessagePart,
+  isGeneratedCardPart,
+} from "metabase/metabot/state";
 import { Stack } from "metabase/ui";
 
 import S from "./MetabotQuestion.module.css";
-
-const isQuestionNavigationPart = (part: MetabotMessagePart) =>
-  part.type === "data_part" &&
-  part.part.type === "data-generated_entity" &&
-  part.part.data.type === "card";
 
 const isHiddenInEmbedding = (part: MetabotMessagePart) =>
   part.type === "chain_of_thought";
@@ -30,8 +28,7 @@ export function MetabotChatHistory() {
       messages.map((message) => ({
         ...message,
         parts: message.parts.filter(
-          (part) =>
-            !isQuestionNavigationPart(part) && !isHiddenInEmbedding(part),
+          (part) => !isGeneratedCardPart(part) && !isHiddenInEmbedding(part),
         ),
       })),
     [messages],

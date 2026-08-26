@@ -52,6 +52,7 @@ import {
   metabotReducer,
   setVisible,
 } from "../state";
+import { sendAgentRequest } from "../state/actions";
 import {
   createAgentState,
   createConversationForAgent,
@@ -77,6 +78,23 @@ export const convoForAgent = (
   store: MetabotStoreLike,
   agentId: MetabotAgentId = "omnibot",
 ) => convoIn(store.getState().metabot, conversationIdForAgent(store, agentId));
+
+// starts turns without making an API request
+export const startRequestlessAgentTurn = (
+  store: { dispatch: (action: unknown) => unknown },
+  conversationId: string,
+  assistantMessageId?: string,
+) =>
+  store.dispatch({
+    type: sendAgentRequest.pending.type,
+    meta: {
+      arg: {
+        conversation_id: conversationId,
+        loadId: 0,
+        assistant_message_id: assistantMessageId,
+      },
+    },
+  });
 
 // make ids easer to address than production's random uuids
 export const testConversationId = (agentId: MetabotAgentId) =>

@@ -17,10 +17,13 @@ import type {
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import {
+  type MetabotGeneratedCardPart,
+  type MetabotMessagePart,
   getFinalChartMessageIdsPerTurn,
   getMetabotConversationId,
+  isGeneratedCardPart,
+  isTextPart,
 } from "metabase/metabot/state";
-import type { MetabotMessagePart } from "metabase/metabot/state/types";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
 
@@ -172,19 +175,13 @@ function getCachedChartComponent(
 // for the full rationale.
 type PublicChatMessage =
   | Extract<MetabotMessagePart, { type: "text" }>
-  | (Extract<MetabotMessagePart, { type: "data_part" }> & {
-      part: { type: "data-generated_entity"; data: { type: "card" } };
-    });
+  | MetabotGeneratedCardPart;
 
 const isPublicPart = (
   part: MetabotMessagePart,
   finalChartIds: Set<string>,
 ): part is PublicChatMessage =>
-  part.type === "text" ||
-  (part.type === "data_part" &&
-    part.part.type === "data-generated_entity" &&
-    part.part.data.type === "card" &&
-    finalChartIds.has(part.id));
+  isTextPart(part) || (isGeneratedCardPart(part) && finalChartIds.has(part.id));
 
 const mapMessage = (
   message: PublicChatMessage,

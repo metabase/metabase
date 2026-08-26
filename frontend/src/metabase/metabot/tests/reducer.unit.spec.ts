@@ -25,6 +25,7 @@ import {
   conversationIdForAgent,
   convoForAgent,
   createTestMetabotState,
+  startRequestlessAgentTurn,
   testConversationId,
 } from "./utils";
 
@@ -57,11 +58,7 @@ const requestAction = (
 // stream has already opened
 const createStreamingStore = () => {
   const store = createTestStore();
-  store.dispatch(
-    metabotActions.startAgentMessage({
-      conversationId: testConversationId("omnibot"),
-    }),
-  );
+  startRequestlessAgentTurn(store, testConversationId("omnibot"));
   return store;
 };
 
@@ -452,7 +449,7 @@ describe("metabot reducer", () => {
   it("settles an aborted rejection that carries no payload", () => {
     const conversationId = testConversationId("omnibot");
     const store = createTestStore();
-    store.dispatch(metabotActions.startAgentMessage({ conversationId }));
+    startRequestlessAgentTurn(store, conversationId);
 
     store.dispatch({
       type: sendAgentRequest.rejected.type,
@@ -774,7 +771,7 @@ describe("metabot reducer", () => {
           }),
         },
       });
-      store.dispatch(metabotActions.startAgentMessage({ conversationId }));
+      startRequestlessAgentTurn(store, conversationId);
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.setConversationSnapshot({

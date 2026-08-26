@@ -1,5 +1,6 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { act, screen, waitFor, within } from "__support__/ui";
@@ -410,5 +411,23 @@ describe("metabot > retry", () => {
     const body = await lastReqBody(retrySpy);
     expect(isUuid(firstReqBody.user_message_id)).toBe(true);
     expect(body.retry_message_id).toBe(firstReqBody.user_message_id);
+  });
+
+  it("should fall back to a plain send when the request failed before the server started the turn", async () => {
+    setup();
+    fetchMock.post(`path:/api/metabot/agent-streaming`, {
+      status: 500,
+      body: { message: "boom" },
+    });
+    await enterChatMessage("first prompt");
+    expect(await screen.findByText(/boom/)).toBeInTheDocument();
+
+    const retrySpy = mockAgentEndpoint({ events: [] });
+    await userEvent.click(
+      await screen.findByTestId("metabot-chat-message-retry"),
+    );
+
+    const body = await lastReqBody(retrySpy);
+    expect(body.retry_message_id).toBeUndefined();
   });
 });

@@ -54,6 +54,7 @@ import {
   getIsConversationProcessing,
   getIsPollingForTitle,
   getMessageIdToRewind,
+  getMessages,
   getMetabotConversationId,
   getPromptText,
   getUserPromptMessage,
@@ -456,6 +457,7 @@ type SendAgentRequestError =
       type: "error";
       conversation_id: string;
       shouldRetry: boolean;
+      serverStarted: boolean;
       error: MetabotAgentTurnError;
       display?: MetabotAgentTurnDisplayError;
     }
@@ -502,6 +504,7 @@ export const sendAgentRequest = createAsyncThunk<
     let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
     let receivedTitle = false;
+    let serverStarted = false;
     const hadTitleBeforeTurn = Boolean(
       getConversationTitle(getState(), conversationId),
     );
@@ -645,10 +648,8 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .exhaustive();
           },
-          onStart: function handleStart(event) {
-            if (!event.messageId) {
-              throw new Error("Metabot start event carried no messageId");
-            }
+          onStart: function handleStart() {
+            serverStarted = true;
           },
           onTextPart: function handleTextPart(delta) {
             dispatchIfCurrent(
@@ -741,6 +742,7 @@ export const sendAgentRequest = createAsyncThunk<
           type: "error",
           conversation_id: request.conversation_id,
           shouldRetry: true,
+          serverStarted,
           error: streamedError,
           display: isMatching(
             { type: "ai_usage_limit_reached", message: P.string },
@@ -790,6 +792,7 @@ export const sendAgentRequest = createAsyncThunk<
         type: "error" as const,
         conversation_id: request.conversation_id,
         shouldRetry: true,
+        serverStarted,
         error: handled.error,
         display: handled.display,
       });
@@ -889,6 +892,14 @@ export const retryPrompt = createAsyncThunk<
       return { prompt: promptText, success: false, shouldRetry: false };
     }
 
+    // a turn the server never started has no rows to regenerate
+    const failedTurn = getMessages(state, conversationId).at(-1);
+    const retryMessageId =
+      failedTurn?.status.type === "errored" &&
+      failedTurn.status.serverStarted === false
+        ? undefined
+        : userTurn.externalId;
+
     dispatch(rewindConversation({ conversationId, messageId: userTurn.id }));
     dispatch(cancelInflightConversationRequests(conversationId));
 
@@ -900,7 +911,7 @@ export const retryPrompt = createAsyncThunk<
         context,
         metabot_id,
         profile,
-        retryMessageId: userTurn.externalId,
+        retryMessageId,
         isTransformsPage,
         isFullPageMetabot,
       }),
@@ -908,9 +919,24 @@ export const retryPrompt = createAsyncThunk<
   },
 );
 
+const assertConversationIsNotStreaming = (conversationId: string) => {
+  const isStreaming =
+    findMatchingInflightAiStreamingRequests(
+      "/api/metabot/agent-streaming",
+      conversationId,
+    ).length > 0;
+  if (isStreaming) {
+    throw new Error(
+      `Cannot load conversation ${conversationId} while it is streaming`,
+    );
+  }
+};
+
 export const fetchConversationSnapshot = createAsyncThunk(
   "metabase/metabot/fetchConversationSnapshot",
   async (conversationId: string, { dispatch }) => {
+    assertConversationIsNotStreaming(conversationId);
+
     const { data: detail, error } = await dispatch(
       metabotApi.endpoints.getMetabotConversation.initiate(conversationId, {
         forceRefetch: true,
@@ -952,10 +978,12 @@ export const loadConversation = createAsyncThunk(
     }: { agentId: MetabotAgentId; conversationId: string },
     { dispatch },
   ) => {
+    assertConversationIsNotStreaming(conversationId);
+
     // NOTE: deliberately doesn't cancel the inflight streaming-request;
     // as we do not want to record it as an aborted response.
     dispatch(attachAgentToConversation({ agentId, conversationId }));
-    await dispatch(fetchConversationSnapshot(conversationId));
+    await dispatch(fetchConversationSnapshot(conversationId)).unwrap();
   },
 );
 

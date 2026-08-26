@@ -177,11 +177,6 @@ export const metabot = createSlice({
         userMessage.parts.push({ id, role: "user", ...rest, message } as any);
       },
     ),
-    startAgentMessage: convoReducer(
-      (convo, action: ConvoPayloadAction<{ externalId?: string }>) => {
-        startAgentMessage(convo, action.payload.externalId);
-      },
-    ),
     addAgentMessage: convoReducer(
       (
         convo,
@@ -562,6 +557,7 @@ export const metabot = createSlice({
               type: "errored",
               error: action.payload.error,
               display: action.payload.display,
+              serverStarted: action.payload.serverStarted,
             };
           } else {
             message.status = action.meta.aborted

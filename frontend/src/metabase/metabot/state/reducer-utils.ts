@@ -1,7 +1,7 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { merge } from "icepick";
 import type { WritableDraft } from "immer";
-import { P, isMatching, match } from "ts-pattern";
+import { match } from "ts-pattern";
 
 import {
   METABOT_PROFILE_OVERRIDES,
@@ -31,10 +31,12 @@ export type AgentPayloadAction<
   Value extends Record<string, any> = Record<string, any>,
 > = PayloadAction<{ agentId: MetabotAgentId } & Value>;
 
-const isOpenAgentMessage = isMatching({
-  role: "agent",
-  status: { type: P.union("streaming", "in_progress") },
-});
+const isOpenAgentMessage = (
+  message?: MetabotMessage,
+): message is MetabotMessage =>
+  message?.role === "agent" &&
+  (message.status.type === "streaming" ||
+    message.status.type === "in_progress");
 
 export const openAgentMessage = (
   convo: WritableDraft<MetabotConversationState>,

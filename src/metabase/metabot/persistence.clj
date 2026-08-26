@@ -573,12 +573,10 @@
   [row-role part]
   (cond
     (schema.v2/text-part? part)
-    (if (= :user row-role)
-      {:id (str (random-uuid)) :role "user" :type "text" :message (:text part)}
-      {:id      (str (random-uuid))
-       :role    "agent"
-       :type    "text"
-       :message (:text part)})
+    {:id      (str (random-uuid))
+     :role    (if (= :user row-role) "user" "agent")
+     :type    "text"
+     :message (:text part)}
 
     (schema.v2/tool-part? part)
     (cond-> {:id     (:toolCallId part)
@@ -607,7 +605,7 @@
 (defn- message->parts
   "The row's `:data` blocks as frontend message parts."
   [message]
-  (into [] (keep #(convert-content-block (:role message) %)) (or (:data message) [])))
+  (into [] (keep #(convert-content-block (:role message) %)) (:data message)))
 
 (defn- decode-error
   "JSON-decode a row's `:error` column value (a string written by
@@ -692,11 +690,14 @@
   the optional `external_id` and status the row itself carries. Rows with no
   renderable parts are still fully represented."
   [row]
-  (cond-> {:id      (or (:external_id row) (str (:id row)))
-           :role    (if (= :user (:role row)) "user" "agent")
-           :parts   (if (placeholder-still-active? row) [] (message->parts row))
-           :status  (row->status row)}
-    (:external_id row) (assoc :externalId (:external_id row))))
+  (let [status (row->status row)]
+    (cond-> {:id     (or (:external_id row) (str (:id row)))
+             :role   (if (= :user (:role row)) "user" "agent")
+             :parts  (if (= "in_progress" (:type status))
+                       []
+                       (message->parts row))
+             :status status}
+      (:external_id row) (assoc :externalId (:external_id row)))))
 
 (defn messages->client-messages
   "Convert a seq of `MetabotMessage` model instances into their client shape, one

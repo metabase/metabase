@@ -11,6 +11,7 @@ import {
   lastReqBody,
   mockAgentEndpoint,
   setup,
+  startRequestlessAgentTurn,
   testConversationId,
   whoIsYourFavoriteResponse,
 } from "metabase/metabot/tests/utils";
@@ -39,7 +40,7 @@ const addAgentMessage = (
   store: { dispatch: (action: unknown) => unknown },
   ...parts: unknown[]
 ) => {
-  store.dispatch(metabotActions.startAgentMessage({ conversationId }));
+  startRequestlessAgentTurn(store, conversationId);
   parts.forEach((part) =>
     // `addAgentMessage`/`addUserMessage` in reducer.ts type their payload
     // as `Omit<UnionType, ...>`. Non-distributive `Omit` collapses the

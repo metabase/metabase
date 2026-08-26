@@ -17,12 +17,8 @@ import {
   isContextWindowFull,
 } from "../utils/context-usage";
 
-import type {
-  MetabotAgentId,
-  MetabotMessage,
-  MetabotUserChatMessage,
-} from "./types";
-import { hasInProgressMessage } from "./utils";
+import type { MetabotAgentId, MetabotMessage } from "./types";
+import { hasInProgressMessage, isGeneratedCardPart, isTextPart } from "./utils";
 
 /*
  * Top Level Selectors
@@ -194,12 +190,7 @@ export const getFinalChartMessageIdsPerTurn = createSelector(
   (messages) =>
     new Set(
       messages.flatMap((message) => {
-        const lastChart = message.parts.findLast(
-          (p) =>
-            p.type === "data_part" &&
-            p.part.type === "data-generated_entity" &&
-            p.part.data.type === "card",
-        );
+        const lastChart = message.parts.findLast(isGeneratedCardPart);
         return lastChart ? [lastChart.id] : [];
       }),
     ),
@@ -227,9 +218,7 @@ export const getUserPromptMessage = createSelector(
 );
 
 export const getPromptText = (message: MetabotMessage) =>
-  message.parts.find(
-    (p): p is MetabotUserChatMessage => p.role === "user" && p.type === "text",
-  )?.message ?? "";
+  message.parts.find(isTextPart)?.message ?? "";
 
 export const getMessageIdToRewind = createSelector(
   [getMessages],
