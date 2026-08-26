@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { usePermissionsBasePath } from "metabase/admin/permissions/utils/base-path";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
@@ -14,6 +13,7 @@ import { TenancyUpsellPage } from "metabase/embedding-hub/upsells";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Outlet, useLocation, useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
+import { SettingsPageWrapper } from "metabase/settings-components/SettingsSection";
 import {
   Box,
   Button,
