@@ -682,8 +682,13 @@ function computeComparisonStrPreviousValue({
   prevDate: string;
   nextDate: string | undefined;
 }) {
-  const isSameDay = dayjs.parseZone(prevDate).isSame(nextDate, "day");
-  const isSameYear = dayjs.parseZone(prevDate).isSame(nextDate, "year");
+  // Compare wall-clock date parts as displayed; instant-based isSame goes
+  // through the machine-local frame and varies with the viewer's timezone.
+  const prev = dayjs.parseZone(prevDate);
+  const next = nextDate == null ? null : dayjs.parseZone(nextDate);
+  const isSameDay =
+    next != null && prev.format("YYYY-MM-DD") === next.format("YYYY-MM-DD");
+  const isSameYear = next != null && prev.year() === next.year();
 
   const options = {
     removeDay: isSameDay,
