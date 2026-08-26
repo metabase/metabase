@@ -71,19 +71,19 @@ jobs:
             core.setOutput('version', majorVersion);
 
       - name: generate release Log
-        if: ${{ steps.get-version.outputs.version != "" }}
+        if: ${{ steps.get-version.outputs.version != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd release && tsx ./src/release-log-run.ts "$VERSION" > "v$VERSION.html"
       - name: upload release log to the web
-        if: ${{ steps.get-version.outputs.version != "" }}
+        if: ${{ steps.get-version.outputs.version != '' }}
         run: |
           aws s3 cp \
           "release/v$VERSION.html" \
           "s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/v$VERSION.html"
 
       - name: Create cloudfront invalidation
-        if: ${{ steps.get-version.outputs.version != "" }}
+        if: ${{ steps.get-version.outputs.version != '' }}
         run: |
           aws cloudfront create-invalidation \
           --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
