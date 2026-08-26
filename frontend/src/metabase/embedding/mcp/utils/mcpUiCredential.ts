@@ -1,6 +1,6 @@
 import { PLUGIN_API } from "metabase/api/client";
 
-const MCP_UI_CREDENTIAL_META_KEY = "com.metabase/mcp-ui";
+const MCP_UI_CREDENTIAL_META_KEY = "com.metabase/mcp-apps";
 
 export interface McpUiAuth {
   credential: string;

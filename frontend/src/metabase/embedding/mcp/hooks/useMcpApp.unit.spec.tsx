@@ -47,7 +47,7 @@ describe("useMcpApp", () => {
       app.ontoolresult({
         structuredContent: { query: "encoded-query" },
         _meta: {
-          "com.metabase/mcp-ui": {
+          "com.metabase/mcp-apps": {
             credential: "fresh-credential",
             refreshTool: "refresh_visualize_query_ui_credential",
             sessionId: "mcp-session-id",
@@ -67,7 +67,7 @@ describe("useMcpApp", () => {
     const app: Record<string, any> = {
       callServerTool: jest.fn().mockResolvedValue({
         _meta: {
-          "com.metabase/mcp-ui": {
+          "com.metabase/mcp-apps": {
             credential: "refreshed-credential",
             refreshTool: "refresh_visualize_query_ui_credential",
             sessionId: "new-mcp-session-id",
@@ -94,7 +94,7 @@ describe("useMcpApp", () => {
       app.ontoolresult({
         structuredContent: { query: "encoded-query" },
         _meta: {
-          "com.metabase/mcp-ui": {
+          "com.metabase/mcp-apps": {
             credential: "expired-credential",
             refreshTool: "refresh_visualize_query_ui_credential",
             sessionId: "old-mcp-session-id",
@@ -117,7 +117,7 @@ describe("useMcpApp", () => {
     const app: Record<string, any> = {
       callServerTool: jest.fn().mockResolvedValue({
         _meta: {
-          "com.metabase/mcp-ui": {
+          "com.metabase/mcp-apps": {
             credential: "refreshed-credential",
             refreshTool: "refresh_visualize_query_ui_credential",
             sessionId: "new-mcp-session-id",
@@ -163,7 +163,7 @@ describe("useMcpApp", () => {
     const app: Record<string, any> = {
       callServerTool: jest.fn().mockResolvedValue({
         _meta: {
-          "com.metabase/mcp-ui": {
+          "com.metabase/mcp-apps": {
             credential: "refreshed-credential",
             refreshTool: "refresh_visualize_query_ui_credential",
             sessionId: "mcp-session-id",
@@ -190,7 +190,7 @@ describe("useMcpApp", () => {
       app.ontoolresult({
         structuredContent: { query: "encoded-query" },
         _meta: {
-          "com.metabase/mcp-ui": {
+          "com.metabase/mcp-apps": {
             credential: "bootstrap-credential",
             refreshTool: "refresh_visualize_query_ui_credential",
             sessionId: "mcp-session-id",

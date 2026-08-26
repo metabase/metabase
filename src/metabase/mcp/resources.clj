@@ -325,7 +325,7 @@
   [result session-id refresh-tool]
   (cond-> result
     (and session-id api/*current-user-id*)
-    (assoc :_meta {:com.metabase/mcp-ui
+    (assoc :_meta {:com.metabase/mcp-apps
                    {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id*)
                     :refreshTool refresh-tool
                     :sessionId  session-id}})))
@@ -336,7 +336,7 @@
   (walk/postwalk
    (fn [item]
      (if (and (map? item) (map? (:_meta item)))
-       (update item :_meta dissoc :com.metabase/mcp-ui)
+       (update item :_meta dissoc :com.metabase/mcp-apps)
        item))
    value))
 

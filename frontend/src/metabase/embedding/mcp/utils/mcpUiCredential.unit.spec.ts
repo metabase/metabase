@@ -4,7 +4,7 @@ describe("getMcpUiAuth", () => {
   it("reads the credential and session from private tool-result metadata", () => {
     expect(
       getMcpUiAuth({
-        "com.metabase/mcp-ui": {
+        "com.metabase/mcp-apps": {
           credential: "fresh-credential",
           refreshTool: "refresh_visualize_query_ui_credential",
           sessionId: "mcp-session-id",
@@ -19,10 +19,10 @@ describe("getMcpUiAuth", () => {
 
   it("rejects missing and malformed auth metadata", () => {
     expect(getMcpUiAuth(undefined)).toBeNull();
-    expect(getMcpUiAuth({ "com.metabase/mcp-ui": {} })).toBeNull();
+    expect(getMcpUiAuth({ "com.metabase/mcp-apps": {} })).toBeNull();
     expect(
       getMcpUiAuth({
-        "com.metabase/mcp-ui": {
+        "com.metabase/mcp-apps": {
           credential: 123,
           refreshTool: "refresh_visualize_query_ui_credential",
           sessionId: "mcp-session-id",
