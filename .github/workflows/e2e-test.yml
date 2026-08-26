@@ -162,7 +162,7 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="-@mongo+-@OSS+-@skip" \
+            --env grepTags="-@mongo+-@OSS" \
             --spec "$SPEC_PATH"
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
@@ -177,7 +177,7 @@ jobs:
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-          --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
+          --env grepTags="${{ inputs.tags }}" \
           --spec "$SPEC_PATH"
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true

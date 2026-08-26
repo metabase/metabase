@@ -165,30 +165,6 @@ describe("scenarios > question > custom column", () => {
   });
 
   // flaky test (#19454)
-  it(
-    "should show info popovers when hovering over custom column dimensions in the summarize sidebar",
-    { tags: "@skip" },
-    () => {
-      H.openOrdersTable({ mode: "notebook" });
-      cy.findByLabelText("Custom column").click();
-
-      H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
-      cy.button("Done").click();
-
-      H.visualize();
-
-      H.summarize();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Group by")
-        .parent()
-        .findByText("Math")
-        .trigger("mouseenter");
-
-      H.popover().contains("Math");
-      H.popover().contains("No description");
-    },
-  );
 
   it("can create a custom column with an existing column name", () => {
     const customFormulas = [
