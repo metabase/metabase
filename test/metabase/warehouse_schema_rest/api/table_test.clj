@@ -836,6 +836,33 @@
                        (format "table/card__%d/query_metadata")
                        (mt/user-http-request :rasta :get 200)))))))))
 
+(deftest virtual-table-metadata-card-source-database-test
+  (testing "GET /api/table/card__:id/query_metadata"
+    (testing "`db` is hydrated when the user's only access to the DB is collection read on a model or metric (#79438)"
+      (doseq [card-type [:model :metric]]
+        (testing (format "card type = %s" card-type)
+          (mt/with-temp [:model/Database   {db-id :id}         {}
+                         :model/Table      {table-id :id}      {:db_id db-id}
+                         :model/Collection {collection-id :id} {}
+                         :model/Card       card                {:type          card-type
+                                                                :collection_id collection-id
+                                                                :dataset_query {:database db-id
+                                                                                :type     :query
+                                                                                :query    (cond-> {:source-table table-id}
+                                                                                            (= card-type :metric)
+                                                                                            (assoc :aggregation [[:count]]))}}]
+            (mt/with-no-data-perms-for-all-users!
+              (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+              (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :no)
+              (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
+              (is (=? {:id    (str "card__" (u/the-id card))
+                       :db_id db-id
+                       :db    {:id db-id}}
+                      (->> card
+                           u/the-id
+                           (format "table/card__%d/query_metadata")
+                           (mt/user-http-request :rasta :get 200)))))))))))
+
 (deftest ^:parallel virtual-table-metadata-deleted-cards-test
   (testing "GET /api/table/card__:id/query_metadata for deleted cards (#48461)"
     (mt/with-temp

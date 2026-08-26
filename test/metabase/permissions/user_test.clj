@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-test :as perms-test]
    [metabase.permissions.path :as permissions.path]
@@ -88,4 +89,25 @@
             (mt/with-current-user (mt/user->id :rasta)
               (is (= {:can-create-queries        true
                       :can-create-native-queries true}
-                     (permissions.user/query-creation-capabilities (mt/user->id :rasta)))))))))))
+                     (permissions.user/query-creation-capabilities (mt/user->id :rasta)))))))
+        (testing "user whose only access is collection read on a model (#79438)"
+          (mt/with-temp [:model/Table      {table-id :id}      {:db_id db-id}
+                         :model/Collection {collection-id :id} {}
+                         :model/Card       _                   {:type          :model
+                                                                :collection_id collection-id
+                                                                :dataset_query {:database db-id
+                                                                                :type     :query
+                                                                                :query    {:source-table table-id}}}]
+            (mt/with-no-data-perms-for-all-users!
+              ;; new collections inherit perms from their parent (the root collection), so revoke those first
+              (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
+              (mt/with-current-user (mt/user->id :rasta)
+                (testing "without collection read access"
+                  (is (= {:can-create-queries        false
+                          :can-create-native-queries false}
+                         (permissions.user/query-creation-capabilities (mt/user->id :rasta)))))
+                (testing "with collection read access"
+                  (perms/grant-collection-read-permissions! all-users-group-id collection-id)
+                  (is (= {:can-create-queries        true
+                          :can-create-native-queries false}
+                         (permissions.user/query-creation-capabilities (mt/user->id :rasta)))))))))))))
