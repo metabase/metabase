@@ -20,7 +20,9 @@ import { SetupSsoPage } from "./SetupSsoPage";
 
 const defaultChecklist: SetupGuideChecklist = {
   "add-data": false,
+  "configure-ai": false,
   "configure-row-column-security": false,
+  "create-custom-theme": false,
   "create-dashboard": false,
   "create-tenants": false,
   "create-test-embed": false,
@@ -43,7 +45,7 @@ const setup = ({
   setupPropertiesEndpoints(settings);
   setupUpdateSettingsEndpoint();
 
-  fetchMock.get("path:/api/ee/embedding-hub/checklist", {
+  fetchMock.get("path:/api/embedding-hub/checklist", {
     checklist: { ...defaultChecklist, ...checklist },
     "data-isolation-strategy": null,
   });

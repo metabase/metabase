@@ -13,8 +13,6 @@ import { SetupJwtStep } from "./SetupJwtStep";
 import S from "./SetupSsoPage.module.css";
 import { TestJwtStep } from "./TestJwtStep";
 
-const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
-
 export const SetupSsoPage = () => {
   const stepperRef = useRef<OnboardingStepperHandle>(null);
 
@@ -54,7 +52,7 @@ export const SetupSsoPage = () => {
 
   return (
     <Stack mx="auto" gap="sm" maw={680}>
-      <Link to={SETUP_GUIDE_PATH} className={S.backLink}>
+      <Link to=".." className={S.backLink}>
         <Group gap="xs">
           <Icon name="chevronleft" size={12} />
           <Text size="sm" c="text-secondary">{t`Back to the setup guide`}</Text>
