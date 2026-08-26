@@ -12,7 +12,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: entity_collection_name
-                  type: varchar(254)
+                  type: ${text.type}
                   remarks: Scan-time name of the scope_collection_id collection (root rows store the root label); sort/display value for the collection column. Null on pre-migration rows.
 
   - changeSet:
@@ -27,20 +27,6 @@ databaseChangeLog:
                   name: entity_kind
                   type: varchar(32)
                   remarks: Flat entity kind at scan time - card_type for cards, else entity_type; serves the entity-types filter and entity-type sort. Null on pre-migration rows.
-
-  - changeSet:
-      id: v64.rt255f
-      author: yb
-      comment: Content Diagnostics - index for the collection sort column
-      changes:
-        - createIndex:
-            tableName: content_diagnostics_finding
-            indexName: idx_cd_finding_ftype_coll_name
-            columns:
-              - column:
-                  name: finding_type
-              - column:
-                  name: entity_collection_name
 
   - changeSet:
       id: v64.ubyoxn
