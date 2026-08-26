@@ -124,14 +124,11 @@
                  (tree-seq coll? seq normalized))))
 
 (defn- native-sql-table-ids
+  "Throws when the query cannot be analyzed; [[tables-queryable?]] turns that into a refusal."
   [normalized]
-  (try
-    (into #{}
-          (comp (keep #(or (:table-id %) (:id %))) (filter pos-int?))
-          (:tables (query-analyzer/tables-for-native normalized :all-drivers-trusted? true)))
-    (catch Exception e
-      (log/debugf "Could not analyze a native query for permission gating: %s" (ex-message e))
-      #{})))
+  (into #{}
+        (comp (keep #(or (:table-id %) (:id %))) (filter pos-int?))
+        (:tables (query-analyzer/tables-for-native normalized :all-drivers-trusted? true))))
 
 (defn- sandbox-visible-fields?
   [field-id->table-id]
