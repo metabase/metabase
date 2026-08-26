@@ -1,6 +1,10 @@
 import type { ComponentType } from "react";
 
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import {
+  PluginPlaceholder,
+  pluginPlaceholderRoute,
+} from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
 
 type SecurityCenterNavItemProps = {
   currentPath: string;
@@ -8,7 +12,7 @@ type SecurityCenterNavItemProps = {
 
 type SecurityCenterPlugin = {
   isEnabled: boolean;
-  SecurityCenterPage: ComponentType;
+  securityCenterPage: PluginRoute;
   SecurityCenterBanner: ComponentType;
   SecurityCenterPromoCard: ComponentType;
   SecurityCenterNavItem: ComponentType<SecurityCenterNavItemProps>;
@@ -17,7 +21,7 @@ type SecurityCenterPlugin = {
 
 const getDefaultPlugin = (): SecurityCenterPlugin => ({
   isEnabled: false,
-  SecurityCenterPage: PluginPlaceholder,
+  securityCenterPage: pluginPlaceholderRoute,
   SecurityCenterBanner: PluginPlaceholder,
   SecurityCenterPromoCard: PluginPlaceholder,
   SecurityCenterNavItem: PluginPlaceholder,

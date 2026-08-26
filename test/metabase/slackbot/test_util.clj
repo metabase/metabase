@@ -3,9 +3,11 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
+   [clojure.string :as str]
    [metabase.channel.slack :as channel.slack]
    [metabase.metabot.agent.core :as agent]
    [metabase.slackbot.api :as slackbot]
+   [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.config :as slackbot.config]
    [metabase.slackbot.query :as slackbot.query]
@@ -44,6 +46,35 @@
    :filetype    "csv"
    :url_private "https://files.slack.com/files/data.csv"
    :size        100})
+
+;; Aliased rather than restated, so the harness cannot drift from what the code enforces.
+(def slack-section-text-limit
+  "Alias for [[metabase.slackbot.channel/section-text-limit]]."
+  slackbot.channel/section-text-limit)
+
+(def oversized-answer
+  "An answer comfortably past [[slack-section-text-limit]].
+   Numbered line by line, so a truncated copy can be checked against the original."
+  (str/join "\n" (map #(format "Line %04d of a rather long answer." %) (range 200))))
+
+(defn oversized-section-error
+  "The `chat.postMessage` rejection Slack returns for an oversized `section` block in `blocks`.
+   Nil when every block is within [[slack-section-text-limit]]. Models that one rule -- the one
+   BOT-1606 is about -- not Block Kit validation at large."
+  [blocks]
+  ;; The mocked client accepts anything, so tests that care about this rule come through here.
+  (when-let [idx (first (keep-indexed (fn [idx block]
+                                        (when (and (= "section" (:type block))
+                                                   (> (count (get-in block [:text :text] ""))
+                                                      slack-section-text-limit))
+                                          idx))
+                                      blocks))]
+    {:ok    false
+     :error "invalid_blocks"
+     :response_metadata
+     {:messages [(format "[ERROR] failed to match all allowed schemas [json-pointer:/blocks/%d/text]" idx)
+                 (format "[ERROR] must be less than %d characters [json-pointer:/blocks/%d/text/text]"
+                         (inc slack-section-text-limit) idx)]}}))
 
 (defmacro with-ensure-encryption
   "Use the existing encryption key if one is configured, otherwise set a test key.

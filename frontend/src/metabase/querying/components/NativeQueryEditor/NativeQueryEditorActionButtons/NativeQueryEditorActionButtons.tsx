@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { DataReferenceButton } from "metabase/querying/components/NativeQueryEditor/DataReferenceButton";
+import { MetabotPromptButton } from "metabase/querying/components/NativeQueryEditor/MetabotPromptButton";
 import { NativeVariablesButton } from "metabase/querying/components/NativeQueryEditor/NativeVariablesButton";
 import { PreviewQueryButton } from "metabase/querying/components/NativeQueryEditor/PreviewQueryButton";
 import { SnippetSidebarButton } from "metabase/querying/components/NativeQueryEditor/SnippetSidebarButton";
@@ -22,6 +23,8 @@ interface NativeQueryEditorActionButtonsProps {
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
+  isPromptInputOpen?: boolean;
+  onTogglePromptInput?: () => void;
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingSnippetSidebar: boolean;
@@ -42,6 +45,8 @@ export const NativeQueryEditorActionButtons = (
     snippetCollections,
     snippets,
     features,
+    isPromptInputOpen,
+    onTogglePromptInput,
     toggleDataReference,
     toggleTemplateTagsEditor,
     onFormatQuery,
@@ -65,6 +70,13 @@ export const NativeQueryEditorActionButtons = (
       gap="lg"
       align="center"
     >
+      {features.promptInput && onTogglePromptInput && (
+        <MetabotPromptButton
+          size={ICON_SIZE}
+          isPromptInputOpen={isPromptInputOpen}
+          onClick={onTogglePromptInput}
+        />
+      )}
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}

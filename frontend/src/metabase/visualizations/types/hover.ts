@@ -2,7 +2,7 @@ import type { ClickObjectDataRow } from "metabase-lib";
 import type { CardId, RowValue } from "metabase-types/api";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
-import type { ComputedVisualizationSettings } from "./visualization";
+import type { ComputedVisualizationSettings } from "./computed-settings";
 
 export interface DataPoint extends ClickObjectDataRow {
   key: string;

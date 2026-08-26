@@ -6,6 +6,9 @@ const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 const { CSS_CONFIG } = require("../frontend/build/shared/rspack/css-config");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("../frontend/build/shared/rspack/side-effect-free-modules");
 
 const mainAppStories = [
   "../frontend/**/*.mdx",
@@ -80,6 +83,7 @@ const config: StorybookConfig = {
       module: {
         ...config.module,
         rules: [
+          SIDE_EFFECT_FREE_RULE,
           ...(config.module?.rules ?? []).filter(
             (rule) => !isCSSRule(rule) && !isSvgRule(rule),
           ),
