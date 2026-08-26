@@ -13,7 +13,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # This check decides for itself whether the commit needs it.
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: frontend_sources
+
   bundle-size-check:
+    needs: should-run
+    if: ${{ needs.should-run.outputs.changed == 'true' }}
     name: "Bundle size check"
     continue-on-error: true
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}

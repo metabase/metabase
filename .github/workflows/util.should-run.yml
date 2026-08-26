@@ -1,0 +1,113 @@
+name: Should run
+
+# One question, one answer: did this commit touch the parts of the repo a job
+# cares about? Callers whose whole job is asking that should use this. A job that
+# needs several answers out of one diff — lint.yml, run-tests.yml — should call
+# .github/actions/files-changed directly instead and map the `results` JSON to
+# its own outputs, since a reusable workflow's outputs are fixed.
+
+on:
+  workflow_call:
+    inputs:
+      any-of:
+        description: >
+          Filter names from the filter file, comma- or newline-separated.
+          `changed` is true when the commit matched at least one of them.
+          `name: true` is accepted alongside a bare `name`. A name the filter
+          file doesn't define fails the job rather than reporting false.
+        type: string
+        default: ""
+      all-of:
+        description: >
+          Filter names, in the same forms, that must *all* have matched. Give
+          both and the commit has to satisfy the OR and the AND together.
+        type: string
+        default: ""
+      filters:
+        description: "Path to the paths-filter configuration, relative to the repo root."
+        type: string
+        default: .github/file-paths.yaml
+      list-files:
+        description: "Format for the `files` output: none, csv, shell, json or escape."
+        type: string
+        default: none
+    outputs:
+      changed:
+        description: >
+          'true' when the caller's jobs should run: the override verdict when the
+          branch or a label forced one, otherwise whether the diff satisfied
+          `any-of`/`all-of`.
+        # Reads oddly but is the standard GHA ternary: a non-empty string is
+        # truthy, so the 'false' branch survives the `||` rather than falling
+        # through to it. Anything other than 'true' means don't run.
+        value: >-
+          ${{ jobs.should-run.outputs.verdict == 'defer'
+          && jobs.check-files.outputs.changed
+          || jobs.should-run.outputs.verdict }}
+      forced:
+        description: >
+          'true' when the branch or a ci:run-all label forced the run rather than
+          the diff asking for it. Suites use it to run their exhaustive variant
+          and to ignore any narrowing of the spec list.
+        value: ${{ jobs.should-run.outputs.verdict == 'true' }}
+      skipped:
+        description: >
+          'true' when a ci:skip label turned this run off outright. Suites don't
+          need it — their `changed` is already false — but a caller gating on
+          something other than the diff does.
+        value: ${{ jobs.should-run.outputs.verdict == 'false' }}
+      files:
+        description: "Files matched by the named filters, in the `list-files` format."
+        value: ${{ jobs.check-files.outputs.files }}
+      results:
+        description: >
+          Every paths-filter output as a JSON object, for a caller needing more
+          than one answer. `{}` when the verdict short-circuited the file check,
+          so fromJSON() is always safe — pair it with `forced`.
+        value: ${{ jobs.check-files.outputs.results || '{}' }}
+
+jobs:
+  # check the override labels and branch first
+  should-run:
+    name: Decide which jobs should run
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      verdict: ${{ steps.decide.outputs.verdict }}
+    steps:
+      - name: Decide whether we should force-run, force-skip, or defer to file checks
+        id: decide
+        # Precedence matters for the conditions below.
+        env:
+          VERDICT: >-
+            ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'true'
+            || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'true'
+            || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'false'
+            || 'defer' }}
+        run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
+
+  check-files:
+    needs: should-run
+    if: ${{ needs.should-run.outputs.verdict == 'defer' }}
+    name: Check which files changed
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+      files: ${{ steps.changes.outputs.files }}
+      results: ${{ steps.changes.outputs.results }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+      - name: Test which files changed
+        id: changes
+        uses: ./.github/actions/files-changed
+        with:
+          any-of: ${{ inputs.any-of }}
+          all-of: ${{ inputs.all-of }}
+          filters: ${{ inputs.filters }}
+          list-files: ${{ inputs.list-files }}

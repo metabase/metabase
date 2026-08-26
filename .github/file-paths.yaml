@@ -23,6 +23,9 @@ shared_specs: &shared_specs
 shared_ci: &shared_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
+  # Decide which suites run at all, so a change here warrants running them all.
+  - ".github/actions/files-changed/**"
+  - ".github/workflows/util.should-run.yml"
   - ".github/workflows/run-tests.yml"
 
 shared_e2e: &shared_e2e

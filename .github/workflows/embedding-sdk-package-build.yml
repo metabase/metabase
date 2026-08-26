@@ -9,6 +9,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Gated by its only caller, embedding-sdk.yml, which asks the same question
+  # for the suite as a whole — no point asking it twice.
   build-sdk-package:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 25

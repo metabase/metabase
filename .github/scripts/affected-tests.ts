@@ -197,6 +197,7 @@ export function createTestPlan({
     );
     return e2e.filter((spec) => narrowed.has(spec) || changedSet.has(spec));
   };
+
   const e2eRules = selectE2e(rulesAffected);
   const e2eUsage = selectE2e(usageAffected);
 

@@ -2,14 +2,6 @@ name: Driver Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches, ci:run-all label).
-        type: boolean
-        default: false
   # Run one driver job on demand, against the ref you dispatch on, optionally under a profiler.
   # Everything else about the job -- credentials, services, test args, quarantine gating -- is
   # whatever the normal CI run uses, because it is the same job.
@@ -70,9 +62,16 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  # This suite decides for itself whether the commit needs it.
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: backend_all
+
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.
   determine-driver-skips:
+    needs: should-run
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       # All driver run decisions (from mage driver-decisions)
@@ -115,7 +114,7 @@ jobs:
             --git-ref="${BASE_REF}"
             --force-run="${FORCE_RUN}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
-            --skip="${{ inputs.skip }}"
+            --skip="${{ needs.should-run.outputs.changed != 'true' }}"
             --only-driver="${ONLY_DRIVER}"
           )
           echo "Running:"
@@ -130,7 +129,7 @@ jobs:
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          FORCE_RUN: ${{ inputs.force-run }}
+          FORCE_RUN: ${{ needs.should-run.outputs.forced == 'true' }}
           ONLY_DRIVER: ${{ inputs.driver }}
         shell: bash
 
@@ -462,7 +461,7 @@ jobs:
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-mysql-mariadb:
-    needs: determine-driver-skips
+    needs: ["should-run", determine-driver-skips]
     if: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
@@ -524,7 +523,7 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
@@ -793,7 +792,7 @@ jobs:
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-postgres:
-    needs: determine-driver-skips
+    needs: ["should-run", determine-driver-skips]
     if: ${{ needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
@@ -824,7 +823,7 @@ jobs:
             needs-python-runner: true
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
@@ -1213,7 +1212,7 @@ jobs:
   # TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
   # be-tests-starburst-ee:
   #   needs: determine-driver-skips
-  #   if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+  #   if: ${{ needs.should-run.outputs.changed == 'true' && !(needs.determine-driver-skips.outputs.skip == 'true') }}
   #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
   #   timeout-minutes: 40
   #   env:
