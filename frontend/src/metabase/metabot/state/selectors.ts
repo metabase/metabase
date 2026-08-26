@@ -270,6 +270,12 @@ export const getMetabotRequestState = createSelector(
   (convo) => convo.state,
 );
 
+export const getConversationStateById = createSelector(
+  [getMetabotState, (_state: State, conversationId: string) => conversationId],
+  (metabotState, conversationId) =>
+    metabotState.conversations[conversationId]?.state,
+);
+
 export const getConversationChart = createSelector(
   [getMetabotState, (_state: State, chartId: string) => chartId],
   (metabotState, chartId): Urls.ConversationChart | undefined => {

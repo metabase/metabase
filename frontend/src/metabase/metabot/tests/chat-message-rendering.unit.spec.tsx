@@ -7,6 +7,7 @@ import {
   createMockMetabotConversationDetail,
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
+  setupDashboardEndpoints,
   setupDocumentEndpoints,
   setupGetMetabotConversationEndpoint,
 } from "__support__/server-mocks";
@@ -35,6 +36,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,
   createMockCollection,
+  createMockDashboard,
   createMockDocument,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -235,6 +237,76 @@ describe("AgentMessage", () => {
 
       expect(await screen.findByText("Q3 report")).toBeInTheDocument();
       expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
+    });
+  });
+
+  describe("generated_entity dashboard", () => {
+    it("renders a plain title for a generated dashboard without a url", () => {
+      setup({
+        id: "d1",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "data-generated_entity",
+          data: { type: "dashboard", id: "dash-1", title: "Ops overview" },
+        },
+      });
+
+      expect(screen.getByText("Ops overview")).toBeInTheDocument();
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    });
+
+    it("renders a link to the generated-dashboard page when the part has a url", () => {
+      setup({
+        id: "d1",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "data-generated_entity",
+          data: {
+            type: "dashboard",
+            id: "dash-1",
+            title: "Ops overview",
+            url: "/metabot/conversation/convo-1/dashboard/dash-1",
+          },
+        },
+      });
+
+      expect(
+        screen.getByRole("link", { name: "Open dashboard" }),
+      ).toHaveAttribute(
+        "href",
+        "/metabot/conversation/convo-1/dashboard/dash-1",
+      );
+      expect(screen.getByText("Ops overview")).toBeInTheDocument();
+    });
+  });
+
+  describe("entity_saved dashboard", () => {
+    it("renders a 'Dashboard X saved to Y' block for a saved generated dashboard", async () => {
+      setupCollectionByIdEndpoint({
+        collections: [createMockCollection({ id: 5, name: "Analytics" })],
+      });
+      setupDashboardEndpoints(
+        createMockDashboard({ id: 9, name: "Ops overview" }),
+      );
+      setup({
+        id: "s2",
+        role: "agent",
+        type: "data_part",
+        part: {
+          type: "data-entity_saved",
+          data: {
+            chart_id: "d-1",
+            dashboard_id: 9,
+            destination: { type: "collection", id: 5 },
+          },
+        },
+      });
+
+      expect(await screen.findByText("Ops overview")).toBeInTheDocument();
+      expect(await screen.findByText("Analytics")).toBeInTheDocument();
+      expect(screen.getByText(/Dashboard/)).toBeInTheDocument();
     });
   });
 

@@ -182,13 +182,15 @@
      description (assoc :description description))))
 
 (defn dashboard-entity-part
-  "Return a `generated_entity` dashboard data part. `url` is the navigation path the
-  FE will route to (e.g. `/auto/dashboard/table/123`), `title` is a short human label
-  for the inline link card, and `id` is an optional entity id."
+  "Return a `generated_entity` dashboard data part. `url` is an optional navigation
+  path the FE will route to (e.g. `/auto/dashboard/table/123`); when omitted the FE
+  renders the dashboard inline in the conversation instead of navigating. `title` is
+  a short human label for the inline card, and `id` is an optional entity id."
   [{:keys [id title url]}]
   (generated-entity-part
-   (cond-> {:type "dashboard" :url url :title title}
-     id (assoc :id id))))
+   (cond-> {:type "dashboard" :title title}
+     url (assoc :url url)
+     id  (assoc :id id))))
 
 ;;; Stream Processing Transducers
 

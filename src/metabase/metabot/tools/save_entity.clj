@@ -1,12 +1,14 @@
 (ns metabase.metabot.tools.save-entity
-  "Tool that persists a previously-generated chart into a collection, dashboard, or document.
+  "Tool that persists a previously-generated chart or dashboard.
 
-  The model creates ad-hoc charts with `construct_notebook_query` / `create_chart`;
-  those live only in agent memory (`shared/current-charts-state`). This tool turns
-  one of them into a real saved question — in a collection, as a question on a
-  dashboard, or embedded in a document at a chosen position — and emits an
-  `entity_saved` data part so the inline chart can show where it landed. It should
-  only be called when the user asks to save the chart."
+  The model creates ad-hoc charts with `construct_notebook_query` / `create_chart`
+  and dashboards with `create_dashboard`; those live only in agent memory
+  (`shared/current-charts-state` / `shared/current-dashboards-state`). This tool
+  turns a chart into a real saved question — in a collection, as a question on a
+  dashboard, or embedded in a document at a chosen position — or a generated
+  dashboard into a real dashboard in a collection, and emits an `entity_saved` data
+  part so the inline entity can show where it landed. It should only be called when
+  the user asks to save."
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
@@ -155,15 +157,109 @@
        :destination-name (:name document)
        :link             (str "metabase://document/" document-id)})))
 
+(defn- resolve-tile
+  [{:keys [chart_id query_id title row col size_x size_y]}]
+  (merge {:name title :row row :col col :size_x size_x :size_y size_y :chart-id chart_id}
+         (if chart_id
+           (resolve-chart chart_id)
+           (let [query (get (shared/current-queries-state) query_id)]
+             (when-not query
+               (agent-error!
+                (tru "The dashboard tile \"{0}\" references query `{1}`, which no longer exists in this conversation."
+                     title query_id)))
+             {:dataset_query (links/->legacy-mbql query)
+              :display       :table}))))
+
+(defn- save-generated-dashboard!
+  [{:keys [dashboard destination description] dashboard-name :name}]
+  (when-not (= (:target_type destination) "collection")
+    (agent-error!
+     (tru "A generated dashboard can only be saved to a collection. Use a `collection` destination.")))
+  (let [collection-id   (if (contains? destination :collection_id)
+                          (:collection_id destination)
+                          (personal-collection-id))
+        tiles           (mapv resolve-tile (:tiles dashboard))
+        _               (run! #(query-perms/check-run-permissions-for-query (:dataset_query %)) tiles)
+        _               (api/create-check :model/Dashboard {:collection_id collection-id})
+        conversation-id (shared/current-conversation-id)
+        [dash cards]    (t2/with-transaction [_conn]
+                          (let [dash  (first (t2/insert-returning-instances!
+                                              :model/Dashboard
+                                              {:name          dashboard-name
+                                               :description   description
+                                               :parameters    []
+                                               :creator_id    api/*current-user-id*
+                                               :collection_id collection-id}))
+                                cards (vec (for [tile tiles]
+                                             (let [card (queries/create-card!
+                                                         {:name                   (:name tile)
+                                                          :dataset_query          (:dataset_query tile)
+                                                          :display                (:display tile)
+                                                          :visualization_settings {}
+                                                          :dashboard_id           (:id dash)}
+                                                         {:id api/*current-user-id*}
+                                                         :delay-event
+                                                         false)]
+                                               (t2/insert! :model/DashboardCard
+                                                           {:dashboard_id (:id dash)
+                                                            :card_id      (:id card)
+                                                            :row          (:row tile)
+                                                            :col          (:col tile)
+                                                            :size_x       (:size_x tile)
+                                                            :size_y       (:size_y tile)})
+                                               (when (and conversation-id (:chart-id tile))
+                                                 (t2/update! (t2/table-name :model/Card) (:id card)
+                                                             {:metabot_conversation_id conversation-id
+                                                              :metabot_chart_id        (:chart-id tile)}))
+                                               card)))]
+                            [dash cards]))]
+    (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+    (doseq [card cards]
+      (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*}))
+    {:dashboard        dash
+     :destination      {:type "collection" :id collection-id}
+     :destination-name (collection-name collection-id)
+     :link             (str "metabase://dashboard/" (:id dash))}))
+
+(defn- save-dashboard-result
+  [generated-dashboard-id dashboard-name description destination]
+  (let [{:keys [dashboard destination-name link] saved-destination :destination}
+        (save-generated-dashboard! {:dashboard   (get (shared/current-dashboards-state)
+                                                      generated-dashboard-id)
+                                    :name        dashboard-name
+                                    :description description
+                                    :destination destination})
+        instruction-text (te/lines
+                          (str "Saved dashboard \"" dashboard-name "\" to " destination-name ".")
+                          ""
+                          (str "Tell the user it was saved and share this link: "
+                               (te/link dashboard-name link)))]
+    {:output            (str "<result>\nSaved as dashboard " (:id dashboard)
+                             " in " destination-name ".\n</result>\n"
+                             "<instructions>\n" instruction-text "\n</instructions>")
+     :structured-output {:result-type   :saved-entity
+                         :dashboard-id  (:id dashboard)
+                         :collection-id (:collection_id dashboard)
+                         :destination   saved-destination}
+     :data-parts        [(streaming/entity-saved-part
+                          {:chart_id     generated-dashboard-id
+                           :dashboard_id (:id dashboard)
+                           :destination  saved-destination
+                           :title        (te/link dashboard-name link)})]}))
+
 (mu/defn ^{:tool-name "save_entity"
            :scope     scope/agent-question-create}
   save-entity-tool
-  "Save a chart you previously created into a collection, a dashboard, or a document.
+  "Save a chart or dashboard you previously created.
 
-  ONLY call this when the user explicitly asks to save, keep, or add the chart
-  somewhere. Reference the chart by the `chart_id` you were given when it was
-  created. Provide a `name` and a concise `description` for the saved question
-  (reuse the chart's description).
+  ONLY call this when the user explicitly asks to save, keep, or add the entity
+  somewhere. Reference it by the id you were given when it was created (pass a
+  chart id or a dashboard id from `create_dashboard` as `chart_id`). Provide a
+  `name` and a concise `description` for the saved entity (reuse the one from
+  creation).
+
+  A generated dashboard can ONLY be saved to a `collection` destination; saving it
+  creates the real dashboard along with a question for each of its tiles.
 
   Choose a `destination`:
   - To save into a collection, set `target_type` to `collection` and pass a
@@ -196,50 +292,52 @@
   After saving, tell the user where it went and share the returned link."
   [{:keys [chart_id destination description] question-name :name} :- save-entity-schema]
   (try
-    (let [{:keys [dataset_query display]} (resolve-chart chart_id)
-          args {:name          question-name
-                :description    description
-                :dataset_query  dataset_query
-                :display        display
-                :destination    destination}
-          ;; Create the card and stamp which conversation + generated chart it came
-          ;; from in ONE transaction, so a reloaded conversation can't observe the
-          ;; card without its origin. The stamp is a raw table update — it should not
-          ;; run the Card model's heavy before-update pipeline. The `:card-create`
-          ;; event is delayed until after the transaction commits so subscribers see
-          ;; the card.
-          {:keys [card link destination-name] saved-destination :destination}
-          (t2/with-transaction [_conn]
-            (let [saved (case (:target_type destination)
-                          "collection" (save-to-collection! args)
-                          "dashboard"  (save-to-dashboard! args)
-                          "document"   (save-to-document! args))]
-              (when-let [conversation-id (shared/current-conversation-id)]
-                (t2/update! (t2/table-name :model/Card) (:id (:card saved))
-                            {:metabot_conversation_id conversation-id
-                             :metabot_chart_id        chart_id}))
-              saved))
-          _ (events/publish-event! :event/card-create
-                                   {:object card :user-id api/*current-user-id*})
-          instruction-text (te/lines
-                            (str "Saved \"" question-name "\" to " destination-name ".")
-                            ""
-                            (str "Tell the user it was saved and share this link: "
-                                 (te/link question-name link)))]
-      {:output            (str "<result>\nSaved as card " (:id card)
-                               " in " destination-name ".\n</result>\n"
-                               "<instructions>\n" instruction-text "\n</instructions>")
-       :structured-output {:result-type   :saved-entity
-                           :card-id       (:id card)
-                           :collection-id (:collection_id card)
-                           :destination   saved-destination}
-       :data-parts        [(streaming/entity-saved-part
-                            {:chart_id    chart_id
-                             :card_id     (:id card)
-                             :destination saved-destination
-                             ;; markdown entity link the chain-of-thought renders
-                             ;; as the settled "Saved …" step label
-                             :title       (te/link question-name link)})]})
+    (if (contains? (shared/current-dashboards-state) chart_id)
+      (save-dashboard-result chart_id question-name description destination)
+      (let [{:keys [dataset_query display]} (resolve-chart chart_id)
+            args {:name          question-name
+                  :description    description
+                  :dataset_query  dataset_query
+                  :display        display
+                  :destination    destination}
+            ;; Create the card and stamp which conversation + generated chart it came
+            ;; from in ONE transaction, so a reloaded conversation can't observe the
+            ;; card without its origin. The stamp is a raw table update — it should not
+            ;; run the Card model's heavy before-update pipeline. The `:card-create`
+            ;; event is delayed until after the transaction commits so subscribers see
+            ;; the card.
+            {:keys [card link destination-name] saved-destination :destination}
+            (t2/with-transaction [_conn]
+              (let [saved (case (:target_type destination)
+                            "collection" (save-to-collection! args)
+                            "dashboard"  (save-to-dashboard! args)
+                            "document"   (save-to-document! args))]
+                (when-let [conversation-id (shared/current-conversation-id)]
+                  (t2/update! (t2/table-name :model/Card) (:id (:card saved))
+                              {:metabot_conversation_id conversation-id
+                               :metabot_chart_id        chart_id}))
+                saved))
+            _ (events/publish-event! :event/card-create
+                                     {:object card :user-id api/*current-user-id*})
+            instruction-text (te/lines
+                              (str "Saved \"" question-name "\" to " destination-name ".")
+                              ""
+                              (str "Tell the user it was saved and share this link: "
+                                   (te/link question-name link)))]
+        {:output            (str "<result>\nSaved as card " (:id card)
+                                 " in " destination-name ".\n</result>\n"
+                                 "<instructions>\n" instruction-text "\n</instructions>")
+         :structured-output {:result-type   :saved-entity
+                             :card-id       (:id card)
+                             :collection-id (:collection_id card)
+                             :destination   saved-destination}
+         :data-parts        [(streaming/entity-saved-part
+                              {:chart_id    chart_id
+                               :card_id     (:id card)
+                               :destination saved-destination
+                               ;; markdown entity link the chain-of-thought renders
+                               ;; as the settled "Saved …" step label
+                               :title       (te/link question-name link)})]}))
     (catch Exception e
       (log/errorf "Error saving entity: %s" (ex-message e))
       (if (:agent-error? (ex-data e))

@@ -35,6 +35,7 @@
   [:map
    [:queries {:optional true} [:map-of ::state-map-key :map]]
    [:charts {:optional true} [:map-of ::state-map-key :map]]
+   [:dashboards {:optional true} [:map-of ::state-map-key :map]]
    [:chart-configs {:optional true} [:map-of ::state-map-key :map]]
    [:todos {:optional true} [:sequential :map]]
    [:transforms {:optional true} [:map-of ::state-map-key :map]]

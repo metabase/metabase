@@ -578,6 +578,10 @@ export const sendAgentRequest = createAsyncThunk<
                 }
 
                 const path = Urls.generatedEntity(part.data);
+                if (path == null) {
+                  pushDataPart({ type: "data_part", part });
+                  return;
+                }
 
                 if (isEmbeddingSdk()) {
                   if (part.data.type === "card") {
@@ -590,12 +594,14 @@ export const sendAgentRequest = createAsyncThunk<
                 navigate(path);
               })
               .with({ type: "data-entity_saved" }, (part) => {
-                dispatch(
-                  markChartSaved({
-                    entityId: part.data.chart_id,
-                    cardId: part.data.card_id,
-                  }),
-                );
+                if (part.data.card_id != null) {
+                  dispatch(
+                    markChartSaved({
+                      entityId: part.data.chart_id,
+                      cardId: part.data.card_id,
+                    }),
+                  );
+                }
                 const { tool_call_id, title } = part.data;
                 if (tool_call_id && title) {
                   dispatch(

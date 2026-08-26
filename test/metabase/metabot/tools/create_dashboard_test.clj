@@ -1,0 +1,135 @@
+(ns metabase.metabot.tools.create-dashboard-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.tools.create-dashboard :as create-dashboard]
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.test :as mt]))
+
+(defn- tile [title width height]
+  {:title title :width width :height height})
+
+(defn- positions [tiles]
+  (mapv #(select-keys % [:title :row :col :size_x :size_y])
+        (create-dashboard/layout-tiles tiles)))
+
+(deftest layout-single-tile-stretches-to-full-width-test
+  (is (= [{:title "a" :row 0 :col 0 :size_x 24 :size_y 6}]
+         (positions [(tile "a" 12 6)]))))
+
+(deftest layout-fills-a-row-side-by-side-test
+  (is (= [{:title "a" :row 0 :col 0 :size_x 12 :size_y 6}
+          {:title "b" :row 0 :col 12 :size_x 12 :size_y 6}]
+         (positions [(tile "a" 12 6) (tile "b" 12 6)]))))
+
+(deftest layout-stretch-preserves-relative-widths-test
+  (is (= [{:title "a" :row 0 :col 0 :size_x 16 :size_y 6}
+          {:title "b" :row 0 :col 16 :size_x 8 :size_y 6}]
+         (positions [(tile "a" 12 6) (tile "b" 6 6)]))))
+
+(deftest layout-wraps-to-a-new-row-test
+  (is (= [{:title "a" :row 0 :col 0 :size_x 12 :size_y 6}
+          {:title "b" :row 0 :col 12 :size_x 12 :size_y 6}
+          {:title "c" :row 6 :col 0 :size_x 24 :size_y 9}]
+         (positions [(tile "a" 12 6) (tile "b" 12 6) (tile "c" 24 9)]))))
+
+(deftest layout-rows-advance-by-tallest-tile-test
+  (is (= [{:title "a" :row 0 :col 0 :size_x 12 :size_y 9}
+          {:title "b" :row 0 :col 12 :size_x 12 :size_y 4}
+          {:title "c" :row 9 :col 0 :size_x 24 :size_y 6}]
+         (positions [(tile "a" 12 9) (tile "b" 12 4) (tile "c" 12 6)]))))
+
+(deftest layout-clamps-tiny-hints-test
+  (is (= [{:title "a" :row 0 :col 0 :size_x 12 :size_y 3}
+          {:title "b" :row 0 :col 12 :size_x 12 :size_y 3}]
+         (positions [(tile "a" 1 1) (tile "b" 1 1)]))))
+
+(deftest layout-preserves-order-test
+  (is (= ["a" "b" "c" "d"]
+         (map :title (create-dashboard/layout-tiles
+                      [(tile "a" 6 3) (tile "b" 6 3) (tile "c" 6 3) (tile "d" 6 3)])))))
+
+(defn- venues-query []
+  (lib/query (mt/metadata-provider)
+             (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
+
+(defn- chart-memory []
+  (let [query (venues-query)]
+    (atom {:state   {:queries {"q-1" query}
+                     :charts  {"c-1" {:chart_id "c-1"
+                                      :query_id "q-1"
+                                      :queries  [query]
+                                      :visualization_settings {:chart_type :bar}}}}
+           :context {}})))
+
+(defn- create! [memory args]
+  (binding [shared/*memory-atom* memory]
+    (create-dashboard/create-dashboard-tool args)))
+
+(deftest create-dashboard-test
+  (let [memory (chart-memory)
+        result (create! memory
+                        {:name        "Ops overview"
+                         :description "Key ops charts."
+                         :tiles       [{:chart_id "c-1" :title "Venues by price" :width 12 :height 6}
+                                       {:query_id "q-1" :title "All venues" :width 12 :height 9}]})
+        dashboard-id (get-in result [:structured-output :dashboard_id])]
+    (testing "returns the generated dashboard as structured output"
+      (is (string? dashboard-id))
+      (is (= :dashboard (get-in result [:structured-output :result-type])))
+      (is (= "Ops overview" (get-in result [:structured-output :name]))))
+    (testing "stores the dashboard definition with computed grid positions in agent memory"
+      (is (= {:dashboard_id dashboard-id
+              :name         "Ops overview"
+              :description  "Key ops charts."
+              :tiles        [{:title "Venues by price" :row 0 :col 0 :size_x 12 :size_y 6 :chart_id "c-1"}
+                             {:title "All venues" :row 0 :col 12 :size_x 12 :size_y 9 :query_id "q-1"}]}
+             (get-in @memory [:state :dashboards dashboard-id])))
+      (is (= (get-in @memory [:state :dashboards])
+             (get-in @memory [:turn-state :dashboards]))))
+    (testing "emits a generated_entity dashboard data part without a url outside a conversation"
+      (is (= [{:type      :data
+               :data-type "generated_entity"
+               :data      {:type "dashboard" :id dashboard-id :title "Ops overview"}}]
+             (:data-parts result))))
+    (testing "tells the model the dashboard is not saved yet"
+      (is (re-find #"not saved anywhere yet" (:output result))))))
+
+(deftest create-dashboard-conversation-url-test
+  (let [memory (doto (chart-memory) (swap! assoc :conversation-id "convo-9"))
+        result (create! memory
+                        {:name  "Ops overview"
+                         :tiles [{:chart_id "c-1" :title "Venues by price" :width 12 :height 6}]})
+        dashboard-id (get-in result [:structured-output :dashboard_id])]
+    (testing "inside a conversation the data part links to the generated-dashboard page"
+      (is (= (str "/metabot/conversation/convo-9/dashboard/" dashboard-id)
+             (get-in result [:data-parts 0 :data :url]))))))
+
+(deftest create-dashboard-unknown-chart-test
+  (let [result (create! (chart-memory)
+                        {:name  "Broken"
+                         :tiles [{:chart_id "nope" :title "Missing" :width 12 :height 6}]})]
+    (is (nil? (:data-parts result)))
+    (is (re-find #"No generated chart found" (:output result)))))
+
+(deftest create-dashboard-unknown-query-test
+  (let [result (create! (chart-memory)
+                        {:name  "Broken"
+                         :tiles [{:query_id "nope" :title "Missing" :width 12 :height 6}]})]
+    (is (nil? (:data-parts result)))
+    (is (re-find #"No query found" (:output result)))))
+
+(deftest create-dashboard-ambiguous-tile-test
+  (testing "a tile referencing both a chart and a query is rejected"
+    (let [result (create! (chart-memory)
+                          {:name  "Broken"
+                           :tiles [{:chart_id "c-1" :query_id "q-1" :title "Both" :width 12 :height 6}]})]
+      (is (nil? (:data-parts result)))
+      (is (re-find #"exactly one" (:output result)))))
+  (testing "a tile referencing neither is rejected"
+    (let [result (create! (chart-memory)
+                          {:name  "Broken"
+                           :tiles [{:title "Neither" :width 12 :height 6}]})]
+      (is (nil? (:data-parts result)))
+      (is (re-find #"exactly one" (:output result))))))

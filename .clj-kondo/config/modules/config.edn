@@ -1394,6 +1394,7 @@
               channel
               collections
               config
+              dashboards
               documents
               driver
               entity-retrieval
