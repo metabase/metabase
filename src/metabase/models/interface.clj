@@ -328,6 +328,13 @@
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
+(def transform-encrypted-text
+  "Whole-column encrypted text transform. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected
+  on read (see [[encryption/maybe-decrypt]]) — a value written outside the encrypting path cannot stand in for a
+  properly encrypted one."
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
+
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
 (mr/def ::viz-settings-ref

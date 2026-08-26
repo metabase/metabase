@@ -31,6 +31,7 @@
    [:metabase_database :admin_details]
    [:core_user :settings]
    [:channel :details]
+   [:api_key :key]
    [:auth_identity :credentials]
    [:exploration_query_result :chart_stats]
    [:exploration_query_result :metric_description]

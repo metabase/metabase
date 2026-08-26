@@ -1331,6 +1331,19 @@ databaseChangeLog:
         - customChange:
             class: metabase.app_db.custom_migrations.EncryptAuthIdentityCredentials
 
+  - changeSet:
+      id: v58.2026-08-25T00:00:01
+      author: ranquild
+      comment: >-
+        Encrypt any plaintext api_key.key bcrypt hashes at rest, so the column can be read strictly once
+        MB_ENCRYPTION_SECRET_KEY is set. Otherwise an attacker with SQL write access could inject the bcrypt hash of a
+        key they know (bcrypt is keyless) and authenticate as any user; encrypting the hash means such a plaintext value
+        is rejected on the strict read. Already-encrypted values are left untouched. On rollback the values are
+        decrypted back to the plaintext hash, so a downgrade to code that reads the column directly can still verify keys.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptApiKeys
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

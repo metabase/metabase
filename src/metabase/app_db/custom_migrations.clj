@@ -2254,3 +2254,25 @@
                          :where  [:= :id id]})))
           (t2/reducible-query {:select [:id :credentials]
                                :from   [:auth_identity]}))))
+
+(define-reversible-migration EncryptApiKeys
+  (when (encryption/default-encryption-enabled?)
+    (run! (fn [{:keys [id] k :key}]
+            (when (and (string? k)
+                       (not (str/blank? k))
+                       (not (encryption/possibly-encrypted-string? k)))
+              (t2/query {:update :api_key
+                         :set    {:key (encryption/maybe-encrypt k)}
+                         :where  [:= :id id]})))
+          (t2/reducible-query {:select [:id :key]
+                               :from   [:api_key]})))
+  (when (encryption/default-encryption-enabled?)
+    (run! (fn [{:keys [id] k :key}]
+            (when (and (string? k)
+                       (not (str/blank? k))
+                       (encryption/possibly-encrypted-string? k))
+              (t2/query {:update :api_key
+                         :set    {:key (encryption/maybe-decrypt k)}
+                         :where  [:= :id id]})))
+          (t2/reducible-query {:select [:id :key]
+                               :from   [:api_key]}))))
