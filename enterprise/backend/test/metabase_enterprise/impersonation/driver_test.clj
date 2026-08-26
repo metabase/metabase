@@ -170,8 +170,10 @@
   (tx/db-test-env-var driver :user))
 
 (defmethod impersonation-default-user :postgres
-  [_driver]
-  (tx/db-test-env-var :postgresql :user))
+  [driver]
+  ;; not the `:default` impl because the Postgres test env vars are keyed `:postgresql`, and because the user is
+  ;; supplied by the embedded server rather than an env var when no external server is configured.
+  (:user (tx/dbdef->connection-details driver :server nil)))
 
 (defmethod impersonation-default-user :snowflake
   [_driver]

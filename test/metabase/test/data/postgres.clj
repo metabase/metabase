@@ -4,6 +4,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [integrant.core :as ig]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -15,6 +16,7 @@
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
+   [metabase.test.embedded-postgres.core :as emb-pg]
    [metabase.util.honey-sql-2 :as h2x]))
 
 (set! *warn-on-reflection* true)
@@ -51,16 +53,45 @@
                              :type/UUID           "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
 
+(def ^:private external-server-env-vars
+  "Setting any `MB_POSTGRESQL_TEST_*` var here points the tests at an already-running Postgres instead of the embedded
+  one. CI's driver workflows set `MB_POSTGRESQL_TEST_USER`, which is what keeps them on their service container."
+  [:host :port :user :password])
+
+(defn- external-server-details
+  "Connection details for an externally-managed Postgres, or nil when the env vars select the embedded server."
+  []
+  (when (some #(tx/db-test-env-var :postgresql %) external-server-env-vars)
+    (merge
+     {:host (tx/db-test-env-var :postgresql :host "localhost")
+      :port (tx/db-test-env-var :postgresql :port 5432)}
+     (when-let [user (tx/db-test-env-var :postgresql :user)]
+       {:user user})
+     (when-let [password (tx/db-test-env-var :postgresql :password)]
+       {:password password}))))
+
+(defonce ^:private embedded-server
+  ;; Process-wide mutable state, justified because one Postgres has to outlive every test that connects to it; nothing
+  ;; narrower than the JVM bounds its lifetime, so a shutdown hook is what stops it.
+  (delay
+    (let [system (ig/init {::emb-pg/db-server {}})]
+      (.addShutdownHook (Runtime/getRuntime)
+                        (Thread. ^Runnable (fn [] (ig/halt! system))))
+      (::emb-pg/db-server system))))
+
+(defn- embedded-server-details
+  "Connection details for the process-wide embedded Postgres, starting it on first use."
+  []
+  {:host "localhost"
+   :port (::emb-pg/port @embedded-server)
+   :user "postgres"})
+
 (defmethod tx/dbdef->connection-details :postgres
   [_ context {:keys [database-name]}]
   (merge
-   {:host     (tx/db-test-env-var-or-throw :postgresql :host "localhost")
-    :port     (tx/db-test-env-var-or-throw :postgresql :port 5432)
-    :timezone :America/Los_Angeles}
-   (when-let [user (tx/db-test-env-var :postgresql :user)]
-     {:user user})
-   (when-let [password (tx/db-test-env-var :postgresql :password)]
-     {:password password})
+   {:timezone :America/Los_Angeles}
+   (or (external-server-details)
+       (embedded-server-details))
    (when (= context :db)
      {:db database-name})))
 
