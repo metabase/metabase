@@ -57,9 +57,11 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     // Should show the legalese modal
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText("First, some legalese")).toBeInTheDocument();
-    expect(screen.getByText("Decline and go back")).toBeInTheDocument();
-    expect(screen.getByText("Agree and continue")).toBeInTheDocument();
+    expect(
+      screen.getByText("Each end user needs their own Metabase account"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Cancel")).toBeInTheDocument();
+    expect(screen.getByText("Agree")).toBeInTheDocument();
   });
 
   it("should update simple embedding settings when user accepts terms", async () => {
@@ -74,7 +76,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     });
 
     await userEvent.click(toggle);
-    await userEvent.click(screen.getByText("Agree and continue"));
+    await userEvent.click(screen.getByText("Agree"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     const puts = await findRequests("PUT");
