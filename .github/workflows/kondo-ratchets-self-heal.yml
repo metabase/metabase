@@ -1,34 +1,63 @@
-name: Kondo Ratchets Self-Heal
+name: Kondo Ratchets
 
-# Stale budgets in .clj-kondo/ratchets.edn (above the actual ignore counts) fail CI. On PRs
-# labelled kondo-ratchets-self-healing, this commits the lowered budgets to the branch;
-# unlabelled PRs rely on local test runs to tighten the file.
+# .clj-kondo/ratchets.edn budgets the inline :clj-kondo/ignore forms per linter, and the scanner reads
+# every .clj/.cljc/.cljs under src, test, enterprise, modules/drivers, dev, bin, and mage. The check
+# job fails when a budget drifts from the tree in either direction or the file isn't normalized. It is
+# a babashka file scan, so it runs on every PR touching those files (forks included) and on pushes to
+# master and release branches. The JVM test (metabase.core.kondo-ratchet-test) covers the same ground,
+# but the backend suite only runs for src/test/enterprise changes: an ignore removed under dev, mage,
+# or bin used to merge unchecked and break master (#80760, hotfixed in #80811).
 #
-# Two jobs so the automation token never shares an environment with PR-controlled code: the
-# ratchet-down job runs ./bin/mage from the PR branch and only exports the fixed file as an
-# artifact; the push job starts from a clean runner, executes nothing from the PR, and pushes.
+# Stale budgets (above the actual counts) are fixed by CI on PRs labelled kondo-ratchets-self-healing:
+# the ratchet-down and push jobs commit the lowered budgets to the branch. Two jobs so the automation
+# token never shares an environment with PR-controlled code: ratchet-down runs ./bin/mage from the PR
+# branch and only exports the fixed file as an artifact; push starts from a clean runner, executes
+# nothing from the PR, and pushes.
 permissions:
   contents: read
 
 on:
+  push:
+    branches:
+      - master
+      - "release-x.**"
+    paths:
+      - "**.clj"
+      - "**.cljc"
+      - "**.cljs"
+      - ".clj-kondo/**"
+      - "bb.edn"
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
       - "**.clj"
       - "**.cljc"
       - "**.cljs"
+      - ".clj-kondo/**"
+      - "bb.edn"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  check:
+    name: Kondo ratchets
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      # bin/mage bootstraps its own babashka, so no prepare-backend (JDK + Clojure CLI) here
+      - name: Check the ignore budgets against the source tree
+        run: ./bin/mage check-kondo-ratchets
+
   ratchet-down:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     # fork PRs don't get the automation token, so we couldn't push to them anyway
     if: >-
-      contains(github.event.pull_request.labels.*.name, 'kondo-ratchets-self-healing')
+      github.event_name == 'pull_request'
+      && contains(github.event.pull_request.labels.*.name, 'kondo-ratchets-self-healing')
       && github.event.pull_request.head.repo.full_name == github.repository
     outputs:
       changed: ${{ steps.diff.outputs.changed }}
@@ -60,7 +89,7 @@ jobs:
 
   push:
     needs: ratchet-down
-    if: needs.ratchet-down.outputs.changed == 'true'
+    if: github.event_name == 'pull_request' && needs.ratchet-down.outputs.changed == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
