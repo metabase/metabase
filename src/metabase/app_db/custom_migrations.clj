@@ -2282,7 +2282,8 @@
     (let [setting-keys ["ai-service-base-url" "allowed-iframe-hosts" "application-colors"
                         "application-favicon-url" "application-font-files" "application-logo-url"
                         "csp-img-allowed-hosts" "custom-formatting" "custom-geojson"
-                        "ee-embedding-service-base-url" "embedding-app-origins-interactive" "embedding-app-origins-sdk"
+                        "ee-embedding-service-base-url" "email-from-address" "email-from-address-override"
+                        "email-reply-to" "embedding-app-origins-interactive" "embedding-app-origins-sdk"
                         "help-link-custom-destination" "landing-page" "landing-page-illustration-custom"
                         "ldap-attribute-email" "ldap-attribute-firstname" "ldap-attribute-lastname"
                         "ldap-group-base" "ldap-group-mappings" "ldap-group-membership-filter"
@@ -2291,12 +2292,15 @@
                         "llm-google-api-base-url" "llm-mistral-api-base-url" "llm-moonshot-api-base-url"
                         "llm-openai-api-base-url" "llm-openrouter-api-base-url" "llm-proxy-base-url"
                         "llm-vllm-api-base-url" "llm-zai-api-base-url" "login-page-illustration-custom"
-                        "map-tile-server-url" "metabot-chat-system-prompt" "metabot-nlq-system-prompt"
-                        "metabot-quota-reached-message" "metabot-sql-system-prompt" "metaplow-url"
-                        "no-data-illustration-custom" "notification-link-base-url" "saml-identity-provider-certificate"
-                        "session-timeout" "slack-connect-authentication-mode" "snowplow-url"
-                        "source-address-header" "store-api-url" "store-url"
-                        "subscription-allowed-domains"]]
+                        "map-tile-server-url" "mcp-apps-cors-custom-origins" "mcp-apps-cors-enabled-clients"
+                        "metabot-chat-system-prompt" "metabot-nlq-system-prompt" "metabot-quota-reached-message"
+                        "metabot-sql-system-prompt" "metaplow-url" "no-data-illustration-custom"
+                        "notification-link-base-url" "python-runner-url" "python-storage-s-3-access-key"
+                        "python-storage-s-3-container-endpoint" "python-storage-s-3-endpoint" "remote-sync-url"
+                        "saml-identity-provider-certificate" "search-language" "security-center-email-recipients"
+                        "security-center-slack-channel" "session-timeout" "slack-connect-authentication-mode"
+                        "snowplow-url" "source-address-header" "store-api-url"
+                        "store-url" "subscription-allowed-domains"]]
       (run! (fn [{:keys [key value]}]
               ;; skip only nil (a strict read tolerates nil); a blank/whitespace value must be encrypted too, or the
               ;; strict read would reject it as an unencrypted value
