@@ -19,6 +19,7 @@ export interface McpAppState {
 
   uiCredential: string;
   mcpSessionId: string;
+  hostError: string | null;
 
   /**
    * Original user prompt that triggered this visualization, retrieved
@@ -37,6 +38,7 @@ type VisualizeQueryToolResult = {
 
 const UI_CREDENTIAL_REFRESH_INTERVAL_MS = 4 * 60 * 1000;
 const UI_CREDENTIAL_REFRESH_RETRY_MS = 30 * 1000;
+const UI_CREDENTIAL_REFRESH_MAX_FAILURES = 2;
 
 function applyHostContext(ctx: McpUiHostContext) {
   if (ctx.theme) {
@@ -54,9 +56,11 @@ function applyHostContext(ctx: McpUiHostContext) {
 
 export function useMcpApp(resourceRefreshTool = ""): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
+  const [toolResultVersion, setToolResultVersion] = useState(0);
   const [prompt, setPrompt] = useState<string | null>(null);
   const [uiCredential, setUiCredential] = useState("");
   const [mcpSessionId, setMcpSessionId] = useState("");
+  const [hostError, setHostError] = useState<string | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
 
   const { app } = useApp({
@@ -79,6 +83,8 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
         if (query) {
           setUiCredential("");
           setMcpSessionId("");
+          setHostError(null);
+          setToolResultVersion((version) => version + 1);
           setQuery(query);
           setPrompt(prompt ?? null);
         }
@@ -92,6 +98,7 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
     }
 
     let cancelled = false;
+    let consecutiveRefreshFailures = 0;
     let refreshTimeout: number | undefined;
 
     const applyAuth = (auth: McpUiAuth) => {
@@ -103,6 +110,9 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
     };
 
     if (!app.getHostCapabilities()?.serverTools) {
+      const hostName = app.getHostVersion()?.name.trim() || "Your MCP client";
+
+      setHostError(`${hostName} does not support this visualization.`);
       return;
     }
 
@@ -120,6 +130,7 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
         }
 
         applyAuth(refreshedAuth);
+        consecutiveRefreshFailures = 0;
 
         if (!cancelled) {
           refreshTimeout = window.setTimeout(
@@ -129,6 +140,17 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
         }
       } catch (error) {
         console.error("Error refreshing MCP UI credential", error);
+        consecutiveRefreshFailures += 1;
+
+        if (consecutiveRefreshFailures >= UI_CREDENTIAL_REFRESH_MAX_FAILURES) {
+          if (!cancelled) {
+            setHostError(
+              "This visualization did not load. Ask your MCP client to show it again.",
+            );
+          }
+
+          return;
+        }
 
         if (!cancelled) {
           refreshTimeout = window.setTimeout(
@@ -145,7 +167,7 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
       cancelled = true;
       window.clearTimeout(refreshTimeout);
     };
-  }, [app, query, resourceRefreshTool]);
+  }, [app, query, resourceRefreshTool, toolResultVersion]);
 
   // Read host context once connected and apply styles immediately
   useEffect(() => {
@@ -159,5 +181,13 @@ export function useMcpApp(resourceRefreshTool = ""): McpAppState {
     }
   }, [app]);
 
-  return { query, prompt, uiCredential, mcpSessionId, hostContext, app };
+  return {
+    query,
+    prompt,
+    uiCredential,
+    mcpSessionId,
+    hostError,
+    hostContext,
+    app,
+  };
 }
