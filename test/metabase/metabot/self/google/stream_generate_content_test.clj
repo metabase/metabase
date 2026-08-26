@@ -531,17 +531,81 @@
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
 (deftest ^:parallel max-tokens-finish-reason-test
-  (testing "a MAX_TOKENS truncation emits an error part after the partial text, instead of reading as a complete answer"
+  (testing "a MAX_TOKENS truncation becomes :finish-reason \"length\" on the usage chunk not an error part"
     (let [events [{:responseId "r11" :modelVersion "gemini-3.5-flash"
                    :candidates [{:content {:role "model" :parts [{:text "half an ans"}]}
                                  :finishReason "MAX_TOKENS"}]
                    :usageMetadata {:promptTokenCount 4 :thoughtsTokenCount 2000}}]]
       (is (=? [{:type :start}
                {:type :text :text "half an ans"}
-               {:type  :error
-                :error {:message #"(?s)Gemini stopped early \(MAX_TOKENS\): the output token limit was reached.*"}}
-               {:type :usage}]
+               {:type              :usage
+                :finish-reason     "length"
+                :raw-finish-reason "MAX_TOKENS"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel max-tokens-truncation-never-reads-as-complete-test
+  (testing "a MAX_TOKENS turn that carries no usageMetadata still reports the truncation"
+    (let [events [{:responseId "r11b"
+                   :candidates [{:content {:role "model" :parts [{:text "half an ans"}]}
+                                 :finishReason "MAX_TOKENS"}]}]]
+      (is (=? [{:type :start}
+               {:type :text-start}
+               {:type :text-delta}
+               {:type :text-end}
+               {:type              :usage
+                :finish-reason     "length"
+                :raw-finish-reason "MAX_TOKENS"}]
+              (into [] (sgc/->aisdk-chunks-xf) events))))))
+
+(deftest ^:parallel finish-reason-translation-test
+  (let [usage-chunk (fn [reason]
+                      (->> (into [] (sgc/->aisdk-chunks-xf)
+                                 [{:responseId    "r11c"
+                                   :candidates    [{:content {:role "model" :parts [{:text "hi"}]}
+                                                    :finishReason reason}]
+                                   :usageMetadata {:promptTokenCount 4}}])
+                           (m/find-first #(= :usage (:type %)))))]
+    (testing "the AI SDK finish reason rides the usage chunk alongside the raw provider value"
+      (are [raw finish-reason] (=? {:finish-reason finish-reason :raw-finish-reason raw}
+                                   (usage-chunk raw))
+        "STOP"                      "stop"
+        "MAX_TOKENS"                "length"
+        "SAFETY"                    "content-filter"
+        "RECITATION"                "content-filter"
+        "BLOCKLIST"                 "content-filter"
+        "PROHIBITED_CONTENT"        "content-filter"
+        "SPII"                      "content-filter"
+        "IMAGE_SAFETY"              "content-filter"
+        "MODEL_ARMOR"               "content-filter"
+        "LANGUAGE"                  "content-filter"
+        "MALFORMED_FUNCTION_CALL"   "error"
+        "UNEXPECTED_TOOL_CALL"      "error"
+        "OTHER"                     "other"
+        "FINISH_REASON_UNSPECIFIED" "other"
+        "SOMETHING_NEW"             "other"))))
+
+(deftest ^:parallel content-filter-finish-reason-emits-no-error-test
+  (testing "a filtered response reports itself as :finish-reason \"content-filter\", which the client renders itself"
+    (let [events [{:responseId    "r11d"
+                   :candidates    [{:content {:role "model" :parts [{:text "partial"}]}
+                                    :finishReason "SAFETY"}]
+                   :usageMetadata {:promptTokenCount 4}}]]
+      (is (=? [{:type :start}
+               {:type :text :text "partial"}
+               {:type              :usage
+                :finish-reason     "content-filter"
+                :raw-finish-reason "SAFETY"}]
+              (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
+(deftest ^:parallel stop-reasons-translate-to-aisdk-finish-reasons-test
+  (testing "every translation is one of the AI SDK v5 FinishReason values the client knows how to render"
+    (is (every? self.core/finish-reasons (vals @#'sgc/stop-reasons)))))
+
+(deftest ^:parallel finish-reasons-without-error-are-the-ones-the-client-renders-test
+  (testing "STOP plus every reason translating to \"length\" or \"content-filter\" emits no error part"
+    (is (= #{"STOP" "MAX_TOKENS"
+             "BLOCKLIST" "IMAGE_SAFETY" "LANGUAGE" "MODEL_ARMOR" "PROHIBITED_CONTENT" "RECITATION" "SAFETY" "SPII"}
+           @#'sgc/finish-reasons-without-error))))
 
 (deftest ^:parallel malformed-function-call-finish-reason-test
   (testing "MALFORMED_FUNCTION_CALL arrives with no parts at all, so the error part is the only diagnostic"
@@ -549,7 +613,10 @@
                    :candidates [{:finishReason "MALFORMED_FUNCTION_CALL"}]}]]
       (is (=? [{:type :start}
                {:type  :error
-                :error {:message #"(?s)Gemini stopped early \(MALFORMED_FUNCTION_CALL\).*"}}]
+                :error {:message #"(?s)Gemini stopped early \(MALFORMED_FUNCTION_CALL\).*"}}
+               {:type              :usage
+                :finish-reason     "error"
+                :raw-finish-reason "MALFORMED_FUNCTION_CALL"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
 (deftest ^:parallel unknown-finish-reason-test
@@ -559,7 +626,10 @@
                                  :finishReason "SOMETHING_NEW"}]}]]
       (is (=? [{:type :start}
                {:type :text :text "hi"}
-               {:type :error :error {:message "Gemini stopped early (SOMETHING_NEW)"}}]
+               {:type :error :error {:message "Gemini stopped early (SOMETHING_NEW)"}}
+               {:type              :usage
+                :finish-reason     "other"
+                :raw-finish-reason "SOMETHING_NEW"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
 (deftest ^:parallel stop-finish-reason-emits-no-error-test
