@@ -4,6 +4,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.request.core :as request]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -42,6 +43,13 @@
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
                          (or owner_user_id creator_id))
+           ;; Authorized as the user the run executes as -- the requester for a manual run, the owner (or
+           ;; creator) otherwise -- and before the run row is booked. A manual refusal surfaces as a 403 on
+           ;; the request that asked for the run rather than as a failed run.
+           _           (do (when-not run-user-id
+                             (throw (ex-info "Transform has no owner or creator to run as" {:transform-id id})))
+                           (request/with-current-user run-user-id
+                             (transforms.u/check-source-query-permissions! transform)))
            {run-id :id} (transforms.u/try-start-unless-already-running id run-method run-user-id)]
        (when start-promise (deliver start-promise [:started run-id]))
        (driver.conn/with-write-connection
