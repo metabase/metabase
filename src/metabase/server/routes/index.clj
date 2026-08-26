@@ -71,11 +71,11 @@
   (some->> (io/resource "frontend_client/app/dist/route-preloads.json")
            slurp
            json/decode
-           (mapv (fn [[pattern markup signed-out?]]
-                   [(clout/route-compile pattern) markup signed-out?]))))
+           (mapv (fn [[pattern markup render-when-signed-out?]]
+                   [(clout/route-compile pattern) markup render-when-signed-out?]))))
 
 (def ^:private ^{:arglists '([])} route-preloads
-  "`[pattern markup signed-out?]` rows, in the order the patterns are to be tried.
+  "`[pattern markup render-when-signed-out?]` rows, in the order the patterns are to be tried.
 
   Nil until a build has written a manifest. Read afresh in development, where
   every frontend build rewrites it with new file names, and cached everywhere
@@ -99,8 +99,8 @@
   [uri signed-in?]
   (let [path (-> (or uri "/") strip-base-path)]
     (->> (route-preloads)
-         (some (fn [[route markup signed-out?]]
-                 (when (and (or signed-in? signed-out?)
+         (some (fn [[route markup render-when-signed-out?]]
+                 (when (and (or signed-in? render-when-signed-out?)
                             (clout/route-matches route {:uri path}))
                    markup))))))
 

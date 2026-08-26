@@ -111,9 +111,9 @@ class RoutePreloadManifest {
                 return groupFiles(group, initialFiles);
               });
 
-              // One row per pattern: the markup to write, and whether a
-              // signed-out visitor ever renders the page. The backend matches
-              // and writes what it is given.
+              // One row per pattern: the markup to write, and whether the page
+              // renders for a signed-out visitor. The backend matches and
+              // writes what it is given.
               const html = [...new Set(files)]
                 .map((file) => preloadTag(publicPath + file))
                 .join("");
