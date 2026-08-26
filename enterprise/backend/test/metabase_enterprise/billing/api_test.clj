@@ -1,4 +1,4 @@
-(ns metabase-enterprise.billing.api-test
+(ns ^:synchronized metabase-enterprise.billing.api-test
   (:require
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
