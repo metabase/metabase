@@ -2,6 +2,7 @@ import crossfilter from "crossfilter";
 import * as d3 from "d3";
 import _ from "underscore";
 
+import { data_image_uri_pattern } from "cljs/metabase.util.markdown.image";
 import { isNotNull } from "metabase/lib/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -518,5 +519,4 @@ export function findSensibleSankeyColumns(data) {
   };
 }
 
-export const DATA_IMAGE_URI_PATTERN =
-  /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i;
+export const DATA_IMAGE_URI_PATTERN = data_image_uri_pattern;
