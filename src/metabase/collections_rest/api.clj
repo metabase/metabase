@@ -16,6 +16,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.config.core :as config]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -69,10 +70,72 @@
                                  (personal-ids first-parent-collection-id)))]
     (remove personal-descendant? collections)))
 
+(defn- collection-filter-clause
+  "The `:where` clause shared by every collection listing in this namespace. See [[select-collections]] for what the
+  options mean."
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           locations]}]
+  [:and
+   (case archived
+     nil nil
+     false [:and
+            [:not= :id (collection/trash-collection-id)]
+            [:not :archived]]
+     true [:or
+           [:= :id (collection/trash-collection-id)]
+           :archived])
+   (when shallow
+     (location-from-collection-id-clause collection-id))
+   (when (seq locations)
+     [:in :location locations])
+   (when personal-only
+     [:!= :personal_owner_id nil])
+   (when exclude-other-user-collections
+     [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
+   (when-not include-library?
+     [:or [:= nil :type]
+      [:not-in :type [collection/library-collection-type
+                      collection/library-data-collection-type
+                      collection/library-metrics-collection-type]]])
+   [:or
+    (when (contains? namespaces nil)
+      [:= :namespace nil])
+    (when (seq namespaces)
+      [:in :namespace namespaces])]
+   (collection/visible-collection-filter-clause
+    :id
+    {:include-archived-items    (if archived
+                                  :only
+                                  :exclude)
+     :include-trash-collection? true
+     :permission-level          :read
+     :archive-operation-id      nil})])
+
+(defn- select-collections*
+  "Like [[select-collections]], but skips the post-query filtering. Callers that pass a `:limit` need this so they can
+  tell whether the limit was actually hit, which the filtered count cannot tell them."
+  [{:keys [limit offset] :as options}]
+  (t2/select :model/Collection
+             (cond-> {:where (collection-filter-clause options)
+                      ;; Order NULL collection types first so that audit collections are last
+                      :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+                                 [[[:case
+                                    [:= :type nil] 0
+                                    [:= :type collection/trash-collection-type] 1
+                                    :else 2]] :asc]
+                                 [:%lower.name :asc]]}
+               limit  (assoc :limit limit)
+               offset (assoc :offset offset))))
+
 (defn- select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
   is not necessary.
+
+  If `locations` is a non-empty set of location paths, only collections sitting directly in one of those locations are
+  returned. This is how the lazy tree fetches a level at a time.
+
+  If `limit` is set, at most that many collections are read.
 
   For archived, we can either include only archived items (when archived is truthy) or exclude archived items (when
   archived is falsey).
@@ -83,49 +146,8 @@
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
   By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
-  (cond->>
-   (t2/select :model/Collection
-              {:where [:and
-                       (case archived
-                         nil nil
-                         false [:and
-                                [:not= :id (collection/trash-collection-id)]
-                                [:not :archived]]
-                         true [:or
-                               [:= :id (collection/trash-collection-id)]
-                               :archived])
-                       (when shallow
-                         (location-from-collection-id-clause collection-id))
-                       (when personal-only
-                         [:!= :personal_owner_id nil])
-                       (when exclude-other-user-collections
-                         [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
-                       (when-not include-library?
-                         [:or [:= nil :type]
-                          [:not-in :type [collection/library-collection-type
-                                          collection/library-data-collection-type
-                                          collection/library-metrics-collection-type]]])
-                       [:or
-                        (when (contains? namespaces nil)
-                          [:= :namespace nil])
-                        (when (seq namespaces)
-                          [:in :namespace namespaces])]
-                       (collection/visible-collection-filter-clause
-                        :id
-                        {:include-archived-items    (if archived
-                                                      :only
-                                                      :exclude)
-                         :include-trash-collection? true
-                         :permission-level          :read
-                         :archive-operation-id      nil})]
-               ;; Order NULL collection types first so that audit collections are last
-               :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-                          [[[:case
-                             [:= :type nil] 0
-                             [:= :type collection/trash-collection-type] 1
-                             :else 2]] :asc]
-                          [:%lower.name :asc]]})
+  [{:keys [exclude-other-user-collections] :as options}]
+  (cond->> (select-collections* options)
     exclude-other-user-collections
     (remove-other-users-personal-subcollections api/*current-user-id*)))
 
@@ -178,15 +200,23 @@
          collection/personal-collections-with-ui-details
          collection/maybe-localize-tenant-collection-names)))
 
-(defn- prep-collection-for-export
-  "Given a collection, tweaks it to be ready for returning to the FE.
+(defn- prep-collections-for-export
+  "Given a sequence of collections, tweaks them to be ready for returning to the FE.
 
-  These same functions were called in several places in this namespace, so they're combined here to keep it DRY."
+  These same functions were called in several places in this namespace, so they're combined here to keep it DRY.
+
+  Prefer this over calling [[prep-collection-for-export]] in a `map`: the personal-collection and tenant-collection
+  steps each run a query, so doing them per collection is an N+1."
+  [colls]
+  (->> colls
+       collection/personal-collections-with-ui-details
+       collection/maybe-localize-tenant-collection-names
+       (map collection/maybe-mark-collection-as-library-root)))
+
+(defn- prep-collection-for-export
+  "Single-collection version of [[prep-collections-for-export]]."
   [coll]
-  (-> coll
-      collection/personal-collection-with-ui-details
-      collection/maybe-localize-tenant-collection-name
-      collection/maybe-mark-collection-as-library-root))
+  (first (prep-collections-for-export [coll])))
 
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
@@ -204,9 +234,212 @@
   ```"
   [colls]
   (->> colls
-       (map prep-collection-for-export)
+       prep-collections-for-export
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
+
+;;; ------------------------------------------- Lazy (adaptive) tree -------------------------------------------------
+
+(def ^:private lazy-tree-collection-budget
+  "How many collections the lazy tree is willing to materialize in a single response.
+
+  An instance at or under this budget gets its entire tree in one request, exactly as it did before lazy loading, so
+  the overwhelming majority of instances see no change at all. Only instances above the budget pay for lazy loading.
+
+  E2E runs use a much smaller budget so that both branches are reachable without seeding hundreds of collections. The
+  default Cypress snapshot sits well under it and exercises the complete branch, and the `large-collection-tree`
+  snapshot sits well over it and exercises the lazy branch."
+  (if config/is-e2e? 50 500))
+
+(def ^:private lazy-tree-lookahead-budget
+  "How many collections a response will carry speculatively, one level below what was actually asked for.
+
+  Smaller than [[lazy-tree-collection-budget]] because this level is a guess: the user may never drill into it. Wide
+  subtrees exceed it and simply do not get the lookahead, falling back to fetching on expand."
+  200)
+
+(def ^:private lazy-tree-page-size
+  "How many collections of a single level a lazy response carries.
+
+  Depth-based laziness does nothing for an instance whose collections are mostly siblings: without this, a root level
+  of 28,000 is still read and sent in full. Paging every level is what bounds the response, and it bounds the
+  `IN` clause behind `:has_children` along with it.
+
+  E2E uses a smaller page so the `large-collection-tree` snapshot exercises paging without seeding thousands."
+  (if config/is-e2e? 25 100))
+
+(defn- select-collections-up-to
+  "Reads at most `limit` collections. Returns `[collections complete?]`, where `complete?` is false when there may be
+  more collections than we read.
+
+  We read one extra row rather than running a separate `count` so that the common case, an instance comfortably under
+  the budget, costs a single query."
+  [options limit]
+  (let [candidates (select-collections* (assoc options :limit (inc limit)))
+        complete?  (<= (count candidates) limit)]
+    [(cond->> (take limit candidates)
+       (:exclude-other-user-collections options)
+       (remove-other-users-personal-subcollections api/*current-user-id*))
+     complete?]))
+
+(defn- ancestor-locations
+  "Every location the sidebar must read to show `collection` revealed from the root, plus the location holding
+  `collection`'s own children.
+
+    (ancestor-locations {:id 42, :location \"/1/5/\"})
+    ;; -> #{\"/\" \"/1/\" \"/1/5/\" \"/1/5/42/\"}"
+  [collection]
+  (into #{(collection/children-location collection)}
+        (reductions (fn [location id] (str location id "/"))
+                    "/"
+                    (collection/location-path->ids (:location collection)))))
+
+(defn- lazy-tree-locations
+  "The levels needed to render the sidebar with `expand-to` revealed. Always includes the root level.
+
+  No permission check is needed on `expand-to` itself: we only read a location path from it, and every collection we
+  go on to return is filtered by the usual visibility clause."
+  [expand-to]
+  (if-let [collection (when expand-to
+                        (t2/select-one [:model/Collection :id :location] :id expand-to))]
+    (ancestor-locations collection)
+    #{"/"}))
+
+(defn- occupied-locations
+  "Of `locations`, the ones holding at least one collection this user can see. Lets us set `:has_children` on nodes
+  whose children we have deliberately not read."
+  [locations options]
+  (when (seq locations)
+    (t2/select-fn-set :location :model/Collection
+                      {:select-distinct [:location]
+                       :where (collection-filter-clause (assoc options :locations locations))})))
+
+(defn- complete-tree-nodes
+  "Marks up a tree whose every level was read. `:has_children` just mirrors `:children`, so this is the tree we always
+  returned plus one redundant flag."
+  [nodes]
+  (mapv (fn [node]
+          (let [children (complete-tree-nodes (:children node))]
+            (assoc node
+                   :children     children
+                   :has_children (boolean (seq children)))))
+        nodes))
+
+(defn- partial-tree-nodes
+  "Marks up a tree where only the levels in `loaded` were read. A node whose children live outside `loaded` has no
+  `:children` key at all, which together with `:has_children` is how the FE knows it still has to fetch them.
+
+  `truncated` holds the locations whose page did not reach the end, surfaced as `:children_has_more` so the FE can
+  offer to load the rest of that level."
+  [nodes loaded truncated occupied]
+  (mapv (fn [node]
+          (let [child-location (collection/children-location node)]
+            (cond-> (assoc node :has_children (contains? occupied child-location))
+              (contains? truncated child-location)
+              (assoc :children_has_more true)
+
+              (contains? loaded child-location)
+              (assoc :children (partial-tree-nodes (:children node) loaded truncated occupied))
+
+              (not (contains? loaded child-location))
+              (dissoc :children))))
+        nodes))
+
+(defn- read-level
+  "One level of the tree, capped at [[lazy-tree-page-size]]. Returns `[collections more?]`, reading one row past the
+  page so that `more?` costs no extra query.
+
+  Reading level by level rather than all wanted locations at once means one small indexed query each instead of a
+  single unbounded one. On a wide instance that is the difference between reading a page and reading everything."
+  [location options offset]
+  (let [rows (select-collections (assoc options
+                                        :locations #{location}
+                                        :offset   (or offset 0)
+                                        :limit    (inc lazy-tree-page-size)))]
+    [(take lazy-tree-page-size rows) (> (count rows) lazy-tree-page-size)]))
+
+(defn- read-one-level-deeper
+  "The level below `collections`, when it is small enough to be worth sending unasked. Returns `nil` otherwise.
+
+  A whole level costs one indexed query no matter how many nodes ask for it, which is why the server can look ahead
+  cheaply where the FE cannot. The budget keeps a very wide subtree from undoing the point of lazy loading."
+  [collections options]
+  (let [child-locations (into #{} (map collection/children-location) collections)]
+    (when (seq child-locations)
+      (let [[deeper complete?] (select-collections-up-to (assoc options :locations child-locations)
+                                                         lazy-tree-lookahead-budget)]
+        (when complete?
+          {:collections deeper, :locations child-locations})))))
+
+(defn- partial-collection-tree
+  "Reads a page of each of the given `locations` and nests them into a tree, flagging what was not read.
+
+  `primary` is the location the request actually asked about, whose `more?` becomes the response's own `:has_more`.
+  With `look-ahead?`, also reads the level below when it fits [[lazy-tree-lookahead-budget]].
+
+  Returns `{:data nodes, :has_more bool}`."
+  [{:keys [locations primary offset options look-ahead?]}]
+  (let [pages       (into {} (map (fn [location]
+                                    [location (read-level location options
+                                                          (when (= location primary) offset))]))
+                          locations)
+        level       (mapcat (comp first val) pages)
+        truncated   (into #{} (keep (fn [[location [_ more?]]] (when more? location))) pages)
+        look-ahead  (when look-ahead? (read-one-level-deeper level options))
+        collections (-> (concat level (:collections look-ahead))
+                        (t2/hydrate :can_write))
+        loaded      (into (set locations) (:locations look-ahead))
+        nodes       (->> collections
+                         prep-collections-for-export
+                         (collection/collections->tree nil))]
+    {:data     (partial-tree-nodes nodes
+                                   loaded
+                                   truncated
+                                   (occupied-locations (into #{} (map collection/children-location) collections)
+                                                       options))
+     :has_more    (boolean (second (get pages primary)))
+     ;; The FE cannot work this out from what it received: the page is filtered after the limit is applied, so the
+     ;; number of rows it holds is not where the next page starts.
+     :next_offset (+ (or offset 0) lazy-tree-page-size)}))
+
+(defn- lazy-collection-tree
+  "Adaptive collection tree for the nav sidebar.
+
+  With a `collection-id`, returns that collection's direct children, which is what expanding a node asks for, plus
+  their children when those fit the lookahead budget. Drilling further down then costs no request at all.
+
+  Otherwise it probes: if the whole instance fits in [[lazy-tree-collection-budget]] we return the full tree in one
+  response. If it does not, we return only what the sidebar needs right now, which is the root level plus every level
+  between the root and `expand-to`.
+
+  Every level is paged, so a level wider than [[lazy-tree-page-size]] comes back in parts. The response carries
+  `:has_more` for the level that was asked about, and a node carries `:children_has_more` when its own level was cut
+  short.
+
+  Either way every node carries `:has_children`, and nodes whose children were not read have no `:children` key. The
+  FE has one rule: fetch when `has_children` is true and `children` is absent."
+  [{:keys [collection-id expand-to offset] :as options}]
+  (if collection-id
+    (let [parent   (api/read-check :model/Collection collection-id)
+          location (collection/children-location parent)]
+      (partial-collection-tree {:locations #{location}
+                                :primary   location
+                                :offset    offset
+                                :options   options
+                                :look-ahead? true}))
+    (let [[collections complete?] (select-collections-up-to options lazy-tree-collection-budget)]
+      (if (and complete? (nil? offset))
+        (let [nodes (->> (t2/hydrate collections :can_write)
+                         prep-collections-for-export
+                         (collection/collections->tree nil)
+                         complete-tree-nodes)]
+          {:data        nodes
+           :has_more    false
+           :next_offset 0})
+        (partial-collection-tree {:locations (lazy-tree-locations expand-to)
+                                  :primary   "/"
+                                  :offset    offset
+                                  :options   options})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -242,10 +475,16 @@
   at. For example, `namespaces=analytics&namespaces=` would match the default behavior.
 
   When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
-  the root, if `collection-id` is `nil`)."
+  the root, if `collection-id` is `nil`).
+
+  When `lazy` is true, the tree adapts to the size of the instance. If the whole tree fits within an internal budget
+  it is returned in full, exactly as it would be without `lazy`. If it does not, only the root level is returned,
+  plus every level between the root and the optional `expand-to` collection. Nodes always carry `has_children`, and
+  `children` is `null` on nodes whose children were not read. Pass `collection-id` to read one node's children.
+  `here` and `below` are not computed in this mode."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
-           namespace namespaces shallow collection-id]}
+           namespace namespaces shallow lazy collection-id expand-to level-offset]}
    :- [:map
        [:exclude-archived               {:default false} [:maybe :boolean]]
        [:exclude-other-user-collections {:default false} [:maybe :boolean]]
@@ -253,46 +492,56 @@
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
-       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+       [:lazy                           {:default false} [:maybe :boolean]]
+       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]
+       [:expand-to                      {:optional true} [:maybe ms/PositiveInt]]
+       [:level-offset                   {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
   (api/check-400
    (not (and namespace (seq namespaces))))
+  (api/check-400
+   (not (and shallow lazy)))
   (let [archived    (if exclude-archived false nil)
         namespaces (cond
                      namespace #{namespace}
                      (seq namespaces) (into #{} (map not-empty namespaces))
                      (premium-features/enable-audit-app?) #{nil "analytics"}
                      :else #{nil})
-        collections (-> (select-collections {:archived                       archived
-                                             :exclude-other-user-collections exclude-other-user-collections
-                                             :namespaces                     namespaces
-                                             :shallow                        shallow
-                                             :collection-id                  collection-id
-                                             :include-library?               include-library})
-                        (t2/hydrate :can_write))]
-    (if shallow
-      (shallow-tree-from-collection-id collections)
-      (let [collection-type-ids (merge (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
-                                                 (update acc (case (keyword card-type)
-                                                               :model :dataset
-                                                               :metric :metric
-                                                               :card) conj collection-id))
-                                               {:dataset #{}
-                                                :metric  #{}
-                                                :card    #{}}
-                                               (t2/reducible-query {:select-distinct [:collection_id :type]
-                                                                    :from            [:report_card]
-                                                                    :where           [:= :archived false]}))
-                                       ;; Tables in collections are an EE feature (library)
-                                       (when (premium-features/has-feature? :library)
-                                         {:table (->> (t2/query {:select-distinct [:collection_id]
-                                                                 :from :metabase_table
-                                                                 :where [:and
-                                                                         [:= :is_published true]
-                                                                         [:= :archived_at nil]]})
-                                                      (map :collection_id)
-                                                      (into #{}))}))
-            collections-with-details (map prep-collection-for-export collections)]
-        (collection/collections->tree collection-type-ids collections-with-details)))))
+        options    {:archived                       archived
+                    :exclude-other-user-collections exclude-other-user-collections
+                    :namespaces                     namespaces
+                    :shallow                        shallow
+                    :collection-id                  collection-id
+                    :expand-to                      expand-to
+                    :offset                         level-offset
+                    :include-library?               include-library}]
+    (if lazy
+      (lazy-collection-tree options)
+      (let [collections (-> (select-collections options)
+                            (t2/hydrate :can_write))]
+        (if shallow
+          (shallow-tree-from-collection-id collections)
+          (let [collection-type-ids (merge (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
+                                                     (update acc (case (keyword card-type)
+                                                                   :model :dataset
+                                                                   :metric :metric
+                                                                   :card) conj collection-id))
+                                                   {:dataset #{}
+                                                    :metric  #{}
+                                                    :card    #{}}
+                                                   (t2/reducible-query {:select-distinct [:collection_id :type]
+                                                                        :from            [:report_card]
+                                                                        :where           [:= :archived false]}))
+                                           ;; Tables in collections are an EE feature (library)
+                                           (when (premium-features/has-feature? :library)
+                                             {:table (->> (t2/query {:select-distinct [:collection_id]
+                                                                     :from :metabase_table
+                                                                     :where [:and
+                                                                             [:= :is_published true]
+                                                                             [:= :archived_at nil]]})
+                                                          (map :collection_id)
+                                                          (into #{}))}))
+                collections-with-details (prep-collections-for-export collections)]
+            (collection/collections->tree collection-type-ids collections-with-details)))))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 

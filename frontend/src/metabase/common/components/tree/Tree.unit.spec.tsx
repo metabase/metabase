@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { fireEvent, render, screen } from "__support__/ui";
 import { Tree } from "metabase/common/components/tree";
 
@@ -72,6 +74,113 @@ describe("Tree", () => {
 
     fireEvent.click(screen.getAllByRole("menuitem")[0]);
     expect(onSelectMock).toHaveBeenCalledWith(data[0]);
+  });
+
+  describe("lazily loaded nodes", () => {
+    const lazyData = [
+      {
+        id: 1,
+        name: "Item 1",
+        icon: "group" as const,
+        children: [],
+        hasChildren: true,
+        childrenLoaded: false,
+      },
+    ];
+
+    it("should offer an expand toggle before the children are loaded", () => {
+      render(<Tree data={lazyData} onSelect={jest.fn()} />);
+      expect(screen.getByRole("button")).toBeInTheDocument();
+    });
+
+    it("should show skeletons only once loading has taken a moment", async () => {
+      render(<Tree data={lazyData} onSelect={jest.fn()} />);
+
+      expect(
+        screen.queryByTestId("tree-node-skeleton"),
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button"));
+
+      // Still nothing: a fetch that resolves quickly should never flash placeholder rows.
+      expect(
+        screen.queryByTestId("tree-node-skeleton"),
+      ).not.toBeInTheDocument();
+
+      expect(
+        (await screen.findAllByTestId("tree-node-skeleton")).length,
+      ).toBeGreaterThan(0);
+      expect(screen.getAllByRole("menuitem")).toHaveLength(1);
+    });
+
+    it("should replace the skeletons once the children arrive", () => {
+      const { rerender } = render(
+        <Tree data={lazyData} onSelect={jest.fn()} />,
+      );
+      fireEvent.click(screen.getByRole("button"));
+
+      rerender(
+        <Tree
+          data={[
+            {
+              ...lazyData[0],
+              childrenLoaded: true,
+              children: [{ id: 2, name: "Item 2", icon: "group" as const }],
+            },
+          ]}
+          onSelect={jest.fn()}
+        />,
+      );
+
+      expect(
+        screen.queryByTestId("tree-node-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Item 2")).toBeInTheDocument();
+    });
+
+    it("should read the next page when asked", async () => {
+      const onLoadMore = jest.fn();
+      render(
+        <Tree
+          data={data}
+          onSelect={jest.fn()}
+          hasMore
+          onLoadMore={onLoadMore}
+          loadingMoreIds={new Set()}
+        />,
+      );
+
+      expect(onLoadMore).not.toHaveBeenCalled();
+
+      await userEvent.click(screen.getByRole("button", { name: /Show more/ }));
+
+      expect(onLoadMore).toHaveBeenCalled();
+    });
+
+    it("should report expansion to an external controller", () => {
+      const handleToggleExpand = jest.fn();
+      render(
+        <Tree
+          onSelect={jest.fn()}
+          tree={{
+            data: lazyData,
+            selectedId: undefined,
+            expandedIds: new Set(),
+            setExpandedIds: jest.fn(),
+            handleToggleExpand,
+            collapse: jest.fn(),
+          }}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button"));
+
+      expect(handleToggleExpand).toHaveBeenCalledWith(1);
+      // Expansion is the controller's to grant, so nothing expands until it says so.
+      expect(
+        screen.queryByTestId("tree-node-skeleton"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("expands ancestors when selecting a child whose parent was collapsed", () => {

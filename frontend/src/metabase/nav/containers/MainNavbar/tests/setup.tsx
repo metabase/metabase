@@ -29,6 +29,7 @@ import { Route, useLocation, useParams } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Card,
+  Collection,
   Dashboard,
   DashboardId,
   ModelResult,
@@ -71,6 +72,13 @@ export type SetupOpts = {
   hasEmbeddingFeature?: boolean;
   applicationName?: string;
   activeUsersCount?: number;
+  /** Renders the collection tree the way it comes back on an instance too large to send in one response. */
+  simulateLargeInstance?: boolean;
+  /** Extra root-level collections, on top of the default fixture. */
+  collections?: Collection[];
+  lazyPageSize?: number;
+  delayExpandTo?: boolean;
+  deliverTruncatedChildrenFor?: number[];
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -92,6 +100,8 @@ export const TEST_COLLECTION = createMockCollection({
   children: [NESTED_COLLECTION],
 });
 
+const COLLECTION_ROUTE = "/collection/:slug";
+
 export async function setup({
   pathname = "/",
   route = pathname,
@@ -111,6 +121,11 @@ export async function setup({
   hasWhitelabelToken,
   hasEmbeddingFeature,
   applicationName = "Metabase",
+  simulateLargeInstance = false,
+  collections: extraCollections = [],
+  lazyPageSize,
+  delayExpandTo,
+  deliverTruncatedChildrenFor,
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -143,7 +158,7 @@ export async function setup({
     can_write: user?.is_superuser || canCurateRootCollection,
   });
 
-  const collections = [TEST_COLLECTION];
+  const collections = [TEST_COLLECTION, ...extraCollections];
 
   const personalCollection = user
     ? createMockCollection({
@@ -161,6 +176,10 @@ export async function setup({
     collections,
     rootCollection: OUR_ANALYTICS,
     currentUserId: user?.id,
+    simulateLargeInstance,
+    lazyPageSize,
+    delayExpandTo,
+    deliverTruncatedChildrenFor,
   });
   setupCollectionByIdEndpoint({
     collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION, NESTED_COLLECTION],
@@ -228,11 +247,18 @@ export async function setup({
     });
   }
 
+  const navbar = <RoutedMainNavbar isOpen dashboard={storeDashboard} />;
+
   renderWithProviders(
-    <Route
-      path={route}
-      element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
-    />,
+    // The collection route is registered alongside the requested one so a test can click a sidebar link and have
+    // `params.slug` resolve, which is what marks a collection as selected. Tests that never navigate only ever match
+    // the first route.
+    <>
+      <Route path={route} element={navbar} />
+      {route !== COLLECTION_ROUTE && (
+        <Route path={COLLECTION_ROUTE} element={navbar} />
+      )}
+    </>,
     {
       storeInitialState,
       initialRoute: pathname,

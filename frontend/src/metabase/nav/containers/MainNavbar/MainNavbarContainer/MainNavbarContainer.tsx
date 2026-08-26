@@ -1,10 +1,11 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
+  skipToken,
   useGetCollectionQuery,
   useListBookmarksQuery,
-  useListCollectionsTreeQuery,
   useListDatabasesQuery,
   useReorderBookmarksMutation,
 } from "metabase/api";
@@ -30,15 +31,41 @@ import { addUndo } from "metabase/redux/undo";
 import type { To } from "metabase/router";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Collection, User } from "metabase-types/api";
+import type { Collection, CollectionId, User } from "metabase-types/api";
 
 import { NavbarErrorView } from "../NavbarErrorView";
 import { NavbarLoadingView } from "../NavbarLoadingView";
 import type { MainNavbarProps, SelectedItem } from "../types";
+import { useLazyCollectionTree } from "../use-lazy-collection-tree";
 
 import { MainNavbarView } from "./MainNavbarView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
+
+const COLLECTION_TREE_REQUEST = {
+  "exclude-other-user-collections": true,
+  "exclude-archived": true,
+  "include-library": true,
+} as const;
+
+/**
+ * The collections to reveal so the selected one is visible in the tree.
+ *
+ * `effective_ancestors` is permission aware, so it wins when present. Falling back to `location` keeps this working
+ * for responses that do not hydrate ancestors.
+ */
+function getSelectedCollectionAncestorIds(
+  collection: Collection | undefined,
+): CollectionId[] {
+  if (collection?.effective_ancestors) {
+    return collection.effective_ancestors.map((ancestor) => ancestor.id);
+  }
+  return (collection?.location ?? "")
+    .split("/")
+    .filter(Boolean)
+    .map(Number)
+    .filter((id) => !Number.isNaN(id));
+}
 
 function mapStateToProps(state: State) {
   return {
@@ -98,10 +125,43 @@ function MainNavbarContainer({
     { skip: !canWriteToCollections },
   );
 
-  const { data: collections = [] } = useListCollectionsTreeQuery({
-    "exclude-other-user-collections": true,
-    "exclude-archived": true,
-    "include-library": true,
+  const selectedCollectionId = useMemo(
+    () => _.findWhere(selectedItems, { type: "collection" })?.id,
+    [selectedItems],
+  );
+
+  // Already fetched by MainNavbar for the selected item, so this costs nothing and gives us the permission-aware
+  // ancestor chain we need to reveal a deeply nested collection without walking the tree.
+  const { data: selectedCollection } = useGetCollectionQuery(
+    selectedCollectionId != null ? { id: selectedCollectionId } : skipToken,
+  );
+
+  // Stays empty until the collection resolves, so the tree reveals the full path in one go rather than expanding
+  // the selected node first and its ancestors a render later.
+  const ancestorIds = useMemo(() => {
+    if (selectedCollectionId == null || selectedCollection == null) {
+      return [];
+    }
+    return [
+      ...getSelectedCollectionAncestorIds(selectedCollection),
+      selectedCollectionId,
+    ];
+  }, [selectedCollection, selectedCollectionId]);
+
+  const {
+    collections,
+    expandedIds,
+    setExpandedIds,
+    handleToggleExpand,
+    collapse,
+    prefetchChildren,
+    loadMore,
+    loadingMoreIds,
+    hasMore,
+  } = useLazyCollectionTree({
+    baseRequest: COLLECTION_TREE_REQUEST,
+    selectedCollectionId,
+    ancestorIds,
   });
 
   const {
@@ -211,6 +271,14 @@ function MainNavbarContainer({
         bookmarks={bookmarks}
         isOpen={isOpen}
         collections={collectionTree}
+        expandedCollectionIds={expandedIds}
+        setExpandedCollectionIds={setExpandedIds}
+        onToggleCollectionExpand={handleToggleExpand}
+        onCollapseCollection={collapse}
+        onCollectionHover={prefetchChildren}
+        onCollectionLoadMore={loadMore}
+        loadingMoreCollectionIds={loadingMoreIds}
+        collectionsHaveMore={hasMore}
         selectedItems={selectedItems}
         hasDataAccess={hasDataAccess}
         reorderBookmarks={reorderBookmarks}

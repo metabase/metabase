@@ -28,8 +28,18 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
         tag("library-collection"),
       ],
     }),
+    getLibraryTree: builder.query<Collection[], void>({
+      query: () => ({
+        url: `/api/ee/library/tree`,
+        method: "GET",
+      }),
+      providesTags: [listTag("collection"), tag("library-collection")],
+    }),
   }),
 });
 
-export const { useCreateLibraryMutation, useGetLibraryCollectionQuery } =
-  libraryApi;
+export const {
+  useCreateLibraryMutation,
+  useGetLibraryCollectionQuery,
+  useGetLibraryTreeQuery,
+} = libraryApi;
