@@ -35,6 +35,7 @@ import {
  */
 export function useCollectionsWithTenants(
   collectionsById: Record<CollectionId, ExpandedCollection>,
+  canReadRootCollection: boolean,
 ): Record<CollectionId, ExpandedCollection> {
   const useTenants = useSetting("use-tenants");
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
@@ -109,6 +110,7 @@ export function useCollectionsWithTenants(
           baseCollectionsById: collectionsById,
           sharedCollectionsById,
           tenantSpecificCollectionsById,
+          canReadRootCollection,
         })
       : mergeTenantCollections({
           baseCollectionsById: collectionsById,
@@ -123,6 +125,7 @@ export function useCollectionsWithTenants(
     tenantSpecificCollections,
     tenantCollectionNamesById,
     collectionsById,
+    canReadRootCollection,
     isTenantUser,
     userPersonalCollectionId,
   ]);

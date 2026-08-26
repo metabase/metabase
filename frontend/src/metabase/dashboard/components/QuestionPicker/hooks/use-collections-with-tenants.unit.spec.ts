@@ -33,7 +33,8 @@ function setupHook({
   setupTenantEntpoints(tenants);
 
   return renderHookWithProviders(
-    () => useCollectionsWithTenants(getExpandedCollectionsById([], null)),
+    () =>
+      useCollectionsWithTenants(getExpandedCollectionsById([], null), false),
     {
       storeInitialState: createMockState({
         settings: mockSettings({

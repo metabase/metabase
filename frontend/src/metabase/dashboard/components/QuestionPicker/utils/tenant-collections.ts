@@ -33,6 +33,13 @@ interface MergeTenantCollectionsArgs extends TenantCollectionTrees {
 }
 
 /**
+ * Input to populate the question picker for a tenant user.
+ */
+interface MergeTenantUserCollectionsArgs extends TenantCollectionTrees {
+  canReadRootCollection: boolean;
+}
+
+/**
  * Describes one synthetic collection below `Collections`.
  */
 interface SyntheticCollectionConfig {
@@ -176,7 +183,8 @@ export function mergeTenantUserCollections({
   baseCollectionsById,
   sharedCollectionsById,
   tenantSpecificCollectionsById,
-}: TenantCollectionTrees): Record<CollectionId, ExpandedCollection> {
+  canReadRootCollection,
+}: MergeTenantUserCollectionsArgs): Record<CollectionId, ExpandedCollection> {
   const syntheticTopLevel = createSyntheticTopLevel();
   const mergedCollectionsById = { ...baseCollectionsById };
 
@@ -197,16 +205,27 @@ export function mergeTenantUserCollections({
 
   const rootCollection = baseCollectionsById[ROOT_COLLECTION.id];
 
+  const baseCollections = canReadRootCollection
+    ? []
+    : mergeCollectionNamespaceChildren({
+        collectionsById: mergedCollectionsById,
+        namespaceCollectionsById: baseCollectionsById,
+        parent: syntheticTopLevel,
+        pathPrefix: [COLLECTIONS_TOP_LEVEL_ID],
+      });
+
   const mergedRoot = mergeBaseCollectionsAtTopLevel({
     baseCollectionsById,
     mergedCollectionsById,
     syntheticTopLevel,
-    shouldIncludeRoot: rootCollection.children.length > 0,
+    shouldIncludeRoot:
+      canReadRootCollection && rootCollection.children.length > 0,
   });
 
   syntheticTopLevel.children = [
     ...tenantCollections,
     ...sharedCollections,
+    ...baseCollections,
     ...(mergedRoot ? [mergedRoot] : []),
   ];
 

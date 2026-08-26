@@ -1,6 +1,6 @@
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
@@ -13,8 +13,10 @@ import {
   mergeTenantUserCollections,
 } from "./tenant-collections";
 
-const expandCollections = (collections: Collection[] = []) =>
-  getExpandedCollectionsById(collections, null);
+const expandCollections = (
+  collections: Collection[] = [],
+  personalCollectionId: CollectionId | null = null,
+) => getExpandedCollectionsById(collections, personalCollectionId);
 
 describe("mergeTenantCollections", () => {
   it("adds synthetic tenant collections below the root namespace", () => {
@@ -61,13 +63,14 @@ describe("mergeTenantCollections", () => {
 });
 
 describe("mergeTenantUserCollections", () => {
-  it("shows Our data and shared collections directly beneath Collections", () => {
+  it("flattens personal collections when Our analytics is not readable", () => {
     const tenantCollection = createMockCollection({
       id: 100,
       name: "Tenant collection: Acme",
       location: "/",
       namespace: "tenant-specific",
     });
+
     const sharedCollections = ["Finance", "Marketing"].map((name, index) =>
       createMockCollection({
         id: 101 + index,
@@ -77,17 +80,28 @@ describe("mergeTenantUserCollections", () => {
       }),
     );
 
+    const personalCollection = createMockCollection({
+      id: 103,
+      name: "Poom's personal collection",
+      location: "/",
+      personal_owner_id: 1,
+    });
+
     const collectionsById = mergeTenantUserCollections({
-      baseCollectionsById: expandCollections(),
+      baseCollectionsById: expandCollections(
+        [personalCollection],
+        personalCollection.id,
+      ),
       sharedCollectionsById: expandCollections(sharedCollections),
       tenantSpecificCollectionsById: expandCollections([tenantCollection]),
+      canReadRootCollection: false,
     });
 
     expect(
       collectionsById[COLLECTIONS_TOP_LEVEL_ID].children.map(
         ({ name }) => name,
       ),
-    ).toEqual(["Our data", "Finance", "Marketing"]);
+    ).toEqual(["Our data", "Finance", "Marketing", "My personal collection"]);
 
     expect(collectionsById).not.toHaveProperty(
       String(SHARED_TENANT_COLLECTIONS_ROOT_ID),
@@ -96,5 +110,32 @@ describe("mergeTenantUserCollections", () => {
     expect(collectionsById).not.toHaveProperty(
       String(TENANT_SPECIFIC_COLLECTIONS_ROOT_ID),
     );
+  });
+
+  it("keeps readable Our analytics grouped", () => {
+    const ourAnalytics = createMockCollection({ ...ROOT_COLLECTION });
+
+    const regularCollection = createMockCollection({
+      id: 200,
+      name: "Sales",
+      location: "/",
+    });
+
+    const collectionsById = mergeTenantUserCollections({
+      baseCollectionsById: expandCollections([ourAnalytics, regularCollection]),
+      sharedCollectionsById: expandCollections(),
+      tenantSpecificCollectionsById: expandCollections(),
+      canReadRootCollection: true,
+    });
+
+    expect(
+      collectionsById[COLLECTIONS_TOP_LEVEL_ID].children.map(
+        ({ name }) => name,
+      ),
+    ).toEqual(["Our analytics"]);
+
+    expect(
+      collectionsById[ROOT_COLLECTION.id].children.map(({ name }) => name),
+    ).toEqual(["Sales"]);
   });
 });

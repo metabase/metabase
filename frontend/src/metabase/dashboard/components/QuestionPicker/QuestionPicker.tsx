@@ -60,7 +60,16 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
     SEARCH_DEBOUNCE_DURATION,
   );
 
-  const collectionsById = useCollectionsWithTenants(baseCollectionsById);
+  // getExpandedCollectionsById always creates a root collection,
+  // but we only want to show it if the user has access to it.
+  const canReadRootCollection = allCollectionsList.some(
+    ({ id }) => id === ROOT_COLLECTION.id,
+  );
+
+  const collectionsById = useCollectionsWithTenants(
+    baseCollectionsById,
+    canReadRootCollection,
+  );
 
   const isAtTopLevel = currentCollectionId === COLLECTIONS_TOP_LEVEL_ID;
   const isAtSharedTenantRoot =
