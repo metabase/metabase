@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { EmbeddingThemeListingApp } from "metabase/admin/embedding/components/ThemeListing";
 import { UpsellEmbeddingTheme } from "metabase/admin/upsells";
 import { Link } from "metabase/common/components/Link";
@@ -19,9 +20,7 @@ export function EmbeddingHubAppearancePage() {
   const isFullAppEmbeddingEnabled = useSetting("enable-embedding-interactive");
 
   return (
-    <Stack gap="2.5rem">
-      <Title order={1} c="text-primary">{t`Appearance`}</Title>
-
+    <SettingsPageWrapper title={t`Appearance`}>
       {!hasSimpleEmbedding && (
         <UpsellEmbeddingTheme source="embedding-hub-appearance" />
       )}
@@ -47,7 +46,7 @@ export function EmbeddingHubAppearancePage() {
           {isFullAppEmbeddingEnabled && <FullAppAppearanceBanner />}
         </>
       )}
-    </Stack>
+    </SettingsPageWrapper>
   );
 }
 
