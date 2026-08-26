@@ -13,7 +13,7 @@ redirect_from:
 
 You can embed an AI chat in your app, so people can ask questions of their data in natural language. Embedded chat is a more focused version of [Metabot](../ai/metabot.md), built to work well in an embedded context: it can only display ad-hoc questions and metrics, and it doesn't know about dashboards.
 
-AI chat requires an authenticated (SSO) embed. [Guest embeds](./guest-embedding.md) can't use it.
+AI chat requires the embed to use SSO authentication that signs people into your Metabase.
 
 ## Try the AI chat demo
 
@@ -42,18 +42,18 @@ With embedded Metabot set up, there are two ways to add the chat to your app:
 - **[Web component](#web-component-ai-chat)**: the whole chat interface, chart and all, from a single tag.
 - **[React SDK](#react-sdk-ai-chat)**: the same interface from the `MetabotQuestion` component, or the [`useMetabot`](#build-a-custom-ai-chat-ui-with-usemetabot-react-sdk-only) hook if you'd rather build the interface yourself.
 
-Both the web component and `MetabotQuestion` let you [set where the chart appears](#set-where-the-chart-appears) and [whether people can save questions](#let-people-save-questions-metabot-creates). If you build your own interface with [`useMetabot`](#build-a-custom-ai-chat-ui-with-usemetabot-react-sdk-only), those are yours to handle.
+Both the web component and `MetabotQuestion` let you [set where the chart appears](#set-where-the-chart-appears) and [whether people can save questions](#let-people-save-questions-metabot-creates).
 
 ## Web component AI chat
 
 You can use the in-app wizard to generate the code:
 
-1. Go to **Admin > Embedding > Setup guide > Embed in your code**.
+1. Go to **Admin > Embedding > Setup guide > Get embed snippet**.
 2. For the experience, select **Metabot**.
 3. Pick a [layout](#set-where-the-chart-appears) and decide whether people can [save questions](#let-people-save-questions-metabot-creates).
 4. Click **Get code** and paste the snippet into your app.
 
-The **Metabot** option only shows up once an admin has turned on embedded Metabot, and only for SSO authentication. See [modular embedding](./modular-embedding.md) for what the rest of the generated snippet does.
+The **Metabot** option only shows up once an admin has turned on embedded Metabot, and only for SSO authentication. For what the rest of the generated snippet does, see [modular embedding](./modular-embedding.md) 
 
 To render the AI chat interface:
 
@@ -180,9 +180,9 @@ The `CurrentChart` component is bound to the latest chart the agent produced. Re
 
 ### Bring your own markdown renderer
 
-`MetabotQuestion` renders agent text messages for you, markdown formatting and all, along with transcript scrolling and input styling. The `useMetabot` hook hands you the raw conversation state instead, so the rendering is yours to do.
+`MetabotQuestion` renders agent text messages for you, markdown formatting and all, along with transcript scrolling and input styling. The `useMetabot` hook hands you the raw conversation state instead, so you can handle the markdown rendering.
 
-The part that's easy to miss: agent text messages (the ones where `message.type === 'text'`) contain markdown — links, bold, lists, inline code. The snippets above render `message.message` as plain text to keep them short, but in production you'll want to pass that text through a markdown renderer, like `react-markdown` or `markdown-to-jsx`, so links and formatting come out right.
+Agent text messages (the ones where `message.type === 'text'`) contain markdown (like links, bold, lists, inline code). The snippets above render `message.message` as plain text to keep them short, but in production you'll want to pass that text through a markdown renderer, like `react-markdown` or `markdown-to-jsx`, so links and formatting come out right.
 
 ### Strip links back to Metabase
 
