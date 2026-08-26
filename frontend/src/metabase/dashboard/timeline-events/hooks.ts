@@ -51,10 +51,10 @@ export const useDashCardTimelineEvents = (
   const dispatch = useDispatch();
   const { withTimelineEvents = false } = useDashboardContext();
   const dashcardId: DashCardId = dashcard.id;
-  const isTimelineEventsDashCard = useSelector((state) =>
-    getIsTimelineEventsDashCard(state, dashcardId),
+  const isEnabled = useSelector(
+    (state) =>
+      withTimelineEvents && getIsTimelineEventsDashCard(state, dashcardId),
   );
-  const isEnabled = withTimelineEvents && isTimelineEventsDashCard;
 
   const timelineEvents = useSelector((state) =>
     isEnabled ? getDashCardVisibleTimelineEvents(state, dashcardId) : undefined,

@@ -33,20 +33,20 @@ export const useTimelineEventsHandlers = ({
   return useMemo(
     () => ({
       onShowTimelineEvents: (events: TimelineEvent[]) =>
-        updateVisibility((visibility, context) =>
-          showTimelineEvents(visibility, events, context),
+        updateVisibility((visibility, timelines) =>
+          showTimelineEvents(visibility, events, timelines),
         ),
       onHideTimelineEvents: (events: TimelineEvent[]) =>
-        updateVisibility((visibility, context) =>
-          hideTimelineEvents(visibility, events, context),
+        updateVisibility((visibility, timelines) =>
+          hideTimelineEvents(visibility, events, timelines),
         ),
       onShowTimeline: (timeline: Timeline) =>
-        updateVisibility((visibility, context) =>
-          showTimelines(visibility, [timeline], context),
+        updateVisibility((visibility, timelines) =>
+          showTimelines(visibility, [timeline.id], timelines),
         ),
       onHideTimeline: (timeline: Timeline) =>
-        updateVisibility((visibility, context) =>
-          hideTimelines(visibility, [timeline], context),
+        updateVisibility((visibility, timelines) =>
+          hideTimelines(visibility, [timeline.id], timelines),
         ),
       onSelectEvents: (events: TimelineEvent[]) =>
         dispatch(

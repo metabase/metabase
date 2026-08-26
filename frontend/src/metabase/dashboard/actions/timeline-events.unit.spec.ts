@@ -100,7 +100,8 @@ describe("dashboard timeline events visibility", () => {
     store.dispatch(
       updateDashCardsTimelineEventsVisibility(
         [DASHCARD_ID],
-        (visibility, context) => showTimelines(visibility, [timeline], context),
+        (visibility, timelines) =>
+          showTimelines(visibility, [timeline.id], timelines),
       ),
     );
 

@@ -328,7 +328,6 @@ export function QueryModals({
       return (
         <TimelineEventModals
           modal={getTimelineEventModalState(modal, modalContext)}
-          cardId={question.id()}
           collectionId={question.collectionId() ?? null}
           onEventCreated={(event) => dispatch(showTimelineEvents([event]))}
           onClose={onCloseModal}

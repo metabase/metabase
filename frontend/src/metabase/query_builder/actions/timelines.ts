@@ -5,7 +5,7 @@ import {
   SELECT_TIMELINE_EVENTS,
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { getTimelineEventsVisibilityContext } from "metabase/timelines/panel/selectors";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import {
   hideTimelineEvents as hideEventsInVisibility,
   hideTimelines as hideTimelinesInVisibility,
@@ -28,27 +28,27 @@ const updateTimelineEventsVisibility =
     const state = getState();
     const visibility = update(
       getTimelineEventsVisibility(state),
-      getTimelineEventsVisibilityContext(state),
+      getTransformedTimelines(state),
     );
     dispatch(onUpdateVisualizationSettings(visibility));
   };
 
 export const showTimelineEvents = (events: TimelineEvent[]) =>
-  updateTimelineEventsVisibility((visibility, context) =>
-    showEventsInVisibility(visibility, events, context),
+  updateTimelineEventsVisibility((visibility, timelines) =>
+    showEventsInVisibility(visibility, events, timelines),
   );
 
 export const hideTimelineEvents = (events: TimelineEvent[]) =>
-  updateTimelineEventsVisibility((visibility, context) =>
-    hideEventsInVisibility(visibility, events, context),
+  updateTimelineEventsVisibility((visibility, timelines) =>
+    hideEventsInVisibility(visibility, events, timelines),
   );
 
 export const showTimeline = (timeline: Timeline) =>
-  updateTimelineEventsVisibility((visibility, context) =>
-    showTimelinesInVisibility(visibility, [timeline], context),
+  updateTimelineEventsVisibility((visibility, timelines) =>
+    showTimelinesInVisibility(visibility, [timeline.id], timelines),
   );
 
 export const hideTimeline = (timeline: Timeline) =>
-  updateTimelineEventsVisibility((visibility, context) =>
-    hideTimelinesInVisibility(visibility, [timeline], context),
+  updateTimelineEventsVisibility((visibility, timelines) =>
+    hideTimelinesInVisibility(visibility, [timeline.id], timelines),
   );

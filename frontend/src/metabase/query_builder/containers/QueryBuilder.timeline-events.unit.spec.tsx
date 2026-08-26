@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { act, screen, waitFor, within } from "__support__/ui";
-import { showTimeline } from "metabase/query_builder/actions/timelines";
+import {
+  hideTimeline,
+  showTimeline,
+} from "metabase/query_builder/actions/timelines";
 import { onOpenTimelines } from "metabase/redux/query-builder";
 import { getFetchedTimelines } from "metabase/timelines/panel/selectors";
 import { checkNotNull } from "metabase/utils/types";
@@ -143,8 +146,26 @@ describe("QueryBuilder > timeline events", () => {
     expect(getIsDirty(store.getState())).toBe(true);
   });
 
-  it("saving records the events shown by default", async () => {
+  it("saving without touching events records nothing, so dashcards show none", async () => {
     const store = await setupWithTimelines();
+    const state = store.getState();
+
+    const question = getSubmittableQuestion(
+      state,
+      checkNotNull(getQuestion(state)),
+    );
+
+    expect(question.settings()).not.toHaveProperty(
+      "timeline.selected_timeline_ids",
+    );
+  });
+
+  it("saving after turning events on records them", async () => {
+    const store = await setupWithTimelines();
+
+    await act(async () => {
+      store.dispatch(showTimeline(TIMELINE));
+    });
     const state = store.getState();
 
     const question = getSubmittableQuestion(
@@ -160,13 +181,11 @@ describe("QueryBuilder > timeline events", () => {
     );
   });
 
-  it("saving a display that cannot show events records nothing", async () => {
-    const { store } = await setup({
-      card: createMockCard({ ...CARD, display: "table" }),
-      timelines: [TIMELINE],
-    });
-    await waitFor(() => {
-      expect(getFetchedTimelines(store.getState())).toHaveLength(1);
+  it("saving after turning events off records the absence", async () => {
+    const store = await setupWithTimelines();
+
+    await act(async () => {
+      store.dispatch(hideTimeline(TIMELINE));
     });
     const state = store.getState();
 
@@ -175,8 +194,11 @@ describe("QueryBuilder > timeline events", () => {
       checkNotNull(getQuestion(state)),
     );
 
-    expect(question.settings()).not.toHaveProperty(
-      "timeline.selected_timeline_ids",
+    expect(question.settings()).toEqual(
+      expect.objectContaining({
+        "timeline.selected_timeline_ids": [],
+        "timeline.excluded_timeline_event_ids": [],
+      }),
     );
   });
 

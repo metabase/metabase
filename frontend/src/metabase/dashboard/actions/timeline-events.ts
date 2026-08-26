@@ -9,7 +9,7 @@ import type {
   GetState,
   TimelineEventsSelection,
 } from "metabase/redux/store";
-import { getTimelineEventsVisibilityContext } from "metabase/timelines/panel/selectors";
+import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import type { TimelineEventsVisibilityUpdate } from "metabase/visualizations/types";
 import type { DashCardId, TimelineEventsVisibility } from "metabase-types/api";
 
@@ -34,13 +34,13 @@ export const updateDashCardsTimelineEventsVisibility =
   (dashcardIds: DashCardId[], update: TimelineEventsVisibilityUpdate) =>
   (dispatch: Dispatch, getState: GetState) => {
     const state = getState();
-    const context = getTimelineEventsVisibilityContext(state);
+    const timelines = getTransformedTimelines(state);
 
     const changed = dashcardIds.flatMap(
       (dashcardId): [DashCardId, TimelineEventsVisibility][] => {
         const visibility =
           getDashCardTimelineEventsVisibility(state, dashcardId) ?? {};
-        const nextVisibility = update(visibility, context);
+        const nextVisibility = update(visibility, timelines);
         return _.isEqual(visibility, nextVisibility)
           ? []
           : [[dashcardId, nextVisibility]];

@@ -50,10 +50,7 @@ import type {
   Series,
 } from "metabase-types/api";
 
-import {
-  getQuestionWithDefaultVisualizationSettings,
-  recordTimelineEventsVisibility,
-} from "./actions/core/utils";
+import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { cleanIndexFlags } from "./model-indexes/actions";
 import {
   getCard,
@@ -1067,10 +1064,7 @@ export const getSubmittableQuestion = (state: State, question: Question) => {
     .setQuery(cleanQuery)
     .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
-  return recordTimelineEventsVisibility(
-    submittableQuestion,
-    getTransformedTimelines(state),
-  );
+  return submittableQuestion;
 };
 
 export const getNotebookNativePreviewSidebarWidth = (state: State) =>

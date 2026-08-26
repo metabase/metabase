@@ -71,7 +71,7 @@ const incidents = createMockTimeline({
 });
 
 const timelines = [releases, marketing, incidents];
-const context = { timelines };
+const context = timelines;
 
 const visibleNames = (
   visibility?: TimelineEventsVisibility,
@@ -143,10 +143,10 @@ describe("getRecordedTimelineEventsVisibility", () => {
 
 describe("showing and hiding timelines", () => {
   it("shows a timeline and hides it again without leaving anything behind", () => {
-    const shown = showTimelines({}, [releases], context);
+    const shown = showTimelines({}, [releases.id], context);
     expect(visibleNames(shown)).toEqual(["RC1", "RC2"]);
 
-    expect(hideTimelines(shown, [releases], context)).toEqual({
+    expect(hideTimelines(shown, [releases.id], context)).toEqual({
       [SELECTED]: [],
       [EXCLUDED]: [],
     });
@@ -161,7 +161,7 @@ describe("showing and hiding timelines", () => {
     expect(visibleNames(visibility)).toEqual(["RC2"]);
 
     expect(
-      visibleNames(showTimelines(visibility, [releases], context)),
+      visibleNames(showTimelines(visibility, [releases.id], context)),
     ).toEqual(["RC1", "RC2"]);
   });
 });
@@ -249,13 +249,11 @@ describe("aggregateVisibleEventIds", () => {
   });
 });
 
-describe("toggling a timeline filtered to the chart's x-axis", () => {
-  // The sidebar hands over a timeline whose events were narrowed to the
-  // chart's range; the events outside it must not be recorded as excluded.
-  const filteredReleases = { ...releases, events: [rc2] };
-
+describe("toggling a timeline the caller only partly knows about", () => {
+  // Sidebars hold timelines whose events were narrowed to a chart's x-axis, so
+  // toggling takes an id and resolves every event from the full list.
   it("does not exclude the events outside the range when showing", () => {
-    expect(showTimelines({}, [filteredReleases], context)).toEqual({
+    expect(showTimelines({}, [releases.id], context)).toEqual({
       [SELECTED]: [releases.id],
       [EXCLUDED]: [],
     });
@@ -269,8 +267,15 @@ describe("toggling a timeline filtered to the chart's x-axis", () => {
     );
     expect(hidden[EXCLUDED]).toEqual([rc1.id]);
 
-    expect(showTimelines(hidden, [filteredReleases], context)).toEqual({
+    expect(showTimelines(hidden, [releases.id], context)).toEqual({
       [SELECTED]: [releases.id],
+      [EXCLUDED]: [],
+    });
+  });
+
+  it("ignores an id that is not in the list", () => {
+    expect(showTimelines({}, [999], context)).toEqual({
+      [SELECTED]: [],
       [EXCLUDED]: [],
     });
   });

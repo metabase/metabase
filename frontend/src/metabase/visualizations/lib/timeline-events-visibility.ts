@@ -2,10 +2,7 @@ import _ from "underscore";
 
 import { getCollectionTimelines } from "metabase/common/utils/timelines";
 import { dayjs } from "metabase/dayjs";
-import type {
-  AggregatedEventsVisibility,
-  TimelineEventsVisibilityContext,
-} from "metabase/visualizations/types";
+import type { AggregatedEventsVisibility } from "metabase/visualizations/types";
 import type {
   CollectionId,
   Timeline,
@@ -45,15 +42,11 @@ const fromSets = ({
   "timeline.excluded_timeline_event_ids": sortedIds(hiddenEventIds),
 });
 
-export const hasRecordedTimelineEventsVisibility = (
-  settings: VisualizationSettings | undefined,
-): boolean => settings?.["timeline.selected_timeline_ids"] != null;
-
 // Returns the settings object itself so selectors memoized on it stay stable.
 export const getRecordedTimelineEventsVisibility = (
   settings: VisualizationSettings | undefined,
 ): VisualizationSettings | undefined =>
-  hasRecordedTimelineEventsVisibility(settings) ? settings : undefined;
+  settings?.["timeline.selected_timeline_ids"] != null ? settings : undefined;
 
 const getActiveEvents = (timeline: Timeline) =>
   (timeline.events ?? []).filter((event) => !event.archived);
@@ -78,11 +71,6 @@ export const resolveVisibleTimelineEvents = ({
   );
 };
 
-// Callers may hold a timeline whose events were filtered to the chart's x-axis;
-// toggling must act on every event the timeline actually has.
-const resolveTimeline = (timeline: Timeline, timelines: Timeline[]) =>
-  timelines.find(({ id }) => id === timeline.id) ?? timeline;
-
 const setTimelineVisible = (
   timeline: Timeline,
   isVisible: boolean,
@@ -96,42 +84,43 @@ const setTimelineVisible = (
   timeline.events?.forEach((event) => sets.hiddenEventIds.delete(event.id));
 };
 
+// Takes ids, not timelines: callers hold timelines whose events were filtered
+// to a chart's x-axis, and toggling must act on every event a timeline has.
 const setTimelinesVisible = (
   visibility: TimelineEventsVisibility,
-  timelines: Timeline[],
+  timelineIds: TimelineId[],
   isVisible: boolean,
-  { timelines: allTimelines }: TimelineEventsVisibilityContext,
+  timelines: Timeline[],
 ): TimelineEventsVisibility => {
   const sets = toSets(visibility);
-  timelines.forEach((timeline) =>
-    setTimelineVisible(
-      resolveTimeline(timeline, allTimelines),
-      isVisible,
-      sets,
-    ),
-  );
+  const ids = new Set(timelineIds);
+  timelines
+    .filter((timeline) => ids.has(timeline.id))
+    .forEach((timeline) => setTimelineVisible(timeline, isVisible, sets));
   return fromSets(sets);
 };
 
 export const showTimelines = (
   visibility: TimelineEventsVisibility,
+  timelineIds: TimelineId[],
   timelines: Timeline[],
-  context: TimelineEventsVisibilityContext,
-) => setTimelinesVisible(visibility, timelines, true, context);
+) => setTimelinesVisible(visibility, timelineIds, true, timelines);
+
+export const hideTimelines = (
+  visibility: TimelineEventsVisibility,
+  timelineIds: TimelineId[],
+  timelines: Timeline[],
+) => setTimelinesVisible(visibility, timelineIds, false, timelines);
 
 export const getCollectionTimelinesVisibility = (
   timelines: Timeline[],
   collectionId: CollectionId | null | undefined,
 ) =>
-  showTimelines({}, getCollectionTimelines(timelines, collectionId), {
+  showTimelines(
+    {},
+    getCollectionTimelines(timelines, collectionId).map(({ id }) => id),
     timelines,
-  });
-
-export const hideTimelines = (
-  visibility: TimelineEventsVisibility,
-  timelines: Timeline[],
-  context: TimelineEventsVisibilityContext,
-) => setTimelinesVisible(visibility, timelines, false, context);
+  );
 
 const groupEventsByTimeline = (
   events: TimelineEvent[],
@@ -147,7 +136,7 @@ const groupEventsByTimeline = (
 export const showTimelineEvents = (
   visibility: TimelineEventsVisibility,
   events: TimelineEvent[],
-  { timelines }: TimelineEventsVisibilityContext,
+  timelines: Timeline[],
 ): TimelineEventsVisibility => {
   const sets = toSets(visibility);
   groupEventsByTimeline(events, timelines).forEach(
@@ -168,7 +157,7 @@ export const showTimelineEvents = (
 export const hideTimelineEvents = (
   visibility: TimelineEventsVisibility,
   events: TimelineEvent[],
-  { timelines }: TimelineEventsVisibilityContext,
+  timelines: Timeline[],
 ): TimelineEventsVisibility => {
   const sets = toSets(visibility);
   groupEventsByTimeline(events, timelines).forEach(
@@ -191,12 +180,16 @@ export const hideTimelineEvents = (
 export const aggregateVisibleEventIds = (
   visibleEventIdsPerChart: TimelineEventId[][],
 ): AggregatedEventsVisibility => {
-  const visibleEventIds = _.intersection(...visibleEventIdsPerChart);
+  const [firstChartEventIds = [], ...otherCharts] = visibleEventIdsPerChart;
+  const otherChartSets = otherCharts.map((eventIds) => new Set(eventIds));
+  const visibleEventIds = [...new Set(firstChartEventIds)].filter((eventId) =>
+    otherChartSets.every((eventIdSet) => eventIdSet.has(eventId)),
+  );
+  const visibleSet = new Set(visibleEventIds);
   return {
     visibleEventIds,
-    partiallyVisibleEventIds: _.difference(
-      _.union(...visibleEventIdsPerChart),
-      visibleEventIds,
-    ),
+    partiallyVisibleEventIds: [
+      ...new Set(visibleEventIdsPerChart.flat()),
+    ].filter((eventId) => !visibleSet.has(eventId)),
   };
 };

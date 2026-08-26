@@ -8,7 +8,6 @@ import MoveEventModal from "metabase/timelines/panel/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/panel/containers/NewEventModal";
 import { Modal } from "metabase/ui";
 import type {
-  CardId,
   CollectionId,
   TimelineEvent,
   TimelineEventId,
@@ -28,13 +27,11 @@ const getModalLabel = (type: TimelineEventModalState["type"]) =>
 
 export function TimelineEventModals({
   modal,
-  cardId,
   collectionId,
   onEventCreated,
   onClose,
 }: {
   modal: TimelineEventModalState | null;
-  cardId?: CardId;
   collectionId: CollectionId | null;
   onEventCreated?: (event: TimelineEvent) => void;
   onClose: () => void;
@@ -52,7 +49,6 @@ export function TimelineEventModals({
   const content = match(modal)
     .with({ type: "new" }, () => (
       <NewEventModal
-        cardId={cardId}
         collectionId={collectionId}
         onEventCreated={onEventCreated}
         onClose={onClose}
