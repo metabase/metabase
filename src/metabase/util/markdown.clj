@@ -343,13 +343,21 @@
 
 (defmethod ast->slack :link-ref
   [{:keys [content attrs]}]
-  (let [resolved-uri     (resolve-uri (-> attrs :reference :attrs :url))
+  (let [url              (-> attrs :reference :attrs :url)
+        resolved-uri     (resolve-uri url)
         resolved-content (resolved-content content)]
-    (if resolved-uri
+    (cond
+      resolved-uri
       ["<" resolved-uri "|" resolved-content ">"]
+
       ;; If this was parsed as a link-ref but has no reference, assume it was just a pair of square brackets and
       ;; restore them. This is a known discrepancy between flexmark-java and Markdown rendering on the frontend.
-      ["[" resolved-content "]"])))
+      (nil? url)
+      ["[" resolved-content "]"]
+
+      ;; a dropped (malformed or non-allow-listed) reference renders as its text alone, like a dropped inline link
+      :else
+      resolved-content)))
 
 (defmethod ast->slack :auto-link
   [{{href :href} :attrs}]

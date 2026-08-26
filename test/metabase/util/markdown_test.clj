@@ -270,7 +270,9 @@
 (deftest ^:parallel process-markdown-link-scheme-slack-test
   (testing "Links with non-allow-listed schemes render as their text alone in Slack"
     (is (= "x" (slack "[x](javascript:alert(1))")))
-    (is (= "x" (slack "[x](DaTa:text/html;base64,PHNjcmlwdD4=)"))))
+    (is (= "x" (slack "[x](DaTa:text/html;base64,PHNjcmlwdD4=)")))
+    (is (= "x" (slack "[x][ref]\n\n[ref]: javascript:alert(1)")))
+    (is (= "[x]" (slack "[x]")) "a bare bracket pair with no reference is still restored"))
   (testing "Images with non-allow-listed schemes render as their placeholder alone in Slack"
     (is (= "[Image: x]" (slack "![x](javascript:alert(1))")))
     (is (= "[Image]"    (slack "![](data:text/html;base64,PHNjcmlwdD4=)")))
