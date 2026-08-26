@@ -14,6 +14,7 @@ const SIDE_EFFECT_FREE_PATHS = [
 ].map((dir) => path.join(REPO_ROOT, dir) + path.sep);
 
 // Exceptions to the above rule, which are known to have side effects and must be included in the bundle.
+// An entry can name a single file or a whole directory, so consumers match entries as prefixes.
 const SIDE_EFFECT_PATHS = [
   // Module-scope calls fill in the exported NODE_TYPE objects.
   "frontend/src/metabase/querying/expressions/pratt/syntax.ts",
