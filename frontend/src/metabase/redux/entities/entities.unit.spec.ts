@@ -46,20 +46,11 @@ describe("entities reducer", () => {
   });
 
   it("deletes an entry written as null, and only then copies the slice", () => {
-    const seed = {
-      type: "metabase/entities/UPDATE",
-      payload: { entities: { databases: { 1: { id: 1, name: "Sample" } } } },
-    };
-    const remove = (id: number) => ({
-      type: "metabase/entities/UPDATE",
-      payload: { entities: { databases: { [id]: null } } },
-    });
+    const before = reducer(undefined, update({ 1: FIELD }));
+    const unchanged = reducer(before, update({ 999: null }));
+    const deleted = reducer(before, update({ 1: null }));
 
-    const before = reducer(undefined, seed);
-    const unchanged = reducer(before, remove(999));
-    const deleted = reducer(before, remove(1));
-
-    expect(unchanged.databases).toBe(before.databases);
-    expect(deleted.databases[1]).toBeUndefined();
+    expect(unchanged.fields).toBe(before.fields);
+    expect(deleted.fields[1]).toBeUndefined();
   });
 });
