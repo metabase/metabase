@@ -419,6 +419,21 @@ jobs:
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
+      # Bundling the snapshot and host-app specs resolves imports into target/cljs_dev,
+      # so the compiled CLJS has to exist before Cypress runs.
+      # run-tests.yml compiles it in parallel with the uberjar build - downloading is ~10x faster than compiling here.
+      - name: Download pre-built CLJS
+        id: prebuilt-cljs
+        uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: e2e-cljs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: target/cljs_dev
+
+      - name: Compile CLJS
+        if: steps.prebuilt-cljs.outcome != 'success'
+        run: bun run build-pure:cljs
+
       - name: Run Metabase
         run: node e2e/runner/run_cypress_ci.js start
 
