@@ -96,7 +96,7 @@ Metabase's reference documentation.
 
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
 - [Box plots](./questions/visualizations/box-plot.md)
-- [Combo charts](./questions/visualizations/combo-chart.md)
+- [Combo charts](./questions/visualizations/line-bar-and-area-charts.md#combo-charts)
 - [Custom visualizations](./questions/visualizations/custom.md)
 - [Detail](./questions/visualizations/detail.md)
 - [Funnel charts](./questions/visualizations/funnel.md)

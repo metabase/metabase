@@ -66,7 +66,7 @@ Each visualization type has its own advanced options. To change the settings for
 
 ## Combo charts
 
-[Combo charts](./combo-chart.md) let you combine bars and lines (or areas) on the same chart.
+[Combo charts](./line-bar-and-area-charts.md#combo-charts) let you combine bars and lines (or areas) on the same chart.
 
 ![Line + bar](../images/combo-chart.png)
 

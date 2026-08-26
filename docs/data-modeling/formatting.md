@@ -174,7 +174,7 @@ You can also override all formatting settings in any specific saved question or 
 
 Formatting options vary depending on the type of visualization:
 
-- [Combo chart](../questions/visualizations/combo-chart.md)
+- [Combo chart](../questions/visualizations/line-bar-and-area-charts.md#combo-charts)
 - [Detail](../questions/visualizations/detail.md)
 - [Funnel](../questions/visualizations/funnel.md)
 - [Gauge](../questions/visualizations/gauge.md)
