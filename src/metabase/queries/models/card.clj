@@ -1424,7 +1424,9 @@
           ;; always re-derived from dataset_query by populate-query-fields on import
           :table_id :source_card_id
           ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
-          :metabot_conversation_id :metabot_chart_id]
+          :metabot_conversation_id :metabot_chart_id
+          ;; always re-derived from public_uuid on import
+          :public_uuid_prefix]
    :transform
    {:created_at             (serdes/date)
     ;; database_id is usually derivable from dataset_query, but must be kept when the query
