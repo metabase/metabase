@@ -1,5 +1,6 @@
 (ns metabase.search.in-place.util-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.search.in-place.util :as search.util]))
 
@@ -33,4 +34,19 @@
                             (map str '(here is some filler
                                             this social bird lives in small flocks in lowland rainforests in countries such as costa rica
                                             it flies short distances between trees toucans rest in holes in trees
-                                            here is some more filler))))))))
+                                            here is some more filler))))))
+    (testing "empty inputs"
+      (is (= 0 (subseq-length [] [])))
+      (is (= 0 (subseq-length [] [1 2 3])))
+      (is (= 0 (subseq-length [1 2 3] []))))
+    (testing "custom equality predicate"
+      (let [substring-match? (fn [needle haystack] (str/includes? haystack needle))]
+        (is (= 2
+               (search.util/largest-common-subseq-length substring-match?
+                                                         ["gar" "pa"]
+                                                         ["foo" "garden" "path"])))))))
+
+(deftest ^:parallel largest-common-subseq-length-large-grid-test
+  (testing "a 30x30 fully-matching grid computes promptly with the correct length"
+    (is (= 30
+           (search.util/largest-common-subseq-length = (repeat 30 :x) (repeat 30 :x))))))
