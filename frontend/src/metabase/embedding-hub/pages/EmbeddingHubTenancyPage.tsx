@@ -62,7 +62,7 @@ export function EmbeddingHubTenancyPage() {
   }, []);
 
   return (
-    <SettingsPageWrapper title={t`Tenancy`} gap="xl">
+    <SettingsPageWrapper title={t`Tenancy`}>
       {!hasTenants && (
         <UpsellTenants align="flex-start" source="embedding-hub-tenancy" />
       )}
