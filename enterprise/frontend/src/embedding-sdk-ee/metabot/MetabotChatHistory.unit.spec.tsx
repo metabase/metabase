@@ -100,6 +100,7 @@ describe("MetabotChatHistory", () => {
           role: "agent",
           type: "chain_of_thought",
           steps: [{ kind: "reasoning", text: "Let me think about this" }],
+          finished: true,
         },
       ]),
     });

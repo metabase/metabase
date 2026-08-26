@@ -24,8 +24,8 @@ const setupToolProgress = (steps: MetabotChainStep[], isStreaming = true) =>
           role: "agent",
           type: "chain_of_thought",
           steps,
+          finished: !isStreaming,
         }}
-        isStreaming={isStreaming}
       />
     ),
   });

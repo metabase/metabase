@@ -41,7 +41,7 @@ import { MetabotInlineChart } from "./MetabotInlineChart";
 import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
 
 type AgentDataPartProps = {
-  part: MetabotAgentDataPartMessage;
+  dataPart: MetabotAgentDataPartMessage;
   externalId?: string;
   readonly: boolean;
   debug: boolean;
@@ -49,13 +49,13 @@ type AgentDataPartProps = {
 };
 
 export const AgentDataPart = ({
-  part,
+  dataPart,
   externalId,
   readonly,
   debug,
   conversationId,
 }: AgentDataPartProps) =>
-  match(part)
+  match(dataPart)
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
       <AgentTodoListMessage todos={part.data} />
     ))

@@ -40,13 +40,7 @@ function userMessage(
 ): ConversationMessage {
   return createMockParentedMessage(id, parentId, {
     role: "user",
-    parts: [
-      createMockMetabotTextPart({
-        id: `${id}-text`,
-        role: "user",
-        message: text,
-      }),
-    ],
+    parts: [{ id: `${id}-text`, role: "user", type: "text", message: text }],
   });
 }
 

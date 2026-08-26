@@ -17,6 +17,7 @@ const chain = (
   role: "agent",
   type: "chain_of_thought",
   steps: [],
+  finished: false,
   ...overrides,
 });
 
@@ -31,7 +32,7 @@ const setup = (
     createMockDashboard({ id: 123, name: "Orders" }),
   );
   return renderWithProviders(
-    <MetabotChainOfThought part={message} isStreaming={isStreaming} />,
+    <MetabotChainOfThought part={{ ...message, finished: !isStreaming }} />,
     { storeInitialState: createMockState({ settings }) },
   );
 };

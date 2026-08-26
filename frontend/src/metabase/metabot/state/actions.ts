@@ -494,7 +494,7 @@ export const sendAgentRequest = createAsyncThunk<
     const { isFullPageMetabot, loadId, ...request } = payload;
     const conversationId = request.conversation_id;
 
-    const dispatchIfCurrent: typeof dispatch = (action) =>
+    const dispatchIfCurrent = (action: Parameters<typeof dispatch>[0]) =>
       getConversationLoadId(getState(), conversationId) === loadId
         ? dispatch(action)
         : undefined;
@@ -646,10 +646,8 @@ export const sendAgentRequest = createAsyncThunk<
               .exhaustive();
           },
           onStart: function handleStart(event) {
-            if (event.messageId !== request.assistant_message_id) {
-              throw new Error(
-                `Metabot server started message ${event.messageId}, but the client opened ${request.assistant_message_id}`,
-              );
+            if (!event.messageId) {
+              throw new Error("Metabot start event carried no messageId");
             }
           },
           onTextPart: function handleTextPart(delta) {

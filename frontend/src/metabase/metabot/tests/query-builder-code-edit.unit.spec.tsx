@@ -178,6 +178,7 @@ describe("query builder code edits from omnibot", () => {
           conversation_id: convo.conversationId,
           assistant_message_id: "msg_test_code_edit",
           isFullPageMetabot: false,
+          loadId: 0,
           context: {
             user_is_viewing: [
               {
@@ -229,9 +230,9 @@ describe("query builder code edits from omnibot", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "Source is correct" }),
     );
-    const [, feedbackRequest] = fetchMock.callHistory.lastCall(
+    const feedbackRequest = fetchMock.callHistory.lastCall(
       "path:/api/metabot/source-feedback",
-    )!;
+    )?.options;
     expect(JSON.parse(String(feedbackRequest?.body))).toMatchObject({
       message_id: "msg_test_code_edit",
     });

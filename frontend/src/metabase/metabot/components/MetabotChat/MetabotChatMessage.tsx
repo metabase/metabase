@@ -232,7 +232,7 @@ const AgentPart = ({
     ))
     .with({ type: "data_part" }, (p) => (
       <AgentDataPart
-        part={p}
+        dataPart={p}
         externalId={externalId}
         debug={debug}
         readonly={readonly}

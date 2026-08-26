@@ -38,9 +38,9 @@ function buildBranchPickers(
   selectBranch: (parentId: string, replyId: string) => void,
 ): Record<string, ReactNode> {
   const pickers: Record<string, ReactNode> = {};
-  responses.forEach(({ message, branch }) => {
+  for (const { message, branch } of responses) {
     if (!branch) {
-      return;
+      continue;
     }
 
     pickers[message.id] = (
@@ -52,6 +52,6 @@ function buildBranchPickers(
         }
       />
     );
-  });
+  }
   return pickers;
 }

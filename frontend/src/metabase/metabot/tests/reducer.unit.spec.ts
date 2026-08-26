@@ -47,8 +47,10 @@ const createTestStore = (initialState?: Partial<MetabotState>) =>
     },
   });
 
-const requestAction = (arg: Partial<{ conversation_id: string }> = {}) => ({
-  meta: { arg: { conversation_id: "matching-id", ...arg } },
+const requestAction = (
+  arg: Partial<{ conversation_id: string; loadId: number }> = {},
+) => ({
+  meta: { arg: { conversation_id: "matching-id", loadId: 0, ...arg } },
 });
 
 // tool-call and chain-of-thought events only ever arrive inside a message the

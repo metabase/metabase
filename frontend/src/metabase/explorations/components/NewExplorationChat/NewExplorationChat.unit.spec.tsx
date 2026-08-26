@@ -201,7 +201,7 @@ function toMessages(parts: MetabotMessagePart[]): MetabotMessage[] {
       id: `message-${messages.length}`,
       role: part.role,
       parts: [part],
-      outcome: { type: "done" },
+      status: { type: "done" },
     });
     return messages;
   }, []);

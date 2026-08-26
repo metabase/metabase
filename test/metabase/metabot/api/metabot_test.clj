@@ -303,7 +303,7 @@
                    (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)))))))))
 
 (deftest metabot-prompt-regenerate-empty-states-test
-  (testing "POST /prompt-suggestions/regenerate returns a structured status so the UI can"
+  (testing "POST /prompt-suggestions/regenerate returns a structured outcome so the UI can"
     (testing "distinguish a metabot whose library has no models or metrics from a real error"
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Empty Library"}
                      :model/Metabot    {metabot-id :id}    {:name          "Empty metabot"
