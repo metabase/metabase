@@ -316,16 +316,19 @@ export function getLastReleaseFromTags({
   tags,
   ignorePatches = false,
   ignorePreReleases = false,
+  ignoreLtsReleases = true,
 }: {
   tags: Tag[];
   ignorePatches?: boolean;
   ignorePreReleases?: boolean;
+  ignoreLtsReleases?: boolean;
 }) {
   return tags
     .map((tag) => tag.ref.replace("refs/tags/", ""))
     .filter((tag) => !tag.includes(".x"))
     .filter(ignorePreReleases ? (tag) => !isPreReleaseVersion(tag) : () => true)
     .filter(ignorePatches ? (v) => !isPatchVersion(v) : () => true)
+    .filter(ignoreLtsReleases ? (tag) => !tag.endsWith("lts") : () => true)
     .sort(versionSort)
     .reverse()[0];
 }
