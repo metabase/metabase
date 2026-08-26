@@ -1,6 +1,10 @@
 // Appends the measured load times to the "Bundle Load Times" table in
 // eng-stats-importer. Reads ROWS (the JSON matrix.js prints) and API_KEY from
 // env, and stamps each row with the commit it came from.
+//
+// COMMIT_DATE dates the point. A backfill measures an old commit today, so
+// without it every backfilled row would claim today's date and the series would
+// collapse onto one day.
 
 import { readFileSync } from "node:fs";
 
@@ -27,7 +31,7 @@ async function main() {
   const conditions = JSON.parse(readFileSync(path, "utf8")) as Condition[];
 
   const rows = conditions.map((condition) => ({
-    Date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+    Date: process.env.COMMIT_DATE || new Date().toISOString().slice(0, 10),
     // Truncated the same way the bundle-size table does, so the two join.
     Commit: (process.env.HEAD_SHA || "").slice(0, 12),
     // The stats table carries a free-text Description column. Populate it with
