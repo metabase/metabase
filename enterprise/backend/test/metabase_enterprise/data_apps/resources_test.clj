@@ -92,3 +92,27 @@
           (is (not (t2/exists? :model/PermissionsGroupMembership
                                :user_id user-id :group_id permission_group_id))
               "SSO group sync must not add a user to a data-app group"))))))
+
+(deftest reconcile-view-data-does-not-auto-grant-tables-added-after-a-full-manifest-test
+  (testing "when a manifest covers every table of a database, reconcile-view-data! must still leave the
+            app group blocked by default, so a table synced later is NOT auto-granted to its members"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-restored-data-perms!
+        (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+          (mt/with-temp [:model/User {user-id :id} {}
+                         :model/Database {db-id :id} {}
+                         :model/Table {t1 :id} {:db_id db-id :name "T1" :active true}]
+            ;; All Users blocked on this db — the config where the app group is the scoped-access path.
+            (perms/set-database-permission! (perms/all-users-group) db-id :perms/view-data :blocked)
+            (let [app (create-data-app! "gulls")
+                  {:keys [permission_group_id]} (data-app.resources/ensure-resources! app)]
+              (perms/add-users-to-groups! [{:user user-id :group permission_group_id}])
+              ;; A full manifest: every table currently in db-id (just t1).
+              (data-app.resources/reconcile-view-data! app #{t1})
+              (is (= :unrestricted
+                     (perms/table-permission-for-user user-id :perms/view-data db-id t1))
+                  "precondition: the member can view the manifest's table")
+              (mt/with-temp [:model/Table {t2 :id} {:db_id db-id :name "SECRET" :active true}]
+                (is (not= :unrestricted
+                          (perms/table-permission-for-user user-id :perms/view-data db-id t2))
+                    "a member must not gain :unrestricted on a table added after reconcile")))))))))
