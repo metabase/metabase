@@ -3,6 +3,7 @@
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -81,3 +82,10 @@
   "Never include the raw bundle bytes in JSON."
   [data-app json-generator]
   (next-method (dissoc data-app :bundle) json-generator))
+
+(defenterprise server-managed-group-ids
+  "The data-app permission groups. SSO group sync must never touch these — membership is granted by an
+   admin, not by an IdP claim."
+  :feature :none
+  []
+  (into #{} (t2/select-fn-set :permission_group_id :model/DataApp :permission_group_id [:not= nil])))
