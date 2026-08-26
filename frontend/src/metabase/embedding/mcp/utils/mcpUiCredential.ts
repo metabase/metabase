@@ -1,0 +1,33 @@
+import { PLUGIN_API } from "metabase/api/client";
+
+const MCP_UI_CREDENTIAL_META_KEY = "com.metabase/mcp-ui";
+
+export interface McpUiAuth {
+  credential: string;
+  sessionId: string;
+}
+
+export function getMcpUiAuth(
+  meta: Record<string, unknown> | undefined,
+): McpUiAuth | null {
+  const value = meta?.[MCP_UI_CREDENTIAL_META_KEY];
+
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const credential = "credential" in value ? value.credential : null;
+  const sessionId = "sessionId" in value ? value.sessionId : null;
+
+  if (typeof credential !== "string" || typeof sessionId !== "string") {
+    return null;
+  }
+
+  return { credential, sessionId };
+}
+
+export function installMcpUiCredential(credential: string) {
+  PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- request header name
+    async () => ({ headers: { "X-Metabase-Mcp-Ui-Auth": credential } });
+}

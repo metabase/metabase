@@ -99,10 +99,7 @@
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
       (jsonrpc-error id -32602 "Missing required parameter: uri")
-      (let [user-id     api/*current-user-id*
-            options     {:ui-credential (when user-id (mcp.session/issue-ui-credential session-id user-id))
-                         :session-id    session-id}
-            result      (mcp.resources/read-resource uri token-scopes options)]
+      (let [result (mcp.resources/read-resource uri token-scopes {})]
         (case (:status result)
           (:not-found :scope-denied) (jsonrpc-error id -32602 "Resource not found")
           :ok                        (jsonrpc-response id {:contents (:contents result)}))))))
@@ -167,7 +164,7 @@
                                         :mcp/scopes     token-scopes}
                    (let [response (dispatch-method id method params session-id token-scopes request-context)]
                      ;; record the materialized JSON-RPC result/error (the request's output)
-                     (ait/record! {:mcp/response response})
+                     (ait/record! {:mcp/response (mcp.resources/without-ui-credential response)})
                      response))))
 
 ;;; ----------------------------------------------------- SSE ------------------------------------------------------

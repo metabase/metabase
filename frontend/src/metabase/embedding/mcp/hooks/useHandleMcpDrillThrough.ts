@@ -10,8 +10,6 @@ import { storeDrillQuery } from "../api";
 
 interface McpGlobalConfig {
   instanceUrl?: string;
-  uiCredential?: string;
-  mcpSessionId?: string;
 }
 
 type DrillThruName<T extends Lib.DrillThruType = Lib.DrillThruType> =
@@ -45,7 +43,11 @@ type DrillThroughHandler = (
   defaultNavigate: () => Promise<void>,
 ) => Promise<void>;
 
-export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
+export function useHandleMcpDrillThrough(
+  app: App | null,
+  uiCredential: string,
+  mcpSessionId: string,
+): DrillThroughHandler {
   return useCallback(
     async ({ drillName, nextCard }, defaultNavigate) => {
       if (isStayDrill(drillName) || !app) {
@@ -53,7 +55,7 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         return;
       }
 
-      const { instanceUrl, uiCredential, mcpSessionId } =
+      const { instanceUrl } =
         // Unjustified type cast. FIXME
         (window.metabaseConfig as McpGlobalConfig | undefined) ?? {};
 
@@ -107,6 +109,6 @@ export function useHandleMcpDrillThrough(app: App | null): DrillThroughHandler {
         ],
       });
     },
-    [app],
+    [app, mcpSessionId, uiCredential],
   );
 }

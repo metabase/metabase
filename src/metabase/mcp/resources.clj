@@ -11,6 +11,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [environ.core :as env]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
@@ -36,8 +37,7 @@
 (def ^:private test-fallback-template
   (str "<!doctype html><html><head><base href=\"{{{instanceUrlRaw}}}/\"></head><body><script>"
        "window.metabaseConfig = {"
-       "instanceUrl: {{{instanceUrl}}},"
-       "uiCredential: {{{uiCredential}}}"
+       "instanceUrl: {{{instanceUrl}}}"
        "};</script></body></html>"))
 
 ;; An atom rather than a dynamic var because `resources/read` is invoked from the
@@ -63,15 +63,14 @@
 
 (defn render-embed-mcp-template
   "Render the embed-mcp.html Mustache template with the given vars map.
-   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :uiCredential (JSON-encoded or nil),
-   :mcpSessionId (JSON-encoded or nil)."
+   Expected keys: :instanceUrl (JSON-encoded) and :instanceUrlRaw."
   [vars]
   (cond
-    (io/resource embed-mcp-template-path)
-    (stencil/render-file embed-mcp-template-path vars)
-
     @fallback-template
     (stencil/render-string @fallback-template vars)
+
+    (io/resource embed-mcp-template-path)
+    (stencil/render-file embed-mcp-template-path vars)
 
     :else
     (throw (ex-info (str "Missing MCP embed template: " embed-mcp-template-path
@@ -289,20 +288,16 @@
    differently — ChatGPT's asset CDN appears to dedupe by body hash, and without
    distinct bodies the second URI's asset is silently dropped and the widget 404s."
   [tag]
-  (fn [opts]
-    (let [site-url      (system/site-url)
-          ui-credential (:ui-credential opts)
-          session-id    (:session-id opts)]
+  (fn [_opts]
+    (let [site-url (system/site-url)]
       (str "<!-- metabase-mcp-asset: " tag " -->\n"
            (render-embed-mcp-template
             {:instanceUrl    (json/encode site-url)
-             :instanceUrlRaw site-url
-             :uiCredential   (when ui-credential (json/encode ui-credential))
-             :mcpSessionId   (when session-id (json/encode session-id))})))))
+             :instanceUrlRaw site-url})))))
 
 (register-ui-resource!
  :visualize-query
- "ui://metabase/visualize-query.html"
+ "ui://metabase/visualize-query-v2.html"
  "agent:viz:mcp-ui:query"
  {:name          "Visualize Query"
   :description   "Lightweight MCP Apps visualization for a query"
@@ -311,12 +306,30 @@
 
 (register-ui-resource!
  :render-drill-through
- "ui://metabase/render-drill-through.html"
+ "ui://metabase/render-drill-through-v2.html"
  "agent:viz:mcp-ui:drill-through"
  {:name          "Render Drill Through"
   :description   "Lightweight MCP Apps visualization for a drill-through follow-up"
   :prefersBorder true
   :render-fn     (visualize-query-render-fn "render-drill-through")})
+
+(defn- with-ui-credential
+  [result session-id]
+  (cond-> result
+    (and session-id api/*current-user-id*)
+    (assoc :_meta {:com.metabase/mcp-ui
+                   {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id*)
+                    :sessionId  session-id}})))
+
+(defn without-ui-credential
+  "Remove MCP UI credentials from tool results before they are persisted in traces."
+  [value]
+  (walk/postwalk
+   (fn [item]
+     (if (and (map? item) (map? (:_meta item)))
+       (update item :_meta dissoc :com.metabase/mcp-ui)
+       item))
+   value))
 
 (register-ui-tool!
  :visualize-query
@@ -367,13 +380,15 @@
                       :isError true}
 
                      encoded
-                     {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
-                                                                   "Do not call execute_query after this; "
-                                                                   "the visualization is the final result.")}]
-                      ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
-                      ;; include the user's original request when submitting visualization feedback.
-                      :structuredContent (cond-> {:query encoded}
-                                           prompt (assoc :prompt prompt))}
+                     (with-ui-credential
+                       {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
+                                                                     "Do not call execute_query after this; "
+                                                                     "the visualization is the final result.")}]
+                        ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
+                        ;; include the user's original request when submitting visualization feedback.
+                        :structuredContent (cond-> {:query encoded}
+                                             prompt (assoc :prompt prompt))}
+                       session-id)
 
                      :else
                      {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
@@ -406,8 +421,10 @@
   :response-fn (fn [arguments {:keys [session-id]}]
                  (if-let [handle (:handle arguments)]
                    (if-let [encoded (mcp.session/read-handle session-id api/*current-user-id* handle)]
-                     {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
-                      :structuredContent {:query encoded}}
+                     (with-ui-credential
+                       {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
+                        :structuredContent {:query encoded}}
+                       session-id)
                      {:content [{:type "text" :text "No drill-through found for that handle."}]
                       :isError true})
                    {:content [{:type "text" :text "No drill-through found for that handle."}]
