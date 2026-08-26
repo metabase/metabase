@@ -84,8 +84,9 @@
     (catch Exception e
       (ex-message e))))
 
-(mu/defn ^{:tool-name "document_schema_collect"
-           :scope     scope/agent-document-read}
+(mu/defn ^{:tool-name    "document_schema_collect"
+           :scope        scope/agent-document-read
+           :capabilities #{:permission-write-sql-queries}}
   document-schema-collect-tool
   "Collects the schema of a database in order to construct a SQL query.
 

@@ -64,13 +64,14 @@
         (is (str/includes? output "not found"))))))
 
 (deftest create-sql-query-code-edit-permission-error-output-test
-  (testing "create_sql_query in the code editor returns a permission failure as output with its status code"
+  (testing "create_sql_query in the code editor returns a permission failure as terminal output with its status code"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (mt/with-no-data-perms-for-all-users!
         (mt/with-current-user (mt/user->id :rasta)
-          (let [{:keys [output status-code]} (create-sql-query-in-code-editor {:database_id db-id})]
+          (let [{:keys [output status-code terminal-error?]} (create-sql-query-in-code-editor {:database_id db-id})]
             (is (= 403 status-code))
-            (is (str/includes? output "permissions"))))))))
+            (is (= "You do not have access to this database." output))
+            (is (true? terminal-error?))))))))
 
 (deftest create-sql-query-code-edit-unexpected-error-test
   (testing "create_sql_query in the code editor rethrows non-agent errors so they stay tracked as failures"
@@ -237,6 +238,29 @@
               (is (= no-native-permission-output (:output result)))
               (is (true? (:terminal-error? result))
                   "marked terminal so a forced-tool-call profile stops instead of retrying"))))))))
+
+(deftest create-sql-query-refuses-database-the-user-cannot-read-test
+  (testing "the read-check denial is terminal too, so the stricter permission is not the looser stop"
+    (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
+                   :model/Database {unreadable-db :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (doseq [db-id [native-db unreadable-db]]
+          (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted))
+        (perms/set-database-permission! (perms-group/all-users) native-db :perms/create-queries :query-builder-and-native)
+        (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [result (agent-sql/create-sql-query-tool {:database_id unreadable-db
+                                                         :sql_query   "SELECT 1"
+                                                         :title       "Results"})]
+            (is (= "You do not have access to this database." (:output result)))
+            (is (true? (:terminal-error? result))))))))
+  (testing "a database that does not exist stays retryable -- the model can list databases again"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [result (agent-sql/create-sql-query-tool {:database_id Integer/MAX_VALUE
+                                                     :sql_query   "SELECT 1"
+                                                     :title       "Results"})]
+        (is (str/includes? (:output result) "not found"))
+        (is (nil? (:terminal-error? result)))))))
 
 (deftest edit-and-replace-sql-query-refuse-database-without-native-permission-test
   (testing "edit_sql_query and replace_sql_query refuse a query whose database the user cannot query natively"

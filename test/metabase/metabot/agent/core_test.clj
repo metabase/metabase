@@ -147,18 +147,22 @@
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
     (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-    (testing "a query-builder-only user is not offered document_construct_sql_chart"
+    (testing "a query-builder-only user is offered neither half of the document SQL path"
       (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
       (mt/with-current-user (mt/user->id :rasta)
         (let [tools (tools-registered-for-request! :document-generate-content ["permission:write_sql_queries"])]
           (is (contains? tools "document_construct_model_chart"))
-          (is (not (contains? tools "document_construct_sql_chart"))))))
+          (is (not (contains? tools "document_construct_sql_chart")))
+          ;; leaving this one registered strands the model: its output tells it to call
+          ;; document_construct_sql_chart, which is not in its tool set, under :required-tool-call?
+          (is (not (contains? tools "document_schema_collect"))))))
     (testing "a user with native permission is offered both document chart tools"
       (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
       (mt/with-current-user (mt/user->id :rasta)
         (let [tools (tools-registered-for-request! :document-generate-content ["permission:write_sql_queries"])]
           (is (contains? tools "document_construct_model_chart"))
-          (is (contains? tools "document_construct_sql_chart")))))))
+          (is (contains? tools "document_construct_sql_chart"))
+          (is (contains? tools "document_schema_collect")))))))
 
 (deftest terminal-error-message-test
   (let [denial [{:type :tool-input :id "a" :function "create_sql_query"}
@@ -206,14 +210,16 @@
           {:llm-calls @call-count :parts parts})))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test
-  (mt/with-temp [:model/Database {native-db :id}  {:engine :h2}
-                 :model/Database {builder-db :id} {:engine :h2}]
+  (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
+                 :model/Database {builder-db :id}    {:engine :h2}
+                 :model/Database {unreadable-db :id} {:engine :h2}]
     (mt/with-no-data-perms-for-all-users!
-      (doseq [db-id [native-db builder-db]]
+      (doseq [db-id [native-db builder-db unreadable-db]]
         (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted))
       ;; native on one database keeps the capability, so the denial can only happen per call
       (perms/set-database-permission! (perms-group/all-users) native-db :perms/create-queries :query-builder-and-native)
       (perms/set-database-permission! (perms-group/all-users) builder-db :perms/create-queries :query-builder)
+      (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
       (mt/with-current-user (mt/user->id :rasta)
         (testing ":sql forbids the model from answering in text, so the loop stops on the denial"
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql builder-db)]
@@ -234,6 +240,14 @@
                                 (str/includes? (str (:text %)) "do not have permission"))
                           parts)
                 "no canned text — the model's own wording is used")))
+        (testing "a database the user cannot read at all stops the turn the same way"
+          (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
+            (is (= 1 llm-calls)
+                "the read-check denial is terminal too -- otherwise the stricter permission loops")
+            (is (= :terminal-error (:finish-reason (last parts))))
+            (is (some #(and (= :text (:type %))
+                            (str/includes? (:text %) "do not have access to this database"))
+                      parts))))
         (testing "a database the user can query natively is not denied"
           (let [{:keys [parts]} (run-sql-denial-turn! :sql native-db)]
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
