@@ -198,8 +198,14 @@ export function DashCardVisualization({
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
-  const { isEnabled: isTimelineEventsEnabled, props: timelineEventsProps } =
-    useDashCardTimelineEvents(dashcard);
+  const {
+    isEnabled: isTimelineEventsEnabled,
+    timelineEvents,
+    selectedTimelineEventIds,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+  } = useDashCardTimelineEvents(dashcard);
 
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),
@@ -606,7 +612,11 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
-          {...timelineEventsProps}
+          timelineEvents={timelineEvents}
+          selectedTimelineEventIds={selectedTimelineEventIds}
+          onOpenTimelines={onOpenTimelines}
+          onSelectTimelineEvents={onSelectTimelineEvents}
+          onDeselectTimelineEvents={onDeselectTimelineEvents}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
           autoAdjustSettings
