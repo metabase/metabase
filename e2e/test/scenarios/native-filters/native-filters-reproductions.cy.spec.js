@@ -239,72 +239,6 @@ describe("issue 12581", () => {
   });
 });
 
-describe("issue 13961", { tags: "@skip" }, () => {
-  const categoryFilter = {
-    id: "00315d5e-4a41-99da-1a41-e5254dacff9d",
-    name: "category",
-    "display-name": "Category",
-    type: "dimension",
-    default: "Doohickey",
-    dimension: ["field", PRODUCTS.CATEGORY, null],
-    "widget-type": "category",
-  };
-
-  const productIdFilter = {
-    id: "4775bccc-e82a-4069-fc6b-2acc90aadb8b",
-    name: "prodid",
-    "display-name": "ProdId",
-    type: "number",
-    default: null,
-  };
-
-  const nativeQuery = {
-    name: "13961",
-    native: {
-      query:
-        "SELECT * FROM PRODUCTS WHERE 1=1 AND {{category}} [[AND ID={{prodid}}]]",
-      "template-tags": {
-        category: categoryFilter,
-        prodid: productIdFilter,
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(nativeQuery, { visitQuestion: true });
-  });
-
-  it("should clear default filter value in native questions (metabase#13961)", () => {
-    cy.findAllByText("Small Marble Shoes"); // Product ID 2, Doohickey
-
-    cy.location("search").should("eq", "?category=Doohickey");
-
-    // Remove default filter (category)
-    H.filterWidget().findByRole("button").click();
-
-    cy.icon("play").first().should("be.visible").as("rerunQuestion").click();
-    cy.wait("@cardQuery");
-
-    cy.url().should("not.include", "?category=Doohickey");
-
-    // Add value `1` to the ID filter
-    cy.findByPlaceholderText(productIdFilter["display-name"]).type("1");
-
-    cy.get("@rerunQuestion").click();
-    cy.wait("@cardQuery");
-
-    cy.log("Reported tested and failing on v0.34.3 through v0.37.3");
-    cy.log("URL is correct at this point, but there are no results");
-
-    cy.location("search").should("eq", `?${productIdFilter.name}=1`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rustic Paper Wallet"); // Product ID 1, Gizmo
-  });
-});
-
 describe("issue 14302", () => {
   const priceFilter = {
     id: "39b51ccd-47a7-9df6-a1c5-371918352c79",
@@ -747,34 +681,6 @@ describe("issue 17019", () => {
     cy.findByTestId("scalar-value").contains("456");
     // But let's also check that the filter widget has that same value still displayed
     cy.findByDisplayValue("456");
-  });
-});
-
-describe("issue 17490", () => {
-  function mockDatabaseTables() {
-    cy.intercept("GET", "/api/database?include=tables", (req) => {
-      req.reply((res) => {
-        const mockTables = new Array(7).fill({
-          id: 42, // id is hard coded, but it doesn't matter for this repro
-          db_id: 1,
-          name: "Z",
-          display_name: "ZZZ",
-          schema: "PUBLIC",
-        });
-
-        res.body.data = res.body.data.map((d) => ({
-          ...d,
-          tables: [...d.tables, ...mockTables],
-        }));
-      });
-    });
-  }
-
-  beforeEach(() => {
-    mockDatabaseTables();
-
-    H.restore();
-    cy.signInAsAdmin();
   });
 });
 

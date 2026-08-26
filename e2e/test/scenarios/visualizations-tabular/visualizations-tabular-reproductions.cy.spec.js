@@ -252,62 +252,6 @@ describe("issue 18976, 18817", () => {
   });
 });
 
-describe("issue 19373", { tags: "@skip" }, () => {
-  const questiondDetails = {
-    name: "Products, Distinct values of Rating, Grouped by Category and Created At (year)",
-    query: {
-      "source-table": PRODUCTS_ID,
-      aggregation: [["distinct", ["field", PRODUCTS.RATING, null]]],
-      breakout: [
-        ["field", PRODUCTS.CATEGORY, null],
-        ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
-      ],
-    },
-  };
-
-  const ROW_TOTALS_INDEX = 4;
-  const GRAND_TOTALS_INDEX = 4;
-
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(questiondDetails, { visitQuestion: true });
-  });
-
-  it("should return correct sum of the distinct values in row totals (metabase#19373)", () => {
-    // Convert to the pivot table manually to reflect the real-world scenario
-    H.openVizTypeSidebar();
-    cy.findByTestId("Pivot Table-button").should("be.visible").click();
-    cy.wait("@pivotDataset");
-
-    cy.findAllByRole("grid").eq(0).as("columnTitles");
-    cy.findAllByRole("grid").eq(1).as("rowTitles");
-    cy.findAllByRole("grid").eq(2).as("tableCells");
-
-    // Sanity check before we start asserting on this column
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.get("@columnTitles")
-      .findAllByTestId("pivot-table-cell")
-      .eq(ROW_TOTALS_INDEX)
-      .should("contain", "Row totals");
-
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.get("@rowTitles")
-      .findAllByTestId("pivot-table-cell")
-      .eq(GRAND_TOTALS_INDEX)
-      .should("contain", "Grand totals");
-
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.get("@tableCells")
-      .findAllByTestId("pivot-table-cell")
-      .eq(ROW_TOTALS_INDEX)
-      .should("contain", "31");
-  });
-});
-
 describe("issue 21392", () => {
   const TEST_QUERY = {
     type: "native",
@@ -826,54 +770,6 @@ describe("issue 14148", { tags: "@external" }, () => {
     cy.findByText(/Grand totals/i);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2,500");
-  });
-});
-
-describe("issue 25415", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should allow to drill-through aggregated query with a custom column on top level (metabase#25415)", () => {
-    H.createQuestion(
-      {
-        name: "Aggregated query with custom column",
-        display: "line",
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [["field", ORDERS.PRODUCT_ID, null]],
-            limit: 2,
-          },
-          expressions: {
-            "test custom": [
-              "*",
-              [
-                "field",
-                "count",
-                {
-                  "base-type": "type/Integer",
-                },
-              ],
-              2,
-            ],
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.get(".dc-tooltip-list").get(".dot").first().click({ force: true });
-
-    H.popover().findByText("See these Orders").click();
-
-    // filter gets applied
-    cy.findByTestId("qb-filters-panel").should("contain", "Product ID is 1");
-
-    // there is a table with data
-    H.tableInteractive().should("exist");
   });
 });
 
