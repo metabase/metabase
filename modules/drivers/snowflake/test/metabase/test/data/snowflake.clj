@@ -375,6 +375,14 @@
   [_driver _dbdef tabledef]
   (load-data/maybe-add-ids-xform tabledef))
 
+;; Load each chunk without wrapping it in a transaction: on Snowflake `setAutoCommit` and `commit` are each a server
+;; round trip, so the default per-chunk transaction turns one INSERT into three. [[load-data/create-db!]] has already
+;; put this connection in autocommit mode, so the rows still land. No atomicity is lost - every chunk committed
+;; separately anyway, and [[dataset-rows-ok?!]] is what catches a half-loaded dataset and forces a reload.
+(defmethod load-data/do-insert! :snowflake
+  [driver conn table-identifier rows]
+  (load-data/do-insert*! driver conn table-identifier rows {:transaction? false}))
+
 (defmethod sql.tx/generated-column-sql :snowflake [_ expr]
   (format "AS (%s)" expr))
 
