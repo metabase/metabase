@@ -56,21 +56,13 @@ To disable Metabase AI provider and stop charges:
 
 You can specify your own API key and model for Metabot from one of the supported providers. When you connect a provider, the **Model** dropdown lists the supported models that your API key can access.
 
-- **Amazon Bedrock**: Claude and GPT models.
-- **Anthropic**: Claude models (Opus, Sonnet, Haiku, and Fable).
-- **Microsoft Azure**: Your own Azure deployments of Claude or GPT models. Enter the deployment name you configured in Azure.
-- **Mistral**
-- **OpenAI**: GPT models.
-- **OpenRouter**: Claude, GPT, Mistral, DeepSeek, and GLM-5.2 models.
-- **Z.AI**: GLM-5.2 models.
-
-If you're interested in Metabase supporting more AI providers or models, let us know by submitting a [feature request](../troubleshooting-guide/requesting-new-features.md).
+Check out [Supported AI providers](./providers.md).
 
 To enable AI features with your own API key:
 
 1. Go to **Admin > AI**.
 2. Select your **Provider**.
-3. Enter your **API key**. The **Get or manage keys in [provider]** link opens your provider's key management page in a new tab.
+3. Enter your **API key**. The **Where do I find this?** link opens your provider's key management page in a new tab.
 4. Click **Connect**.
 5. Select a **Model** from the dropdown. Available models are fetched from the provider using your API key.
 
