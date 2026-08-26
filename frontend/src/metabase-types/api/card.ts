@@ -581,6 +581,7 @@ export type CardFilterOption =
   | "recent"
   | "popular"
   | "using_model"
+  | "using_segment"
   | "archived";
 
 export type CardQueryMetadata = {

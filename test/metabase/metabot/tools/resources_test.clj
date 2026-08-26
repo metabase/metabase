@@ -6,6 +6,8 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -14,6 +16,12 @@
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
+
+(deftest ^:parallel scalar-uris-arg-test
+  (testing "a scalar `uris` is rejected with guidance on how to repair the call"
+    (is (= "Invalid tool arguments: `uris` must be an array of URI strings; received a string."
+           (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
+                                          {:uris "metabase://table/1"})))))
 
 (deftest parse-uri-test
   (testing "parses single-segment URIs (top-level lists)"

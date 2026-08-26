@@ -9,15 +9,8 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
-const {
-  ORDERS,
-  ORDERS_ID,
-  PEOPLE_ID,
-  PRODUCTS,
-  REVIEWS,
-  REVIEWS_ID,
-  PRODUCTS_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE_ID, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
+  SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const { FieldSection, PreviewSection, TablePicker, TableSection } = H.DataModel;
 
@@ -422,54 +415,6 @@ describe("scenarios > admin > datamodel", () => {
           H.visitQuestion(ORDERS_QUESTION_ID);
 
           H.queryBuilderHeader().findByText("View-only").should("be.visible");
-        });
-
-        it("question with joins (metabase#15947-2)", { tags: "@skip" }, () => {
-          H.createQuestion({
-            name: "15947",
-            query: {
-              "source-table": ORDERS_ID,
-              joins: [
-                {
-                  fields: "all",
-                  "source-table": PRODUCTS_ID,
-                  condition: [
-                    "=",
-                    ["field", ORDERS.PRODUCT_ID, null],
-                    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                  ],
-                  alias: "Products",
-                },
-              ],
-              filter: [
-                "and",
-                ["=", ["field", ORDERS.QUANTITY, null], 1],
-                [
-                  ">",
-                  ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
-                  3,
-                ],
-              ],
-              aggregation: [
-                ["sum", ["field", ORDERS.TOTAL, null]],
-                [
-                  "sum",
-                  ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
-                ],
-              ],
-              breakout: [
-                ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-                ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-              ],
-            },
-          }).then(({ body: { id: QUESTION_ID } }) => {
-            turnTableVisibilityOff(PRODUCTS_ID);
-            cy.visit(`/question/${QUESTION_ID}/notebook`);
-            cy.findByText("Products");
-            cy.findByText("Quantity is equal to 1");
-            cy.findByText("Rating is greater than 3");
-            H.queryBuilderHeader().findByText("View-only").should("be.visible");
-          });
         });
       });
     });

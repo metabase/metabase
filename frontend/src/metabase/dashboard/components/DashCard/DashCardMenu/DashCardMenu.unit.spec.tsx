@@ -121,7 +121,6 @@ const setup = ({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
-      dashboards: [mockDashboard],
     }),
     dashboard: createMockDashboardState({
       dashboardId: mockDashboard.id,
