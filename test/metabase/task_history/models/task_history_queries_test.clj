@@ -14,6 +14,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dev.raw-splice :as raw-splice]
+   [hugsql.core :as hugsql]
    [java-time.api :as t]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task-history.models.task-history-queries :as queries]
@@ -34,18 +35,32 @@
 (deftest hostile-sort-params-test
   (testing "hostile sort values are inert: they ride as bound params, match no CASE line, and
             ordering falls through to the id DESC tie-break"
-    (let [sqlvec (#'queries/list-tasks-sqlvec {:task nil, :status nil
-                                               :sort-col "1); insert into x values (1); --"
-                                               :sort-dir "asc"
-                                               :limit 10, :offset 0})]
+    (let [sqlvec (queries/sqlvec :list-tasks {:task nil, :status nil
+                                              :sort-col "1); insert into x values (1); --"
+                                              :sort-dir "asc"
+                                              :limit 10, :offset 0})]
       (is (not (str/includes? (first sqlvec) "insert into x")))
       (is (some #{"1); insert into x values (1); --"} (rest sqlvec))))))
+
+(deftest raw-splice-params-disarmed-test
+  (testing "raw-splice param types are disarmed process-wide: building a query with one throws"
+    (doseq [sql ["SELECT * FROM x ORDER BY :sql:o"
+                 "SELECT * FROM x WHERE :snip:cond"
+                 "SELECT :i:col FROM x"
+                 "SELECT :i*:cols FROM x"]]
+      (testing sql
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not allowed"
+                              (hugsql/sqlvec sql {:o "id", :cond ["1=1"], :col "id", :cols ["id"]})))))))
 
 ;;;; 2. Golden equivalence with the previous HoneySQL implementation
 
 ;; The functions below are the pre-HugSQL implementations, copied verbatim. Both implementations
 ;; run against the same live app-db data, so equality here means the conversion preserved
 ;; behavior -- including ordering, paging, filters, and NULL semantics -- on this dialect.
+;;
+;; SCAFFOLDING: this golden section is conversion-time proof, not a permanent fixture. Delete it
+;; (goldens + equivalence test) one release after the conversion ships; the lint, disarm, and
+;; hostile-input tests above stay.
 
 (defn- old-params->where
   [{:keys [status task]}]

@@ -257,7 +257,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
   (let [run   (api/check-404 (t2/select-one :model/TaskRun :id id))
-        tasks (t2/select :model/TaskHistory (queries/tasks-for-run-sqlvec {:run-id id}))]
+        tasks (t2/select :model/TaskHistory (queries/sqlvec :tasks-for-run {:run-id id}))]
     (-> [run]
         hydrate-entity-names
         hydrate-task-counts

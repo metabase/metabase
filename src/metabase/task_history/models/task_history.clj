@@ -40,7 +40,7 @@
       "/")})
 
 ;;; HugSQL app-db POC: queries for this model live in task_history.sql as literal SQL text,
-;;; loaded as `*-sqlvec` fns in [[metabase.task-history.models.task-history-queries]].
+;;; accessed via [[metabase.task-history.models.task-history-queries/sqlvec]].
 (defn cleanup-task-history!
   "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
   This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
@@ -50,8 +50,8 @@
   ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
-  (when-let [clean-before-date (:ended_at (t2/query-one (queries/cleanup-cutoff-sqlvec {:keep num-rows-to-keep})))]
-    (t2/query-one (queries/delete-ended-before-sqlvec {:cutoff clean-before-date}))))
+  (when-let [clean-before-date (:ended_at (t2/query-one (queries/sqlvec :cleanup-cutoff {:keep num-rows-to-keep})))]
+    (t2/query-one (queries/sqlvec :delete-ended-before {:cutoff clean-before-date}))))
 
 (def ^:private task-history-status #{:started :success :failed :unknown})
 
@@ -102,22 +102,22 @@
   ;; sort column/direction are plain *value* params: the query's CASE no-op sort keys pick the
   ;; active ORDER BY line, so no SQL text is ever built or spliced for sorting.
   (t2/select :model/TaskHistory
-             (queries/list-tasks-sqlvec
-              (assoc (list-tasks-params params)
-                     :sort-col (name (or (:sort_column params) :started_at))
-                     :sort-dir (name (or (:sort_direction params) :desc))
-                     :limit    (or limit Long/MAX_VALUE)
-                     :offset   (or offset 0)))))
+             (queries/sqlvec :list-tasks
+                             (assoc (list-tasks-params params)
+                                    :sort-col (name (or (:sort_column params) :started_at))
+                                    :sort-dir (name (or (:sort_direction params) :desc))
+                                    :limit    (or limit Long/MAX_VALUE)
+                                    :offset   (or offset 0)))))
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
   [params :- FilterParams]
-  (:cnt (t2/query-one (queries/count-tasks-sqlvec (list-tasks-params params)))))
+  (:cnt (t2/query-one (queries/sqlvec :count-tasks (list-tasks-params params)))))
 
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."
   []
-  (mapv :task (t2/query (queries/unique-tasks-sqlvec {}))))
+  (mapv :task (t2/query (queries/sqlvec :unique-tasks {}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            with-task-history macro                                             |
@@ -150,9 +150,9 @@
                                        (merge {:ended_at (t/instant)
                                                :duration (ns->ms (- (System/nanoTime) startime-ns))}
                                               info))]
-    (t2/query-one (queries/update-task-history-sqlvec (merge {:task_details nil, :logs nil}
-                                                             updated-info
-                                                             {:id th-id})))))
+    (t2/query-one (queries/sqlvec :update-task-history (merge {:task_details nil, :logs nil}
+                                                              updated-info
+                                                              {:id th-id})))))
 
 (def ^:dynamic ^Clock *log-capture-clock*
   "The java.time.Clock used for captured log message `:timestamp` values. Can be overridden for tests."
@@ -239,8 +239,8 @@
                                             run-id (assoc :run_id run-id)))
         _               (assert-task-history-status (:status row))
         th-id           (first (t2/query nil :toucan.query-type/insert.pks :model/TaskHistory
-                                         (queries/insert-task-history-sqlvec (merge {:db_id nil, :task_details nil, :run_id nil}
-                                                                                    row))))
+                                         (queries/sqlvec :insert-task-history (merge {:db_id nil, :task_details nil, :run_id nil}
+                                                                                     row))))
         logs-atom       (log-capture-atom)]
     (binding [clojure.tools.logging/*logger-factory*
               (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]

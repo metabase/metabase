@@ -55,8 +55,8 @@
   [orphaned-run-ids]
   (when (seq orphaned-run-ids)
     (tracing/with-span :tasks "task.heartbeat.mark-orphaned-tasks" {:heartbeat/orphaned-run-count (count orphaned-run-ids)}
-      (let [orphaned (t2/query-one (queries/mark-orphaned-tasks-sqlvec
-                                    {:run-ids orphaned-run-ids}))]
+      (let [orphaned (t2/query-one (queries/sqlvec :mark-orphaned-tasks
+                                                   {:run-ids orphaned-run-ids}))]
         (when (pos? orphaned)
           (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
         orphaned))))

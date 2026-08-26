@@ -110,7 +110,7 @@
    Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
   (let [task-statuses (into #{} (map :status)
-                            (t2/select :model/TaskHistory (queries/statuses-for-run-sqlvec {:run-id run-id})))
+                            (t2/select :model/TaskHistory (queries/sqlvec :statuses-for-run {:run-id run-id})))
         status        (if (= #{:success} task-statuses)
                         :success
                         :failed)]
