@@ -2276,3 +2276,35 @@
                          :where  [:= :id id]})))
           (t2/reducible-query {:select [:id :key]
                                :from   [:api_key]}))))
+
+(define-migration EncryptSettings
+  (when (encryption/default-encryption-enabled?)
+    (let [setting-keys ["ai-service-base-url" "allowed-iframe-hosts" "application-colors"
+                        "application-favicon-url" "application-font-files" "application-logo-url"
+                        "csp-img-allowed-hosts" "custom-formatting" "custom-geojson"
+                        "ee-embedding-service-base-url" "embedding-app-origins-interactive" "embedding-app-origins-sdk"
+                        "help-link-custom-destination" "landing-page" "landing-page-illustration-custom"
+                        "ldap-attribute-email" "ldap-attribute-firstname" "ldap-attribute-lastname"
+                        "ldap-group-base" "ldap-group-mappings" "ldap-group-membership-filter"
+                        "ldap-sync-user-attributes-blacklist" "ldap-user-base" "ldap-user-filter"
+                        "llm-anthropic-api-base-url" "llm-azure-api-base-url" "llm-deepseek-api-base-url"
+                        "llm-google-api-base-url" "llm-mistral-api-base-url" "llm-moonshot-api-base-url"
+                        "llm-openai-api-base-url" "llm-openrouter-api-base-url" "llm-proxy-base-url"
+                        "llm-vllm-api-base-url" "llm-zai-api-base-url" "login-page-illustration-custom"
+                        "map-tile-server-url" "metabot-chat-system-prompt" "metabot-nlq-system-prompt"
+                        "metabot-quota-reached-message" "metabot-sql-system-prompt" "metaplow-url"
+                        "no-data-illustration-custom" "notification-link-base-url" "saml-identity-provider-certificate"
+                        "session-timeout" "slack-connect-authentication-mode" "snowplow-url"
+                        "source-address-header" "store-api-url" "store-url"
+                        "subscription-allowed-domains"]]
+      (run! (fn [{:keys [key value]}]
+              ;; skip only nil (a strict read tolerates nil); a blank/whitespace value must be encrypted too, or the
+              ;; strict read would reject it as an unencrypted value
+              (when (and (string? value)
+                         (not (encryption/possibly-encrypted-string? value)))
+                (t2/query {:update :setting
+                           :set    {:value (encryption/maybe-encrypt value)}
+                           :where  [:= :key key]})))
+            (t2/reducible-query {:select [:key :value]
+                                 :from   [:setting]
+                                 :where  [:in :key setting-keys]})))))

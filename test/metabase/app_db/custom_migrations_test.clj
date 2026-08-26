@@ -2755,6 +2755,30 @@
             (is (= "plaintext-bcrypt-hash" (raw-key plain-id)))
             (is (= "another-bcrypt-hash" (raw-key enc-id)))))))))
 
+(deftest encrypt-settings-test
+  (testing "v58.2026-08-25T00:00:02 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
+    (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
+      (impl/test-migrations ["v58.2026-08-25T00:00:02"] [migrate!]
+        (let [ins!    (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
+              raw     (fn [k] (t2/select-one-fn :value :setting :key k))
+              enc-str (encryption/maybe-encrypt "https://already.example")]
+          (ins! "snowplow-url" "https://plain.example")
+          (ins! "ldap-user-filter" "   ")
+          (ins! "map-tile-server-url" enc-str)
+          (ins! "site-name" "Metabase")
+          (is (not (encryption/possibly-encrypted-string? (raw "snowplow-url"))))
+          (migrate!)
+          (testing "a plaintext value of a listed setting is encrypted and decrypts back"
+            (is (encryption/possibly-encrypted-string? (raw "snowplow-url")))
+            (is (= "https://plain.example" (encryption/maybe-decrypt (raw "snowplow-url")))))
+          (testing "a blank value of a listed setting is encrypted too, since a strict read would reject plaintext"
+            (is (encryption/possibly-encrypted-string? (raw "ldap-user-filter")))
+            (is (= "   " (encryption/maybe-decrypt (raw "ldap-user-filter")))))
+          (testing "an already-encrypted value is left unchanged"
+            (is (= enc-str (raw "map-tile-server-url"))))
+          (testing "a setting not in the list is left plaintext"
+            (is (= "Metabase" (raw "site-name")))))))))
+
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
     (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]

@@ -1344,6 +1344,19 @@ databaseChangeLog:
         - customChange:
             class: metabase.app_db.custom_migrations.EncryptApiKeys
 
+  - changeSet:
+      id: v58.2026-08-25T00:00:02
+      author: ranquild
+      comment: >-
+        Encrypt at rest any plaintext value of the settings this release newly marks
+        :encryption :when-encryption-key-set (they were previously stored plaintext), so the strict decrypting read
+        added for encrypted settings accepts them once MB_ENCRYPTION_SECRET_KEY is set. Already-encrypted values are
+        left untouched. No rollback: the read path still tolerates plaintext for :no settings, and re-encrypting is
+        idempotent.
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.EncryptSettings
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
