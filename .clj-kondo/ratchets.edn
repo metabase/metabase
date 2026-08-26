@@ -27,12 +27,11 @@
                  :metabase/validate-defendpoint-has-response-schema                   440
                  :metabase/validate-defendpoint-query-params-use-kebab-case           50
                  :metabase/validate-defendpoint-route-uses-kebab-case                 44
-                 :metabase/validate-deftest                                           9
+                 :metabase/validate-deftest                                           10
                  :missing-docstring                                                   10
                  :missing-protocol-method                                             3
                  :non-arg-vec-return-type-hint                                        1
                  :reduce-without-init                                                 3
-                 :redundant-fn-wrapper                                                1
                  :syntax                                                              2
                  :uninitialized-var                                                   1
                  :unquote-not-syntax-quoted                                           1

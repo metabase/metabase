@@ -2,7 +2,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
-import { MeasureEditor } from "./MeasureEditor";
+import { SegmentEditor } from "./SegmentEditor";
 
 const MARKDOWN_DESCRIPTION = "A **bold** [link](https://metabase.com)";
 
@@ -14,7 +14,7 @@ function expectFormattedMarkdown() {
   );
 }
 
-describe("MeasureEditor", () => {
+describe("SegmentEditor", () => {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const description = "A sample description";
   const onQueryChange = jest.fn();
@@ -22,7 +22,7 @@ describe("MeasureEditor", () => {
 
   it("renders editable inputs when not read-only", () => {
     renderWithProviders(
-      <MeasureEditor
+      <SegmentEditor
         query={query}
         description={description}
         onQueryChange={onQueryChange}
@@ -34,13 +34,13 @@ describe("MeasureEditor", () => {
       "readonly",
     );
     expect(
-      screen.getByText("Pick an aggregation function"),
+      screen.getByText("Add filters to narrow your answer"),
     ).toBeInTheDocument();
   });
 
   it("shows description when read-only", () => {
     renderWithProviders(
-      <MeasureEditor
+      <SegmentEditor
         query={query}
         description={description}
         onQueryChange={onQueryChange}
@@ -55,13 +55,13 @@ describe("MeasureEditor", () => {
     expect(screen.getByText("Description")).toBeInTheDocument();
     expect(screen.getByText(description)).toBeInTheDocument();
     expect(
-      screen.queryByText("Pick an aggregation function"),
+      screen.queryByText("Add filters to narrow your answer"),
     ).not.toBeInTheDocument();
   });
 
   it("renders markdown formatting when editable", () => {
     renderWithProviders(
-      <MeasureEditor
+      <SegmentEditor
         query={query}
         description={MARKDOWN_DESCRIPTION}
         onQueryChange={onQueryChange}
@@ -74,7 +74,7 @@ describe("MeasureEditor", () => {
 
   it("renders markdown formatting when read-only", () => {
     renderWithProviders(
-      <MeasureEditor
+      <SegmentEditor
         query={query}
         description={MARKDOWN_DESCRIPTION}
         onQueryChange={onQueryChange}
