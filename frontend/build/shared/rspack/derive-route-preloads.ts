@@ -1,5 +1,7 @@
 import type { RouteObject } from "react-router";
 
+import { pluginPlaceholderRoute } from "metabase/plugins/components/PluginPlaceholder";
+
 /**
  * A route's chunk, read out of the `webpackChunkName` comment that survives
  * into the loader's source. Nothing else records which chunk serves a route, so
@@ -19,6 +21,15 @@ function chunkOf(loader: unknown): string | null {
  */
 function isModal(loader: unknown): boolean {
   return typeof loader === "function" && "loadModal" in loader;
+}
+
+/**
+ * A route slot no plugin filled in. In OSS, and in a test that does not
+ * initialise the enterprise plugins, these hold the placeholder rather than a
+ * loader, so there is no chunk to find and none to complain about.
+ */
+function isUnfilledPluginSlot(loader: unknown): boolean {
+  return loader === pluginPlaceholderRoute;
 }
 
 export type RouteChunk = { pattern: string; chunks: string[] };
@@ -61,7 +72,11 @@ export function collectRouteChunks(routes: RouteObject[]): {
       if (chunk) {
         chunks = [...new Set([...inherited, chunk])];
         collected.push({ pattern, chunks });
-      } else if (node.lazy && !isModal(node.lazy)) {
+      } else if (
+        node.lazy &&
+        !isModal(node.lazy) &&
+        !isUnfilledPluginSlot(node.lazy)
+      ) {
         unnamed.push({ pattern });
       }
 
