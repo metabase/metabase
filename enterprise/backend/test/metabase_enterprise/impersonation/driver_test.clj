@@ -261,7 +261,12 @@
   The sync is the expensive part - against the shared Redshift cluster a single `describe-database` takes ~30s - and
   every test in this namespace wants the identical Database, differing only in the roles and impersonation policies
   they set up around it. Keyed on the source Database so that a test running under a different dataset builds its own
-  instead of silently reusing this one."
+  instead of silently reusing this one.
+
+  Syncs through [[impersonation-granting-details]] rather than the impersonation user's own connection. That user only
+  sees the tables the enclosing `with-temp-roles!` granted it - on ClickHouse it does not even exist outside that
+  scope - so syncing as it would freeze whichever grant set happened to be in place when the first test ran, and every
+  later test wanting a table outside that set would fail to resolve it."
   [driver]
   (let [source-db (mt/db)
         cache-key [driver (u/the-id source-db)]]
@@ -271,13 +276,17 @@
                                (merge (t2.with-temp/with-temp-defaults :model/Database)
                                       {:engine  driver
                                        :name    (format "impersonation-%s-%d" (name driver) (u/the-id source-db))
-                                       :details (impersonation-details driver source-db)})))]
-          (when (driver/database-supports? driver :connection-impersonation-requires-role nil)
-            (t2/update! :model/Database :id (u/the-id database)
-                        (assoc-in database [:details :role] (impersonation-default-role driver))))
+                                       :details (impersonation-granting-details driver source-db)})))]
           (sync/sync-database! database {:scan :schema})
-          (swap! impersonation-databases assoc cache-key database)
-          database))))
+          (t2/update! :model/Database :id (u/the-id database)
+                      {:details (cond-> (impersonation-details driver source-db)
+                                  (driver/database-supports? driver :connection-impersonation-requires-role nil)
+                                  (assoc :role (impersonation-default-role driver)))})
+          ;; the pools opened during sync authenticate as the granting user; tests must not inherit them
+          (driver/notify-database-updated driver database)
+          (let [database (t2/select-one :model/Database :id (u/the-id database))]
+            (swap! impersonation-databases assoc cache-key database)
+            database)))))
 
 (defmacro ^:private with-impersonation-db!
   "Run `body` with the current test Database bound to [[impersonation-database!]] for [[driver/*driver*]].
