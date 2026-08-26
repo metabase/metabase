@@ -23,6 +23,7 @@ const OSS_LABEL = "Enable embedding";
 
 type SetupOpts = {
   hasSimpleEmbedding?: boolean;
+  hasFullAppEmbedding?: boolean;
   envSettingKeys?: (keyof Settings)[];
   showEmbedTerms?: boolean;
 } & Partial<
@@ -37,6 +38,7 @@ type SetupOpts = {
 
 async function setup({
   hasSimpleEmbedding = true,
+  hasFullAppEmbedding = hasSimpleEmbedding,
   envSettingKeys = [],
   showEmbedTerms = false,
   ...values
@@ -49,6 +51,7 @@ async function setup({
     "show-simple-embed-terms": showEmbedTerms,
     "token-features": createMockTokenFeatures({
       embedding_simple: hasSimpleEmbedding,
+      embedding: hasFullAppEmbedding,
     }),
     ...values,
   });
@@ -100,6 +103,14 @@ describe("EmbeddingMethodsCard", () => {
     expect(await screen.findByText(OSS_LABEL)).toBeInTheDocument();
     expect(screen.queryByText(MERGED_LABEL)).not.toBeInTheDocument();
     expect(screen.queryByText("Full-app embedding")).not.toBeInTheDocument();
+  });
+
+  it("shows only full-app embedding when that is the only feature on the token", async () => {
+    await setup({ hasSimpleEmbedding: false, hasFullAppEmbedding: true });
+
+    expect(await screen.findByText("Full-app embedding")).toBeInTheDocument();
+    expect(screen.queryByText(MERGED_LABEL)).not.toBeInTheDocument();
+    expect(screen.queryByText(OSS_LABEL)).not.toBeInTheDocument();
   });
 
   describe("the merged switch", () => {
