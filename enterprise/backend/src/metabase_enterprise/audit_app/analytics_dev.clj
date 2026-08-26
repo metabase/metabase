@@ -22,6 +22,7 @@
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -63,6 +64,11 @@
 
   Returns the created database map."
   [user-id]
+  ;; An analytics-dev database is a handle onto the app-db and must not exist outside analytics dev mode; refuse to
+  ;; create one unless the mode is on (mirrors the connection-layer guard in
+  ;; [[metabase.driver.sql-jdbc.connection/db->pooled-connection-spec]]).
+  (when-not (audit/analytics-dev-mode)
+    (throw (ex-info (tru "Analytics dev mode is not enabled.") {:status-code 400})))
   (let [db-type (mdb/db-type)]
     (if-let [existing (find-analytics-dev-database)]
       (do

@@ -180,6 +180,9 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   return dashboards[dashboardId];
 };
 
+export const getLinkTargetEntities = (state: State) =>
+  state.dashboard.linkTargets;
+
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
   (dashboard, dashcards) => {

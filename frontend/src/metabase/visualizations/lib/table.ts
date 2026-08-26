@@ -1,3 +1,4 @@
+import type { ClickObject } from "metabase-lib";
 import { isCoordinate, isNumber } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -7,11 +8,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type {
-  ClickObject,
-  PivotedDatasetColumn,
-  PivotedRowValues,
-} from "../types";
+import type { PivotedDatasetColumn, PivotedRowValues } from "../types";
 
 type Dimension = {
   col: DatasetColumn;

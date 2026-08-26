@@ -22,6 +22,11 @@ export const CopyValueAction: LegacyDrill = ({
   if (!clicked || column == null || clicked.value == null || isPK(column)) {
     return [];
   }
+  // Clicks that group several rows (the pie "Other" slice carries array dimension
+  // values) have no single cell value and only offer viewing the underlying records.
+  if (clicked.dimensions?.some((dimension) => Array.isArray(dimension.value))) {
+    return [];
+  }
   // This action should not override the native query fallback
   if (nativeDrillFallback({ question })) {
     return [];
