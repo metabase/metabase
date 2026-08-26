@@ -344,6 +344,24 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - name: Driver Tests Part 1
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 0
+          - name: Driver Tests Part 2
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 1
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -367,11 +385,23 @@ jobs:
           :exclude-tags [:mb/transforms-python-test]
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
+  # there's no need for this to be a completely separate job; it should be
+  # just another test or set of tests inside metabase.driver.databricks-test,
+  # but for the time being let's just get rid of the full duplication and just
+  # run the tests that are affected by the multi-catalog behavior.
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - name: Driver Tests
+            test-args: >-
+              :only metabase.driver.databricks-test
+              :fail-fast? true
     env:
       CI: 'true'
       DRIVERS: databricks
