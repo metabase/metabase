@@ -1,6 +1,7 @@
 (ns metabase.server.routes.index-test
   (:require
    [clojure.test :refer :all]
+   [clout.core :as clout]
    [metabase.server.routes.index :as index]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
@@ -86,30 +87,32 @@
       (is (= "fr" (:language (#'index/template-parameters false {})))))))
 
 (deftest route-preload-tags-test
-  (let [manifest [{:patterns ["/question/ask"] :files ["app/dist/metabot-query-builder.js"]}
-                  {:patterns ["/question" "/question/*"] :files ["app/dist/query-builder.js"]}
-                  {:patterns ["/dashboard/*"] :files ["app/dist/dashboard.js" "app/dist/dashboard.css"]}
-                  {:patterns ["/metric/*"] :files ["app/dist/metrics.js"]}
-                  {:patterns ["/setup"] :files ["app/dist/setup.js"]}
-                  {:patterns ["/"] :files ["app/dist/home.js"]}]
+  (let [tag (fn [file kind] (format "<link rel=\"preload\" href=\"%s\" as=\"%s\" fetchpriority=\"low\">" file kind))
+        manifest [["/question/ask" (tag "app/dist/metabot-query-builder.js" "script")]
+                  ["/question" (tag "app/dist/query-builder.js" "script")]
+                  ["/question/*" (tag "app/dist/query-builder.js" "script")]
+                  ["/dashboard/*" (str (tag "app/dist/dashboard.js" "script")
+                                       (tag "app/dist/dashboard.css" "style"))]
+                  ["/metric/*" (tag "app/dist/metrics.js" "script")]
+                  ["/setup" (tag "app/dist/setup.js" "script")]
+                  ["/" (tag "app/dist/home.js" "script")]]
         tags-for (fn tags-for
                    ([uri] (tags-for uri true))
                    ([uri signed-in?]
                     (with-redefs-fn {#'index/load-route-preloads
-                                     (constantly (mapv #'index/compile-entry manifest))}
+                                     (constantly (mapv (fn [[pattern markup]]
+                                                         [(clout/route-compile pattern) markup])
+                                                       manifest))}
                       (fn [] (#'index/route-preload-tags uri signed-in?)))))]
     (testing "a wildcard covers the section below it"
-      (is (= (str "<link rel=\"preload\" href=\"app/dist/dashboard.js\" as=\"script\" fetchpriority=\"low\">"
-                  "<link rel=\"preload\" href=\"app/dist/dashboard.css\" as=\"style\" fetchpriority=\"low\">")
+      (is (= (str (tag "app/dist/dashboard.js" "script")
+                  (tag "app/dist/dashboard.css" "style"))
              (tags-for "/dashboard/42"))))
     (testing "the first matching row wins"
-      (is (= "<link rel=\"preload\" href=\"app/dist/metabot-query-builder.js\" as=\"script\" fetchpriority=\"low\">"
-             (tags-for "/question/ask")))
-      (is (= "<link rel=\"preload\" href=\"app/dist/query-builder.js\" as=\"script\" fetchpriority=\"low\">"
-             (tags-for "/question/12-orders"))))
+      (is (= (tag "app/dist/metabot-query-builder.js" "script") (tags-for "/question/ask")))
+      (is (= (tag "app/dist/query-builder.js" "script") (tags-for "/question/12-orders"))))
     (testing "the home page matches only the whole path"
-      (is (= "<link rel=\"preload\" href=\"app/dist/home.js\" as=\"script\" fetchpriority=\"low\">"
-             (tags-for "/")))
+      (is (= (tag "app/dist/home.js" "script") (tags-for "/")))
       (is (nil? (tags-for "/xyzzy"))))
     (testing "a section does not claim a URL that merely starts with its name"
       (is (nil? (tags-for "/metrics/1"))))
@@ -117,8 +120,7 @@
       (is (nil? (tags-for "/dashboard/42" false)))
       (is (nil? (tags-for "/" false))))
     (testing "except on setup, which runs before any user exists"
-      (is (= "<link rel=\"preload\" href=\"app/dist/setup.js\" as=\"script\" fetchpriority=\"low\">"
-             (tags-for "/setup" false)))))
+      (is (= (tag "app/dist/setup.js" "script") (tags-for "/setup" false)))))
   (testing "no manifest, no hints"
     (is (nil? (with-redefs-fn {#'index/load-route-preloads (constantly nil)}
                 (fn [] (#'index/route-preload-tags "/" true)))))))
