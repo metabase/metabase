@@ -165,7 +165,6 @@ function CaseSensitiveOption({ value, onChange }: CaseSensitiveOptionProps) {
   return (
     <Flex align="center" px="sm">
       <Checkbox
-        size="xs"
         label={t`Case sensitive`}
         checked={value}
         onChange={(e) => onChange(e.target.checked)}

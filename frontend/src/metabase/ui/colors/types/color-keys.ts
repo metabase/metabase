@@ -115,6 +115,7 @@ export type MetabaseColorKey =
   | "background_surface-warning-strong"
   | "border-brand"
   | "border-filter"
+  | "border-highlight"
   | "border-neutral"
   | "border-neutral-strong"
   | "border-neutral-strongest"

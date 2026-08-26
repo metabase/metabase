@@ -28,7 +28,7 @@ export const AdminPaneLayout = ({
             gap="lg"
             wrap="nowrap"
           >
-            <Stack gap="lg">
+            <Stack gap="lg" miw={0}>
               {title && (
                 <h2 data-testid="admin-pane-page-title" className={CS.m0}>
                   {title}
@@ -36,7 +36,7 @@ export const AdminPaneLayout = ({
               )}
               {description && <Text maw="40rem">{description}</Text>}
             </Stack>
-            {titleActions}
+            {titleActions && <Box flex="0 0 auto">{titleActions}</Box>}
           </Flex>
         )}
 

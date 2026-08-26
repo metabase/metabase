@@ -80,7 +80,6 @@ export const QuestionSettingsSidebar = ({
           onClose={handleClose}
           overlayProps={{ bg: "transparent" }}
           onBack={() => close("caching")}
-          pt="lg"
         />
       )}
     </>

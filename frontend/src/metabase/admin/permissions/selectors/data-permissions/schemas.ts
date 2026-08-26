@@ -8,11 +8,11 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseEntityId,
   Group,
   GroupsPermissions,
+  PermissionsDatabase,
   SpecialGroupType,
 } from "metabase-types/api";
 
@@ -37,7 +37,7 @@ const buildAccessPermission = (
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database,
+  database: PermissionsDatabase,
 ): PermissionSectionConfig => {
   const accessPermissionConfirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
@@ -122,7 +122,7 @@ const buildNativePermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database,
+  database: PermissionsDatabase,
   accessPermissionValue: DataPermissionValue,
 ): PermissionSectionConfig => {
   const value = getSchemasPermission(
@@ -209,7 +209,7 @@ export const buildSchemasPermissions = ({
   permissions: GroupsPermissions;
   originalPermissions: GroupsPermissions;
   defaultGroup: Group;
-  database: Database;
+  database: PermissionsDatabase;
   permissionView: "group" | "database";
   showTransformPermissions: boolean;
 }): PermissionSectionConfig[] => {
