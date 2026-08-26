@@ -127,7 +127,14 @@ export const GoalValueInput = ({
     selfColumnLabel,
   });
 
-  const pickTokenRef = useRef(0); // useAsyncFn-like counting semaphore
+  /**
+   * Counting semaphore similar to the one in react-use's useAsyncFn.
+   * After picking an entity in the entity picker, the next menu level will
+   * only appear if the entity's query results have more than 1 column. This
+   * can only be determined asynchronously - semaphore exists to make sure
+   * the app reacts only to the most recently sent API request (should there be many).
+   */
+  const pickTokenRef = useRef(0);
   const abandonPendingPick = useCallback(() => {
     pickTokenRef.current += 1;
   }, []);
