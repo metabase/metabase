@@ -78,7 +78,7 @@
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :deprecated "0.54.0"
   :default "metabase_files"
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter
   :setter (fn [channel-name]
@@ -87,7 +87,7 @@
 (defsetting slack-bug-report-channel
   (deferred-tru "The name of the channel where bug reports should be posted")
   :default "metabase-bugs"
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter
   :export?    false
@@ -143,7 +143,7 @@
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter
   :setter     (fn [new-value]

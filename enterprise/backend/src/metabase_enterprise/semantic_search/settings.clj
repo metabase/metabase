@@ -13,7 +13,7 @@
 
 (defsetting ee-embedding-provider
   (deferred-tru "The registered embedding provider to use")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default "ai-service"
   :type :string

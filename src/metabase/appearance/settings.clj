@@ -282,7 +282,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-object-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after searching.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :public
   :export?    true
   :type       :string

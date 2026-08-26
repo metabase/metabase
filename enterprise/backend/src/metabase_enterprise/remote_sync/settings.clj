@@ -25,7 +25,7 @@
   (deferred-tru "The remote branch to sync with, e.g. `main`")
   :type :string
   :visibility :admin
-  :encryption :no
+  :encryption :when-encryption-key-set
   :export? false
   :can-read-from-env? true)
 
@@ -198,7 +198,7 @@
   :type :string
   :visibility :internal
   :export? false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :doc false)
 
 (defn check-and-update-remote-settings!

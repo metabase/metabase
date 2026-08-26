@@ -47,7 +47,7 @@
 
 (defsetting migration-dump-file
   (deferred-tru "Dump file for migrations.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :visibility :internal
   :default    nil
   :doc        false
