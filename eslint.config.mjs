@@ -583,7 +583,13 @@ const configs = [
     files: ["e2e/test-component/**/*.ts", "e2e/test-component/**/*.tsx"],
     rules: {
       // Component tests may not import `metabase/` code, so the dayjs facade rule does not apply.
-      "no-restricted-imports": ["error", e2eRestrictedConfig],
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: e2eRestrictedConfig.paths,
+          patterns: [...e2eRestrictedConfig.patterns, leafletRestrictedPattern],
+        },
+      ],
       "@typescript-eslint/no-restricted-imports": [
         "warn",
         {
@@ -661,7 +667,10 @@ const configs = [
     files: ["frontend/src/metabase/**/*.stories.tsx"],
     rules: {
       "import/no-default-export": "off",
-      "no-restricted-imports": "off",
+      "no-restricted-imports": [
+        "error",
+        { patterns: [leafletRestrictedPattern] },
+      ],
     },
   },
   {
@@ -1003,6 +1012,7 @@ const configs = [
               group: ["__support__/**"],
               message: TEST_FILES_NAME_PATTERN_ERROR_MESSAGE,
             },
+            leafletRestrictedPattern,
           ],
           paths: [
             {
@@ -1077,7 +1087,10 @@ const configs = [
     ],
     rules: {
       "import/no-default-export": "off",
-      "no-restricted-imports": "off",
+      "no-restricted-imports": [
+        "error",
+        { patterns: [leafletRestrictedPattern] },
+      ],
     },
   },
   {
