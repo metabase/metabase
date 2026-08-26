@@ -53,7 +53,7 @@ COREPACK_ENABLE_AUTO_PIN = "0"
 # Node.js - for frontend development
 # We pin to a specific version to ensure consistency across the team.
 # This should match .nvmrc for compatibility with other version managers.
-node = "22.13.1"
+node = "22.23.2"
 
 # Bun - for package management and running scripts, installed with the version specified in package.json
 
