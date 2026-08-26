@@ -44,7 +44,8 @@
 (defn- field-at
   "The field `k` names in a [[fields-by-key]] index. Throws when there is none."
   [fields-index k]
-  ;; a `:show-when` or `:required-any` left pointing at a renamed key would otherwise render as an empty `****`
+  ;; a `:show-when`, `:requires`, or `:required-any` left pointing at a renamed key would otherwise render as an
+  ;; empty `****`
   (or (get fields-index k)
       (throw (ex-info (str "No credential field named " (pr-str k))
                       {:field k :known-fields (vec (keys fields-index))}))))
@@ -84,6 +85,29 @@
   (when-let [{:keys [controlling-label value-label]} condition]
     (str "Only when " (md/bold controlling-label) " is " (md/bold value-label) ".")))
 
+(defn- field-requires-sentence
+  "The siblings a field cannot be set without, or nil when it stands on its own. Reads the labels [[provider-doc]]
+  resolved, like [[field-condition-sentence]] — the registry keys `:requires` by field, not by entry, so by the time
+  a field is rendered the map it came from is out of reach."
+  [{:keys [requires-labels]}]
+  (when (seq requires-labels)
+    (str "Only together with " (str/join " and " (map md/bold requires-labels)) ".")))
+
+(defn- field-hosted-sentence
+  "What Metabase Cloud asks of a field that a self-hosted Metabase does not, or nil when the two agree.
+
+  [[metabase.llm.provider/provider-type]] folds `:hosted-help` into `:help` and `:hosted-required?` into `:required?`
+  on a hosted instance, but leaves the keys themselves in place, so this reads the same either way. One page serves
+  both audiences, and it is generated without a token, so the Cloud rule has to be stated rather than applied."
+  [{:keys [help hosted-help hosted-required?]}]
+  (cond
+    ;; the `not=` is for a page generated with a hosting token, where `:help` is already the hosted text
+    (and hosted-help (not= (str help) (str hosted-help)))
+    (md/sentence hosted-help)
+
+    (and hosted-required? (not hosted-help))
+    "Required on Metabase Cloud."))
+
 (defn- field-options-sentence
   "The choices a `:select` or `:segmented` field offers: listed when there are at most [[max-enumerated-options]] of
   them, and otherwise pointed at. Nil when the field has no `:options`."
@@ -121,7 +145,10 @@
   (md/sentences
    [(field-name-sentence field)
     (field-condition-sentence field)
+    (field-requires-sentence field)
     (md/sentence (:help field))
+    ;; straight after `:help`, which on Bedrock is the keyless mode this qualifies
+    (field-hosted-sentence field)
     (field-options-sentence field)
     (field-default-sentence field)
     (field-docs-sentence field)
@@ -171,10 +198,10 @@
 
 ;;;; Gathering
 
-;;; Everything a field says about a sibling — a `:show-when` condition, a `:required-any` group, the fields a model is
-;;; composed from — is resolved to labels here, so nothing downstream needs the field index. That also means
-;;; [[field-at]]'s throw fires while reading the registry, where a renamed key is the obvious cause, rather than
-;;; halfway through rendering a page.
+;;; Everything a field says about a sibling — a `:show-when` condition, a `:requires` entry, a `:required-any` group,
+;;; the fields a model is composed from — is resolved to labels here, so nothing downstream needs the field index.
+;;; That also means [[field-at]]'s throw fires while reading the registry, where a renamed key is the obvious cause,
+;;; rather than halfway through rendering a page.
 
 (defn- model-source
   "Where a provider type's models come from, as `[:known models]`, `[:fixed models]`, `[:deployments field-labels]`, or
@@ -202,13 +229,23 @@
       {:controlling-label (label controlling)
        :value-label       (option-label controlling value)})))
 
+(defn- field-requires
+  "The labels [[field-requires-sentence]] renders a field's entry in the type's `:requires` map from, or nil when
+  nothing else has to accompany it."
+  [{:keys [key]} requires fields-index]
+  (when-let [dependency-keys (seq (get requires key))]
+    (mapv #(field-label fields-index %) dependency-keys)))
+
 (defn- resolved-fields
-  "`fields` with every `:show-when` replaced by the labels that render it."
-  [fields fields-index]
+  "`fields` with every reference to a sibling — a `:show-when` condition, a `:requires` entry — replaced by the
+  labels that render it."
+  [fields requires fields-index]
   (mapv (fn [field]
-          (if-let [condition (field-condition field fields-index)]
-            (assoc field :condition condition)
-            field))
+          (let [condition       (field-condition field fields-index)
+                requires-labels (field-requires field requires fields-index)]
+            (cond-> field
+              condition       (assoc :condition condition)
+              requires-labels (assoc :requires-labels requires-labels))))
         fields))
 
 (defn- resolved-required-any
@@ -219,7 +256,7 @@
 
 (defn- provider-doc
   "Everything the page says about one provider type, read out of the registry into plain data."
-  [{:keys [type fields default-model mini-model managed? singleton? required-any] :as provider-type}]
+  [{:keys [type fields default-model mini-model managed? singleton? required-any requires] :as provider-type}]
   (let [fields-index (fields-by-key fields)]
     {:type                type
      :label               (label provider-type)
@@ -227,7 +264,7 @@
      :mini-model          mini-model
      :managed?            (boolean managed?)
      :singleton?          (boolean singleton?)
-     :fields              (resolved-fields fields fields-index)
+     :fields              (resolved-fields fields requires fields-index)
      :env-vars            (llm.provider/connection-env-vars type)
      :required-any-labels (resolved-required-any required-any fields-index)
      :model-source        (model-source provider-type fields-index)}))

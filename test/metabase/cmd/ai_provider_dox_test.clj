@@ -24,6 +24,23 @@
    :advanced? true
    :default   "https://example.com"})
 
+;;; Bedrock's shape since BOT-1918: the key pair is optional on a self-hosted Metabase, which can sign with the AWS
+;;; default credentials chain instead, required on Metabase Cloud, and half a pair authenticates nothing.
+
+(def ^:private access-key-field
+  {:key              :access-key-id
+   :label            (deferred-tru "Access key ID")
+   :type             :password
+   :help             (deferred-tru "Leave the keys blank to authenticate with the AWS default credentials chain.")
+   :hosted-required? true
+   :hosted-help      (deferred-tru "On Metabase Cloud, Bedrock always authenticates with your own AWS keys.")})
+
+(def ^:private secret-key-field
+  {:key              :secret-access-key
+   :label            (deferred-tru "Secret access key")
+   :type             :password
+   :hosted-required? true})
+
 (defn- index
   "`fields` indexed the way the renderers take them."
   [fields]
@@ -73,6 +90,48 @@
   (testing "no default, nothing to say"
     (is (nil? (#'ai-provider-dox/field-default-sentence api-key-field)))))
 
+(deftest ^:parallel field-requires-sentence-test
+  (testing "a field that needs one sibling names it"
+    (is (= "Only together with **Secret access key**."
+           (#'ai-provider-dox/field-requires-sentence {:requires-labels ["Secret access key"]}))))
+  (testing "a field that needs several names them all"
+    (is (= "Only together with **Access key ID** and **Secret access key**."
+           (#'ai-provider-dox/field-requires-sentence
+            {:requires-labels ["Access key ID" "Secret access key"]}))))
+  (testing "a field that stands on its own says nothing"
+    (is (nil? (#'ai-provider-dox/field-requires-sentence api-key-field)))))
+
+(deftest ^:parallel field-hosted-sentence-test
+  (testing "a field whose help changes on Metabase Cloud says how"
+    (is (= "On Metabase Cloud, Bedrock always authenticates with your own AWS keys."
+           (#'ai-provider-dox/field-hosted-sentence access-key-field))))
+  (testing "a field Metabase Cloud merely requires says that much"
+    (is (= "Required on Metabase Cloud."
+           (#'ai-provider-dox/field-hosted-sentence secret-key-field))))
+  (testing "generated with a hosting token the registry has already folded the text into `:help`, so don't stutter"
+    (is (nil? (#'ai-provider-dox/field-hosted-sentence
+               (assoc access-key-field :help (:hosted-help access-key-field))))))
+  (testing "a field Metabase Cloud treats no differently says nothing"
+    (is (nil? (#'ai-provider-dox/field-hosted-sentence api-key-field)))))
+
+(deftest ^:parallel resolved-fields-requires-test
+  (let [fields [access-key-field secret-key-field]]
+    (testing "a `:requires` entry is resolved to its siblings' labels here, so the index goes no further"
+      (is (= [["Secret access key"] ["Access key ID"]]
+             (map :requires-labels
+                  (#'ai-provider-dox/resolved-fields fields
+                                                     {:access-key-id     [:secret-access-key]
+                                                      :secret-access-key [:access-key-id]}
+                                                     (index fields))))))
+    (testing "a type with no `:requires` at all leaves every field alone"
+      (is (not-any? :requires-labels (#'ai-provider-dox/resolved-fields fields nil (index fields)))))
+    (testing "a `:requires` left pointing at a renamed key fails while reading the registry"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"No credential field named :nope"
+                            (#'ai-provider-dox/resolved-fields fields
+                                                               {:access-key-id [:nope]}
+                                                               (index fields)))))))
+
 (deftest ^:parallel field-entry-test
   (testing "a required field names itself, links to its docs in the admin form's own words, and gives its env var"
     (is (= (str "**API key** (required). [Where do I find this?](https://example.com/keys) "
@@ -92,9 +151,19 @@
                     :type      :file
                     :show-when {:field :auth-method :value "key"}}
           fields   [method keyfile]
-          resolved (#'ai-provider-dox/resolved-fields fields (index fields))]
+          resolved (#'ai-provider-dox/resolved-fields fields nil (index fields))]
       (is (= "**Service account key file**. Only when **Authentication method** is **Service account key**."
-             (#'ai-provider-dox/field-entry (second resolved) nil))))))
+             (#'ai-provider-dox/field-entry (second resolved) nil)))))
+  (testing "a field optional here, required on Metabase Cloud, and useless without its partner says all three"
+    (let [fields   [access-key-field secret-key-field]
+          resolved (#'ai-provider-dox/resolved-fields fields
+                                                      {:access-key-id [:secret-access-key]}
+                                                      (index fields))]
+      (is (= (str "**Access key ID**. Only together with **Secret access key**. "
+                  "Leave the keys blank to authenticate with the AWS default credentials chain. "
+                  "On Metabase Cloud, Bedrock always authenticates with your own AWS keys. "
+                  "Set it with `MB_LLM_BEDROCK_ACCESS_KEY_ID`.")
+             (#'ai-provider-dox/field-entry (first resolved) "MB_LLM_BEDROCK_ACCESS_KEY_ID"))))))
 
 (deftest model-source-test
   (testing "each provider type resolves to the source its models really come from"
