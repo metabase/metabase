@@ -315,7 +315,21 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.modal().findByText("Publish these tables").click();
     cy.wait("@publishTables");
 
-    TablePicker.getDatabase("Writable Postgres12").click();
+    cy.log("Expand the rows so we can assert on the tables");
+    // The picker tree keeps mounting after the databases request resolves, so
+    // clicking the database row before its expand handler is wired drops the click
+    // and the schema fetch that populates the tables never fires. Wait for the
+    // expand toggle to render collapsed, click it, then confirm it expanded so the
+    // schema request reliably occurs before we assert on the tables.
+    TablePicker.getDatabaseToggle("Writable Postgres12")
+      .should("have.attr", "aria-expanded", "false")
+      .click();
+    cy.wait("@getSchema");
+    TablePicker.getDatabaseToggle("Writable Postgres12").should(
+      "have.attr",
+      "aria-expanded",
+      "true",
+    );
 
     cy.findAllByTestId("tree-item")
       .filter('[data-type="table"]')
