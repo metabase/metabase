@@ -80,17 +80,18 @@
   Nil until a build has written a manifest. Read afresh in development, where
   every frontend build rewrites it with new file names, and cached everywhere
   else, where it never changes."
-  (if config/is-dev?
-    read-route-preloads
-    (memoize/memo read-route-preloads)))
+  (cond-> read-route-preloads
+    (not config/is-dev?) memoize/memo))
 
 (defn- strip-base-path
   "The request URI carries the path Metabase is mounted under; the manifest does not."
   [uri]
   (let [base (-> (base-href) (str/replace #"/$" ""))]
-    (if (str/starts-with? uri base)
-      (subs uri (count base))
-      uri)))
+    ;; The guard is not for an empty base, where `subs` would be a no-op, but for
+    ;; a `site-url` that does not match where the app is really served: `subs`
+    ;; would mangle the path, or throw when the base is the longer of the two.
+    (cond-> uri
+      (str/starts-with? uri base) (subs (count base)))))
 
 (defn- route-preload-tags
   "Preload hints for the page this URI renders, written by the build.
@@ -99,12 +100,12 @@
   browser only asks for it once the app has downloaded, parsed and run. See
   `frontend/build/shared/rspack/route-preloads.js`."
   [uri signed-in?]
-  (let [path (strip-base-path (or uri "/"))]
-    (some (fn [[route markup signed-out?]]
-            (when (and (or signed-in? signed-out?)
-                       (clout/route-matches route {:uri path}))
-              markup))
-          (route-preloads))))
+  (let [path (-> (or uri "/") strip-base-path)]
+    (->> (route-preloads)
+         (some (fn [[route markup signed-out?]]
+                 (when (and (or signed-in? signed-out?)
+                            (clout/route-matches route {:uri path}))
+                   markup))))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
