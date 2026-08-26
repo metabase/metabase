@@ -37,11 +37,13 @@ import {
 interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
   collectionsById: Record<CollectionId, Collection>;
+  canReadRootCollection: boolean;
 }
 
 function QuestionPickerInner({
   onSelect,
   collectionsById: baseCollectionsById,
+  canReadRootCollection,
 }: QuestionPickerInnerProps) {
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
@@ -53,12 +55,6 @@ function QuestionPickerInner({
   const debouncedSearchText = useDebouncedValue(
     searchText,
     SEARCH_DEBOUNCE_DURATION,
-  );
-
-  // getExpandedCollectionsById always creates a root collection,
-  // but we only want to show it if the user has access to it.
-  const canReadRootCollection = allCollectionsList.some(
-    ({ id }) => id === ROOT_COLLECTION.id,
   );
 
   const collectionsById = useCollectionsWithTenants(
@@ -196,5 +192,8 @@ export const QuestionPicker = _.compose(
     collectionsById: (
       props.entity || Collections
     ).selectors.getExpandedCollectionsById(state),
+    canReadRootCollection: (Collections.selectors.getList(state) ?? []).some(
+      ({ id }) => id === ROOT_COLLECTION.id,
+    ),
   })),
 )(QuestionPickerInner);
