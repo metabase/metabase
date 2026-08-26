@@ -10,6 +10,12 @@ module.exports = {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
+    // The timezone CI job doesn't build cljs (it only needs it at import
+    // time), so the one cljs module in the tz specs' import graph is mocked.
+    "^cljs/metabase\\.util\\.currency$":
+      "<rootDir>/frontend/test/__mocks__/currencyMock.js",
+    "^cljs/metabase\\.types\\.core$":
+      "<rootDir>/frontend/test/__mocks__/cljsTypesCoreMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",

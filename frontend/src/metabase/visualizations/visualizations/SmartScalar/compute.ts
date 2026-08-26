@@ -673,7 +673,8 @@ function areDatesTheSame({
   return true;
 }
 
-function computeComparisonStrPreviousValue({
+// exported for the timezone spec
+export function computeComparisonStrPreviousValue({
   dateUnitSettings,
   prevDate,
   nextDate,
