@@ -294,7 +294,7 @@
        ;; TODO FIXME -- this should not use `camelCase` keys
        [:diagnosticInfo DiagnosticInfo]]]
   (api/check (bug-reporting.settings/bug-reporting-enabled)
-             400
+             403
              (tru "Bug reporting is not enabled."))
   (when (map? (:reporter diagnostic-info))
     (analytics/inc! :metabase-bug-report/legacy-reporter))

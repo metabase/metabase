@@ -225,7 +225,7 @@
   (testing "POST /api/slack/bug-report"
     (testing "is refused when bug reporting is not enabled, even with a Slack bug report channel configured"
       (mt/with-temp-env-var-value! [mb-bug-reporting-enabled "false"]
-        (let [{:keys [response posted uploaded]} (post-bug-report! :crowberto 400
+        (let [{:keys [response posted uploaded]} (post-bug-report! :crowberto 403
                                                                    {:diagnosticInfo bug-report-diagnostic-info})]
           (is (= "Bug reporting is not enabled." response))
           (is (nil? uploaded))
