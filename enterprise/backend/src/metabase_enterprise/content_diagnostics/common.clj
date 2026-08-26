@@ -119,15 +119,25 @@
   [entity-type]
   (get-in entity-spec [entity-type :candidate]))
 
+(defn entity-root-namespace
+  "The namespace of the root a root-resident subject sits under (`collection-namespace` applies only to
+  collection subjects). Shared by the scan's root-label stamping and the serve layer's root breadcrumb
+  so the stored sort label and the served breadcrumb agree."
+  [entity-type collection-namespace]
+  (case entity-type
+    :collection collection-namespace
+    :transform  collection/transforms-ns
+    nil))
+
 (defn attach-entity-attrs
   "Stamp each finding with the denormalized display/sort/filter columns - `:entity-name`,
-  `:entity-created-at`, `:entity-creator-id`, `:entity-creator-name`, and (cards only) `:card-type` -
-  batch-resolved from each entity's own model (F ≪ N: one query per entity-type over just the flagged
-  ids, plus one `creator_id → common_name` lookup over the distinct creators). Values a checker has
-  already set win (e.g. the stale checker's `:entity-name` from its own query), so this only fills what
-  the checker left unset. Every covered model exposes `name`/`created_at`; `creator_id` is selected only
-  where the model has it - collections have none (a personal collection's owner is NOT a creator proxy),
-  so their creator columns stay NULL."
+  `:entity-created-at`, `:entity-creator-id`, `:entity-creator-name`, `:entity-kind`,
+  and (cards only) `:card-type` - batch-resolved from each entity's own model (F ≪ N: one query per
+  entity-type over just the flagged ids, plus one `creator_id → common_name` lookup over the distinct
+  creators). Values a checker has already set win (e.g. the stale checker's `:entity-name` from its own
+  query), so this only fills what the checker left unset. Every covered model exposes `name`/`created_at`;
+  `creator_id` is selected only where the model has it - collections have none (a personal collection's
+  owner is NOT a creator proxy), so their creator columns stay NULL."
   [findings]
   (let [attrs-by-key     (into {}
                                (for [[entity-type findings-for-type] (group-by :entity-type findings)
@@ -155,6 +165,9 @@
                       :entity-creator-name (get creator-id->name creator_id)
                       ;; report_card.type at scan time (nil for non-cards) - what `entity-types` filters
                       ;; on when given a card sub-kind
-                      :card-type           card-type}
+                      :card-type           card-type
+                      ;; flat kind: card sub-kind for cards (fallback :card if entity vanished),
+                      ;; else entity-type - one column serves filter and sort
+                      :entity-kind         (if (= entity-type :card) (or card-type :card) entity-type)}
                      finding)))
           findings)))
