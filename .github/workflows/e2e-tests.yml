@@ -25,7 +25,7 @@ jobs:
       # those. Never narrow on a forced run or outside a pull request — there we
       # always want the full suite, even though the file lists still compute.
       specs: >-
-        ${{ needs.should-run.outputs.forced != 'true' &&
+        ${{ needs.should-run.outputs.force-run != 'true' &&
         github.event_name == 'pull_request' &&
         fromJSON(needs.should-run.outputs.results).e2e_all_files == fromJSON(needs.should-run.outputs.results).e2e_specs_files &&
         fromJSON(needs.should-run.outputs.results).e2e_specs_files || '' }}
@@ -145,14 +145,31 @@ jobs:
 
   e2e-tests-result:
     needs:
+      - should-run
+      - e2e-matrix-builder
       - e2e-tests
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: e2e-tests-result
-    if: always() && !cancelled()
+    # ci:skip turns the run off outright, so this check skips with it rather than
+    # reporting green for tests nobody asked to run.
+    if: ${{ !cancelled() && needs.should-run.outputs.force-skip != 'true' }}
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
     steps:
+      # A gate that failed instead of answering also leaves e2e-tests `skipped`,
+      # which the steps below would otherwise read as "nothing to run".
+      - name: Check that the gate answered
+        if: >-
+          ${{ needs.should-run.result != 'success'
+          || (needs.e2e-matrix-builder.result != 'success'
+          && needs.e2e-matrix-builder.result != 'skipped') }}
+        env:
+          SHOULD_RUN_RESULT: ${{ needs.should-run.result }}
+          MATRIX_RESULT: ${{ needs.e2e-matrix-builder.result }}
+        run: | # sh
+          echo "::error::The e2e gate never produced an answer (should-run: $SHOULD_RUN_RESULT, e2e-matrix-builder: $MATRIX_RESULT)"
+          exit 1
       - name: Stub
         if: ${{ needs.e2e-tests.result == 'skipped' }}
         run: |

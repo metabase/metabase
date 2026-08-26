@@ -129,7 +129,7 @@ jobs:
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> "$GITHUB_OUTPUT"
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          FORCE_RUN: ${{ needs.should-run.outputs.forced == 'true' }}
+          FORCE_RUN: ${{ needs.should-run.outputs.force-run == 'true' }}
           ONLY_DRIVER: ${{ inputs.driver }}
         shell: bash
 
@@ -523,7 +523,7 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.force-run != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
@@ -823,7 +823,7 @@ jobs:
             needs-python-runner: true
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.force-run != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
@@ -1302,6 +1302,10 @@ jobs:
 
   drivers-tests-result:
     needs:
+      # The gates are read like any other job below: one that failed instead of
+      # answering leaves every driver job skipped, which would otherwise pass
+      # here as "nothing to do".
+      - should-run
       - determine-driver-skips
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-athena-ee
@@ -1329,7 +1333,9 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result
-    if: always() && !cancelled()
+    # ci:skip turns the run off outright, so this check skips with it rather than
+    # reporting green for tests nobody asked to run.
+    if: ${{ !cancelled() && needs.should-run.outputs.force-skip != 'true' }}
     steps:
       - name: Check job status
         uses: actions/github-script@v9
@@ -1339,10 +1345,11 @@ jobs:
           script: | # js
             const needs = JSON.parse(process.env.needs);
 
-            // Drop the determine-driver-skips bookkeeping job; every remaining job is a driver
-            // job whose result gates this check.
+            // The bookkeeping jobs -- should-run and determine-driver-skips -- are checked
+            // alongside the driver jobs rather than dropped: a driver job is skipped both
+            // when the decision said "don't run it" and when the decision never arrived,
+            // and only their results tell those two apart.
             const jobs = Object.entries(needs)
-              .filter(([jobName]) => jobName !== 'determine-driver-skips')
               .map(([jobName, jobValues]) => ({
                 name: jobName,
                 result: jobValues.result

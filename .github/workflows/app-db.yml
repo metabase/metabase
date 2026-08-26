@@ -68,7 +68,7 @@ jobs:
         id: versions
         uses: actions/github-script@v9
         env:
-          RUN_ALL: ${{ needs.should-run.outputs.forced == 'true' }}
+          RUN_ALL: ${{ needs.should-run.outputs.force-run == 'true' }}
         with:
           script: | # js
             const runAll = process.env.RUN_ALL === 'true';
@@ -176,7 +176,7 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.force-run != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
@@ -264,7 +264,7 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.force-run != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
@@ -350,7 +350,7 @@ jobs:
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.force-run != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
@@ -398,6 +398,10 @@ jobs:
 
   app-db-tests-result:
     needs:
+      # The gates are read like any other job below: one that failed instead of
+      # answering leaves every job under it skipped, which would otherwise pass
+      # here as "nothing to do".
+      - should-run
       - app-db-matrix
       - be-tests-mariadb
       - be-tests-mysql
@@ -405,7 +409,9 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: app-db-tests-result
-    if: always() && !cancelled()
+    # ci:skip turns the run off outright, so this check skips with it rather than
+    # reporting green for tests nobody asked to run.
+    if: ${{ !cancelled() && needs.should-run.outputs.force-skip != 'true' }}
     steps:
       - name: Check job status
         uses: actions/github-script@v9

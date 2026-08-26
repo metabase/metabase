@@ -36,7 +36,7 @@ jobs:
 
   embedding-sdk-cli-snippets-type-check:
     needs: [should-run, build-package]
-    if: ${{ (needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).frontend_sources == 'true') }}
+    if: ${{ (needs.should-run.outputs.force-run == 'true' || fromJSON(needs.should-run.outputs.results).frontend_sources == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -53,7 +53,7 @@ jobs:
 
   embedding-sdk-docs-snippets-type-check:
     needs: [should-run, build-package]
-    if: ${{ (needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).embedding_documentation == 'true') }}
+    if: ${{ (needs.should-run.outputs.force-run == 'true' || fromJSON(needs.should-run.outputs.results).embedding_documentation == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -70,7 +70,7 @@ jobs:
 
   embedding-sdk-api-documentation-generation-validation:
     needs: [should-run, build-package]
-    if: ${{ (needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).frontend_sources == 'true') }}
+    if: ${{ (needs.should-run.outputs.force-run == 'true' || fromJSON(needs.should-run.outputs.results).frontend_sources == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -121,24 +121,31 @@ jobs:
   embedding-sdk-component-tests:
     needs: [should-run, build-package]
     name: "SDK component tests"
-    if: ${{ inputs.uberjar-built && (needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).embedding_sdk_components == 'true') }}
+    if: ${{ inputs.uberjar-built && (needs.should-run.outputs.force-run == 'true' || fromJSON(needs.should-run.outputs.results).embedding_sdk_components == 'true') }}
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
 
   not-required-embedding-sdk-apps-compatibility-tests:
     needs: [should-run, build-package]
     name: "SDK e2e tests for compatibility with (host/sample) apps"
-    if: ${{ inputs.uberjar-built && (needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).embedding_sdk_host_sample_apps == 'true') }}
+    if: ${{ inputs.uberjar-built && (needs.should-run.outputs.force-run == 'true' || fromJSON(needs.should-run.outputs.results).embedding_sdk_host_sample_apps == 'true') }}
     uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
 
   embedding-sdk-tests-result:
     needs:
+      # The gates are read like any other job below: one that failed instead of
+      # answering leaves every job under it skipped, which would otherwise pass
+      # here as "nothing to do".
+      - should-run
+      - build-package
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
       - embedding-sdk-api-documentation-generation-validation
       - embedding-sdk-component-tests
-    if: always() && !cancelled()
+    # ci:skip turns the run off outright, so this check skips with it rather than
+    # reporting green for tests nobody asked to run.
+    if: ${{ !cancelled() && needs.should-run.outputs.force-skip != 'true' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:

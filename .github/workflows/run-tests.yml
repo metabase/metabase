@@ -18,19 +18,15 @@ permissions:
   security-events: write
 
 jobs:
-  # `force-run` and `force-skip` are global overrides; `defer` means this
-  # job has no opinion and every downstream gate behaves as it always has.
-  # The one file check run-tests makes for itself: it supplies the force-run
-  # signal and the answers its own two jobs need. Every suite asks
-  # util.should-run its own question from inside its own workflow.
   should-run:
     uses: ./.github/workflows/util.should-run.yml
     with:
-      any-of: frontend_all, e2e_all, custom_viz_all
+      any-of: frontend_all, backend_all, e2e_all # anything but docs-only
 
   create-test-plan:
+    needs: should-run
     name: Create test plan
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' && needs.should-run.outputs.force-skip != 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
@@ -44,7 +40,6 @@ jobs:
         id: changes
         uses: ./.github/actions/files-changed
         with:
-          # comma separated list of files
           list-files: csv
       - name: Create test plan
         id: compute
@@ -114,28 +109,43 @@ jobs:
           # replace it rather than fail on a re-run.
           overwrite: true
 
+  # ci:skip is the one global override run-tests still owns. It turns the run off
+  # by never invoking the suites at all: their required checks are then never
+  # created, and branch protection blocks the merge as pending. Gating inside the
+  # suite instead would report a skipped job, which GitHub counts as a pass.
+  # Everything else about whether a suite runs is that suite's own question.
   backend-tests:
+    needs: should-run
+    if: ${{ needs.should-run.outputs.force-skip != 'true' }}
     uses: ./.github/workflows/backend.yml
     secrets: inherit
 
   semantic-search-tests:
+    needs: should-run
+    if: ${{ needs.should-run.outputs.force-skip != 'true' }}
     uses: ./.github/workflows/semantic-search.yml
     secrets: inherit
 
   app-db-tests:
+    needs: should-run
+    if: ${{ needs.should-run.outputs.force-skip != 'true' }}
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
 
   driver-tests:
+    needs: should-run
+    if: ${{ needs.should-run.outputs.force-skip != 'true' }}
     uses: ./.github/workflows/drivers.yml
     secrets: inherit
 
   frontend-tests:
+    needs: should-run
+    if: ${{ needs.should-run.outputs.force-skip != 'true' }}
     uses: ./.github/workflows/frontend.yml
     secrets: inherit
 
   e2e-tests:
-    needs: uberjar
+    needs: [should-run, uberjar]
     # Skip e2e tests when the uberjar build failed or was cancelled — the
     # downstream tests can't fetch a missing artifact, and we don't want to
     # mask the uberjar failure with a wave of misleading e2e errors. We still
@@ -146,14 +156,15 @@ jobs:
     # branch protection blocks the merge as pending.
     if: |
       !cancelled() &&
+      needs.should-run.outputs.force-skip != 'true' &&
       needs.uberjar.result != 'failure' &&
       needs.uberjar.result != 'cancelled'
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
 
   sdk-tests:
-    needs: uberjar
-    if: ${{ !cancelled() }}
+    needs: [should-run, uberjar]
+    if: ${{ needs.should-run.outputs.force-skip != 'true' }}
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
     with:

@@ -376,6 +376,10 @@ jobs:
 
   semantic-search-tests-result:
     needs:
+      # The gate is read like any other job below: one that failed instead of
+      # answering leaves every job under it skipped, which would otherwise pass
+      # here as "nothing to do".
+      - should-run
       - semantic-search-tests-h2
       - semantic-search-tests-mariadb
       - semantic-search-tests-mysql
@@ -384,7 +388,9 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: semantic-search-tests-result
-    if: always() && !cancelled()
+    # ci:skip turns the run off outright, so this check skips with it rather than
+    # reporting green for tests nobody asked to run.
+    if: ${{ !cancelled() && needs.should-run.outputs.force-skip != 'true' }}
     steps:
       - name: Check job status
         uses: actions/github-script@v9

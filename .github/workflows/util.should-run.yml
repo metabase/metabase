@@ -44,17 +44,18 @@ on:
           ${{ jobs.should-run.outputs.verdict == 'defer'
           && jobs.should-run.outputs.changed
           || jobs.should-run.outputs.verdict }}
-      forced:
+      force-run:
         description: >
           'true' when the branch or a ci:run-all label forced the run rather than
           the diff asking for it. Suites use it to run their exhaustive variant
           and to ignore any narrowing of the spec list.
         value: ${{ jobs.should-run.outputs.verdict == 'true' }}
-      skipped:
+      force-skip:
         description: >
-          'true' when a ci:skip label turned this run off outright. Suites don't
-          need it — their `changed` is already false — but a caller gating on
-          something other than the diff does.
+          'true' when a ci:skip label turned this run off outright. run-tests
+          reads it to leave the suites uninvoked entirely, so their required
+          checks never report and branch protection blocks the merge; a suite
+          gating on something other than the diff needs it for the same reason.
         value: ${{ jobs.should-run.outputs.verdict == 'false' }}
       files:
         description: "Files matched by the named filters, in the `list-files` format."
@@ -63,7 +64,7 @@ on:
         description: >
           Every paths-filter output as a JSON object, for a caller needing more
           than one answer. `{}` when the verdict short-circuited the file check,
-          so fromJSON() is always safe — pair it with `forced`.
+          so fromJSON() is always safe — pair it with `force-run`.
         value: ${{ jobs.should-run.outputs.results || '{}' }}
 
 jobs:

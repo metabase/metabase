@@ -55,14 +55,14 @@ jobs:
     timeout-minutes: 15
     outputs:
       run: ${{ steps.decide.outputs.run }}
-      forced: ${{ needs.should-run.outputs.forced }}
+      force-run: ${{ needs.should-run.outputs.force-run }}
     env:
       # A change to a file the static-viz bundle pulls in can break backend
       # tests without touching backend_all, so we check — but only when the
       # diff hasn't already said yes, and never when ci:skip turned the run off.
       NEEDS_STATIC_VIZ: >-
         ${{ needs.should-run.outputs.changed != 'true'
-        && needs.should-run.outputs.skipped != 'true' }}
+        && needs.should-run.outputs.force-skip != 'true' }}
     steps:
       - uses: actions/checkout@v6
         if: ${{ env.NEEDS_STATIC_VIZ == 'true' }}
@@ -127,7 +127,7 @@ jobs:
   be-linter-eastwood-test:
     needs: gate
     # Master / release safety net: lint every backend test namespace.
-    if: ${{ needs.gate.outputs.run == 'true' && needs.gate.outputs.forced == 'true' }}
+    if: ${{ needs.gate.outputs.run == 'true' && needs.gate.outputs.force-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -141,7 +141,7 @@ jobs:
   be-linter-eastwood-test-changed:
     needs: gate
     # Lint only the test namespaces touched by the diff.
-    if: ${{ needs.gate.outputs.run == 'true' && !(needs.gate.outputs.forced == 'true') && github.event_name == 'pull_request' }}
+    if: ${{ needs.gate.outputs.run == 'true' && !(needs.gate.outputs.force-run == 'true') && github.event_name == 'pull_request' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     name: Eastwood (changed tests only)
@@ -242,7 +242,7 @@ jobs:
               :partition/index 1
     name: "Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.gate.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.gate.outputs.force-run != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
     steps:
@@ -427,6 +427,11 @@ jobs:
 
   be-tests-result:
     needs:
+      # The gates are read like any other job below: one that failed instead of
+      # answering leaves every job under it skipped, which would otherwise pass
+      # here as "nothing to do".
+      - should-run
+      - gate
       - be-linter-eastwood
       - be-linter-eastwood-test
       - be-linter-eastwood-test-changed
@@ -434,7 +439,9 @@ jobs:
       - be-cljfmt
       - be-check
       - be-tests
-    if: always() && !cancelled()
+    # ci:skip turns the run off outright, so this check skips with it rather than
+    # reporting green for tests nobody asked to run.
+    if: ${{ !cancelled() && needs.should-run.outputs.force-skip != 'true' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     env:
