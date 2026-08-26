@@ -26,6 +26,7 @@ const FOOTER_HORIZONTAL_PADDING = 16;
 
 interface McpUiAppRouteContentProps {
   app: McpAppState["app"];
+  hostError: McpAppState["hostError"];
   hostContext: McpAppState["hostContext"];
   instanceUrl: string;
   mcpSessionId: string;
@@ -51,8 +52,15 @@ export function McpUiAppRoute() {
     // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
-  const { app, hostContext, mcpSessionId, prompt, query, uiCredential } =
-    useMcpApp(refreshTool);
+  const {
+    app,
+    hostError,
+    hostContext,
+    mcpSessionId,
+    prompt,
+    query,
+    uiCredential,
+  } = useMcpApp(refreshTool);
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -81,6 +89,7 @@ export function McpUiAppRoute() {
     >
       <McpUiAppRouteContent
         app={app}
+        hostError={hostError}
         hostContext={hostContext}
         instanceUrl={instanceUrl}
         mcpSessionId={mcpSessionId}
@@ -94,6 +103,7 @@ export function McpUiAppRoute() {
 
 function McpUiAppRouteContent({
   app,
+  hostError,
   hostContext,
   instanceUrl,
   mcpSessionId,
@@ -136,10 +146,10 @@ function McpUiAppRouteContent({
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready or
     // when initialization fails and the route can render its own error.
-    if (isReady || userAndSettingsFetchError) {
+    if (isReady || hostError || userAndSettingsFetchError) {
       document.getElementById("mcp-loading")?.remove();
     }
-  }, [isReady, userAndSettingsFetchError]);
+  }, [hostError, isReady, userAndSettingsFetchError]);
 
   const height = `calc(${MCP_CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
@@ -227,6 +237,10 @@ function McpUiAppRouteContent({
     );
 
   const renderContentView = () => {
+    if (hostError) {
+      return <SdkError message={hostError} />;
+    }
+
     if (userAndSettingsFetchError) {
       return <SdkError message={userAndSettingsFetchError} />;
     }
