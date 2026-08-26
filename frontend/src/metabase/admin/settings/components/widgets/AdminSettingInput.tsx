@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
@@ -88,40 +88,27 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   const {
     value: initialValue,
     updateSetting,
+    updateSettingResult,
     isLoading,
+    isFetching,
     description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
   const [resetKey, setResetKey] = useState(0);
   const displayValue = settingDetails?.value ?? initialValue;
-  // The server value stays stale until the refetch that follows a write, so a change is
-  // compared against the last value we sent rather than against it.
-  const sent = useRef<{ value: EnterpriseSettingValue } | null>(null);
-  const writes = useRef(Promise.resolve());
+  // The displayed value is stale from the write until the refetch lands, so the
+  // input stays disabled for that whole window, not just while the PUT runs.
+  const isSaving = updateSettingResult.isLoading || isFetching;
 
-  useEffect(() => {
-    if (sent.current?.value === displayValue) {
-      sent.current = null;
-    }
-  }, [displayValue]);
-
-  const handleChange = (newValue: EnterpriseSettingValue) => {
-    if (newValue === (sent.current ? sent.current.value : displayValue)) {
+  const handleChange = async (newValue: EnterpriseSettingValue) => {
+    if (newValue === displayValue) {
       return;
     }
-    sent.current = { value: newValue };
-    // chained so the writes reach the server in the order they were made, leaving the
-    // value the user picked last as the one that sticks
-    writes.current = writes.current.then(async () => {
-      const { error } = await updateSetting({ key: name, value: newValue });
-      if (error) {
-        sent.current = null;
-        if (inputType === "boolean") {
-          // remount resets a toggle; a text input would lose what the user typed
-          setResetKey((key) => key + 1);
-        }
-      }
-    });
+    const { error } = await updateSetting({ key: name, value: newValue });
+    if (error && inputType === "boolean") {
+      // remount resets a toggle; a text input would lose what the user typed
+      setResetKey((key) => key + 1);
+    }
   };
 
   if (hidden || isLoading) {
@@ -149,7 +136,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
           inputType={inputType}
           switchLabel={switchLabel}
           searchable={searchable}
-          disabled={disabled}
+          disabled={disabled || isSaving}
         />
       )}
     </Box>
@@ -236,7 +223,12 @@ export function BasicAdminSettingInput({
         >
           <Stack gap="sm">
             {options?.map(({ label, value }) => (
-              <Radio key={value} value={value} label={label} />
+              <Radio
+                key={value}
+                value={value}
+                label={label}
+                disabled={disabled}
+              />
             ))}
           </Stack>
         </Radio.Group>

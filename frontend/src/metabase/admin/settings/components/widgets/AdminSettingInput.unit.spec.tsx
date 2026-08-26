@@ -418,63 +418,7 @@ describe("AdminSettingInput", () => {
     expect(toast).toBeInTheDocument();
   });
 
-  it("should persist a reversal made before the post-save refetch lands", async () => {
-    setup({
-      title: "Enable X-rays",
-      name: "enable-xrays",
-      inputType: "boolean",
-    });
-    const input = await screen.findByRole("switch");
-
-    // Hold the post-save refetches open so the server-derived value stays
-    // stale while the second click happens.
-    const pendingRefetches: Array<() => void> = [];
-    let pendingRefetchCount = 0;
-    fetchMock.removeRoute("get-session-properties");
-    fetchMock.get(
-      "path:/api/session/properties",
-      () => {
-        pendingRefetchCount += 1;
-        return new Promise<void>((resolve) =>
-          pendingRefetches.push(resolve),
-        ).then(() => {
-          pendingRefetchCount -= 1;
-          return createMockSettings({ "enable-xrays": true });
-        });
-      },
-      { name: "get-session-properties" },
-    );
-
-    await userEvent.click(input);
-    await waitFor(() => {
-      expect(screen.getByRole("switch")).toBeEnabled();
-    });
-    await userEvent.click(screen.getByRole("switch"));
-
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/setting/enable-xrays"),
-      ).toHaveLength(2);
-    });
-    const [first, second] = fetchMock.callHistory.calls(
-      "path:/api/setting/enable-xrays",
-    );
-    expect(JSON.parse(String(first.options.body))).toStrictEqual({
-      value: false,
-    });
-    expect(JSON.parse(String(second.options.body))).toStrictEqual({
-      value: true,
-    });
-
-    // Each resolved refetch can queue another one; drain them all so the
-    // global afterEach can flush the request history.
-    await waitFor(() => {
-      pendingRefetches.splice(0).forEach((resolve) => resolve());
-      expect(pendingRefetchCount).toBe(0);
-    });
-  });
-
-  it("should hold a change made during a save and send it after, in order", async () => {
+  it("should disable the input until the save and its refetch settle", async () => {
     setup({
       title: "Enable X-rays",
       name: "enable-xrays",
@@ -492,140 +436,35 @@ describe("AdminSettingInput", () => {
         })),
       { name: "update-setting" },
     );
+    const pendingRefetches: Array<() => void> = [];
+    fetchMock.removeRoute("get-session-properties");
+    fetchMock.get(
+      "path:/api/session/properties",
+      () =>
+        new Promise<void>((resolve) => pendingRefetches.push(resolve)).then(
+          () => createMockSettings({ "enable-xrays": false }),
+        ),
+      { name: "get-session-properties" },
+    );
 
     await userEvent.click(input);
-    await userEvent.click(screen.getByRole("switch"));
-
-    // the reversal waits for the first save instead of racing it
     await waitFor(() => {
-      expect(pendingPuts).toHaveLength(1);
+      expect(screen.getByRole("switch")).toBeDisabled();
+    });
+
+    pendingPuts.splice(0).forEach((resolve) => resolve());
+    await waitFor(() => {
+      expect(pendingRefetches).not.toHaveLength(0);
+    });
+    expect(screen.getByRole("switch")).toBeDisabled();
+
+    pendingRefetches.splice(0).forEach((resolve) => resolve());
+    await waitFor(() => {
+      expect(screen.getByRole("switch")).toBeEnabled();
     });
     expect(
       fetchMock.callHistory.calls("path:/api/setting/enable-xrays"),
     ).toHaveLength(1);
-
-    pendingPuts.splice(0).forEach((resolve) => resolve());
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.calls("path:/api/setting/enable-xrays"),
-      ).toHaveLength(2);
-    });
-    pendingPuts.splice(0).forEach((resolve) => resolve());
-
-    const [first, second] = fetchMock.callHistory.calls(
-      "path:/api/setting/enable-xrays",
-    );
-    expect(JSON.parse(String(first.options.body))).toStrictEqual({
-      value: false,
-    });
-    expect(JSON.parse(String(second.options.body))).toStrictEqual({
-      value: true,
-    });
-  });
-
-  it("should still send the last value the user picked when an earlier save fails", async () => {
-    setup({
-      title: "Enable X-rays",
-      name: "enable-xrays",
-      inputType: "boolean",
-    });
-
-    const pendingPuts: Array<() => void> = [];
-    fetchMock.removeRoute("update-setting");
-    fetchMock.put(
-      new RegExp("/api/setting/"),
-      () =>
-        new Promise<void>((resolve) => pendingPuts.push(resolve)).then(() => ({
-          status: 500,
-        })),
-      { name: "update-setting" },
-    );
-
-    // false, back to true, then false again, all while the first write is in flight
-    await userEvent.click(await screen.findByRole("switch"));
-    await waitFor(() => {
-      expect(pendingPuts).toHaveLength(1);
-    });
-    await userEvent.click(screen.getByRole("switch"));
-    await userEvent.click(screen.getByRole("switch"));
-
-    const xrayPuts = () =>
-      fetchMock.callHistory.calls("path:/api/setting/enable-xrays");
-    // each write waits for the one before it, so let them fail one at a time
-    for (const expected of [2, 3]) {
-      pendingPuts.splice(0).forEach((resolve) => resolve());
-      await waitFor(() => {
-        expect(xrayPuts()).toHaveLength(expected);
-      });
-    }
-    pendingPuts.splice(0).forEach((resolve) => resolve());
-
-    expect(
-      xrayPuts().map((call) => JSON.parse(String(call.options.body)).value),
-    ).toEqual([false, true, false]);
-  });
-
-  it("should persist a reversal after a sibling setting's refetch lands mid-save", async () => {
-    setupPropertiesEndpoints(
-      createMockSettings({ "enable-xrays": true, "site-name": "Metabased" }),
-    );
-    setupSettingsEndpoints([]);
-    const pendingXrayPuts: Array<() => void> = [];
-    fetchMock.put(
-      "path:/api/setting/enable-xrays",
-      () =>
-        new Promise<void>((resolve) => pendingXrayPuts.push(resolve)).then(
-          () => ({ status: 204 }),
-        ),
-      { name: "put-xrays" },
-    );
-    setupUpdateSettingEndpoint();
-    renderWithProviders(
-      <>
-        <AdminSettingInput
-          title="Enable X-rays"
-          name="enable-xrays"
-          inputType="boolean"
-        />
-        <AdminSettingInput
-          title="Site Name"
-          name="site-name"
-          inputType="text"
-        />
-        <UndoListing />
-      </>,
-    );
-
-    await userEvent.click(await screen.findByRole("switch"));
-    await waitFor(() => {
-      expect(pendingXrayPuts).toHaveLength(1);
-    });
-
-    // sibling save completes and refetches the still-stale properties
-    const siteName = await screen.findByDisplayValue("Metabased");
-    await userEvent.clear(siteName);
-    await userEvent.type(siteName, "Wigglybase");
-    fireEvent.blur(siteName);
-    await waitFor(() => {
-      expect(fetchMock.callHistory.calls("update-setting")).toHaveLength(1);
-    });
-
-    await userEvent.click(screen.getByRole("switch"));
-    pendingXrayPuts.splice(0).forEach((resolve) => resolve());
-
-    const xrayPuts = () =>
-      fetchMock.callHistory.calls("path:/api/setting/enable-xrays");
-    await waitFor(() => {
-      expect(xrayPuts()).toHaveLength(2);
-    });
-    pendingXrayPuts.splice(0).forEach((resolve) => resolve());
-    const [first, second] = xrayPuts();
-    expect(JSON.parse(String(first.options.body))).toStrictEqual({
-      value: false,
-    });
-    expect(JSON.parse(String(second.options.body))).toStrictEqual({
-      value: true,
-    });
   });
 
   it("should revert the input when the save fails", async () => {
