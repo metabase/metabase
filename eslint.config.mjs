@@ -70,15 +70,11 @@ const dayjsExtendRestriction = {
   message: "Register dayjs plugins in `metabase/dayjs`, not locally.",
 };
 
-const LEAFLET_RESTRICTED_IMPORT_MESSAGE =
-  "Please import leaflet from `metabase/leaflet` instead.";
-const leafletRestrictedPaths = [
-  { name: "leaflet", message: LEAFLET_RESTRICTED_IMPORT_MESSAGE },
-  { name: "leaflet-draw", message: LEAFLET_RESTRICTED_IMPORT_MESSAGE },
-];
+// The bare names are anchored with a leading slash because patterns use gitignore matching,
+// where an unanchored "leaflet" would also match "metabase/leaflet" itself.
 const leafletRestrictedPattern = {
-  group: ["leaflet/*", "leaflet-draw/*"],
-  message: LEAFLET_RESTRICTED_IMPORT_MESSAGE,
+  group: ["/leaflet", "leaflet/*", "/leaflet-draw", "leaflet-draw/*"],
+  message: "Please import leaflet from `metabase/leaflet` instead.",
 };
 
 const e2eRestrictedConfig = {
@@ -110,7 +106,6 @@ const baseMetabaseRestrictedConfig = {
   ],
   paths: [
     dayjsRestrictedPath,
-    ...leafletRestrictedPaths,
     {
       name: "react-redux",
       importNames: ["useSelector", "useDispatch", "connect"],
@@ -561,8 +556,12 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          paths: [...e2eRestrictedConfig.paths, dayjsRestrictedPath, ...leafletRestrictedPaths],
-          patterns: [...e2eRestrictedConfig.patterns, dayjsRestrictedPattern, leafletRestrictedPattern],
+          paths: [...e2eRestrictedConfig.paths, dayjsRestrictedPath],
+          patterns: [
+            ...e2eRestrictedConfig.patterns,
+            dayjsRestrictedPattern,
+            leafletRestrictedPattern,
+          ],
         },
       ],
       "import/no-unresolved": [
@@ -709,8 +708,8 @@ const configs = [
     },
   },
   {
-    // The leaflet facade is the only place that imports `leaflet` and
-    // `leaflet-draw` directly; every other file goes through `metabase/leaflet`.
+    // The leaflet facade is the only module allowed to import `leaflet` and `leaflet-draw` directly.
+    // Every other file goes through `metabase/leaflet`.
     files: ["frontend/src/metabase/leaflet/**/*"],
     rules: {
       "no-restricted-imports": "off",
@@ -735,7 +734,6 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             dayjsRestrictedPath,
-            ...leafletRestrictedPaths,
             {
               name: "@emotion/styled",
               message: "Please style components using css modules.",
@@ -783,7 +781,6 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             dayjsRestrictedPath,
-            ...leafletRestrictedPaths,
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
@@ -816,7 +813,7 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          paths: [dayjsRestrictedPath, ...leafletRestrictedPaths],
+          paths: [dayjsRestrictedPath],
           patterns: [
             dayjsRestrictedPattern,
             leafletRestrictedPattern,
@@ -972,7 +969,6 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             dayjsRestrictedPath,
-            ...leafletRestrictedPaths,
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
@@ -1044,14 +1040,17 @@ const configs = [
       "no-restricted-imports": [
         "error",
         {
-          patterns: [{ group: ["cljs/metabase.lib*"] }, dayjsRestrictedPattern, leafletRestrictedPattern],
+          patterns: [
+            { group: ["cljs/metabase.lib*"] },
+            dayjsRestrictedPattern,
+            leafletRestrictedPattern,
+          ],
           paths: [
             {
               name: "react-router",
               message: "Please import routing from `metabase/router` instead.",
             },
             dayjsRestrictedPath,
-            ...leafletRestrictedPaths,
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
