@@ -51,7 +51,7 @@ You can also go to **Admin > Embedding > Modular embedding** and click **New emb
 
 {% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embedding=true %}
 
-With SSO, Metabase can know who is viewing the embed, and it can unlock all of its bells and whistles (see this [comparison between SSO and guest embeds](./introduction.md#comparison-between-sso-and-guest-embeds)).
+With SSO, Metabase can know who is viewing the embed, and it can unlock all of its bells and whistles (see this [comparison between SSO and guest embeds](./introduction.md#comparison-between-sso-and-guest-authentication)).
 
 This page covers the [SSO setup for your Metabase](./authentication.md). If you don't need to set up SSO, check out the [guest embed docs](./guest-embedding.md).
 
@@ -140,6 +140,8 @@ Here's an example snippet:
 <metabase-dashboard dashboard-id="2" with-title="false"></metabase-dashboard>
 ```
 
+These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
+
 Note the `defer` attribute and the reference to your Metabase URL in the script that loads `embed.js` library.
 
 If you're embedding multiple components in a single page, you only need to include the `<script>` tags once globally.
@@ -172,7 +174,7 @@ When you're creating a new embed using **Admin > Embedding > Setup guide > Embed
 
 - **Show title**: what it says on the tin.
 
-- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection, including both visual and native (SQL) questions. When disabled, they can still perform actions like filter, summarize, and drill-through, but won't be able to save results.
+- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection, including both visual and native (SQL) questions. When disabled, they can still perform actions like filter, summarize, and drill-through, but won't be able to save results. This option only shows up when you're embedding a collection browser; checking it sets `read-only="false"` on `<metabase-browser>`. There's no equivalent attribute on `<metabase-dashboard>`, so see [Web component editable dashboard](./dashboard.md#web-component-editable-dashboard) for how to embed an editable dashboard.
 
 - **Allow alerts**: lets people set up [alerts](../questions/alerts.md) on embedded questions. Requires [email setup](../configuring-metabase/email.md). Only for authenticated (SSO) question embeds.
 

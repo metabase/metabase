@@ -4,7 +4,7 @@ import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 import { getFormattingOptionsWithoutScaling } from "../echarts/cartesian/model/util";
 
-export const formatValueForTooltip = ({
+export const formatValueForTooltipWithoutScaling = ({
   value,
   column,
   settings,

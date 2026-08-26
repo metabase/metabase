@@ -58,6 +58,15 @@
   (or (mi/superuser?)
       (perms/current-user-has-application-permissions? :setting)))
 
+(methodical/defmethod mi/to-json :model/Channel
+  "Only include `:details` for callers who can write the channel, matching `remove-details-if-needed` in the channel
+  API. Encoding at the model boundary keeps every response that returns a Channel consistent."
+  [channel json-generator]
+  (next-method (if (mi/can-write? channel)
+                 channel
+                 (dissoc channel :details))
+               json-generator))
+
 (t2/define-before-update :model/Channel
   [instance]
   (let [deactivation? (false? (:active (t2/changes instance)))]

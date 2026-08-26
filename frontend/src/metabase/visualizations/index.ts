@@ -1,7 +1,8 @@
 export {
   type RegisteredVisualization,
+  type VisualizationComponentLoader,
   canSavePng,
-  getDefaultSize,
+  getRegisteredDefaultSize,
   getIconForVisualizationType,
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -10,9 +11,12 @@ export {
   getVisualizationRaw,
   getVisualizationTransformed,
   isCartesianChart,
+  loadVisualizationComponents,
+  prefetchVisualizationComponent,
   registerSettingWidgets,
   registerVisualization,
   setDefaultVisualization,
   visualizations,
 } from "./lib/registry";
+export { getVisualizationComponent } from "./visualization-component";
 export { extractRemappedColumns, extractRemappings } from "./lib/remapping";

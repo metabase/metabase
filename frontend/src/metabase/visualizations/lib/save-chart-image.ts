@@ -8,27 +8,32 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
-import { resolveSvgVarPaint, restoreNestedSvgOverflow } from "./image-exports";
+import {
+  canvasToBlob,
+  resolveSvgVarPaint,
+  restoreNestedSvgOverflow,
+} from "./image-exports";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
 
-interface Opts {
+interface RenderOpts {
   selector: string;
-  fileName: string;
   includeBranding: boolean;
 }
 
-export const saveChartImage = async ({
+type Opts = RenderOpts & {
+  fileName: string;
+};
+
+const renderChartCanvas = async ({
   selector,
-  fileName,
   includeBranding,
-}: Opts) => {
+}: RenderOpts): Promise<HTMLCanvasElement | null> => {
   const node = document.querySelector(selector);
 
   if (!node || !(node instanceof HTMLElement)) {
-    console.warn("No node found for selector", selector);
-    return;
+    return null;
   }
 
   const contentHeight = node.getBoundingClientRect().height;
@@ -80,6 +85,26 @@ export const saveChartImage = async ({
       },
     }),
   );
+
+  return canvas;
+};
+
+export const getChartImageBlob = async (
+  opts: RenderOpts,
+): Promise<Blob | null> => {
+  const canvas = await renderChartCanvas(opts);
+  if (!canvas) {
+    return null;
+  }
+  return canvasToBlob(canvas);
+};
+
+export const saveChartImage = async ({ fileName, ...renderOpts }: Opts) => {
+  const canvas = await renderChartCanvas(renderOpts);
+  if (!canvas) {
+    console.warn("No node found for selector", renderOpts.selector);
+    return;
+  }
 
   if (isStorybookActive) {
     // In storybook/loki we must wait for the blob and image to be ready

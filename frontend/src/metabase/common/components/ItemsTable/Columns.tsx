@@ -4,7 +4,7 @@ import { c, t } from "ttag";
 import type { ActionMenuProps } from "metabase/common/collections/components/ActionMenu";
 import { ActionMenu } from "metabase/common/collections/components/ActionMenu";
 import { DateTime } from "metabase/common/components/DateTime";
-import { EntityItem } from "metabase/common/components/EntityItem";
+import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
@@ -27,7 +27,6 @@ import {
   BulkSelectWrapper,
   ColumnHeader,
   DescriptionIcon,
-  EntityIconCheckBox,
   ItemButton,
   ItemCell,
   ItemLink,
@@ -35,6 +34,7 @@ import {
   RowActionsContainer,
   TableColumn,
 } from "./BaseItemsTable.styled";
+import { EntityIconCheckBox } from "./EntityIconCheckBox";
 
 type HeaderProps = Omit<
   SortableColumnHeaderProps<ListCollectionItemsSortColumn>,
@@ -81,7 +81,6 @@ export const Columns = {
       <ColumnHeader>
         <BulkSelectWrapper>
           <Checkbox
-            size="sm"
             checked={!!selectedItems?.length}
             indeterminate={!!selectedItems?.length && !!hasUnselected}
             onChange={hasUnselected ? onSelectAll : onSelectNone}
@@ -183,7 +182,7 @@ export const Columns = {
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
-            <EntityItem.Name name={tc(item.name)} variant="list" />
+            <EntityItemName name={tc(item.name)} />
             <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
               status={item.moderated_status}
@@ -193,7 +192,13 @@ export const Columns = {
                 name="info"
                 size={16}
                 tooltip={
-                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+                  <Markdown
+                    dark
+                    compact
+                    disallowHeading
+                    unstyleLinks
+                    lineClamp={8}
+                  >
                     {tc(item.description)}
                   </Markdown>
                 }

@@ -6,42 +6,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("issue 12445", { tags: ["@external", "@skip"] }, () => {
-  const CC_NAME = "Abbr";
-
-  beforeEach(() => {
-    H.restore("mysql-8");
-    cy.signInAsAdmin();
-  });
-
-  it("should correctly apply substring for a custom column (metabase#12445)", () => {
-    H.withDatabase(2, ({ PEOPLE, PEOPLE_ID }) => {
-      cy.log("Create a question with `Source` column and abbreviated CC");
-      H.createQuestion(
-        {
-          name: "12445",
-          query: {
-            "source-table": PEOPLE_ID,
-            breakout: [["expression", CC_NAME]],
-            expressions: {
-              [CC_NAME]: [
-                "substring",
-                ["field", PEOPLE.SOURCE, null],
-                1,
-                4, // we want 4 letter abbreviation
-              ],
-            },
-          },
-          database: 2,
-        },
-        { visitQuestion: true },
-      );
-
-      cy.findByText(CC_NAME);
-      cy.findByText("Goog");
-    });
-  });
-});
 describe("issue 13751", { tags: "@external" }, () => {
   const CC_NAME = "C-States";
   const PG_DB_NAME = "QA Postgres12";
@@ -80,42 +44,6 @@ describe("issue 13751", { tags: "@external" }, () => {
     H.queryBuilderMain().findByText("Arnold Adams").should("be.visible");
   });
 });
-
-describe(
-  "postgres > question > custom columns",
-  { tags: ["@external", "@skip"] },
-  () => {
-    const PG_DB_NAME = "QA Postgres12";
-
-    // Ironically, both Prettier and Cypress remove escape characters from our code as well
-    // We're testing for the literal sting `(?<=\/\/)[^\/]*`, but we need to escape the escape characters to make it work
-    const ESCAPED_REGEX = "(?<=\\/\\/)[^\\/]*";
-
-    beforeEach(() => {
-      H.restore("postgres-12");
-      cy.signInAsAdmin();
-
-      H.startNewQuestion();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(PG_DB_NAME).should("be.visible").click();
-      cy.findByTextEnsureVisible("People").click();
-    });
-
-    it("should not remove regex escape characters (metabase#14517)", () => {
-      cy.log("Create custom column using `regexExtract()`");
-      cy.findByLabelText("Custom Column").click();
-      H.popover().within(() => {
-        cy.get("[contenteditable='true']")
-          .type(`regexExtract([State], "${ESCAPED_REGEX}")`)
-          .blur();
-
-        // It removes escaped characters already on blur
-        cy.log("Reported failing on v0.36.4");
-        cy.contains(ESCAPED_REGEX);
-      });
-    });
-  },
-);
 
 describe("issue 14843", () => {
   const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -486,7 +414,10 @@ describe("issue 20229", () => {
   }
 
   function unselectColumn(column) {
-    cy.findByText(column).siblings().find(".Icon-check").click({ force: true });
+    cy.findByText(column)
+      .siblings()
+      .find('input[type="checkbox"]')
+      .click({ force: true });
   }
 
   beforeEach(() => {
@@ -671,78 +602,6 @@ describe("issue 24922", () => {
   });
 });
 
-describe("issue 25189", { tags: "@skip" }, () => {
-  const ccTable = "Custom Created";
-  const ccFunction = "Custom Total";
-
-  const questionDetails = {
-    name: "25189",
-    query: {
-      "source-table": ORDERS_ID,
-      limit: 5,
-      expressions: {
-        [ccTable]: ["field", ORDERS.CREATED_AT, null],
-        [ccFunction]: [
-          "case",
-          [[[">", ["field", ORDERS.TOTAL, null], 100], "Yay"]],
-          {
-            default: "Nay",
-          },
-        ],
-      },
-    },
-  };
-
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(questionDetails).then(
-      ({ body: { id: baseQuestionId } }) => {
-        H.createQuestion(
-          {
-            name: "Nested 25189",
-            query: { "source-table": `card__${baseQuestionId}` },
-          },
-          { visitQuestion: true },
-        );
-      },
-    );
-  });
-
-  it("custom column referencing only a single column should not be dropped in a nested question (metabase#25189)", () => {
-    // 1. Column should not be dropped
-    cy.findAllByTestId("header-cell")
-      .should("contain", ccFunction)
-      .and("contain", ccTable);
-
-    // 2. We shouldn't see duplication in the bulk filter modal
-    H.filter();
-    H.modal().within(() => {
-      // Implicit assertion - will fail if more than one element is found
-      cy.findByText(ccFunction);
-      cy.findByText(ccTable);
-
-      cy.findByText("Today").click();
-      cy.button("Apply Filters").click();
-    });
-
-    cy.wait("@dataset");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No results");
-
-    // 3. We shouldn't see duplication in the breakout fields
-    H.summarize();
-    cy.findByTestId("sidebar-content").within(() => {
-      // Another implicit assertion
-      cy.findByText(ccFunction);
-      cy.findByText(ccTable);
-    });
-  });
-});
-
 ["postgres" /*, "mysql" */].forEach((dialect) => {
   describe(`issue 27745 (${dialect})`, { tags: "@external" }, () => {
     const tableName = "colors27745";
@@ -788,140 +647,6 @@ describe("issue 25189", { tags: "@skip" }, () => {
           );
         });
     });
-  });
-});
-// broken. see https://github.com/metabase/metabase/issues/55673
-describe("issue 42949", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should correctly show available shortcuts for date and number columns (metabase#42949)", () => {
-    H.createNativeQuestion(
-      {
-        native: {
-          query: `
-            SELECT DATE '2024-05-21' AS created_at, null as v
-            UNION ALL SELECT DATE '2024-05-20', 1
-            UNION ALL SELECT DATE '2024-05-19', 2
-            ORDER BY created_at
-          `,
-        },
-      },
-      { visitQuestion: true },
-    );
-    cy.findByTestId("qb-header").findByText("Explore results").click();
-
-    cy.log("Verify header drills - CREATED_AT");
-    H.tableHeaderClick("CREATED_AT");
-    H.popover().findByText("Extract day, month…").should("be.visible");
-    H.popover().findByText("Combine columns").should("not.exist");
-    cy.realPress("Escape");
-    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-
-    cy.log("Verify header drills - V");
-    H.tableHeaderClick("V");
-    H.popover().findByText("Extract part of column").should("not.exist");
-    H.popover().findByText("Combine columns").should("not.exist");
-    cy.realPress("Escape");
-    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-
-    cy.log("Verify plus button - extract column");
-    cy.button("Add column").click();
-    H.popover().findByText("Extract part of column").click();
-    H.popover().findByText("CREATED_AT").click();
-    H.popover().within(() => {
-      cy.findByText("Day of month").should("be.visible");
-      cy.findByText("Day of week").should("be.visible");
-      cy.findByText("Month of year").should("be.visible");
-      cy.findByText("Quarter of year").should("be.visible");
-      cy.findByText("Year").should("be.visible").click();
-    });
-    cy.findAllByTestId("header-cell").eq(2).should("have.text", "Year");
-
-    cy.log("Verify plus button - combine columns");
-    cy.button("Add column").click();
-    H.popover().findByText("Combine columns").click();
-    H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.popover()
-      .last()
-      .within(() => {
-        cy.findByText("CREATED_AT").should("be.visible");
-        cy.findByText("V").should("be.visible");
-        cy.findByText("Year").should("be.visible").click();
-      });
-    H.popover().button("Done").click();
-
-    cy.findAllByTestId("header-cell")
-      .eq(3)
-      .should("have.text", "Combined Year, V");
-
-    cy.findAllByTestId("cell-data").eq(6).should("have.text", "2,024");
-    cy.findAllByTestId("cell-data").eq(7).should("have.text", "2024 2");
-    cy.findAllByTestId("cell-data").eq(10).should("have.text", "2,024");
-    cy.findAllByTestId("cell-data").eq(11).should("have.text", "2024 1");
-    cy.findAllByTestId("cell-data").eq(13).should("have.text", "2,024");
-    cy.findAllByTestId("cell-data").eq(14).should("have.text", "2024 ");
-  });
-
-  it("should correctly show available shortcuts for a number column (metabase#42949)", () => {
-    H.createNativeQuestion(
-      {
-        native: {
-          query: "select 1 as n",
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.findByTestId("qb-header").findByText("Explore results").click();
-    cy.findByLabelText("Switch to data").click();
-
-    cy.log("Verify header drills");
-    H.tableHeaderClick("N");
-    H.popover().findByText("Extract part of column").should("not.exist");
-    H.popover().findByText("Combine columns").should("not.exist");
-    cy.realPress("Escape");
-    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-
-    cy.log("Verify plus button");
-    cy.button("Add column").click();
-    H.popover().findByText("Extract part of column").should("not.exist");
-    H.popover().findByText("Combine columns").click();
-    H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.popover().last().findByText("N").should("be.visible");
-  });
-
-  it("should correctly show available shortcuts for a string column (metabase#42949)", () => {
-    H.createNativeQuestion(
-      {
-        native: {
-          query: "select 'abc'",
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    cy.findByTestId("qb-header").findByText("Explore results").click();
-    cy.findByLabelText("Switch to data").click();
-
-    cy.log("Verify header drills");
-    H.tableHeaderClick("'abc'");
-    H.popover().findByText("Extract part of column").should("not.exist");
-    H.popover().findByText("Combine columns").should("be.visible");
-    cy.realPress("Escape");
-    H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-
-    cy.log("Verify plus button");
-    cy.button("Add column").click();
-    H.popover().findByText("Extract part of column").should("not.exist");
-    H.popover().findByText("Combine columns").click();
-    H.popover().findAllByTestId("column-input").eq(0).click();
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    H.popover().last().findByText("'abc'").should("be.visible");
   });
 });
 
@@ -1032,23 +757,6 @@ describe("issue 49882", () => {
       H.popover()
         .findByText("Expecting operator but got case instead")
         .should("be.visible", { timeout: 5000 });
-    },
-  );
-
-  // TODO: we no longer have wrapped lines (for now)
-  it(
-    "should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)",
-    { tags: "@skip" },
-    () => {
-      H.enterCustomColumnDetails({
-        formula:
-          'case([Tax] > 1, case([Total] > 200, [Total], "Nothing"), [Tax]){leftarrow}{leftarrow}{uparrow}x{downarrow}y',
-      });
-
-      H.CustomExpressionEditor.value().should(
-        "equal",
-        'case([Tax] > 1, xcase([Total] > 200, [Total], "Nothing"), [Tax]y)',
-      );
     },
   );
 

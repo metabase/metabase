@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useCallback } from "react";
 import { jt, t } from "ttag";
 
@@ -12,6 +11,7 @@ import { ExplorePlansIllustration } from "metabase/admin/settings/components/Set
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
+import { dayjs } from "metabase/dayjs";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";

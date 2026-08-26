@@ -844,6 +844,8 @@
                          :body {:method "saml"}
                          :headers {"Content-Type" "application/json"}}
                         result))
+          (is (= (str (system/site-url) "/auth/sso")
+                 (get-in result [:body :saml-popup-url])))
           (is (str/starts-with? (-> result :body :url) default-idp-uri)))))))
 
 (deftest saml-embedding-sdk-integration-includes-origin-tests
@@ -906,6 +908,21 @@
                (is (str/includes? (:body response) "https://app.example.com")))
              (testing "the relay-state entry is consumed (single use)"
                (is (nil? (relay-state/find-unexpired relay-key)))))))))))
+
+(deftest saml-embedding-unapproved-origin-rejected-test
+  (testing "an embedding login rejects an unapproved popup origin"
+    (with-other-sso-types-disabled!
+      (with-saml-default-setup!
+        (do-with-some-validators-disabled!
+         (fn []
+           (let [relay-key   (embedding-relay-state-key! "https://evil.example")
+                 req-options (saml-post-request-options* (saml-test-response) relay-key)
+                 response    (client/client-real-response :post 400 "/auth/sso" req-options)]
+             (testing "the login is refused with 400"
+               (is (= 400 (:status response))))
+             (testing "the rejected response does not render the popup"
+               (is (not (str/includes? (str (:body response)) "SAML_AUTH_COMPLETE")))
+               (is (not (str/includes? (str (:body response)) "authData")))))))))))
 
 (deftest saml-stored-key-survives-failed-login-test
   (testing "a stored RelayState key is consumed only on success — a failed login keeps it so the user can retry"

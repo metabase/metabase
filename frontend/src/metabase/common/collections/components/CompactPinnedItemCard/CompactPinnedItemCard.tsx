@@ -153,7 +153,6 @@ export function CompactPinnedItemCard({
             className={S.selectCheckbox}
             data-testid="pinned-item-checkbox"
             readOnly
-            size="sm"
             style={{ pointerEvents: "none" }}
             tabIndex={-1}
           />

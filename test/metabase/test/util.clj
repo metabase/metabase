@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
+   [diehard.core :as dh]
    [environ.core :as env]
    [iapetos.operations :as ops]
    [iapetos.registry :as registry]
@@ -15,6 +16,8 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.transient-error :as transient-error]
    [metabase.audit-app.core :as audit]
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
@@ -422,7 +425,6 @@
             :last_name (u.random/random-name)
             :email (u.random/random-email)
             :entity_id (u/generate-nano-id)
-            :password (u.random/random-name)
             :date_joined (t/zoned-date-time)
             :updated_at (t/zoned-date-time)})})
 
@@ -902,6 +904,15 @@
     model
     [model (first (t2/primary-keys model))]))
 
+(defn- reindex-search-index! []
+  ;; Wiping and repopulating the whole index table can deadlock against a concurrent writer — search ingestion from
+  ;; another test's writes, or another test's cleanup doing this same thing. The loser of a deadlock has lost nothing
+  ;; that matters here, so run it again.
+  (dh/with-retry {:max-retries 2
+                  :retry-if    (fn [_result e]
+                                 (transient-error/transient-error? (mdb/db-type) e))}
+    (search/reindex! {:in-place? true :async? false})))
+
 ;; It is safe to call `search/reindex!` when we are in a `with-temp-index-table` scope.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-model-cleanup [models f]
@@ -934,7 +945,7 @@
            {:delete-from (t2/table-name model)
             :where where-clause}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (search/reindex! {:in-place? true :async? false})))))
+        (reindex-search-index!)))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`.
@@ -983,6 +994,26 @@
           (is (not (t2/exists? :model/Card :name card-name)))
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count :model/Card)))))))))
+
+(deftest reindex-search-index!-test
+  (testing "a transient appdb failure is retried"
+    (let [attempts (atom 0)]
+      ;; Diehard also consults `:retry-if` on success, with a nil exception — a `(constantly true)` stub would retry
+      ;; the successful attempt too. The real predicate returns false for nil.
+      (with-redefs [transient-error/transient-error? (fn [_db-type e] (some? e))
+                    search/reindex!                  (fn [& _]
+                                                       (when (= 1 (swap! attempts inc))
+                                                         (throw (java.sql.SQLException. "Deadlock detected"))))]
+        (#'reindex-search-index!)
+        (is (= 2 @attempts)))))
+  (testing "any other failure is not"
+    (let [attempts (atom 0)]
+      (with-redefs [transient-error/transient-error? (constantly false)
+                    search/reindex!                  (fn [& _]
+                                                       (swap! attempts inc)
+                                                       (throw (java.sql.SQLException. "Syntax error")))]
+        (is (thrown? java.sql.SQLException (#'reindex-search-index!)))
+        (is (= 1 @attempts))))))
 
 (defn do-with-verified!
   "Impl for [[with-verified!]]."

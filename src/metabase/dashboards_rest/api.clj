@@ -50,10 +50,8 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
    [ring.util.codec :as codec]
@@ -668,12 +666,14 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {dashboard-load-id :dashboard_load_id}]
+   {dashboard-load-id :dashboard_load_id} :- [:map
+                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
   (with-dashboard-load-id dashboard-load-id
     (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
           dashboard (get-dashboard resolved-id)]
@@ -693,25 +693,15 @@
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [parameters paper_size]} :- [:map
-                                       [:parameters {:optional true} [:maybe [:or
-                                                                              [:sequential ::parameters.schema/parameter-with-value]
-                                                                              ;; JSON-string form for <form>-driven
-                                                                              ;; downloads, mirroring the dashcard
-                                                                              ;; export-format endpoint
-                                                                              ms/JSONString]]]
+                                       [:parameters {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                                        [:paper_size {:default "a4"} [:maybe [:enum "a4" "letter"]]]]
    _request
    respond
    raise]
   (try
     (let [dashboard (api/read-check :model/Dashboard id)
-          params    (cond-> parameters
-                      (string? parameters) json/decode+kw)
-          ;; the array form is validated by the endpoint schema, but a JSON string only proves it's *valid JSON* --
-          ;; once decoded it must still be a well-formed parameter list, or it's a 400 (not a 500)
-          _         (api/check-400 (mr/validate [:maybe [:sequential ::parameters.schema/parameter-with-value]] params))
           pdf-bytes (channel.render/render-dashboard-to-pdf id api/*current-user-id*
-                                                            (or params [])
+                                                            (or parameters [])
                                                             (keyword (or paper_size "a4")))
           filename  (str (or (not-empty (u/slugify (:name dashboard)))
                              (str "dashboard-" id))
@@ -1212,12 +1202,14 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {dashboard-load-id :dashboard_load_id}]
+   {dashboard-load-id :dashboard_load_id} :- [:map
+                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
   (with-dashboard-load-id dashboard-load-id
     (perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
@@ -1532,11 +1524,7 @@
     format-rows?   :format_rows
     pivot-results? :pivot_results}
    :- [:map
-       [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ::parameters.schema/parameter-with-value]
-                                                 ;; support <form> encoded params for backwards compatibility... see
-                                                 ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-                                                 ms/JSONString]]]
+       [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
@@ -1544,8 +1532,7 @@
              :card          (api/check-404 (t2/select-one :model/Card card-id))
              :dashcard      (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
              :export-format export-format
-             :parameters    (cond-> parameters
-                              (string? parameters) json/decode+kw)
+             :parameters    parameters
              :context       (api.dataset/export-format->context export-format)
              :constraints   nil
              ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to

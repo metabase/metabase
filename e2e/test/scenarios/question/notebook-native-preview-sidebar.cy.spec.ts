@@ -246,7 +246,6 @@ describe(
   { tags: "@mongo" },
   () => {
     const MONGO_DB_NAME = "QA Mongo";
-    const MONGO_DB_ID = 2;
 
     beforeEach(() => {
       H.restore("mongo-5");
@@ -262,15 +261,17 @@ describe(
 
       cy.log("Simple question");
       openSidebar("native");
+      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.NativeEditor.get()
           .should("be.visible")
           .and("contain", "$project")
-          .and("contain", "$limit");
+          .and("not.contain", "$limit");
 
         cy.button("Convert this question to a native query").click();
       });
+      cy.wait("@dataset");
 
       cy.log("Database and table should be pre-selected (metabase#15946)");
       cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
@@ -284,23 +285,27 @@ describe(
       H.saveQuestion("foo", undefined, {
         path: ["Our analytics"],
       });
+      cy.intercept("POST", "/api/dataset").as("exploreDataset");
       cy.findByTestId("qb-header").findByText("Explore results").click();
+      cy.wait("@exploreDataset");
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
 
       cy.log("The generated query should be valid (metabase#38181)");
       H.openNotebook();
       openSidebar("native");
+      cy.intercept("POST", "/api/dataset").as("dataset2");
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.NativeEditor.get()
           .should("be.visible")
           .and("contain", "$project")
-          .and("contain", "$limit")
+          .and("not.contain", "$limit")
           .and("not.contain", "BsonString")
           .and("not.contain", "BsonInt32");
 
         cy.button("Convert this question to a native query").click();
       });
+      cy.wait("@dataset2");
 
       cy.log(
         "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
@@ -309,64 +314,6 @@ describe(
       cy.findByTestId("selected-table").should("have.text", "Products");
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
     });
-
-    it(
-      "should work for a nested GUI question (metabase#40557)",
-      { tags: "@skip" },
-      () => {
-        H.withDatabase(
-          MONGO_DB_ID,
-          ({ PRODUCTS_ID }: { PRODUCTS_ID: number }) => {
-            H.createQuestion({
-              name: "Mongo Source",
-              query: {
-                "source-table": PRODUCTS_ID,
-                limit: 1,
-              },
-              database: MONGO_DB_ID,
-            }).then(({ body: { id: sourceId } }) => {
-              H.createQuestion(
-                {
-                  name: "Mongo Nested",
-                  query: {
-                    "source-table": `card__${sourceId}`,
-                  },
-                  database: MONGO_DB_ID,
-                },
-                { visitQuestion: true },
-              );
-            });
-          },
-        );
-
-        cy.get("[data-testid=cell-data]").should(
-          "contain",
-          "Small Marble Shoes",
-        );
-        H.openNotebook();
-        openSidebar("native");
-
-        cy.findByTestId("native-query-preview-sidebar").within(() => {
-          cy.findByText("Native query for this question").should("exist");
-          H.NativeEditor.get()
-            .should("be.visible")
-            .and("contain", "$project")
-            .and("contain", "$limit")
-            .and("not.contain", "BsonString")
-            .and("not.contain", "BsonInt32");
-
-          cy.button("Convert this question to a native query").click();
-        });
-
-        cy.log("Database and table should be pre-selected (metabase#40557)");
-        cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
-        cy.findByTestId("selected-table").should("have.text", "Products");
-        cy.get("[data-testid=cell-data]").should(
-          "contain",
-          "Small Marble Shoes",
-        );
-      },
-    );
   },
 );
 

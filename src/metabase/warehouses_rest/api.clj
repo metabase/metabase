@@ -892,13 +892,15 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
-   {:keys [include_editable_data_model]}]
-  (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
+   {:keys [include_editable_data_model]} :- [:map
+                                             [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+  (let [[db-perm-check field-perm-check] (if include_editable_data_model
                                            [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
     (db-perm-check (warehouses/get-database id {:include-editable-data-model? true}))
@@ -921,7 +923,7 @@
    :- [:map
        [:name              ms/NonBlankString]
        [:engine            DBEngineString]
-       [:details           ms/KeywordizedMap]
+       [:details           ms/Map]
        [:is_full_sync      {:default true}   [:maybe ms/BooleanValue]]
        [:is_on_demand      {:default false}  [:maybe ms/BooleanValue]]
        [:schedules         {:optional true}  [:maybe sync.schedules/ExpandedSchedulesMap]]
@@ -986,7 +988,7 @@
    {{:keys [engine details]} :details} :- [:map
                                            [:details [:map
                                                       [:engine  DBEngineString]
-                                                      [:details ms/KeywordizedMap]]]]]
+                                                      [:details ms/Map]]]]]
   (api/check-superuser)
   (let [details-or-error (warehouses/test-connection-details engine details)]
     ;; details that come back without a `:valid` key at all are... valid!
@@ -1082,8 +1084,8 @@
        [:name               {:optional true} [:maybe ms/NonBlankString]]
        [:engine             {:optional true} [:maybe DBEngineString]]
        [:refingerprint      {:optional true} [:maybe :boolean]]
-       [:details            {:optional true} [:maybe ms/KeywordizedMap]]
-       [:write_data_details {:optional true} [:maybe ms/KeywordizedMap]]
+       [:details            {:optional true} [:maybe ms/Map]]
+       [:write_data_details {:optional true} [:maybe ms/Map]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
        [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
@@ -1093,7 +1095,7 @@
        [:auto_run_queries   {:optional true} [:maybe :boolean]]
        [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
        [:provider_name      {:optional true} [:maybe :string]]
-       [:settings           {:optional true} [:maybe ms/KeywordizedMap]]
+       [:settings           {:optional true} [:maybe ms/Map]]
        [:is_stub            {:optional true} [:maybe :boolean]]]]
   (when (true? (:is_stub body))
     (throw (ex-info (tru "is_stub may not be set via the API")
@@ -1607,7 +1609,8 @@
 (api.macros/defendpoint :get ["/:virtual-db/schema/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
-  [{:keys [schema]}]
+  [{:keys [schema]} :- [:map
+                        [:schema :string]]]
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :question
@@ -1643,7 +1646,8 @@
 (api.macros/defendpoint :get ["/:virtual-db/datasets/:schema"
                               :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
-  [{:keys [schema]}]
+  [{:keys [schema]} :- [:map
+                        [:schema :string]]]
   (when (lib-be/enable-nested-queries)
     (->> (source-query-cards
           :model

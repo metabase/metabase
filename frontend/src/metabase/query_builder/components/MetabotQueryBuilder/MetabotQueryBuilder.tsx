@@ -1,10 +1,5 @@
-import { useMount } from "react-use";
-
 import { MetabotAsk } from "metabase/metabot/components/MetabotAsk";
-import {
-  useMetabotAgent,
-  useUserMetabotPermissions,
-} from "metabase/metabot/hooks";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useSelector } from "metabase/redux";
 import { getSettingsLoading } from "metabase/settings";
@@ -15,9 +10,6 @@ import { getSettingsLoading } from "metabase/settings";
 export const MetabotQueryBuilder = () => {
   const { hasNlqAccess, isLoading } = useUserMetabotPermissions();
   const areSettingsLoading = useSelector(getSettingsLoading);
-  const { createNewConversation } = useMetabotAgent("ask");
-
-  useMount(createNewConversation);
 
   // Wait until settings and metabot permissions are both resolved before
   // deciding which view to render. Otherwise QueryBuilder may mount briefly

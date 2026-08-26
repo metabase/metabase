@@ -30,6 +30,9 @@ title: Driver interface changelog
   form for the pivot-grouping bitmask. The default emits `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake
   multi-arg extension); drivers whose SQL dialect uses a different function or shape override this method.
 
+- `:native-pivot-tables` is now enabled for `:hive-like` drivers.
+  Hive-family dialects synthesise the pivot-grouping bitmask from single-arg `GROUPING(x)` calls.
+
 - Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
   distribution keys, clustering, etc.). New driver feature flags:
 
@@ -58,11 +61,14 @@ title: Driver interface changelog
   - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
     the DDL statement(s) that create it.
 
-- `metabase.driver-api.core/aggregation-name` is now deprecated, as it operates on legacy MBQL; use
-  `metabase.driver-api.core/mbql-5-aggregation-name` going forward.
+  - `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
+    tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.
 
-- The method signature for `metabase.driver/substitute-native-parameters-in-stage-method`, introduced in 63, has
-  changed; please update your implementations accordingly.
+  - `metabase.driver-api.core/aggregation-name` is now deprecated, as it operates on legacy MBQL; use
+    `metabase.driver-api.core/mbql-5-aggregation-name` going forward.
+
+  - The method signature for `metabase.driver/substitute-native-parameters-in-stage-method`, introduced in 63, has
+    changed; please update your implementations accordingly.
 
 ## Metabase 0.63.0
 
