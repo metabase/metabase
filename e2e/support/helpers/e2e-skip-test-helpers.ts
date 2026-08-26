@@ -1,11 +1,9 @@
-// Local replacement for the boolean-flag API of the deprecated
-// `@cypress/skip-test` package. The matching `cy.skipOn` / `cy.onlyOn`
-// commands are registered in e2e/support/commands/skip-test.ts.
+// Local replacement for the boolean-flag API of the deprecated `@cypress/skip-test` package.
+// The matching `cy.skipOn` / `cy.onlyOn` commands are registered in e2e/support/commands/skip-test.ts.
 
 const skipCurrentTest = () => {
   // cy.state is an internal API missing from the public Cypress types.
-  // ctx.skip() is deliberately unguarded: if the mocha context were ever
-  // absent, a loud TypeError beats silently running a test meant to be skipped.
+  // ctx.skip() is deliberately unguarded: a loud TypeError beats silently running a test meant to be skipped.
   const cyWithState = cy as unknown as {
     state: (key: "runnable") => { ctx: { skip: () => void } };
   };
@@ -13,8 +11,8 @@ const skipCurrentTest = () => {
 };
 
 /**
- * With a callback, runs the callback (registering its tests) only when the
- * flag is false. Without one, skips the current test when the flag is true.
+ * With a callback, runs the callback (registering its tests) only when the flag is false.
+ * Without one, skips the current test when the flag is true.
  */
 export const skipOn = (flag: boolean, callback?: () => void): void => {
   if (typeof flag !== "boolean") {
@@ -35,8 +33,8 @@ export const skipOn = (flag: boolean, callback?: () => void): void => {
 };
 
 /**
- * With a callback, runs the callback (registering its tests) only when the
- * flag is true. Without one, skips the current test unless the flag is true.
+ * With a callback, runs the callback (registering its tests) only when the flag is true.
+ * Without one, skips the current test unless the flag is true.
  */
 export const onlyOn = (flag: boolean, callback?: () => void): void => {
   if (typeof flag !== "boolean") {

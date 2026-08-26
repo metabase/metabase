@@ -37,7 +37,7 @@ First check if snapshots exist:
 ls e2e/snapshots/default.sql 2>/dev/null && echo "snapshots exist" || echo "snapshots missing"
 ```
 
-Always pass the spec path via `--spec`. The runner feeds its arguments to Cypress's CLI parser (`cypress.cli.parseRunArguments`), which silently drops bare positional paths and then runs the entire suite (~426 specs). A leading `run` argument is harmless, but the path itself must follow `--spec`. Sanity-check that the first `Running:` line says `(1 of 1)`.
+Always pass the spec path via `--spec`. The runner feeds its arguments to Cypress's CLI parser (`cypress.cli.parseRunArguments`), which silently drops bare positional paths and then runs the entire suite. A leading `run` argument is harmless, but the path itself must follow `--spec`. Sanity-check that the first `Running:` line says `(1 of 1)`.
 
 If snapshots exist, skip regeneration for speed:
 ```bash
