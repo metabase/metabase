@@ -3,12 +3,10 @@
 const path = require("path");
 
 const {
+  SCRIPT_FILE_PATTERN,
   SIDE_EFFECT_FREE_PATHS,
   SIDE_EFFECT_PATHS,
 } = require("../rspack/side-effect-free-modules");
-
-// Same scope as SIDE_EFFECT_FREE_RULE's `test`: only script files are marked, so CSS imports stay effectful.
-const SCRIPT_FILE_TEST = /\.[jt]sx?$/;
 
 const RESOLVED_BY_THIS_PLUGIN = "side-effect-free-modules";
 
@@ -16,7 +14,7 @@ const isUnderSideEffectFreePath = (candidate) =>
   SIDE_EFFECT_FREE_PATHS.some((dir) => (candidate + path.sep).startsWith(dir));
 
 const isSideEffectFreeFile = (file) =>
-  SCRIPT_FILE_TEST.test(file) &&
+  SCRIPT_FILE_PATTERN.test(file) &&
   SIDE_EFFECT_FREE_PATHS.some((dir) => file.startsWith(dir)) &&
   !SIDE_EFFECT_PATHS.includes(file);
 
