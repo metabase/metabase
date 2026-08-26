@@ -161,9 +161,9 @@ export const LabelsAndDividers = {
   name: "Labels and dividers",
 };
 
-export const HoverStates = {
+export const HoverState = {
   render: DefaultTemplate,
-  name: "Hover states",
+  name: "Hover state",
   args: {
     opened: true,
   },

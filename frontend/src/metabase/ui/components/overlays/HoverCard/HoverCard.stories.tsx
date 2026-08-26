@@ -87,6 +87,6 @@ export const Opened = {
   render: DefaultTemplate,
   args: {
     children: sampleArgs.simple,
-    opened: true,
+    initiallyOpened: true,
   },
 };
