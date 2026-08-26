@@ -44,6 +44,7 @@ jobs:
 
             const ATTEMPT = Number(process.env.ATTEMPT);
             const COMMIT = process.env.COMMIT;
+            const SHORT_COMMIT = COMMIT.slice(0, 7);
             const RUN_NAME = process.env.RUN_NAME;
             const RUN_URL = process.env.RUN_URL;
             const TRIGGERING_ACTOR_LOGIN = process.env.TRIGGERING_ACTOR_LOGIN;
@@ -65,13 +66,13 @@ jobs:
             // Clean up PR title to avoid breaking the link to the PR in Slack
             const pullRequest = pullRequests.find(pullRequest => pullRequest.state === 'open') ?? pullRequests[0];
             const pullRequestLink = pullRequest
-              ? ` on <${pullRequest.html_url}|#${pullRequest.number} ${pullRequest.title.replace(/[<>|]/g, '')}>`
+              ? ` in <${pullRequest.html_url}|#${pullRequest.number} ${pullRequest.title.replace(/[<>|]/g, '')}>`
               : '';
 
-            const messageText = `Workflow Retry Limit Exceeded for ${COMMIT}`;
+            const messageText = `Workflow Retry Limit Exceeded for ${SHORT_COMMIT}`;
             const existingMessage = await findSlackMessage({
               channelName: CHANNEL_NAME,
-              text: COMMIT,
+              text: SHORT_COMMIT,
               limit: 200,
             });
 
@@ -105,7 +106,7 @@ jobs:
                     "type": "section",
                     "text": {
                       "type": "mrkdwn",
-                      "text": `<${RUN_URL}|${RUN_NAME}> has been re-run ${ATTEMPT - 1} times by ${mentionUserByGithubLogin(TRIGGERING_ACTOR_LOGIN)} for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit in ${pullRequestLink}.`
+                      "text": `<${RUN_URL}|${RUN_NAME}> has been re-run ${ATTEMPT - 1} times by ${mentionUserByGithubLogin(TRIGGERING_ACTOR_LOGIN)} for <https://github.com/metabase/metabase/commit/${COMMIT}|${SHORT_COMMIT}> commit${pullRequestLink}.`
                     },
                   },
                   {
