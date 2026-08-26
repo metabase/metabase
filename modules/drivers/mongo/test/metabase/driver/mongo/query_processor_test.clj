@@ -871,3 +871,41 @@
             ;; match the entire `BsonXxx` wrapper-class family, not just a hand-picked subset.
             (is (not (re-find #"Bson[A-Z]\w*"
                               (pr-str (:query compiled)))))))))))
+
+(deftest ^:parallel multi-column-aggregation-on-join-models-test
+  (mt/test-driver :mongo
+    (testing "Aggregating with multiple columns after joining two models works correctly (#70459)"
+      (let [mp (mt/metadata-provider)
+            venues-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+            categories-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
+        (mt/with-temp [:model/Card venues-model {:type          :model
+                                                 :dataset_query venues-query}
+                       :model/Card categories-model {:type          :model
+                                                     :dataset_query categories-query}]
+          (let [venues-card (lib.metadata/card mp (:id venues-model))
+                categories-card (lib.metadata/card mp (:id categories-model))
+                venues-category (->> (lib/query mp venues-card)
+                                     (lib/returned-columns)
+                                     (m/find-first (comp #{"category_id"} :name)))
+                category-id (->> (lib/query mp categories-card)
+                                 (lib/returned-columns)
+                                 (m/find-first (comp #{"_id"} :name)))
+                query (as-> (lib/query mp venues-card) q
+                        (lib/join q (lib/join-clause categories-card [(lib/= (lib/ref venues-category)
+                                                                             (lib/ref category-id))]))
+                        (lib/breakout q (m/find-first #(and (= (:name %) "name")
+                                                            (= (:lib/source %) :source/joins))
+                                                      (lib/breakoutable-columns q)))
+                        (lib/breakout q (m/find-first #(and (= (:name %) "price")
+                                                            (= (:lib/source %) :source/card))
+                                                      (lib/breakoutable-columns q)))
+                        (lib/aggregate q (lib/count))
+                        (lib/order-by q (m/find-first #(and (= (:name %) "name")
+                                                            (= (:lib/source %) :source/joins))
+                                                      (lib/orderable-columns q))
+                                      :asc)
+                        (lib/limit q 3))]
+            (is (= [["American" 2 4]
+                    ["American" 3 4]
+                    ["Artisan" 2 2]]
+                   (mt/rows (qp/process-query query))))))))))
