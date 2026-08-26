@@ -45,11 +45,9 @@ type DashCardTimelineEventsProps = Pick<
   | "onDeselectTimelineEvents"
 >;
 
-const NO_TIMELINE_EVENTS_PROPS: DashCardTimelineEventsProps = {};
-
 export const useDashCardTimelineEvents = (
   dashcard: DashboardCard,
-): { isEnabled: boolean; props: DashCardTimelineEventsProps } => {
+): { isEnabled: boolean } & DashCardTimelineEventsProps => {
   const dispatch = useDispatch();
   const { withTimelineEvents } = useDashboardContext();
   const dashcardId: DashCardId = dashcard.id;
@@ -87,14 +85,10 @@ export const useDashCardTimelineEvents = (
 
   return {
     isEnabled,
-    props: isEnabled
-      ? {
-          timelineEvents,
-          selectedTimelineEventIds,
-          onOpenTimelines,
-          onSelectTimelineEvents,
-          onDeselectTimelineEvents,
-        }
-      : NO_TIMELINE_EVENTS_PROPS,
+    timelineEvents,
+    selectedTimelineEventIds,
+    onOpenTimelines: isEnabled ? onOpenTimelines : undefined,
+    onSelectTimelineEvents: isEnabled ? onSelectTimelineEvents : undefined,
+    onDeselectTimelineEvents: isEnabled ? onDeselectTimelineEvents : undefined,
   };
 };

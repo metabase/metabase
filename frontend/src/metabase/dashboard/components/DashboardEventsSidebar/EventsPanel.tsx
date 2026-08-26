@@ -37,10 +37,14 @@ export function EventsPanel({
 }: EventsPanelProps) {
   const { closeSidebar } = useDashboardContext();
   const collectionId = useSelector(getDashboardCollectionId);
-  const handlers = useTimelineEventsHandlers({
-    dashcardIds,
-    selectionDashcardId,
-  });
+  const {
+    onShowTimelineEvents,
+    onHideTimelineEvents,
+    onShowTimeline,
+    onHideTimeline,
+    onSelectEvents,
+    onDeselectEvents,
+  } = useTimelineEventsHandlers({ dashcardIds, selectionDashcardId });
   const [modal, setModal] = useState<TimelineEventModalState | null>(null);
 
   return (
@@ -57,7 +61,12 @@ export function EventsPanel({
         onNewEvent={() => setModal({ type: "new" })}
         onEditEvent={(event) => setModal({ type: "edit", eventId: event.id })}
         onMoveEvent={(event) => setModal({ type: "move", eventId: event.id })}
-        {...handlers}
+        onShowTimelineEvents={onShowTimelineEvents}
+        onHideTimelineEvents={onHideTimelineEvents}
+        onShowTimeline={onShowTimeline}
+        onHideTimeline={onHideTimeline}
+        onSelectEvents={onSelectEvents}
+        onDeselectEvents={onDeselectEvents}
       />
       <TimelineEventModals
         modal={modal}

@@ -27,7 +27,19 @@ export function TimelineSidebarContent({
   onSelectEvents,
   onDeselectEvents,
   onClose,
-  ...panelProps
+  timelines,
+  collectionId,
+  visibleEventIds,
+  partiallyVisibleEventIds,
+  selectedEventIds,
+  onNewEvent,
+  onEditEvent,
+  onMoveEvent,
+  onArchiveEvent,
+  onShowTimelineEvents,
+  onHideTimelineEvents,
+  onShowTimeline,
+  onHideTimeline,
 }: TimelineSidebarContentProps) {
   const handleToggleEventSelected = useCallback(
     (event: TimelineEvent, isSelected: boolean) => {
@@ -56,7 +68,19 @@ export function TimelineSidebarContent({
         </Box>
       )}
       <TimelinePanel
-        {...panelProps}
+        timelines={timelines}
+        collectionId={collectionId}
+        visibleEventIds={visibleEventIds}
+        partiallyVisibleEventIds={partiallyVisibleEventIds}
+        selectedEventIds={selectedEventIds}
+        onNewEvent={onNewEvent}
+        onEditEvent={onEditEvent}
+        onMoveEvent={onMoveEvent}
+        onArchiveEvent={onArchiveEvent}
+        onShowTimelineEvents={onShowTimelineEvents}
+        onHideTimelineEvents={onHideTimelineEvents}
+        onShowTimeline={onShowTimeline}
+        onHideTimeline={onHideTimeline}
         onToggleEventSelected={handleToggleEventSelected}
       />
     </SidebarContent>

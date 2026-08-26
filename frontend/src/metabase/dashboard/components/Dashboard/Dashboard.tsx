@@ -116,7 +116,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
         miw={0}
         mih={0}
         className={cx(S.DashboardBody, {
-          [S.isEditingOrSharing]: isEditing || hasDockedSidebar,
+          [S.isHeightConstrained]: isEditing || hasDockedSidebar,
           [S.isEmbeddingSdk]: isEmbeddingSdk(),
         })}
       >
