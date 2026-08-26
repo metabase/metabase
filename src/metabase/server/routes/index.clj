@@ -73,11 +73,9 @@
   "`[pattern markup signed-out?]` rows, in the order the patterns are to be tried."
   (memoize/memo
    (fn []
-     (when-let [resource (io/resource route-preloads-resource)]
-       (->> (slurp resource)
-            json/decode
-            (mapv (fn [[pattern markup signed-out?]]
-                    [(clout/route-compile pattern) markup signed-out?])))))))
+     (some->> (io/resource route-preloads-resource) slurp json/decode
+              (mapv (fn [[pattern markup signed-out?]]
+                      [(clout/route-compile pattern) markup signed-out?]))))))
 
 (defn- strip-base-path
   "The request URI carries the path Metabase is mounted under; the manifest does not."
