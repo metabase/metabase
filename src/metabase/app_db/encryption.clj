@@ -132,7 +132,11 @@
           (reencrypt-encrypted-column! conn table column encrypt-str-fn
                                        (and (= check-status :valid)
                                             (contains? clearable-when-undecryptable [table column])))))
-      (doseq [[key value] (t2/select-fn->fn :key :value :model/Setting)]
+      ;; Read the settings raw (via `:setting`, not `:model/Setting`) to bypass the model's strict decrypt-on-read:
+      ;; a setting that is plaintext at rest while a key is configured (e.g. one newly designated encrypted but not yet
+      ;; re-encrypted) is exactly what this operation exists to fix, so we decrypt it leniently here rather than reject
+      ;; it. A value that looks encrypted but can't be decrypted with the current key still aborts.
+      (doseq [[key value] (t2/select-fn->fn :key :value :setting)]
         (case key
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)
                                                                                        (h2x/current-datetime-honeysql-form db-type))]
@@ -140,7 +144,7 @@
           "encryption-check" (t2/update! :conn conn :setting {:key key} {:value (if encrypting? (encrypt-str-fn (str (random-uuid))) "unencrypted")})
           (t2/update! :conn conn :setting
                       {:key key}
-                      {:value (encrypt-str-fn value)})))
+                      {:value (encrypt-str-fn (encryption/maybe-decrypt-accepting-plaintext value))})))
       (doseq [[table column] encrypted-bytes-columns]
         (reencrypt-encrypted-bytes-column! conn table column encrypt-bytes-fn))
       (t2/delete! :conn conn :model/QueryCache))))

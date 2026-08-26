@@ -1787,7 +1787,9 @@
 
 (t2/define-after-select :model/Setting
   [setting]
-  ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
-  (if (= "encryption-check" (:key setting))
+  ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve or `:value` to decrypt, and don't do
+  ;; any automatic handling of the "encryption-check" special setting used by mdb.encryption.
+  (if (or (nil? (:key setting))
+          (= "encryption-check" (:key setting)))
     setting
     (decrypt-setting-value-on-read setting)))
