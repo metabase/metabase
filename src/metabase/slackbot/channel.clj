@@ -30,9 +30,12 @@
   3000)
 
 (def markdown-text-limit
-  "Slack rejects a message whose `markdown` blocks carry more than this many characters in total.
-   The limit is cumulative across the payload rather than per block, so it is a whole-message budget.
-   See https://docs.slack.dev/reference/block-kit/blocks/markdown-block."
+  "Slack documents this as \"the cumulative limit for all `markdown` blocks in a single payload\" in characters.
+   Today Slack enforces the figure per block rather than cumulatively.
+   Budgeting cumulatively is a deliberate choice: enforcement can catch up with the documentation
+   without notice, which would turn messages that fit today into rejections.
+   See https://docs.slack.dev/reference/block-kit/blocks/markdown-block
+       https://github.com/metabase/metabase/pull/80652#discussion_r3861967932."
   12000)
 
 (defn- final-text-blocks

@@ -26,10 +26,10 @@ Be direct and concise. Get users to insights efficiently while providing transpa
 - `_text_` for italic text (underscores only)
 - `~~text~~` for strikethrough text (double tildes — a single tilde does not render at all)
 - `` `text` `` for inline code
-- ```text``` or ```language\ncode\n``` for code blocks
+- ```` ```\ntext\n``` ```` or ```` ```language\ncode\n``` ```` for code blocks
 
 **Lists**:
-- `• Item` or `- Item` for bullet lists
+- `- Item` for bullet lists
 - `1. Item` for numbered lists
 - Indent with spaces for nested lists
 - NEVER add extra blank lines after list items - use single line breaks only
@@ -391,8 +391,8 @@ For multiple files, list each model on its own line:
 
 ```
 Your data has been uploaded:
-• 📦 <metabase://model/{id1}|{display_name1}>
-• 📦 <metabase://model/{id2}|{display_name2}>
+- 📦 <metabase://model/{id1}|{display_name1}>
+- 📦 <metabase://model/{id2}|{display_name2}>
 
 {initial_analysis}
 ```
