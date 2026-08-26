@@ -27,11 +27,12 @@ import type { Collection, CollectionId } from "metabase-types/api";
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
 import { addDashboardQuestion } from "./actions";
+import { useCollectionsWithTenants } from "./hooks/use-collections-with-tenants";
 import {
   COLLECTIONS_TOP_LEVEL_ID,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
-  useCollectionsWithTenants,
-} from "./hooks/use-collections-with-tenants";
+  TENANT_SPECIFIC_COLLECTIONS_ROOT_ID,
+} from "./utils/tenant-collection-tree";
 
 interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
@@ -54,11 +55,22 @@ function QuestionPickerInner({
     SEARCH_DEBOUNCE_DURATION,
   );
 
-  const collectionsById = useCollectionsWithTenants(baseCollectionsById);
+  // getExpandedCollectionsById always creates a root collection,
+  // but we only want to show it if the user has access to it.
+  const canReadRootCollection = allCollectionsList.some(
+    ({ id }) => id === ROOT_COLLECTION.id,
+  );
+
+  const collectionsById = useCollectionsWithTenants(
+    baseCollectionsById,
+    canReadRootCollection,
+  );
 
   const isAtTopLevel = currentCollectionId === COLLECTIONS_TOP_LEVEL_ID;
   const isAtSharedTenantRoot =
     currentCollectionId === SHARED_TENANT_COLLECTIONS_ROOT_ID;
+  const isAtTenantSpecificRoot =
+    currentCollectionId === TENANT_SPECIFIC_COLLECTIONS_ROOT_ID;
   const collection = collectionsById[currentCollectionId];
   const crumbs = getCrumbs(collection, collectionsById, setCurrentCollectionId);
 
@@ -149,10 +161,11 @@ function QuestionPickerInner({
         </>
       )}
 
-      {/* Hide the question list at top-level "Collections"
-          and "Shared collections" root. These have fake IDs that don't map to
-          real collections, so querying questions against them would fail. */}
-      {((!isAtSharedTenantRoot && !isAtTopLevel) || debouncedSearchText) && (
+      {/* Hide the question list at top-level "Collections" and tenant roots.
+          These have fake IDs that don't map to real collections, so querying
+          questions against them would fail. */}
+      {((!isAtSharedTenantRoot && !isAtTenantSpecificRoot && !isAtTopLevel) ||
+        debouncedSearchText) && (
         <QuestionList
           hasCollections={collections.length > 0}
           searchText={debouncedSearchText}
