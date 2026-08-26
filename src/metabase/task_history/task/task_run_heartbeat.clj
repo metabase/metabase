@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.run-tracking.core :as rt]
+   [metabase.task-history.models.task-history-queries :as queries]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
@@ -54,11 +55,8 @@
   [orphaned-run-ids]
   (when (seq orphaned-run-ids)
     (tracing/with-span :tasks "task.heartbeat.mark-orphaned-tasks" {:heartbeat/orphaned-run-count (count orphaned-run-ids)}
-      (let [orphaned (t2/update! :model/TaskHistory
-                                 {:status :started
-                                  :run_id [:in orphaned-run-ids]}
-                                 {:status   :unknown
-                                  :ended_at (mi/now)})]
+      (let [orphaned (t2/query-one (queries/mark-orphaned-tasks-sqlvec
+                                    {:run-ids orphaned-run-ids}))]
         (when (pos? orphaned)
           (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
         orphaned))))

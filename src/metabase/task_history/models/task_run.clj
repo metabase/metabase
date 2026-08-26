@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.task-history.models.task-history-queries :as queries]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -108,7 +109,8 @@
    Must be called manually for async flows, or automatically via [[with-task-run]].
    Idempotent - only completes if status is still :started."
   [run-id :- ms/PositiveInt]
-  (let [task-statuses (t2/select-fn-set :status :model/TaskHistory :run_id run-id)
+  (let [task-statuses (into #{} (map :status)
+                            (t2/select :model/TaskHistory (queries/statuses-for-run-sqlvec {:run-id run-id})))
         status        (if (= #{:success} task-statuses)
                         :success
                         :failed)]

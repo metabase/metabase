@@ -7,6 +7,7 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.request.core :as request]
    [metabase.task-history.models.task-history :as task-history]
+   [metabase.task-history.models.task-history-queries :as queries]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
@@ -256,7 +257,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (perms/check-has-application-permission :monitoring)
   (let [run   (api/check-404 (t2/select-one :model/TaskRun :id id))
-        tasks (t2/select :model/TaskHistory :run_id id {:order-by [[:started_at :asc]]})]
+        tasks (t2/select :model/TaskHistory (queries/tasks-for-run-sqlvec {:run-id id}))]
     (-> [run]
         hydrate-entity-names
         hydrate-task-counts
