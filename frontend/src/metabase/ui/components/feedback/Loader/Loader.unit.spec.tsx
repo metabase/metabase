@@ -157,13 +157,19 @@ describe("Loader", () => {
       expect(getLoader()).toBeInTheDocument();
     });
 
-    it.each(["xs", "sm", "md", "lg", "xl"] as const)(
-      "sizes the label with the loader's %s token",
-      (size) => {
+    it.each([
+      ["xs", "sm"],
+      ["sm", "sm"],
+      ["md", "md"],
+      ["lg", "md"],
+      ["xl", "md"],
+    ] as const)(
+      "sizes the label of a %s loader with the %s token",
+      (size, expected) => {
         setup({ label: "Loading…", size });
 
         expect(getLabelFontSize("Loading…")).toBe(
-          `var(--mantine-font-size-${size})`,
+          `var(--mantine-font-size-${expected})`,
         );
       },
     );

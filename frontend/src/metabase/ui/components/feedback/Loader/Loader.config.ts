@@ -12,6 +12,15 @@ export const LOADER_SIZES = {
 
 export type LoaderNamedSize = keyof typeof LOADER_SIZES;
 
+/** Labels only use two text sizes, so they stay consistent across loader sizes. */
+export const LOADER_LABEL_SIZES = {
+  xs: "sm",
+  sm: "sm",
+  md: "md",
+  lg: "md",
+  xl: "md",
+} as const satisfies Record<LoaderNamedSize, "sm" | "md">;
+
 export function isLoaderNamedSize(size: unknown): size is LoaderNamedSize {
   return typeof size === "string" && size in LOADER_SIZES;
 }

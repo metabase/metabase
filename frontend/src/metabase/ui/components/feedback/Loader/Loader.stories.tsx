@@ -86,7 +86,7 @@ const OverviewTemplate = () => (
 
     <StorySection
       title="Label"
-      description="Renders the loader stacked above a caption. The caption follows the loader’s size token."
+      description="Renders the loader stacked above a caption. The caption uses “sm” text for the xs and sm loaders, and “md” text for the rest."
     >
       <Box style={grid2Columns}>
         {SIZES.map((size) => (
