@@ -315,6 +315,8 @@
     "execute_sql"
     "query"
     "read_resource"
+    "refresh_render_drill_through_ui_credential"
+    "refresh_visualize_query_ui_credential"
     "render_drill_through"
     "search"
     "update_dashboard"
@@ -344,7 +346,12 @@
     (let [[session-id _] (initialize-without-ui!)
           response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
           tool-names     (set (map :name (get-in response [:body :result :tools])))]
-      (is (= (disj all-tool-names "visualize_query" "render_drill_through") tool-names))
+      (is (= (apply disj all-tool-names
+                    ["visualize_query"
+                     "render_drill_through"
+                     "refresh_visualize_query_ui_credential"
+                     "refresh_render_drill_through_ui_credential"])
+             tool-names))
       (is (not (contains? tool-names "visualize_query")))
       (is (not (contains? tool-names "render_drill_through")))))
   (testing "clients that advertise MCP Apps UI support see UI-only tools"
@@ -703,8 +710,9 @@
 
 (deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
-    (is (= (apply disj (set (map :name (mcp.tools/list-tools nil)))
-                  ["visualize_query" "render_drill_through"])
+    (is (= (apply disj
+                  (set (map :name (mcp.tools/list-tools nil)))
+                  (map :name (mcp.resources/list-ui-tools)))
            smoke-tested-tools)
         "Add the missing tool to `smoke-tested-tools` and the call sequence below.")))
 
@@ -840,6 +848,43 @@
                                   "credential-1")))
           (is (not (str/includes? (pr-str (select-keys drill-result [:content :structuredContent]))
                                   "credential-2"))))))))
+
+(deftest mcp-ui-auth-refresh-tools-test
+  (testing "UI auth refresh tools are app-only and inherit their resource scopes"
+    (let [[session-id _] (initialize!)
+          tools          (get-in (mcp-request (jsonrpc-request "tools/list")
+                                              {"mcp-session-id" session-id})
+                                 [:body :result :tools])
+          tools-by-name  (into {} (map (juxt :name identity)) tools)]
+      (is (=? {:_meta {:ui {:resourceUri "ui://metabase/visualize-query-v2.html"
+                            :visibility  ["app"]}}}
+              (get tools-by-name "refresh_visualize_query_ui_credential")))
+      (is (=? {:_meta {:ui {:resourceUri "ui://metabase/render-drill-through-v2.html"
+                            :visibility  ["app"]}}}
+              (get tools-by-name "refresh_render_drill_through_ui_credential"))))
+    (let [query-tools (into #{} (map :name)
+                            (mcp.tools/list-tools #{"agent:viz:mcp-ui:query"}))
+          drill-tools (into #{} (map :name)
+                            (mcp.tools/list-tools #{"agent:viz:mcp-ui:drill-through"}))]
+      (is (contains? query-tools "refresh_visualize_query_ui_credential"))
+      (is (not (contains? query-tools "refresh_render_drill_through_ui_credential")))
+      (is (contains? drill-tools "refresh_render_drill_through_ui_credential"))
+      (is (not (contains? drill-tools "refresh_visualize_query_ui_credential")))))
+  (testing "a refresh call returns session-bound auth only in private metadata"
+    (let [[session-id _] (initialize!)
+          result         (get-in (mcp-request
+                                  (jsonrpc-request "tools/call"
+                                                   {:name      "refresh_visualize_query_ui_credential"
+                                                    :arguments {}})
+                                  {"mcp-session-id" session-id})
+                                 [:body :result])
+          credential     (get-in result [:_meta :com.metabase/mcp-ui :credential])]
+      (is (string? credential))
+      (is (= session-id (get-in result [:_meta :com.metabase/mcp-ui :sessionId])))
+      (is (= "refresh_visualize_query_ui_credential"
+             (get-in result [:_meta :com.metabase/mcp-ui :refreshTool])))
+      (is (not (str/includes? (pr-str (select-keys result [:content :structuredContent]))
+                              credential))))))
 
 (deftest tools-call-rejects-ui-tools-without-ui-capability-test
   (testing "direct calls to UI-only tools are rejected for clients without MCP Apps UI support"
@@ -1684,14 +1729,16 @@
                              {"mcp-session-id" session-id})]
       (is (= 200 (:status read1)))
       (is (= 200 (:status read2)))
-      ;; Each resource response contains an independently short-lived UI credential.
+      ;; The resource is safe to cache because it contains only stable configuration.
       (let [html1 (-> (get-in read1 [:body :result :contents]) first :text)
             html2 (-> (get-in read2 [:body :result :contents]) first :text)]
         (is (some? html1))
         (is (not (str/includes? html1 "uiCredential")))
         (is (not (str/includes? html2 "uiCredential")))
         (is (not (str/includes? html1 "mcpSessionId")))
-        (is (not (str/includes? html2 "mcpSessionId")))))))
+        (is (not (str/includes? html2 "mcpSessionId")))
+        (is (str/includes? html1 "refresh_visualize_query_ui_credential"))
+        (is (str/includes? html2 "refresh_visualize_query_ui_credential"))))))
 
 (deftest mcp-ui-credential-validation-test
   (testing "a UI tool result provides the scoped UI request surface, but not general API access"

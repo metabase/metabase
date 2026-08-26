@@ -8,7 +8,11 @@ import {
 } from "@modelcontextprotocol/ext-apps/react";
 import { useEffect, useState } from "react";
 
-import { getMcpUiAuth, installMcpUiCredential } from "../utils/mcpUiCredential";
+import {
+  type McpUiAuth,
+  getMcpUiAuth,
+  installMcpUiCredential,
+} from "../utils/mcpUiCredential";
 
 export interface McpAppState {
   query: string | null;
@@ -31,6 +35,9 @@ type VisualizeQueryToolResult = {
   prompt?: string;
 };
 
+const UI_CREDENTIAL_REFRESH_INTERVAL_MS = 4 * 60 * 1000;
+const UI_CREDENTIAL_REFRESH_RETRY_MS = 30 * 1000;
+
 function applyHostContext(ctx: McpUiHostContext) {
   if (ctx.theme) {
     applyDocumentTheme(ctx.theme);
@@ -45,11 +52,12 @@ function applyHostContext(ctx: McpUiHostContext) {
   }
 }
 
-export function useMcpApp(): McpAppState {
+export function useMcpApp(resourceRefreshTool = ""): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
   const [uiCredential, setUiCredential] = useState("");
   const [mcpSessionId, setMcpSessionId] = useState("");
+  const [bootstrapAuth, setBootstrapAuth] = useState<McpUiAuth | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
 
   const { app } = useApp({
@@ -70,16 +78,87 @@ export function useMcpApp(): McpAppState {
           {};
         const auth = getMcpUiAuth(params._meta);
 
-        if (query && auth) {
-          installMcpUiCredential(auth.credential);
-          setUiCredential(auth.credential);
-          setMcpSessionId(auth.sessionId);
+        if (query) {
+          setUiCredential("");
+          setMcpSessionId("");
+          setBootstrapAuth(auth);
           setQuery(query);
           setPrompt(prompt ?? null);
         }
       };
     },
   });
+
+  useEffect(() => {
+    const refreshTool = resourceRefreshTool || bootstrapAuth?.refreshTool;
+
+    if (!app || !query || !refreshTool) {
+      return;
+    }
+
+    let cancelled = false;
+    let hasRefreshed = false;
+    let refreshTimeout: number | undefined;
+
+    const applyAuth = (auth: McpUiAuth) => {
+      if (!cancelled) {
+        installMcpUiCredential(auth.credential);
+        setUiCredential(auth.credential);
+        setMcpSessionId(auth.sessionId);
+      }
+    };
+
+    if (!app.getHostCapabilities()?.serverTools) {
+      if (bootstrapAuth) {
+        applyAuth(bootstrapAuth);
+      }
+      return;
+    }
+
+    const refreshAuth = async () => {
+      try {
+        const result = await app.callServerTool({
+          name: refreshTool,
+          arguments: {},
+        });
+        const refreshedAuth = getMcpUiAuth(result._meta);
+
+        if (!refreshedAuth || result.isError) {
+          throw new Error("MCP UI credential refresh failed");
+        }
+
+        applyAuth(refreshedAuth);
+        hasRefreshed = true;
+
+        if (!cancelled) {
+          refreshTimeout = window.setTimeout(
+            refreshAuth,
+            UI_CREDENTIAL_REFRESH_INTERVAL_MS,
+          );
+        }
+      } catch (error) {
+        console.error("Error refreshing MCP UI credential", error);
+
+        if (!hasRefreshed && bootstrapAuth) {
+          applyAuth(bootstrapAuth);
+        }
+
+        if (!cancelled) {
+          refreshTimeout = window.setTimeout(
+            refreshAuth,
+            UI_CREDENTIAL_REFRESH_RETRY_MS,
+          );
+        }
+      }
+    };
+
+    void refreshAuth();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(refreshTimeout);
+    };
+  }, [app, bootstrapAuth, query, resourceRefreshTool]);
 
   // Read host context once connected and apply styles immediately
   useEffect(() => {

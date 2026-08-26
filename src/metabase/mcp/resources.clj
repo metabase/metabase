@@ -37,7 +37,8 @@
 (def ^:private test-fallback-template
   (str "<!doctype html><html><head><base href=\"{{{instanceUrlRaw}}}/\"></head><body><script>"
        "window.metabaseConfig = {"
-       "instanceUrl: {{{instanceUrl}}}"
+       "instanceUrl: {{{instanceUrl}}},"
+       "refreshTool: {{{refreshTool}}}"
        "};</script></body></html>"))
 
 ;; An atom rather than a dynamic var because `resources/read` is invoked from the
@@ -63,7 +64,7 @@
 
 (defn render-embed-mcp-template
   "Render the embed-mcp.html Mustache template with the given vars map.
-   Expected keys: :instanceUrl (JSON-encoded) and :instanceUrlRaw."
+   Expected keys: :instanceUrl and :refreshTool (JSON-encoded), and :instanceUrlRaw."
   [vars]
   (cond
     @fallback-template
@@ -196,15 +197,19 @@
                     [:inputSchema  :any]
                     [:outputSchema {:optional true} :any]
                     [:annotations  {:optional true} :map]
+                    [:visibility   {:optional true} [:sequential [:enum "model" "app"]]]
                     [:response-fn fn?]]]
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
+          ui-meta (cond-> {:resourceUri uri}
+                    (:visibility tool) (assoc :visibility (:visibility tool)))
           tool  (-> tool
+                    (dissoc :visibility)
                     (update :inputSchema  malli->ui-input-schema)
                     (cond-> (:outputSchema tool) (update :outputSchema malli->ui-output-schema))
                     (assoc :scope scope
                            :required-extensions #{:mcp-app-ui}
-                           :_meta {:ui {:resourceUri uri}}))]
+                           :_meta {:ui ui-meta}))]
       (swap! registry assoc-in [:tools (:name tool)] tool)
       tool)
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
@@ -287,13 +292,14 @@
    `tag` is a per-URI marker embedded in the rendered HTML so the bytes hash
    differently — ChatGPT's asset CDN appears to dedupe by body hash, and without
    distinct bodies the second URI's asset is silently dropped and the widget 404s."
-  [tag]
+  [tag refresh-tool]
   (fn [_opts]
     (let [site-url (system/site-url)]
       (str "<!-- metabase-mcp-asset: " tag " -->\n"
            (render-embed-mcp-template
             {:instanceUrl    (json/encode site-url)
-             :instanceUrlRaw site-url})))))
+             :instanceUrlRaw site-url
+             :refreshTool    (json/encode refresh-tool)})))))
 
 (register-ui-resource!
  :visualize-query
@@ -302,7 +308,8 @@
  {:name          "Visualize Query"
   :description   "Lightweight MCP Apps visualization for a query"
   :prefersBorder true
-  :render-fn     (visualize-query-render-fn "visualize-query")})
+  :render-fn     (visualize-query-render-fn "visualize-query"
+                                            "refresh_visualize_query_ui_credential")})
 
 (register-ui-resource!
  :render-drill-through
@@ -311,14 +318,16 @@
  {:name          "Render Drill Through"
   :description   "Lightweight MCP Apps visualization for a drill-through follow-up"
   :prefersBorder true
-  :render-fn     (visualize-query-render-fn "render-drill-through")})
+  :render-fn     (visualize-query-render-fn "render-drill-through"
+                                            "refresh_render_drill_through_ui_credential")})
 
 (defn- with-ui-credential
-  [result session-id]
+  [result session-id refresh-tool]
   (cond-> result
     (and session-id api/*current-user-id*)
     (assoc :_meta {:com.metabase/mcp-ui
                    {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id*)
+                    :refreshTool refresh-tool
                     :sessionId  session-id}})))
 
 (defn without-ui-credential
@@ -330,6 +339,32 @@
        (update item :_meta dissoc :com.metabase/mcp-ui)
        item))
    value))
+
+(defn- register-ui-credential-refresh-tool!
+  [resource-key tool-name]
+  (register-ui-tool!
+   resource-key
+   {:name        tool-name
+    :description "Refresh the scoped credential used by a Metabase MCP App."
+    :inputSchema [:map]
+    :annotations {:readOnlyHint    true
+                  :destructiveHint false
+                  :idempotentHint  true
+                  :openWorldHint   false}
+    :visibility  ["app"]
+    :response-fn (fn [_arguments {:keys [session-id]}]
+                   (with-ui-credential
+                     {:content [{:type "text" :text "MCP UI credential refreshed."}]}
+                     session-id
+                     tool-name))}))
+
+(register-ui-credential-refresh-tool!
+ :visualize-query
+ "refresh_visualize_query_ui_credential")
+
+(register-ui-credential-refresh-tool!
+ :render-drill-through
+ "refresh_render_drill_through_ui_credential")
 
 (register-ui-tool!
  :visualize-query
@@ -388,7 +423,8 @@
                         ;; include the user's original request when submitting visualization feedback.
                         :structuredContent (cond-> {:query encoded}
                                              prompt (assoc :prompt prompt))}
-                       session-id)
+                       session-id
+                       "refresh_visualize_query_ui_credential")
 
                      :else
                      {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
@@ -424,7 +460,8 @@
                      (with-ui-credential
                        {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
                         :structuredContent {:query encoded}}
-                       session-id)
+                       session-id
+                       "refresh_render_drill_through_ui_credential")
                      {:content [{:type "text" :text "No drill-through found for that handle."}]
                       :isError true})
                    {:content [{:type "text" :text "No drill-through found for that handle."}]
