@@ -4,7 +4,6 @@ const MCP_UI_CREDENTIAL_META_KEY = "com.metabase/mcp-apps";
 
 export interface McpUiAuth {
   credential: string;
-  refreshTool: string;
   sessionId: string;
 }
 
@@ -18,18 +17,13 @@ export function getMcpUiAuth(
   }
 
   const credential = "credential" in value ? value.credential : null;
-  const refreshTool = "refreshTool" in value ? value.refreshTool : null;
   const sessionId = "sessionId" in value ? value.sessionId : null;
 
-  if (
-    typeof credential !== "string" ||
-    typeof refreshTool !== "string" ||
-    typeof sessionId !== "string"
-  ) {
+  if (typeof credential !== "string" || typeof sessionId !== "string") {
     return null;
   }
 
-  return { credential, refreshTool, sessionId };
+  return { credential, sessionId };
 }
 
 export function installMcpUiCredential(credential: string) {

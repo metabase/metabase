@@ -322,12 +322,11 @@
                                             "refresh_render_drill_through_ui_credential")})
 
 (defn- with-ui-credential
-  [result session-id refresh-tool]
+  [result session-id]
   (cond-> result
     (and session-id api/*current-user-id*)
     (assoc :_meta {:com.metabase/mcp-apps
                    {:credential (mcp.session/issue-ui-credential session-id api/*current-user-id*)
-                    :refreshTool refresh-tool
                     :sessionId  session-id}})))
 
 (defn without-ui-credential
@@ -355,8 +354,7 @@
     :response-fn (fn [_arguments {:keys [session-id]}]
                    (with-ui-credential
                      {:content [{:type "text" :text "MCP UI credential refreshed."}]}
-                     session-id
-                     tool-name))}))
+                     session-id))}))
 
 (register-ui-credential-refresh-tool!
  :visualize-query
@@ -415,16 +413,13 @@
                       :isError true}
 
                      encoded
-                     (with-ui-credential
-                       {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
-                                                                     "Do not call execute_query after this; "
-                                                                     "the visualization is the final result.")}]
-                        ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
-                        ;; include the user's original request when submitting visualization feedback.
-                        :structuredContent (cond-> {:query encoded}
-                                             prompt (assoc :prompt prompt))}
-                       session-id
-                       "refresh_visualize_query_ui_credential")
+                     {:content           [{:type "text" :text (str "Visualizing query in the interactive UI. "
+                                                                   "Do not call execute_query after this; "
+                                                                   "the visualization is the final result.")}]
+                      ;; If visualize_query was called with a handle, use the stored prompt so the iframe can
+                      ;; include the user's original request when submitting visualization feedback.
+                      :structuredContent (cond-> {:query encoded}
+                                           prompt (assoc :prompt prompt))}
 
                      :else
                      {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
@@ -457,11 +452,8 @@
   :response-fn (fn [arguments {:keys [session-id]}]
                  (if-let [handle (:handle arguments)]
                    (if-let [encoded (mcp.session/read-handle session-id api/*current-user-id* handle)]
-                     (with-ui-credential
-                       {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
-                        :structuredContent {:query encoded}}
-                       session-id
-                       "refresh_render_drill_through_ui_credential")
+                     {:content           [{:type "text" :text "Rendering drill-through visualization..."}]
+                      :structuredContent {:query encoded}}
                      {:content [{:type "text" :text "No drill-through found for that handle."}]
                       :isError true})
                    {:content [{:type "text" :text "No drill-through found for that handle."}]

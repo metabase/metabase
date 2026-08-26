@@ -6,13 +6,11 @@ describe("getMcpUiAuth", () => {
       getMcpUiAuth({
         "com.metabase/mcp-apps": {
           credential: "fresh-credential",
-          refreshTool: "refresh_visualize_query_ui_credential",
           sessionId: "mcp-session-id",
         },
       }),
     ).toEqual({
       credential: "fresh-credential",
-      refreshTool: "refresh_visualize_query_ui_credential",
       sessionId: "mcp-session-id",
     });
   });
@@ -24,7 +22,6 @@ describe("getMcpUiAuth", () => {
       getMcpUiAuth({
         "com.metabase/mcp-apps": {
           credential: 123,
-          refreshTool: "refresh_visualize_query_ui_credential",
           sessionId: "mcp-session-id",
         },
       }),

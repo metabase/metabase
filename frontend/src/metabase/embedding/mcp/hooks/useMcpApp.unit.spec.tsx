@@ -17,7 +17,7 @@ describe("useMcpApp", () => {
     mockUseApp.mockReset();
   });
 
-  it("falls back to tool-result auth when the host cannot call server tools", async () => {
+  it("does not use credentials from the visualization tool result", () => {
     const app: Record<string, any> = {
       getHostContext: jest.fn(() => null),
       getHostCapabilities: jest.fn(() => ({})),
@@ -33,93 +33,33 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    const { result } = renderHook(() => useMcpApp());
-
-    act(() => {
-      app.ontoolresult({ structuredContent: { query: "ignored-query" } });
-    });
-
-    expect(result.current.query).toBe("ignored-query");
-    expect(result.current.uiCredential).toBe("");
-    expect(result.current.mcpSessionId).toBe("");
+    const { result } = renderHook(() =>
+      useMcpApp("refresh_visualize_query_ui_credential"),
+    );
 
     act(() => {
       app.ontoolresult({
         structuredContent: { query: "encoded-query" },
         _meta: {
           "com.metabase/mcp-apps": {
-            credential: "fresh-credential",
-            refreshTool: "refresh_visualize_query_ui_credential",
+            credential: "tool-result-credential",
             sessionId: "mcp-session-id",
           },
         },
       });
     });
 
-    await waitFor(() => {
-      expect(result.current.query).toBe("encoded-query");
-      expect(result.current.uiCredential).toBe("fresh-credential");
-      expect(result.current.mcpSessionId).toBe("mcp-session-id");
-    });
+    expect(result.current.query).toBe("encoded-query");
+    expect(result.current.uiCredential).toBe("");
+    expect(result.current.mcpSessionId).toBe("");
   });
 
-  it("refreshes expired tool-result auth through the server on startup", async () => {
+  it("gets auth from the server tool when the visualization loads", async () => {
     const app: Record<string, any> = {
       callServerTool: jest.fn().mockResolvedValue({
         _meta: {
           "com.metabase/mcp-apps": {
             credential: "refreshed-credential",
-            refreshTool: "refresh_visualize_query_ui_credential",
-            sessionId: "new-mcp-session-id",
-          },
-        },
-      }),
-      getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
-      getHostContext: jest.fn(() => null),
-    };
-    let appCreated = false;
-
-    mockUseApp.mockImplementation(({ onAppCreated }) => {
-      if (!appCreated) {
-        appCreated = true;
-        onAppCreated(app);
-      }
-
-      return { app };
-    });
-
-    const { result } = renderHook(() => useMcpApp());
-
-    act(() => {
-      app.ontoolresult({
-        structuredContent: { query: "encoded-query" },
-        _meta: {
-          "com.metabase/mcp-apps": {
-            credential: "expired-credential",
-            refreshTool: "refresh_visualize_query_ui_credential",
-            sessionId: "old-mcp-session-id",
-          },
-        },
-      });
-    });
-
-    await waitFor(() => {
-      expect(app.callServerTool).toHaveBeenCalledWith({
-        name: "refresh_visualize_query_ui_credential",
-        arguments: {},
-      });
-      expect(result.current.uiCredential).toBe("refreshed-credential");
-      expect(result.current.mcpSessionId).toBe("new-mcp-session-id");
-    });
-  });
-
-  it("refreshes auth when a restored tool result omits private metadata", async () => {
-    const app: Record<string, any> = {
-      callServerTool: jest.fn().mockResolvedValue({
-        _meta: {
-          "com.metabase/mcp-apps": {
-            credential: "refreshed-credential",
-            refreshTool: "refresh_visualize_query_ui_credential",
             sessionId: "new-mcp-session-id",
           },
         },
@@ -165,7 +105,6 @@ describe("useMcpApp", () => {
         _meta: {
           "com.metabase/mcp-apps": {
             credential: "refreshed-credential",
-            refreshTool: "refresh_visualize_query_ui_credential",
             sessionId: "mcp-session-id",
           },
         },
@@ -184,19 +123,10 @@ describe("useMcpApp", () => {
       return { app };
     });
 
-    renderHook(() => useMcpApp());
+    renderHook(() => useMcpApp("refresh_visualize_query_ui_credential"));
 
     await act(async () => {
-      app.ontoolresult({
-        structuredContent: { query: "encoded-query" },
-        _meta: {
-          "com.metabase/mcp-apps": {
-            credential: "bootstrap-credential",
-            refreshTool: "refresh_visualize_query_ui_credential",
-            sessionId: "mcp-session-id",
-          },
-        },
-      });
+      app.ontoolresult({ structuredContent: { query: "encoded-query" } });
     });
 
     expect(app.callServerTool).toHaveBeenCalledTimes(1);
