@@ -17,15 +17,16 @@ export type ModalComponentProps = {
   onClose: () => void;
 };
 
-type ModalComponent = React.ComponentType<ModalComponentProps>;
+export type ModalComponent = React.ComponentType<ModalComponentProps>;
 
-type ModalRouteOptions = {
+export type ModalRouteOptions = {
   /**
    * Render the modal component on its own instead of wrapping it in a `<Modal>`,
    * for components that bring their own overlay.
    */
   noWrap?: boolean;
   modalProps?: Partial<ModalProps>;
+  closeTo?: string;
 };
 
 /**
@@ -87,16 +88,16 @@ export function lazyModalRoute(
   };
 }
 
-function createModalRouteComponent(
+export function createModalRouteComponent(
   ComposedModal: ModalComponent,
-  { noWrap = false, modalProps }: ModalRouteOptions,
+  { noWrap = false, modalProps, closeTo = ".." }: ModalRouteOptions,
 ) {
   function ModalRouteComponent() {
     const params = useParams();
     const location = useLocation();
     const navigate = useNavigate();
     const onClose = useCallback(
-      () => navigate("..", { relative: "route" }),
+      () => navigate(closeTo, { relative: "route" }),
       [navigate],
     );
 
