@@ -26,7 +26,8 @@
   :model/Document)
 
 (t2/deftransforms :model/Document
-  {:document mi/transform-json})
+  {:document    mi/transform-json
+   :public_uuid mi/transform-encrypted-text})
 
 (doto :model/Document
   (derive :metabase/model)
@@ -295,8 +296,8 @@
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  model)
+  (public-sharing/add-public-uuid-prefix model))
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  model)
+  (public-sharing/add-public-uuid-prefix-if-changed model))
