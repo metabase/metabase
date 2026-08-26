@@ -6,7 +6,7 @@ describe("metabot routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getMetabotRoutes());
 
-    expect(loaders).toHaveLength(2);
+    expect(loaders).toHaveLength(3);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();

@@ -10,11 +10,13 @@ import {
   createMockMetabotToolCallPart,
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
+  setupDashboardEndpoints,
   setupDocumentEndpoints,
   setupGetMetabotConversationEndpoint,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { GeneratedAdhocDashboard } from "metabase/api/ai-streaming/schemas";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import type {
   MetabotIncompleteFinishReason,
@@ -33,10 +35,12 @@ import {
   thumbsDown,
   thumbsUp,
 } from "metabase/metabot/tests/utils";
+import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockCard,
   createMockCollection,
+  createMockDashboard,
   createMockDocument,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -209,6 +213,7 @@ describe("AgentMessage", () => {
             part: {
               type: "data-entity_saved",
               data: {
+                type: "card",
                 chart_id: "chart-1",
                 card_id: 99,
                 destination: { type: "collection", id: 5 },
@@ -236,6 +241,7 @@ describe("AgentMessage", () => {
             part: {
               type: "data-entity_saved",
               data: {
+                type: "card",
                 chart_id: "chart-1",
                 card_id: 99,
                 destination: { type: "collection", id: 5 },
@@ -262,6 +268,7 @@ describe("AgentMessage", () => {
             part: {
               type: "data-entity_saved",
               data: {
+                type: "card",
                 chart_id: "chart-1",
                 card_id: 99,
                 destination: { type: "document", id: 7 },
@@ -273,6 +280,104 @@ describe("AgentMessage", () => {
 
       expect(await screen.findByText("Q3 report")).toBeInTheDocument();
       expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
+    });
+  });
+
+  describe("generated_entity dashboard", () => {
+    it("links a generated dashboard entity to the ad-hoc dashboard page built from its tiles", () => {
+      const dashboard: GeneratedAdhocDashboard = {
+        type: "dashboard",
+        id: "dash-1",
+        title: "Ops overview",
+        description: "Key ops charts.",
+        tiles: [
+          {
+            title: "Venues by price",
+            display: "bar",
+            dataset_query: createMockStructuredDatasetQuery(),
+            row: 0,
+            col: 0,
+            size_x: 12,
+            size_y: 6,
+          },
+        ],
+      };
+      setup({
+        parts: [
+          {
+            id: "d1",
+            role: "agent",
+            type: "data_part",
+            part: { type: "data-generated_entity", data: dashboard },
+          },
+        ],
+      });
+
+      expect(
+        screen.getByRole("link", { name: "Open dashboard" }),
+      ).toHaveAttribute("href", Urls.generatedDashboard(dashboard, "convo-1"));
+      expect(Urls.generatedDashboard(dashboard, "convo-1")).toMatch(
+        /^\/dashboard#/,
+      );
+      expect(screen.getByText("Ops overview")).toBeInTheDocument();
+    });
+
+    it("links an x-ray dashboard entity to its navigation url", () => {
+      setup({
+        parts: [
+          {
+            id: "d1",
+            role: "agent",
+            type: "data_part",
+            part: {
+              type: "data-generated_entity",
+              data: {
+                type: "dashboard",
+                title: "Orders X-ray",
+                url: "/auto/dashboard/table/1",
+              },
+            },
+          },
+        ],
+      });
+
+      expect(
+        screen.getByRole("link", { name: "Open dashboard" }),
+      ).toHaveAttribute("href", "/auto/dashboard/table/1");
+      expect(screen.getByText("Orders X-ray")).toBeInTheDocument();
+    });
+  });
+
+  describe("entity_saved dashboard", () => {
+    it("renders a 'Dashboard X saved to Y' block for a saved generated dashboard", async () => {
+      setupCollectionByIdEndpoint({
+        collections: [createMockCollection({ id: 5, name: "Analytics" })],
+      });
+      setupDashboardEndpoints(
+        createMockDashboard({ id: 9, name: "Ops overview" }),
+      );
+      setup({
+        parts: [
+          {
+            id: "s2",
+            role: "agent",
+            type: "data_part",
+            part: {
+              type: "data-entity_saved",
+              data: {
+                type: "dashboard",
+                generated_dashboard_id: "d-1",
+                dashboard_id: 9,
+                destination: { type: "collection", id: 5 },
+              },
+            },
+          },
+        ],
+      });
+
+      expect(await screen.findByText("Ops overview")).toBeInTheDocument();
+      expect(await screen.findByText("Analytics")).toBeInTheDocument();
+      expect(screen.getByText(/Dashboard/)).toBeInTheDocument();
     });
   });
 
