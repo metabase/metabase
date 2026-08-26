@@ -7,14 +7,11 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.metabot.metadata-perms :as metabot.perms]
-   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -233,8 +230,9 @@
 ;;; Viewing Context Formatting
 
 (defn- query-if-database-readable
-  "The client-supplied adhoc query, only when the current user can read its database. Audited for
-  the same reason its card ids get the audited store: the id is the caller's own."
+  "The client-supplied adhoc query, only when the current user can read its database and query
+  the tables it references. The database refusal is audited for the same reason the query's card
+  ids get the audited store: the id is the caller's own."
   [query]
   (shared.content-store/query-if-database-readable query))
 
@@ -255,94 +253,14 @@
                                                (map format-entity)
                                                te/lines)))))
 
-(def ^:private exported-table-id-keys
-  [:source-table :source_table])
-
-(def ^:private exported-card-id-keys
-  [:source-card :source_card :card-id :card_id])
-
-(def ^:private exported-field-id-keys
-  [:source-field :metabase.models.visualization-settings/param-mapping-source])
-
-(defn- exported-entity-ids
-  [normalized]
-  (let [ids (fn [ks node] (into #{} (comp (map #(get node %)) (filter pos-int?)) ks))]
-    (reduce
-     (fn [acc node]
-       (cond
-         (map? node)
-         (-> acc
-             (update :table into (ids exported-table-id-keys node))
-             (update :card  into (ids exported-card-id-keys node))
-             (update :field into (ids exported-field-id-keys node)))
-
-         (and (vector? node) (not (map-entry? node)))
-         (case (keyword (first node))
-           (:field :field-id) (update acc :field into (filter pos-int?) [(nth node 1 nil) (nth node 2 nil)])
-           :metric            (update acc :card into (filter pos-int?) [(nth node 1 nil) (nth node 2 nil)])
-           acc)
-
-         :else acc))
-     {:table #{} :card #{} :field #{}}
-     (tree-seq coll? seq normalized))))
-
-(defn- native-stage?
-  [normalized]
-  (boolean (some #(and (map? %) (= :mbql.stage/native (:lib/type %)))
-                 (tree-seq coll? seq normalized))))
-
-(defn- native-sql-table-ids
-  [normalized]
-  (try
-    (into #{}
-          (comp (keep #(or (:table-id %) (:id %))) (filter pos-int?))
-          (:tables (query-analyzer/tables-for-native normalized :all-drivers-trusted? true)))
-    (catch Exception e
-      (log/debugf "Could not analyze a viewing-context native query for permission gating: %s"
-                  (ex-message e))
-      #{})))
-
-(defn- sandbox-visible-fields?
-  [field-id->table-id]
-  (let [restricted (metabot.perms/sandbox-restricted-fields (set (vals field-id->table-id)))]
-    (every? (fn [[field-id table-id]]
-              (if-let [allowed (get restricted table-id)]
-                (contains? allowed field-id)
-                true))
-            field-id->table-id)))
-
-(defn- queryable-normalized-query
-  [query]
-  (let [raw-database-id (and (map? query) (:database query))]
-    (when (pos-int? raw-database-id)
-      (try
-        (let [normalized  (lib-be/normalize-query query)
-              database-id (:database normalized)]
-          (when (and (pos-int? database-id)
-                     (mi/can-query? :model/Database database-id))
-            (let [{:keys [table card field]} (exported-entity-ids normalized)
-                  field-table (metabot.perms/field-id->table-id field)
-                  table-ids   (cond-> (into (set table) (vals field-table))
-                                (native-stage? normalized) (into (native-sql-table-ids normalized)))]
-              (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
-                         (sandbox-visible-fields? field-table)
-                         (every? #(mi/can-read? :model/Card %) card))
-                [normalized (lib-be/application-database-metadata-provider database-id)]))))
-        (catch Exception e
-          (log/debugf "Omitting a viewing-context query that could not be permission-checked: %s"
-                      (ex-message e))
-          nil)))))
-
 (defn- transform-query-source-text
   "Format a transform's `:query` source for the LLM; the rendering and fallback contract
   lives in [[llm-shape/export-query-for-llm]]. The source arrives inline in the viewing context,
-  as client-supplied as the adhoc query above, so it gets the same audited gate and store on
-  top of the table/field-level check."
+  as client-supplied as the adhoc query above, so it gets the same audited gate and store."
   [source]
-  (when-let [query (query-if-database-readable (:query source))]
-    (when (or (not (and (map? query) (:database query)))
-              (queryable-normalized-query query))
-      (llm-shape/export-query-for-llm query shared.content-store/audited-store))))
+  (some-> (:query source)
+          query-if-database-readable
+          (llm-shape/export-query-for-llm shared.content-store/audited-store)))
 
 (defn- transform-source-type
   [source]

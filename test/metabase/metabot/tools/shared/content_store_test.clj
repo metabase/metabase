@@ -1,5 +1,5 @@
 (ns metabase.metabot.tools.shared.content-store-test
-  "Unit tests for the read-checked ContentStore wrapper.
+  "Unit tests for the read-checked ContentStore wrapper and the query database/table gates.
 
   These tests pin four properties:
 
@@ -31,6 +31,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.protocols :as t2.protocols]))
 
@@ -243,6 +245,27 @@
             (is (pos? @lookups) "precondition: repair looked the source card up")
             (is (= source-card-entity-id (get-in repaired ["stages" 0 "source-card"]))
                 "the refused lookup is skipped, not fatal")))))))
+
+;;; ============================================================
+;;; Database / table gates
+;;; ============================================================
+
+(deftest query-gates-are-table-granular-test
+  (testing "a query whose database is readable is still withheld when it references a table the user cannot query"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (let [query-on (fn [table-id]
+                         {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table table-id}})]
+          (is (mi/can-read? :model/Database (mt/id))
+              "precondition: query access to one table makes the whole database readable")
+          (is (shared.content-store/query-database-readable? (query-on (mt/id :orders))))
+          (is (some? (shared.content-store/query-if-database-readable (query-on (mt/id :orders)))))
+          (is (not (shared.content-store/query-database-readable? (query-on (mt/id :venues)))))
+          (is (nil? (shared.content-store/query-if-database-readable (query-on (mt/id :venues))))))))))
 
 ;;; ============================================================
 ;;; default-store integration shape

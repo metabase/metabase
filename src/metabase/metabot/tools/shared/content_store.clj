@@ -19,8 +19,11 @@
   (:require
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -75,9 +78,9 @@
   than one loaded from the app DB, where the numeric ids in it are the caller's own."
   (read-checked resolve.mp/unchecked-app-db-content-store true))
 
-;;; The stores gate the content *inside* an export. Exporting also resolves table and field ids to
-;;; names through an unfiltered provider, so the query's database needs its own gate first. Same
-;;; quiet/audited split as the stores, for the same reason.
+;;; The stores gate the content *inside* an export. Exporting also resolves table and field ids
+;;; to names through an unfiltered provider, so the query's database and referenced tables need
+;;; their own gate first. Same quiet/audited split as the stores, for the same reason.
 
 (defn- resolve-effective-database
   "`query` with `:database` resolved to the id the export really uses: the virtual id `-1337`
@@ -89,31 +92,109 @@
       (lib-be/resolve-database query)
       (catch Exception _ nil))))
 
+(def ^:private exported-table-id-keys
+  [:source-table :source_table])
+
+(def ^:private exported-field-id-keys
+  [:source-field :metabase.models.visualization-settings/param-mapping-source])
+
+(defn- exported-entity-ids
+  [normalized]
+  (let [ids (fn [ks node] (into #{} (comp (map #(get node %)) (filter pos-int?)) ks))]
+    (reduce
+     (fn [acc node]
+       (cond
+         (map? node)
+         (-> acc
+             (update :table into (ids exported-table-id-keys node))
+             (update :field into (ids exported-field-id-keys node)))
+
+         (and (vector? node) (not (map-entry? node)))
+         (case (keyword (first node))
+           (:field :field-id) (update acc :field into (filter pos-int?) [(nth node 1 nil) (nth node 2 nil)])
+           acc)
+
+         :else acc))
+     {:table #{} :field #{}}
+     (tree-seq coll? seq normalized))))
+
+(defn- native-stage?
+  [normalized]
+  (boolean (some #(and (map? %) (= :mbql.stage/native (:lib/type %)))
+                 (tree-seq coll? seq normalized))))
+
+(defn- native-sql-table-ids
+  [normalized]
+  (try
+    (into #{}
+          (comp (keep #(or (:table-id %) (:id %))) (filter pos-int?))
+          (:tables (query-analyzer/tables-for-native normalized :all-drivers-trusted? true)))
+    (catch Exception e
+      (log/debugf "Could not analyze a native query for permission gating: %s" (ex-message e))
+      #{})))
+
+(defn- sandbox-visible-fields?
+  [field-id->table-id]
+  (let [restricted (metabot.perms/sandbox-restricted-fields (set (vals field-id->table-id)))]
+    (every? (fn [[field-id table-id]]
+              (if-let [allowed (get restricted table-id)]
+                (contains? allowed field-id)
+                true))
+            field-id->table-id)))
+
+(defn- tables-queryable?
+  "Whether the current user may query every table `resolved` references: directly, through its
+  field refs, and inside native SQL, with no column sandbox hiding a referenced field. Quiet.
+  Card / measure / segment refs are not checked here; the stores gate those with the caller's
+  audit polarity. [[mi/can-read?]] on a Database passes on query access to any one table, so
+  the per-table check is what makes the gates table-granular."
+  [resolved]
+  (try
+    (let [normalized  (lib-be/normalize-query resolved)
+          database-id (:database normalized)]
+      (boolean
+       (when (and (pos-int? database-id)
+                  (mi/can-query? :model/Database database-id))
+         (let [{:keys [table field]} (exported-entity-ids normalized)
+               field-table (metabot.perms/field-id->table-id field)
+               table-ids   (cond-> (into (set table) (vals field-table))
+                             (native-stage? normalized) (into (native-sql-table-ids normalized)))]
+           (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
+                (sandbox-visible-fields? field-table))))))
+    (catch Exception e
+      (log/debugf "Omitting a query that could not be permission-checked: %s" (ex-message e))
+      false)))
+
 (defn query-database-readable?
-  "Whether the current user can read the database `query` is exported against. Unaudited; for
-  queries out of our own state. Audited counterpart: [[query-if-database-readable]], same
-  contract: a database that no longer exists passes (there is no metadata behind it to leak),
-  one we can't resolve does not."
+  "Whether the current user can read the database `query` is exported against and query every
+  table it references. Unaudited; for queries out of our own state. Audited counterpart:
+  [[query-if-database-readable]], same contract: a database that no longer exists passes (there
+  is no metadata behind it to leak), one we can't resolve does not."
   [query]
   (if-not (and (map? query) (:database query))
     true
-    (if-let [database-id (:database (resolve-effective-database query))]
-      (boolean (or (not (t2/exists? :model/Database :id database-id))
-                   (mi/can-read? :model/Database database-id)))
-      false)))
+    (let [resolved    (resolve-effective-database query)
+          database-id (:database resolved)]
+      (boolean
+       (and database-id
+            (or (not (t2/exists? :model/Database :id database-id))
+                (and (mi/can-read? :model/Database database-id)
+                     (tables-queryable? resolved))))))))
 
 (defn query-if-database-readable
-  "`query` with its database resolved, when the current user can read that database, else nil.
-  Audited; for client-supplied queries, where the id is the caller's own. Quiet counterpart:
-  [[query-database-readable?]]. A database that no longer exists passes, since there is no
-  metadata behind it to leak; one we can't resolve does not."
+  "`query` with its database resolved, when the current user can read that database and query
+  every table it references, else nil. The database refusal is audited; for client-supplied
+  queries, where the id is the caller's own. Quiet counterpart: [[query-database-readable?]].
+  A database that no longer exists passes, since there is no metadata behind it to leak; one
+  we can't resolve does not."
   [query]
   (if-not (and (map? query) (:database query))
     query
     (when-let [resolved (resolve-effective-database query)]
       (try
         (api/read-check :model/Database (:database resolved))
-        resolved
+        (when (tables-queryable? resolved)
+          resolved)
         (catch clojure.lang.ExceptionInfo e
           (condp = (:status-code (ex-data e))
             403 nil
