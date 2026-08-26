@@ -3,7 +3,7 @@ import "./LeafletMap.module.css";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
-import { L } from "metabase/leaflet";
+import { L, loadDraw } from "metabase/leaflet";
 import MetabaseSettings from "metabase/utils/settings";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
@@ -233,7 +233,10 @@ export class LeafletMap<
     return !isNative || question.isSaved();
   }
 
-  startFilter() {
+  async startFilter() {
+    await loadDraw();
+
+    // The component can unmount while the draw chunk loads.
     if (!this.map) {
       return;
     }
