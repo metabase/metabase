@@ -49,7 +49,10 @@ const sideEffectFreeModulesPlugin = {
         pluginData: PLUGIN_NAME,
       });
       // A specifier the resolver rejects is left for the normal pass, which reports the error.
-      if (resolved.errors.length > 0 || !isDeclaredSideEffectFree(resolved.path)) {
+      if (
+        resolved.errors.length > 0 ||
+        !isDeclaredSideEffectFree(resolved.path)
+      ) {
         return null;
       }
       return { ...resolved, sideEffects: false };
