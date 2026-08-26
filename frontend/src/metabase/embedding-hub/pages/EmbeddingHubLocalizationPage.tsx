@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { UpsellContentTranslation } from "metabase/admin/upsells";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { LocalizationUpsellPage } from "metabase/embedding-hub/upsells";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 /**
@@ -21,7 +21,7 @@ export function EmbeddingHubLocalizationPage() {
       {hasContentTranslation ? (
         <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
       ) : (
-        <UpsellContentTranslation source="embedding-hub-localization" />
+        <LocalizationUpsellPage />
       )}
     </SettingsPageWrapper>
   );
