@@ -16623,6 +16623,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/agent" ]
       }
     },
@@ -17726,6 +17736,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/apps" ]
@@ -21890,6 +21910,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/comment" ]
       },
       "post" : {
@@ -21973,6 +22003,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/comment" ]
@@ -23383,6 +23423,18 @@
               "pattern" : "^[A-Za-z0-9_\\-]{21}$"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "dashboard_load_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -24130,6 +24182,18 @@
               "description" : "String must be a valid 21-character NanoID string.",
               "type" : "string",
               "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "dashboard_load_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
             } ]
           }
         } ],
@@ -25204,6 +25268,18 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include_editable_data_model",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -25755,7 +25831,14 @@
         "operationId" : "get-api-database-virtual-db-datasets-schema",
         "summary" : "GET /api/database/{virtual-db}/datasets/{schema}",
         "description" : "Returns a list of Tables for the datasets virtual database.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "schema",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -25795,7 +25878,14 @@
         "operationId" : "get-api-database-virtual-db-schema-schema",
         "summary" : "GET /api/database/{virtual-db}/schema/{schema}",
         "description" : "Returns a list of Tables for the saved questions virtual database.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "schema",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -28166,6 +28256,17 @@
             "type" : "string",
             "minLength" : 1
           }
+        }, {
+          "in" : "query",
+          "name" : "locale",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -28709,6 +28810,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
       }
     },
@@ -28919,6 +29030,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
       }
     },
@@ -29092,6 +29213,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
@@ -29388,6 +29519,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/data-complexity-score" ]
@@ -30570,6 +30711,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/library" ]
       },
       "get" : {
@@ -30603,6 +30754,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/library" ]
@@ -31929,6 +32090,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/permission_debug" ]
       }
     },
@@ -32562,6 +32733,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/remote-sync" ]
@@ -33397,7 +33578,15 @@
         "operationId" : "put-api-ee-scim-v2-Groups-id",
         "summary" : "PUT /api/ee/scim/v2/Groups/{id}",
         "description" : "Update a group.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -33680,7 +33869,15 @@
         "operationId" : "put-api-ee-scim-v2-Users-id",
         "summary" : "PUT /api/ee/scim/v2/Users/{id}",
         "description" : "Update a user.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -34852,6 +35049,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/tenant" ]
@@ -38162,6 +38369,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/geojson" ]
       }
     },
@@ -38188,6 +38405,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/geojson" ]
@@ -38384,7 +38611,16 @@
         "operationId" : "get-api-health-inspector",
         "summary" : "GET /api/health-inspector",
         "description" : "Get a list of recent health check runs.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response",
@@ -45806,6 +46042,13 @@
             "type" : "string",
             "minLength" : 1
           }
+        }, {
+          "in" : "query",
+          "name" : "value",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -49212,6 +49455,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/session" ]

@@ -97,7 +97,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --expose grepTags="-@mongo+-@python+-@OSS+-@skip"
+            --expose grepTags="-@mongo+-@python+-@OSS"
         # Don't let a single failing/flaky spec abort the shard — we still want
         # coverage from the specs that did run.
         continue-on-error: true

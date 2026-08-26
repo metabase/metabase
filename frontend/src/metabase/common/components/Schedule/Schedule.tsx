@@ -51,6 +51,7 @@ export interface ScheduleProps {
   getDefaults?: GetScheduleDefaults;
   labelAlignment?: "compact" | "left";
   layout?: "vertical" | "horizontal";
+  fullWidthSelects?: boolean;
   renderScheduleDescription?: (
     value: ScheduleValue,
     cronInputValue: string,
@@ -68,6 +69,7 @@ export const Schedule = ({
   onScheduleChange,
   labelAlignment = "compact",
   layout = "vertical",
+  fullWidthSelects = false,
   renderScheduleDescription,
   ...flexProps
 }: ScheduleProps & FlexProps & HTMLAttributes<HTMLDivElement>) => {
@@ -286,6 +288,7 @@ export const Schedule = ({
           {
             [S.CompactLabels]: labelAlignment === "compact",
             [S.Horizontal]: layout === "horizontal",
+            [S.FullWidthSelects]: fullWidthSelects,
           },
           className,
         )}

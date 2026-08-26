@@ -217,7 +217,7 @@
 (deftest password-reset-issues-no-session-test
   (mt/with-premium-features #{:multi-factor-auth}
     (mt/with-temporary-setting-values [mfa-enforcement :optional]
-      (mt/with-temp [:model/User {user-id :id, email :email} {:password (str "Old-" (random-uuid))}]
+      (mt/with-temp [:model/User {user-id :id, email :email} {}]
         (try
           (t2/insert! :model/AuthIdentity {:user_id     user-id
                                            :provider    "totp"

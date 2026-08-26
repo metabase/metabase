@@ -228,6 +228,36 @@
                                 (mt/user-http-request :rasta :post 403 url params)))
                         (is (= {:rows-affected 1} (mt/user-http-request :crowberto :post 200 url params)))))))))))))))
 
+(deftest action-query-db-differs-from-declared-db-test
+  (testing "a query action cannot execute against a database other than the one its query targets"
+    (mt/dataset test-data
+      (let [target-db-id (mt/id)]                          ;; the DB the malicious query really targets; actions OFF here
+        (mt/dataset time-test-data
+          (mt/with-actions-enabled                         ;; actions enabled only on the model's DB (time-test-data)
+            (let [model-db-id (mt/id)]
+              (is (not= model-db-id target-db-id))
+              (mt/with-temp [:model/Card model {:type          :model
+                                                :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}]
+                (let [;; declare :database_id as the model's own (enabled) DB to try to pass every enablement gate...
+                      ;; ...while the query points at target-db-id, whose actions are disabled.
+                      action {:type          :query
+                              :model_id      (:id model)
+                              :database_id   model-db-id
+                              :name          "sneaky cross db action"
+                              :dataset_query {:type     "native"
+                                              :database target-db-id
+                                              :native   {:query "update people set source = 'pwned' where id = 1"}}
+                              :parameters    []}
+                      created (mt/user-http-request :crowberto :post 200 "action" action)]
+                  (testing "the declared database_id is overwritten with the query's real database on save"
+                    (is (= target-db-id (:database_id created))))
+                  (testing "execution is blocked because actions are disabled on the query's real DB"
+                    (is (partial= {:message "Actions are not enabled."
+                                   :data    {:database-id target-db-id}}
+                                  (mt/user-http-request :crowberto :post 400
+                                                        (format "action/%s/execute" (:id created))
+                                                        {:parameters {}})))))))))))))
+
 (deftest unified-action-create-test
   (mt/test-helpers-set-global-values!
     (mt/with-actions-enabled

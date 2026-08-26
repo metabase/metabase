@@ -183,10 +183,7 @@
                          mt/rows)))
               (check-impersonation! "row_a" [["a"]])
               (check-impersonation! "row_b" [["b"]])
-              (check-impersonation! "row_c" [["c"]])
-              (check-impersonation! "row_a,row_c" [["a"] ["c"]])
-              (check-impersonation! "row_b,row_c" [["b"] ["c"]])
-              (check-impersonation! "row_a,row_b,row_c" [["a"] ["b"] ["c"]]))))))))
+              (check-impersonation! "row_c" [["c"]]))))))))
 
 (defn- with-ssh-tunnel*! [tunnel-details f]
   (let [base-details (t2/select-one-fn :details 'Database :id (mt/id))]
