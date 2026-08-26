@@ -186,10 +186,10 @@
         (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                    username (user->credentials username)))))))
 
-;; TODO (Chris 2026-08-24) -- Ensure initialization cannot first occur inside `with-temp`, or recreate these
-;; sessions after the transaction rolls back. Standard-user sessions are normally created before a transaction opens;
-;; if initialization happens inside `with-temp`, those sessions are rolled back and subsequent requests authenticate
-;; again.
+;; Standard-user sessions are normally created before a transaction opens. [[metabase.test.redefs]] now materializes
+;; `:test-users` before each top-level `with-temp`, so initialization no longer first happens inside one -- except for
+;; the helpers that skip the prewarm to keep an empty app DB. There, sessions created inside `with-temp` are rolled
+;; back and subsequent requests authenticate again.
 (defn clear-cached-session-tokens!
   "Clear cached session tokens that may have expired or been removed. Call this after receiving a `401` response, then
   retry the request."
