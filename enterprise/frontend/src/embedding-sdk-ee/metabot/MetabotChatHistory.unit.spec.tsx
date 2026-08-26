@@ -2,7 +2,7 @@ import { assocIn } from "icepick";
 
 import { act, screen } from "__support__/ui";
 import { metabotActions } from "metabase/metabot/state";
-import type { MetabotChatMessage } from "metabase/metabot/state/types";
+import type { MetabotMessagePart } from "metabase/metabot/state/types";
 import {
   createTestMetabotState,
   setup,
@@ -11,11 +11,16 @@ import {
 
 import { MetabotChatHistory } from "./MetabotChatHistory";
 
-const makeVisibleState = (messages: MetabotChatMessage[]) =>
+const makeVisibleState = (parts: MetabotMessagePart[]) =>
   assocIn(
     assocIn(createTestMetabotState(), ["agents", "omnibot", "visible"], true),
     ["conversations", testConversationId("omnibot"), "messages"],
-    messages,
+    parts.map((part, index) => ({
+      id: `message-${index}`,
+      role: part.role,
+      parts: [part],
+      outcome: { type: "done" },
+    })),
   );
 
 describe("MetabotChatHistory", () => {

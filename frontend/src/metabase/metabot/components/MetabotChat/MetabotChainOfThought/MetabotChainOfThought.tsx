@@ -8,6 +8,7 @@ import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
 import { Collapse, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 
 import S from "./MetabotChainOfThought.module.css";
+import { MetabotToolProgress } from "./MetabotToolProgress";
 import { ReasoningStep } from "./ReasoningStep";
 import { ResourceGroupStep, ToolStep } from "./ToolStep";
 import { useAutoCollapseOnSettle, useMeteredLabel, useNow } from "./hooks";
@@ -21,33 +22,47 @@ import {
   soleReasoningStep,
 } from "./utils";
 
-export const MetabotChainOfThought = ({
-  message,
-  isStreaming,
-}: {
-  message: MetabotAgentChainOfThoughtMessage;
+type MetabotChainOfThoughtProps = {
+  part: MetabotAgentChainOfThoughtMessage;
   isStreaming: boolean;
-}) => {
+  supportsReasoning?: boolean;
+};
+
+export const MetabotChainOfThought = ({
+  part,
+  isStreaming,
+  supportsReasoning = true,
+}: MetabotChainOfThoughtProps) => {
+  if (!supportsReasoning) {
+    return <MetabotToolProgress part={part} isStreaming={isStreaming} />;
+  }
+  return <ChainOfThought part={part} isStreaming={isStreaming} />;
+};
+
+const ChainOfThought = ({
+  part,
+  isStreaming,
+}: Omit<MetabotChainOfThoughtProps, "supportsReasoning">) => {
   const { open, toggle } = useAutoCollapseOnSettle(isStreaming);
   const now = useNow(isStreaming);
-  const preview = useMeteredLabel(latestPreviewLabel(message.steps), !open);
+  const preview = useMeteredLabel(latestPreviewLabel(part.steps), !open);
 
-  const renderableItems = buildDisplayItems(message.steps);
+  const renderableItems = buildDisplayItems(part.steps);
 
   if (!isStreaming && renderableItems.length === 0) {
     return null;
   }
 
   const durationMs =
-    message.startedAtMs != null && message.endedAtMs != null
-      ? message.endedAtMs - message.startedAtMs
+    part.startedAtMs != null && part.endedAtMs != null
+      ? part.endedAtMs - part.startedAtMs
       : undefined;
 
-  const thinkingOnly = !message.steps.some(
+  const thinkingOnly = !part.steps.some(
     (step) => isToolStep(step) && isRenderableStep(step),
   );
 
-  const activeIndex = message.steps.reduce(
+  const activeIndex = part.steps.reduce(
     (acc, step, i) => (isRenderableStep(step) ? i : acc),
     -1,
   );
@@ -58,10 +73,10 @@ export const MetabotChainOfThought = ({
     : settledHeader(durationMs, thinkingOnly);
 
   const stepReasoningLabel = (index: number): string => {
-    const start = message.steps[index].startedAtMs;
+    const start = part.steps[index].startedAtMs;
     const end =
-      message.steps[index + 1]?.startedAtMs ??
-      message.endedAtMs ??
+      part.steps[index + 1]?.startedAtMs ??
+      part.endedAtMs ??
       (isStreaming ? now : undefined);
     return reasoningLabel(
       start != null && end != null ? end - start : undefined,

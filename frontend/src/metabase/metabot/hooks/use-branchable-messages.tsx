@@ -1,7 +1,12 @@
 import { type ReactNode, useMemo, useState } from "react";
 
 import { MetabotBranchPicker } from "metabase/metabot/components/MetabotBranchPicker";
-import type { MetabotChatMessage } from "metabase/metabot/state/types";
+import type {
+  MetabotChatMessage,
+  MetabotMessage,
+  MetabotMessageOutcome,
+  MetabotMessagePart,
+} from "metabase/metabot/state/types";
 import {
   type ParentedChatMessage,
   activeResponses,
@@ -9,11 +14,57 @@ import {
 
 type ActiveResponse = ReturnType<typeof activeResponses>[number];
 
+const getOutcome = (
+  marker: MetabotChatMessage | undefined,
+): MetabotMessageOutcome => {
+  switch (marker?.type) {
+    case "turn_errored":
+      return { type: "errored", error: marker.error, display: marker.display };
+    case "turn_aborted":
+      return { type: "aborted" };
+    case "turn_incomplete":
+      return {
+        type: "incomplete",
+        finishReason: marker.finishReason,
+        contextWindowFull: marker.contextWindowFull,
+      };
+    case "turn_in_progress":
+      return { type: "in_progress" };
+    default:
+      return { type: "done" };
+  }
+};
+
+const isOutcomeMarker = (message: MetabotChatMessage) =>
+  message.type === "turn_errored" ||
+  message.type === "turn_aborted" ||
+  message.type === "turn_incomplete" ||
+  message.type === "turn_in_progress";
+
+const responseToMessage = (response: ActiveResponse): MetabotMessage => {
+  const parts = response.messages.filter(
+    (message): message is MetabotMessagePart => !isOutcomeMarker(message),
+  );
+  const withExternalId = response.messages.find(
+    (message) => "externalId" in message && message.externalId,
+  );
+  return {
+    id: response.messages[0].id,
+    externalId:
+      withExternalId && "externalId" in withExternalId
+        ? withExternalId.externalId
+        : undefined,
+    role: response.messages[0].role,
+    parts,
+    outcome: getOutcome(response.messages.find(isOutcomeMarker)),
+  };
+};
+
 export function useBranchableMessages(
   sourceMessages: ParentedChatMessage[],
   { isSlack = false }: { isSlack?: boolean } = {},
 ): {
-  messages: MetabotChatMessage[];
+  messages: MetabotMessage[];
   getExtraActions: (messageId: string) => ReactNode;
 } {
   const [selectedReplyByParentId, setSelectedReplyByParentId] = useState<
@@ -29,10 +80,11 @@ export function useBranchableMessages(
     const responses = activeResponses(sourceMessages, selectedReplyByParentId, {
       isSlack,
     });
-    const branchPickers = buildBranchPickers(responses, selectBranch);
+    const messages = responses.map(responseToMessage);
+    const branchPickers = buildBranchPickers(responses, messages, selectBranch);
 
     return {
-      messages: responses.flatMap(({ messages }) => messages),
+      messages,
       getExtraActions: (messageId: string) => branchPickers[messageId],
     };
   }, [sourceMessages, selectedReplyByParentId, isSlack]);
@@ -40,17 +92,17 @@ export function useBranchableMessages(
 
 function buildBranchPickers(
   responses: ActiveResponse[],
+  messages: MetabotMessage[],
   selectBranch: (parentId: string, replyId: string) => void,
 ): Record<string, ReactNode> {
   const pickers: Record<string, ReactNode> = {};
-  for (const { branch, messages } of responses) {
-    const lastMessage = messages.at(-1);
-    if (!branch || !lastMessage) {
-      continue;
+  responses.forEach(({ branch }, index) => {
+    if (!branch) {
+      return;
     }
 
     // Agent actions render on the final message in a response.
-    pickers[lastMessage.id] = (
+    pickers[messages[index].id] = (
       <MetabotBranchPicker
         index={branch.currentIndex}
         count={branch.replyIds.length}
@@ -59,6 +111,6 @@ function buildBranchPickers(
         }
       />
     );
-  }
+  });
   return pickers;
 }

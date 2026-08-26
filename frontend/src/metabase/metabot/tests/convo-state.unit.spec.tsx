@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import _ from "underscore";
 
 import { act, waitFor } from "__support__/ui";
 import {
@@ -210,18 +209,16 @@ describe("metabot > convo state", () => {
     ]);
 
     const beforeResetState = getState();
-    expect(_.omit(beforeResetState.messages[0], ["id"])).toStrictEqual({
-      role: "user",
-      type: "text",
-      message: "Who is your favorite?",
-    });
-    expect(
-      _.omit(beforeResetState.messages[1], ["id", "externalId"]),
-    ).toStrictEqual({
-      role: "agent",
-      type: "text",
-      message: "You, but don't tell anyone.",
-    });
+    expect(beforeResetState.messages).toMatchObject([
+      {
+        role: "user",
+        parts: [{ type: "text", message: "Who is your favorite?" }],
+      },
+      {
+        role: "agent",
+        parts: [{ type: "text", message: "You, but don't tell anyone." }],
+      },
+    ]);
 
     await userEvent.click(await newConversationButton());
 

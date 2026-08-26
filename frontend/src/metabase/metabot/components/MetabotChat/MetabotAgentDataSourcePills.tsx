@@ -45,7 +45,7 @@ import type {
 
 import { useSubmitMetabotSourceFeedbackMutation } from "../../api";
 
-import S from "./MetabotAgentDataPartMessage.module.css";
+import S from "./MetabotAgentDataPart.module.css";
 
 type DecodedQuery =
   | {

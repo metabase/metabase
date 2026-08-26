@@ -10,21 +10,21 @@ import { ResourceGroupStep, ToolStep } from "./ToolStep";
 import { buildDisplayItems, isRenderableStep } from "./utils";
 
 export const MetabotToolProgress = ({
-  message,
+  part,
   isStreaming,
 }: {
-  message: MetabotAgentChainOfThoughtMessage;
+  part: MetabotAgentChainOfThoughtMessage;
   isStreaming: boolean;
 }) => {
   if (!isStreaming) {
     return null;
   }
 
-  const activeIndex = message.steps.findLastIndex(isRenderableStep);
+  const activeIndex = part.steps.findLastIndex(isRenderableStep);
 
   return (
     <Stack gap="0.5rem" data-testid="metabot-tool-progress">
-      {buildDisplayItems(message.steps).map((item) =>
+      {buildDisplayItems(part.steps).map((item) =>
         match(item)
           .with({ kind: "resourceGroup" }, ({ steps, index }) => (
             <div

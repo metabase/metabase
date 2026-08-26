@@ -72,11 +72,23 @@ function setup({
 }: {
   blocks?: ExplorationBlock[];
   timelines?: Timeline[];
-  messages?: { role: string; message: string }[];
+  messages?: { role: "user" | "agent"; message: string }[];
 } = {}) {
   // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
-    messages,
+    messages: messages.map((message, index) => ({
+      id: `message-${index}`,
+      role: message.role,
+      parts: [
+        {
+          id: `part-${index}`,
+          role: message.role,
+          type: "text",
+          message: message.message,
+        },
+      ],
+      outcome: { type: "done" },
+    })),
   } as any);
 
   createExplorationMock.mockReturnValue({

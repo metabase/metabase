@@ -50,6 +50,18 @@ const requestAction = (arg: Partial<{ conversation_id: string }> = {}) => ({
   meta: { arg: { conversation_id: "matching-id", ...arg } },
 });
 
+// tool-call and chain-of-thought events only ever arrive inside a message the
+// stream has already opened
+const createStreamingStore = () => {
+  const store = createTestStore();
+  store.dispatch(
+    metabotActions.startAgentMessage({
+      conversationId: testConversationId("omnibot"),
+    }),
+  );
+  return store;
+};
+
 describe("metabot reducer", () => {
   describe("transforms", () => {
     describe("addSuggestedTransform", () => {
@@ -437,12 +449,12 @@ describe("metabot reducer", () => {
   describe("tool calls", () => {
     const conversationId = testConversationId("omnibot");
     const getToolCallMessages = (store: ReturnType<typeof createTestStore>) =>
-      convoForAgent(store, "omnibot").messages.filter(
-        (m) => m.type === "tool_call",
-      );
+      convoForAgent(store, "omnibot")
+        .messages.flatMap((t) => t.parts)
+        .filter((p) => p.type === "tool_call");
 
     it("toolCallStart is idempotent for the same toolCallId", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -464,7 +476,7 @@ describe("metabot reducer", () => {
     });
 
     it("toolCallArgs updates the existing tool-call message when toolCallStart preceded it", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -494,7 +506,7 @@ describe("metabot reducer", () => {
     });
 
     it("toolCallArgs creates a tool-call message when no tool-input-start preceded it", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallArgs({
           conversationId,
@@ -517,7 +529,7 @@ describe("metabot reducer", () => {
     });
 
     it("toolCallEnd marks the tool-call message as errored", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -555,10 +567,12 @@ describe("metabot reducer", () => {
     const getConvo = (store: ReturnType<typeof createTestStore>) =>
       convoForAgent(store, "omnibot");
     const getChain = (store: ReturnType<typeof createTestStore>) =>
-      getConvo(store).messages.find((m) => m.type === "chain_of_thought");
+      getConvo(store)
+        .messages.flatMap((t) => t.parts)
+        .find((p) => p.type === "chain_of_thought");
 
     it("accumulates reasoning deltas into one chain step", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.reasoningDelta({ conversationId, text: "Think" }),
@@ -575,7 +589,7 @@ describe("metabot reducer", () => {
     });
 
     it("interleaves tool calls between reasoning blocks in order", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.reasoningDelta({ conversationId, text: "look" }),
@@ -601,7 +615,7 @@ describe("metabot reducer", () => {
     });
 
     it("marks a tool step ended when its result arrives", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -624,7 +638,7 @@ describe("metabot reducer", () => {
     });
 
     it("persists the chain but closes it when the answer text starts", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.reasoningDelta({ conversationId, text: "hmm" }),
@@ -639,14 +653,14 @@ describe("metabot reducer", () => {
 
       // later reasoning starts a fresh chain after the answer text
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
-      const chains = getConvo(store)?.messages.filter(
-        (m) => m.type === "chain_of_thought",
-      );
+      const chains = getConvo(store)
+        ?.messages.flatMap((t) => t.parts)
+        .filter((p) => p.type === "chain_of_thought");
       expect(chains).toHaveLength(2);
     });
 
     it("attaches search results to their tool step, even after the chain closed", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -673,7 +687,7 @@ describe("metabot reducer", () => {
     });
 
     it("stamps a save_entity step title from its saved-entity data part", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -704,7 +718,7 @@ describe("metabot reducer", () => {
     });
 
     it("backfills a title arriving on tool-input-available", () => {
-      const store = createTestStore();
+      const store = createStreamingStore();
       store.dispatch(
         metabotActions.toolCallStart({
           conversationId,
@@ -738,6 +752,7 @@ describe("metabot reducer", () => {
           }),
         },
       });
+      store.dispatch(metabotActions.startAgentMessage({ conversationId }));
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
       store.dispatch(
         metabotActions.setConversationSnapshot({

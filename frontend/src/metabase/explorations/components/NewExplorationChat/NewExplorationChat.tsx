@@ -283,24 +283,24 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       return;
     }
 
-    const unprocessedMessages = messages.filter(
-      (message) => !processedMessageIdsRef.current.has(message.id),
-    );
-    for (const message of unprocessedMessages) {
-      processedMessageIdsRef.current.add(message.id);
+    const unprocessedParts = messages
+      .flatMap((message) => message.parts)
+      .filter((part) => !processedMessageIdsRef.current.has(part.id));
+    for (const part of unprocessedParts) {
+      processedMessageIdsRef.current.add(part.id);
     }
 
     handleAddResearchGroupsToolCallMessages(
-      unprocessedMessages.filter(isAddResearchGroupsToolCallMessage),
+      unprocessedParts.filter(isAddResearchGroupsToolCallMessage),
     );
     handleRemoveFromResearchPlanToolCallMessages(
-      unprocessedMessages.filter(isRemoveFromResearchPlanToolCallMessage),
+      unprocessedParts.filter(isRemoveFromResearchPlanToolCallMessage),
     );
     handleSetExplorationNameToolCallMessages(
-      unprocessedMessages.filter(isSetExplorationNameToolCallMessage),
+      unprocessedParts.filter(isSetExplorationNameToolCallMessage),
     );
     handleSelectExplorationTimelinesToolCallMessages(
-      unprocessedMessages.filter(isSelectExplorationTimelinesToolCallMessage),
+      unprocessedParts.filter(isSelectExplorationTimelinesToolCallMessage),
     );
   }, [
     isDoingScience,

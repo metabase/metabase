@@ -3,6 +3,7 @@ import fetchMock, {
   type UserRouteConfig,
 } from "fetch-mock";
 
+import type { MetabotMessage } from "metabase/metabot/state/types";
 import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
   LlmConnectionModels,
@@ -72,6 +73,32 @@ export function setupGetMetabotConversationTitleEndpoint(
     response,
     { name: "metabot-conversation-title" },
   );
+}
+
+let messageCount = 0;
+
+export function createMockMetabotMessage(
+  opts?: Partial<MetabotMessage>,
+): MetabotMessage {
+  return {
+    id: `message-${++messageCount}`,
+    role: "agent",
+    parts: [],
+    outcome: { type: "done" },
+    ...opts,
+  };
+}
+
+export function createMockMetabotTextMessage(
+  role: "user" | "agent",
+  text: string,
+  opts?: Partial<MetabotMessage>,
+): MetabotMessage {
+  const message = createMockMetabotMessage({ role, ...opts });
+  return {
+    ...message,
+    parts: [{ id: `${message.id}-text`, role, type: "text", message: text }],
+  };
 }
 
 export function createMockMetabotConversationDetail(

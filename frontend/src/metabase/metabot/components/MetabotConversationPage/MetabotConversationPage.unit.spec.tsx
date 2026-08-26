@@ -4,6 +4,8 @@ import { assocIn } from "icepick";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   createMockMetabotConversationDetail,
+  createMockMetabotMessage,
+  createMockMetabotTextMessage,
   setupDatabaseListEndpoint,
   setupGetMetabotConversationEndpoint,
   setupListMetabotConversationsEndpoint,
@@ -59,9 +61,7 @@ const stateWithConversation = ({
     ["conversations", conversationId],
     createConversation({
       conversationId,
-      messages: message
-        ? [{ id: "seed-message", role: "user", type: "text", message }]
-        : [],
+      messages: message ? [createMockMetabotTextMessage("user", message)] : [],
     }),
   );
 
@@ -110,8 +110,11 @@ const inProgressDetail = () =>
   createMockMetabotConversationDetail({
     conversation_id: CONVERSATION_ID,
     messages: [
-      { id: "m1", role: "user", type: "text", message: "Loaded question" },
-      { id: "m2", role: "agent", type: "turn_in_progress" },
+      createMockMetabotTextMessage("user", "Loaded question"),
+      createMockMetabotMessage({
+        role: "agent",
+        outcome: { type: "in_progress" },
+      }),
     ],
   });
 
@@ -119,8 +122,8 @@ const finishedDetail = () =>
   createMockMetabotConversationDetail({
     conversation_id: CONVERSATION_ID,
     messages: [
-      { id: "m1", role: "user", type: "text", message: "Loaded question" },
-      { id: "m3", role: "agent", type: "text", message: "Here is the answer" },
+      createMockMetabotTextMessage("user", "Loaded question"),
+      createMockMetabotTextMessage("agent", "Here is the answer"),
     ],
   });
 
@@ -133,14 +136,7 @@ describe("MetabotConversationPage", () => {
     mockConversationDetail(
       createMockMetabotConversationDetail({
         conversation_id: CONVERSATION_ID,
-        messages: [
-          {
-            id: "m1",
-            role: "user",
-            type: "text",
-            message: "Loaded question",
-          },
-        ],
+        messages: [createMockMetabotTextMessage("user", "Loaded question")],
       }),
       150,
     );

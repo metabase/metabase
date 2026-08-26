@@ -19,7 +19,7 @@ const setupToolProgress = (steps: MetabotChainStep[], isStreaming = true) =>
   setup({
     ui: (
       <MetabotToolProgress
-        message={{
+        part={{
           id: "chain-1",
           role: "agent",
           type: "chain_of_thought",

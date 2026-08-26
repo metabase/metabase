@@ -569,7 +569,9 @@
         ;; leaving just the retry turn.
         (let [{:keys [messages]} (metabot-persistence/conversation-detail conversation-id)]
           (is (= [["user" "retry"] ["agent" "ok"]]
-                 (mapv (juxt :role :message) messages))))))))
+                 (mapv (fn [message]
+                         [(:role message) (-> message :parts first :message)])
+                       messages))))))))
 
 (deftest placeholder-still-active-uses-nil-finished-marker-test
   (testing "the in-flight predicate keys off finished IS NULL (not :data emptiness or :error)"
@@ -620,7 +622,7 @@
                   :created-at (.plusSeconds now 3)
                   :deleted-at now})
         (let [detail (metabot-persistence/conversation-detail conversation-id)
-              texts  (mapv :message (:messages detail))]
+              texts  (mapv #(-> % :parts first :message) (:messages detail))]
           (is (= conversation-id (:conversation_id detail)))
           (is (= ["first" "second"] texts)))))))
 
@@ -798,7 +800,8 @@
               (metabot-persistence/finalize-assistant-turn!
                assistant-msg-id [{:type :text :text "retried reply"}])
               (let [messages (:messages (metabot-persistence/conversation-detail conversation-id))]
-                (is (= ["hi" "retried reply"] (map :message messages)))))))))))
+                (is (= ["hi" "retried reply"]
+                       (map #(-> % :parts first :message) messages)))))))))))
 
 (deftest retry-turn-deletes-all-trailing-assistant-rows-test
   (testing "retry-turn! soft-deletes every live assistant row after the retried prompt"

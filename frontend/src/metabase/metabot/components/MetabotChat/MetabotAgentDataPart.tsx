@@ -40,19 +40,19 @@ import Styles from "./MetabotChat.module.css";
 import { MetabotInlineChart } from "./MetabotInlineChart";
 import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
 
-type AgentDataPartMessageProps = {
-  message: MetabotAgentDataPartMessage;
+type AgentDataPartProps = {
+  part: MetabotAgentDataPartMessage;
   readonly: boolean;
   debug: boolean;
   conversationId: string;
 };
 
-export const AgentDataPartMessage = ({
-  message,
+export const AgentDataPart = ({
+  part: message,
   readonly,
   debug,
   conversationId,
-}: AgentDataPartMessageProps) =>
+}: AgentDataPartProps) =>
   match(message)
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
       <AgentTodoListMessage todos={part.data} />
@@ -130,7 +130,7 @@ export const AgentDataPartMessage = ({
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
     .exhaustive((msg: unknown) => {
-      console.warn("AgentDataPartMessage received an unexpected value:", msg);
+      console.warn("AgentDataPart received an unexpected value:", msg);
       return null;
     });
 

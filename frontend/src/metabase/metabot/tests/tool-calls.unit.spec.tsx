@@ -240,7 +240,7 @@ describe("metabot > tool calls", () => {
     pause1.resolve();
     await waitFor(() => {
       const { messages } = getMetabotConversation(store.getState(), "omnibot");
-      expect(messages).toContainEqual(
+      expect(messages.flatMap((t) => t.parts)).toContainEqual(
         expect.objectContaining({
           type: "tool_call",
           status: "ended",

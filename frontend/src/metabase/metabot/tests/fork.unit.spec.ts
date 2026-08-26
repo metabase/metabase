@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockMetabotConversationDetail } from "__support__/server-mocks";
+import {
+  createMockMetabotConversationDetail,
+  createMockMetabotTextMessage,
+} from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
 import { forkConversation } from "metabase/metabot/state";
 import * as Urls from "metabase/urls";
@@ -25,21 +28,12 @@ const forkedConversation = createMockMetabotConversationDetail({
   title: null,
   forked_from_conversation_id: "original-convo-id",
   messages: [
-    {
-      id: "m1",
-      role: "user",
-      type: "text",
-      message: "Who is your favorite?",
+    createMockMetabotTextMessage("user", "Who is your favorite?", {
       externalId: "u1",
-    },
-    {
-      id: "m2",
-      role: "agent",
-      type: "text",
-      message: "You, but don't tell anyone.",
+    }),
+    createMockMetabotTextMessage("agent", "You, but don't tell anyone.", {
       externalId: "msg_test_favorite",
-      finished: true,
-    },
+    }),
   ],
 });
 

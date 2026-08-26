@@ -13,11 +13,9 @@ import {
   type MetabotAgentChainOfThoughtMessage,
   type MetabotAgentId,
   type MetabotAgentState,
-  type MetabotAgentTurnDisplayError,
-  type MetabotAgentTurnError,
-  type MetabotAgentTurnIncompleteMessage,
   type MetabotConversationState,
   type MetabotDebugToolCallMessage,
+  type MetabotMessage,
   type MetabotSearchResults,
   type MetabotState,
   fixedMetabotAgentIds,
@@ -32,13 +30,55 @@ export type AgentPayloadAction<
   Value extends Record<string, any> = Record<string, any>,
 > = PayloadAction<{ agentId: MetabotAgentId } & Value>;
 
-export const findLastToolCallMessage = (
+export const openAgentMessage = (
+  convo: WritableDraft<MetabotConversationState>,
+): WritableDraft<MetabotMessage> => {
+  const message = convo.messages.at(-1);
+  if (
+    message?.role !== "agent" ||
+    (message.outcome.type !== "streaming" &&
+      message.outcome.type !== "in_progress")
+  ) {
+    throw new Error("Metabot conversation has no open agent message");
+  }
+  return message;
+};
+
+export const startUserMessage = (
+  convo: WritableDraft<MetabotConversationState>,
+  { id, externalId }: { id: string; externalId?: string },
+) => {
+  // push literal and access to prevent TS2589 / immer excessively deep type
+  convo.messages.push({
+    id,
+    role: "user",
+    externalId,
+    parts: [],
+    outcome: { type: "done" },
+  });
+  return convo.messages[convo.messages.length - 1];
+};
+
+export const startAgentMessage = (
+  convo: WritableDraft<MetabotConversationState>,
+  externalId?: string,
+) => {
+  convo.messages.push({
+    id: createMessageId(),
+    role: "agent",
+    externalId,
+    parts: [],
+    outcome: { type: "streaming" },
+  });
+};
+
+export const findLastToolCallPart = (
   convo: WritableDraft<MetabotConversationState>,
   toolCallId: string,
 ) =>
-  convo.messages.findLast(
-    (m): m is MetabotDebugToolCallMessage =>
-      m.type === "tool_call" && m.id === toolCallId,
+  openAgentMessage(convo).parts.findLast(
+    (p): p is WritableDraft<MetabotDebugToolCallMessage> =>
+      p.type === "tool_call" && p.id === toolCallId,
   );
 
 export const pushNewToolCall = (
@@ -49,7 +89,7 @@ export const pushNewToolCall = (
     args,
   }: { toolCallId: string; toolName: string; args?: string },
 ) => {
-  convo.messages.push({
+  openAgentMessage(convo).parts.push({
     id: toolCallId,
     role: "agent",
     type: "tool_call",
@@ -67,7 +107,7 @@ export const pushNewToolCall = (
 
 const activeChain = (convo: WritableDraft<MetabotConversationState>) => {
   const chain = convo.activeChainId
-    ? convo.messages.find((m) => m.id === convo.activeChainId)
+    ? openAgentMessage(convo).parts.find((p) => p.id === convo.activeChainId)
     : undefined;
   return chain?.type === "chain_of_thought" ? chain : undefined;
 };
@@ -83,7 +123,7 @@ const stampChainSpan = (
   chain.endedAtMs = nowMs;
 };
 
-const ensureChain = (
+export const ensureChain = (
   convo: WritableDraft<MetabotConversationState>,
   nowMs?: number,
 ): WritableDraft<MetabotAgentChainOfThoughtMessage> => {
@@ -100,20 +140,17 @@ const ensureChain = (
     startedAtMs: nowMs,
     endedAtMs: nowMs,
   };
-  convo.messages.push(chain);
+  openAgentMessage(convo).parts.push(chain);
   convo.activeChainId = chain.id;
   return chain;
-};
-
-export const openChain = (convo: WritableDraft<MetabotConversationState>) => {
-  ensureChain(convo);
 };
 
 const dropChain = (
   convo: WritableDraft<MetabotConversationState>,
   id: string,
 ) => {
-  convo.messages = convo.messages.filter((m) => m.id !== id);
+  const message = openAgentMessage(convo);
+  message.parts = message.parts.filter((p) => p.id !== id);
 };
 
 export const startChainReasoning = (
@@ -170,17 +207,17 @@ export const addChainTool = (
   }
 };
 
-const findChainToolStep = (
+export const findChainToolStep = (
   convo: WritableDraft<MetabotConversationState>,
   toolCallId: string,
 ) => {
-  for (const message of convo.messages) {
-    if (message.type === "chain_of_thought") {
-      const step = message.steps.find(
+  for (const part of openAgentMessage(convo).parts) {
+    if (part.type === "chain_of_thought") {
+      const step = part.steps.find(
         (s) => s.kind === "tool" && s.id === toolCallId,
       );
       if (step?.kind === "tool") {
-        return { chain: message, step };
+        return { chain: part, step };
       }
     }
   }
@@ -274,7 +311,6 @@ export const createConversation = (
   activeToolCalls: [],
   activeChainId: undefined,
   profileOverride: undefined,
-  pendingMessageExternalId: undefined,
   forkedFromConversationId: undefined,
   ...overrides,
   conversationId: overrides?.conversationId ?? uuid(),
@@ -410,47 +446,6 @@ export const agentReducer =
       state,
     );
   };
-
-export const appendAgentTurnAborted = (
-  convo: WritableDraft<MetabotConversationState>,
-) => {
-  convo.messages.push({
-    id: createMessageId(),
-    role: "agent",
-    type: "turn_aborted",
-    externalId: convo.pendingMessageExternalId,
-  });
-};
-
-export const appendAgentTurnIncomplete = (
-  convo: WritableDraft<MetabotConversationState>,
-  finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
-  contextWindowFull?: boolean,
-) => {
-  convo.messages.push({
-    id: createMessageId(),
-    role: "agent",
-    type: "turn_incomplete",
-    finishReason,
-    contextWindowFull,
-    externalId: convo.pendingMessageExternalId,
-  });
-};
-
-export const appendAgentTurnErrored = (
-  convo: WritableDraft<MetabotConversationState>,
-  error: MetabotAgentTurnError,
-  display?: MetabotAgentTurnDisplayError,
-) => {
-  convo.messages.push({
-    id: createMessageId(),
-    role: "agent",
-    type: "turn_errored",
-    error,
-    display,
-    externalId: convo.pendingMessageExternalId,
-  });
-};
 
 export const getMetabotInitialState = (): MetabotState => {
   const conversations: MetabotState["conversations"] = {};

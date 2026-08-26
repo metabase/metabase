@@ -300,12 +300,17 @@ function FeedbackCard({
         )}
         {agentResponse && (
           <AgentMessage
-            message={agentResponse}
+            message={{
+              id: agentResponse.id,
+              externalId: agentResponse.externalId,
+              role: "agent",
+              parts: [agentResponse],
+              outcome: { type: "done" },
+            }}
             debug
             readonly
-            conversationId={conversationId}
             hideActions
-            getCopyText={noopGetCopyText}
+            conversationId={conversationId}
             submittedFeedback={undefined}
             bg="background_page-secondary"
             p="md"
@@ -497,8 +502,4 @@ function NotebookGeneratedQueryCard({
 
 function noopUpdateQuestion(): Promise<void> {
   return Promise.resolve();
-}
-
-function noopGetCopyText() {
-  return "";
 }

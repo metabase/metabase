@@ -138,6 +138,37 @@ export type MetabotChatMessage =
   | MetabotAgentChatMessage
   | MetabotDebugChatMessage;
 
+export type MetabotMessageOutcome =
+  | { type: "streaming" }
+  | { type: "in_progress" }
+  | { type: "done" }
+  | { type: "aborted" }
+  | {
+      type: "incomplete";
+      finishReason: MetabotAgentTurnIncompleteMessage["finishReason"];
+      contextWindowFull?: boolean;
+    }
+  | {
+      type: "errored";
+      error: MetabotAgentTurnError;
+      display?: MetabotAgentTurnDisplayError;
+    };
+
+export type MetabotMessagePart =
+  | MetabotUserTextChatMessage
+  | MetabotAgentTextChatMessage
+  | MetabotAgentDataPartMessage
+  | MetabotDebugToolCallMessage
+  | MetabotAgentChainOfThoughtMessage;
+
+export type MetabotMessage = {
+  id: string;
+  externalId?: string;
+  role: "user" | "agent";
+  parts: MetabotMessagePart[];
+  outcome: MetabotMessageOutcome;
+};
+
 export type MetabotToolCall = {
   id: string;
   name: string;
@@ -176,14 +207,13 @@ export interface MetabotConversationState {
   forkedFromConversationId: string | undefined;
   isProcessing: boolean;
   hasMessagedInSession: boolean;
-  messages: MetabotChatMessage[];
+  messages: MetabotMessage[];
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
   activeChainId: string | undefined;
   lastTokenUsage?: MetabotContextUsage;
   profileOverride: MetabotProfileId | undefined;
-  pendingMessageExternalId: string | undefined;
   experimental: {
     developerMessage: string;
     metabotReqIdOverride: string | undefined;

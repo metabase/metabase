@@ -31,7 +31,7 @@ const setup = (
     createMockDashboard({ id: 123, name: "Orders" }),
   );
   return renderWithProviders(
-    <MetabotChainOfThought message={message} isStreaming={isStreaming} />,
+    <MetabotChainOfThought part={message} isStreaming={isStreaming} />,
     { storeInitialState: createMockState({ settings }) },
   );
 };

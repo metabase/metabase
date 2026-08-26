@@ -2,7 +2,8 @@ import { nanoid } from "@reduxjs/toolkit";
 
 import type {
   MetabotAgentChainOfThoughtMessage,
-  MetabotChatMessage,
+  MetabotMessage,
+  MetabotMessagePart,
   SlashCommand,
 } from "./types";
 
@@ -11,12 +12,12 @@ export const createMessageId = () => {
 };
 
 export const isChainOfThoughtMessage = (
-  message: MetabotChatMessage,
-): message is MetabotAgentChainOfThoughtMessage =>
-  message.type === "chain_of_thought";
+  part: MetabotMessagePart,
+): part is MetabotAgentChainOfThoughtMessage =>
+  part.type === "chain_of_thought";
 
-export const hasInProgressMessage = (messages: MetabotChatMessage[]): boolean =>
-  messages.some((message) => message.type === "turn_in_progress");
+export const hasInProgressMessage = (messages: MetabotMessage[]): boolean =>
+  messages.at(-1)?.outcome.type === "in_progress";
 
 export const parseSlashCommand = (
   message: string,

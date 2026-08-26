@@ -1,7 +1,11 @@
 import { createMessageId } from "metabase/metabot/state/utils";
 import type { MetabotStateContext } from "metabase-types/api";
 
-import type { MetabotAgentTurnError, MetabotChatMessage } from "../state/types";
+import type {
+  MetabotAgentTurnError,
+  MetabotChatMessage,
+  MetabotMessage,
+} from "../state/types";
 
 import { convertSlackChatMessage } from "./slack-mrkdwn";
 
@@ -11,8 +15,7 @@ export type FetchedChatMessage = MetabotChatMessage & {
 };
 
 /**
- * A single conversation with its flattened chat messages, as returned by
- * `GET /api/metabot/conversations/:id`.
+ * A single conversation as returned by `GET /api/metabot/conversations/:id`.
  */
 export type MetabotConversationDetail = {
   conversation_id: string;
@@ -21,16 +24,12 @@ export type MetabotConversationDetail = {
   user_id: number | null;
   forked_from_conversation_id: string | null;
   state?: MetabotStateContext;
-  messages: FetchedChatMessage[];
+  messages: MetabotMessage[];
 };
 
-// NOTE: this should go away long-term. The FE should refactor around turns instead of a flat list of message.
-// this would allow for annotations like error / finished at this higher level abstraction.
-
 /**
- * Convert a fetched conversation's `messages` payload into the shape the
- * live chat UI expects: strip the BE's `finished` / `error` annotations off
- * the last agent message of each turn and re-emit them as dedicated trailing
+ * Convert a flat chat-message payload into the shape the chat UI expects: strip
+ * the per-message `finished` / `error` annotations and re-emit them as trailing
  * `turn_aborted` / `turn_errored` messages.
  */
 export function normalizeFetchedChatMessages(

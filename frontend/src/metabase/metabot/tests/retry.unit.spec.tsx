@@ -309,7 +309,7 @@ describe("metabot > retry", () => {
     expect(await screen.findByText("hello!")).toBeInTheDocument();
 
     const convo = getMetabotConversation(store.getState(), "omnibot");
-    expect(convo.messages.find((m) => m.role === "user")).toMatchObject({
+    expect(convo.messages.find((t) => t.role === "user")).toMatchObject({
       externalId: "user_msg_1",
     });
   });

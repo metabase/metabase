@@ -20,7 +20,7 @@ import {
   getFinalChartMessageIdsPerTurn,
   getMetabotConversationId,
 } from "metabase/metabot/state";
-import type { MetabotChatMessage } from "metabase/metabot/state/types";
+import type { MetabotMessagePart } from "metabase/metabot/state/types";
 import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
 
@@ -94,9 +94,10 @@ export const useMetabot = (): UseMetabotResult => {
   const messages = useMemo<MetabotMessage[]>(
     () =>
       agent.messages
-        .filter((message) => isPublicMessage(message, finalChartIds))
-        .map((message) =>
-          mapMessage(message, chartComponentsCache.current, authConfig),
+        .flatMap((message) => message.parts)
+        .filter((part) => isPublicPart(part, finalChartIds))
+        .map((part) =>
+          mapMessage(part, chartComponentsCache.current, authConfig),
         ),
     [agent.messages, finalChartIds, authConfig],
   );
@@ -104,10 +105,13 @@ export const useMetabot = (): UseMetabotResult => {
   const errorMessages = useMemo<SdkMetabotErrorMessage[]>(
     () =>
       agent.messages
-        .filter((m) => m.role === "agent" && m.type === "turn_errored")
+        .filter((m) => m.outcome.type === "errored")
         .map(
           (m) =>
-            m.display ?? { type: "message", message: t`Something went wrong` },
+            (m.outcome.type === "errored" && m.outcome.display) || {
+              type: "message",
+              message: t`Something went wrong`,
+            },
         ),
     [agent.messages],
   );
@@ -167,20 +171,20 @@ function getCachedChartComponent(
 // see the comment on `MetabotMessage` in `embedding-sdk-bundle/types/metabot.ts`
 // for the full rationale.
 type PublicChatMessage =
-  | Extract<MetabotChatMessage, { type: "text" }>
-  | (Extract<MetabotChatMessage, { type: "data_part" }> & {
+  | Extract<MetabotMessagePart, { type: "text" }>
+  | (Extract<MetabotMessagePart, { type: "data_part" }> & {
       part: { type: "data-generated_entity"; data: { type: "card" } };
     });
 
-const isPublicMessage = (
-  message: MetabotChatMessage,
+const isPublicPart = (
+  part: MetabotMessagePart,
   finalChartIds: Set<string>,
-): message is PublicChatMessage =>
-  message.type === "text" ||
-  (message.type === "data_part" &&
-    message.part.type === "data-generated_entity" &&
-    message.part.data.type === "card" &&
-    finalChartIds.has(message.id));
+): part is PublicChatMessage =>
+  part.type === "text" ||
+  (part.type === "data_part" &&
+    part.part.type === "data-generated_entity" &&
+    part.part.data.type === "card" &&
+    finalChartIds.has(part.id));
 
 const mapMessage = (
   message: PublicChatMessage,

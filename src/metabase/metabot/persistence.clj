@@ -564,25 +564,21 @@
 ;;; ---------------------------------------- Chat message conversion ----------------------------------------
 
 (defn- convert-content-block
-  "Convert a single v2 part from `:data` into a frontend `MetabotChatMessage` map.
+  "Convert a single v2 part from `:data` into a frontend message part.
    Returns nil for parts that should be skipped (unknown types).
 
-   `row-role` decides whether text parts render as user or agent messages — v2
-   text parts carry no role of their own. `external-id` (the parent row's
-   `metabot_message.external_id`) is attached to text and data part chat
-   messages as `:externalId` — the stable key for feedback and retry; the
-   per-block `:id` stays unique."
-  [row-role external-id part]
+   `row-role` decides whether text parts render as user or agent parts — v2
+   text parts carry no role of their own. The owning message carries the row's
+   `external_id`; the per-block `:id` stays unique."
+  [row-role part]
   (cond
     (schema.v2/text-part? part)
     (if (= :user row-role)
-      (cond-> {:id (str (random-uuid)) :role "user" :type "text" :message (:text part)}
-        external-id (assoc :externalId external-id))
-      (cond-> {:id      (str (random-uuid))
-               :role    "agent"
-               :type    "text"
-               :message (:text part)}
-        external-id (assoc :externalId external-id)))
+      {:id (str (random-uuid)) :role "user" :type "text" :message (:text part)}
+      {:id      (str (random-uuid))
+       :role    "agent"
+       :type    "text"
+       :message (:text part)})
 
     (schema.v2/tool-part? part)
     (cond-> {:id     (:toolCallId part)
@@ -600,14 +596,18 @@
       (assoc :result nil :is_error true))
 
     (schema.v2/data-part? part)
-    (cond-> {:id   (str (random-uuid))
-             :role "agent"
-             :type "data_part"
-             :part {:type (:type part)
-                    :data (:data part)}}
-      external-id (assoc :externalId external-id))
+    {:id   (str (random-uuid))
+     :role "agent"
+     :type "data_part"
+     :part {:type (:type part)
+            :data (:data part)}}
 
     :else nil))
+
+(defn- message->parts
+  "The row's `:data` blocks as frontend message parts."
+  [message]
+  (into [] (keep #(convert-content-block (:role message) %)) (or (:data message) [])))
 
 (defn- decode-error
   "JSON-decode a row's `:error` column value (a string written by
@@ -663,9 +663,12 @@
    window) get a synthetic empty text message so the FE has something to render
    the alert on."
   [message]
-  (let [blocks       (or (:data message) [])
-        external-id  (:external_id message)
-        chat-msgs    (into [] (keep #(convert-content-block (:role message) external-id %)) blocks)
+  (let [external-id  (:external_id message)
+        chat-msgs    (mapv (fn [part]
+                             (cond-> part
+                               (and external-id (not= "tool_call" (:type part)))
+                               (assoc :externalId external-id)))
+                           (message->parts message))
         ;; Absent :finished is treated as true (success); only explicit nil
         ;; (stale placeholder) or false (aborted) should drive the stub branch.
         not-finished (and (contains? message :finished)
@@ -751,6 +754,45 @@
                      (message->chat-messages message))))
          (if include-errored? messages (drop-errored-pairs messages)))))
 
+(defn- row->outcome
+  "The message's outcome, from its own `finished` / `error` columns. Absent
+  `:finished` means success; explicit `nil` past the grace window is a crashed
+  placeholder and reads as aborted."
+  [row]
+  (cond
+    (placeholder-still-active? row)
+    {:type "in_progress"}
+
+    (some? (:error row))
+    {:type "errored" :error (decode-error (:error row))}
+
+    (and (contains? row :finished) (not (true? (:finished row))))
+    {:type "aborted"}
+
+    :else
+    {:type "done"}))
+
+(defn- message->client-message
+  "Convert one `MetabotMessage` row into its client shape: the row's parts, plus
+  the `external_id` and outcome the row itself carries. A message that produced
+  no renderable parts (an errored one, or one made only of tool calls) is still
+  fully represented — which is what lets the client thread `parent_message_id`
+  onto it."
+  [row]
+  {:id         (or (:external_id row) (str (:id row)))
+   :externalId (:external_id row)
+   :role       (if (= :user (:role row)) "user" "agent")
+   :parts      (if (placeholder-still-active? row) [] (message->parts row))
+   :outcome    (row->outcome row)})
+
+(defn messages->client-messages
+  "Convert a seq of `MetabotMessage` model instances into their client shape, one
+  per row. Errored pairs are dropped unless `:include-errored? true`."
+  ([messages] (messages->client-messages messages nil))
+  ([messages {:keys [include-errored?]}]
+   (mapv message->client-message
+         (if include-errored? messages (drop-errored-pairs messages)))))
+
 (defn- row->flat-messages
   [row parent-id]
   (let [messages (if (placeholder-still-active? row)
@@ -814,7 +856,7 @@
                                                      :metabot_conversation_id conversation-id
                                                      :archived false
                                                      {:order-by [[:id :asc]]}))
-       :messages                    (messages->chat-messages messages)})))
+       :messages                    (messages->client-messages messages)})))
 
 ;;; ---------------------------------------- Forking ----------------------------------------
 

@@ -4,18 +4,18 @@ import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMes
 import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
-import type { MetabotChatMessage } from "metabase/metabot/state";
+import type { MetabotMessagePart } from "metabase/metabot/state";
 import { Stack } from "metabase/ui";
 
 import S from "./MetabotQuestion.module.css";
 
-const isQuestionNavigationMessage = (message: MetabotChatMessage) =>
-  message.type === "data_part" &&
-  message.part.type === "data-generated_entity" &&
-  message.part.data.type === "card";
+const isQuestionNavigationPart = (part: MetabotMessagePart) =>
+  part.type === "data_part" &&
+  part.part.type === "data-generated_entity" &&
+  part.part.data.type === "card";
 
-const isHiddenInEmbedding = (message: MetabotChatMessage) =>
-  message.type === "chain_of_thought";
+const isHiddenInEmbedding = (part: MetabotMessagePart) =>
+  part.type === "chain_of_thought";
 
 const AGENT_ID = "omnibot";
 
@@ -27,15 +27,17 @@ export function MetabotChatHistory() {
 
   const chatMessages = useMemo(
     () =>
-      messages.filter(
-        (message) =>
-          !isQuestionNavigationMessage(message) &&
-          !isHiddenInEmbedding(message),
-      ),
+      messages.map((message) => ({
+        ...message,
+        parts: message.parts.filter(
+          (part) =>
+            !isQuestionNavigationPart(part) && !isHiddenInEmbedding(part),
+        ),
+      })),
     [messages],
   );
 
-  const hasMessages = chatMessages.length > 0;
+  const hasMessages = chatMessages.some((message) => message.parts.length > 0);
 
   // Auto-scroll to bottom when new messages are received
   useEffect(() => {

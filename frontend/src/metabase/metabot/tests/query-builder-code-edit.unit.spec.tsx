@@ -179,20 +179,20 @@ describe("query builder code edits from omnibot", () => {
     });
 
     expect(
-      typedStore.getState().metabot.conversations[conversationId]?.messages,
-    ).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          type: "text",
-          externalId: "msg_test_code_edit",
-        }),
+      typedStore
+        .getState()
+        .metabot.conversations[conversationId]?.messages.at(-1),
+    ).toMatchObject({
+      role: "agent",
+      externalId: "msg_test_code_edit",
+      parts: expect.arrayContaining([
+        expect.objectContaining({ type: "text" }),
         expect.objectContaining({
           type: "data_part",
-          externalId: "msg_test_code_edit",
           part: expect.objectContaining({ type: "data-code_edit" }),
         }),
       ]),
-    );
+    });
 
     expect(requestBody?.context).toEqual(
       expect.objectContaining({
