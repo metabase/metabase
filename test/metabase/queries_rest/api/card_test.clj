@@ -5126,7 +5126,10 @@
                 resp (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card)))]
             (is (= 3 (count (get-in resp [:data :rows]))))))))))
 
-(deftest ^:parallel reduced-fields-propagate-to-downstream-card-test
+;; Not `^:parallel`: running alongside other tests, something commits the transaction holding this test's
+;; rollback-only savepoint, which discards both `with-temp` Cards. The downstream query then reports its source Card
+;; as missing. Only MySQL shows it, and only under load -- the test passes on its own.
+(deftest ^:synchronized reduced-fields-propagate-to-downstream-card-test
   (testing "A card with reduced :fields only exposes those columns to a card sourced from it (#30610)"
     (let [mp         (mt/metadata-provider)
           venues-id  (lib.metadata/field mp (mt/id :venues :id))
