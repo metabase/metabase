@@ -216,8 +216,7 @@
                                              {:email      email
                                               :first_name key-name
                                               :last_name  ""
-                                              :type       :api-key
-                                              :password   (str (random-uuid))})]
+                                              :type       :api-key})]
         (when group-id
           (user/set-permissions-groups! user-id [(perms/all-users-group) group-id]))
         (-> (t2/insert-returning-instance! :model/ApiKey

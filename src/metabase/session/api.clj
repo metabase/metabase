@@ -225,7 +225,7 @@
               password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated
-                             {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
+                             {:object (assoc user :token (auth-identity/reset-token-hash user-id))}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
