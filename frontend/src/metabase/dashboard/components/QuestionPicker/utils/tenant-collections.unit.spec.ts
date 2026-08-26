@@ -112,17 +112,11 @@ describe("mergeTenantUserCollections", () => {
     );
   });
 
-  it("keeps readable Our analytics grouped", () => {
+  it("keeps readable Our analytics when it has no subcollections", () => {
     const ourAnalytics = createMockCollection({ ...ROOT_COLLECTION });
 
-    const regularCollection = createMockCollection({
-      id: 200,
-      name: "Sales",
-      location: "/",
-    });
-
     const collectionsById = mergeTenantUserCollections({
-      baseCollectionsById: expandCollections([ourAnalytics, regularCollection]),
+      baseCollectionsById: expandCollections([ourAnalytics]),
       sharedCollectionsById: expandCollections(),
       tenantSpecificCollectionsById: expandCollections(),
       canReadRootCollection: true,
@@ -133,9 +127,5 @@ describe("mergeTenantUserCollections", () => {
         ({ name }) => name,
       ),
     ).toEqual(["Our analytics"]);
-
-    expect(
-      collectionsById[ROOT_COLLECTION.id].children.map(({ name }) => name),
-    ).toEqual(["Sales"]);
   });
 });

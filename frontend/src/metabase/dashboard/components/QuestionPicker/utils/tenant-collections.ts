@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -203,8 +202,6 @@ export function mergeTenantUserCollections({
     pathPrefix: [COLLECTIONS_TOP_LEVEL_ID],
   });
 
-  const rootCollection = baseCollectionsById[ROOT_COLLECTION.id];
-
   const baseCollections = canReadRootCollection
     ? []
     : mergeCollectionNamespaceChildren({
@@ -218,8 +215,8 @@ export function mergeTenantUserCollections({
     baseCollectionsById,
     mergedCollectionsById,
     syntheticTopLevel,
-    shouldIncludeRoot:
-      canReadRootCollection && rootCollection.children.length > 0,
+    // The root can contain questions even when it has no child collections.
+    shouldIncludeRoot: canReadRootCollection,
   });
 
   syntheticTopLevel.children = [
