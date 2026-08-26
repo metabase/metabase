@@ -74,19 +74,15 @@
   (memoize/memo
    (fn []
      (when-let [resource (io/resource route-preloads-resource)]
-       (try
-         (mapv (fn [[pattern markup signed-out?]]
-                 [(clout/route-compile pattern) markup signed-out?])
-               (json/decode (slurp resource)))
-         (catch Throwable e
-           ;; A page without hints is slower, not broken.
-           (log/warnf e "Failed to read %s" route-preloads-resource)
-           nil))))))
+       (->> (slurp resource)
+            json/decode
+            (mapv (fn [[pattern markup signed-out?]]
+                    [(clout/route-compile pattern) markup signed-out?])))))))
 
 (defn- strip-base-path
   "The request URI carries the path Metabase is mounted under; the manifest does not."
   [uri]
-  (let [base (str/replace (base-href) #"/$" "")]
+  (let [base (-> (base-href) (str/replace #"/$" ""))]
     (if (str/starts-with? uri base)
       (subs uri (count base))
       uri)))
@@ -99,11 +95,11 @@
   `frontend/build/shared/rspack/route-preloads.js`."
   [uri signed-in?]
   (let [path (strip-base-path (or uri "/"))]
-    (some (fn [[route markup signed-out?]]
-            (when (and (or signed-in? signed-out?)
-                       (clout/route-matches route {:uri path}))
-              markup))
-          (load-route-preloads))))
+    (->> (load-route-preloads)
+         (some (fn [[route markup signed-out?]]
+                 (when (and (or signed-in? signed-out?)
+                            (clout/route-matches route {:uri path}))
+                   markup))))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
