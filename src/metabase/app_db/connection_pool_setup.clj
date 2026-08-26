@@ -184,13 +184,44 @@
 
 (mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
-  `data-source` is already pooled, this will return `data-source` as-is."
+  `data-source` is already pooled, this will return `data-source` as-is, ignoring `props-overrides`.
+  `props-overrides` (if provided) are merged over [[application-db-connection-pool-props]]."
+  (^PoolBackedDataSource [db-type data-source]
+   (connection-pool-data-source db-type data-source nil))
+  (^PoolBackedDataSource [db-type :- :keyword
+                          ^javax.sql.DataSource data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+                          props-overrides :- [:maybe [:map-of :string :any]]]
+   (if (instance? PoolBackedDataSource data-source)
+     data-source
+     (let [ds-name    (format "metabase-%s-app-db" (name db-type))
+           pool-props (merge (application-db-connection-pool-props)
+                             {"dataSourceName" ds-name}
+                             props-overrides)]
+       (com.mchange.v2.c3p0.DataSources/pooledDataSource
+        data-source
+        (connection-pool/map->properties pool-props))))))
+
+(def ^:private default-quartz-max-pool-size 5)
+
+(mu/defn quartz-connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
+  "Create a small connection pool for the Quartz JDBC job store, separate from the main application DB pool.
+
+  Quartz gets a dedicated pool so job-store operations can never be starved by application code saturating the main
+  pool: a thread inside a `with-transaction` that triggers a Quartz operation would otherwise deadlock waiting for a
+  connection that can never be freed (the outer transaction won't release its connection until the block completes).
+
+  Inherits all the main pool's properties (connection customizer, credential-rotation settings, etc.) except the
+  pool sizing."
   ^PoolBackedDataSource [db-type :- :keyword
-                         ^PoolBackedDataSource data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
-  (if (instance? PoolBackedDataSource data-source)
-    data-source
-    (let [ds-name    (format "metabase-%s-app-db" (name db-type))
-          pool-props (assoc (application-db-connection-pool-props) "dataSourceName" ds-name)]
-      (com.mchange.v2.c3p0.DataSources/pooledDataSource
-       data-source
-       (connection-pool/map->properties pool-props)))))
+                         data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (connection-pool-data-source
+   db-type
+   data-source
+   ;; a small pool is safe: job-store operations are short (acquire the QRTZ_LOCKS row lock, run a few statements,
+   ;; commit), hold exactly one connection at a time, and never wait on the main pool while holding one, so
+   ;; undersizing can only queue operations briefly -- it cannot deadlock.
+   {"dataSourceName"  (format "metabase-%s-quartz" (name db-type))
+    "maxPoolSize"     (or (config/config-int :mb-quartz-max-connection-pool-size)
+                          default-quartz-max-pool-size)
+    "minPoolSize"     1
+    "initialPoolSize" 1}))
