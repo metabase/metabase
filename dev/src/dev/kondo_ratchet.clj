@@ -2,7 +2,7 @@
   "Ratchet on inline kondo ignore forms.
 
   Per-linter budgets live in `.clj-kondo/ratchets.edn`.
-  `metabase.core.kondo-ratchet-test` fails when they drift from the tree;
+  `metabase.core.kondo-ratchet-test` and `./bin/mage check-kondo-ratchets` fail when they drift from the tree;
   `./bin/mage fix-kondo-ratchets` lowers budgets, never raises them.
   Loaded by both the bb task and the JVM test, so keep it dependency-free."
   {:clj-kondo/config '{:linters {:discouraged-var {clojure.core/println {:level :off}}}}}
@@ -250,3 +250,46 @@
        (println "unchanged")
        (do (spit file text)
            (println (str "wrote " ratchets-file)))))))
+
+(defn check-report
+  "The lines [[check]] prints when `text` (the ratchets file) has budgets that drift from `occurrences`
+  or isn't [[render]]ed from `ratchets`; empty when everything is clean."
+  [{:keys [ignore-counts] :as ratchets} occurrences text]
+  (let [drifted     (drift ignore-counts occurrences)
+        over        (filter (comp :examples val) drifted)
+        stale       (remove (comp :examples val) drifted)
+        linter-line (fn [[linter {:keys [recorded actual]}]]
+                      (format "  %s: %d recorded, %d actual" linter recorded actual))]
+    (concat
+     (when (seq over)
+       (cons (str "over budget -- remove an ignore, or seed the budget with"
+                  " `./bin/mage fix-kondo-ratchets --seed <linter>` and defend it in the PR:")
+             (mapcat (fn [[_ {:keys [examples]} :as entry]]
+                       (cons (linter-line entry) (map #(str "    " %) examples)))
+                     over)))
+     (when (seq stale)
+       (cons "stale -- run `./bin/mage fix-kondo-ratchets`, or label the PR kondo-ratchets-self-healing:"
+             (map linter-line stale)))
+     (when (not= text (render ratchets))
+       [(str ratchets-file " is not normalized -- run `./bin/mage fix-kondo-ratchets`"
+             " to fix the formatting")]))))
+
+(defn check
+  "Fail the bb task when [[ratchets-file]] drifts from the source tree or isn't normalized.
+  Prints the [[check-report]] and exits non-zero on failure, `ok` otherwise.
+  Release branches don't carry the file, so its absence is a no-op rather than a failure."
+  []
+  (let [file (io/file ratchets-file)]
+    (if-not (.exists file)
+      (println (str "no " ratchets-file " -- ratchets are master-only, nothing to check"))
+      (let [ratchets    (read-ratchets)
+            occurrences (scan)
+            lines       (check-report ratchets occurrences (slurp file))]
+        (if (empty? lines)
+          (println (format "ok -- %d ignore forms within %d budgets"
+                           (count occurrences) (count (:ignore-counts ratchets))))
+          (do (run! println lines)
+              ;; mage's runner turns this into the exit code and, being :mage/quiet, prints nothing more;
+              ;; System/exit would kill a REPL that called this.
+              (throw (ex-info (str ratchets-file " drifted from the source tree")
+                              {:babashka/exit 1, :mage/quiet true}))))))))
