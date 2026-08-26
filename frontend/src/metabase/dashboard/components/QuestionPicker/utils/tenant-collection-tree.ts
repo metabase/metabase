@@ -1,8 +1,17 @@
 import { t } from "ttag";
 
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import type { ExpandedCollection } from "metabase/redux/store";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import type { Collection, CollectionId } from "metabase-types/api";
+
+export type ExpandedCollection = Omit<
+  Collection,
+  "children" | "parent" | "path"
+> & {
+  path: CollectionId[] | null;
+  parent: ExpandedCollection | null;
+  children: ExpandedCollection[];
+  is_personal?: boolean;
+};
 
 export const SHARED_TENANT_COLLECTIONS_ROOT_ID: CollectionId =
   "shared-tenant-collections-root";

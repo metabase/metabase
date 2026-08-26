@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { ExpandedCollection } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import {
   COLLECTIONS_TOP_LEVEL_ID,
+  type ExpandedCollection,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
   TENANT_SPECIFIC_COLLECTIONS_ROOT_ID,
   createSyntheticTopLevel,
