@@ -38,11 +38,11 @@ export function TransformGraphRunInfoSection({
           : EMPTY_CELL_PLACEHOLDER}
       </SidebarInfoRow>
       <SidebarInfoRow label={t`Started at`}>
-        <DateTime value={run.start_time} unit="minute" />
+        <DateTime value={run.start_time} unit="minute" local={false} />
       </SidebarInfoRow>
       {run.end_time != null && (
         <SidebarInfoRow label={t`Ended at`}>
-          <DateTime value={run.end_time} unit="minute" />
+          <DateTime value={run.end_time} unit="minute" local={false} />
         </SidebarInfoRow>
       )}
       <SidebarInfoRow label={t`Duration`}>
