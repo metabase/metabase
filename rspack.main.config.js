@@ -357,7 +357,9 @@ const config = {
     new OnScriptError(),
     ...(isDevMode ? [] : [new DropStylesEntryScriptPlugin()]),
     new PreloadAssetTags(),
-    new RoutePreloadManifest(),
+    // Development skips the manifest: the hints only pay for themselves on a
+    // real network, and the backend serves the page fine without them.
+    new RoutePreloadManifest({ enabled: WEBPACK_BUNDLE === "production" }),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
