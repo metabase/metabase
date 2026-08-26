@@ -34,20 +34,17 @@ function groupFiles(group, initialFiles) {
  * checked in and nothing can drift. `routes/` reads the tree out of source, and
  * `route-preloads-rows.js` keeps the ones with a chunk and coalesces them.
  *
- * Development skips it. The hints only pay for themselves on a real network,
- * and the backend serves the page without them when the manifest is absent.
+ * It runs in development too. Deriving the rows is parsing, not building, so it
+ * costs about seventy milliseconds, and having the hints in both places means a
+ * broken pattern shows up while someone is working on it rather than in
+ * production.
  */
 class RoutePreloadManifest {
-  constructor({ enabled = true, root = REPO_ROOT } = {}) {
-    this.enabled = enabled;
+  constructor({ root = REPO_ROOT } = {}) {
     this.root = root;
   }
 
   apply(/** @type {import("webpack").Compiler} */ compiler) {
-    if (!this.enabled) {
-      return;
-    }
-
     const publicPath = compiler.options.output.publicPath || "";
 
     compiler.hooks.thisCompilation.tap(
