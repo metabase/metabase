@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Button, Flex, Modal, type ModalProps, Text } from "metabase/ui";
+import { Box, Button, Flex, Modal, type ModalProps, Text } from "metabase/ui";
 
 const args = {
   centered: true,
@@ -115,14 +115,16 @@ const SingleButtonTemplate = (args: ModalProps) => {
 };
 
 const OpenedTemplate = (args: ModalProps) => (
-  <Modal {...args} title="Add to dashboard?" opened onClose={() => undefined}>
-    <Text>Choose a dashboard for this question.</Text>
-    <Flex direction="row" justify="flex-end" mt="lg">
-      <Button type="submit" variant="filled">
-        Add
-      </Button>
-    </Flex>
-  </Modal>
+  <Box w="100vw" h="100vh">
+    <Modal {...args} title="Add to dashboard?" opened onClose={() => undefined}>
+      <Text>Choose a dashboard for this question.</Text>
+      <Flex direction="row" justify="flex-end" mt="lg">
+        <Button type="submit" variant="filled">
+          Add
+        </Button>
+      </Flex>
+    </Modal>
+  </Box>
 );
 
 const NoBodyTextTemplate = (args: ModalProps) => {

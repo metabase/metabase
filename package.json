@@ -541,7 +541,7 @@
     "test-unit-watch:cljs": "bun run concurrently -n 'cljs,tests' 'bun run build-watch:cljs' 'bun run test-unit-keep-cljs --watch'",
     "test-visual:loki": "NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu' ",
     "test-visual:loki:ci": "bun run build-storybook && bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer",
-    "test-visual:loki-approve-diff": "ls .loki/difference | xargs -I _ find .loki/current -name _ | xargs -I _ cp _ .loki/reference/",
+    "test-visual:loki-approve-diff": "find .loki/current -type f -name '*.png' -exec cp {} .loki/reference/ \\;",
     "test-visual:loki-prune": "ls .loki/reference | grep -v \"$(ls .loki/current)\" | xargs -I {} rm .loki/reference/{}",
     "test-visual:loki-report": "node frontend/test/generate-loki-report-json.js && reg-cli --from .loki/report.json --report .loki/report.html",
     "test-visual:loki-report-open": "bun run test-visual:loki || (echo 'Visual test failed, opening report...' && bun run test-visual:loki-report && open-cli .loki/report.html)",
