@@ -134,7 +134,7 @@ export const ChartSettingSelect = ({
       data={data}
       disabled={disabled}
       value={selectedValue}
-      //Mantine V7 select onChange has 2 arguments passed. This breaks the assumption in visualizations/lib/settings.js where the onChange function is defined
+      // Mantine's Select passes two arguments to onChange, but the onChange defined in the settings code takes one.
       onChange={(v) => {
         onChange(
           // Unjustified type cast. FIXME

@@ -60,7 +60,6 @@ class TableQuestions extends Component<TableQuestionsProps> {
       <div>
         <ReferenceHeader
           name={t`Questions about ${this.props.table.display_name}`}
-          type="questions"
           headerIcon="table2"
         />
         <LoadingAndErrorWrapper

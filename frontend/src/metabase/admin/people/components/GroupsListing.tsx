@@ -517,7 +517,6 @@ export const GroupsListing = (props: GroupsListingProps) => {
           <Button
             variant="filled"
             onClick={onCreateAGroupButtonClicked}
-            flex="0 1 140px"
           >{t`Create a group`}</Button>
         )
       }

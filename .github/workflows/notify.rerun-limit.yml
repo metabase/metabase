@@ -1,0 +1,78 @@
+name: Notify On Re-run Limit
+
+on:
+  workflow_run:
+    workflows:
+      - "Run tests"
+    types:
+     - completed
+
+jobs:
+  notify:
+    name: Send Slack Notification If Workflow Run Attempts Exceed Limit
+    if: ${{ github.event.workflow_run.run_attempt > 5 && github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            release
+            .github
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Send Slack Notification
+        uses: actions/github-script@v9
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          COMMIT: ${{ github.event.workflow_run.head_sha }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          TRIGGERING_ACTOR_LOGIN: ${{ github.event.workflow_run.triggering_actor.login }}
+        with:
+          script: |
+            const { mentionUserByGithubLogin, sendSlackMessage } = require(`${{ github.workspace }}/release/dist/index.cjs`);
+
+            const ATTEMPT = Number(process.env.ATTEMPT);
+            const COMMIT = process.env.COMMIT;
+            const RUN_NAME = process.env.RUN_NAME;
+            const RUN_URL = process.env.RUN_URL;
+            const TRIGGERING_ACTOR_LOGIN = process.env.TRIGGERING_ACTOR_LOGIN;
+
+            await sendSlackMessage({
+              channelName: 'engineering-ci',
+              message: 'Workflow Retry Limit Exceeded',
+              blocks: [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": `:rotating_light: Workflow Rerun Limit Exceeded :rotating_light:`,
+                    "emoji": true,
+                  }
+                },
+              ],
+              attachments: [{
+                color: "#ff4500",
+                blocks: [
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": `<${RUN_URL}|${RUN_NAME}> has been re-run ${ATTEMPT - 1} times by ${mentionUserByGithubLogin(TRIGGERING_ACTOR_LOGIN)} for <https://github.com/metabase/metabase/commit/${COMMIT}|${COMMIT.slice(0,7)}> commit.`
+                    },
+                  },
+                  {
+                    "type": "section",
+                    "text": {
+                      "type": "mrkdwn",
+                      "text": "Repeatedly re-running CI workflows wastes CI resources and may cause more issues. If re-running a workflow a handful of times does not resolve an issue, reach out to the github-admins Slack group to force merge the PR."
+                    }
+                  }
+                ],
+              }],
+            });
