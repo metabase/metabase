@@ -87,9 +87,6 @@
   "The request URI carries the path Metabase is mounted under; the manifest does not."
   [uri]
   (let [base (-> (base-href) (str/replace #"/$" ""))]
-    ;; The guard is not for an empty base, where `subs` would be a no-op, but for
-    ;; a `site-url` that does not match where the app is really served: `subs`
-    ;; would mangle the path, or throw when the base is the longer of the two.
     (cond-> uri
       (str/starts-with? uri base) (subs (count base)))))
 
@@ -102,10 +99,11 @@
   [uri signed-in?]
   (let [path (-> (or uri "/") strip-base-path)]
     (->> (route-preloads)
-         (some (fn [[route markup signed-out?]]
-                 (when (and (or signed-in? signed-out?)
-                            (clout/route-matches route {:uri path}))
-                   markup))))))
+         (filter (fn [[route _ signed-out?]]
+                   (and (or signed-in? signed-out?)
+                        (clout/route-matches route {:uri path}))))
+         first
+         second)))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
