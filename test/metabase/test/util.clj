@@ -425,7 +425,6 @@
             :last_name (u.random/random-name)
             :email (u.random/random-email)
             :entity_id (u/generate-nano-id)
-            :password (u.random/random-name)
             :date_joined (t/zoned-date-time)
             :updated_at (t/zoned-date-time)})})
 

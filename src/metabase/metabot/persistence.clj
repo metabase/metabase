@@ -353,7 +353,8 @@
 
 ;;; ---------------------------------------- Conversation state ----------------------------------------
 
-(defn- replayable-assistant-row?
+(defn replayable-assistant-row?
+  "Is `row` an assistant message a later turn may replay?"
   [{:keys [error finished] :as row}]
   (and (assistant-row? row)
        (nil? error)

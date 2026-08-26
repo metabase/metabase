@@ -2,6 +2,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -90,6 +92,19 @@
                       {:type :tool-input-delta :toolCallId id :inputTextDelta (str/join bit)})
                     [{:type :tool-input-available :toolName (:function part) :toolCallId id}])))
    parts))
+
+(defn tool-boundary-error
+  "Run one tool call through the agent tool boundary — the path production uses — and
+  return the error message the model would see, or nil when the call was accepted."
+  [tool-name tool-var arguments]
+  (let [tools  (metabot.tools/wrap-tools-with-state {tool-name tool-var} (atom {}) nil nil)
+        chunks (parts->aisdk-chunks
+                [{:type :start :id "msg-boundary"}
+                 {:type :tool-input :id "call-boundary" :function tool-name :arguments arguments}])]
+    (-> (into [] (self.core/tool-executor-xf tools) chunks)
+        last
+        :error
+        :message)))
 
 (defn mock-llm-response
   "Create a mock LLM response (reducible) from high-level parts."
