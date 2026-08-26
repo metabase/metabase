@@ -11,6 +11,14 @@ const MANIFEST_FILENAME = "route-preloads.json";
 // `compiler.context` is the entry's directory, not the checkout.
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 
+/**
+ * Paths a signed-out visitor renders, rather than being bounced to the login
+ * page. Every other route redirects, so a hint for one would fetch a chunk the
+ * visitor never reaches. Setup runs before any user exists, which is exactly
+ * when there is no session to check.
+ */
+const SIGNED_OUT_PATHS = new Set(["/setup"]);
+
 const escapeHtml = (value) =>
   value
     .replace(/&/g, "&amp;")
@@ -103,13 +111,18 @@ class RoutePreloadManifest {
                 return groupFiles(group, initialFiles);
               });
 
-              // One row per pattern, carrying the markup rather than the file
-              // names, so the backend matches and writes the string it is given.
+              // One row per pattern: the markup to write, and whether a
+              // signed-out visitor ever renders the page. The backend matches
+              // and writes what it is given.
               const html = [...new Set(files)]
                 .map((file) => preloadTag(publicPath + file))
                 .join("");
 
-              return route.patterns.map((pattern) => [pattern, html]);
+              return route.patterns.map((pattern) => [
+                pattern,
+                html,
+                SIGNED_OUT_PATHS.has(pattern),
+              ]);
             });
 
             if (missing.length > 0) {

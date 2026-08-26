@@ -88,20 +88,21 @@
 
 (deftest route-preload-tags-test
   (let [tag (fn [file kind] (format "<link rel=\"preload\" href=\"%s\" as=\"%s\" fetchpriority=\"low\">" file kind))
-        manifest [["/question/ask" (tag "app/dist/metabot-query-builder.js" "script")]
-                  ["/question" (tag "app/dist/query-builder.js" "script")]
-                  ["/question/*" (tag "app/dist/query-builder.js" "script")]
+        manifest [["/question/ask" (tag "app/dist/metabot-query-builder.js" "script") false]
+                  ["/question" (tag "app/dist/query-builder.js" "script") false]
+                  ["/question/*" (tag "app/dist/query-builder.js" "script") false]
                   ["/dashboard/*" (str (tag "app/dist/dashboard.js" "script")
-                                       (tag "app/dist/dashboard.css" "style"))]
-                  ["/metric/*" (tag "app/dist/metrics.js" "script")]
-                  ["/setup" (tag "app/dist/setup.js" "script")]
-                  ["/" (tag "app/dist/home.js" "script")]]
+                                       (tag "app/dist/dashboard.css" "style"))
+                   false]
+                  ["/metric/*" (tag "app/dist/metrics.js" "script") false]
+                  ["/setup" (tag "app/dist/setup.js" "script") true]
+                  ["/" (tag "app/dist/home.js" "script") false]]
         tags-for (fn tags-for
                    ([uri] (tags-for uri true))
                    ([uri signed-in?]
                     (with-redefs-fn {#'index/load-route-preloads
-                                     (constantly (mapv (fn [[pattern markup]]
-                                                         [(clout/route-compile pattern) markup])
+                                     (constantly (mapv (fn [[pattern markup signed-out?]]
+                                                         [(clout/route-compile pattern) markup signed-out?])
                                                        manifest))}
                       (fn [] (#'index/route-preload-tags uri signed-in?)))))]
     (testing "a wildcard covers the section below it"

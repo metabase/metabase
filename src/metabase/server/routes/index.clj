@@ -69,51 +69,41 @@
 
 (def ^:private route-preloads-resource "frontend_client/app/dist/route-preloads.json")
 
-(defn- load-route-preloads* []
-  (when-let [resource (io/resource route-preloads-resource)]
-    (try
-      ;; `[pattern markup]` pairs, in the order the patterns are to be tried.
-      (mapv (fn [[pattern markup]] [(clout/route-compile pattern) markup])
-            (json/decode (slurp resource)))
-      (catch Throwable e
-        ;; A page without hints is slower, not broken.
-        (log/warnf e "Failed to read %s" route-preloads-resource)
-        nil))))
-
-(def ^:private ^{:arglists '([])} load-route-preloads (memoize/memo load-route-preloads*))
+(def ^:private ^{:arglists '([])} load-route-preloads
+  "`[pattern markup signed-out?]` rows, in the order the patterns are to be tried."
+  (memoize/memo
+   (fn []
+     (when-let [resource (io/resource route-preloads-resource)]
+       (try
+         (mapv (fn [[pattern markup signed-out?]]
+                 [(clout/route-compile pattern) markup signed-out?])
+               (json/decode (slurp resource)))
+         (catch Throwable e
+           ;; A page without hints is slower, not broken.
+           (log/warnf e "Failed to read %s" route-preloads-resource)
+           nil))))))
 
 (defn- strip-base-path
-  "The request URI carries the path Metabase is mounted under, and the manifest does not."
+  "The request URI carries the path Metabase is mounted under; the manifest does not."
   [uri]
   (let [base (str/replace (base-href) #"/$" "")]
     (if (and (seq base) (str/starts-with? uri base))
       (subs uri (count base))
       uri)))
 
-(def ^:private signed-out-preload-paths
-  "Paths a signed-out user renders, rather than being bounced to the login page.
-
-  Every other page redirects, so hints for them would fetch a chunk the visitor
-  never reaches. Setup runs before any user exists, which is exactly when there
-  is no session to check."
-  #{"/setup"})
-
 (defn- route-preload-tags
-  "Preload hints for the page this URI renders.
+  "Preload hints for the page this URI renders, written by the build.
 
-  The page it lands on is a chunk of its own, and nothing in the document points
-  at that chunk, so the browser only asks for it once the app has downloaded,
-  parsed and run. These hints start that fetch while the app is still arriving.
-
-  The build writes the markup, so this only has to find the first pattern that
-  matches; see `frontend/build/shared/rspack/route-preloads.js`."
+  Nothing in the document points at the page's chunk, so without these the
+  browser only asks for it once the app has downloaded, parsed and run. See
+  `frontend/build/shared/rspack/route-preloads.js`."
   [uri signed-in?]
   (let [path (strip-base-path (or uri "/"))]
-    (when (or signed-in? (contains? signed-out-preload-paths path))
-      (some (fn [[route markup]]
-              (when (clout/route-matches route {:uri path})
-                markup))
-            (load-route-preloads)))))
+    (some (fn [[route markup signed-out?]]
+            (when (and (or signed-in? signed-out?)
+                       (clout/route-matches route {:uri path}))
+              markup))
+          (load-route-preloads))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
