@@ -91,10 +91,9 @@
 (defn- generate-documentation
   "Generate the complete commands documentation"
   []
-  (str (md/paragraphs [(header-section)
-                       (generate-commands-section)
-                       (footer-section)])
-       "\n"))
+  (md/document [(header-section)
+                (generate-commands-section)
+                (footer-section)]))
 
 (defn generate-dox!
   "Generates CLI command documentation and writes it to docs/installation-and-operation/commands.md"

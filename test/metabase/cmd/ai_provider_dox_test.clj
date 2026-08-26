@@ -33,13 +33,13 @@
   [type-name]
   (first (filter #(= type-name (:type %)) (llm.provider/provider-types))))
 
-(deftest field-at-test
+(deftest ^:parallel field-at-test
   (testing "a `:show-when` or `:required-any` left pointing at a renamed key fails loudly"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"No credential field named :nope"
                           (#'ai-provider-dox/field-at (index [api-key-field]) :nope)))))
 
-(deftest field-qualifier-test
+(deftest ^:parallel field-qualifier-test
   (testing "only the facts that aren't the default get a marker"
     (is (= "(required)" (#'ai-provider-dox/field-qualifier api-key-field)))
     (is (= "(advanced)" (#'ai-provider-dox/field-qualifier base-url-field)))
@@ -48,7 +48,7 @@
   (testing "a plain optional field gets no parenthetical, so `:help` opening with \"Optional\" doesn't stutter"
     (is (nil? (#'ai-provider-dox/field-qualifier {})))))
 
-(deftest field-options-sentence-test
+(deftest ^:parallel field-options-sentence-test
   (testing "a short list of choices is spelled out"
     (is (= "One of: `OpenAI`, `Anthropic`."
            (#'ai-provider-dox/field-options-sentence
@@ -62,7 +62,7 @@
   (testing "a field with no choices says nothing"
     (is (nil? (#'ai-provider-dox/field-options-sentence api-key-field)))))
 
-(deftest field-default-sentence-test
+(deftest ^:parallel field-default-sentence-test
   (testing "a plain default is shown as stored"
     (is (= "Defaults to `https://example.com`." (#'ai-provider-dox/field-default-sentence base-url-field))))
   (testing "a default with `:options` is shown as the label the form displays, not the stored value"
@@ -73,32 +73,28 @@
   (testing "no default, nothing to say"
     (is (nil? (#'ai-provider-dox/field-default-sentence api-key-field)))))
 
-(deftest field-entry-test
+(deftest ^:parallel field-entry-test
   (testing "a required field names itself, links to its docs in the admin form's own words, and gives its env var"
     (is (= (str "**API key** (required). [Where do I find this?](https://example.com/keys) "
                 "Set it with `MB_LLM_EXAMPLE_API_KEY`.")
-           (#'ai-provider-dox/field-entry api-key-field (index [api-key-field]) "MB_LLM_EXAMPLE_API_KEY"))))
+           (#'ai-provider-dox/field-entry api-key-field "MB_LLM_EXAMPLE_API_KEY"))))
   (testing "a field with no environment variable simply omits it"
     (is (= "**API base URL** (advanced). Defaults to `https://example.com`."
-           (#'ai-provider-dox/field-entry base-url-field (index [base-url-field]) nil))))
-  (testing "a `:show-when` field says which choice reveals it"
-    (let [method {:key     :auth-method
-                  :label   (deferred-tru "Authentication method")
-                  :type    :segmented
-                  :options [{:value "key" :label (deferred-tru "Service account key")}
-                            {:value "oauth" :label (deferred-tru "OAuth token")}]}
-          keyfile {:key       :service-account-key
-                   :label     (deferred-tru "Service account key file")
-                   :type      :file
-                   :show-when {:field :auth-method :value "key"}}]
+           (#'ai-provider-dox/field-entry base-url-field nil))))
+  (testing "a `:show-when` field says which choice reveals it, from the labels resolved at gather time"
+    (let [method   {:key     :auth-method
+                    :label   (deferred-tru "Authentication method")
+                    :type    :segmented
+                    :options [{:value "key" :label (deferred-tru "Service account key")}
+                              {:value "oauth" :label (deferred-tru "OAuth token")}]}
+          keyfile  {:key       :service-account-key
+                    :label     (deferred-tru "Service account key file")
+                    :type      :file
+                    :show-when {:field :auth-method :value "key"}}
+          fields   [method keyfile]
+          resolved (#'ai-provider-dox/resolved-fields fields (index fields))]
       (is (= "**Service account key file**. Only when **Authentication method** is **Service account key**."
-             (#'ai-provider-dox/field-entry keyfile (index [method keyfile]) nil))))))
-
-(deftest thousands-test
-  (testing "context windows are grouped without leaning on the default locale"
-    (is (= "1,000,000" (#'ai-provider-dox/thousands 1000000)))
-    (is (= "200,000" (#'ai-provider-dox/thousands 200000)))
-    (is (= "512" (#'ai-provider-dox/thousands 512)))))
+             (#'ai-provider-dox/field-entry (second resolved) nil))))))
 
 (deftest model-source-test
   (testing "each provider type resolves to the source its models really come from"
@@ -122,7 +118,7 @@
                             #"No model source for provider type"
                             (#'ai-provider-dox/model-source {:type "brand-new"} {}))))))
 
-(deftest models-markdown-test
+(deftest ^:parallel models-markdown-test
   (testing "an adapter allow-list becomes a table with context windows"
     (let [markdown (#'ai-provider-dox/models-markdown
                     [:known {"claude-haiku" {:display-name "Claude Haiku 4.5" :context-window 200000}}]
@@ -157,23 +153,30 @@
     (is (str/includes? (#'ai-provider-dox/models-markdown [:dynamic] "vLLM")
                        "whichever models your vLLM server is serving"))))
 
-(deftest provider-doc-test
+(deftest ^:parallel provider-doc-test
   (testing "a registry entry is gathered into the plain data the sections render from"
     (let [doc (#'ai-provider-dox/provider-doc (registry-entry "anthropic"))]
       (is (= "Anthropic" (:label doc)))
       (is (= "claude-sonnet-4-6" (:default-model doc)))
       (is (= :known (first (:model-source doc))))
       (testing "each field's environment variable is looked up once, here"
-        (is (= "MB_LLM_ANTHROPIC_API_KEY" (get-in doc [:env-vars :api-key]))))
-      (testing "the field index is built once, here"
-        (is (= "API key" (str (get-in doc [:fields-index :api-key :label])))))))
+        (is (= "MB_LLM_ANTHROPIC_API_KEY" (get-in doc [:env-vars :api-key]))))))
+  (testing "a field's references to its siblings are resolved to labels here, so the index goes no further"
+    (let [doc (#'ai-provider-dox/provider-doc (registry-entry "google"))]
+      (is (not (contains? doc :fields-index)))
+      (is (= [["Service account key file"] ["OAuth access token" "Project ID"]]
+             (:required-any-labels doc)))
+      (is (= {:controlling-label "Authentication method" :value-label "Service account key"}
+             (->> (:fields doc) (filter #(= :service-account-key (:key %))) first :condition)))
+      (testing "a field with no `:show-when` picks up no condition at all"
+        (is (not-any? :condition (filter #(= :project-id (:key %)) (:fields doc)))))))
   (testing "the managed provider carries no credentials of its own"
     (let [doc (#'ai-provider-dox/provider-doc (registry-entry "metabase"))]
       (is (:managed? doc))
       (is (empty? (:fields doc)))
       (is (empty? (:env-vars doc))))))
 
-(deftest provider-section-test
+(deftest ^:parallel provider-section-test
   (testing "a section heads with the provider's label, then runs facts, models, and credentials in that order"
     (let [markdown (#'ai-provider-dox/provider-section
                     (#'ai-provider-dox/provider-doc (registry-entry "anthropic")))]
@@ -187,7 +190,7 @@
       (is (not (str/includes? markdown "Credentials:")))
       (is (str/includes? markdown "your instance's license token")))))
 
-(deftest document-markdown-requires-providers-test
+(deftest ^:parallel document-markdown-requires-providers-test
   (testing "an empty registry means the source moved, not that Metabase supports nothing"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"No provider types found"

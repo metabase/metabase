@@ -217,10 +217,9 @@
   []
   ;; the intro resource ends in its own newline, so joining as paragraphs reproduces the blank line the page has
   ;; always carried between the intro and the first entry
-  (str (md/paragraphs (concat [(format-intro)]
-                              (format-env-var-docs (get-settings))
-                              [(non-defsetting-env-vars)]))
-       "\n"))
+  (md/document (concat [(format-intro)]
+                       (format-env-var-docs (get-settings))
+                       [(non-defsetting-env-vars)])))
 
 (defn generate-dox!
   "Prints the generated environment variable docs to a file."

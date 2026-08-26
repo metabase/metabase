@@ -35,6 +35,12 @@
   [s]
   (str/join "\n" (map #(str "> " %) (str/split-lines (str s)))))
 
+(defn thousands
+  "`1000000` -> `\"1,000,000\"`."
+  [n]
+  ;; not `format`, whose grouping separator follows the default locale and so would differ between a laptop and CI
+  (str/replace (str n) #"(\d)(?=(\d{3})+$)" "$1,"))
+
 (defn- add-period
   "Terminate `s` with a period, unless it already terminates itself. Knows about the endings docs prose runs into: a
   trailing `:` reads as a dangling lead-in once the text stands on its own, so it becomes a period, and a fenced code
@@ -65,6 +71,13 @@
   "Join the non-blank parts with blank lines between them."
   [parts]
   (str/join "\n\n" (remove str/blank? parts)))
+
+(defn document
+  "`parts` as a finished page: joined as [[paragraphs]] and terminated with exactly one newline. Callers decide for
+  themselves whether to trim a part first — a resource that carries its own trailing newline contributes an extra
+  blank line, which some pages want and others don't."
+  [parts]
+  (str (paragraphs parts) "\n"))
 
 (defn labeled-block
   "A `label` line, then `body` beneath it — `Options:` over its list, `Credentials:` over its bullets."

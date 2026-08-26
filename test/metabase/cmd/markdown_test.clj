@@ -41,10 +41,22 @@
     (is (= "## Anthropic" (md/heading 2 "Anthropic")))
     (is (= "### `MB_ADMIN_EMAIL`" (md/heading 3 (md/code "MB_ADMIN_EMAIL"))))))
 
+(deftest ^:parallel thousands-test
+  (testing "large numbers are grouped without leaning on the default locale"
+    (is (= "1,000,000" (md/thousands 1000000)))
+    (is (= "200,000" (md/thousands 200000)))
+    (is (= "512" (md/thousands 512)))))
+
 (deftest ^:parallel blockquote-test
   (is (= "> DEPRECATED" (md/blockquote "DEPRECATED")))
   (testing "every line is prefixed, so a quote that runs on stays one quote instead of falling out into body text"
     (is (= "> Only on Pro.\n> Ask your admin." (md/blockquote "Only on Pro.\nAsk your admin.")))))
+
+(deftest ^:parallel document-test
+  (testing "a finished page ends in exactly one newline"
+    (is (= "One.\n\nTwo.\n" (md/document ["One." nil "Two."]))))
+  (testing "a part carrying its own trailing newline keeps the extra blank line it adds — trimming is the caller's call"
+    (is (= "Intro\n\n\nBody\n" (md/document ["Intro\n" "Body"])))))
 
 (deftest ^:parallel labeled-block-test
   (testing "a label line over the block it introduces"
