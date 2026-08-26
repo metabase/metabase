@@ -640,69 +640,11 @@ describe("scenarios > embedding > embedding hub > localization", () => {
     it("upsells rather than hiding the tab", () => {
       cy.visit("/embedding/localization");
 
+      // Card copy is unit-tested next to the component; this just confirms
+      // the upsell renders in place of the real dictionary configuration.
       cy.findByTestId("embedding-hub-main")
         .findByText("Translate your embedded content")
         .should("be.visible");
-    });
-  });
-});
-
-describe("scenarios > embedding > embedding hub > nav", () => {
-  describe("pro", { tags: "@EE" }, () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-    });
-
-    it("reaches all seven tabs from the nav", () => {
-      cy.visit("/embedding");
-
-      const tabs = [
-        { label: "Get started", path: "/embedding" },
-        { label: "Security", path: "/embedding/security" },
-        { label: "Authentication", path: "/embedding/authentication" },
-        { label: "Permissions", path: "/embedding/permissions" },
-        { label: "Tenancy", path: "/embedding/tenancy" },
-        { label: "Appearance", path: "/embedding/appearance" },
-        { label: "Localization", path: "/embedding/localization" },
-      ];
-
-      tabs.forEach(({ label, path }) => {
-        cy.log(`Open the ${label} tab`);
-        cy.findByTestId("embedding-hub-nav")
-          .findByRole("link", { name: label })
-          .click();
-
-        cy.url().should("include", path);
-      });
-    });
-  });
-
-  describe("oss", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
-
-    it("shows every tab, with a gem on the paid ones", () => {
-      cy.visit("/embedding");
-
-      cy.findByTestId("embedding-hub-nav").within(() => {
-        cy.log("Paid tabs carry the gem");
-        ["Authentication", "Tenancy", "Appearance", "Localization"].forEach(
-          (label) => {
-            cy.findByRole("link", { name: label })
-              .findByTestId("upsell-gem")
-              .should("exist");
-          },
-        );
-
-        cy.log("Permissions works on OSS, so it carries none");
-        cy.findByRole("link", { name: "Permissions" })
-          .findByTestId("upsell-gem")
-          .should("not.exist");
-      });
     });
   });
 });

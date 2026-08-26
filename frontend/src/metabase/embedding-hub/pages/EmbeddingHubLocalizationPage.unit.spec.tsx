@@ -54,6 +54,11 @@ describe("EmbeddingHubLocalizationPage", () => {
     expect(
       await screen.findByText("Translate your embedded content"),
     ).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Upload a translation dictionary to translate content such as item titles, headings, filter labels, and data in your embedded components.",
+      ),
+    ).toBeInTheDocument();
 
     expect(
       screen.queryByText("Translate embedded dashboards and questions"),
