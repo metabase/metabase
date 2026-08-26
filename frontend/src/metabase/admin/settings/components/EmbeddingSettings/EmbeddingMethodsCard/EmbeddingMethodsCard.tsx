@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { Box, Flex, Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 
 import {
   type EmbeddingSettingKey,
@@ -39,6 +40,7 @@ type EmbeddingMethod = {
  */
 export function EmbeddingMethodsCard() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
+  const hasFullAppEmbedding = useHasTokenFeature("embedding");
 
   const modularEmbedding: EmbeddingMethod = {
     title: t`Modular embedding and SDK for React`,
@@ -53,15 +55,18 @@ export function EmbeddingMethodsCard() {
     settingKey: "enable-embedding-static",
   };
 
-  const fullApp: EmbeddingMethod = {
+  const fullAppEmbedding: EmbeddingMethod = {
     title: t`Full-app embedding`,
     description: t`A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing.`,
     settingKey: "enable-embedding-interactive",
   };
 
-  const methods = hasSimpleEmbedding
-    ? [modularEmbedding, fullApp]
-    : [guestEmbeds];
+  const proMethods = [
+    hasSimpleEmbedding ? modularEmbedding : null,
+    hasFullAppEmbedding ? fullAppEmbedding : null,
+  ].filter(isNotNull);
+
+  const methods = proMethods.length > 0 ? proMethods : [guestEmbeds];
 
   return (
     <SettingsSection
