@@ -21,6 +21,7 @@ export default {
       description: "Question ID with links to test handleLink plugin",
     },
   },
+  // Unjustified type cast. FIXME
   args: {
     questionId: null,
   } as { questionId: number | null },
@@ -57,6 +58,7 @@ const QuestionNotice = () => {
 
 const AdminUserCheck = () => {
   const user = useCurrentUser();
+  // Unjustified type cast. FIXME
   if (!(user as any)?.is_superuser) {
     return (
       <div

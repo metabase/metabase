@@ -1,4 +1,4 @@
-import * as MetabaseError from "embedding-sdk-bundle/errors";
+import * as MetabaseError from "embedding-sdk-shared/errors";
 
 export function validateSession(session: any) {
   if (!session || typeof session !== "object") {

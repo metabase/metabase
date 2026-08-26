@@ -24,7 +24,7 @@ export const Default = {
   render: Template,
 
   args: {
-    value: color("brand"),
-    placeholder: color("brand"),
+    value: color("core-brand"),
+    placeholder: color("core-brand"),
   },
 };

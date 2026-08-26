@@ -17,6 +17,12 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
 
+// Toggling a sidebar option re-renders (and re-runs the query of) the embedded
+// question inside the already-loaded preview iframe. That round-trip can exceed
+// Cypress's default 4s command timeout, so lookups that depend on the re-render
+// finishing get a longer budget to wait it out.
+const RERENDER_TIMEOUT = 15000;
+
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed options";
 
@@ -90,10 +96,13 @@ describe(suiteTitle, () => {
     H.activateToken("pro-self-hosted");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
+      "persistSettings",
+    );
 
     mockEmbedJsToDevServer();
   });
@@ -638,7 +647,7 @@ describe(suiteTitle, () => {
 
     cy.log("assert that alert button appears in preview");
     H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Alerts" })
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
       .should("be.visible");
 
     cy.log(
@@ -650,18 +659,31 @@ describe(suiteTitle, () => {
       .click()
       .should("not.be.checked");
     H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Alerts" })
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
       .should("be.visible");
 
     cy.log("assert that unchecking alerts will close the alert modal");
     const newAlertModalTitle = "New alert";
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByRole("button", { name: "Alerts" }).should("be.visible").click();
-
-      cy.findByRole("heading", { name: newAlertModalTitle }).should(
-        "be.visible",
-      );
-    });
+    // Re-query the iframe body for the click instead of caching it via
+    // within(): toggling the sidebar options above re-renders the embedded
+    // question, so a cached body (and the element found inside it) goes stale
+    // and the "Alerts" ActionIcon detaches mid-click. Asserting visibility and
+    // clicking as separate re-queried chains lets Cypress re-run the full query
+    // for the action and land on a freshly-attached, stable button. The re-render
+    // re-executes the question's query inside the already-loaded iframe, which can
+    // exceed the default 4s command timeout, so give these lookups a longer budget.
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
+      .should("be.visible");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
+      .click();
+    H.getSimpleEmbedIframeContent()
+      .findByRole("heading", {
+        name: newAlertModalTitle,
+        timeout: RERENDER_TIMEOUT,
+      })
+      .should("be.visible");
 
     getEmbedSidebar()
       .findByLabelText("Allow alerts")
@@ -700,7 +722,7 @@ describe(suiteTitle, () => {
       cy.findByTestId("behavior-docs-link").should("be.visible");
       cy.findByTestId("behavior-docs-link")
         .should("have.attr", "href")
-        .and("include", "embedding/components.html#question");
+        .and("include", "embedding/question-reference");
 
       cy.findByText("Back").click();
 
@@ -965,7 +987,7 @@ describe(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=false,withSubscriptions=false,withTitle=true,isSaveEnabled=false,theme=custom",
+        "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=false,withSubscriptions=false,withTitle=true,theme=custom",
     });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
@@ -976,6 +998,13 @@ describe(suiteTitle, () => {
     // Should no longer derive background-hover as it is color-mix'd
     // in the colors configuration
     codeBlock().should("not.contain", '"background-hover"');
+
+    // Wait for the debounced theme persist to land before the test ends —
+    // otherwise the orphaned `_.debounce` callback in `useUserSetting` fires
+    // after `H.restore()` of the next test and writes the custom theme back
+    // into the freshly-restored DB, polluting downstream snowplow assertions.
+    // Proper fix (flush-on-unmount in `useUserSetting`) tracked in EMB-1795.
+    cy.wait("@persistSettings");
   });
 
   it("can toggle the Metabot layout from auto to stacked to sidebar", () => {

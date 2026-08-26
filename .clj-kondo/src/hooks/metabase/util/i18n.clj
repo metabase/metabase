@@ -1,7 +1,6 @@
 (ns hooks.metabase.util.i18n
   (:require
    [clj-kondo.hooks-api :as api]
-   [clojure.string :as str]
    [hooks.common]))
 
 (defn- valid-apostrophes?

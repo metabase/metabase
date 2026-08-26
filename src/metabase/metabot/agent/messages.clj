@@ -9,6 +9,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.skills :as skills]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -32,7 +33,7 @@
     (try
       (json/decode+kw arguments)
       (catch Exception e
-        (log/warn e "Failed to decode tool call arguments" {:arguments arguments})
+        (log/warnf "Failed to decode tool call arguments: %s" (ex-message e))
         arguments))
     arguments))
 
@@ -133,7 +134,7 @@
   "Extract AISDK parts from a step, filtering out non-message types."
   [step]
   (->> (:parts step)
-       (filter #(#{:text :tool-input :tool-output} (:type %)))))
+       (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))
 
 (defn- messages-with-injected-context
   "Returns messages from memory and injects context into the most recent one."
@@ -164,10 +165,16 @@
         steps          (memory/get-steps memory)
         input-parts    (mapcat input-message->parts input-messages)
         step-parts     (mapcat step->parts steps)
-        result         (vec (concat input-parts step-parts))]
+        ;; Preload the active SQL dialect (if any) as a synthetic load_skill
+        ;; tool-call/result pair. It is placed after the input messages (so the
+        ;; first message is still the user's) and before this turn's steps, which
+        ;; keeps it below the system cache breakpoint.
+        preload-parts  (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
+        result         (vec (concat input-parts preload-parts step-parts))]
     (log/info "Building message history"
               {:input-message-count (count input-messages)
                :step-count          (count steps)
+               :preload-parts       (count preload-parts)
                :total-parts         (count result)})
     result))
 
@@ -176,16 +183,24 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn build-system-message
-  "Build system message with templated prompt and enriched context.
+  "Build system message with templated prompt.
 
   Parameters:
   - context: Context map from API (with user_is_viewing, user_recently_viewed, etc.)
-  - profile: Profile map with :prompt-template key
+  - profile: Profile map with :prompt-template key. May carry a `:system-prompt-context` fn of the
+    request context that returns extra, feature-specific template vars — this is how a profile
+    injects its own system-prompt content without the generic agent knowing what it is.
   - tools: Tool registry map (name -> var)
 
   Returns message map with {:role \"system\" :content \"...\"}."
   [context profile tools]
-  (let [enriched-context (user-context/enrich-context-for-template context)
-        content          (prompts/build-system-message-content profile enriched-context tools)]
+  (let [profile-context (when-let [ctx-fn (:system-prompt-context profile)]
+                          (ctx-fn context))
+        content         (prompts/build-system-message-content
+                         profile
+                         (merge {:sql_dialect (user-context/extract-sql-dialect context)}
+                                profile-context)
+                         tools
+                         (:capabilities context))]
     {:role    "system"
      :content content}))

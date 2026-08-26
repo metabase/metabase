@@ -1,37 +1,27 @@
 (ns metabase.geojson.api
   (:require
    [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.geojson.settings :as geojson.settings]
    [metabase.permissions.core :as perms]
+   [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [ring.util.response :as response])
   (:import
    (java.io BufferedReader)
-   (java.net InetAddress)
-   (org.apache.commons.io.input ReaderInputStream)
-   (org.apache.http.conn DnsResolver)
-   (org.apache.http.impl.conn SystemDefaultDnsResolver)))
+   (org.apache.commons.io.input ReaderInputStream)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private connection-timeout-ms 8000)
-
-(def ^DnsResolver ^:private ^:dynamic  *system-dns-resolver* (SystemDefaultDnsResolver.))
-
-(def ^:private non-link-local-dns-resolver
-  (reify
-    DnsResolver
-    (^"[Ljava.net.InetAddress;" resolve [_ ^String host]
-      (let [addresses (.resolve *system-dns-resolver* host)]
-        (if (some #(.isLinkLocalAddress ^InetAddress %) addresses)
-          (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400
-                                                                   :link-local true}))
-          addresses)))))
 
 (defn- url->geojson
   [url]
@@ -40,12 +30,14 @@
                                  :socket-timeout     connection-timeout-ms
                                  :connection-timeout connection-timeout-ms
                                  :throw-exceptions   false
-                                 :dns-resolver       non-link-local-dns-resolver})
+                                 :dns-resolver       (u.http/network-policy-dns-resolver :external-only)})
                   (catch Throwable e
-                    (if (:link-local (ex-data e))
-                      (throw (ex-info (ex-message e) (dissoc (ex-data e) :link-local) e))
+                    (if (:ssrf (ex-data e))
+                      (throw (ex-info (geojson.settings/invalid-location-msg) {:status-code 400} e))
                       (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
-        success? (<= 200 (:status resp) 399)
+        ;; only 2xx is a real success — a 3xx redirect isn't followed (`:redirect-strategy :none`, for SSRF
+        ;; protection), so its (empty) body must be treated as a failed load rather than streamed as GeoJSON.
+        success? (<= 200 (:status resp) 299)
         allowed-content-types #{"application/geo+json"
                                 "application/vnd.geo+json"
                                 "application/json"
@@ -68,6 +60,49 @@
                          (io/resource url))]
     (io/reader resource)
     (url->geojson url)))
+
+(def ^:private custom-geojson-cache-ttl-ms
+  "User-defined custom maps are fetched over the network, so their GeoJSON is cached — but only briefly,
+  since the remote contents can change underneath us."
+  (u/hours->ms 1))
+
+(defn- fetch-geojson-data*
+  [url]
+  ;; url->reader handles both classpath (when MB_ALLOW_CLASSPATH_GEOJSON) and remote URLs.
+  (with-open [^java.io.Reader reader (url->reader url)]
+    (json/decode (slurp reader))))
+
+(def ^:private fetch-geojson-data
+  ;; Keyed by URL and only ever holds *successful* fetches: the enabled/entry-existence checks happen
+  ;; outside the cache, and a fetch failure throws (so it isn't cached). This avoids caching a nil that
+  ;; would otherwise keep a map broken until the TTL expires.
+  (memoize/ttl fetch-geojson-data* :ttl/threshold custom-geojson-cache-ttl-ms))
+
+(defn- custom-region-geojson
+  "Resolve GeoJSON for a user-defined `custom-geojson` region key by fetching its URL (cached with a short
+  TTL). Returns nil when custom GeoJSON is disabled, the key is unknown, or the fetch fails."
+  [region-key]
+  (when-let [{:keys [url region_key region_name]}
+             (and (geojson.settings/custom-geojson-enabled)
+                  (get (geojson.settings/user-defined-custom-geojson) (keyword region-key)))]
+    (try
+      {:data        (fetch-geojson-data url)
+       :region_key  region_key
+       :region_name region_name}
+      (catch Throwable e
+        (log/warnf "Failed to load custom GeoJSON for region %s from %s: %s"
+                   (pr-str region-key) (pr-str url) (ex-message e))
+        nil))))
+
+(defn region-geojson
+  "Resolve GeoJSON `{:data :region_key :region_name}` for a `custom-geojson` region key, built-in or
+  user-defined. Built-in maps are read from the classpath; user maps are fetched from their URL and the
+  fetched data is cached with a short TTL. Returns nil for unknown keys, disabled custom GeoJSON, or fetch
+  failures. Used by static (email/Slack) rendering to embed GeoJSON without an HTTP round-trip."
+  [region-key]
+  (when region-key
+    (or (geojson.settings/builtin-region-geojson region-key)
+        (custom-region-geojson region-key))))
 
 (defn- read-url-and-respond
   "Reads the provided URL and responds with the contents as a stream."

@@ -33,10 +33,7 @@ import {
 } from "metabase/utils/dashboard_grid";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
-import {
-  isVisualizerDashboardCard,
-  isVisualizerSupportedVisualization,
-} from "metabase/visualizer/utils";
+import { isVisualizerSupportedVisualization } from "metabase/visualizer/utils";
 import type {
   BaseDashboardCard,
   Card,
@@ -46,6 +43,7 @@ import type {
   DashboardTabId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -342,6 +340,7 @@ class DashboardGridInner extends Component<
     isEditing = this.props.isEditing,
     selectedTabId = this.props.selectedTabId,
   ) => {
+    // Unjustified type cast. FIXME
     return getVisibleCards(
       cards,
       visibleCardIds,
@@ -364,6 +363,7 @@ class DashboardGridInner extends Component<
   getRowHeight() {
     const { width } = this.props;
 
+    // Unjustified type cast. FIXME
     const contentViewportElement = this.context as any;
     const hasScroll =
       contentViewportElement?.clientHeight <
@@ -521,14 +521,18 @@ class DashboardGridInner extends Component<
     );
   }
 
-  onVisualizerModalSave = (visualization: VisualizerVizDefinition) => {
+  onVisualizerModalSave = async (visualization: VisualizerVizDefinition) => {
     const { visualizerModalStatus } = this.state;
 
     if (!visualizerModalStatus) {
       return;
     }
 
-    this.props.replaceCardWithVisualization({
+    // Await the replacement before closing the modal: it commits the new
+    // card series to the dashcard only after fetching the referenced cards.
+    // Closing early lets a subsequent dashboard save run against the
+    // not-yet-updated dashcard, which would drop the new series.
+    await this.props.replaceCardWithVisualization({
       dashcardId: visualizerModalStatus.dashcardId,
       visualization,
     });
@@ -762,6 +766,7 @@ const DashboardGrid = forwardRef<
   );
 });
 
+// Unjustified type cast. FIXME
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
   connector,

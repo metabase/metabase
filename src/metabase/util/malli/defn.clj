@@ -104,7 +104,7 @@
   {:style/indent [:defn]}
   [& [fn-name :as fn-tail]]
   (let [parsed           (mu.fn/parse-fn-tail fn-tail)
-        cosmetic-name    (gensym (munge (str fn-name)))
+        cosmetic-name    (symbol (munge (str fn-name "&")))
         {attr-map :meta} (:values parsed)
         docstring        (annotated-docstring parsed)
         attr-map         (merge

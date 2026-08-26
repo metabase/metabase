@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import type { JSX } from "react";
+import { type JSX, useCallback } from "react";
 import { match } from "ts-pattern";
 
 import type {
@@ -16,23 +16,24 @@ import { DatabaseFormError } from "../DatabaseFormError";
 import { DatabaseNameField } from "../DatabaseNameField";
 
 import { DatabaseFormBodyDetails } from "./DatabaseFormBodyDetails";
-import { useHasConnectionError } from "./utils";
+import {
+  getEngine,
+  getEngineDefaults,
+  mergeRetainedValues,
+  useHasConnectionError,
+} from "./utils";
 
 interface DatabaseFormBodyProps {
-  engine: Engine | undefined;
-  engineKey: EngineKey | undefined;
   engines: Record<string, Engine>;
   autofocusFieldName?: string;
   isAdvanced: boolean;
-  onEngineChange: (engineKey: string | undefined) => void;
+  onEngineChange?: (engineKey: string | undefined) => void;
   config: DatabaseFormConfig;
   showSampleDatabase?: boolean;
   location: FormLocation;
 }
 
 export const DatabaseFormBody = ({
-  engine,
-  engineKey,
   engines,
   autofocusFieldName,
   isAdvanced,
@@ -41,9 +42,27 @@ export const DatabaseFormBody = ({
   showSampleDatabase = false,
   location,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { setValues } = useFormikContext<DatabaseData>();
+  const { setValues, values } = useFormikContext<DatabaseData>();
   const hasConnectionError = useHasConnectionError();
   const { engine: engineFieldConfig, name: nameFieldConfig } = config;
+
+  // casting won't be needed after migrating all usages of engineKey
+  const engineKey = values.engine as EngineKey | undefined;
+  const engine = getEngine(engines, engineKey);
+
+  const handleEngineChange = useCallback(
+    (nextEngineKey: string | undefined) => {
+      setValues((previousValues) =>
+        mergeRetainedValues(
+          previousValues,
+          getEngineDefaults(engines, nextEngineKey, isAdvanced),
+          getEngine(engines, nextEngineKey),
+        ),
+      );
+      onEngineChange?.(nextEngineKey);
+    },
+    [engines, isAdvanced, onEngineChange, setValues],
+  );
 
   const px = match(location)
     .with("setup", () => "sm")
@@ -61,14 +80,14 @@ export const DatabaseFormBody = ({
             engineKey={engineKey}
             engines={engines}
             isAdvanced={isAdvanced}
-            onChange={onEngineChange}
+            onChange={handleEngineChange}
             disabled={engineFieldConfig?.fieldState === "disabled"}
             showSampleDatabase={showSampleDatabase}
           />
           <DatabaseEngineWarning
             engineKey={engineKey}
             engines={engines}
-            onChange={onEngineChange}
+            onChange={handleEngineChange}
           />
         </>
       )}

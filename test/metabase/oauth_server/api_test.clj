@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -13,8 +14,6 @@
    (java.util Base64)))
 
 ;; reset-provider! is safe here — it resets a local atom, no global side effects.
-;; kondo flags it because of the `!` suffix in a fixture.
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
                       (binding [client/*url-prefix* ""]
@@ -37,14 +36,38 @@
         (is (nil? (:id_token_signing_alg_values_supported response)))))))
 
 (deftest protected-resource-metadata-test
-  (testing "GET /.well-known/oauth-protected-resource/api/mcp returns correct metadata"
+  (testing "the canonical and legacy MCP paths each advertise themselves as the OAuth protected resource (RFC 9728)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (doseq [path ["/api/metabase-mcp" "/api/mcp"]]
+        (testing path
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (str ".well-known/oauth-protected-resource" path))]
+            (is (=? {:resource                 (str "http://localhost:3000" path)
+                     :authorization_servers    ["http://localhost:3000"]
+                     :bearer_methods_supported ["header"]
+                     :scopes_supported         sequential?}
+                    response))))))))
+
+(deftest protected-resource-metadata-bare-path-test
+  (testing "GET /.well-known/oauth-protected-resource (no resource suffix) serves JSON advertising the canonical resource (BOT-1617)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (let [response (mt/user-http-request :crowberto :get 200
-                                           ".well-known/oauth-protected-resource/api/mcp")]
-        (is (=? {:resource                "http://localhost:3000/api/mcp"
-                 :authorization_servers   ["http://localhost:3000"]
+                                           ".well-known/oauth-protected-resource")]
+        (is (=? {:resource                 "http://localhost:3000/api/metabase-mcp"
+                 :authorization_servers    ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
                 response))))))
+
+(deftest discovery-endpoint-rebuilds-on-site-url-change-test
+  (testing "Discovery advertises endpoints for the *current* site-url, even after it changes (BOT-1617)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (is (=? {:issuer "http://localhost:3000"}
+              (mt/user-http-request :crowberto :get 200 ".well-known/oauth-authorization-server"))))
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+      (is (=? {:issuer                "https://mb.example.com"
+               :authorization_endpoint "https://mb.example.com/oauth/authorize"
+               :token_endpoint         "https://mb.example.com/oauth/token"}
+              (mt/user-http-request :crowberto :get 200 ".well-known/oauth-authorization-server"))))))
 
 ;;; ----------------------------------------- Dynamic Client Registration ----------------------------------------------
 
@@ -110,6 +133,18 @@
               client-id (:client_id response)
               db-client (t2/select-one :model/OAuthClient :client_id client-id)]
           (is (= "dynamic" (:registration_type db-client))))))))
+
+(deftest dynamic-register-records-registered-event-test
+  (testing "POST /oauth/register records a `registered` audit event with no user for the new client"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [response  (register-client! {:redirect_uris ["https://example.com/callback"]})
+              client-pk (t2/select-one-pk :model/OAuthClient :client_id (:client_id response))
+              events    (t2/select :model/OAuthClientEvent :oauth_client_id client-pk)]
+          (is (= 1 (count events)) "Exactly one client event row should have been created")
+          (is (= "registered" (:event_type (first events))))
+          (is (nil? (:user_id (first events)))))))))
 
 (deftest dynamic-client-read-valid-test
   (testing "GET /oauth/register/:client-id with valid registration_access_token returns 200"
@@ -371,6 +406,125 @@
           (is (str/starts-with? location "https://example.com/callback?"))
           (is (str/includes? location "error=access_denied"))
           (is (str/includes? location "state=test-state")))))))
+
+;;; -------------------------------------- Subpath hosting (GIT-10551) ---------------------------------------------
+
+;; Metabase doesn't officially support being hosted under a subpath, but the OAuth consent flow is entirely
+;; driven by site-url, so these tests pin the parts of the flow the *browser* sees — the consent form action,
+;; the CSRF cookie path, and the login redirect — to subpath-aware values. The server never sees the subpath
+;; (the reverse proxy strips it), so the routes themselves are unchanged.
+
+(defn- extract-csrf-cookie-path
+  "Extract the Path attribute of the CSRF cookie from the response.
+   Checks both the :cookies map and the Set-Cookie header (which may be a string or vector of strings)."
+  [response]
+  (or (get-in response [:cookies "metabase.OAUTH_CSRF" :path])
+      (let [set-cookie (get-in response [:headers "Set-Cookie"])
+            cookies    (cond
+                         (string? set-cookie)     [set-cookie]
+                         (sequential? set-cookie) (vec set-cookie)
+                         :else                    [])]
+        (some #(when (and (string? %) (str/includes? % "metabase.OAUTH_CSRF="))
+                 (second (re-find #"Path=([^;]+)" %)))
+              cookies))))
+
+(deftest csrf-cookie-path-follows-site-url-test
+  (doseq [[site-url expected-path] {"http://localhost:3000"              "/oauth/authorize"
+                                    "http://localhost:3000/metabase"     "/metabase/oauth/authorize"
+                                    "http://localhost:3000/metabase/"    "/metabase/oauth/authorize"
+                                    "http://localhost:3000/bi/metabase"  "/bi/metabase/oauth/authorize"}]
+    (testing (str "site-url " site-url)
+      (mt/with-temporary-setting-values [site-url site-url]
+        (is (= expected-path (:path (#'api.oauth/csrf-cookie-opts 600))))))))
+
+(deftest subpath-consent-flow-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000/metabase"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [client       (create-test-client!)
+            client-id    (:client_id client)
+            consent-resp (get-consent-page! :crowberto client-id)
+            consent-body (:body consent-resp)]
+        (testing "the consent form posts to the absolute, subpath-prefixed decision URL"
+          (is (str/includes? consent-body
+                             "action=\"http://localhost:3000/metabase/oauth/authorize/decision\"")))
+        (testing "the CSRF cookie path includes the subpath so the browser sends the cookie with the form POST"
+          (is (= "/metabase/oauth/authorize" (extract-csrf-cookie-path consent-resp))))
+        (testing "the consent -> decision flow still round-trips"
+          (let [csrf-token  (extract-csrf-token-from-consent consent-body)
+                csrf-cookie (extract-csrf-cookie consent-resp)
+                params-sig  (extract-params-sig-from-consent consent-body)
+                response    (form-post-decision!
+                             :crowberto
+                             {:approved      "true"
+                              :csrf_token    csrf-token
+                              :params_sig    params-sig
+                              :client_id     client-id
+                              :redirect_uri  "https://example.com/callback"
+                              :response_type "code"
+                              :scope         "profile"
+                              :state         "test-state"}
+                             302
+                             :csrf-cookie csrf-cookie)
+                location    (get-in response [:headers "Location"])]
+            (is (str/starts-with? location "https://example.com/callback?"))
+            (is (str/includes? location "code="))
+            (testing "the decision response clears the CSRF cookie at the same subpath-prefixed path
+                      (a clear at a different path would leave the old cookie shadowing the next flow)"
+              (is (= "/metabase/oauth/authorize" (extract-csrf-cookie-path response))))))))))
+
+(deftest subpath-login-redirect-test
+  (testing "unauthenticated GET /oauth/authorize under a subpath"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000/metabase"]
+      (let [response (client/client-full-response :get 302 "oauth/authorize"
+                                                  :client_id     "some-client"
+                                                  :redirect_uri  "https://example.com/callback"
+                                                  :response_type "code")
+            location (get-in response [:headers "Location"])]
+        (testing "the login page URL carries the subpath"
+          (is (str/starts-with? location "http://localhost:3000/metabase/auth/login?redirect=")))
+        (testing "the redirect param stays basename-relative — the SPA router re-adds the subpath"
+          (is (str/includes? location (str "redirect=" (URLEncoder/encode "/oauth/authorize" "UTF-8")))))))))
+
+(defn- approve-or-deny!
+  "Drive the consent + decision flow for `client-id` and return the decision response.
+   `approved?` chooses approve vs deny."
+  [user client-id approved?]
+  (let [consent-resp (get-consent-page! user client-id)
+        consent-body (:body consent-resp)]
+    (form-post-decision!
+     user
+     {:approved      (str approved?)
+      :csrf_token    (extract-csrf-token-from-consent consent-body)
+      :params_sig    (extract-params-sig-from-consent consent-body)
+      :client_id     client-id
+      :redirect_uri  "https://example.com/callback"
+      :response_type "code"
+      :scope         "profile"
+      :state         "test-state"}
+     302
+     :csrf-cookie (extract-csrf-cookie consent-resp))))
+
+(deftest authorize-decision-records-approved-event-test
+  (testing "Approving a registration records a separate `approved` event stamped with the deciding user"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client (create-test-client!)]
+          (approve-or-deny! :crowberto (:client_id client) true)
+          (let [events (t2/select :model/OAuthClientEvent :oauth_client_id (:id client))]
+            (is (= 1 (count events)))
+            (is (= "approved" (:event_type (first events))))
+            (is (= (mt/user->id :crowberto) (:user_id (first events))))))))))
+
+(deftest authorize-decision-records-denied-event-test
+  (testing "Denying a registration records a separate `denied` event stamped with the deciding user"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client (create-test-client!)]
+          (approve-or-deny! :crowberto (:client_id client) false)
+          (let [events (t2/select :model/OAuthClientEvent :oauth_client_id (:id client))]
+            (is (= 1 (count events)))
+            (is (= "denied" (:event_type (first events))))
+            (is (= (mt/user->id :crowberto) (:user_id (first events))))))))))
 
 (deftest authorize-decision-csrf-missing-test
   (testing "POST /oauth/authorize/decision without CSRF token returns 403"

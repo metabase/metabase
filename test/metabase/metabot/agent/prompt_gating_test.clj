@@ -5,14 +5,22 @@
    [metabase.metabot.scope :as scope]
    [metabase.test :as mt]))
 
+(def ^:private active-sql-tool-names
+  "Active-tool names including a SQL write tool, so SQL guidance gates on permissions rather than on
+  the SQL tools being absent."
+  ["create_sql_query"])
+
 (defn- render-internal-template
-  "Render the internal.selmer template with given permission flags."
-  [perms]
-  (binding [scope/*current-user-metabot-permissions* perms]
-    (prompts/build-system-message-content
-     {:prompt-template "internal.selmer"}
-     {:current_time "2026-03-25T12:00:00Z"}
-     {})))
+  "Render internal.selmer for `perms` and `active-tool-names` (default [[active-sql-tool-names]]).
+  The prompt builder reads only tool names, so a name->nil map stands in for the real name->var one."
+  ([perms] (render-internal-template perms active-sql-tool-names))
+  ([perms active-tool-names]
+   (binding [scope/*current-user-metabot-permissions* perms]
+     (prompts/build-system-message-content
+      {:prompt-template "internal.selmer"}
+      {:current_time "2026-03-25T12:00:00Z"}
+      (zipmap active-tool-names (repeat nil))
+      []))))
 
 (def ^:private all-yes-perms
   {:permission/metabot-sql-generation :yes
@@ -34,47 +42,39 @@
    :permission/metabot-nlq            :no
    :permission/metabot-other-tools    :no})
 
+;; Gating is asserted on real, intentional content: the section headings that only
+;; appear when a capability is enabled, and the "You cannot …" denial sentences that
+;; only appear when it's disabled. These are load-bearing prose we keep regardless, so
+;; the tests track the gating contract without coupling to incidental wording.
+
 (deftest ^:parallel prompt-includes-sql-sections-when-permitted-test
   (let [rendered (render-internal-template all-yes-perms)]
-    (testing "SQL construction section is included"
-      (is (re-find #"sql_construction" rendered)))
-    (testing "SQL routing option is included"
-      (is (re-find #"Use SQL tools" rendered)))
-    (testing "SQL examples are included"
-      (is (re-find #"sql_writing" rendered)))
-    (testing "SQL tool selection guidance is included"
-      (is (re-find #"Explicitly requested.*Write SQL" rendered)))
-    (testing "SQL anti-pattern example is included"
-      (is (re-find #"Not checking field formats before SQL" rendered)))))
+    (testing "SQL section is included"
+      (is (re-find #"# Writing SQL" rendered)))))
 
 (deftest ^:parallel prompt-excludes-sql-sections-when-not-permitted-test
   (let [rendered (render-internal-template no-sql-perms)]
-    (testing "SQL construction section is excluded"
-      (is (not (re-find #"sql_construction" rendered))))
-    (testing "SQL routing option is excluded"
-      (is (not (re-find #"Use SQL tools" rendered))))
-    (testing "SQL examples are excluded"
-      (is (not (re-find #"sql_writing" rendered))))
-    (testing "SQL tool selection guidance is excluded"
-      (is (not (re-find #"Explicitly requested.*Write SQL" rendered))))
-    (testing "SQL anti-pattern example is excluded"
-      (is (not (re-find #"Not checking field formats before SQL" rendered))))
+    (testing "SQL section is excluded"
+      (is (not (re-find #"# Writing SQL" rendered))))
     (testing "explicit denial for SQL is included"
       (is (re-find #"You cannot write SQL" rendered)))
     (testing "denial suggests NLQ as alternative"
       (is (re-find #"natural language query builder" rendered)))))
 
+(deftest ^:parallel prompt-excludes-sql-sections-when-tools-inactive-test
+  (testing "SQL permission alone does not render SQL guidance when no SQL write tool is active
+           (the tools are capability-gated, so the prompt must not cite tools/skills that are absent)"
+    (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query"])]
+      (is (not (re-find #"# Writing SQL" rendered)))
+      (is (re-find #"You cannot write SQL" rendered)))))
+
 (deftest ^:parallel prompt-gates-nql-section-test
   (let [with-nql    (render-internal-template all-yes-perms)
         without-nql (render-internal-template no-nql-perms)]
     (testing "NLQ guidance included when permitted"
-      (is (re-find #"Natural Language Querying" with-nql)))
-    (testing "NLQ routing included when permitted"
-      (is (re-find #"Use natural language querying \(your default mode\)" with-nql)))
+      (is (re-find #"Natural-language querying is your default" with-nql)))
     (testing "NLQ guidance excluded when not permitted"
-      (is (not (re-find #"Natural Language Querying" without-nql))))
-    (testing "NLQ routing excluded when not permitted"
-      (is (not (re-find #"Use natural language querying \(your default mode\)" without-nql))))
+      (is (not (re-find #"Natural-language querying is your default" without-nql))))
     (testing "explicit denial for NLQ is included when not permitted"
       (is (re-find #"You cannot use natural language querying" without-nql)))
     (testing "denial suggests SQL as alternative"
@@ -86,10 +86,10 @@
                        {:permission/metabot-sql-generation :yes
                         :permission/metabot-nlq            :yes
                         :permission/metabot-other-tools    :no})]
-    (testing "dashboard routing included when permitted"
-      (is (re-find #"Use X-ray auto-generated dashboard tool" with-other)))
-    (testing "dashboard routing excluded when not permitted"
-      (is (not (re-find #"Use dashboard tools" without-other))))
+    (testing "dashboard guidance included when permitted"
+      (is (re-find #"X-ray auto-generated dashboards" with-other)))
+    (testing "dashboard guidance excluded when not permitted"
+      (is (not (re-find #"X-ray auto-generated dashboards" without-other))))
     (testing "explicit denial for other tools is included when not permitted"
       (is (re-find #"You cannot create dashboards or documents" without-other)))))
 
@@ -99,26 +99,20 @@
                          {:permission/metabot-sql-generation :no
                           :permission/metabot-nlq            :no
                           :permission/metabot-other-tools    :yes})]
-    (testing "query-focused sections included when NQL or SQL is available"
-      (is (re-find #"CRITICAL CONSTRAINTS" with-queries))
-      (is (re-find #"Verify Data Structure" with-queries))
-      (is (re-find #"Anti-Patterns" with-queries))
-      (is (re-find #"value_in_samples" with-queries))
-      (is (re-find #"Show me X" with-queries)))
-    (testing "query-focused sections excluded when neither NQL nor SQL is available"
-      (is (not (re-find #"CRITICAL CONSTRAINTS" without-queries)))
-      (is (not (re-find #"Verify Data Structure" without-queries)))
-      (is (not (re-find #"Anti-Patterns" without-queries)))
-      (is (not (re-find #"value_in_samples" without-queries)))
-      (is (not (re-find #"Show me X" without-queries))))
+    (testing "query-focused sections included when NLQ or SQL is available"
+      ;; the grounding + MBQL-shape includes only render inside the query-tools branch
+      (is (re-find #"you cannot see query results" with-queries))
+      (is (re-find #"MBQL shape rules" with-queries)))
+    (testing "query-focused sections excluded when neither NLQ nor SQL is available"
+      (is (not (re-find #"MBQL shape rules" without-queries)))
+      (is (re-find #"Discovery only" without-queries)))
     (testing "general sections remain even without query tools"
       (is (re-find #"data analysis assistant" without-queries))
-      (is (re-find #"Communication Style" without-queries))
-      (is (re-find #"search_request" without-queries))
-      (is (re-find #"Find \[existing content\]" without-queries)))
+      (is (re-find #"Communicating with the user" without-queries))
+      (is (re-find #"Finding data" without-queries)))
     (testing "explicit denial for query tools is included"
       (is (re-find #"You cannot build queries or create charts" without-queries)))
-    (testing "no individual SQL/NQL denials when both are off"
+    (testing "no individual SQL/NLQ denials when both are off"
       (is (not (re-find #"You cannot write SQL" without-queries)))
       (is (not (re-find #"You cannot use natural language querying" without-queries))))))
 
@@ -126,13 +120,12 @@
   (let [rendered (render-internal-template all-no-perms)]
     (testing "core prompt structure still renders"
       (is (re-find #"data analysis assistant" rendered))
-      (is (re-find #"Communication Style" rendered)))
+      (is (re-find #"Communicating with the user" rendered)))
     (testing "all gated sections are excluded"
-      (is (not (re-find #"sql_construction" rendered)))
-      (is (not (re-find #"Natural Language Querying" rendered)))
-      (is (not (re-find #"Use X-ray auto-generated dashboard tool" rendered)))
-      (is (not (re-find #"CRITICAL CONSTRAINTS" rendered)))
-      (is (not (re-find #"Verify Data Structure" rendered))))
+      (is (not (re-find #"MBQL shape rules" rendered)))
+      (is (not (re-find #"Natural-language querying is your default" rendered)))
+      (is (not (re-find #"X-ray auto-generated dashboards" rendered)))
+      (is (not (re-find #"# Writing SQL" rendered))))
     (testing "denial messages are present"
       (is (re-find #"You cannot build queries or create charts" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))
@@ -140,17 +133,19 @@
 (deftest ^:parallel defaults-to-no-permissions-when-unbound-test
   (testing "when *current-user-metabot-permissions* is nil, defaults exclude everything"
     (let [rendered (render-internal-template nil)]
-      (is (not (re-find #"sql_construction" rendered)))
-      (is (not (re-find #"Natural Language Querying" rendered)))
-      (is (not (re-find #"Use X-ray auto-generated dashboard tool" rendered)))
-      (is (not (re-find #"CRITICAL CONSTRAINTS" rendered)))
+      (is (not (re-find #"MBQL shape rules" rendered)))
+      (is (not (re-find #"Natural-language querying is your default" rendered)))
+      (is (not (re-find #"X-ray auto-generated dashboards" rendered)))
       (is (re-find #"You cannot build queries or create charts" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))
 
 (deftest ^:parallel prompt-no-denials-when-all-enabled-test
   (let [rendered (render-internal-template all-yes-perms)]
-    (testing "no denial messages when all permissions are enabled"
-      (is (not (re-find #"You cannot" rendered))))))
+    (testing "no denial sentences when all permissions are enabled"
+      (is (not (re-find #"You cannot build queries" rendered)))
+      (is (not (re-find #"You cannot write SQL" rendered)))
+      (is (not (re-find #"You cannot use natural language querying" rendered)))
+      (is (not (re-find #"You cannot create dashboards" rendered))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Slackbot template gating
@@ -163,7 +158,8 @@
     (prompts/build-system-message-content
      {:prompt-template "slackbot.selmer"}
      {:current_time "2026-03-25T12:00:00Z"}
-     {})))
+     {}
+     [])))
 
 (deftest ^:parallel slackbot-nlq-sections-gated-test
   (let [with-nlq    (render-slackbot-template all-yes-perms)
@@ -217,6 +213,22 @@
       (is (not (re-find #"You cannot build custom queries" rendered)))
       (is (not (re-find #"You cannot create inline visualizations" rendered))))))
 
+(deftest ^:parallel slackbot-prompt-teaches-standard-markdown-test
+  ;; The channel answer goes in a `markdown` block, which renders standard markdown rather than
+  ;; Slack's `mrkdwn`. Measured against the API: `*one*` comes back italic and `~one~` is not
+  ;; parsed at all, so the old dialect would silently lose every bold and strikethrough.
+  (testing "the prompt teaches the dialect the answer block actually renders (BOT-2010)"
+    (let [rendered (render-slackbot-template all-yes-perms)]
+      (testing "standard markdown is prescribed"
+        (is (re-find #"`\*\*text\*\*` for bold text" rendered))
+        (is (re-find #"`~~text~~` for strikethrough text" rendered)))
+      (testing "and the Slack-only dialect is not"
+        (is (not (re-find #"`\*text\*` for bold text" rendered)))
+        (is (not (re-find #"`~text~` for strikethrough text" rendered))))
+      (testing "Slack's link syntax is kept -- it does render inside a markdown block (measured)"
+        (is (re-find #"<https://example\.com\|Link Text>" rendered))
+        (is (re-find #"metabase://dashboard/123\|Dashboard Name" rendered))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Custom system prompt injection
 ;;; ──────────────────────────────────────────────────────────────────
@@ -228,7 +240,8 @@
     (prompts/build-system-message-content
      {:prompt-template template-name}
      {:current_time "2026-03-25T12:00:00Z"}
-     {})))
+     {}
+     [])))
 
 (deftest custom-chat-instructions-injected-when-set-test
   (mt/with-premium-features #{:ai-controls}
@@ -281,3 +294,15 @@
                                        metabot-chat-system-prompt ""]
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
         (is (not (re-find #"NLQ only instruction" rendered)))))))
+
+(deftest ^:parallel communication-guidance-gates-on-reasoning-ui-test
+  (testing "templates for surfaces with a reasoning timeline skip the narration guidance"
+    (doseq [template ["internal.selmer"
+                      "natural-language-querying-only.selmer"
+                      "natural-language-querying-fallback.selmer"]]
+      (let [rendered (render-template template all-yes-perms)]
+        (is (not (re-find #"silent between tool calls" rendered))
+            template))))
+  (testing "the embedding SDK template (loader only) keeps the narration guidance"
+    (let [rendered (render-template "embedding-next.selmer" all-yes-perms)]
+      (is (re-find #"silent between tool calls" rendered)))))

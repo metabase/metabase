@@ -5,7 +5,7 @@ import {
   isAdminGroup,
   isDefaultGroup,
   isDefaultTenantGroup,
-} from "metabase/admin/utils/groups";
+} from "metabase/common/utils/groups";
 import { Box, Card, TreeTable } from "metabase/ui";
 
 import { AdvancedGroupModeButton } from "./AdvancedGroupMode";

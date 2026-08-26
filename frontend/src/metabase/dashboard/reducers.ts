@@ -2,11 +2,18 @@ import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
 import { assoc, chain, merge, updateIn } from "icepick";
 
 import { actionApi } from "metabase/api";
-import { Questions } from "metabase/entities/questions";
 import { combineReducers } from "metabase/redux";
+import { CARD_UPDATED } from "metabase/redux/cards";
 import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";
 import type { Card } from "metabase-types/api";
 
+import type {
+  removeCardFromDashboard,
+  removeParameter,
+  resetParameters,
+  setParameterValue,
+  undoRemoveCardFromDashboard,
+} from "./actions";
 import {
   REMOVE_CARD_FROM_DASH,
   REMOVE_PARAMETER,
@@ -15,20 +22,15 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   addCardToDash,
   addManyCardsToDash,
-  fetchDashboard,
+  fetchDashboardFulfilled,
   markNewCardSeen,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   onUpdateDashCardVisualizationSettings,
-  type removeCardFromDashboard,
-  type removeParameter,
-  type resetParameters,
   setDashCardAttributes,
   setMultipleDashCardAttributes,
-  type setParameterValue,
-  tabsReducer,
-  type undoRemoveCardFromDashboard,
-} from "./actions";
+} from "./actions/core";
+import { tabsReducer } from "./actions/tabs";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
   autoApplyFilters,
@@ -38,6 +40,7 @@ import {
   editingDashboard,
   isAddParameterPopoverOpen,
   isNavigatingBackToDashboard,
+  linkTargets,
   loadingControls,
   loadingDashCards,
   missingActionParameters,
@@ -61,7 +64,7 @@ const dashcards = createReducer(
   INITIAL_DASHBOARD_STATE.dashcards,
   (builder) => {
     builder
-      .addCase(fetchDashboard.fulfilled, (state, action) => ({
+      .addCase(fetchDashboardFulfilled, (state, action) => ({
         ...state,
         ...action.payload.entities.dashcard,
       }))
@@ -181,19 +184,16 @@ const dashcards = createReducer(
       .addCase<
         string,
         { type: string; payload: { object: Card | null | undefined } }
-      >(
-        Questions.actionTypes.UPDATE,
-        (state, { payload: { object: card } }) => {
-          if (!card) {
-            return;
+      >(CARD_UPDATED, (state, { payload: { object: card } }) => {
+        if (!card) {
+          return;
+        }
+        Object.values(state).forEach((dashcard) => {
+          if (dashcard.card?.id === card.id) {
+            Object.assign(dashcard.card, card);
           }
-          Object.values(state).forEach((dashcard) => {
-            if (dashcard.card?.id === card.id) {
-              Object.assign(dashcard.card, card);
-            }
-          });
-        },
-      )
+        });
+      })
       .addMatcher(
         actionApi.endpoints.updateAction.matchFulfilled,
         (state, { payload: action }) => {
@@ -218,7 +218,7 @@ const draftParameterValues = createReducer(
       .addCase(initialize, (state, { payload: { clearCache = true } = {} }) => {
         return clearCache ? {} : state;
       })
-      .addCase(fetchDashboard.fulfilled, (state, { payload }) =>
+      .addCase(fetchDashboardFulfilled, (state, { payload }) =>
         payload.preserveParameters && !payload.dashboard.auto_apply_filters
           ? state
           : payload.parameterValues,
@@ -274,6 +274,7 @@ const combinedDashboardReducer = combineReducers({
   loadingDashCards,
   dashcards,
   dashcardData,
+  linkTargets,
   draftParameterValues,
   // Combined reducer needs to init state for every slice
   selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,

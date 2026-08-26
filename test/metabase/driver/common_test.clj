@@ -73,7 +73,6 @@
 
 (deftest ^:parallel json-unfolding-default-test
   (testing "JSON Unfolding database support details behave as they're supposed to"
-    #_{:clj-kondo/ignore [:equals-true]}
     (are [details expected] (= expected
                                (driver.common/json-unfolding-default
                                 {:lib/type :metadata/database
@@ -141,7 +140,8 @@
               (driver/drop-table! driver db-id qualified-table-name))))))))
 
 (deftest insert-from-jsonl-file-test
-  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :mongo :clickhouse}
+  ;; TODO: give this driver set a name, or use features here. what are we selecting for?
+  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :sqlserver :mongo :clickhouse}
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)

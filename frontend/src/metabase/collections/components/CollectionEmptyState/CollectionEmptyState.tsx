@@ -5,9 +5,11 @@ import EmptyStateIcon from "assets/img/empty-states/collection.svg";
 import {
   isLibraryCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
+import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -23,19 +25,31 @@ const CollectionEmptyState = ({
   const isTrashCollection = !!collection && isRootTrashCollection(collection);
   const isArchived = !!collection?.archived;
 
+  // The library-data description is a "publish tables" CTA; hide it from users who can't publish.
+  const canPublish = useSelector(canAccessDataStudio);
+  const isLibraryDataCollection = PLUGIN_LIBRARY.isLibraryDataCollectionType(
+    collection?.type,
+  );
+  const showDescription = !isLibraryDataCollection || canPublish;
+
   if (isTrashCollection) {
     return <TrashEmptyState />;
   } else if (isArchived) {
     return <ArchivedCollectionEmptyState />;
   } else {
-    return <DefaultCollectionEmptyState collection={collection} />;
+    return (
+      <DefaultCollectionEmptyState
+        collection={collection}
+        showDescription={showDescription}
+      />
+    );
   }
 };
 
 const TrashEmptyState = () => {
   return (
     <EmptyStateWrapper>
-      <Icon name="trash" size={80} c="background-brand" />
+      <Icon name="trash" size={80} c="background_surface-brand-subtle" />
       <EmptyStateTitle>{t`Nothing here`}</EmptyStateTitle>
       <EmptyStateSubtitle>
         {t`Deleted items will appear here.`}
@@ -55,7 +69,8 @@ const ArchivedCollectionEmptyState = () => {
 
 const DefaultCollectionEmptyState = ({
   collection,
-}: CollectionEmptyStateProps) => {
+  showDescription,
+}: CollectionEmptyStateProps & { showDescription: boolean }) => {
   const { title, description } = getDefaultEmptyStateMessages(collection);
   const canWrite = !!collection?.can_write;
   const isSemanticLayer = collection != null && isLibraryCollection(collection);
@@ -65,7 +80,9 @@ const DefaultCollectionEmptyState = ({
     <EmptyStateWrapper>
       <CollectionEmptyIcon />
       <EmptyStateTitle>{title}</EmptyStateTitle>
-      <EmptyStateSubtitle>{description}</EmptyStateSubtitle>
+      {showDescription && (
+        <EmptyStateSubtitle>{description}</EmptyStateSubtitle>
+      )}
       {showAddButton && (
         <NewItemMenu
           trigger={

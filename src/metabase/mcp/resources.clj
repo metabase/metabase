@@ -37,7 +37,7 @@
   (str "<!doctype html><html><head><base href=\"{{{instanceUrlRaw}}}/\"></head><body><script>"
        "window.metabaseConfig = {"
        "instanceUrl: {{{instanceUrl}}},"
-       "sessionToken: {{{sessionToken}}}"
+       "uiCredential: {{{uiCredential}}}"
        "};</script></body></html>"))
 
 ;; An atom rather than a dynamic var because `resources/read` is invoked from the
@@ -63,7 +63,7 @@
 
 (defn render-embed-mcp-template
   "Render the embed-mcp.html Mustache template with the given vars map.
-   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :sessionToken (JSON-encoded or nil),
+   Expected keys: :instanceUrl (JSON-encoded), :instanceUrlRaw, :uiCredential (JSON-encoded or nil),
    :mcpSessionId (JSON-encoded or nil)."
   [vars]
   (cond
@@ -203,7 +203,9 @@
           tool  (-> tool
                     (update :inputSchema  malli->ui-input-schema)
                     (cond-> (:outputSchema tool) (update :outputSchema malli->ui-output-schema))
-                    (assoc :scope scope :_meta {:ui {:resourceUri uri}}))]
+                    (assoc :scope scope
+                           :required-extensions #{:mcp-app-ui}
+                           :_meta {:ui {:resourceUri uri}}))]
       (swap! registry assoc-in [:tools (:name tool)] tool)
       tool)
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
@@ -288,31 +290,31 @@
    distinct bodies the second URI's asset is silently dropped and the widget 404s."
   [tag]
   (fn [opts]
-    (let [site-url    (system/site-url)
-          session-key (:session-key opts)
-          session-id  (:session-id opts)]
+    (let [site-url      (system/site-url)
+          ui-credential (:ui-credential opts)
+          session-id    (:session-id opts)]
       (str "<!-- metabase-mcp-asset: " tag " -->\n"
            (render-embed-mcp-template
             {:instanceUrl    (json/encode site-url)
              :instanceUrlRaw site-url
-             :sessionToken   (when session-key (json/encode session-key))
+             :uiCredential   (when ui-credential (json/encode ui-credential))
              :mcpSessionId   (when session-id (json/encode session-id))})))))
 
 (register-ui-resource!
  :visualize-query
  "ui://metabase/visualize-query.html"
- "agent:visualize"
+ "agent:viz:mcp-ui:query"
  {:name          "Visualize Query"
-  :description   "Interactive Metabase SDK visualization for a query"
+  :description   "Lightweight MCP Apps visualization for a query"
   :prefersBorder true
   :render-fn     (visualize-query-render-fn "visualize-query")})
 
 (register-ui-resource!
  :render-drill-through
  "ui://metabase/render-drill-through.html"
- "agent:visualize"
+ "agent:viz:mcp-ui:drill-through"
  {:name          "Render Drill Through"
-  :description   "Interactive Metabase SDK visualization for a drill-through follow-up"
+  :description   "Lightweight MCP Apps visualization for a drill-through follow-up"
   :prefersBorder true
   :render-fn     (visualize-query-render-fn "render-drill-through")})
 
@@ -320,6 +322,10 @@
  :visualize-query
  {:name        "visualize_query"
   :description (str "Visualize a previously constructed query as an interactive chart or table. "
+                    "This renders a lightweight MCP Apps visualization, not the full Metabase "
+                    "query builder or standard Metabase UI. Do not tell the user to switch "
+                    "display types, use visualization settings, or use a Metabase panel, "
+                    "sidebar, or right-hand panel. "
                     "Use this for prompts that ask to show, display, visualize, plot, chart, "
                     "or present results, for example: `Show me customers in Metabase`, "
                     "`Show me orders by month`, `Display revenue by region`, or "
@@ -377,6 +383,10 @@
  :render-drill-through
  {:name        "render_drill_through"
   :description (str "Render the drill-through visualization the user just navigated into. "
+                    "This renders a lightweight MCP Apps visualization, not the full Metabase "
+                    "query builder or standard Metabase UI. Do not tell the user to switch "
+                    "display types, use visualization settings, or use a Metabase panel, "
+                    "sidebar, or right-hand panel. "
                     "Use this tool, not execute_query, when the user asks to show the result and "
                     "their message includes a `handle` UUID. This is the exact follow-up for the "
                     "phrase `Show me the result`. Do not execute the query yourself; pass the "

@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -9,6 +9,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { RouteParams } from "metabase/data-studio/data-model/pages/DataModel/types";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { DataStudioTableMetadataTab } from "metabase/urls";
 import type {
   Database,
@@ -50,7 +51,6 @@ export function setup({
   enterprisePlugins,
   tokenFeatures,
 }: SetupOpts = {}) {
-  const onSyncOptionsClick = jest.fn();
   const tableWithSegments = segments ? { ...table, segments } : table;
 
   const settings = mockSettings({
@@ -76,26 +76,26 @@ export function setup({
     key: "seen-publish-tables-info",
     value: true,
   });
+  fetchMock.post("path:/api/data-studio/table/sync-schema", {});
+  fetchMock.post("path:/api/data-studio/table/rescan-values", {});
+  fetchMock.post("path:/api/data-studio/table/discard-values", {});
 
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <TableSection
           table={tableWithSegments}
           activeTab={activeTab}
           hasLibrary
           canPublish
-          onSyncOptionsClick={onSyncOptionsClick}
           onUpdate={jest.fn()}
         />
-      )}
+      }
     />,
     {
       withRouter: true,
       storeInitialState: state,
     },
   );
-
-  return { onSyncOptionsClick };
 }

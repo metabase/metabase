@@ -24,7 +24,6 @@ import type Field from "./Field";
 import type Schema from "./Schema";
 import type Table from "./Table";
 import { getUniqueFieldId } from "./utils/fields";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "./utils/saved-questions";
 
 interface MetadataOpts {
   databases?: Record<string, Database>;
@@ -75,24 +74,10 @@ class Metadata {
   }
 
   /**
-   * @deprecated load data via RTK Query - useListDatabaseSchemaTablesQuery
-   */
-  tablesList(): Table[] {
-    return Object.values(this.tables);
-  }
-
-  /**
    * @deprecated load data via RTK Query - useListFieldsQuery
    */
   fieldsList(): Field[] {
     return Object.values(this.fields);
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useListMeasuresQuery
-   */
-  measuresList(): Measure[] {
-    return Object.values(this.measures);
   }
 
   /**
@@ -107,13 +92,6 @@ class Metadata {
    */
   database(databaseId: DatabaseId | undefined | null): Database | null {
     return (databaseId != null && this.databases[databaseId]) || null;
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useListDatabasesQuery({ saved: true })
-   */
-  savedQuestionsDatabase() {
-    return this.databases[SAVED_QUESTIONS_VIRTUAL_DB_ID];
   }
 
   /**

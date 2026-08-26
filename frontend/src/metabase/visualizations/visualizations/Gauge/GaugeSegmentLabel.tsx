@@ -14,10 +14,12 @@ export const GaugeSegmentLabel = ({
   style,
 }: Props) => (
   <text
+    // fill + textAnchor are set as attributes (not inline style) so they survive
+    // the html2canvas cssText copy on export; var() fill is resolved by resolveSvgVarPaint.
+    fill="var(--mb-color-text-secondary)"
+    textAnchor={Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end"}
     style={{
-      fill: "var(--mb-color-text-secondary)",
       fontSize: `${FONT_SIZE_SEGMENT_LABEL}px`,
-      textAnchor: Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end",
       // shift text in the lower half down a bit
       transform:
         y > 0 ? `translate(0,${FONT_SIZE_SEGMENT_LABEL / 2}px)` : undefined,

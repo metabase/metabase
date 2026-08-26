@@ -1,52 +1,74 @@
 import { useEffect } from "react";
-import { replace } from "react-router-redux";
 
 import { useGetMetricQuery } from "metabase/api/metric";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
-import { useDispatch } from "metabase/redux";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import type {
+  MetricPageParams,
+  MetricPageProps,
+  MetricUrls,
+} from "metabase/common/metrics/types";
+import { useNavigate, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
-import * as Urls from "metabase/urls";
+import type { Card } from "metabase-types/api";
 
 import { MetricDimensionGrid } from "../../components/MetricDimensionGrid";
+import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
-import type { MetricPageProps } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 
 export function MetricOverviewPage({
-  params,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
 }: MetricPageProps) {
-  const cardId = Urls.extractEntityId(params.cardId);
-  const dispatch = useDispatch();
-  const {
-    card,
-    isLoading: isCardLoading,
-    error,
-  } = useLoadCardWithMetadata(cardId);
-  const { data: metric, isLoading: isMetricLoading } = useGetMetricQuery(
-    cardId!,
-    { skip: cardId == null },
-  );
+  const { cardId } = useParams<MetricPageParams>();
 
-  const isLoading = isCardLoading || isMetricLoading;
-  const hasDimensions =
-    metric?.dimensions != null && metric.dimensions.length > 0;
+  return (
+    <MetricPageCard cardId={cardId}>
+      {(card) => (
+        <MetricOverviewPageBody
+          card={card}
+          urls={urls}
+          renderBreadcrumbs={renderBreadcrumbs}
+          showAppSwitcher={showAppSwitcher}
+          showDataStudioLink={showDataStudioLink}
+        />
+      )}
+    </MetricPageCard>
+  );
+}
+
+interface MetricOverviewPageBodyProps extends MetricPageProps {
+  card: Card;
+  urls: MetricUrls;
+}
+
+function MetricOverviewPageBody({
+  card,
+  urls,
+  renderBreadcrumbs,
+  showAppSwitcher,
+  showDataStudioLink,
+}: MetricOverviewPageBodyProps) {
+  const navigate = useNavigate();
+  const { data: metric, isLoading: isMetricLoading } = useGetMetricQuery(
+    card.id,
+  );
+  const dimensions = metric?.dimensions ?? [];
+  const hasDimensions = dimensions.length > 0;
 
   useEffect(() => {
-    if (!isLoading && card != null && !hasDimensions) {
-      dispatch(replace(urls.about(card.id)));
+    if (!isMetricLoading && !hasDimensions) {
+      navigate(urls.about(card.id), { replace: true });
     }
-  }, [isLoading, card, hasDimensions, dispatch, urls]);
+  }, [card.id, isMetricLoading, hasDimensions, urls, navigate]);
 
-  if (isLoading || error != null || card == null) {
+  if (isMetricLoading) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper loading />
       </Center>
     );
   }
@@ -64,7 +86,7 @@ export function MetricOverviewPage({
         showAppSwitcher={showAppSwitcher}
         showDataStudioLink={showDataStudioLink}
       />
-      {card.id != null && <MetricDimensionGrid metricId={card.id} />}
+      <MetricDimensionGrid metricId={card.id} dimensions={dimensions} />
     </PageContainer>
   );
 }

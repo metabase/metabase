@@ -6,13 +6,14 @@ import {
   within,
 } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { Series } from "metabase-types/api";
 
 registerVisualizations();
 
 function getSeries(): Series {
+  // Unjustified type cast. FIXME
   return [
     {
       card: {
@@ -76,6 +77,7 @@ function getSeries(): Series {
 }
 
 function getTrendlineSeries(settings: ComputedVisualizationSettings): Series {
+  // Unjustified type cast. FIXME
   return [
     {
       card: {

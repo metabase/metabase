@@ -39,7 +39,7 @@ import {
   getGoalLineParams,
   getGoalLineSeriesOption,
 } from "../../option/goal-line";
-import { getTimelineEventsSeries } from "../../timeline-events/option";
+import { getTimelineEventsSelectionSeries } from "../../timeline-events/option";
 import type { TimelineEventsModel } from "../../timeline-events/types";
 
 const getLabelLayoutFn = (
@@ -215,21 +215,13 @@ export const getWaterfallChartOption = (
   chartModel: WaterfallChartModel,
   chartWidth: number,
   chartLayout: ChartLayout,
+  hasTimelineEvents: boolean,
   timelineEventsModel: TimelineEventsModel | null,
-  selectedTimelineEventsIds: TimelineEventId[],
+  selectedTimelineEventIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
-  const hasTimelineEvents = timelineEventsModel != null;
-  const timelineEventsSeries = hasTimelineEvents
-    ? getTimelineEventsSeries(
-        timelineEventsModel,
-        selectedTimelineEventsIds,
-        renderingContext,
-      )
-    : null;
-
   const dataSeriesOptions = buildEChartsWaterfallSeries(
     chartModel,
     settings,
@@ -243,6 +235,15 @@ export const getWaterfallChartOption = (
     settings,
     renderingContext,
   );
+
+  const timelineEventsSeries =
+    timelineEventsModel != null
+      ? getTimelineEventsSelectionSeries(
+          timelineEventsModel,
+          selectedTimelineEventIds,
+          renderingContext,
+        )
+      : null;
 
   const seriesOption: WaterfallSeriesOption[] = [
     dataSeriesOptions,

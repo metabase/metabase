@@ -1,6 +1,7 @@
 (ns metabase.slackbot.persistence-test
   (:require
    [clojure.test :refer :all]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.slackbot.persistence :as slackbot.persistence]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -9,6 +10,24 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :test-users))
+
+(deftest message-history-validates-stored-parts-test
+  (testing "malformed stored v2 parts are rejected before slack history replay"
+    (let [conv-id (str (random-uuid))]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    "1709567890.000099"
+                     :role            "assistant"
+                     :profile_id      "test"
+                     :total_tokens    0
+                     ;; invalid v2: a tool part with no :state to dispatch on
+                     :data            [{:type "tool-search" :toolCallId "z"}]
+                     :data_version    2})
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid slack history replay metabot_message.data"
+                              (slackbot.persistence/message-history conv-id #{"1709567890.000099"})))))))
 
 (deftest message-history-test
   (let [conv-id (str (random-uuid))]
@@ -21,18 +40,20 @@
                    :role            "user"
                    :profile_id      "test"
                    :total_tokens    0
-                   :data            [{:_type "TEXT" :role "user" :content "what is 2+2?"}]})
-      ;; Assistant message with tool calls
+                   :data            [{:type "text" :text "what is 2+2?"}]
+                   :data_version    2})
+      ;; Assistant message with a resolved tool call
       (t2/insert! :model/MetabotMessage
                   {:conversation_id conv-id
                    :slack_msg_id    "1709567890.000002"
                    :role            "assistant"
                    :profile_id      "test"
                    :total_tokens    10
-                   :data            [{:_type "TEXT" :role "assistant" :content "hi"}
-                                     {:_type "TOOL_CALL" :role "assistant" :tool_calls [{:id "x"}]}
-                                     {:_type "TOOL_RESULT" :role "tool" :tool_call_id "x" :content "y"}]})
-      (testing "only TOOL_CALL and TOOL_RESULT are included, TEXT is filtered out"
+                   :data            [{:type "text" :text "hi"}
+                                     {:type "tool-search" :toolCallId "x" :state "output-available"
+                                      :input {} :output {:output "y"}}]
+                   :data_version    2})
+      (testing "only tool parts are included, text is filtered out"
         (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000002"})]
           (is (= 2 (count (get result "1709567890.000002"))))
           (is (every? #(#{:assistant :tool} (:role %)) (get result "1709567890.000002")))))
@@ -50,19 +71,66 @@
                        :role               "assistant"
                        :profile_id         "test"
                        :total_tokens       10
-                       :data               [{:_type "TOOL_CALL" :role "assistant" :tool_calls [{:id "y"}]}]
+                       :data               [{:type "tool-search" :toolCallId "y" :state "output-available"
+                                             :input {} :output {:output "z"}}]
+                       :data_version       2
                        :deleted_at         (java.time.OffsetDateTime/now)
                        :deleted_by_user_id (mt/user->id :rasta)})
           (is (empty? (slackbot.persistence/message-history conv-id #{deleted-ts})))
           (is (= #{deleted-ts}
                  (slackbot.persistence/deleted-message-ids conv-id #{deleted-ts}))))))))
 
-(deftest message-history-native-shape-test
-  (testing "assistant messages persisted in native-parts shape are translated to AI-SDK messages"
+(deftest message-history-excludes-non-replayable-rows-test
+  (testing "only rows a later turn may replay contribute tool history"
+    (let [conv-id   (str (random-uuid))
+          insert!   (fn [slack-ts call-id & {:keys [error] :as opts}]
+                      (t2/insert! :model/MetabotMessage
+                                  (cond-> {:conversation_id conv-id
+                                           :slack_msg_id    slack-ts
+                                           :role            "assistant"
+                                           :profile_id      "slackbot"
+                                           :total_tokens    0
+                                           :data            [{:type       "tool-search"
+                                                              :toolCallId call-id
+                                                              :state      "output-available"
+                                                              :input      {}
+                                                              :output     {:output "result"}}]
+                                           :data_version    2}
+                                    (contains? opts :finished) (assoc :finished (:finished opts))
+                                    error                      (assoc :error error))))
+          clean     "1712100000.000001"
+          errored   "1712100000.000002"
+          in-flight "1712100000.000003"
+          legacy    "1712100000.000004"]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (insert! clean     "call-clean"     :finished true)
+        (insert! errored   "call-errored"   :finished true :error "boom")
+        (insert! in-flight "call-in-flight" :finished nil)
+        ;; No :finished at all -- exercises the column default that keeps pre-migration threads readable.
+        (insert! legacy    "call-legacy")
+        (let [history (slackbot.persistence/message-history
+                       conv-id #{clean errored in-flight legacy})]
+          (testing "a clean finished row still contributes -- guards against over-filtering"
+            (is (contains? history clean)))
+          (testing "an errored row contributes nothing"
+            (is (not (contains? history errored))))
+          ;; Unreachable in production: insert-assistant-placeholder! writes neither `finished` nor
+          ;; `slack_msg_id`, so an in-flight row can never match this query. Covered only because the
+          ;; shared predicate checks `finished`.
+          (testing "an in-flight row contributes nothing"
+            (is (not (contains? history in-flight))))
+          (testing "a row written before the `finished` column still contributes"
+            (is (contains? history legacy))))))))
+
+(deftest message-history-v2-parts-test
+  (testing "stored v2 tool parts are translated to AI-SDK message pairs"
     (let [conv-id    (str (random-uuid))
           slack-ts   "1712000000.000001"
           search-id  "call-search"
-          query-id   "call-query"]
+          query-id   "call-query"
+          orphan-id  "call-orphan"
+          failed-id  "call-failed"]
       (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
         (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
         (t2/insert! :model/MetabotMessage
@@ -71,49 +139,109 @@
                      :role            "assistant"
                      :profile_id      "slackbot"
                      :total_tokens    10
-                     :data            [{:type :text :text "Let me check."}
-                                       {:type      :tool-input
-                                        :id        search-id
-                                        :function  "search"
-                                        :arguments {:query "orders"}}
-                                       {:type   :tool-output
-                                        :id     search-id
-                                        :result {:output            "<result>orders</result>"
-                                                 :structured-output {:query-id "qid-1"}}}
-                                       {:type      :tool-input
-                                        :id        query-id
-                                        :function  "construct_notebook_query"
-                                        :arguments {:data_source_ids ["table-1"]}}
-                                       {:type   :tool-output
-                                        :id     query-id
-                                        :result {:output "<result>query</result>"}}]})
+                     :data            [{:type "text" :text "Let me check."}
+                                       {:type         "tool-search"
+                                        :toolCallId   search-id
+                                        :state        "output-available"
+                                        :input        {:query "orders"}
+                                        :output       {:output            "<result>orders</result>"
+                                                       :structured_output {:query-id "qid-1"}}}
+                                       {:type         "tool-construct_notebook_query"
+                                        :toolCallId   query-id
+                                        :state        "output-available"
+                                        :input        {:data_source_ids ["table-1"]}
+                                        :output       {:output "<result>query</result>"}}
+                                       {:type         "tool-search"
+                                        :toolCallId   orphan-id
+                                        :state        "input-available"
+                                        :input        {:query "never finished"}}
+                                       {:type         "tool-search"
+                                        :toolCallId   failed-id
+                                        :state        "output-error"
+                                        :input        {:query "boom"}
+                                        :errorText    "it broke"}]
+                     :data_version    2})
         (let [result (slackbot.persistence/message-history conv-id #{slack-ts})
               msgs   (get result slack-ts)]
-          (testing "text blocks are skipped — only tool blocks surface"
-            (is (= 4 (count msgs))))
-          (testing "tool-input → assistant message with :tool_calls"
+          (testing "text parts and unresolved tool parts are skipped"
+            (is (= 6 (count msgs))))
+          (testing "tool part → assistant message with :tool_calls, input JSON-encoded"
             (is (= {:role       :assistant
                     :tool_calls [{:id        search-id
                                   :name      "search"
-                                  :arguments {:query "orders"}}]}
+                                  :arguments "{\"query\":\"orders\"}"}]}
                    (first msgs))))
-          (testing "tool-output → tool message with :content and :tool_call_id"
+          (testing "tool part → tool message with :content from the inner output"
             (is (= {:role         :tool
                     :tool_call_id search-id
                     :content      "<result>orders</result>"}
                    (second msgs))))
-          (testing "order is preserved — matching tool-call/tool-result pairs stay adjacent"
-            (is (= [search-id search-id query-id query-id]
+          (testing "errored tool part replays its error text"
+            (is (= {:role         :tool
+                    :tool_call_id failed-id
+                    :content      "it broke"}
+                   (last msgs))))
+          (testing "order is preserved — call/result pairs stay adjacent"
+            (is (= [search-id search-id query-id query-id failed-id failed-id]
                    (mapv #(or (:tool_call_id %)
                               (-> % :tool_calls first :id))
-                         msgs)))
-            (is (= ["search" "construct_notebook_query"]
-                   (->> msgs
-                        (filter #(= :assistant (:role %)))
-                        (map #(-> % :tool_calls first :name)))))))))))
+                         msgs)))))))))
 
-(deftest message-history-mixed-shape-test
-  (testing "a single message row with both legacy and native blocks round-trips both shapes in order"
+(deftest message-history-degenerate-parts-test
+  (testing "nil input and outputs without an inner :output string replay safely"
+    (let [conv-id  (str (random-uuid))
+          slack-ts "1712000000.000002"
+          call-id  "call-degenerate"]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    slack-ts
+                     :role            "assistant"
+                     :profile_id      "slackbot"
+                     :total_tokens    10
+                     :data            [{:type       "tool-search"
+                                        :toolCallId call-id
+                                        :state      "output-available"
+                                        :input      nil
+                                        :output     {}}]
+                     :data_version    2})
+        (let [msgs (get (slackbot.persistence/message-history conv-id #{slack-ts}) slack-ts)]
+          (testing "nil input encodes as an empty JSON object, not \"null\""
+            (is (= "{}" (-> msgs first :tool_calls first :arguments))))
+          (testing "a successful call with no LLM-facing output replays as empty content, not a failure"
+            (is (= {:role         :tool
+                    :tool_call_id call-id
+                    :content      ""}
+                   (second msgs)))))))))
+
+(deftest message-history-flat-string-output-test
+  (testing "a tool part whose :output is a bare string (not a map) replays that string as the tool content"
+    (let [conv-id  (str (random-uuid))
+          slack-ts "1712000000.000003"
+          call-id  "call-flat"]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    slack-ts
+                     :role            "assistant"
+                     :profile_id      "slackbot"
+                     :total_tokens    3
+                     :data            [{:type       "tool-search"
+                                        :toolCallId call-id
+                                        :state      "output-available"
+                                        :input      {:q "x"}
+                                        :output     "just a string"}]
+                     :data_version    2})
+        (let [msgs (get (slackbot.persistence/message-history conv-id #{slack-ts}) slack-ts)]
+          (is (= {:role         :tool
+                  :tool_call_id call-id
+                  :content      "just a string"}
+                 (second msgs))))))))
+
+(deftest message-history-migrates-v1-rows-test
+  (testing "data_version 1 rows are upgraded on read and replay through the v2 history reader"
     (let [conv-id  (str (random-uuid))
           slack-ts "1712000000.000002"]
       (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
@@ -130,25 +258,15 @@
                                        {:_type        "TOOL_RESULT"
                                         :role         "tool"
                                         :tool_call_id "legacy-1"
-                                        :content      "legacy output"}
-                                       {:type      :tool-input
-                                        :id        "native-1"
-                                        :function  "construct_notebook_query"
-                                        :arguments {:data_source_ids ["t1"]}}
-                                       {:type   :tool-output
-                                        :id     "native-1"
-                                        :result {:output "native output"}}]})
+                                        :content      "legacy output"}]
+                     :data_version    1})
         (let [msgs (get (slackbot.persistence/message-history conv-id #{slack-ts}) slack-ts)]
-          (is (= 4 (count msgs)))
-          (testing "legacy blocks still normalize correctly"
-            (is (= :assistant (:role (nth msgs 0))))
-            (is (= "legacy-1" (-> (nth msgs 0) :tool_calls first :id)))
-            (is (= {:role :tool :tool_call_id "legacy-1" :content "legacy output"}
-                   (nth msgs 1))))
-          (testing "native blocks translate alongside legacy blocks"
-            (is (= "native-1" (-> (nth msgs 2) :tool_calls first :id)))
-            (is (= {:role :tool :tool_call_id "native-1" :content "native output"}
-                   (nth msgs 3)))))))))
+          (is (= [{:role       :assistant
+                   :tool_calls [{:id "legacy-1" :name "search" :arguments "{}"}]}
+                  {:role         :tool
+                   :tool_call_id "legacy-1"
+                   :content      "legacy output"}]
+                 msgs)))))))
 
 (deftest soft-delete-response-test
   (testing "soft-delete-response! marks the assistant response as deleted"
@@ -165,7 +283,8 @@
                      :role            "assistant"
                      :profile_id      "test"
                      :total_tokens    5
-                     :data            []})
+                     :data            []
+                     :data_version    2})
         (testing "returns true when a message is soft-deleted"
           (is (true? (slackbot.persistence/soft-delete-response! channel-id slack-ts user-id))))
         (let [msg (t2/select-one :model/MetabotMessage
@@ -199,7 +318,8 @@
                      :user_id         requester-id
                      :profile_id      "test"
                      :total_tokens    5
-                     :data            []})
+                     :data            []
+                     :data_version    2})
         (testing "returns the requester, not the (potentially overwritten) conversation owner"
           (is (= requester-id (slackbot.persistence/response-owner-user-id channel-id slack-ts))))
         (testing "returns nil for an untracked message ts"
@@ -216,6 +336,54 @@
                          :user_id         later-user-id
                          :profile_id      "test"
                          :total_tokens    5
-                         :data            []})
+                         :data            []
+                         :data_version    2})
             (is (= requester-id  (slackbot.persistence/response-owner-user-id channel-id slack-ts)))
             (is (= later-user-id (slackbot.persistence/response-owner-user-id channel-id second-slack-ts)))))))))
+
+(deftest state-messages-test
+  (let [conv-id  (str (random-uuid))
+        state-of #(metabot.persistence/conversation-state
+                   (slackbot.persistence/state-messages conv-id))
+        insert!  (fn [role state & {:keys [finished error deleted?]
+                                    :or   {finished true}}]
+                   (t2/insert! :model/MetabotMessage
+                               (cond-> {:conversation_id conv-id
+                                        :role            role
+                                        :profile_id      "slackbot"
+                                        :total_tokens    0
+                                        :data            []
+                                        :data_version    2
+                                        :finished        finished
+                                        :state           state}
+                                 error    (assoc :error error)
+                                 deleted? (assoc :deleted_at         (java.time.OffsetDateTime/now)
+                                                 :deleted_by_user_id (mt/user->id :rasta)))))]
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+      (testing "a thread with no turns reconstructs to {}"
+        (is (= {} (state-of))))
+      (testing "a finished assistant turn's state becomes the baseline"
+        (insert! "assistant" {:queries {"q1" {:database 1}} :todos [{:id "a"}]})
+        (is (= {:queries {:q1 {:database 1}} :todos [{:id "a"}]}
+               (state-of))))
+      (testing "user rows are ignored even when they carry state"
+        (insert! "user" {:queries {"nope" {:database 99}}} :finished nil)
+        (is (= {:queries {:q1 {:database 1}} :todos [{:id "a"}]}
+               (state-of))))
+      (testing "later turns merge in order -- maps merge entry-wise, vectors take the latest"
+        (insert! "assistant" {:queries {"q2" {:database 2}} :todos [{:id "b"}]})
+        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+               (state-of))))
+      (testing "errored turns never leak into the baseline"
+        (insert! "assistant" {:todos [{:id "errored"}]} :error "boom")
+        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+               (state-of))))
+      (testing "in-flight turns contribute nothing"
+        (insert! "assistant" {:todos [{:id "in-flight"}]} :finished nil)
+        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+               (state-of))))
+      (testing "a response deleted from Slack rewinds its state back out"
+        (insert! "assistant" {:todos [{:id "deleted"}]} :deleted? true)
+        (is (= {:queries {:q1 {:database 1} :q2 {:database 2}} :todos [{:id "b"}]}
+               (state-of)))))))

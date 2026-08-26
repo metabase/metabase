@@ -5,24 +5,27 @@ import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionId } from "metabase-types/api";
 
-export function getNewMenuItemAIExploration(
-  hasDataAccess: boolean,
-  collectionId?: CollectionId,
-  canUseNlq?: boolean,
-) {
-  if (!hasDataAccess || !canUseNlq) {
-    return undefined;
-  }
+interface NewMenuItemAIExplorationProps {
+  collectionId?: CollectionId;
+  hasNlqAccess?: boolean;
+}
 
-  return (
-    <Menu.Item
-      key="nlq"
-      component={ForwardRefLink}
-      to={Urls.newQuestion({
+export function NewMenuItemAIExploration({
+  collectionId,
+  hasNlqAccess,
+}: NewMenuItemAIExplorationProps) {
+  const url = hasNlqAccess
+    ? Urls.newQuestion({
         mode: "ask",
         collectionId,
         cardType: "question",
-      })}
+      })
+    : Urls.newExploration();
+
+  return (
+    <Menu.Item
+      component={ForwardRefLink}
+      to={url}
       leftSection={<Icon name="comment" />}
     >
       {t`AI exploration`}

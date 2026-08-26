@@ -63,12 +63,20 @@ export const getUnpinnedSection = () => {
 export const openPinnedItemMenu = (name: string) => {
   cy.log(`open pinned item menu: ${name}`);
 
-  getPinnedSection().within(() => {
-    cy.findByText(name)
-      .closest("a")
-      .realHover()
-      .within(() => cy.findByLabelText("Actions").click());
-  });
+  // Hovering a pinned item can trigger an async re-render, which replaces the
+  // hovered node and drops its :hover state, hiding the actions button again.
+  // Hover first so the button settles, then realClick: the real pointer
+  // movement re-applies :hover to the current node, so the click cannot race
+  // the visibility toggle.
+  getPinnedSection()
+    .findByText(name)
+    .closest('[data-testid="pinned-item-card"]')
+    .realHover();
+  getPinnedSection()
+    .findByText(name)
+    .closest('[data-testid="pinned-item-card"]')
+    .findByLabelText("Actions")
+    .realClick();
 };
 
 export const openUnpinnedItemMenu = (name: string) => {

@@ -6,7 +6,7 @@ import {
 } from "__support__/storybook";
 import { Box } from "metabase/ui";
 
-import { PivotTableView } from "./PivotTable";
+import { PivotTableView } from "./PivotTableInner";
 import { PivotTableTestWrapper } from "./pivot-table-test-mocks";
 import { PIVOT_3_ROWS_NO_COLUMNS } from "./stories-data";
 

@@ -72,7 +72,7 @@
         ;; ensure ee path is taken
         (mt/with-premium-features #{:cache-granular-controls}
           (is (= "refreshing" (current-state!)))
-          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
           (testing "Doesn't refresh models that have state='off' or 'deletable' if :cache-granular-controls feature flag is enabled"
             (is (= #{(u/the-id refreshing)} @card-ids)))
           (is (= "persisted" (current-state!))))))))
@@ -89,7 +89,7 @@
                                      (swap! card-ids conj (:id card))
                                      {:state :success})
                                    (unpersist! [_ _database _persisted-info]))]
-              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
               (testing "Doesn't refresh models that have state='off' or 'deletable' if :cache-granular-controls feature flag is enabled"
                 (is (= #{(u/the-id creating)} @card-ids)))
               (is (partial= {:task         "persist-refresh"
@@ -126,7 +126,7 @@
                                      (swap! card-ids conj (:id card))
                                      {:state :success})
                                    (unpersist! [_ _database _persisted-info]))]
-              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
               (is (= #{(u/the-id creating) (u/the-id off)} @card-ids))
               (is (partial= {:task "persist-refresh"
                              :task_details {:success 2 :error 0}}

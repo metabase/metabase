@@ -80,7 +80,7 @@ export const EmptyVizState = ({
               <ExternalLink href={url}>
                 <Group gap="xs">
                   <strong>{secondaryText}</strong>
-                  <Icon name="external" c="brand" />
+                  <Icon name="external" c="core-brand" />
                 </Group>
               </ExternalLink>
             )}
@@ -100,7 +100,7 @@ export const EmptyVizState = ({
                 )
               } at the top right corner. ${primaryText}`}
             </Text>
-            <Text c="text-tertiary">{secondaryText}</Text>
+            <Text c="text-disabled">{secondaryText}</Text>
           </>
         )}
 

@@ -1,37 +1,37 @@
-import { checkNotNull } from "metabase/utils/types";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Schema from "metabase-lib/v1/metadata/Schema";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { ConcreteTableId } from "metabase-types/api";
-
 import type {
+  ConcreteTableId,
+  Database,
   DatabaseEntityId,
-  EntityId,
+  PermissionEntityId,
   SchemaEntityId,
+  Table,
   TableEntityId,
-} from "../types";
+} from "metabase-types/api";
 
-export const getDatabaseEntityId = (databaseEntity: Database) => ({
+import type { PermissionsSchema } from "./metadata";
+
+export const getDatabaseEntityId = (databaseEntity: Pick<Database, "id">) => ({
   databaseId: databaseEntity.id,
 });
 
-export const getSchemaEntityId = (schemaEntity: Schema) => ({
-  databaseId: checkNotNull(schemaEntity.database).id,
+export const getSchemaEntityId = (schemaEntity: PermissionsSchema) => ({
+  databaseId: schemaEntity.databaseId,
   schemaName: schemaEntity.name,
 });
 
 export const getTableEntityId = (tableEntity: Table) => ({
   databaseId: tableEntity.db_id,
-  schemaName: tableEntity.schema_name,
+  schemaName: tableEntity.schema,
+  // A permission entity always names a real warehouse table, never a card.
   tableId: tableEntity.id as ConcreteTableId,
 });
 
 export const isTableEntityId = (
-  entityId: Partial<EntityId>,
+  entityId: Partial<PermissionEntityId>,
 ): entityId is TableEntityId => entityId.tableId != null;
 
 export const isSchemaEntityId = (
-  entityId: Partial<EntityId>,
+  entityId: Partial<PermissionEntityId>,
 ): entityId is SchemaEntityId & { schemaName: string } =>
   // not sure why schemaName can be undefined on SchemaEntityId
   entityId.schemaName != null &&
@@ -39,7 +39,7 @@ export const isSchemaEntityId = (
   !isTableEntityId(entityId);
 
 export const isDatabaseEntityId = (
-  entityId: Partial<EntityId>,
+  entityId: Partial<PermissionEntityId>,
 ): entityId is DatabaseEntityId =>
   entityId.databaseId != null &&
   !isSchemaEntityId(entityId) &&

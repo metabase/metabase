@@ -1,23 +1,25 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { getAdminPaths } from "metabase/admin/app/selectors";
-import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { userInitials } from "metabase/common/utils/user";
-import { trackDataStudioOpened } from "metabase/data-studio/analytics";
-import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
+import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
+import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
+import { trackMonitorOpened } from "metabase/common/monitor/analytics";
+import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
+import { prepareInitials } from "metabase/common/utils/user";
+import { getUser } from "metabase/current-user";
+import { useDispatch, useSelector } from "metabase/redux";
+import { openDiagnostics } from "metabase/redux/app";
+import { logout } from "metabase/redux/auth";
+import { setOpenModal } from "metabase/redux/ui";
+import { getAdminPaths } from "metabase/selectors/admin";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
-} from "metabase/home/selectors";
-import { useDispatch, useSelector } from "metabase/redux";
-import { openDiagnostics } from "metabase/redux/app";
-import { setOpenModal } from "metabase/redux/ui";
-import { getUser } from "metabase/selectors/user";
+} from "metabase/selectors/onboarding";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
@@ -43,7 +45,7 @@ import { useHelpLink } from "./useHelpLink";
 const CURRENT_APP_ICON_OVERRIDES: {
   name: IconName;
   c: ColorName;
-} = { name: "check_filled", c: "brand" };
+} = { name: "check_filled", c: "core-brand" };
 
 export const AppSwitcher = ({ className }: { className?: string }) => {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const adminItems = useSelector(getAdminPaths);
   const canAccessOnboardingPage = useSelector(getCanAccessOnboardingPage);
   const canAccessDataStudio = useSelector(canAccessDataStudioSelector);
+  const canAccessMonitor = useSelector(canAccessMonitorSelector);
   const isNewInstance = useSelector(getIsNewInstance);
   const helpLink = useHelpLink();
 
@@ -74,7 +77,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
   const appsSection = useMemo(() => {
     const showAdminSettingsItem = adminItems?.length > 0;
 
-    if (!canAccessDataStudio && !showAdminSettingsItem) {
+    if (!canAccessDataStudio && !canAccessMonitor && !showAdminSettingsItem) {
       return null;
     }
 
@@ -115,6 +118,27 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         </Menu.Item>,
       );
     }
+    if (canAccessMonitor) {
+      items.push(
+        <Menu.Item
+          key="monitor-app-link"
+          component={ForwardRefLink}
+          to={Urls.monitor()}
+          onAuxClick={trackMonitorOpened}
+          onClickCapture={trackMonitorOpened}
+          leftSection={
+            <Icon
+              name="pulse"
+              {...(currentApp === "monitor"
+                ? CURRENT_APP_ICON_OVERRIDES
+                : null)}
+            />
+          }
+        >
+          {t`Monitor`}
+        </Menu.Item>,
+      );
+    }
     if (showAdminSettingsItem) {
       items.push(
         <Menu.Item
@@ -137,7 +161,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         <Box px="md">{items}</Box>
       </>
     );
-  }, [canAccessDataStudio, adminItems, currentApp]);
+  }, [canAccessDataStudio, canAccessMonitor, adminItems, currentApp]);
 
   // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
   const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;
@@ -151,7 +175,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               size="2.25rem"
               p="sm"
               variant="outline"
-              bd="1px solid var(--mb-color-border)"
+              bd="1px solid var(--mb-color-border-neutral)"
               aria-label={t`Settings`}
               bdrs="50%"
               className={className}
@@ -174,10 +198,10 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               radius="lg"
               size={32}
               className={S.Avatar}
-              bd="1px solid var(--mb-color-border)"
+              bd="1px solid var(--mb-color-border-neutral)"
               data-testid="app-switcher-target"
             >
-              {user ? userInitials(user) : "?"}
+              {user ? prepareInitials(user) : "?"}
             </Avatar>
           )}
         </Menu.Target>
@@ -190,12 +214,12 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               data-testid="mode-switcher-profile-link"
             >
               <Group wrap="nowrap">
-                <Avatar color="brand" radius="lg" size={32}>
-                  {user ? userInitials(user) : "?"}
+                <Avatar color="core-brand" radius="lg" size={32}>
+                  {user ? prepareInitials(user) : "?"}
                 </Avatar>
                 <Stack gap="xs">
                   <Text lh="xs">{user?.first_name}</Text>
-                  <Text c="text-tertiary" fz="md" lh="xs">
+                  <Text c="text-disabled" fz="md" lh="xs">
                     {user?.email}
                   </Text>
                 </Stack>

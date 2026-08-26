@@ -12,9 +12,14 @@ type MoveToTrashEventDetail =
   | "document"
   | "table"
   | "transform"
-  | "measure";
+  | "measure"
+  | "exploration";
 
-type MoveToTrashTriggeredFrom = "collection" | "detail_page" | "cleanup_modal";
+type MoveToTrashTriggeredFrom =
+  | "collection"
+  | "detail_page"
+  | "cleanup_modal"
+  | "drag_and_drop";
 
 export const archiveAndTrack = async ({
   archive,
@@ -24,7 +29,7 @@ export const archiveAndTrack = async ({
 }: {
   archive: () => Promise<void>;
   model: MoveToTrashEventDetail | "card";
-  modelId: number;
+  modelId: number | null;
   triggeredFrom: MoveToTrashTriggeredFrom;
 }): Promise<void> => {
   const start = new Date().getTime();

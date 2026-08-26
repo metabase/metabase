@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -81,6 +81,8 @@ const metadata = createMockMetadata({
 });
 
 const provider = createMetadataProvider({ metadata });
+
+const userEvent = _userEvent.setup();
 
 function getJoinedQuery() {
   return Lib.createTestQuery(provider, {
@@ -218,7 +220,7 @@ function setup({
           step={step}
           stageIndex={step.stageIndex}
           query={query}
-          color="brand"
+          color="core-brand"
           isLastOpened={false}
           readOnly={readOnly}
           reportTimezone="UTC"
@@ -267,7 +269,7 @@ function setup({
 }
 
 async function enterCustomExpression(expression: string) {
-  const input = screen.getByTestId("custom-expression-query-editor");
+  const input = await screen.findByTestId("custom-expression-query-editor");
   await waitFor(() => expect(input).toHaveProperty("readOnly", false));
   await userEvent.clear(input);
   await userEvent.type(input, expression);
@@ -286,7 +288,10 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   afterAll(() => {
-    jest.resetAllMocks();
+    // restore (not reset): resetAllMocks would leave the spied
+    // `getBoundingClientRect` returning `undefined`, which crashes
+    // floating-ui callbacks that fire after the tests finish.
+    jest.restoreAllMocks();
   });
 
   it("should display a join correctly", () => {
@@ -839,6 +844,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { query, fields } = getRecentJoin();
+      // Unjustified type cast. FIXME
       const columns = fields as Lib.ColumnMetadata[];
       const reviewer = columns.find(
         (column) => Lib.displayInfo(query, 0, column).name === "REVIEWER",
@@ -929,6 +935,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(within(picker).getByText("Vendor"));
 
       const { query, fields } = getRecentJoin();
+      // Unjustified type cast. FIXME
       const columns = fields as Lib.ColumnMetadata[];
       const vendor = columns.find(
         (column) => Lib.displayInfo(query, 0, column).name === "VENDOR",

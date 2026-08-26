@@ -33,11 +33,11 @@
                       {:name "test_data_users" :schema "default"}
                       {:name "test_data_venues" :schema "default"}}}
            (-> (driver/describe-database :presto-jdbc (mt/db))
-               (update :tables (comp set (partial filter (comp #{"test_data_categories"
-                                                                 "test_data_venues"
-                                                                 "test_data_checkins"
-                                                                 "test_data_users"}
-                                                               :name)))))))))
+               (update :tables #(into #{} (filter (comp #{"test_data_categories"
+                                                          "test_data_venues"
+                                                          "test_data_checkins"
+                                                          "test_data_users"}
+                                                        :name)) %)))))))
 
 (deftest ^:parallel describe-table-test
   (mt/test-driver :presto-jdbc
@@ -287,3 +287,18 @@
 (deftest bytes-to-varbinary-test
   (is (= ["FROM_BASE64(?)" "YSBzdHJpbmc="]
          (sql/format (sql.qp/->honeysql :presto-jdbc (.getBytes "a string"))))))
+
+(deftest column->field-test
+  (testing "no field comment with blank column"
+    (is (= {:name "foo"
+            :database-type "integer"
+            :base-type :type/Integer
+            :database-position 0}
+           (#'presto-jdbc/column->field 0 {:column "foo" :type "integer" :comment ""}))))
+  (testing "field comment included with non-blank column"
+    (is (= {:name "foo"
+            :database-type "integer"
+            :base-type :type/Integer
+            :database-position 0
+            :field-comment "foo comment"}
+           (#'presto-jdbc/column->field 0 {:column "foo" :type "integer" :comment "foo comment"})))))

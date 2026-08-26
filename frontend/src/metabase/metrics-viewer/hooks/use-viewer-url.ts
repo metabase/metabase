@@ -1,18 +1,17 @@
-import type { Location } from "history";
 import { useEffect, useRef } from "react";
-import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
+import type { Location } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
 import {
+  type MetricsViewerDimensionBreakoutState,
   type MetricsViewerFormulaEntity,
   type MetricsViewerPageState,
-  type MetricsViewerTabState,
   isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
@@ -20,8 +19,8 @@ import { parseSourceId } from "../utils/source-ids";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
+  deserializeDimensionBreakout,
   deserializeFormulaEntities,
-  deserializeTab,
   encodeState,
   stateToSerializedState,
 } from "../utils/url-serialization";
@@ -42,7 +41,7 @@ export function useViewerUrl(
   ) => void,
   setInitialLoadComplete: (initialLoadComplete: boolean) => void,
 ): void {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
   const lastHashRef = useRef<string | null>(null);
 
@@ -62,8 +61,9 @@ export function useViewerUrl(
             : { type: "measure" as const, id: parseInt(measureId!, 10) };
           serializedState = {
             formulaEntities: [entity],
-            tabs: [],
-            selectedTabId: null,
+            dimensionBreakouts: [],
+            selectedDimensionBreakoutId: null,
+            showColumnLabels: false,
           };
           const encodedHash = encodeState(serializedState);
           if (encodedHash === undefined) {
@@ -84,15 +84,17 @@ export function useViewerUrl(
       }
       lastHashRef.current = hash;
 
-      if (serializedState.tabs.length > 0) {
-        const tabs: MetricsViewerTabState[] =
-          serializedState.tabs.map(deserializeTab);
+      if (serializedState.dimensionBreakouts.length > 0) {
+        const dimensionBreakouts: MetricsViewerDimensionBreakoutState[] =
+          serializedState.dimensionBreakouts.map(deserializeDimensionBreakout);
 
         initialize({
           definitions: {},
           formulaEntities: [],
-          tabs,
-          selectedTabId: serializedState.selectedTabId,
+          dimensionBreakouts,
+          selectedDimensionBreakoutId:
+            serializedState.selectedDimensionBreakoutId,
+          showColumnLabels: serializedState.showColumnLabels ?? false,
         });
       }
 
@@ -142,13 +144,12 @@ export function useViewerUrl(
       setInitialLoadComplete(true);
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`There was a problem restoring the page state`,
       });
     }
   }, [
     location,
-    dispatch,
     initialize,
     onLoadSources,
     setFormulaEntities,
@@ -186,10 +187,10 @@ export function useViewerUrl(
       lastHashRef.current = hash;
       const url = Urls.metricsViewer(hash);
       if (!window.location.hash) {
-        dispatch(replace(url));
+        navigate(url, { replace: true });
       } else {
-        dispatch(push(url));
+        navigate(url);
       }
     }
-  }, [state, dispatch]);
+  }, [state, navigate]);
 }

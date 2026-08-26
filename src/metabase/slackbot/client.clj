@@ -221,11 +221,8 @@
       {:stream_ts (:ts body)
        :channel   (:channel body)
        :thread_ts thread_ts}
-      (do
-        (log/warnf "[slackbot] start-stream failed: %s (channel=%s thread_ts=%s recipient_team_id=%s recipient_user_id=%s)"
-                   (:error body) channel thread_ts team_id user_id)
-        (log/debugf "[slackbot] start-stream failure body=%s payload=%s"
-                    (pr-str body) (pr-str payload))))))
+      (log/warnf "[slackbot] start-stream failed: %s (channel=%s thread_ts=%s recipient_team_id=%s recipient_user_id=%s)"
+                 (:error body) channel thread_ts team_id user_id))))
 
 (defn append-stream
   "Append chunks to an active stream. Each chunk is a map with :type and type-specific keys,
@@ -261,7 +258,5 @@
                                              :socket-timeout     streaming-socket-timeout-ms))]
      (when-not (:ok body)
        (log/warnf "[slackbot] stop-stream failed: %s (channel=%s stream_ts=%s block_count=%d block_types=%s)"
-                  (:error body) channel stream-ts (count (or blocks [])) (pr-str block-types))
-       (log/debugf "[slackbot] stop-stream failure body=%s payload=%s"
-                   (pr-str body) (pr-str (update payload :blocks #(when % "[redacted-blocks]")))))
+                  (:error body) channel stream-ts (count (or blocks [])) (pr-str block-types)))
      body)))

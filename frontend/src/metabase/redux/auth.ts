@@ -1,6 +1,220 @@
-import { createReducer } from "@reduxjs/toolkit";
+import {
+  type ThunkDispatch,
+  createAction,
+  createReducer,
+} from "@reduxjs/toolkit";
 
-import { login, loginGoogle, pauseRedirect } from "metabase/auth/actions";
+import { Api } from "metabase/api";
+import { loadLocalization } from "metabase/api/localization";
+import {
+  type MfaChallengeResponse,
+  isMfaChallenge,
+  sessionApi,
+} from "metabase/api/session";
+import { getUser, refetchCurrentUser } from "metabase/current-user";
+import { openNavbar } from "metabase/redux/app";
+import { createAsyncThunk } from "metabase/redux/utils";
+import { navigate } from "metabase/router";
+import { getSetting, refetchSiteSettings } from "metabase/settings";
+import * as Urls from "metabase/urls";
+import { isSmallScreen, reload } from "metabase/utils/dom";
+import { isResourceNotFoundError } from "metabase/utils/errors";
+import type { LoginData } from "metabase-types/api";
+
+export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
+export const refreshLocale = createAsyncThunk(
+  REFRESH_LOCALE,
+  async (_, { dispatch, getState }) => {
+    const userLocale = getUser(getState())?.locale;
+    const siteLocale = getSetting(getState(), "site-locale");
+    if (userLocale && userLocale !== siteLocale) {
+      // This sets a flag to keep the route guard from redirecting us while the reload is happening
+      await dispatch(pauseRedirect());
+      reload();
+    } else {
+      await loadLocalization(userLocale ?? siteLocale ?? "en");
+    }
+  },
+);
+
+export const PAUSE_REDIRECT = "metabase/user/PAUSE_REDIRECT";
+export const pauseRedirect = createAction(PAUSE_REDIRECT);
+
+export const REFRESH_SESSION = "metabase/auth/REFRESH_SESSION";
+export const refreshSession = createAsyncThunk(
+  REFRESH_SESSION,
+  async (_, { dispatch }) => {
+    await Promise.all([
+      dispatch(refetchCurrentUser()),
+      dispatch(refetchSiteSettings()),
+    ]);
+    await dispatch(refreshLocale()).unwrap();
+  },
+);
+
+export const COMPLETE_LOGIN = "metabase/auth/COMPLETE_LOGIN";
+export const completeLogin = createAsyncThunk(
+  COMPLETE_LOGIN,
+  async (_, { dispatch }) => {
+    await dispatch(refreshSession()).unwrap();
+    if (!isSmallScreen()) {
+      dispatch(openNavbar());
+    }
+  },
+);
+
+interface LoginPayload {
+  data: LoginData;
+  redirectUrl?: string;
+}
+
+export interface LoginResult {
+  mfaChallenge?: MfaChallengeResponse;
+}
+
+export const LOGIN = "metabase/auth/LOGIN";
+export const login = createAsyncThunk(
+  LOGIN,
+  async ({ data }: LoginPayload, { dispatch, rejectWithValue }) => {
+    try {
+      const result = await dispatch(
+        sessionApi.endpoints.createSession.initiate(data),
+      ).unwrap();
+
+      if (isMfaChallenge(result)) {
+        const challenge: LoginResult = { mfaChallenge: result };
+        return challenge;
+      }
+
+      await dispatch(completeLogin()).unwrap();
+      const success: LoginResult = {};
+      return success;
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
+
+interface LoginGooglePayload {
+  credential: string;
+  redirectUrl?: string;
+  remember?: boolean;
+}
+
+export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
+export const loginGoogle = createAsyncThunk(
+  LOGIN_GOOGLE,
+  async (
+    { credential, remember }: LoginGooglePayload,
+    { dispatch, rejectWithValue },
+  ) => {
+    try {
+      await dispatch(
+        sessionApi.endpoints.createSessionWithGoogleAuth.initiate({
+          token: credential,
+          remember,
+        }),
+      ).unwrap();
+      await dispatch(completeLogin()).unwrap();
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
+
+export const LOGOUT = "metabase/auth/LOGOUT";
+export const logout = createAsyncThunk(
+  LOGOUT,
+  async (
+    redirectUrl: string | undefined,
+    { dispatch, rejectWithValue, getState },
+  ) => {
+    try {
+      const state = getState();
+      const user = getUser(state);
+
+      if (user?.sso_source === "saml") {
+        const { "saml-logout-url": samlLogoutUrl } =
+          (await initiateSLO(dispatch)) ?? {};
+
+        await dispatch(refreshLocale()).unwrap();
+
+        dispatch(Api.util.resetApiState());
+
+        if (samlLogoutUrl) {
+          window.location.href = samlLogoutUrl;
+        }
+      } else {
+        await deleteSession(dispatch);
+        await dispatch(refreshLocale()).unwrap();
+
+        navigate(Urls.login());
+        dispatch(Api.util.resetApiState());
+        reload(); // clears redux state and browser caches
+      }
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
+
+export const FORGOT_PASSWORD = "metabase/auth/FORGOT_PASSWORD";
+export const forgotPassword = createAsyncThunk(
+  FORGOT_PASSWORD,
+  async (email: string, { dispatch, rejectWithValue }) => {
+    try {
+      await dispatch(
+        sessionApi.endpoints.forgotPassword.initiate(email),
+      ).unwrap();
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
+
+interface ResetPasswordPayload {
+  token: string;
+  password: string;
+}
+
+export const RESET_PASSWORD = "metabase/auth/RESET_PASSWORD";
+export const resetPassword = createAsyncThunk(
+  RESET_PASSWORD,
+  async (
+    { token, password }: ResetPasswordPayload,
+    { dispatch, getState, rejectWithValue },
+  ) => {
+    try {
+      await dispatch(
+        sessionApi.endpoints.resetPassword.initiate({ token, password }),
+      ).unwrap();
+      await dispatch(refreshSession()).unwrap();
+      return { sessionCreated: getUser(getState()) != null };
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
+
+const initiateSLO = async (dispatch: ThunkDispatch<any, any, any>) => {
+  try {
+    return await dispatch(sessionApi.endpoints.logoutSso.initiate()).unwrap();
+  } catch (error) {
+    if (!isResourceNotFoundError(error)) {
+      console.error("Problem clearing session", error);
+    }
+  }
+};
+
+const deleteSession = async (dispatch: ThunkDispatch<any, any, any>) => {
+  try {
+    await dispatch(sessionApi.endpoints.deleteSession.initiate()).unwrap();
+  } catch (error) {
+    if (!isResourceNotFoundError(error)) {
+      console.error("Problem clearing session", error);
+    }
+  }
+};
 
 const initialState = {
   loginPending: false,
@@ -19,6 +233,16 @@ export const reducer = createReducer(initialState, (builder) => {
     state.loginPending = true;
   });
   builder.addCase(loginGoogle.fulfilled, (state) => {
+    state.loginPending = false;
+  });
+
+  builder.addCase(completeLogin.pending, (state) => {
+    state.loginPending = true;
+  });
+  builder.addCase(completeLogin.fulfilled, (state) => {
+    state.loginPending = false;
+  });
+  builder.addCase(completeLogin.rejected, (state) => {
     state.loginPending = false;
   });
   builder.addCase(pauseRedirect.toString(), (state) => {

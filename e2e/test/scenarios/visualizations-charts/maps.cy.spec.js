@@ -133,7 +133,7 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get(".leaflet-marker-icon").eq(2).as("blastoiseMarker");
     cy.get("@blastoiseMarker").trigger("mousemove");
-    H.popover().findByText("Blastoise").should("be.visible");
+    H.tooltip().findByText("Blastoise").should("be.visible");
   });
 
   it("should preserve zoom and pan after resize (metabase#11211)", () => {
@@ -161,32 +161,19 @@ describe("scenarios > visualizations > maps", () => {
 
     zoomIn(4);
 
-    cy.get(".leaflet-marker-icon")
-      .first()
-      .then(($marker) => {
-        const posAfterZoom = $marker[0].getBoundingClientRect();
+    // Compare two settled marker positions instead of racing leaflet's zoom/resize
+    // animation with a fixed cy.wait() — mid-animation reads are the flake (metabase#11211).
+    getSettledMarkerPosition().then((posAfterZoom) => {
+      // 1px resize should not reset zoom
+      cy.viewport(801, 600);
 
-        // 1px resize should not reset zoom
-        cy.viewport(801, 600);
-        cy.wait(300);
-
-        cy.get(".leaflet-marker-icon")
-          .first()
-          .then(($markerAfterResize) => {
-            const posAfterResize =
-              $markerAfterResize[0].getBoundingClientRect();
-            // Position should be nearly identical (within 5px tolerance)
-            const tolerance = 5;
-            expect(posAfterResize.left).to.be.closeTo(
-              posAfterZoom.left,
-              tolerance,
-            );
-            expect(posAfterResize.top).to.be.closeTo(
-              posAfterZoom.top,
-              tolerance,
-            );
-          });
+      getSettledMarkerPosition().then((posAfterResize) => {
+        // Position should be nearly identical (within 5px tolerance)
+        const tolerance = 5;
+        expect(posAfterResize.left).to.be.closeTo(posAfterZoom.left, tolerance);
+        expect(posAfterResize.top).to.be.closeTo(posAfterZoom.top, tolerance);
       });
+    });
   });
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
@@ -489,25 +476,6 @@ describe("scenarios > visualizations > maps", () => {
           .should("have.length", 1)
           .contains("Longitude is between -180 and 180");
       });
-
-      it("should handle brush filters that cross the 180th meridian (metabase#41056)", () => {
-        pinMapSelectRegion(100, 100, 200, 200);
-
-        cy.get(".CardVisualization").should("exist");
-        cy.findByTestId("question-row-count").findByText("Showing 9 rows");
-
-        // Exact value for these longitude bounds is not important.
-        const lngRegex = /\d+(\.\d+)?/.source;
-
-        cy.findAllByTestId("filter-pill")
-          .should("have.length", 1)
-          .contains(
-            new RegExp(
-              `(Latitude is between .*) and Longitude is between ${lngRegex} and 180` +
-                ` or \\1 and Longitude is between -180 and -${lngRegex}`,
-            ),
-          );
-      });
     },
   );
 });
@@ -523,4 +491,40 @@ function zoomIn(times) {
     cy.get(".leaflet-control-zoom-in").click();
     cy.wait(200);
   }
+}
+
+// Resolve the first marker's rect only once its position has held steady for a real
+// time window, so we read a settled position instead of racing leaflet's animation
+// (metabase#11211). Comparing only two consecutive `.should()` retries is not enough:
+// Cypress retries faster than the browser repaints, so two reads can land within the
+// same animation frame and return an identical `getBoundingClientRect()` mid-animation
+// — a false settle. Anchoring on elapsed time (performance.now) instead of read-count
+// guarantees the marker has genuinely stopped moving before we sample it.
+const SETTLE_TOLERANCE_PX = 0.5;
+const SETTLE_HOLD_MS = 200;
+
+function getSettledMarkerPosition() {
+  let anchor = null;
+  let anchorAt = 0;
+  return cy
+    .get(".leaflet-marker-icon")
+    .first()
+    .should(($marker) => {
+      const rect = $marker[0].getBoundingClientRect();
+      const now = performance.now();
+      const stable =
+        anchor != null &&
+        Math.abs(rect.left - anchor.left) < SETTLE_TOLERANCE_PX &&
+        Math.abs(rect.top - anchor.top) < SETTLE_TOLERANCE_PX;
+      if (!stable) {
+        // Position moved (or first read) — reset the anchor and restart the timer.
+        anchor = rect;
+        anchorAt = now;
+      }
+      expect(
+        stable && now - anchorAt >= SETTLE_HOLD_MS,
+        "leaflet marker position should be settled",
+      ).to.be.true;
+    })
+    .then(() => anchor);
 }

@@ -6,6 +6,7 @@
 
   Phase-2 additions (step 11): `import-fk` for `Card` by entity_id."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -13,7 +14,8 @@
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -96,6 +98,20 @@
                 :type        :metric
                 :entity-id   metric-entity-id}]}))
 
+(def ^:private cards-content-store
+  "Serves the [[mp-with-cards]] cards by numeric id. Card export reads `entity_id` through a
+  ContentStore rather than the permission-agnostic metadata provider, so a provider-only
+  fixture needs a matching store."
+  (reify resolve.mp/ContentStore
+    (card-by-entity-id    [_ _entity-id] nil)
+    (measure-by-entity-id [_ _entity-id] nil)
+    (segment-by-entity-id [_ _entity-id] nil)
+    (card-by-id           [_ card-id] (get {500 {:id 500 :database_id 1 :entity_id card-entity-id}
+                                            501 {:id 501 :database_id 1 :entity_id metric-entity-id}}
+                                           card-id))
+    (measure-by-id        [_ _measure-id] nil)
+    (segment-by-id        [_ _segment-id] nil)))
+
 ;;; ============================================================
 ;;; import-table-fk
 ;;; ============================================================
@@ -116,6 +132,100 @@
       (is (= 30 (resolve/import-table-fk r ["DW" "RAW"   "ORDERS"])))
       (is (= 31 (resolve/import-table-fk r ["DW" "CLEAN" "ORDERS"]))))))
 
+(deftest import-table-fk-cache-collision-test
+  (testing "two real tables sharing a name across schemas: app-DB-backed resolver must not drop either"
+    ;; Reproduces a production failure where `query` / `construct_query` returned
+    ;; `:unknown-table` for a portable FK that a metadata read had just emitted, then
+    ;; verifies the fix.
+    ;;
+    ;; Production wraps every `application-database-metadata-provider` with
+    ;; `cached-metadata-provider`. The cached provider's by-name cache key drops `:schema`
+    ;; and stores at most one metadata per requested name, so when two warehouse tables
+    ;; share a `name` across schemas, `(p/metadatas mp {:name #{n}})` returns at most one
+    ;; row -- the schema post-filter in `find-table` then yields 0 candidates for the
+    ;; schema that didn't win the cache write.
+    ;;
+    ;; The fix in [[resolve.mp/find-table]] bypasses the metadata provider for app-DB-backed
+    ;; lookups and queries `metabase_table` directly with schema in the WHERE clause, the
+    ;; same shape `metabase.models.serialization.resolve.db/import-table-fk` has always
+    ;; used.
+    (mt/with-temp [:model/Database db {:name (str "DW " (random-uuid)) :engine :h2}
+                   :model/Table    raw-orders   {:name "ORDERS" :schema "RAW"   :db_id (:id db)}
+                   :model/Table    clean-orders {:name "ORDERS" :schema "CLEAN" :db_id (:id db)}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)]
+        (is (= (:id raw-orders)   (resolve/import-table-fk r [(:name db) "RAW"   "ORDERS"])))
+        (is (= (:id clean-orders) (resolve/import-table-fk r [(:name db) "CLEAN" "ORDERS"])))))))
+
+(deftest import-table-fk-inactive-table-test
+  (testing "a portable FK to an inactive table (deleted / re-uploaded CSV) must NOT resolve"
+    ;; A deleted / re-uploaded upload leaves an inactive app-DB row whose warehouse table is gone;
+    ;; a stale FK to it must miss, with a message identical to a never-existed miss (asserted
+    ;; below) since distinguishing them would be an existence oracle.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    _gone {:name   "metabot2_38513168ae9131" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active false}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)]
+        (try
+          (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_38513168ae9131"])
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d   (ex-data e)
+                  msg (.getMessage e)]
+              (is (= :unknown-table (:error d)))
+              (is (= 400 (:status-code d)))
+              (is (true? (:agent-error? d)))
+              (is (re-find #"read_resource" msg) "message points the LLM at read_resource to re-list")
+              (testing "inactive-row miss is indistinguishable from a never-existed miss (no oracle)"
+                (let [never-existed (try (resolve/import-table-fk r [(:name db) "PUBLIC" "never_existed_xyz"])
+                                         (catch clojure.lang.ExceptionInfo e2 (.getMessage e2)))]
+                  ;; same wording modulo the echoed portable FK (which the caller supplied either way)
+                  (is (= (str/replace msg #"\[.*?\]" "[FK]")
+                         (str/replace never-existed #"\[.*?\]" "[FK]"))))))))))))
+
+(deftest import-table-fk-inactive-after-cache-warmed-test
+  (testing "a table cached while active, then marked inactive, must NOT resolve via the stale cache"
+    ;; The dangerous case the app-DB-existence check guards against: the cached metadata provider
+    ;; warms its by-name cache with the `:active true` row, then the table is marked inactive
+    ;; (deleted / re-uploaded upload). The cache still surfaces the stale active row, so
+    ;; `table-candidates` MUST consult the app DB for existence — find the inactive row — and treat
+    ;; it as a 0-candidate miss rather than falling back to the stale cache.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    gone  {:name   "metabot2_cafef00dbabe01" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active true}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)
+            by-name #(lib.metadata.protocols/metadatas
+                      mp {:lib/type :metadata/table :name #{"metabot2_cafef00dbabe01"}})]
+        (testing "warm the provider's by-name cache while the table is still active"
+          (is (= [true] (mapv :active (by-name))))
+          (is (= (:id gone) (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))
+        (t2/update! :model/Table (:id gone) {:active false})
+        (testing "the cache still surfaces the stale ACTIVE row by name"
+          (is (= [true] (mapv :active (by-name)))))
+        (testing "...but import-table-fk misses: the app DB sees the inactive row, no stale-cache fallback"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"No table found matching portable FK"
+               (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))))))
+
+(deftest matching-tables-via-provider-drops-inactive-test
+  (testing "matching-tables-via-provider filters the inactive rows the provider surfaces by name"
+    ;; Isolates the provider-side filter. By-name `metadatas` lookups skip the provider's SQL
+    ;; `active = true` clause (it only guards enumerate-all queries), so the inactive row reaches
+    ;; `matching-tables-via-provider`, whose filter is the only thing that drops it.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    _gone {:name   "metabot2_deadbeefcafe01" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active false}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))]
+        (testing "the provider DOES surface the inactive row on a raw by-name lookup"
+          (is (= [false]
+                 (mapv :active
+                       (lib.metadata.protocols/metadatas
+                        mp {:lib/type :metadata/table :name #{"metabot2_deadbeefcafe01"}})))))
+        (testing "...but matching-tables-via-provider drops it"
+          (is (empty? (#'resolve.mp/matching-tables-via-provider mp "PUBLIC" "metabot2_deadbeefcafe01"))))))))
+
 (deftest ^:parallel import-table-fk-error-test
   (testing "unknown table name → :unknown-table, agent-error?, 400, no info leak"
     (let [r (resolve.mp/import-resolver mp-simple)]
@@ -132,8 +242,8 @@
             (testing "ex-data carries only the rejected path — no candidates / schemas"
               (is (nil? (:candidates d)))
               (is (nil? (:available-schemas d))))
-            (testing "message points the LLM at entity_details for self-correction"
-              (is (re-find #"entity_details" msg)))))))))
+            (testing "message points the LLM at read_resource for self-correction"
+              (is (re-find #"read_resource" msg)))))))))
 
 (deftest ^:parallel import-table-fk-error-test-2
   (testing "schema does not exist in DB → still :unknown-table, no schema enumeration"
@@ -313,7 +423,7 @@
       (is (= path (resolve/export-field-fk er (resolve/import-field-fk ir path)))))))
 
 (deftest ^:parallel export-database-and-card-fks-test
-  (let [r (resolve.mp/export-resolver mp-with-cards)]
+  (let [r (resolve.mp/export-resolver mp-with-cards cards-content-store)]
     (testing "database id exports to the provider's database name"
       (is (= "Sample" (resolve/export-fk-keyed r 1 :model/Database :name)))
       (is (= "Sample" (resolve/export-fk-keyed r 1 'Database :name))))
@@ -326,8 +436,8 @@
       (is (nil? (resolve/export-fk-keyed r nil :model/Database :name))))))
 
 (deftest ^:parallel export-mbql-with-mp-resolver-round-trip-shape-test
-  (testing "final numeric pMBQL exports back to portable DB/table/field/card references"
-    (let [r        (resolve.mp/export-resolver mp-with-cards)
+  (testing "final numeric MBQL 5 exports back to portable DB/table/field/card references"
+    (let [r        (resolve.mp/export-resolver mp-with-cards cards-content-store)
           exported (resolve/export-mbql
                     r
                     {:lib/type :mbql/query
@@ -346,7 +456,7 @@
       (is (string? (get-in exported [:stages 0 :fields 0 1 :lib/uuid])))
       (is (string? (get-in exported [:stages 0 :aggregation 0 1 :lib/uuid])))))
   (testing "source-card map keys export through the Card entity_id path"
-    (let [r (resolve.mp/export-resolver mp-with-cards)]
+    (let [r (resolve.mp/export-resolver mp-with-cards cards-content-store)]
       (is (= {:source-card card-entity-id}
              (resolve/export-mbql r {:source-card 500}))))))
 
@@ -595,8 +705,47 @@
       (get entity-id->card entity-id))
     (measure-by-entity-id [_ _entity-id] nil)
     (segment-by-entity-id [_ _entity-id] nil)
+    (card-by-id [_ card-id]
+      (first (filter #(= card-id (:id %)) (vals entity-id->card))))
     (measure-by-id [_ _measure-id] nil)
     (segment-by-id [_ _segment-id] nil)))
+
+(deftest ^:parallel export-fk-card-via-custom-content-store-test
+  (testing "Card export gets the entity id from the supplied store, including kebab-case rows"
+    (let [store-entity-id "storeEntityId12345678"
+          store           (map-content-store
+                           {"lookup-key"
+                            {:id 500 :database_id 1 :entity-id store-entity-id}})
+          er              (resolve.mp/export-resolver mp-with-cards store)
+          exported        (resolve/export-fk er 500 'Card)]
+      (is (= store-entity-id exported))
+      (is (not= card-entity-id exported)
+          "the metadata provider's permission-agnostic entity id is not used"))))
+
+(deftest ^:parallel export-fk-card-cross-database-test
+  (testing "a stored card pinned to another database is rejected"
+    (let [store (map-content-store {"lookup-key" {:id 500 :database_id 999 :entity_id card-entity-id}})
+          er    (resolve.mp/export-resolver mp-with-cards store)]
+      (try
+        (resolve/export-fk er 500 'Card)
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (= :cross-database-card (:error d)))
+            (is (= 999 (:card-database-id d)))))))))
+
+(deftest ^:parallel export-fk-card-missing-entity-id-test
+  (testing "a card the store does not know is distinct from one with a blank entity id"
+    (doseq [[rows expected-error] {{}                                                    :unknown-card-id
+                                   {"lookup-key" {:id 500 :database_id 1}}               :missing-card-entity-id
+                                   {"lookup-key" {:id 500 :database_id 1 :entity_id ""}} :missing-card-entity-id
+                                   {"lookup-key" {:id 500 :database_id 1 :entity_id "  \t"}} :missing-card-entity-id}]
+      (let [er (resolve.mp/export-resolver mp-with-cards (map-content-store rows))]
+        (try
+          (resolve/export-fk er 500 'Card)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (is (= expected-error (:error (ex-data e))))))))))
 
 (deftest ^:parallel import-fk-card-via-custom-content-store-happy-path-test
   (testing "a custom ContentStore lets the resolver work without an app DB"

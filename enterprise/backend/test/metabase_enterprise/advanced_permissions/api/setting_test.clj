@@ -20,7 +20,7 @@
        user  [group]]
       (letfn [(set-email-setting! [user status]
                 (testing (format "set email setting with %s user" (mt/user-descriptor user))
-                  (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+                  (mt/with-dynamic-fn-redefs [email/test-smtp-settings (constantly {::email/error nil})]
                     (mt/user-http-request user :put status "email" {:email-smtp-host     "foobar"
                                                                     :email-smtp-port     "789"
                                                                     :email-smtp-security :tls
@@ -67,10 +67,10 @@
        user  [group]]
       (letfn [(set-slack-settings! [user status]
                 (testing (format "set slack setting with %s user" (mt/user-descriptor user))
-                  (with-redefs [slack/valid-token? (constantly true)
-                                slack/channel-exists? (constantly true)
-                                slack/refresh-channels-and-usernames! (constantly true)
-                                slack/refresh-channels-and-usernames-when-needed! (constantly true)]
+                  (mt/with-dynamic-fn-redefs [slack/valid-token? (constantly true)
+                                              slack/channel-exists? (constantly true)
+                                              slack/refresh-channels-and-usernames! (constantly true)
+                                              slack/refresh-channels-and-usernames-when-needed! (constantly true)]
                     (mt/with-temporary-setting-values [slack-app-token nil]
                       (mt/user-http-request user :put status "slack/settings" {:slack-app-token "fake-token"})))))
               (get-manifest [user status]
@@ -307,3 +307,15 @@
               (set-interval! :crowberto 204)
               (set-interval! user 204)
               (set-interval! :rasta 403))))))))
+
+(deftest generic-setting-write-test
+  (testing "PUT /api/setting/:key -- granting the :setting application permission lets a non-admin write a settings-manager-visible setting"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temporary-setting-values [site-name "Metabase"]
+          (mt/user-http-request user :put 403 "setting/site-name" {:value "Nope"})
+          (perms/grant-application-permissions! group :setting)
+          (mt/user-http-request user :put 204 "setting/site-name" {:value "NewName"})
+          (is (= "NewName" (mt/user-http-request :crowberto :get 200 "setting/site-name"))))))))

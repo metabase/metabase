@@ -306,6 +306,16 @@
                            :visibility-type :details-only}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
+(deftest describe-table-respects-sync-max-fields-per-table-test
+  (mt/test-driver :mongo
+    (testing "describe-table caps the total number of fields at sync-max-fields-per-table"
+      ;; `venues` has 6 fields; with a tiny limit only that many are returned (capped during the tree build so a huge
+      ;; or deeply-nested collection can't OOM sync).
+      (mt/with-temporary-setting-values [sync-max-fields-per-table 2]
+        (is (= 2 (count (:fields (driver/describe-table
+                                  :mongo (mt/db)
+                                  (t2/select-one :model/Table :id (mt/id :venues)))))))))))
+
 ;; Index sync is turned off across the application as it is not used ATM.
 #_(deftest sync-indexes-info-test
     (mt/test-driver :mongo
@@ -467,6 +477,21 @@
                   {:aggregation [[:count]]
                    :breakout    [$tips.source.username]
                    :limit       4}))))))))
+
+(deftest ^:parallel breakoutable-columns-disambiguates-same-named-nested-fields-test
+  (testing "Nested fields with the same leaf name at different paths get path-qualified display names (#33698)"
+    (mt/test-driver :mongo
+      (mt/dataset geographical-tips
+        (let [mp       (mt/metadata-provider)
+              query    (lib/query mp (lib.metadata/table mp (mt/id :tips)))
+              displays (into #{} (map #(lib/display-name query %))
+                             (lib/breakoutable-columns query))]
+          (testing "root-level vs nested same-name collision"
+            (is (contains? displays "URL"))
+            (is (contains? displays "Source: URL")))
+          (testing "sibling subdocument same-name collision"
+            (is (contains? displays "Source: Categories"))
+            (is (contains? displays "Venue: Categories"))))))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
 (tx/defdataset all-null-columns
@@ -723,7 +748,7 @@
               (qp/process-query
                {:database (mt/id)
                 :type     :native
-                :native   {:projections [:count]
+                :native   {:projections ["count"]
                            :query       [{"$project" {"price" "$price"}}
                                          {"$match" {"price" {"$eq" 1}}}
                                          {"$group" {"_id" nil, "count" {"$sum" 1}}}
@@ -837,14 +862,14 @@
 (deftest strange-versionArray-test
   (mt/test-driver :mongo
     (testing "Negative values in versionArray are ignored (#29678)"
-      (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
-                                                        "versionArray" [4 0 29 -100]})]
+      (mt/with-dynamic-fn-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
+                                                                      "versionArray" [4 0 29 -100]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0 29]}
                (driver/dbms-version :mongo (mt/db))))))
     (testing "Any values after rubbish in versionArray are ignored"
-      (with-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
-                                                        "versionArray" [4 0 "NaN" 29]})]
+      (mt/with-dynamic-fn-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
+                                                                      "versionArray" [4 0 "NaN" 29]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0]}
                (driver/dbms-version :mongo (mt/db))))))))
@@ -1034,7 +1059,7 @@
     :mongo
     (testing "Ensure _id is present in results"
       ;; Gist: Limit is set to 2 and there, other fields' names that precede the _id when sorted
-      (with-redefs [driver.settings/sync-leaf-fields-limit (constantly 2)]
+      (mt/with-dynamic-fn-redefs [driver.settings/sync-leaf-fields-limit (constantly 2)]
         (with-describe-table-for-sample
           [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
             "__a" 1
@@ -1128,7 +1153,7 @@
                                   {:path "a.b.c.d.e.f.g", :type "array", :indices [1 0 0 0 0 0 0]}
                                   {:path "a.b.c.d.e.f.i", :type "int", :indices [1 0 0 0 0 0 1]}
                                   {:path "a.b.c.d.e.f.h", :type "null", :indices [1 0 0 0 0 0 0]}]]]]
-      (with-redefs [driver.settings/sync-leaf-fields-limit (constantly limit)]
+      (mt/with-dynamic-fn-redefs [driver.settings/sync-leaf-fields-limit (constantly limit)]
         (with-describe-table-for-sample
           [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
             "a" {"b" {"c" {"d" {"e" {"f" {"g" [3 2 1]}}}}}}}
@@ -1316,3 +1341,52 @@
                (->> (qp.compile/compile-with-inline-parameters query)
                     :query
                     (driver/prettify-native-form :mongo))))))))
+
+(deftest ^:parallel connection-hosts-test
+  (testing "hosts are read out of the connection string Mongo will actually use, `conn-uri` included"
+    (are [details expected] (= expected (driver/connection-hosts :mongo details))
+      {:host "db.example.com" :port 27017}
+      ["db.example.com"]
+
+      ;; a replica-set list in the plain host field
+      {:host "a.example.com,b.example.com"}
+      ["a.example.com" "b.example.com"]
+
+      ;; `conn-uri` can smuggle in a host the `:host` field never mentions
+      {:host "db.example.com" :use-conn-uri true
+       :conn-uri "mongodb://user:pw@10.0.0.5:27017,internal.corp:27018/db"}
+      ["10.0.0.5" "internal.corp"]
+
+      {:use-conn-uri true :conn-uri "mongodb+srv://user:pw@cluster.example.com/db"}
+      ["cluster.example.com"]))
+  (testing "a details map naming no host of its own contributes no hosts, as it does for every other driver"
+    ;; `write_data_details` and `admin_details` are overlays merged on top of `:details`, so they reach us as partial
+    ;; maps; one that only carries credentials repoints nothing, and the map it overlays is validated on its own
+    (are [details] (= [] (driver/connection-hosts :mongo details))
+      {}
+      {:user "admin" :pass "x"}
+      {:host "" :user "admin"}))
+  (testing "a connection string we cannot parse throws rather than reporting a host the driver may never use"
+    (are [details] (thrown? Throwable (driver/connection-hosts :mongo details))
+      {:use-conn-uri true :conn-uri "not a connection string"}
+      ;; the dangerous shape: a benign `:host` left over from before `use-conn-uri` was turned on
+      {:host "db.example.com" :use-conn-uri true :conn-uri "not a connection string"}
+      {:use-conn-uri true :conn-uri nil})))
+
+(deftest connection-hosts-are-validated-test
+  (testing "a `conn-uri` pointing at a private address is refused"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"private or internal network address"
+                            (driver.u/validate-connection-hosts!
+                             :mongo
+                             {:host "db.example.com" :use-conn-uri true
+                              :conn-uri "mongodb://10.224.7.141:27017/db"})))))
+  (testing "a `conn-uri` we cannot parse is refused, not validated as the `:host` field instead"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"could not apply security policy"
+                            (driver.u/validate-connection-hosts!
+                             :mongo
+                             {:host "db.example.com" :use-conn-uri true
+                              :conn-uri "not a connection string"}))))))

@@ -3,11 +3,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .DismissIconButtonWrapper {
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 }
 
 .DismissIconButtonWrapper:hover {

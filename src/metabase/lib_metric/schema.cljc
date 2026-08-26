@@ -23,9 +23,10 @@
 (mr/def ::binning
   "Schema for `:binning` options passed to a `:dimension` clause."
   [:and
-   [:map
-    {:decode/normalize lib.schema.common/normalize-map}
-    [:strategy [:ref ::binning-strategy]]]
+   {:decode/normalize (fn [binning]
+                        (when-some [binning (lib.schema.common/normalize-map binning)]
+                          (cond-> binning
+                            (:strategy binning) (update :strategy lib.schema.common/normalize-keyword))))}
    [:multi {:dispatch (fn [x]
                         (keyword (some #(get x %) [:strategy "strategy"])))
             :error/fn (fn [{:keys [value]} _]
@@ -317,16 +318,20 @@
    and any issues that prevent them from being used.
    Note: target field references are stored in dimension-mappings, not here."
   [:map
-   [:id              ::dimension-id]
-   [:name            {:optional true} [:maybe :string]]
-   [:display-name    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   [:effective-type  {:optional true} [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type   {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:id               ::dimension-id]
+   [:name             {:optional true} [:maybe :string]]
+   [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:description      {:optional true} [:maybe :string]]
+   [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
-   [:status          {:optional true} [:maybe ::dimension-status]]
-   [:status-message  {:optional true} [:maybe :string]]
-   [:sources         {:optional true} [:maybe [:sequential ::dimension-source]]]
-   [:group           {:optional true} [:maybe ::dimension-group]]])
+   [:status           {:optional true} [:maybe ::dimension-status]]
+   [:status-message   {:optional true} [:maybe :string]]
+   [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
+   [:group            {:optional true} [:maybe ::dimension-group]]
+   [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
+   ;; At most one dimension per entity may be the default.
+   [:default          {:optional true} [:maybe :boolean]]])
 
 (mr/def ::persisted-dimensions
   "Schema for a sequence of persisted dimensions."
@@ -374,6 +379,8 @@
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group            {:optional true} [:maybe ::dimension-group]]
+   [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
+   [:default          {:optional true} [:maybe :boolean]]
    ;; Source tracking
    [:source-type      ::dimension-source-type]
    [:source-id        pos-int?]

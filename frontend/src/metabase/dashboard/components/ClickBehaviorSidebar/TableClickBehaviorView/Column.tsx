@@ -1,9 +1,10 @@
 import { jt, msgid, ngettext, t } from "ttag";
 
 import { DashboardName } from "metabase/common/components/DashboardName";
-import { Questions } from "metabase/entities/questions";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
+  CardId,
   ClickBehavior,
   CustomDestinationClickBehavior,
   DatasetColumn,
@@ -24,6 +25,7 @@ function Quoted({ children }: { children: React.ReactNode }) {
 }
 
 const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
+  // Unjustified type cast. FIXME
   const { targetId } = clickBehavior as EntityCustomDestinationClickBehavior;
   if (clickBehavior.linkType === "url") {
     return t`URL`;
@@ -31,7 +33,8 @@ const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
   if (clickBehavior.linkType === "question") {
     return (
       <Quoted key="link-question">
-        <Questions.Name id={targetId} />
+        {/* Unjustified type cast. FIXME */}
+        <QuestionName id={targetId as CardId} />
       </Quoted>
     );
   }
@@ -84,8 +87,9 @@ interface ColumnProps {
 export const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
+      // Unjustified type cast. FIXME
       name={getIconForField(column) as unknown as IconName}
-      c="brand"
+      c="core-brand"
       size={18}
     />
     <div>

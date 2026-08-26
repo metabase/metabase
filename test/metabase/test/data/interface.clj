@@ -688,6 +688,10 @@
   [_driver _feature _database]
   true)
 
+(defmethod driver/database-supports? [::driver/driver :test/date-type]
+  [_driver _feature _database]
+  true)
+
 (defmethod driver/database-supports? [::driver/driver :test/timestamptz-type]
   [_driver _feature _database]
   true)

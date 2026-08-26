@@ -24,7 +24,7 @@ export function useDefaultPreviewResource(): {
   const shouldFallback = !isRecentsLoading && recentResource == null;
 
   const { data: dashboards, isLoading: isDashboardLoading } = useSearchQuery(
-    { models: ["dashboard"], limit: 1 },
+    { models: ["dashboard"], limit: 1, context: "embedding-setup" },
     { skip: !shouldFallback },
   );
 
@@ -32,7 +32,7 @@ export function useDefaultPreviewResource(): {
   const hasDashboard = dashboard != null && typeof dashboard.id === "number";
 
   const { data: questions, isLoading: isQuestionLoading } = useSearchQuery(
-    { models: ["card"], limit: 1 },
+    { models: ["card"], limit: 1, context: "embedding-setup" },
     { skip: !shouldFallback || isDashboardLoading || hasDashboard },
   );
 

@@ -5,11 +5,11 @@ import { jt, t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
 import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { EnableTransformsCard } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsCard";
 import { Button, Center, Flex, Text, Title } from "metabase/ui";
 import { reload } from "metabase/utils/dom";
@@ -28,6 +28,8 @@ export function TransformsUpsellPage() {
   const { error, hadTransforms, isLoading, basicTransformsAddOn } =
     useTransformsBilling();
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canPurchaseTransforms = isStoreUser || isAdmin;
 
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const { sendErrorToast } = useMetadataToasts();
@@ -60,12 +62,8 @@ export function TransformsUpsellPage() {
   if (error || isLoading) {
     return (
       <DottedBackground px="3.5rem" pb="2rem">
-        <PaneHeader
-          breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
-          }
-        />
-        <Center h="100%" bg="background-secondary">
+        <TransformsHeader showTabs={false} />
+        <Center h="100%" bg="background_page-secondary">
           <LoadingAndErrorWrapper
             loading={isLoading}
             error={
@@ -90,17 +88,13 @@ export function TransformsUpsellPage() {
       pb="2rem"
       style={{ display: "flex", flexDirection: "column" }}
     >
-      <PaneHeader
-        breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
-        }
-      />
+      <TransformsHeader showTabs={false} />
       <Flex justify="center" pos="relative" flex={1} mt="lg">
         <LineDecorator pos="absolute" mah="100%">
           <EnableTransformsCard
             onEnableClick={onEnableClick}
             permissionsErrorMessage={
-              !isStoreUser && (
+              !canPurchaseTransforms && (
                 <Text fz="1rem" fw="bold">
                   {t`To enable Transforms, please contact a store administrator`}
                   {anyStoreUserEmailAddress && ` (${anyStoreUserEmailAddress})`}

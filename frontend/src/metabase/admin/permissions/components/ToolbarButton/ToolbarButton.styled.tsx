@@ -13,7 +13,7 @@ export const ToolbarButtonRoot = styled.button`
   transition: color 200ms;
 
   &:hover {
-    color: var(--mb-color-filter);
+    color: var(--mb-color-core-filter);
   }
 `;
 

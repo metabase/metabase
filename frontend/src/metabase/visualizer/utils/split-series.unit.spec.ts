@@ -1,4 +1,4 @@
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { RowValues } from "metabase-types/api/dataset";
 import {
   createMockCard,

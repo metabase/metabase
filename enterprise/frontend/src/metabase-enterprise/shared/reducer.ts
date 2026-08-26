@@ -1,12 +1,14 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+import { userApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { GTAPApi } from "metabase/services";
 import type { UserAttributeKey } from "metabase-types/api";
 
 export const fetchUserAttributes = createAsyncThunk(
   "metabase-enterprise/shared/FETCH_USER_ATTRIBUTES",
-  async () => GTAPApi.attributes(),
+  async (_, { dispatch }) =>
+    runRtkEndpoint(undefined, dispatch, userApi.endpoints.listUserAttributes),
 );
 
 export interface EnterpriseSharedState {

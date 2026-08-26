@@ -5,17 +5,12 @@ import {
 
 const { H } = cy;
 
-const adaptiveRadioButton = () =>
-  cy
-    .findByRole("form", { name: "Select the cache invalidation policy" })
-    .findByRole("radio", { name: /Adaptive/ });
-
 const preemptiveCachingSwitch = () =>
   cy.findByTestId("preemptive-caching-switch");
 
 const saveCacheStrategyForm = () => {
   cy.intercept("PUT", "/api/cache").as("putCacheConfig");
-  cy.findByRole("form", { name: "Select the cache invalidation policy" })
+  cy.findByRole("form", { name: "Cache invalidation policy" })
     .button(/Save/)
     .click();
   cy.wait("@putCacheConfig");
@@ -62,7 +57,7 @@ const cancelConfirmationModal = () =>
  *   frontend/.../Schedule/{cron,Schedule}.unit.spec.{ts,tsx}.
  * - Strategy form input binding (typing into Min Duration / Multiplier),
  *   strategy-switch flows (Adaptive <-> Duration <-> No caching),
- *   strategy -> launcher-label mapping, policy-options counts,
+ *   strategy -> row-label mapping, policy-options counts,
  *   preemptive caching switch availability for root/database targets:
  *   frontend/.../StrategyEditorForDatabases.unit.spec.tsx and
  *   enterprise/.../caching/components/StrategyEditorForDatabases.unit.spec.tsx.
@@ -76,9 +71,13 @@ describe("scenarios > admin > performance > caching", () => {
 
     it("saves the default-policy strategy and reflects the saved state", () => {
       cy.visit("/admin/performance");
-      adaptiveRadioButton().click();
+      H.selectCacheStrategy(/Adaptive/);
+      cy.findByRole("spinbutton", { name: /minimum query duration/i }).type(
+        "1",
+      );
+      cy.findByRole("spinbutton", { name: /multiplier/i }).type("10");
       saveCacheStrategyForm();
-      adaptiveRadioButton().should("be.checked");
+      H.cacheStrategySelect().should("have.value", "Adaptive");
     });
   });
 
@@ -99,7 +98,8 @@ describe("scenarios > admin > performance > caching", () => {
       cy.button(/Clear cache/).should("not.exist");
 
       cy.log("Set Sample Database to Duration and save");
-      H.durationRadioButton().click();
+      H.selectCacheStrategy(/Duration/);
+      H.fillCacheDuration(24);
       saveCacheStrategyForm();
       cy.findByTestId("admin-layout-content").findByLabelText(
         /Edit.*Sample Database.*currently.*Duration/,
@@ -114,7 +114,7 @@ describe("scenarios > admin > performance > caching", () => {
       cy.button(/Clear cache for this database/).click();
 
       cy.log("Confirm in the dialog");
-      cy.findByRole("dialog")
+      cy.findByTestId("confirm-modal")
         .button(/Clear cache/)
         .click();
       cy.wait("@invalidateCacheForSampleDatabase");
@@ -126,13 +126,19 @@ describe("scenarios > admin > performance > caching", () => {
       cy.log("Enable preemptive caching from the question sidebar");
       H.visitQuestion(ORDERS_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
-      H.durationRadioButton().click();
+      H.selectCacheStrategy(/Duration/);
+      // 24 keeps the "Duration: 24h" admin-tab assertion below true
+      H.fillCacheDuration(24);
       preemptiveCachingSwitch().within(() => {
         cy.findByRole("switch").should("not.be.checked");
         cy.findByRole("switch").parent("label").click();
         cy.findByRole("switch").should("be.checked");
       });
+      // After saving, the form reloads its config; wait for that reload before
+      // re-opening so the assertion doesn't race a stale (pre-save) render.
+      cy.intercept("GET", "/api/cache?model=*&id=*").as("reloadCacheConfig");
       saveCacheStrategyForm();
+      cy.wait("@reloadCacheConfig");
       cy.findByLabelText("When to get new results").click();
       preemptiveCachingSwitch().findByRole("switch").should("be.checked");
 
@@ -171,10 +177,10 @@ describe("scenarios > admin > performance > caching", () => {
       cy.findByTestId("collection-table").findByText("Orders").click();
 
       openSidebarCacheStrategyForm("question");
-      H.cacheStrategySidesheet().within(() => {
-        cy.findByText(/Caching settings/).should("be.visible");
-        H.durationRadioButton().click();
-      });
+      H.cacheStrategySidesheet()
+        .findByText(/Caching settings/)
+        .should("be.visible");
+      H.selectCacheStrategy(/Duration/);
 
       cy.log("Action 1 — click the close (×) button");
       H.cacheStrategySidesheet()
@@ -209,14 +215,18 @@ describe("scenarios > admin > performance > caching", () => {
       cy.log("Configure Orders with Duration: 99h");
       H.visitQuestion(ORDERS_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
-      H.durationRadioButton().click();
-      cy.findByLabelText(/Cache results for this many hours/).type("99");
+      H.selectCacheStrategy(/Duration/);
+      cy.findByRole("spinbutton", { name: /Cache duration/ }).type("99");
       saveCacheStrategyForm();
 
       cy.log("Configure Orders, Count with Adaptive");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       openSidebarCacheStrategyForm("question");
-      adaptiveRadioButton().click();
+      H.selectCacheStrategy(/Adaptive/);
+      cy.findByRole("spinbutton", { name: /minimum query duration/i }).type(
+        "1",
+      );
+      cy.findByRole("spinbutton", { name: /multiplier/i }).type("10");
       saveCacheStrategyForm();
 
       cy.log("Both entries are visible on the admin tab");
@@ -227,8 +237,8 @@ describe("scenarios > admin > performance > caching", () => {
 
       cy.log("Clicking Duration: 99h opens its form with duration selected");
       cy.findByTestId("cache-config-table").contains("Duration: 99h").click();
-      H.durationRadioButton().should("be.checked");
-      cy.findByLabelText(/Cache results for this many hours/).should(
+      H.cacheStrategySelect().should("have.value", "Duration");
+      cy.findByRole("spinbutton", { name: /Cache duration/ }).should(
         "have.value",
         "99",
       );
@@ -238,7 +248,7 @@ describe("scenarios > admin > performance > caching", () => {
 
       cy.log("Clicking Adaptive opens its form with adaptive selected");
       cy.findByTestId("cache-config-table").contains("Adaptive").click();
-      adaptiveRadioButton().should("be.checked");
+      H.cacheStrategySelect().should("have.value", "Adaptive");
     });
   });
 });

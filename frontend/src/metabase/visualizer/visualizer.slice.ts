@@ -15,7 +15,7 @@ import type {
   DraggedItem,
   VisualizerState,
   VisualizerVizDefinitionWithColumns,
-  VisualizerVizDefinitionWithColumnsAndFallbacks,
+  VisualizerVizDefinitionWithColumnsAndPreloadedDatasets,
 } from "metabase/redux/store/visualizer";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { clone } from "metabase/utils/clone";
@@ -97,7 +97,7 @@ function getInitialState(): VisualizerState {
 
 type InitVisualizerPayload =
   | {
-      state?: Partial<VisualizerVizDefinitionWithColumns>;
+      state?: Partial<VisualizerVizDefinitionWithColumnsAndPreloadedDatasets>;
     }
   | { cardId: CardId };
 
@@ -121,7 +121,7 @@ const initializeFromState = async (
   {
     state: initialState = {},
   }: {
-    state?: Partial<VisualizerVizDefinitionWithColumnsAndFallbacks>;
+    state?: Partial<VisualizerVizDefinitionWithColumnsAndPreloadedDatasets>;
   },
   dispatch: Dispatch,
 ) => {
@@ -140,7 +140,7 @@ const initializeFromState = async (
           dispatch(
             fetchCardQuery({
               cardId: Number(cardId),
-              fallbacks: initialState.datasetFallbacks,
+              preloadedDatasets: initialState.preloadedDatasets,
             }),
           ),
         ];
@@ -186,7 +186,9 @@ export const addDataSource = createAsyncThunk(
         fetchCardQuery({ cardId: sourceId }),
       );
 
+      // Unjustified type cast. FIXME
       const card = cardAction.payload as Card;
+      // Unjustified type cast. FIXME
       dataset = cardQueryAction.payload as Dataset;
       vizSettings = card.visualization_settings || null;
 
@@ -279,26 +281,26 @@ const fetchCard = createAsyncThunk<Card, CardId>(
 
 const fetchCardQuery = createAsyncThunk<
   Dataset,
-  { cardId: CardId; fallbacks?: Record<CardId, Dataset | null | undefined> }
->("visualizer/fetchCardQuery", async ({ cardId, fallbacks }, { dispatch }) => {
-  const result = await dispatch(
-    cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
-  );
-  if (result.data != null) {
-    const shouldAttemptFallback =
-      result.data.error_type &&
-      !result.data.data?.rows?.length &&
-      !result.data.data?.cols?.length;
-    if (shouldAttemptFallback) {
-      const fallback = fallbacks?.[cardId];
-      if (fallback) {
-        return fallback;
-      }
-    }
-    return result.data;
+  {
+    cardId: CardId;
+    preloadedDatasets?: Record<CardId, Dataset | null | undefined>;
   }
-  throw new Error("Failed to fetch card query");
-});
+>(
+  "visualizer/fetchCardQuery",
+  async ({ cardId, preloadedDatasets }, { dispatch }) => {
+    const dataset = preloadedDatasets?.[cardId];
+    if (dataset) {
+      return dataset;
+    }
+    const result = await dispatch(
+      cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
+    );
+    if (result.data != null) {
+      return result.data;
+    }
+    throw new Error("Failed to fetch card query");
+  },
+);
 
 export const undo = createAction("visualizer/undo");
 export const redo = createAction("visualizer/redo");
@@ -389,7 +391,6 @@ const visualizerSlice = createSlice({
         addColumnToFunnel(
           state,
           settings,
-          state.datasets as Record<string, Dataset>,
           column,
           columnRef,
           // Prevents "Type instantiation is excessively deep" error
@@ -403,8 +404,6 @@ const visualizerSlice = createSlice({
         addColumnToCartesianChart(
           state,
           settings,
-          state.datasets as Record<string, Dataset>,
-          dataset.data.cols,
           column,
           columnRef,
           dataSource,
@@ -419,12 +418,14 @@ const visualizerSlice = createSlice({
             state,
             columnRef,
             originalColumn,
+            // Unjustified type cast. FIXME
             dataset as Dataset,
             dataSource,
           );
         }
 
         if (isDimension && column.id) {
+          // Unjustified type cast. FIXME
           const datasetMap = _.omit(state.datasets, dataSource.id) as Record<
             string,
             Dataset
@@ -609,8 +610,10 @@ const visualizerSlice = createSlice({
 
         // `any` prevents the "Type instantiation is excessively deep" error
         if (index !== -1) {
+          // Unjustified type cast. FIXME
           state.cards[index] = card as any;
         } else {
+          // Unjustified type cast. FIXME
           state.cards.push(card as any);
         }
 
@@ -711,7 +714,13 @@ export const reducer = undoable(visualizerSlice.reducer, {
       addDataSource.fulfilled.type,
     ]),
     (action, nextState, { present }) => {
-      if (action.payload.forget === true) {
+      const payload = action.payload;
+      if (
+        payload != null &&
+        typeof payload === "object" &&
+        "forget" in payload &&
+        payload.forget === true
+      ) {
         return false;
       }
       if (action.type !== _handleDrop.type) {

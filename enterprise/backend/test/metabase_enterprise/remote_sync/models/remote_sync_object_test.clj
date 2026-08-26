@@ -454,7 +454,7 @@
 (deftest dirty-objects-all-model-types-including-new-test
   (testing "dirty-objects handles all supported model types including Table, Field, and Segment"
     ;; Mock excluded-model-types to return empty set so all model types (including NativeQuerySnippet) are included
-    (with-redefs [spec/excluded-model-types (constantly #{})]
+    (mt/with-dynamic-fn-redefs [spec/excluded-model-types (constantly #{})]
       (mt/with-temp
         [:model/Collection collection {:name "Test Collection"
                                        :location "/"}

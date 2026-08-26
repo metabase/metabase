@@ -344,7 +344,7 @@ Columns:
 - Conversation ID
 - Created At
 - User ID
-- Summary
+- Title
 - User Display Name
 - Message Count
 - User Message Count
@@ -427,6 +427,7 @@ Columns:
 - Action Qualified ID
 - Query
 - Embedding Client
+- Embedding Client Identifier
 - Is Preview
 - Embedding SDK Package Version
 - Metabase Version
@@ -530,6 +531,7 @@ Columns:
 - Entity ID
 - Entity Qualified ID
 - Embedding Client
+- Embedding Client Identifier
 - Auth Method
 - Is Preview
 - Metabase Version
@@ -604,6 +606,9 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - measure-create
 - measure-delete
 - measure-update
+- mfa-disabled
+- mfa-enrolled
+- mfa-verification-failed
 - notification-create
 - notification-unsubscribe
 - notification-unsubscribe-ex
@@ -628,6 +633,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - subscription-unsubscribe
 - subscription-unsubscribe-undo
 - subscription-update
+- table-data-edit
 - table-manual-scan
 - table-manual-sync
 - table-publish
@@ -638,7 +644,9 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - transform-delete
 - transform-inspect-discover
 - transform-inspect-lens
+- transform-run-canceled
 - transform-run-start
+- transform-run-timeout
 - update-permission-failure
 - update-transform
 - upload-append
@@ -668,8 +676,10 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - embedded-json-download
 - embedded-question
 - embedded-xlsx-download
+- exploration
 - json-download
 - map-tiles
+- metric
 - public-csv-download
 - public-dashboard
 - public-json-download
@@ -704,4 +714,5 @@ The Entity Type column on the [View log](#view-log) model takes one of:
 - card
 - collection
 - dashboard
+- document
 - table

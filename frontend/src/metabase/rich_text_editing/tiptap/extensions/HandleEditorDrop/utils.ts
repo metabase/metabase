@@ -113,7 +113,7 @@ export const getDroppedCardEmbedNodeData = (
         nodeParentResult;
 
       const cameFromFlexContainer = originalParent
-        ? (originalParent as Node).type.name === "flexContainer"
+        ? originalParent.type.name === "flexContainer"
         : false;
 
       // Find the position where the node was dropped

@@ -3,7 +3,7 @@
   text-decoration: none;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
@@ -17,7 +17,7 @@
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
@@ -29,7 +29,7 @@
   letter-spacing: 0.06em;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 

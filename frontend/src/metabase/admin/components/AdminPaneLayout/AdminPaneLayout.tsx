@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Flex, Stack, Text } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 
 interface AdminPaneLayoutProps {
   title?: React.ReactNode;
@@ -19,8 +19,8 @@ export const AdminPaneLayout = ({
   titleActions,
 }: AdminPaneLayoutProps) => {
   return (
-    <div data-testid="admin-panel">
-      <Stack component="section" px="md" mb="xl" gap="lg">
+    <Box data-testid="admin-panel" px="md">
+      <Stack component="section" mb="md" gap="lg">
         {(title || description || titleActions) && (
           <Flex
             justify="space-between"
@@ -28,7 +28,7 @@ export const AdminPaneLayout = ({
             gap="md"
             wrap="nowrap"
           >
-            <Stack gap="md">
+            <Stack gap="md" miw={0}>
               {title && (
                 <h2 data-testid="admin-pane-page-title" className={CS.m0}>
                   {title}
@@ -36,7 +36,7 @@ export const AdminPaneLayout = ({
               )}
               {description && <Text maw="40rem">{description}</Text>}
             </Stack>
-            {titleActions}
+            {titleActions && <Box flex="0 0 auto">{titleActions}</Box>}
           </Flex>
         )}
 
@@ -46,6 +46,6 @@ export const AdminPaneLayout = ({
       </Stack>
 
       {children}
-    </div>
+    </Box>
   );
 };

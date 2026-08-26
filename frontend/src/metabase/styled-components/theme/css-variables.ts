@@ -6,7 +6,10 @@ import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
-import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
+import {
+  getDynamicCssVariables,
+  getIsDarkThemeFromPalette,
+} from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import {
   SDK_TO_MAIN_APP_COLORS_MAPPING,
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
@@ -15,8 +18,8 @@ import {
 import type { MantineTheme } from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
-import { getFontFamilyValue } from "metabase/ui/fonts";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { ColorSettings } from "metabase-types/api";
 
 const createColorVars = (
@@ -66,10 +69,12 @@ export function getMetabaseSdkCssVariables({
   font: string;
   whitelabelColors?: ColorSettings | null;
 }) {
+  const colorScheme = getIsDarkThemeFromPalette(theme) ? "dark" : "light";
+
   return css`
     :root {
       --mb-default-font-family: ${getFontFamilyValue(font)};
-      ${createColorVars("light", whitelabelColors)}
+      ${createColorVars(colorScheme, whitelabelColors)}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}

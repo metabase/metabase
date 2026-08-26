@@ -1,0 +1,10 @@
+.headerWrapper {
+  flex-shrink: 0;
+  display: flex;
+  position: relative;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.closeButton {
+  border-left: 1px solid var(--mb-color-border-neutral);
+}

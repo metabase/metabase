@@ -63,7 +63,7 @@ export function EmailChannelCard({ isConfigured }: { isConfigured: boolean }) {
           />
           {!config.email.sendToAllAdmins &&
             config.email.handler.recipients.length === 0 && (
-              <Text size="sm" c="error" mt="xs">
+              <Text size="sm" c="feedback-negative" mt="xs">
                 {t`At least one recipient is required.`}
               </Text>
             )}

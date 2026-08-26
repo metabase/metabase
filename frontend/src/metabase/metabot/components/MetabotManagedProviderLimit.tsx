@@ -2,10 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { MetabotSetupInner } from "metabase/admin/ai/MetabotSetup";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
+import { canAccessSettings } from "metabase/current-user";
+import { useDispatch, useSelector } from "metabase/redux";
 import { dismissUndo } from "metabase/redux/undo";
 import {
   Button,
@@ -16,40 +16,54 @@ import {
   Text,
 } from "metabase/ui";
 
+import { AIProviderSetup } from "./AIProviderConfigurationForm";
+
 const METABOT_MANAGED_PROVIDER_LIMIT_TOAST_ID =
   "metabot-managed-provider-limit";
 
 type MetabotManagedProviderLimitActionsProps = {
   inline?: boolean;
-  onConfigure?: VoidFunction;
   onConfigureClose?: VoidFunction;
 } & FlexProps;
 
 export const MetabotManagedProviderLimitActions = ({
   inline = false,
-  onConfigure,
   onConfigureClose,
   ...rest
 }: MetabotManagedProviderLimitActionsProps) => {
-  const [isOpen, { open, close }] = useDisclosure(false, {
+  const canConfigureAi = useSelector(canAccessSettings);
+  const [isOpen, { open: handleConfigure, close }] = useDisclosure(false, {
     onClose: onConfigureClose,
   });
-  const handleConfigure = useCallback(() => {
-    (onConfigure ?? open)();
-  }, [onConfigure, open]);
 
+  // The managed connection is left exactly as it is: running out of included tokens is a reason to add a provider
+  // alongside it, not to cancel the subscription behind it.
   const configureModal = (
     <Modal
-      title={t`Connect to an AI provider`}
+      title={t`Add an AI provider`}
       onClose={close}
       opened={isOpen}
       size="lg"
     >
-      <MetabotSetupInner isModal onClose={close} />
+      <AIProviderSetup startOnConnectionForm onDone={close} />
     </Modal>
   );
 
   const storeUrl = useStoreUrl("account/manage/plans");
+
+  if (!canConfigureAi) {
+    return (
+      <Flex
+        direction={inline ? "row" : "column"}
+        align={inline ? "center" : "start"}
+        {...rest}
+      >
+        <Text c="text-secondary" fz="sm" lh="1rem">
+          {t`Ask your admin to switch AI providers or start a paid subscription.`}
+        </Text>
+      </Flex>
+    );
+  }
 
   if (inline) {
     return (
@@ -166,7 +180,7 @@ export const getMetabotManagedProviderLimitToastProps = () => ({
   id: METABOT_MANAGED_PROVIDER_LIMIT_TOAST_ID,
   dark: false,
   icon: null,
-  toastColor: "error",
+  toastColor: "feedback-negative" as const,
   dismissIconColor: "text-secondary" as const,
   timeout: 0,
   style: {

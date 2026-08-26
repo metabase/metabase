@@ -23,6 +23,7 @@ import { getResourceIdFromSettings } from "../../../utils/get-default-sdk-iframe
 // The picker uses the "recents" id to open on the Recent items tab while still
 // being able to resolve to a valid initial path.
 const PICKER_RECENTS_VALUE = {
+  // Unjustified type cast. FIXME
   id: "recents" as CollectionId,
   model: "collection" as const,
 };
@@ -46,7 +47,7 @@ export const ResourceCard = () => {
 
   const { data: selectedCollection } = useGetCollectionQuery(
     experience === "browser" && selectedItemId != null
-      ? { id: selectedItemId as CollectionId }
+      ? { id: selectedItemId }
       : skipToken,
   );
 
@@ -106,7 +107,7 @@ export const ResourceCard = () => {
       });
     } else if (experience === "browser") {
       updateSettings({
-        initialCollection: id as CollectionId,
+        initialCollection: id,
       });
     }
   };
@@ -191,7 +192,7 @@ export const ResourceCard = () => {
 
           <Button
             variant="default"
-            leftSection={<Icon name={icon} c="brand" size={16} />}
+            leftSection={<Icon name={icon} c="core-brand" size={16} />}
             rightSection={<Icon name="chevrondown" size={12} />}
             onClick={openPicker}
             data-testid="embed-browse-entity-button"
@@ -259,6 +260,7 @@ const hasResourceSelectionStep = (
   SdkIframeEmbedSetupExperience,
   (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
 > =>
+  // Unjustified type cast. FIXME
   !(
     EXPERIENCES_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
   ).includes(experience);

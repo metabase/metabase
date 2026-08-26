@@ -74,8 +74,8 @@
 
 (defn- check-oidc-connection!
   "Run OIDC configuration check and throw a 400 if it fails. Returns the check result on success."
-  [issuer-uri client-id client-secret]
-  (let [result (sso/check-oidc-configuration issuer-uri client-id client-secret)]
+  [issuer-uri client-id client-secret scopes]
+  (let [result (sso/check-oidc-configuration issuer-uri client-id client-secret scopes)]
     (api/check-400 (:ok result)
                    (or (get-in result [:credentials :error])
                        (get-in result [:discovery :error])
@@ -110,11 +110,11 @@
   (let [provider-key (:key body)]
     (api/check-400 (u/valid-slug? provider-key) "Provider key must be a URL-safe slug (lowercase letters, numbers, hyphens, must start with letter or number)")
     (api/check-400 (nil? (sso-settings/get-oidc-provider provider-key)) (format "An OIDC provider with key '%s' already exists" provider-key))
-    (check-oidc-connection! (:issuer-uri body) (:client-id body) (:client-secret body))
-    (let [providers (sso-settings/oidc-providers)
+    (let [providers    (sso-settings/oidc-providers)
           new-provider (merge {:enabled false
-                               :scopes ["openid" "email" "profile"]}
+                               :scopes  ["openid" "email" "profile"]}
                               body)]
+      (check-oidc-connection! (:issuer-uri new-provider) (:client-id new-provider) (:client-secret new-provider) (:scopes new-provider))
       (sso-settings/oidc-providers! (conj (vec providers) new-provider))
       (sanitize-response new-provider))))
 
@@ -136,7 +136,7 @@
                       (dissoc body :client-secret)
                       body)
           updated   (merge existing body)]
-      (check-oidc-connection! (:issuer-uri updated) (:client-id updated) (:client-secret updated))
+      (check-oidc-connection! (:issuer-uri updated) (:client-id updated) (:client-secret updated) (:scopes updated))
       (let [providers (assoc (vec providers) idx updated)]
         (sso-settings/oidc-providers! providers)
         (sanitize-response updated)))))
@@ -171,14 +171,13 @@
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [issuer-uri    (:issuer-uri body)
         client-id     (:client-id body)
+        stored        (some-> body :key sso-settings/get-oidc-provider)
         client-secret (let [s (:client-secret body)]
                         (if (str/blank? s)
-                          ;; If no secret provided, look up the stored one by provider key
-                          (when-let [provider-key (:key body)]
-                            (when-let [provider (sso-settings/get-oidc-provider provider-key)]
-                              (:client-secret provider)))
-                          s))]
-    (check-oidc-connection! issuer-uri client-id client-secret)))
+                          (:client-secret stored)
+                          s))
+        scopes        (or (:scopes stored) ["openid"])]
+    (check-oidc-connection! issuer-uri client-id client-secret scopes)))
 
 ;; DELETE /api/ee/sso/oidc/:key
 (api.macros/defendpoint :delete "/:key"  :- :nil

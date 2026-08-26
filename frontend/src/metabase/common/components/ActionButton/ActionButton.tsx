@@ -9,10 +9,15 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { Button, type ButtonProps } from "metabase/common/components/Button";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { Center, Group, Icon, Loader } from "metabase/ui";
+import {
+  Button,
+  type ButtonProps,
+  Center,
+  Group,
+  Icon,
+  Loader,
+} from "metabase/ui";
 
 export interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
   // need to expose this ref to allow Tooltip to bind to the correct element
@@ -24,8 +29,6 @@ export interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
   useLoadingSpinner?: boolean;
   actionFn: () => Promise<unknown>;
   className?: string;
-  successClassName?: string;
-  failedClassName?: string;
   children?: React.ReactNode;
 }
 
@@ -42,9 +45,7 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
       successText = t`Saved`,
       useLoadingSpinner = false,
       actionFn,
-      className = ButtonsS.Button,
-      successClassName = ButtonsS.ButtonSuccess, // not used
-      failedClassName = ButtonsS.ButtonDanger, // not used
+      className,
       children,
       innerRef,
       ...buttonProps
@@ -113,15 +114,20 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     };
     const isActionDisabled = active || result === "success";
     const actionStatus = active ? "pending" : (result ?? "idle");
+    const resultProps: Partial<ButtonProps> =
+      result === "success"
+        ? { variant: "filled", color: "feedback-positive" }
+        : result === "failed"
+          ? { variant: "filled", color: "feedback-negative" }
+          : {};
 
     return (
       <Button
         {...buttonProps}
+        {...resultProps}
         ref={innerRef}
         data-action-status={actionStatus}
         className={cx(className, {
-          [successClassName]: result === "success",
-          [failedClassName]: result === "failed",
           [CS.pointerEventsNone]: isActionDisabled,
         })}
         onClick={handleClick}
@@ -129,7 +135,7 @@ export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
         {active ? (
           useLoadingSpinner ? (
             <Center px="2rem">
-              <Loader size="sm" color="white" data-testid="loading-indicator" />
+              <Loader size="sm" color="core-white" />
             </Center>
           ) : (
             activeText

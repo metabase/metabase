@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/components/DatabaseConnectionHealthInfo";
@@ -7,6 +6,7 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { useUpdateDatabaseMutation } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   hasDbRoutingEnabled,
@@ -70,8 +70,8 @@ export function WritableConnectionInfoSection({
         <>
           <DatabaseInfoSectionDivider />
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
             mb="md"
           >
@@ -84,7 +84,11 @@ export function WritableConnectionInfoSection({
         <>
           <DatabaseInfoSectionDivider condensed />
           <Group>
-            <Button variant="filled" color="error" onClick={handleRemove}>
+            <Button
+              variant="filled"
+              color="feedback-negative"
+              onClick={handleRemove}
+            >
               {t`Remove writable connection`}
             </Button>
           </Group>

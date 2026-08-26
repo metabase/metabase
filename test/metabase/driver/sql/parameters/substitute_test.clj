@@ -10,6 +10,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
@@ -25,8 +26,7 @@
 
 (defn- substitute [parsed param->value]
   (driver/with-driver :h2
-    (mt/with-metadata-provider meta/metadata-provider
-      (sql.params.substitute/substitute parsed param->value))))
+    (sql.params.substitute/substitute meta/metadata-provider parsed param->value)))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
 ;; TIMEZONE FIXME
@@ -162,8 +162,7 @@
                             field-metadata
                             {:type  :string/=
                              :value ["banana"]})
-            [sql _args] (mt/with-metadata-provider metadata-provider
-                          (sql.params.substitute/substitute query {"tag" field-filter}))]
+            [sql _args] (sql.params.substitute/substitute metadata-provider query {"tag" field-filter})]
         (testing "The SQL identifier should include the parent field 'result' before 'tag_name'"
           (let [[exp-identifier] (sql.qp/format-honeysql driver/*driver*
                                                          (h2x/identifier :field "result" "tag_name"))]
@@ -390,8 +389,7 @@
 
 (defn- substitute-e2e [sql params]
   (let [[query params] (driver/with-driver :h2
-                         (mt/with-metadata-provider meta/metadata-provider
-                           (#'sql.params.substitute/substitute (lib/parse-parameters sql) (into {} params))))]
+                         (#'sql.params.substitute/substitute meta/metadata-provider (lib/parse-parameters sql) (into {} params)))]
     {:query query, :params (vec params)}))
 
 (deftest ^:parallel basic-substitution-test
@@ -517,28 +515,42 @@
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
 (mu/defn- expand**
-  "Expand parameters inside a top-level native `query`. Not recursive."
-  [{:keys [parameters], :as query} :- [:map
-                                       [:native [:map
-                                                 [:query some?]]]]]
-  (driver/with-driver :h2
-    (let [mp meta/metadata-provider]
-      (-> (lib/query
-           mp
-           (merge {:database (meta/id)
-                   :type     :native}
-                  query))
-          (lib/update-query-stage 0 (fn [stage]
-                                      (-> stage
-                                          (update :parameters concat parameters)
-                                          (->> (qp.native/expand-stage mp)))))
-          lib/->legacy-MBQL))))
+  "Expand parameters inside a top-level native `query`. Not recursive. Expands against `meta/metadata-provider` unless
+  an explicit metadata provider `mp` is supplied (handy for overriding field metadata)."
+  ([query]
+   (expand** meta/metadata-provider query))
+  ([mp
+    {:keys [parameters], :as query} :- [:or
+                                        [:map
+                                         [:lib/type [:= :mbql/query]]]
+                                        [:map
+                                         [:native [:map
+                                                   [:query some?]]]]]]
+   (driver/with-driver :h2
+     (-> (if (:lib/type query)
+           (lib/query mp (dissoc query :parameters))
+           (lib/query
+            mp
+            (merge {:database (meta/id)
+                    :type     :native}
+                   query)))
+         (lib/update-query-stage 0 update :parameters concat parameters)
+         (qp.native/expand-stage 0)
+         lib/->legacy-MBQL))))
 
-(defn- expand* [query]
-  (-> (expand** (mbql.normalize/normalize query))
-      :native
-      (select-keys [:query :params :template-tags])
-      (update :params vec)))
+(defn- expand*
+  "Expand parameters inside native `query`, returning the resulting native query map. Expands against
+  `meta/metadata-provider` unless an explicit metadata provider `mp` is supplied (handy for overriding field
+  metadata)."
+  ([query]
+   (expand* meta/metadata-provider query))
+  ([mp query]
+   (-> (expand** mp (if (:lib/type query)
+                      query
+                      (mbql.normalize/normalize query)))
+       :native
+       (select-keys [:query :params :template-tags])
+       (update :params vec))))
 
 (deftest ^:parallel expand-variables-test
   ;; unspecified optional param
@@ -978,7 +990,7 @@
 (deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
     (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
-                  "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
+                  "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters.dates`, "
                   "which is fully-tested :D")
       (is (= [0]
              (mt/first-row
@@ -1008,7 +1020,7 @@
 (deftest ^:parallel e2e-exclude-date-parts-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::e2e-exclude-date-parts-test)
     (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion "
-                  "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
+                  "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters.dates`, "
                   "which is fully-tested :D")
       (doseq [[exclusion-string expected] {"exclude-months-Jan" 14
                                            "exclude-months-Jan-Feb" 13
@@ -1220,6 +1232,41 @@
                                                               :default      "2017-11-14"
                                                               :widget-type  :date/all-options}}}})))))
 
+(deftest ^:parallel field-filter-date-broken-semantic-type-test
+  (testing "a date field filter over a temporal field whose semantic_type was forced non-temporal still parses the date value (#58061)"
+    (mt/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
+      (let [mp (lib.tu/merged-mock-metadata-provider
+                meta/metadata-provider
+                {:fields [{:id (meta/id :checkins :date) :semantic-type :type/Category}]})]
+        (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
+                :params [#t "2016-07-01"]}
+               (expand*
+                mp
+                (-> (lib/native-query mp "SELECT * FROM checkins WHERE {{date}};")
+                    (lib/with-template-tags
+                      {"date" {:name         "date"
+                               :display-name "Checkin Date"
+                               :type         :dimension
+                               :widget-type  :date/all-options
+                               :dimension    (lib/ref (lib.metadata/field mp (meta/id :checkins :date)))}})
+                    (assoc :parameters [{:type   :date/single
+                                         :target [:dimension [:template-tag "date"]]
+                                         :value  "2016-07-01"}])))))))))
+
+(deftest ^:parallel field-filter-string-default-test
+  (testing "a required category field filter with a string default (no user input) filters on the default value (#15444)"
+    (is (= {:query  "SELECT count(*) FROM PRODUCTS WHERE (\"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" = ?)"
+            :params ["Doohickey"]}
+           (expand* (-> (lib/native-query meta/metadata-provider "SELECT count(*) FROM PRODUCTS WHERE {{cat}}")
+                        (lib/with-template-tags
+                          {"cat" {:name         "cat"
+                                  :display-name "Cat"
+                                  :type         :dimension
+                                  :dimension    (lib/ref (meta/field-metadata :products :category))
+                                  :widget-type  :string/=
+                                  :required     true
+                                  :default      ["Doohickey"]}})))))))
+
 (deftest ^:parallel newlines-test
   (testing "Make sure queries with newlines are parsed correctly (#11526)"
     (is (= [[1]]
@@ -1284,6 +1331,7 @@
       (is (= ["SELECT * FROM (SELECT * FROM table WHERE x LIKE ?)"
               ["G%"]]
              (sql.params.substitute/substitute
+              meta/metadata-provider
               ["SELECT * FROM " (lib/parsed-param "#1")]
               {"#1"
                (lib/parsed-referenced-card-query-param 1 "SELECT * FROM table WHERE x LIKE ?" ["G%"])}))))))

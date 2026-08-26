@@ -7,7 +7,7 @@
   [:string {:min 1}])
 
 (mr/def ::semver
-  [:re #"^\d+\.\d+\.\d+$"])
+  [:re #"^\d+(?:\.\d+)*$"])
 
 (mr/def ::severity
   [:enum :critical :high :medium :low])
@@ -23,6 +23,15 @@
 
 (mr/def ::affected-versions
   [:sequential ::version-range])
+
+(mr/def ::download-jar-url
+  "A downloadable JAR for a given fixed version."
+  [:map
+   [:version ::semver]
+   [:url     :string]])
+
+(mr/def ::download-jar-urls
+  [:sequential ::download-jar-url])
 
 (mr/def ::matching-query
   "HoneySQL query keyed by dialect. nil means affects all instances.

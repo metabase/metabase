@@ -3,10 +3,6 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
-import {
-  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-  isEmbeddingSdk,
-} from "metabase/embedding-sdk/config";
 import { getCspNonce } from "metabase/utils/csp";
 import { isNotNull } from "metabase/utils/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
@@ -20,6 +16,13 @@ import { getArrayFromMapValues } from "../pie/util";
 
 export const TOOLTIP_POINTER_MARGIN = 10;
 export const ECHARTS_TOOLTIP_CONTAINER_CLASS = "echarts-tooltip-container";
+
+// The embedding SDK sets this to its portal root, so tooltips render inside the embed instead of on document.body.
+let tooltipRootProvider: () => HTMLElement | null = () => document.body;
+
+export function setTooltipRootProvider(provider: () => HTMLElement | null) {
+  tooltipRootProvider = provider;
+}
 
 export const getTooltipPositionFn =
   (containerRef: React.RefObject<HTMLDivElement>) =>
@@ -73,14 +76,12 @@ export const getTooltipBaseOption = (
     enterable: true,
     className: TooltipStyles.ChartTooltipRoot,
     appendTo: () => {
-      const echartsTooltipContainerSelector = `.${ECHARTS_TOOLTIP_CONTAINER_CLASS}`;
-      const containerSelector = !isEmbeddingSdk()
-        ? echartsTooltipContainerSelector
-        : `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} ${echartsTooltipContainerSelector}`;
+      const root = tooltipRootProvider();
 
-      let container = document.querySelector(
-        containerSelector,
-      ) as HTMLDivElement;
+      let container =
+        root?.querySelector<HTMLDivElement>(
+          `.${ECHARTS_TOOLTIP_CONTAINER_CLASS}`,
+        ) ?? null;
 
       if (!container) {
         container = document.createElement("div");
@@ -95,13 +96,7 @@ export const getTooltipBaseOption = (
           "calc(var(--mb-overlay-z-index) + 1)",
         );
 
-        if (!isEmbeddingSdk()) {
-          document.body.append(container);
-        } else {
-          document
-            .getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID)
-            ?.append(container);
-        }
+        root?.append(container);
       }
 
       return container;

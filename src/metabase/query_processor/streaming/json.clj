@@ -5,7 +5,7 @@
   (:require
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
-   [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util.json :as json]
@@ -39,7 +39,7 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
                    :or   {format-rows? true}} :data} viz-settings]
         (let [cols           (streaming.common/column-titles ordered-cols viz-settings format-rows?)
-              pivot-grouping (qp.pivot.postprocess/pivot-grouping-index cols)]
+              pivot-grouping (pivot.postprocess/pivot-grouping-index cols)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
           (let [names (cond->> cols
                         pivot-grouping (m/remove-nth pivot-grouping))]
@@ -61,7 +61,7 @@
           ;; when a pivot-grouping col exists, we check its group number. When it's zero,
           ;; we keep it, otherwise don't include it in the results as it's a row representing a subtotal of some kind
           (when (or (not group)
-                    (= qp.pivot.postprocess/non-pivot-row-group (int group)))
+                    (= pivot.postprocess/non-pivot-row-group (int group)))
             (when-not (zero? row-num)
               (.write writer ",\n"))
             (json/encode-to
@@ -80,8 +80,9 @@
                                 (formatter/TextWrapper? res)    (:text-str res)
                                 :else                          res)))
                           @ordered-formatters cleaned-row)))
-             writer {})
-            (.flush writer))))
+             writer {}))))
+      ;; no flush per row: it would sync-flush the GZIP response per row (one native Deflater call each, TCP packet
+      ;; overhead per #34795); the BufferedWriter pushes rows through as it fills, like the CSV writer
 
       (finish! [_ _]
         (.write writer "\n]")

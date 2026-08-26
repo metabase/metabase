@@ -1,7 +1,11 @@
 import type { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
-import { parseTimestampWithTimezone, validateDatabase } from "./utils";
+import {
+  getRunDurationMs,
+  parseTimestampWithTimezone,
+  validateDatabase,
+} from "./utils";
 
 describe("parseTimestamp", () => {
   const value = "2025-09-04T16:25:03.000Z";
@@ -79,5 +83,38 @@ describe("validateDatabase", () => {
     const result = validateDatabase(database);
     expect(result.isValid).toBe(isValid);
     expect(result.message).toBe(message);
+  });
+});
+
+describe("getRunDurationMs", () => {
+  const mkRun = (
+    overrides: Partial<{ start_time: string; end_time: string | null }>,
+  ) => ({
+    start_time: overrides.start_time ?? "2026-01-01T00:00:00.000Z",
+    end_time: overrides.end_time ?? null,
+  });
+
+  it("returns null when end_time is null (run in progress)", () => {
+    expect(getRunDurationMs(mkRun({ end_time: null }))).toBeNull();
+  });
+
+  it("returns the difference in ms when both timestamps are present", () => {
+    expect(
+      getRunDurationMs(
+        mkRun({
+          start_time: "2026-01-01T00:00:00.000Z",
+          end_time: "2026-01-01T00:00:08.500Z",
+        }),
+      ),
+    ).toBe(8_500);
+  });
+
+  it("returns null when either timestamp is unparseable", () => {
+    expect(getRunDurationMs(mkRun({ end_time: "not-a-date" }))).toBeNull();
+  });
+
+  it("returns null when the input itself is null/undefined", () => {
+    expect(getRunDurationMs(null)).toBeNull();
+    expect(getRunDurationMs(undefined)).toBeNull();
   });
 });

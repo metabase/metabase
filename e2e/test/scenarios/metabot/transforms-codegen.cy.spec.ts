@@ -85,7 +85,7 @@ describe(
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
       H.updateSetting("transforms-enabled", true);
-      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+      H.setupAnthropicLlmProvider();
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
       cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
@@ -502,8 +502,9 @@ const createMockTransformSuggestionResponse = (
   text: string,
   transformJSON: string,
 ) => {
-  return `0:"${text}"
-2:{"type":"transform_suggestion","version":1,"value":${transformJSON}}
-2:{"type":"state","version":1,"value":{}}
-d:{"finishReason":"stop","usage":{}}`;
+  return H.createMetabotSSEBody(
+    H.metabotTextPart(text),
+    H.metabotDataPart("transform_suggestion", JSON.parse(transformJSON)),
+    H.metabotDataPart("state", {}),
+  );
 };

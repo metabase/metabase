@@ -30,7 +30,7 @@ export function EnableAdvancedModal({ onClose }: Props) {
       message={t`This will remove all AI feature access from the "All Users" group, so users won't have access to AI features unless they're added to a group that has access.`}
       confirmButtonText={t`Switch`}
       confirmButtonProps={{
-        color: "brand",
+        color: "core-brand",
         variant: "filled",
         loading,
       }}

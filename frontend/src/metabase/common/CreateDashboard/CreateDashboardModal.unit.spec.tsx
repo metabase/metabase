@@ -10,7 +10,6 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -18,7 +17,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
   createMockCollection,
   createMockCollectionItemFromCollection,
@@ -93,7 +92,6 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
 
   renderWithProviders(<CreateDashboardModal opened onClose={onClose} />, {
     storeInitialState: {
-      entities: createMockEntitiesState({ collections }),
       settings,
     },
   });

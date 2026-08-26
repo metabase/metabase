@@ -5,7 +5,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import {
   Accordion,
   Box,
@@ -24,10 +24,6 @@ import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(
     (state) => getSetting(state, "token-features").advanced_permissions,
-  );
-
-  const isWorkspacesFeatureEnabled = useSelector(
-    (state) => getSetting(state, "token-features").workspaces,
   );
 
   const shouldShowLegacyNoSelfServiceInfo = useSelector((state) =>
@@ -58,19 +54,19 @@ export const DataPermissionsHelp = () => {
             <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="eye"
-                iconColor="success"
+                iconColor="feedback-positive"
                 name={t`Can view`}
                 description={t`The group can view all data for that database.`}
               />
               <PermissionHelpDescription
                 icon="permissions_limited"
-                iconColor="warning"
+                iconColor="feedback-warning"
                 name={t`Granular`}
                 description={t`The group can view select schemas and tables. Can be combined with user attributes to enable row and column security to control what data each person can view.`}
               />
               <PermissionHelpDescription
                 icon="database"
-                iconColor="warning"
+                iconColor="feedback-warning"
                 name={t`Impersonated (Pro)`}
                 description={t`The group can view data based on the database role you specify with a user attribute (manually or via SSO).`}
               />
@@ -84,7 +80,7 @@ export const DataPermissionsHelp = () => {
               )}
               <PermissionHelpDescription
                 icon="close"
-                iconColor="danger"
+                iconColor="feedback-negative"
                 name={t`Blocked (Pro)`}
                 description={t`The group cannot view any data from the data source, even if they have collection access to view questions or dashboards that draw from that data.`}
               />
@@ -101,7 +97,7 @@ export const DataPermissionsHelp = () => {
             <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="check"
-                iconColor="success"
+                iconColor="feedback-positive"
                 name={t`Can view`}
                 description={t`The group can view all data for that schema or table.`}
               />
@@ -115,13 +111,13 @@ export const DataPermissionsHelp = () => {
               )}
               <PermissionHelpDescription
                 icon="permissions_limited"
-                iconColor="brand"
+                iconColor="core-brand"
                 name={t`Row and column security (Pro)`}
                 description={t`Lets you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
               />
               <PermissionHelpDescription
                 icon="close"
-                iconColor="danger"
+                iconColor="feedback-negative"
                 name={t`Blocked (Pro)`}
                 description={
                   <>
@@ -156,26 +152,26 @@ export const DataPermissionsHelp = () => {
             <Stack gap="1rem" py="1rem">
               <PermissionHelpDescription
                 icon="check"
-                iconColor="success"
+                iconColor="feedback-positive"
                 name={t`Query builder and native`}
                 description={t`The group can use both the query builder and the native code editor to create questions and models.`}
               />
               <PermissionHelpDescription
                 icon="permissions_limited"
-                iconColor="warning"
+                iconColor="feedback-warning"
                 name={t`Query builder only`}
                 description={t`The group can use the query builder to create questions and models.`}
               />
               <PermissionHelpDescription
                 icon="permissions_limited"
-                iconColor="warning"
+                iconColor="feedback-warning"
                 name={t`Granular`}
                 description={t`The group can use the query builder to create questions and models for select schemas and tables.`}
               />
 
               <PermissionHelpDescription
                 icon="close"
-                iconColor="danger"
+                iconColor="feedback-negative"
                 name={t`No`}
                 description={t`The group cannot create or edit questions, including drill-through.`}
               />
@@ -209,13 +205,6 @@ export const DataPermissionsHelp = () => {
                   {jt`${(
                     <strong key="permission">{t`Transforms (Pro):`}</strong>
                   )} The group can create, edit, and run Transforms for a given database.`}
-                </Text>
-              )}
-              {isWorkspacesFeatureEnabled && (
-                <Text>
-                  {jt`${(
-                    <strong key="permission">{t`Workspaces:`}</strong>
-                  )} The group can add, edit, and remove the database from Workspaces.`}
                 </Text>
               )}
             </Stack>

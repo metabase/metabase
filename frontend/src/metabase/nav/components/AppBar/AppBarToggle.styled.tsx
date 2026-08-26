@@ -27,7 +27,7 @@ interface SidebarIconProps {
 export const SidebarIcon = styled(Icon, {
   shouldForwardProp: (propName) => propName !== "isLogoVisible",
 })<SidebarIconProps>`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   display: block;
 
   ${(props) =>
@@ -36,7 +36,7 @@ export const SidebarIcon = styled(Icon, {
       color: var(--mb-color-text-secondary);
 
       &:hover {
-        color: var(--mb-color-brand);
+        color: var(--mb-color-core-brand);
       }
     `}
 `;

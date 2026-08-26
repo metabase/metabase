@@ -105,6 +105,19 @@
     (when rows
       (analytics/observe! :metabase-transforms/data-transfer-rows labels rows))))
 
+(mu/defn record-incremental-rows!
+  "Emit the available/processed row-count pair for an incremental transform run; the same-population invariant is enforced at the call site."
+  [rows-available        :- :int
+   rows-processed        :- :int
+   full-incremental-run? :- :boolean]
+  (let [labels {:full-incremental-run (str full-incremental-run?)}]
+    (analytics/observe! :metabase-transforms/incremental-rows
+                        (assoc labels :type "available")
+                        rows-available)
+    (analytics/observe! :metabase-transforms/incremental-rows
+                        (assoc labels :type "processed")
+                        rows-processed)))
+
 (defn record-job-start!
   "Record the start of a transform job run."
   [job-id run-method]

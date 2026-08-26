@@ -2,19 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/ui/colors";
-import {
-  getMaxDimensionsSupported,
-  getMaxMetricsSupported,
-} from "metabase/visualizations";
-import { trackStackedSeriesEnabled } from "metabase/visualizations/analytics";
-import {
-  ChartSettingEnumToggle,
-  type ChartSettingEnumToggleProps,
-} from "metabase/visualizations/components/settings/ChartSettingEnumToggle";
-import { ChartSettingMaxCategories } from "metabase/visualizations/components/settings/ChartSettingMaxCategories";
-import type { ChartSettingSegmentedControlProps } from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
-import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
-import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
@@ -63,6 +50,15 @@ import type {
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
+
+import type {
+  ChartSettingEnumToggleProps,
+  ChartSettingSegmentedControlProps,
+} from "../../types/widget-props";
+import { dimensionIsNumeric } from "../numeric";
+import { getMaxDimensionsSupported, getMaxMetricsSupported } from "../registry";
+
+import { trackStackedSeriesEnabled } from "./analytics";
 
 export const getSeriesDisplays = (
   transformedSeries: Series,
@@ -158,7 +154,7 @@ export const GRAPH_DATA_SETTINGS: VisualizationSettingsDefinitions = {
   },
   "graph.series_order": {
     getSection: () => t`Data`,
-    widget: ChartSettingSeriesOrder,
+    widget: "seriesOrder",
     useRawSeries: true,
     getWrapperStyle: () => ({
       marginBottom: "1rem",
@@ -561,6 +557,62 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: (_series, settings) => getDefaultShowStackValues(settings),
     readDependencies: ["graph.show_values", "stackable.stack_type"],
   },
+  "graph.stack_value_format": {
+    getSection: () => t`Display`,
+    get title() {
+      return t`Stack value format`;
+    },
+    widget: "radio",
+    getHidden: (series, vizSettings) => {
+      const hasBars = getSeriesDisplays(series, vizSettings).some(
+        (display) => display === "bar",
+      );
+
+      if (!hasBars || vizSettings["graph.show_values"] !== true) {
+        return true;
+      }
+
+      const stackType = vizSettings["stackable.stack_type"];
+
+      // For normalized stacks ("Stack - 100%"), always show the setting
+      if (stackType === "normalized") {
+        return false;
+      }
+
+      // For regular stacked charts, only show when segment values are visible
+      if (stackType === "stacked") {
+        return !(
+          vizSettings["graph.show_stack_values"] === "series" ||
+          vizSettings["graph.show_stack_values"] === "all"
+        );
+      }
+
+      // Hide for non-stacked charts
+      return true;
+    },
+    getProps: () => ({
+      options: [
+        {
+          get name() {
+            return t`Values`;
+          },
+          value: "value",
+        },
+        {
+          get name() {
+            return t`Percentages`;
+          },
+          value: "percentage",
+        },
+      ],
+    }),
+    getDefault: () => "value",
+    readDependencies: [
+      "graph.show_values",
+      "stackable.stack_type",
+      "graph.show_stack_values",
+    ],
+  },
   "graph.label_value_formatting": {
     getSection: () => t`Display`,
     get title() {
@@ -621,7 +673,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     readDependencies: ["series_settings"],
   },
   "graph.max_categories": {
-    widget: ChartSettingMaxCategories,
+    widget: "maxCategories",
     getHidden: () => true,
     // temporarily hiding the setting (metabase#50510)
     getDefault: () => Number.MAX_SAFE_INTEGER,
@@ -639,7 +691,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     ],
   },
   "graph.other_category_color": {
-    getDefault: () => color("text-tertiary"),
+    getDefault: () => color("text-disabled"),
   },
   "graph.other_category_aggregation_fn": {
     getHidden: () => true,
@@ -982,7 +1034,7 @@ const BOXPLOT_LABEL_VALUE_FREQUENCY_SETTING: SeriesSettingDefinition<
   get title() {
     return t`Hide overlapping labels`;
   },
-  widget: ChartSettingEnumToggle,
+  widget: "enumToggle",
   getDefault: () => "fit",
   inline: true,
   getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],

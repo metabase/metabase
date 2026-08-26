@@ -1,6 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
@@ -9,6 +12,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 import {
@@ -16,17 +20,23 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import * as dashboardSelectors from "metabase/dashboard/selectors";
-import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
+import { reinitialize } from "metabase/plugins";
 import {
   createMockDashboardState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
-import registerVisualizations from "metabase/visualizations/register";
-import type { DashCardDataMap } from "metabase-types/api";
+import { registerVisualizations } from "metabase/visualizations/register";
+import {
+  type DashCardDataMap,
+  DataPermissionValue,
+  type DownloadPermission,
+} from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockCard,
+  createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
   createMockDatabase,
@@ -38,8 +48,10 @@ import {
   createMockNativeCard,
   createMockParameter,
   createMockPlaceholderDashboardCard,
+  createMockStructuredDatasetQuery,
   createMockTable,
   createMockTextDashboardCard,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import type { DashCardProps } from "./DashCard";
@@ -412,6 +424,240 @@ describe("DashCard", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should include dashboard filters when downloading a multi-source visualizer dashcard as xlsx (#71638)", async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const firstCard = createMockCard({
+      id: 49,
+      name: "Analytic Events, Count 1",
+      display: "line",
+    });
+    const secondCard = createMockCard({
+      id: 115,
+      name: "Analytic Events, Count 2",
+      display: "line",
+    });
+    const dashboardParameter = createMockParameter({
+      id: "ae55857f",
+      name: "Date 1",
+      slug: "date_1",
+      type: "date/all-options",
+      value: "2022-05-01~",
+      target: [
+        "dimension",
+        ["field", "TIMESTAMP", { "base-type": "type/DateTime" }],
+        { "stage-number": 1 },
+      ],
+    });
+    const visualizerDashcard = createMockDashboardCard({
+      card_id: firstCard.id,
+      card: firstCard,
+      series: [secondCard],
+      visualization_settings: {
+        visualization: {
+          display: "line",
+          columnValuesMapping: {
+            COLUMN_1: [
+              {
+                sourceId: `card:${firstCard.id}`,
+                originalName: "TIMESTAMP",
+                name: "COLUMN_1",
+              },
+            ],
+            COLUMN_2: [
+              {
+                sourceId: `card:${firstCard.id}`,
+                originalName: "count",
+                name: "COLUMN_2",
+              },
+            ],
+            COLUMN_3: [
+              {
+                sourceId: `card:${secondCard.id}`,
+                originalName: "count",
+                name: "COLUMN_3",
+              },
+            ],
+            COLUMN_4: [
+              {
+                sourceId: `card:${secondCard.id}`,
+                originalName: "TIMESTAMP",
+                name: "COLUMN_4",
+              },
+            ],
+          },
+          settings: {
+            "graph.x_axis.scale": "timeseries",
+            "graph.dimensions": ["COLUMN_1", "COLUMN_4"],
+            "graph.metrics": ["COLUMN_2", "COLUMN_3"],
+          },
+        },
+      },
+    });
+    const datasetData = {
+      cols: [
+        createMockColumn({ name: "TIMESTAMP", display_name: "Timestamp" }),
+        createMockColumn({ name: "count", display_name: "Count" }),
+      ],
+      rows: [["2022-05-02T00:00:00-03:00", 545]],
+    };
+    const dashboard = createMockDashboard({
+      dashcards: [visualizerDashcard],
+      parameters: [dashboardParameter],
+    });
+    const downloadPath = `path:/api/dashboard/${dashboard.id}/dashcard/${visualizerDashcard.id}/card/${firstCard.id}/query/xlsx`;
+    fetchMock.post(downloadPath, {
+      status: 200,
+      body: "",
+      headers: {
+        "Content-Disposition": 'attachment; filename="results.xlsx"',
+      },
+    });
+
+    setup({
+      dashboard,
+      dashcard: visualizerDashcard,
+      dashcardData: {
+        [visualizerDashcard.id]: {
+          [firstCard.id]: createMockDataset({
+            data: datasetData,
+            json_query: {
+              ...createMockStructuredDatasetQuery(),
+              parameters: [dashboardParameter],
+            },
+            status: "completed",
+          }),
+          [secondCard.id]: createMockDataset({
+            data: datasetData,
+            status: "completed",
+          }),
+        },
+      },
+    });
+
+    await user.click(getIcon("ellipsis"));
+    await user.click(await screen.findByText("Download results"));
+    await user.click(await screen.findByRole("radio", { name: ".xlsx" }));
+    await user.click(screen.getByTestId("download-results-button"));
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls(downloadPath)).toHaveLength(1);
+    });
+
+    const call = fetchMock.callHistory.lastCall(downloadPath);
+    const body = new URLSearchParams(await call?.request?.text());
+    expect(JSON.parse(body.get("parameters") ?? "[]")).toEqual([
+      dashboardParameter,
+    ]);
+  });
+
+  describe("visualizer dashcard download permissions", () => {
+    const sourceCard = createMockCard({
+      id: 42,
+      name: "Products by Category",
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: TEST_DATABASE_ID,
+        query: {
+          "source-table": TEST_TABLE_ID,
+        },
+      },
+    });
+    const visualizerDashcard = createMockDashboardCard({
+      card_id: sourceCard.id,
+      card: sourceCard,
+      visualization_settings: {
+        visualization: {
+          display: "bar",
+          columnValuesMapping: {
+            COLUMN_1: [
+              {
+                sourceId: `card:${sourceCard.id}`,
+                originalName: "CATEGORY",
+                name: "COLUMN_1",
+              },
+            ],
+            COLUMN_2: [
+              {
+                sourceId: `card:${sourceCard.id}`,
+                originalName: "count",
+                name: "COLUMN_2",
+              },
+            ],
+          },
+          settings: {
+            "graph.dimensions": ["COLUMN_1"],
+            "graph.metrics": ["COLUMN_2"],
+          },
+        },
+      },
+    });
+
+    function setupWithDownloadPermission(downloadPerms: DownloadPermission) {
+      mockSettings({
+        "token-features": createMockTokenFeatures({
+          advanced_permissions: true,
+        }),
+      });
+      setupEnterpriseOnlyPlugin("feature_level_permissions");
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [visualizerDashcard],
+        },
+        dashcard: visualizerDashcard,
+        dashcardData: {
+          [visualizerDashcard.id]: {
+            [sourceCard.id]: createMockDataset({
+              data: createMockDatasetData({
+                cols: [
+                  createMockColumn({
+                    name: "CATEGORY",
+                    display_name: "Category",
+                  }),
+                  createMockColumn({
+                    name: "count",
+                    display_name: "Count",
+                    base_type: "type/Integer",
+                  }),
+                ],
+                rows: [["Gadget", 53]],
+                download_perms: downloadPerms,
+              }),
+              status: "completed",
+            }),
+          },
+        },
+        withMetadata: true,
+      });
+    }
+
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("should not render the dashcard menu when the source card cannot be downloaded (#64333)", async () => {
+      setupWithDownloadPermission(DataPermissionValue.NONE);
+
+      expect(
+        await screen.findByText("Products by Category"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("dashcard-menu")).not.toBeInTheDocument();
+    });
+
+    it("should offer downloading results when the source card can be downloaded", async () => {
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      setupWithDownloadPermission(DataPermissionValue.FULL);
+
+      await user.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Download results")).toBeInTheDocument();
+    });
+  });
+
   describe("edit mode", () => {
     it("should not show the info icon", () => {
       setup({ isEditing: true });
@@ -726,7 +972,7 @@ describe("DashCard", () => {
 
       jest
         .spyOn(dashboardSelectors, "getDashCardInlineValuePopulatedParameters")
-        .mockReturnValue([parameter]);
+        .mockReturnValue([{ ...parameter, value: null }]);
 
       setup({
         dashboard,
@@ -785,7 +1031,7 @@ describe("DashCard", () => {
 
       jest
         .spyOn(dashboardSelectors, "getDashCardInlineValuePopulatedParameters")
-        .mockReturnValue([parameter]);
+        .mockReturnValue([{ ...parameter, value: null }]);
 
       setup({
         dashboard,

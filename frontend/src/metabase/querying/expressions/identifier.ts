@@ -1,4 +1,4 @@
-import { FK_SYMBOL } from "metabase/utils/formatting/constants";
+import { FK_SYMBOL } from "metabase/utils/formatting";
 
 import { quoteString } from "./string";
 

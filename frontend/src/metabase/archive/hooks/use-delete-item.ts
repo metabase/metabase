@@ -7,6 +7,7 @@ import {
   useDeleteCollectionMutation,
   useDeleteDashboardMutation,
   useDeleteDocumentMutation,
+  useDeleteExplorationMutation,
 } from "metabase/api";
 import { TRASHABLE_MODELS } from "metabase/archive/utils";
 import { useToast } from "metabase/common/hooks/use-toast";
@@ -14,6 +15,7 @@ import type {
   CardId,
   DashboardId,
   DocumentId,
+  ExplorationId,
   RegularCollectionId,
 } from "metabase-types/api";
 
@@ -29,7 +31,8 @@ export type DeletableItem =
   | Deletable<"metric", CardId>
   | Deletable<"dashboard", DashboardId>
   | Deletable<"collection", RegularCollectionId>
-  | Deletable<"document", DocumentId>;
+  | Deletable<"document", DocumentId>
+  | Deletable<"exploration", ExplorationId>;
 
 export type DeletableModel = DeletableItem["model"];
 
@@ -50,9 +53,13 @@ export function useDeleteItem() {
   const [deleteDashboard] = useDeleteDashboardMutation();
   const [deleteCollection] = useDeleteCollectionMutation();
   const [deleteDocument] = useDeleteDocumentMutation();
+  const [deleteExploration] = useDeleteExplorationMutation();
 
   return useCallback(
-    async (item: DeletableItem) => {
+    async (
+      item: DeletableItem,
+      { notify = true }: { notify?: boolean } = {},
+    ) => {
       await match(item)
         .with(
           { model: "card" },
@@ -67,10 +74,22 @@ export function useDeleteItem() {
         .with({ model: "document" }, ({ id }) =>
           deleteDocument({ id }).unwrap(),
         )
+        .with({ model: "exploration" }, ({ id }) =>
+          deleteExploration(id).unwrap(),
+        )
         .exhaustive();
 
-      sendToast({ message: t`This item has been permanently deleted.` });
+      if (notify) {
+        sendToast({ message: t`This item has been permanently deleted.` });
+      }
     },
-    [sendToast, deleteCard, deleteDashboard, deleteCollection, deleteDocument],
+    [
+      sendToast,
+      deleteCard,
+      deleteDashboard,
+      deleteCollection,
+      deleteDocument,
+      deleteExploration,
+    ],
   );
 }

@@ -117,7 +117,8 @@
                                         :mb-application-db-unreturned-connection-timeout-seconds    nil
                                         :mb-application-db-max-connection-age-seconds               nil
                                         :mb-application-db-idle-connection-test-period-seconds      nil
-                                        :mb-application-db-max-idle-time-excess-connections-seconds nil})
+                                        :mb-application-db-max-idle-time-excess-connections-seconds nil
+                                        :mb-application-db-checkout-timeout-ms                       nil})
                   config/config-bool (with-config-overrides config/config-bool
                                        {:mb-application-db-test-connection-on-checkout nil})]
       (let [props (#'mdb.connection-pool-setup/application-db-connection-pool-props)]
@@ -126,6 +127,8 @@
         (is (= 3600 (get props "maxConnectionAge")))
         (is (= 15   (get props "maxPoolSize")))
         (is (= 3600 (get props "unreturnedConnectionTimeout")))
+        (is (= 30000 (get props "checkoutTimeout"))
+            "checkoutTimeout must default to 30s so a saturated pool fails loudly instead of blocking forever")
         (is (false? (get props "testConnectionOnCheckout")))))))
 
 (deftest application-db-connection-pool-props-overrides-test
@@ -149,7 +152,18 @@
     (with-redefs [config/config-bool (with-config-overrides config/config-bool
                                        {:mb-application-db-test-connection-on-checkout true})]
       (is (true? (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
-                      "testConnectionOnCheckout"))))))
+                      "testConnectionOnCheckout")))))
+  (testing "MB_APPLICATION_DB_CHECKOUT_TIMEOUT_MS overrides checkoutTimeout"
+    (with-redefs [config/config-int (with-config-overrides config/config-int
+                                      {:mb-application-db-checkout-timeout-ms 5000})]
+      (is (= 5000 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
+                       "checkoutTimeout")))))
+  (testing "checkoutTimeout of 0 (block forever) can be explicitly restored"
+    (with-redefs [config/config-int (with-config-overrides config/config-int
+                                      {:mb-application-db-checkout-timeout-ms 0})]
+      (is (= 0 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
+                    "checkoutTimeout"))
+          "an operator must be able to opt back into the legacy wait-forever behavior"))))
 
 (deftest application-db-unreturned-connection-timeout-aliasing-test
   (testing "the _SECONDS-suffixed name takes precedence over the legacy unsuffixed name"

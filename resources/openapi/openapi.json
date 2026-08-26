@@ -36112,7 +36112,7 @@
     },
     "/api/metabot/metabot/{id}/prompt-suggestions/regenerate" : {
       "post" : {
-        "description" : "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones.",
+        "description" : "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.\n   The response `:status` is `:generated` (with a `:prompt_count`) when prompts were created,\n   `:no-library-content` when the Metabot has no models or metrics to summarize, or\n   `:ai-produced-no-prompts` when generation produced nothing.\n   Returns a 402 if the instance has reached its managed-AI usage limit.",
         "operationId" : "post-api-metabot-metabot-id-prompt-suggestions-regenerate",
         "parameters" : [ {
           "in" : "path",
@@ -36125,6 +36125,44 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "prompt_count" : {
+                        "minimum" : 1,
+                        "type" : "integer"
+                      },
+                      "status" : {
+                        "const" : "generated"
+                      }
+                    },
+                    "required" : [ "status", "prompt_count" ],
+                    "type" : "object"
+                  }, {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "status" : {
+                        "const" : "no-library-content"
+                      }
+                    },
+                    "required" : [ "status" ],
+                    "type" : "object"
+                  }, {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "status" : {
+                        "const" : "ai-produced-no-prompts"
+                      }
+                    },
+                    "required" : [ "status" ],
+                    "type" : "object"
+                  } ]
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -42651,15 +42689,150 @@
     },
     "/api/slack/bug-report" : {
       "post" : {
-        "description" : "Send diagnostic information to the configured Slack channels.",
+        "description" : "Send diagnostic information to the configured Slack channels. Requires bug reporting to be enabled. The report is\n  attributed to the current user when `diagnosticInfo.reporter` is true, and anonymous otherwise. The `{name, email}`\n  form of `reporter` that clients before 0.64 send is treated as true; the identity in it is ignored.",
         "operationId" : "post-api-slack-bug-report",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
             "application/json" : {
               "schema" : {
+                "additionalProperties" : false,
                 "properties" : {
                   "diagnosticInfo" : {
+                    "additionalProperties" : false,
+                    "properties" : {
+                      "backendErrors" : {
+                        "oneOf" : [ {
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "properties" : { },
+                            "type" : "object"
+                          },
+                          "type" : "array"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "browserInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "properties" : { },
+                          "type" : "object"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "bugReportDetails" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "properties" : { },
+                          "type" : "object"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "entityInfo" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "properties" : { },
+                          "type" : "object"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "entityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "frontendErrors" : {
+                        "oneOf" : [ {
+                          "items" : {
+                            "type" : "string"
+                          },
+                          "type" : "array"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "localizedEntityName" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "logs" : {
+                        "oneOf" : [ {
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "properties" : { },
+                            "type" : "object"
+                          },
+                          "type" : "array"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "queryResults" : {
+                        "oneOf" : [ {
+                          "description" : "Value must be a map.",
+                          "properties" : { },
+                          "type" : "object"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "reporter" : {
+                        "oneOf" : [ {
+                          "anyOf" : [ {
+                            "additionalProperties" : false,
+                            "properties" : {
+                              "email" : {
+                                "type" : "string"
+                              },
+                              "name" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "name", "email" ],
+                            "type" : "object"
+                          }, {
+                            "type" : "boolean"
+                          } ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "url" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "userLogs" : {
+                        "oneOf" : [ {
+                          "items" : {
+                            "description" : "Value must be a map.",
+                            "properties" : { },
+                            "type" : "object"
+                          },
+                          "type" : "array"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      }
+                    },
                     "type" : "object"
                   }
                 },

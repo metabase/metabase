@@ -198,7 +198,6 @@
       (datasets/test-drivers #{:h2 :mysql :postgres}
         (test-migrations-for-driver! driver/*driver* [start-id end-id] f)))))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro test-migrations
   "Util macro for running tests for a set of Liquibase schema migration(s).
 

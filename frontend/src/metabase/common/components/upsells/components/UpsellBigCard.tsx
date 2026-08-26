@@ -90,7 +90,7 @@ export const UpsellBigCardInner: React.FC<UpsellBigCardProps> = ({
     <Box
       data-testid="upsell-big-card"
       className={S.UpsellBigCardComponent}
-      bg="background-primary"
+      bg="background_page-primary"
       {...props}
     >
       <Flex px="xl" py="md">

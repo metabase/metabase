@@ -18,9 +18,9 @@ definition:
     - PRODUCTS
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
-entity_id: mSrAvgProdPrice00008x
+entity_id: xK7mPqR2sT4uVwXyZ9a1b
 name: Average Product Price
 serdes/meta:
-- id: mSrAvgProdPrice00008x
+- id: xK7mPqR2sT4uVwXyZ9a1b
   label: average_product_price
   model: Measure

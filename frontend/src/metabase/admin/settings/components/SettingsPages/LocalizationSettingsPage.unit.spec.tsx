@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 
 import {
   findRequests,
@@ -23,6 +22,7 @@ const setup = async () => {
     "site-locale": "En",
     "report-timezone": "",
     "start-of-week": "monday",
+    // Unjustified type cast. FIXME
     "available-timezones": [
       "Europe/Paris",
       "Pacific/Auckland",
@@ -36,6 +36,7 @@ const setup = async () => {
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
+      // Unjustified type cast. FIXME
       createMockSettingDefinition({ key: key as SettingKey, value }),
     ),
   );
@@ -51,11 +52,13 @@ const setup = async () => {
       },
     },
   );
+
+  await screen.findByText("Instance language");
 };
 
 describe("LocalizationSettingsPage", () => {
   it("should render a LocalizationSettingsPage", async () => {
-    await act(() => setup());
+    await setup();
     [
       "Instance language",
       "Report timezone",
@@ -67,25 +70,23 @@ describe("LocalizationSettingsPage", () => {
   });
 
   it("should update multiple settings", async () => {
-    setup();
+    await setup();
     const blur = async () => {
       const elementOutside = screen.getByText("Dates and times");
       await userEvent.click(elementOutside); // blur
     };
-    const timezoneInput = await screen.findByLabelText("Report timezone");
+    const timezoneInput = screen.getByLabelText("Report timezone");
     await userEvent.clear(timezoneInput);
     await userEvent.type(timezoneInput, "Mount");
     await userEvent.click(await screen.findByText("US/Mountain"));
     blur();
 
-    const startOfWeekInput = await screen.findByLabelText(
-      "First day of the week",
-    );
+    const startOfWeekInput = screen.getByLabelText("First day of the week");
     await userEvent.click(startOfWeekInput);
     await userEvent.click(await screen.findByText("Tuesday"));
     blur();
 
-    const currencyInput = await screen.findByLabelText("Unit of currency");
+    const currencyInput = screen.getByLabelText("Unit of currency");
     await userEvent.click(currencyInput);
     await userEvent.click(await screen.findByText("New Zealand Dollar"));
     blur();

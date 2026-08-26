@@ -1,3 +1,4 @@
+import { exploration } from "metabase/urls/explorations";
 import type {
   CardId,
   CollectionId,
@@ -58,6 +59,10 @@ export function modelToUrl(item: UrlableModel): string {
       return dashboard(item);
     case "table":
       if (databaseId != null) {
+        // modelToUrl serves collection/search/library contexts where a user may
+        // only have indirect (published-table) access. The /table/:slug route
+        // needs direct table metadata, which 403s for those users, so keep the
+        // ad-hoc question URL here.
         return tableRowsQuery(databaseId, item.id);
       }
       return NOT_FOUND_URL;
@@ -72,6 +77,7 @@ export function modelToUrl(item: UrlableModel): string {
     case "transform":
       return transform(item.id);
     case "indexed-entity":
+      // Unjustified type cast. FIXME
       return indexedEntity(item as IndexedEntity);
     case "action":
       if (item.model_id != null) {
@@ -88,6 +94,8 @@ export function modelToUrl(item: UrlableModel): string {
         return dataStudioPublishedTableMeasure(item.table_id, item.id);
       }
       return NOT_FOUND_URL;
+    case "exploration":
+      return exploration(item.id);
     default:
       return NOT_FOUND_URL;
   }

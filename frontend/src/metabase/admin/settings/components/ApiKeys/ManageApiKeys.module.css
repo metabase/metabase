@@ -1,0 +1,16 @@
+/* Match the API keys design: 16px horizontal cell padding (no gap), 48px rows.
+   !important overrides TreeTable's inline cell padding and Mantine's flex gap. */
+.cell {
+  padding: 0 1rem !important;
+  gap: 0 !important;
+}
+
+/* Pin the actions ("...") menu to the right edge of the table. */
+.cell:last-child {
+  justify-content: flex-end !important;
+}
+
+.row {
+  min-height: 3rem;
+  cursor: pointer;
+}

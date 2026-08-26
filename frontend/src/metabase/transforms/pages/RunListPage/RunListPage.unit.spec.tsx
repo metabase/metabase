@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
+  setupGetTransformEndpoint,
+  setupListDatabaseSchemasEndpoint,
   setupListTransformRunsEndpoint,
   setupListTransformTagsEndpoint,
   setupListTransformsEndpoint,
@@ -13,7 +14,9 @@ import {
   screen,
   within,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { isNotNull } from "metabase/utils/types";
 import type { TransformRun } from "metabase-types/api";
 import {
   createMockListTransformRunsResponse,
@@ -28,6 +31,8 @@ type SetupOpts = {
 };
 
 function setup({ runs = [] }: SetupOpts = {}) {
+  const transforms = runs.map((run) => run.transform).filter(isNotNull);
+
   setupUserMetabotPermissionsEndpoint();
   setupListTransformRunsEndpoint(
     createMockListTransformRunsResponse({
@@ -35,13 +40,19 @@ function setup({ runs = [] }: SetupOpts = {}) {
       total: runs.length,
     }),
   );
-  setupListTransformsEndpoint([]);
+  if (transforms.length) {
+    setupListTransformsEndpoint(transforms);
+  }
   setupListTransformTagsEndpoint([]);
+  transforms.forEach((transform) => {
+    setupGetTransformEndpoint(transform);
+    setupListDatabaseSchemasEndpoint(transform.target.database, []);
+  });
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
   const path = Urls.transformRunList();
 
-  renderWithProviders(<Route path={path} component={RunListPage} />, {
+  renderWithProviders(<Route path={path} element={<RunListPage />} />, {
     withRouter: true,
     initialRoute: path,
   });
@@ -84,5 +95,76 @@ describe("RunListPage", () => {
 
     const infoSection = screen.getByRole("region", { name: "Info" });
     expect(within(infoSection).getByText("Failed")).toBeInTheDocument();
+  });
+
+  describe("Duration column", () => {
+    it("renders a Duration column header when the table is populated", async () => {
+      const transform = createMockTransform({ name: "Some Transform" });
+      const run = createMockTransformRun({ status: "succeeded", transform });
+      setup({ runs: [run] });
+      expect(
+        await screen.findByRole("columnheader", { name: /duration/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("renders the formatted duration for completed runs", async () => {
+      // 8m 42s duration: start at 00:00:00, end at 00:08:42.
+      const transform = createMockTransform({ name: "Long batch" });
+      const run = createMockTransformRun({
+        status: "succeeded",
+        transform,
+        start_time: "2026-01-01T00:00:00.000Z",
+        end_time: "2026-01-01T00:08:42.000Z",
+      });
+      setup({ runs: [run] });
+      expect(await screen.findByText("8m 42s")).toBeInTheDocument();
+    });
+
+    it("renders the placeholder for runs still in progress (no end_time)", async () => {
+      const transform = createMockTransform({ name: "In flight" });
+      const run = createMockTransformRun({
+        status: "started",
+        transform,
+        start_time: "2026-01-01T00:00:00.000Z",
+        end_time: null,
+      });
+      setup({ runs: [run] });
+
+      // Resolve the Duration column's index from the headers (robust to
+      // column reordering); then scope the placeholder assertion to that
+      // specific gridcell in the in-progress row.
+      const headers = await screen.findAllByRole("columnheader");
+      const durationIndex = headers.findIndex((h) =>
+        /duration/i.test(h.textContent ?? ""),
+      );
+      expect(durationIndex).toBeGreaterThan(-1);
+
+      const row = await screen.findByRole("row", { name: /In flight/ });
+      const cells = within(row).getAllByRole("gridcell");
+      expect(cells[durationIndex]).toHaveTextContent("—");
+    });
+  });
+
+  describe("Ended at column null handling", () => {
+    it("renders the placeholder for runs still in progress (no end_time)", async () => {
+      const transform = createMockTransform({ name: "Mid flight" });
+      const run = createMockTransformRun({
+        status: "started",
+        transform,
+        start_time: "2026-01-01T00:00:00.000Z",
+        end_time: null,
+      });
+      setup({ runs: [run] });
+
+      const headers = await screen.findAllByRole("columnheader");
+      const endedAtIndex = headers.findIndex((h) =>
+        /ended at/i.test(h.textContent ?? ""),
+      );
+      expect(endedAtIndex).toBeGreaterThan(-1);
+
+      const row = await screen.findByRole("row", { name: /Mid flight/ });
+      const cells = within(row).getAllByRole("gridcell");
+      expect(cells[endedAtIndex]).toHaveTextContent("—");
+    });
   });
 });

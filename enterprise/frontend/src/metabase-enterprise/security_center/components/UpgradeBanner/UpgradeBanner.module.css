@@ -1,13 +1,13 @@
 .root {
   padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
-  background-color: var(--mb-color-background-warning);
+  background-color: var(--mb-color-background_surface-warning);
   border-radius: var(--mantine-radius-md);
-  border: 1px solid var(--mb-color-warning);
+  border: 1px solid var(--mb-color-feedback-warning);
 }
 
 .icon {
   flex-shrink: 0;
-  color: var(--mb-color-warning);
+  color: var(--mb-color-feedback-warning);
 }
 
 .text {

@@ -52,7 +52,7 @@
 
 (mu/defn- merge-required :- :metabase.api.open-api/parameter.schema.object
   [schema]
-  (let [optional? (set (keep (fn [[k v]] (when (:optional v) k))
+  (let [optional? (set (keep (fn [[k v]] (when (or (:optional v) (contains? v :default)) k))
                              (:properties schema)))]
     (-> schema
         (m/update-existing :required #(into []
@@ -149,22 +149,14 @@
           :let             [k (get renames k k)]
           :when            (in-fn k)
           :let             [schema    (fix-json-schema param-schema)
-                            ;; if schema does not indicate it's optional, it's not :)
-                            optional? (:optional schema)]]
+                            ;; optional if flagged so, or if it carries a `:default` (a defaulted param is
+                            ;; safe to omit, so it shouldn't be advertised as required)
+                            optional? (or (:optional schema) (contains? schema :default))]]
       (cond-> {:in          (in-fn k)
                :name        (u/qualified-name k)
                :required    (and (contains? required k) (not optional?))
                :schema      (dissoc schema :optional :description)}
         (:description schema) (assoc :description (str (:description schema)))))))
-
-(mu/defn- multipart-schema [form :- :metabase.api.macros/parsed-args]
-  (when-let [request-schema (get-in form [:params :request :schema])]
-    (let [schema (-> request-schema mr/resolve-schema mc/schema)]
-      (when (= (mc/type schema) :map)
-        (some (fn [[k _opts schema]]
-                (when (= k :multipart-params)
-                  schema))
-              (mc/children schema))))))
 
 (def ^:private default-response-schema
   "Default response schema for OpenAPI endpoints. This is used when the endpoint does not specify a response schema."
@@ -213,9 +205,7 @@
           ctype           (if (get-in form [:metadata :multipart])
                             "multipart/form-data"
                             "application/json")
-          body-schema     (some-> (if (= ctype "multipart/form-data")
-                                    (multipart-schema form)
-                                    (get-in form [:params :body :schema]))
+          body-schema     (some-> (get-in form [:params :body :schema])
                                   mjs-collect-definitions
                                   fix-json-schema)
           response-schema (:response-schema form)

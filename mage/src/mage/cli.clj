@@ -86,14 +86,12 @@
       (if (mc/validate arg-schema decoded-args)
         decoded-args
         (do (doseq [{:keys [path schema value]} (:errors
-                                                 #_:clj-kondo/ignore
                                                  (mc/explain arg-schema decoded-args))]
               (println (c/red "Invalid Argument at " path
                               ". It should match: " (mc/form schema)
                               " got: " (pr-str value))))
             (binding [*command-line-args* ["-h"]]
               (check-print-help current-task))
-            #_{:clj-kondo/ignore [:discouraged-java-method]}
             (System/exit 0))))))
 
 (defn- check-option-errors [option-errors *error-hit? summary]

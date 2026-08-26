@@ -31,6 +31,7 @@ export function BooleanPicker({
   const hasExpandButton = withEmptyOptions && !isExpanded;
 
   const handleChange = (value: string) => {
+    // Unjustified type cast. FIXME
     onChange(value as BooleanFilterValue);
   };
 

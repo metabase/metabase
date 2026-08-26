@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
@@ -41,11 +41,6 @@ export const ChartTypeSidebar = ({
   const { plugins: customVizPlugins } = PLUGIN_CUSTOM_VIZ.useCustomVizPlugins();
   const [pluginsLoaded, setPluginsLoaded] = useState(false);
 
-  const onInfo = useCallback(
-    (message: string) => sendToast({ message }),
-    [sendToast],
-  );
-
   // Eagerly load all custom viz plugins so they register in the
   // visualizations Map and can be rendered by ChartTypeOption.
   useEffect(() => {
@@ -63,7 +58,7 @@ export const ChartTypeSidebar = ({
     let cancelled = false;
     Promise.all(
       customVizPlugins.map((plugin) =>
-        PLUGIN_CUSTOM_VIZ.loadCustomVizPlugin(plugin, undefined, onInfo),
+        PLUGIN_CUSTOM_VIZ.loadCustomVizPlugin(plugin, { onMessage: sendToast }),
       ),
     ).then(() => {
       if (!cancelled) {
@@ -74,7 +69,7 @@ export const ChartTypeSidebar = ({
     return () => {
       cancelled = true;
     };
-  }, [customVizPlugins, onInfo]);
+  }, [customVizPlugins, sendToast]);
 
   const onUpdateQuestion = (newQuestion: Question) => {
     if (question) {

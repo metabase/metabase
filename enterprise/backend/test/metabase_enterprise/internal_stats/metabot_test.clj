@@ -3,6 +3,8 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase.internal-stats.metabot :as sut]
+   [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.example-question-generator :as eqg]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.openai :as openai]
@@ -15,6 +17,11 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(use-fixtures :each (fn [thunk]
+                      (testing "with every provider type connected"
+                        (llm.tu/with-default-connections
+                          (thunk)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Helpers
@@ -35,13 +42,13 @@
                         :id    message-id}]))]
     (with-redefs [openrouter/openrouter mock-fn
                   claude/claude         mock-fn
-                  openai/openai         mock-fn]
+                  openai/openai         mock-fn
+                  ;; skip title generation to avoid second llm call + ai_usage_log row
+                  conversation-title/ensure-title! (constantly {:status :missing})]
       (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                             {:message         message
                              :context         {}
-                             :conversation_id conversation-id
-                             :history         []
-                             :state           {}}))))
+                             :conversation_id conversation-id}))))
 
 (defn- backdate-messages!
   "Update created_at on all messages and usage log rows for a conversation to the given timestamp."
@@ -276,7 +283,7 @@
           ;; openai is not currently in the metabase managed allow-list, but we still
           ;; want to test metering in case we ever enable these providers — bypass the
           ;; validator with `with-redefs` to set the provider directly.
-          (with-redefs [metabot.settings/llm-metabot-provider (constantly "metabase/openai/gpt-4o")]
+          (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-provider (constantly "metabase/openai/gpt-4o")]
             (send-message! conv-id "Hello" "gpt-4o" 600 200)
             (backdate-messages! conv-id yesterday))
           (let [stats (sut/metabot-stats)]
@@ -297,16 +304,16 @@
           ;; openrouter/openai are not currently in the metabase managed allow-list,
           ;; but we still want to test metering in case we ever enable these providers
           ;; — bypass the validator with `with-redefs` to set the provider directly.
-          (with-redefs [metabot.settings/llm-metabot-provider
-                        (constantly "metabase/openrouter/anthropic/claude-haiku-4-5")]
+          (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-provider
+                                      (constantly "metabase/openrouter/anthropic/claude-haiku-4-5")]
             (send-message! conv-1 "Q1" "anthropic/claude-haiku-4-5" 100 50)
             (backdate-messages! conv-1 yesterday))
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                              "metabase/anthropic/claude-sonnet-4-6"]
             (send-message! conv-2 "Q2" "claude-sonnet-4-6" 200 80)
             (backdate-messages! conv-2 yesterday))
-          (with-redefs [metabot.settings/llm-metabot-provider
-                        (constantly "metabase/openai/gpt-4o")]
+          (mt/with-dynamic-fn-redefs [metabot.settings/llm-metabot-provider
+                                      (constantly "metabase/openai/gpt-4o")]
             (send-message! conv-3 "Q3" "gpt-4o" 300 120)
             (backdate-messages! conv-3 yesterday))
           (let [stats (sut/metabot-stats)]

@@ -1,14 +1,22 @@
 import { c, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import type { NotificationListItem } from "metabase/account/notifications/types";
-import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
+import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
+import type {
+  ScheduleBuilderValue,
+  ScheduleValue,
+} from "metabase/common/components/Schedule/types";
+import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
+import { getScheduleDefaultsWithoutHour } from "metabase/common/components/Schedule/utils";
+import type { NotificationListItem } from "metabase/notifications/types";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { getEmailDomain, isEmail } from "metabase/utils/email";
-import { formatTimeWithUnit } from "metabase/utils/formatting/time";
 import MetabaseSettings from "metabase/utils/settings";
 import { formatFrame } from "metabase/utils/time-dayjs";
-import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting/date";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/value-formatting";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
@@ -26,7 +34,6 @@ import type {
   NotificationHandlerSlack,
   NotificationRecipient,
   NotificationRecipientRawValue,
-  ScheduleSettings,
   UpdateAlertNotificationRequest,
   User,
   UserId,
@@ -35,13 +42,9 @@ import type {
 
 import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
 
-export const DEFAULT_ALERT_CRON_SCHEDULE = "0 0 8 * * ? *";
-export const DEFAULT_ALERT_SCHEDULE: ScheduleSettings = {
+export const DEFAULT_ALERT_SCHEDULE: ScheduleBuilderValue = {
   schedule_type: "daily",
-  schedule_day: null,
-  schedule_frame: null,
-  schedule_hour: 8,
-  schedule_minute: 0,
+  ...getScheduleDefaultsWithoutHour("daily"),
 };
 
 const getDefaultChannelConfig = ({
@@ -133,14 +136,8 @@ export const getDefaultQuestionAlertRequest = ({
       currentUserId,
       userCanAccessSettings,
     }),
-    subscriptions: [
-      {
-        type: "notification-subscription/cron",
-        event_name: null,
-        cron_schedule: DEFAULT_ALERT_CRON_SCHEDULE,
-        ui_display_type: "cron/builder",
-      },
-    ],
+    // A new alert has no subscription until the user picks a time
+    subscriptions: [],
   };
 };
 
@@ -149,8 +146,31 @@ export const formatTitle = ({ item, type }: NotificationListItem) => {
     case "pulse":
       return item.name;
     case "question-notification":
-      return item.payload.card?.name || t`Alert`;
+      return item.payload?.card?.name || t`Alert`;
   }
+};
+
+export const formatCreatorMessage = (
+  item: NotificationListItem["item"],
+  userId: UserId,
+) => {
+  let creatorString = "";
+  const options = MetabaseSettings.formattingOptions();
+
+  if (userId === item.creator?.id) {
+    creatorString += t`Created by you`;
+  } else if (item.creator?.common_name) {
+    creatorString += t`Created by ${item.creator.common_name}`;
+  } else {
+    creatorString += t`Created`;
+  }
+
+  if (item.created_at) {
+    const createdAt = formatDateTimeWithUnit(item.created_at, "day", options);
+    creatorString += t` on ${createdAt}`;
+  }
+
+  return creatorString;
 };
 
 const getRecipientIdentity = (recipient: NotificationRecipient) => {
@@ -234,13 +254,13 @@ const notificationHandlerTypeToChannelMap: Record<
   ["channel/http"]: "http",
 };
 
-export function alertIsValid(
+export const alertHasValidTarget = (
   notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
   channelSpec: ChannelApiResponse | undefined,
-) {
+) => {
   const handlers = notification.handlers;
 
-  return (
+  return Boolean(
     channelSpec?.channels &&
     handlers.length > 0 &&
     handlers.every((handlers) => channelIsValid(handlers)) &&
@@ -249,7 +269,17 @@ export function alertIsValid(
         notificationHandlerTypeToChannelMap[c.channel_type];
 
       return channelSpec?.channels[handlerChannelType]?.configured;
-    })
+    }),
+  );
+};
+
+export function alertIsValid(
+  notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
+  channelSpec: ChannelApiResponse | undefined,
+) {
+  return (
+    notification.subscriptions.length > 0 &&
+    alertHasValidTarget(notification, channelSpec)
   );
 }
 
@@ -258,7 +288,7 @@ function hasProperGoalForAlert({
   visualizationSettings,
 }: {
   question: Question | undefined;
-  visualizationSettings: VisualizationSettings;
+  visualizationSettings?: VisualizationSettings;
 }): boolean {
   if (!question) {
     return false;
@@ -281,7 +311,7 @@ export function getAlertTriggerOptions({
   visualizationSettings,
 }: {
   question: Question | undefined;
-  visualizationSettings: VisualizationSettings;
+  visualizationSettings?: VisualizationSettings;
 }): NotificationCardSendCondition[] {
   const hasValidGoal = hasProperGoalForAlert({
     question,
@@ -344,29 +374,40 @@ export const getNotificationHandlersGroupedByTypes = (
 export const formatNotificationSchedule = (
   subscription: NotificationCronSubscription,
 ): string | null => {
-  const schedule = cronToScheduleSettings(
-    subscription.cron_schedule,
-    subscription.ui_display_type === "cron/raw",
-  );
+  const value: ScheduleValue | null =
+    subscription.ui_display_type === "cron/raw"
+      ? { schedule_type: "cron", cron: subscription.cron_schedule }
+      : cronToBuilderValue(subscription.cron_schedule);
 
   return (
-    (schedule &&
-      formatNotificationCheckSchedule(schedule, subscription.cron_schedule)) ||
+    (value &&
+      formatNotificationCheckSchedule(value, subscription.cron_schedule)) ||
     null
   );
 };
 
 export const formatNotificationCheckSchedule = (
-  {
+  value: ScheduleValue,
+  cronSchedule: string,
+) => {
+  const options = MetabaseSettings.formattingOptions();
+
+  if (isScheduleCronValue(value)) {
+    const explanation = getScheduleExplanation(cronSchedule);
+    return explanation
+      ? c(
+          "{0} is a human-readable schedule description, e.g. 'every day at 8:00 AM'",
+        ).t`Check ${explanation}`
+      : null;
+  }
+
+  const {
     schedule_type,
     schedule_minute,
     schedule_hour,
     schedule_day,
     schedule_frame,
-  }: ScheduleSettings,
-  cronSchedule: string,
-) => {
-  const options = MetabaseSettings.formattingOptions();
+  } = value;
 
   switch (schedule_type) {
     case "every_n_minutes":
@@ -405,12 +446,6 @@ export const formatNotificationCheckSchedule = (
       }
       break;
     }
-    case "cron":
-      try {
-        return t`Check ${getScheduleExplanation(cronSchedule)}`;
-      } catch {
-        return null;
-      }
   }
 
   return null;
@@ -419,7 +454,7 @@ export const formatNotificationCheckSchedule = (
 export const formatNotificationScheduleDescription = ({
   schedule_type,
   schedule_hour,
-}: ScheduleSettings) => {
+}: ScheduleBuilderValue) => {
   switch (schedule_type) {
     case "daily":
     case "weekly":

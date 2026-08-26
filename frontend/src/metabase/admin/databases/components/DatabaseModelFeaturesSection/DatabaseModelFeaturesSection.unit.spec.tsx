@@ -36,6 +36,7 @@ function setup({
     dataset: 0,
     metric: 0,
     segment: 0,
+    transform: 0,
   });
 
   // Using mockResolvedValue since `ActionButton` component

@@ -39,6 +39,7 @@ const setup = async (
   setupSdkState();
 
   setupCardEndpoints(MOCK_CARD);
+  // Unjustified type cast. FIXME
   setupCardQueryEndpoints(MOCK_CARD, {} as any);
 
   consoleErrorSpy = jest
@@ -79,6 +80,7 @@ const expectErrorMessage = async (message: string) => {
       ).toBeInTheDocument();
     });
   } catch (error) {
+    // Unjustified type cast. FIXME
     Error.captureStackTrace(error as Error, expectErrorMessage);
     throw error;
   }

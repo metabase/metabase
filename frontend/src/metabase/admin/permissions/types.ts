@@ -1,15 +1,24 @@
-import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import type { ReactElement, ReactNode } from "react";
 
-import type { State } from "metabase/redux/store";
-import type { ColorName } from "metabase/ui/colors/types";
-import type { GroupId, IconName } from "metabase-types/api";
+import type {
+  PermissionAction,
+  PermissionConfirmationProps,
+  PermissionOption,
+  PostActionFunction,
+} from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionValue,
+  type PermissionEntityId,
 } from "metabase-types/api/permissions";
 
 export { DataPermission, DataPermissionValue };
+export type {
+  PermissionAction,
+  PermissionConfirmationProps,
+  PermissionOption,
+  PostActionFunction,
+};
 
 export type GroupRouteParams = {
   groupId?: number;
@@ -53,23 +62,6 @@ export function parseDataRouteParams(raw: RawDataRouteParams): DataRouteParams {
   };
 }
 
-export type DatabaseEntityId = {
-  databaseId: number;
-};
-
-export type SchemaEntityId = DatabaseEntityId & {
-  schemaName: string | undefined;
-};
-
-export type TableEntityId = SchemaEntityId & {
-  tableId: number;
-};
-
-export type EntityId = DatabaseEntityId &
-  Partial<Omit<TableEntityId, "databaseId">>;
-
-export type EntityWithGroupId = EntityId & { groupId: number };
-
 export enum DataPermissionType {
   ACCESS = "access",
   NATIVE = "native",
@@ -77,7 +69,6 @@ export enum DataPermissionType {
   DOWNLOAD = "download",
   DATA_MODEL = "data-model",
   TRANSFORMS = "transforms",
-  WORKSPACES = "workspaces",
   COLLECTIONS = "collections",
 }
 
@@ -96,43 +87,6 @@ export type GroupPermissionsDiff = {
 export type PermissionsGraphDiff = {
   groups: Record<number | string, GroupPermissionsDiff>;
 };
-
-export type PermissionSubject = "schemas" | "tables" | "fields";
-
-export type SpecialGroupType = "admin" | "analyst" | "external" | null;
-
-export interface PermissionOption {
-  label: string;
-  value: DataPermissionValue;
-  icon: IconName;
-  iconColor: ColorName;
-}
-
-export interface PermissionAction {
-  label: string;
-  icon: IconName;
-  iconColor: ColorName;
-  actionCreator: (
-    entityId: EntityId | undefined,
-    id: number,
-    view: "database" | "group",
-  ) => ThunkDispatch<State, unknown, UnknownAction>;
-}
-
-export interface PermissionConfirmationProps {
-  title: string;
-  message: string | ReactNode;
-  confirmButtonText: string;
-  cancelButtonText: string;
-}
-
-type PostActionFunction = (
-  entityId: EntityId,
-  groupId: GroupId,
-  view: "database" | "group",
-  value: DataPermissionValue,
-  getState: () => State,
-) => void;
 
 export type PermissionSectionConfig = {
   permission: DataPermission;
@@ -171,7 +125,7 @@ export interface PermissionEditorEntity {
   name: string;
   icon?: ReactElement;
   hint?: ReactNode;
-  entityId?: EntityId;
+  entityId?: PermissionEntityId;
   permissions?: PermissionSectionConfig[];
   canSelect?: boolean;
   callout?: string;

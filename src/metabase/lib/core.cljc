@@ -100,6 +100,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.referenced-columns :as lib.referenced-columns]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -118,6 +119,7 @@
    [metabase.lib.table :as lib.table]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
@@ -210,6 +212,7 @@
          lib.query/keep-me
          lib.query.test-spec/keep-me
          lib.ref/keep-me
+         lib.referenced-columns/keep-me
          lib.remove-replace/keep-me
          lib.schema/keep-me
          metabase.lib.schema.util/keep-me
@@ -335,6 +338,12 @@
   [an-expression-clause :- ::lib.schema.expression/expression
    new-name :- :string]
   (lib.expression/with-expression-name an-expression-clause new-name))
+
+;; TODO (Cam 2026-07-13) Give these wrappers like the other functions here
+(shared.ns/import-fns
+ [lib.expression
+  resolve-expression
+  value])
 
 ;; ### Expression Functions
 ;; These functions are quite generic, so they are re-exported directly. Each of these functions takes a number of
@@ -671,6 +680,17 @@
     stage-number :- :int]
    (lib.filter/filters a-query stage-number)))
 
+(mu/defn atomic-filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Like [[filters]], but with any top-level `:and` clauses recursively flattened so the result is a
+  list of atomic (non-`:and`) boolean filter clauses. The conjunction of the returned list is
+  logically equivalent to the conjunction of [[filters]].
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (atomic-filters a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.filter/atomic-filters a-query stage-number)))
+
 (mu/defn filterable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns column metadata for all the columns that could be used for filtering on the target stage of `a-query`.
 
@@ -795,6 +815,14 @@
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.join/joins a-query stage-number)))
+
+(mu/defn joined-thing :- [:maybe ::lib.join/joinable]
+  "Return metadata about the origin of `a-join` (the joined Table or Card).
+
+  **Code Health:** Healthy. This is a core API."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   a-join                :- ::lib.join.util/partial-join]
+  (lib.join/joined-thing metadata-providerable a-join))
 
 ;;; ### Join Strategies
 
@@ -1017,6 +1045,20 @@
   [a-join :- ::lib.join.util/partial-join
    fields :- [:maybe [:or [:enum :all :none] [:sequential some?]]]] ;; TODO: More precise schema.
   (lib.join/with-join-fields a-join fields))
+
+(mu/defn with-join-source-fields :- ::lib.join.util/partial-join
+  "Set the `:fields` projection on the join's source subquery (the first stage of `a-join`). `cols` is a coll of
+  column metadatas from the source Table or Card; `nil`/empty dissocs, reverting to implicit-all.
+
+  Throws if the join's first stage is not an MBQL stage, or if narrowing the source to `cols` would strand a column the
+  join still references in its conditions or its exposed `:fields`.
+
+  For what the join EXPOSES to its outer stage, see [[with-join-fields]].
+
+  **Code Health:** Healthy. This is a core API."
+  [a-join :- ::lib.join.util/partial-join
+   cols   :- [:maybe [:sequential some?]]] ; ideally [:sequential ::lib.schema.metadata/column]
+  (lib.join/with-join-source-fields a-join cols))
 
 (mu/defn join-fieldable-columns :- ::lib.metadata.calculation/visible-columns
   "Returns the list of column metadata for the columns which are *visible* on the RHS of `a-joinable`, such as a table,
@@ -1373,8 +1415,10 @@
  [lib.binning
   available-binning-strategies
   binning
+  default-bin-width
   with-binning]
  [metabase.lib.card
+  ->card-metadata-columns
   card->underlying-query
   model-preserved-keys]
  [lib.column-group
@@ -1386,7 +1430,6 @@
   ->legacy-MBQL
   ->mbql5
   legacy-default-join-alias
-  with-aggregation-list
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -1447,6 +1490,7 @@
  [lib.metric
   available-metrics]
  [lib.limit
+  aggregated-output?
   current-limit
   disable-default-limit
   limit
@@ -1476,6 +1520,7 @@
   native-query
   raw-native-query
   recognize-template-tags
+  replace-template-tag-names
   required-native-extras
   native-query-card-ids
   native-query-snippet-ids
@@ -1524,7 +1569,7 @@
   ->query
   can-preview
   can-run
-  can-save
+  can-save?
   check-card-overwrite
   native?
   preview-query
@@ -1542,7 +1587,10 @@
  [lib.ref
   field-ref-id
   field-ref-name
-  ref]
+  ref
+  with-field-ref-id]
+ [lib.referenced-columns
+  referenced-columns]
  [lib.remove-replace
   remove-clause
   remove-join
@@ -1561,6 +1609,7 @@
   check-measure-cycles
   check-measure-overwrite]
  [metabase.lib.serialize
+  prepare-after-deserialization
   prepare-for-serialization]
  [lib.stage
   append-stage
@@ -1582,6 +1631,8 @@
   raw-temporal-bucket
   temporal-bucket
   with-temporal-bucket]
+ [lib.underlying
+  aggregation-sourced?]
  [lib.util
   clause?
   clause-of-type?
@@ -1603,8 +1654,10 @@
   duplicate-column-error
   find-bad-refs
   find-bad-refs-with-source
+  missing-card-error
   missing-column-error
   missing-table-alias-error
+  missing-table-error
   syntax-error
   validation-exception-error]
  [metabase.lib.walk.util
@@ -1615,6 +1668,7 @@
   all-measure-ids
   all-segment-ids
   all-source-card-ids
+  all-source-card-ids-recursive
   all-source-table-ids
   all-template-tag-field-ids
   all-template-tag-snippet-ids
@@ -1622,7 +1676,11 @@
   all-template-tags-map
   all-template-tags-id->field-ids
   any-native-stage?
-  any-native-stage-not-introduced-by-sandbox?])
+  any-native-stage-not-introduced-by-sandbox?
+  replace-field-ids
+  replace-table-ids])
+
+(shared.ns/import-macro lib.convert/with-aggregation-list)
 
 #?(:clj
    (defmacro with-card-clean-hook

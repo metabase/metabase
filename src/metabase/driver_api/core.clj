@@ -47,6 +47,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.add-alias-info.helpers]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -73,6 +74,7 @@
  actions/violate-permission-constraint
  actions/violate-unique-constraint
  add/add-alias-info
+ metabase.query-processor.util.add-alias-info.helpers/mbql-5-aggregation-name
  annotate/aggregation-name
  annotate/base-type-inferer
  annotate/merged-column-info
@@ -101,6 +103,7 @@
  lib.metadata/transforms
  lib.schema.common/instance-of-class
  lib.schema.temporal-bucketing/date-bucketing-units
+ lib.schema.temporal-bucketing/datetime-interval-units
  lib.types.isa/temporal?
  match/match-one
  match/match-many
@@ -164,7 +167,6 @@
  qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
  qp.util/default-query->remark
  qp.util/query->remark
- qp.wrap-value-literals/wrap-value-literals-in-mbql
  qp.wrap-value-literals/wrap-value-literals-in-mbql5
  qp.writeback/execute-write-sql!
  qp/process-query
@@ -172,6 +174,7 @@
  secrets/uploaded-base-64-prefix-pattern
  setting/defsetting
  sync-util/name-for-logging
+ sync-util/reducible-sync-tables
  system/site-uuid
  upload.db/current-database)
 
@@ -193,6 +196,8 @@
 
 (p/import-fn lib/unique-name-generator-with-options unique-name-generator)
 
+(p/import-def qp.error-type/connection-pool-checkout-queue-full qp.error-type.connection-pool-checkout-queue-full)
+(p/import-def qp.error-type/connection-pool-checkout-timeout qp.error-type.connection-pool-checkout-timeout)
 (p/import-def qp.error-type/db qp.error-type.db)
 (p/import-def qp.error-type/driver qp.error-type.driver)
 (p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
@@ -274,31 +279,31 @@
   "::lib.schema.validate/error"
   ::lib.schema.validate/error)
 
-(def mbql.schema.DateTimeValue
+(def ^{:deprecated "0.63.0"} mbql.schema.DateTimeValue
   "::mbql.s/DateTimeValue"
   ::mbql.s/DateTimeValue)
 
-(def mbql.schema.Aggregation
+(def ^{:deprecated "0.63.0"} mbql.schema.Aggregation
   "::mbql.s/Aggregation"
   ::mbql.s/Aggregation)
 
-(def mbql.schema.OrderBy
+(def ^{:deprecated "0.63.0"} mbql.schema.OrderBy
   "::mbql.s/OrderBy"
   ::mbql.s/OrderBy)
 
-(def mbql.schema.Query
+(def ^{:deprecated "0.63.0"} mbql.schema.Query
   "::mbql.s/Query"
   ::mbql.s/Query)
 
-(def mbql.schema.value
+(def ^{:deprecated "0.63.0"} mbql.schema.value
   "mbql.s/value"
   ::mbql.s/value)
 
-(def mbql.schema.field
+(def ^{:deprecated "0.63.0"} mbql.schema.field
   "mbql.s/field"
   ::mbql.s/field)
 
-(def mbql.schema.FieldOrExpressionDef
+(def ^{:deprecated "0.63.0"} mbql.schema.FieldOrExpressionDef
   "::mbql.s/FieldOrExpressionDef"
   ::mbql.s/FieldOrExpressionDef)
 
@@ -338,10 +343,10 @@
   "Schema for the output of [[compile]]: `:metabase.query-processor.compile/query-with-compiled-query`"
   ::qp.compile/query-with-compiled-query)
 
-(def MBQLQuery
+(def ^{:deprecated "0.63.0"} MBQLQuery
   "Schema for a legacy MBQL inner query."
-  ::mbql.s/MBQLQuery)
+  ::mbql.s/MBQLInnerQuery)
 
-(def Join
+(def ^{:deprecated "0.63.0"} Join
   "Schema for a legacy MBQL join."
   ::mbql.s/Join)

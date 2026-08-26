@@ -1,23 +1,26 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo, useState } from "react";
-import { Link, type Route } from "react-router";
-import { push } from "react-router-redux";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
   PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
-} from "metabase/data-studio/common/components/PaneHeader";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useDispatch, useSelector } from "metabase/redux";
+} from "metabase/common/data-studio/components/PaneHeader";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  getInitialUiState,
+  loadQueryEditor,
+} from "metabase/querying/editor/components/QueryEditor";
+import { useSelector } from "metabase/redux";
+import { type Location, useNavigate, useParams } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
@@ -46,18 +49,18 @@ import {
 
 type NewTransformPageProps = {
   initialSource: DraftTransformSource;
-  route: Route;
 };
 
-function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
+function NewTransformPage({ initialSource }: NewTransformPageProps) {
   const {
     transformsDatabases,
-    isLoadingDatabases: isLoading,
+    remoteSyncReadOnly,
+    isLoadingDatabases,
     databasesError: error,
   } = useTransformPermissions();
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+
+  const isEditorLoaded = useQueryEditorChunk();
+  const isLoading = isLoadingDatabases || !isEditorLoaded;
 
   if (isLoading || error != null || transformsDatabases == null) {
     return (
@@ -67,14 +70,14 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
     );
   }
 
-  if (isRemoteSyncReadOnly) {
+  if (remoteSyncReadOnly) {
     return (
       <PageContainer pos="relative" data-testid="transform-query-editor">
         <PaneHeader
           breadcrumbs={
             <DataStudioBreadcrumbs>
               <Link key="transform-list" to={Urls.transformList()}>
-                {t`Transforms`}
+                {t`Data transformation`}
               </Link>
             </DataStudioBreadcrumbs>
           }
@@ -88,7 +91,6 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
     <NewTransformPageBody
       initialSource={initialSource}
       databases={transformsDatabases}
-      route={route}
     />
   );
 }
@@ -96,13 +98,11 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
 type NewTransformPageBodyProps = {
   initialSource: DraftTransformSource;
   databases: Database[];
-  route: Route;
 };
 
 function NewTransformPageBody({
   initialSource,
   databases,
-  route,
 }: NewTransformPageBodyProps) {
   const {
     source,
@@ -118,7 +118,8 @@ function NewTransformPageBody({
   const metadata = useSelector(getMetadata);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
-  const dispatch = useDispatch();
+  const [isLeaveWarningOpen, setIsLeaveWarningOpen] = useState(false);
+  const navigate = useNavigate();
   const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
   useRegisterMetabotTransformContext(undefined, source, dryRunError);
 
@@ -128,13 +129,21 @@ function NewTransformPageBody({
       : PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source);
   }, [source, metadata]);
 
+  const isSavedRef = useRef(false);
+
   const handleCreate = (transform: Transform) => {
-    dispatch(push(Urls.transform(transform.id)));
+    isSavedRef.current = true;
+    navigate(Urls.transform(transform.id));
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.transformList()));
+    navigate(Urls.transformList());
   };
+
+  const isLocationAllowed = useCallback(
+    (location?: Location) => !location || isSavedRef.current,
+    [],
+  );
 
   return (
     <>
@@ -161,7 +170,7 @@ function NewTransformPageBody({
           breadcrumbs={
             <DataStudioBreadcrumbs>
               <Link key="transform-list" to={Urls.transformList()}>
-                {t`Transforms`}
+                {t`Data transformation`}
               </Link>
               {t`New transform`}
             </DataStudioBreadcrumbs>
@@ -170,9 +179,9 @@ function NewTransformPageBody({
         />
         <Box
           w="100%"
-          bg="background-primary"
+          bg="background_page-primary"
           bdrs="md"
-          bd="1px solid var(--mb-color-border)"
+          bd="1px solid var(--mb-color-border-neutral)"
           flex={1}
           style={{
             overflow: "hidden",
@@ -211,59 +220,42 @@ function NewTransformPageBody({
         <CreateTransformModal
           source={source}
           defaultValues={getDefaultValues(name, suggestedTransform)}
+          closeOnEscape={!isLeaveWarningOpen}
           onCreate={handleCreate}
           onClose={closeModal}
         />
       )}
       <LeaveRouteConfirmModal
-        route={route}
-        isEnabled={isDirty && !isModalOpened}
+        isEnabled={isDirty}
+        isLocationAllowed={isLocationAllowed}
         onConfirm={rejectProposed}
+        onOpenChange={setIsLeaveWarningOpen}
       />
     </>
   );
 }
 
-type NewQueryTransformPageProps = {
-  route: Route;
-};
-
-export function NewQueryTransformPage({ route }: NewQueryTransformPageProps) {
+export function NewQueryTransformPage() {
   const initialSource = useMemo(() => getInitialQuerySource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }
 
-type NewNativeTransformPageProps = {
-  route: Route;
-};
-
-export function NewNativeTransformPage({ route }: NewNativeTransformPageProps) {
+export function NewNativeTransformPage() {
   const initialSource = useMemo(() => getInitialNativeSource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }
 
-type NewPythonTransformPageProps = {
-  route: Route;
-};
-
-export function NewPythonTransformPage({ route }: NewPythonTransformPageProps) {
+export function NewPythonTransformPage() {
   const initialSource = useMemo(() => getInitialPythonSource(), []);
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }
 
 type NewCardTransformPageParams = {
   cardId: string;
 };
 
-type NewCardTransformPageProps = {
-  params: NewCardTransformPageParams;
-  route: Route;
-};
-
-export function NewCardTransformPage({
-  params,
-  route,
-}: NewCardTransformPageProps) {
+export function NewCardTransformPage() {
+  const params = useParams<NewCardTransformPageParams>();
   const cardId = Urls.extractEntityId(params.cardId);
   const {
     data: card,
@@ -284,5 +276,23 @@ export function NewCardTransformPage({
     );
   }
 
-  return <NewTransformPage initialSource={initialSource} route={route} />;
+  return <NewTransformPage initialSource={initialSource} />;
 }
+
+// The editor is a separate chunk. Folding it into the wait this page already
+// does for its own data means one wait rather than two in a row.
+const useQueryEditorChunk = () => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    loadQueryEditor().then(() => {
+      if (!cancelled) {
+        setIsLoaded(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return isLoaded;
+};

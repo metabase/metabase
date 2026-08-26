@@ -7,12 +7,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sync.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.mock.util :as mock.util]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -83,14 +85,18 @@
   [_ _ table]
   (get (sync-test-tables) (:name table)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks ::sync-test
-  [_ _ table]
-  (set (when (= "movie" (:name table))
-         #{{:fk-column-name   "studio"
-            :dest-table       {:name   "studio"
-                               :schema (when *supports-schemas?* "public")}
-            :dest-column-name "studio"}})))
+(mu/defmethod driver/describe-fks ::sync-test :- ::driver/describe-fks.result
+  [_driver                               :- :keyword
+   _database                             :- ::lib.schema.metadata/database
+   & {:keys [table-names], :as _options} :- ::driver/describe-fks.options]
+  (when (or (empty? table-names)
+            (contains? (set table-names) "movie"))
+    [{:fk-table-schema (when *supports-schemas?* "default")
+      :fk-table-name   "movie"
+      :fk-column-name  "studio"
+      :pk-table-schema (when *supports-schemas?* "public")
+      :pk-table-name   "studio"
+      :pk-column-name  "studio"}]))
 
 (defmethod driver/database-supports? [::sync-test :metadata/key-constraints]
   [_driver _feature _db]
@@ -249,10 +255,17 @@
             (testing "Returns results from sync-database step"
               (is (= ["metadata" "analyze" "field-values"]
                      (map :name results)))))
-          (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))]
+          (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))
+                ;; a full sync runs the analyze step, which scores dimension_interestingness
+                ;; (a double in [0.0, 1.0]) for every field — including non-fingerprinted/PK
+                ;; fields, which hard-zero to 0.0
+                all-fields-scored (fn [table]
+                                    (update table :fields
+                                            (fn [fields]
+                                              (mapv #(assoc % :dimension_interestingness true) fields))))]
             (testing "Tables and Fields are synced"
-              (is (= (expected-movie-table) movie))
-              (is (= (expected-studio-table) studio)))))))))
+              (is (= (all-fields-scored (expected-movie-table)) movie))
+              (is (= (all-fields-scored (expected-studio-table)) studio)))))))))
 
 (deftest sync-table-test
   (doseq [supports-schemas? [true false]]

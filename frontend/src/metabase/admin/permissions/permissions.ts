@@ -5,23 +5,21 @@ import {
   current, // immer and icepick don't play nicely together
 } from "@reduxjs/toolkit";
 import { assocIn, merge } from "icepick";
-import { push } from "react-router-redux";
 import { isBoolean } from "underscore";
 
 import {
   inferAndUpdateEntityPermissions,
   restrictCreateQueriesPermissionsIfNeeded,
   revokeTransformsPermissionIfNeeded,
-  revokeWorkspacesPermissionIfNeeded,
   updateFieldsPermission,
   updatePermission,
   updateSchemasPermission,
   updateTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import { databaseApi, permissionApi } from "metabase/api";
+import { collectionApi, databaseApi, permissionApi } from "metabase/api";
 import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
-import { entityCompatibleQuery } from "metabase/entities/utils";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
@@ -31,31 +29,31 @@ import {
   createAction,
   createThunkAction,
 } from "metabase/redux";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { CollectionsApi, PermissionsApi } from "metabase/services";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { navigate } from "metabase/router";
 import type {
   Collection,
   CollectionPermissions,
   CollectionPermissionsGraph,
+  DatabaseId,
   GroupId,
   GroupsPermissions,
+  PermissionEntityId,
+  PermissionsDatabase,
   PermissionsGraph,
 } from "metabase-types/api";
 
+import {
+  DATABASE_TABLES_QUERY,
+  getPermissionsDatabase,
+} from "./selectors/data-permissions/databases";
 import { selectGroupList } from "./selectors/data-permissions/groups";
 import {
   DataPermission,
   DataPermissionType,
   type DataPermissionValue,
-  type EntityId,
   type PermissionSectionConfig,
 } from "./types";
-import {
-  isDatabaseEntityId,
-  isSchemaEntityId,
-  isTableEntityId,
-} from "./utils/data-entity-id";
+import { isSchemaEntityId, isTableEntityId } from "./utils/data-entity-id";
 import {
   getModifiedCollectionPermissionsGraphParts,
   getModifiedGroupsPermissionsGraphParts,
@@ -70,7 +68,12 @@ export const LOAD_DATA_PERMISSIONS =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS";
 export const loadDataPermissions = createThunkAction(
   LOAD_DATA_PERMISSIONS,
-  () => async () => PermissionsApi.graph(),
+  () => async (dispatch) =>
+    runRtkEndpoint(
+      undefined,
+      dispatch,
+      permissionApi.endpoints.getPermissionsGraph,
+    ),
 );
 function isLoadDataPermissionsAction(
   action: UnknownAction,
@@ -95,8 +98,12 @@ const LOAD_DATA_PERMISSIONS_FOR_GROUP =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_GROUP";
 export const loadDataPermissionsForGroup = createThunkAction(
   LOAD_DATA_PERMISSIONS_FOR_GROUP,
-  (groupId: number | undefined) => async () =>
-    PermissionsApi.graphForGroup({ groupId }),
+  (groupId: number | undefined) => async (dispatch) =>
+    runRtkEndpoint(
+      groupId,
+      dispatch,
+      permissionApi.endpoints.getGroupPermissionsGraph,
+    ),
 );
 function isLoadDataPermissionsForGroupAction(
   action: UnknownAction,
@@ -110,8 +117,12 @@ const LOAD_DATA_PERMISSIONS_FOR_DB =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_DB";
 export const loadDataPermissionsForDb = createThunkAction(
   LOAD_DATA_PERMISSIONS_FOR_DB,
-  (databaseId: number | undefined) => async () =>
-    PermissionsApi.graphForDB({ databaseId }),
+  (databaseId: number | undefined) => async (dispatch) =>
+    runRtkEndpoint(
+      databaseId,
+      dispatch,
+      permissionApi.endpoints.getDatabasePermissionsGraph,
+    ),
 );
 function isLoadDataPermissionsForDbAction(
   action: UnknownAction,
@@ -135,9 +146,13 @@ const LOAD_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/LOAD_COLLECTION_PERMISSIONS";
 export const loadCollectionPermissions = createThunkAction(
   LOAD_COLLECTION_PERMISSIONS,
-  (namespace) => async () => {
+  (namespace) => async (dispatch) => {
     const params = namespace != null ? { namespace } : {};
-    return CollectionsApi.graph(params);
+    return runRtkEndpoint(
+      params,
+      dispatch,
+      collectionApi.endpoints.getCollectionPermissionsGraph,
+    );
   },
 );
 function isLoadCollectionPermissionsAction(
@@ -171,18 +186,14 @@ export const limitDatabasePermission = createThunkAction(
       );
     }
 
-    dispatch(navigateToGranularPermissions(groupId, entityId));
+    navigateToGranularPermissions(groupId, entityId);
   },
 );
 
-export const NAVIGATE_TO_GRANULAR_PERMISSIONS =
-  "metabase/admin/permissions/NAVIGATE_TO_GRANULAR_PERMISSIONS";
-export const navigateToGranularPermissions = createThunkAction(
-  NAVIGATE_TO_GRANULAR_PERMISSIONS,
-  (groupId, entityId) => (dispatch) => {
-    dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
-  },
-);
+export const navigateToGranularPermissions = (
+  groupId: GroupId,
+  entityId: PermissionEntityId,
+) => navigate(getGroupFocusPermissionsUrl(groupId, entityId));
 
 export interface UpdateDataPermissionParams {
   groupId: GroupId;
@@ -191,18 +202,18 @@ export interface UpdateDataPermissionParams {
     "type" | "permission" | "postActions"
   >;
   value: DataPermissionValue;
-  entityId: EntityId;
+  entityId: PermissionEntityId;
   view: "database" | "group";
 }
-interface UpdateDataPermissionPayload {
+export interface UpdateDataPermissionPayload {
   groupId: GroupId;
   permissionInfo: Pick<
     PermissionSectionConfig,
     "type" | "permission" | "postActions"
   >;
   value: DataPermissionValue;
-  metadata: Metadata;
-  entityId: EntityId;
+  database: PermissionsDatabase | undefined;
+  entityId: PermissionEntityId;
 }
 export const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
@@ -215,40 +226,34 @@ export const updateDataPermission = createThunkAction(
     entityId,
     view,
   }: UpdateDataPermissionParams) => {
-    return (dispatch, getState): UpdateDataPermissionPayload | undefined => {
-      if (isDatabaseEntityId(entityId)) {
-        // Fire-and-forget background refresh of the database's table metadata;
-        // the reducer below reads the current snapshot synchronously. Swallow
-        // rejections so a failed fetch doesn't surface as an unhandled
-        // promise rejection.
-        void entityCompatibleQuery(
-          {
-            id: entityId.databaseId,
-            include_hidden: true,
-            remove_inactive: true,
-            skip_fields: true,
-          },
+    return async (
+      dispatch,
+      getState,
+    ): Promise<UpdateDataPermissionPayload | undefined> => {
+      // The reducer writes one entry per schema, so it needs the database's
+      // tables. Drilling into a database loads them, but the database list can
+      // be edited without ever opening one, so fetch when they are missing.
+      // Swallow rejections; the reducer treats a missing database as a no-op.
+      const database =
+        getPermissionsDatabase(getState(), entityId.databaseId) ??
+        (await runRtkEndpoint(
+          { id: entityId.databaseId, ...DATABASE_TABLES_QUERY },
           dispatch,
           databaseApi.endpoints.getDatabaseMetadata,
-        ).catch(() => undefined);
-      }
-
-      const metadata = getMetadataWithHiddenTables(getState());
-      if (permissionInfo.postActions) {
-        const action = permissionInfo.postActions?.[value]?.(
-          entityId,
-          groupId,
-          view,
-          value,
-          getState,
-        );
+          { forceRefetch: false },
+        ).catch(() => undefined));
+      const postAction = permissionInfo.postActions?.[value];
+      if (postAction) {
+        // A post action takes the change over: it sends the admin to where this
+        // value is configured, so the permission is not applied here.
+        const action = postAction(entityId, groupId, view, value, getState);
         if (action) {
           dispatch(action);
-          return;
         }
+        return;
       }
 
-      return { groupId, permissionInfo, value, metadata, entityId };
+      return { groupId, permissionInfo, value, database, entityId };
     };
   },
 );
@@ -262,7 +267,7 @@ export const SAVE_DATA_PERMISSIONS =
   "metabase/admin/permissions/data/SAVE_DATA_PERMISSIONS";
 export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
-  () => async (_dispatch, getState) => {
+  () => async (dispatch, getState) => {
     const state = getState();
     const allGroupIds = selectGroupList(state).map((group) => String(group.id));
     const {
@@ -274,7 +279,7 @@ export const saveDataPermissions = createThunkAction(
     const advancedPermissions =
       PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce<{
         modifiedGroupIds: string[];
-        permissions: Record<string, undefined | { group_id: string }[]>;
+        permissions: Record<string, undefined | { group_id: number }[]>;
       }>(
         (data, selector) => {
           const [extraData, modifiedGroupIds] = selector(state);
@@ -294,11 +299,15 @@ export const saveDataPermissions = createThunkAction(
     );
     const modifiedGroupIds = Object.keys(modifiedGroups);
 
-    const response = await PermissionsApi.updateGraph({
-      groups: modifiedGroups,
-      revision: dataPermissionsRevision,
-      ...advancedPermissions.permissions,
-    });
+    const response = await runRtkEndpoint(
+      {
+        groups: modifiedGroups,
+        revision: dataPermissionsRevision,
+        ...advancedPermissions.permissions,
+      },
+      dispatch,
+      permissionApi.endpoints.updatePermissionsGraph,
+    );
 
     return {
       ...response,
@@ -333,7 +342,7 @@ const SAVE_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/data/SAVE_COLLECTION_PERMISSIONS";
 export const saveCollectionPermissions = createThunkAction(
   SAVE_COLLECTION_PERMISSIONS,
-  (namespace) => async (_dispatch, getState) => {
+  (namespace) => async (dispatch, getState) => {
     const {
       originalCollectionPermissions,
       collectionPermissions,
@@ -345,11 +354,15 @@ export const saveCollectionPermissions = createThunkAction(
       collectionPermissions,
     );
 
-    const result = await CollectionsApi.updateGraph({
-      namespace,
-      revision: collectionPermissionsRevision,
-      groups: modifiedPermissions,
-    });
+    const result = await runRtkEndpoint(
+      {
+        namespace,
+        revision: collectionPermissionsRevision,
+        groups: modifiedPermissions,
+      },
+      dispatch,
+      collectionApi.endpoints.updateCollectionPermissionsGraph,
+    );
 
     return {
       ...result,
@@ -385,8 +398,12 @@ const LOAD_TENANT_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/LOAD_TENANT_COLLECTION_PERMISSIONS";
 export const loadTenantCollectionPermissions = createThunkAction(
   LOAD_TENANT_COLLECTION_PERMISSIONS,
-  () => async () => {
-    return CollectionsApi.graph({ namespace: TENANT_NAMESPACE });
+  () => async (dispatch) => {
+    return runRtkEndpoint(
+      { namespace: TENANT_NAMESPACE },
+      dispatch,
+      collectionApi.endpoints.getCollectionPermissionsGraph,
+    );
   },
 );
 function isLoadTenantCollectionPermissionsAction(
@@ -422,7 +439,7 @@ const SAVE_TENANT_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/data/SAVE_TENANT_COLLECTION_PERMISSIONS";
 export const saveTenantCollectionPermissions = createThunkAction(
   SAVE_TENANT_COLLECTION_PERMISSIONS,
-  () => async (_dispatch, getState) => {
+  () => async (dispatch, getState) => {
     const {
       originalTenantCollectionPermissions,
       tenantCollectionPermissions,
@@ -434,11 +451,15 @@ export const saveTenantCollectionPermissions = createThunkAction(
       tenantCollectionPermissions,
     );
 
-    const result = await CollectionsApi.updateGraph({
-      namespace: TENANT_NAMESPACE,
-      revision: tenantCollectionPermissionsRevision,
-      groups: modifiedPermissions,
-    });
+    const result = await runRtkEndpoint(
+      {
+        namespace: TENANT_NAMESPACE,
+        revision: tenantCollectionPermissionsRevision,
+        groups: modifiedPermissions,
+      },
+      dispatch,
+      collectionApi.endpoints.updateCollectionPermissionsGraph,
+    );
 
     return {
       ...result,
@@ -471,8 +492,12 @@ const LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS";
 export const loadTenantSpecificCollectionPermissions = createThunkAction(
   LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS,
-  () => async () => {
-    return CollectionsApi.graph({ namespace: TENANT_SPECIFIC_NAMESPACE });
+  () => async (dispatch) => {
+    return runRtkEndpoint(
+      { namespace: TENANT_SPECIFIC_NAMESPACE },
+      dispatch,
+      collectionApi.endpoints.getCollectionPermissionsGraph,
+    );
   },
 );
 function isLoadTenantSpecificCollectionPermissionsAction(
@@ -503,7 +528,7 @@ const SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/data/SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS";
 export const saveTenantSpecificCollectionPermissions = createThunkAction(
   SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS,
-  () => async (_dispatch, getState) => {
+  () => async (dispatch, getState) => {
     const {
       originalTenantSpecificCollectionPermissions,
       tenantSpecificCollectionPermissions,
@@ -515,11 +540,15 @@ export const saveTenantSpecificCollectionPermissions = createThunkAction(
       tenantSpecificCollectionPermissions,
     );
 
-    const result = await CollectionsApi.updateGraph({
-      namespace: TENANT_SPECIFIC_NAMESPACE,
-      revision: tenantSpecificCollectionPermissionsRevision,
-      groups: modifiedPermissions,
-    });
+    const result = await runRtkEndpoint(
+      {
+        namespace: TENANT_SPECIFIC_NAMESPACE,
+        revision: tenantSpecificCollectionPermissionsRevision,
+        groups: modifiedPermissions,
+      },
+      dispatch,
+      collectionApi.endpoints.updateCollectionPermissionsGraph,
+    );
 
     return {
       ...result,
@@ -608,9 +637,7 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
 
       state = current(state); // some of the update functions use icepick which is incompatible with immer
 
-      const { value, groupId, entityId, metadata, permissionInfo } = payload;
-
-      const database = metadata.database(entityId.databaseId);
+      const { value, groupId, entityId, database, permissionInfo } = payload;
 
       if (database == null) {
         return state;
@@ -633,17 +660,6 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
           groupId,
           entityId.databaseId,
           DataPermission.TRANSFORMS,
-          [],
-          value,
-        );
-      }
-
-      if (permissionInfo.type === DataPermissionType.WORKSPACES) {
-        return updatePermission(
-          state,
-          groupId,
-          entityId.databaseId,
-          DataPermission.WORKSPACES,
           [],
           value,
         );
@@ -673,14 +689,6 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       );
 
       state = revokeTransformsPermissionIfNeeded(
-        state,
-        groupId,
-        entityId,
-        permissionInfo.permission,
-        value,
-      );
-
-      state = revokeWorkspacesPermissionIfNeeded(
         state,
         groupId,
         entityId,
@@ -751,6 +759,35 @@ const originalDataPermissions = createReducer<GroupsPermissions | null>(
     );
   },
 );
+
+/**
+ * Databases whose tables the tree has seen, kept for as long as the page is
+ * open. The tables come from `getDatabaseMetadata`, whose cache entry is
+ * unsubscribed as soon as the admin navigates away from that database, but the
+ * save confirmation still has to name the tables an edit granted or revoked,
+ * and a parent's confirmation still has to look at its children.
+ */
+type DatabasesWithTables = Record<DatabaseId, PermissionsDatabase>;
+
+function databasesWithTables(
+  state: DatabasesWithTables = {},
+  action: UnknownAction,
+): DatabasesWithTables {
+  if (databaseApi.endpoints.getDatabaseMetadata.matchFulfilled(action)) {
+    const database = action.payload;
+    return { ...state, [database.id]: database };
+  }
+  if (isUpdateDataPermissionAction(action)) {
+    const database = action.payload?.database;
+    return database == null ? state : { ...state, [database.id]: database };
+  }
+  // Loading the graph covers both a fresh load and the reset after a save or a
+  // discard, so the edits it clears are gone from the diff too.
+  if (isLoadDataPermissionsAction(action)) {
+    return {};
+  }
+  return state;
+}
 
 const dataPermissionsRevision = createReducer<number | null>(
   null,
@@ -1021,6 +1058,7 @@ const hasRevisionChanged = createReducer<RevisionChangedState>(
 export const permissions = combineReducers({
   saveError,
   dataPermissions,
+  databasesWithTables,
   originalDataPermissions,
   dataPermissionsRevision,
   collectionPermissions,

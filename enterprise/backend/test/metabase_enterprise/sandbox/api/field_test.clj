@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -83,7 +84,8 @@
                            (fetch-values :rasta :name))))
                   (testing "A User with a *different* sandbox should see their own values"
                     (let [password (mt/random-name)]
-                      (mt/with-temp [:model/User another-user {:password password}]
+                      (mt/with-temp [:model/User another-user]
+                        (auth-identity/set-password! (:id another-user) password)
                         (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                              {:remappings
                                                                               {:cat
@@ -148,14 +150,15 @@
       ;; Warm up the cache
       (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
       (testing "Do we use cached values when available?"
-        (with-redefs [field-values/distinct-values (fn [_] (assert false "Should not be called"))]
+        (mt/with-dynamic-fn-redefs [field-values/distinct-values (fn [_] (assert false "Should not be called"))]
           (is (some? (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))
           (is (= 1 (t2/count :model/FieldValues
                              :field_id (:id field)
                              :type :advanced)))))
       (testing "Do different users has different sandbox FieldValues"
         (let [password (mt/random-name)]
-          (mt/with-temp [:model/User another-user {:password password}]
+          (mt/with-temp [:model/User another-user]
+            (auth-identity/set-password! (:id another-user) password)
             (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                  {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                                                   :query      (mt.tu/restricted-column-query (mt/id))}}
@@ -174,8 +177,8 @@
               (is (some? fv-id)))
             (t2/update! :model/FieldValues fv-id
                         {:values new-values})
-            (with-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
-                                                                    :has_more_values false})]
+            (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
+                                                                                  :has_more_values false})]
               (is (= (map vector new-values)
                      (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))))
           (finally
@@ -186,8 +189,8 @@
         ;; make sure we have a cache
         (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
         (let [old-sandbox-fv-id (t2/select-one-pk :model/FieldValues :field_id (:id field) :type :advanced)]
-          (with-redefs [field-values/advanced-field-values-expired? (fn [fv]
-                                                                      (= (:id fv) old-sandbox-fv-id))]
+          (mt/with-dynamic-fn-redefs [field-values/advanced-field-values-expired? (fn [fv]
+                                                                                    (= (:id fv) old-sandbox-fv-id))]
             (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
             ;; did the old one get deleted?
             (is (not (t2/exists? :model/FieldValues :id old-sandbox-fv-id)))

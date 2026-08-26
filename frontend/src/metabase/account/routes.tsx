@@ -1,26 +1,48 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { ComponentType } from "react";
-import { IndexRedirect, Route } from "react-router";
 
 import type { State } from "metabase/redux/store";
+import { Route, type RouteComponent, redirect } from "metabase/router";
 
-import AccountApp from "./app/containers/AccountApp";
-import LoginHistoryApp from "./login-history/containers/LoginHistoryApp";
 import { getNotificationRoutes } from "./notifications/routes";
-import UserPasswordApp from "./password/containers/UserPasswordApp";
-import UserProfileApp from "./profile/containers/UserProfileApp";
+
+/**
+ * The account pages, in their own chunk. `IsAuthenticated` stays eager: it has
+ * to decide before there is anything to show.
+ */
+const accountApp = () =>
+  import("./app/containers/AccountApp").then(({ AccountApp }) => ({
+    Component: AccountApp,
+  }));
+
+const userProfileApp = () =>
+  import("./profile/containers/UserProfileApp").then((module) => ({
+    Component: module.default,
+  }));
+
+const userPasswordApp = () =>
+  import("./password/containers/UserPasswordApp").then((module) => ({
+    Component: module.default,
+  }));
+
+const loginHistoryApp = () =>
+  import("./login-history/containers/LoginHistoryApp").then((module) => ({
+    Component: module.default,
+  }));
 
 export const getAccountRoutes = (
   _store: Store<State>,
-  IsAuthenticated: ComponentType,
+  IsAuthenticated: RouteComponent,
 ) => {
   return (
-    <Route path="/account" component={IsAuthenticated}>
-      <Route component={AccountApp}>
-        <IndexRedirect to="profile" />
-        <Route path="profile" component={UserProfileApp} />
-        <Route path="password" component={UserPasswordApp} />
-        <Route path="login-history" component={LoginHistoryApp} />
+    <Route path="/account" element={<IsAuthenticated />}>
+      <Route lazy={accountApp}>
+        <Route index element={redirect("profile")} />
+        <Route path="profile" lazy={userProfileApp} />
+        <Route path="authentication" lazy={userPasswordApp} />
+        <Route path="login-history" lazy={loginHistoryApp} />
+        {/* Legacy path redirects */}
+        <Route path="security" element={redirect("/account/authentication")} />
+        <Route path="password" element={redirect("/account/authentication")} />
         {getNotificationRoutes()}
       </Route>
     </Route>

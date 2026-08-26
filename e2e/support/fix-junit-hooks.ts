@@ -4,9 +4,9 @@
 // underlying test. When a `before each` / `before all` / `after each` /
 // `after all` hook throws, mocha-junit-reporter records the failing testcase
 // as `<suite> "before each" hook for "<test name>"`. That breaks downstream
-// Trunk that keys on the test name. This script parses the
-// XML and strips the hook label from `name` and `classname`, leaving the
-// failure body intact so the error is still preserved.
+// consumers that key on the test name. This script parses the XML and strips
+// the hook label from `name` and `classname`, leaving the failure body intact
+// so the error is still preserved.
 
 import {
   copyFileSync,
@@ -49,6 +49,8 @@ type Result = {
   rewrites: Rewrite[];
 };
 
+console.error("fix-junit-hooks: parsing arguments");
+
 const program = new Command();
 program
   .name("fix-junit-hooks")
@@ -65,12 +67,18 @@ program
     "--include <substring>",
     "only rewrite when the Root Suite's spec file path contains this substring (repeatable)",
     (value: string, previous: string[]) => previous.concat([value]),
+    // Unjustified type cast. FIXME
     [] as string[],
   )
   .parse();
 
+// Unjustified type cast. FIXME
 const [inDir, outDir = inDir] = program.processedArgs as [string, string?];
 const { dryRun = false, include: includes } = program.opts<Options>();
+
+console.error(
+  `fix-junit-hooks: start (in=${inDir}, out=${outDir}, dryRun=${dryRun}, includes=[${includes.join(", ")}])`,
+);
 
 if (!statSync(inDir).isDirectory()) {
   console.error(`error: <input-dir> must be a directory, got ${inDir}`);
@@ -132,6 +140,7 @@ function findSpecFile(node: unknown): string | null {
   if (!node || typeof node !== "object") {
     return null;
   }
+  // Unjustified type cast. FIXME
   const file = (node as Record<string, unknown>)["@_file"];
   if (typeof file === "string") {
     return file;
@@ -226,11 +235,16 @@ const files = readdirSync(inDir)
   .filter((f) => f.endsWith(".xml"))
   .sort();
 
+console.error(`fix-junit-hooks: found ${files.length} XML file(s)`);
+
 let totalScanned = 0;
 let totalRewritten = 0;
 for (const f of files) {
   const inP = join(inDir, f);
   const outP = inDir === outDir ? inP : join(outDir, f);
+  console.error(
+    `fix-junit-hooks: processing ${f} (${statSync(inP).size} bytes)`,
+  );
   const r = processFile(inP, outP);
   console.error(summarize(inP, r));
   totalScanned += r.scanned;

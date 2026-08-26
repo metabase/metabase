@@ -22,7 +22,6 @@ You understand Metabase's driver architecture built on Clojure multimethods with
     :bigquery-cloud-sdk, :databricks, :clickhouse, :athena, :sparksql,
     :presto-jdbc / :starburst, :vertica, :sqlite, :h2
 :mongo        (non-SQL, custom protocol)
-:druid        (non-SQL, REST-based)
 ```
 
 Key driver extension points you know intimately:

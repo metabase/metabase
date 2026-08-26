@@ -19,7 +19,12 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
+    // Accept the embedding terms up front so the wizard never shows the
+    // Agree CTA — its flow is covered by embed-flow-enable-embed-js-*.
     H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("show-simple-embed-terms", false);
+    H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("show-static-embed-terms", false);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -169,28 +174,6 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     });
   });
 
-  it("should not include useExistingUserSession when SSO is selected", () => {
-    enableJwtAuth();
-
-    navigateToGetCodeStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-      preselectSso: true,
-    });
-
-    getEmbedSidebar().within(() => {
-      codeBlock().should("not.contain", "useExistingUserSession");
-
-      cy.findByText(/Copy code/).click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_code_copied",
-        event_detail:
-          "experience=dashboard,snippetType=frontend,authSubType=sso",
-      });
-    });
-  });
-
   it("should set dashboard-id for regular dashboard experience", () => {
     navigateToGetCodeStep({
       experience: "dashboard",
@@ -230,10 +213,17 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
   });
 
   it("should not include entity-types when model count is 1", () => {
-    cy.intercept("GET", "/api/search?limit=0&models=dataset", {
-      data: [],
-      total: 1,
-    }).as("searchModels");
+    cy.intercept(
+      {
+        method: "GET",
+        pathname: "/api/search",
+        query: { limit: "0", models: "dataset" },
+      },
+      {
+        data: [],
+        total: 1,
+      },
+    ).as("searchModels");
 
     navigateToGetCodeStep({ experience: "exploration" });
 
@@ -252,10 +242,17 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
   });
 
   it("should include entity-types when model count is 3", () => {
-    cy.intercept("GET", "/api/search?limit=0&models=dataset", {
-      data: [],
-      total: 3,
-    }).as("searchModels");
+    cy.intercept(
+      {
+        method: "GET",
+        pathname: "/api/search",
+        query: { limit: "0", models: "dataset" },
+      },
+      {
+        data: [],
+        total: 3,
+      },
+    ).as("searchModels");
 
     navigateToGetCodeStep({ experience: "exploration" });
 

@@ -2,10 +2,6 @@ import type {
   AnalysisFindingError,
   CardDependencyNode,
   CardDependencyNodeData,
-  CheckCardDependenciesRequest,
-  CheckDependenciesResponse,
-  CheckSnippetDependenciesRequest,
-  CheckTransformDependenciesRequest,
   DashboardDependencyNode,
   DashboardDependencyNodeData,
   DependencyEdge,
@@ -203,45 +199,10 @@ export function createMockSegmentDependencyNode(
   };
 }
 
-export function createMockCheckCardDependenciesRequest(
-  opts?: Partial<CheckCardDependenciesRequest>,
-): CheckCardDependenciesRequest {
-  return {
-    id: 1,
-    ...opts,
-  };
-}
-
-export function createMockCheckSnippetDependenciesRequest(
-  opts?: Partial<CheckSnippetDependenciesRequest>,
-): CheckSnippetDependenciesRequest {
-  return {
-    id: 1,
-    ...opts,
-  };
-}
-
-export function createMockCheckTransformDependenciesRequest(
-  opts?: Partial<CheckTransformDependenciesRequest>,
-): CheckTransformDependenciesRequest {
-  return {
-    id: 1,
-    ...opts,
-  };
-}
-
-export function createMockCheckDependenciesResponse(
-  opts?: Partial<CheckDependenciesResponse>,
-): CheckDependenciesResponse {
-  return {
-    success: true,
-    ...opts,
-  };
-}
-
 export function createMockDashboardDependencyNodeData(
   opts?: Partial<DashboardDependencyNodeData>,
 ): DashboardDependencyNodeData {
+  // Unjustified type cast. FIXME
   return {
     name: "Dashboard",
     description: null,
@@ -267,6 +228,7 @@ export function createMockDashboardDependencyNode(
 export function createMockDocumentDependencyNodeData(
   opts?: Partial<DocumentDependencyNodeData>,
 ): DocumentDependencyNodeData {
+  // Unjustified type cast. FIXME
   return {
     name: "Document",
     created_at: "2020-01-01T00:00:00Z",

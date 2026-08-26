@@ -3,7 +3,6 @@
   information; parses datetime string literals when appropriate."
   (:refer-clojure :exclude [select-keys])
   (:require
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -22,9 +21,7 @@
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
-(mu/defn- value :- :mbql.clause/value
-  [info :- :map v]
-  [:value (assoc info :lib/uuid (str (random-uuid))) v])
+(set! *warn-on-reflection* true)
 
 (defn- type-info-from-col [col]
   (when col
@@ -50,25 +47,39 @@
 
 ;; TODO -- parsing the temporal string literals should be moved into `auto-parse-filter-values`, it's really a
 ;; separate transformation from just wrapping the value
+(defonce ^{:private true
+           :doc "Hierarchy grouping the java.time classes that share an [[add-type-info]] method. Kept separate from
+  Clojure's global hierarchy so that these class registrations cannot collide with other users of the global
+  hierarchy."}
+  hierarchy
+  (make-hierarchy))
+
+(defn- derive!
+  "Make `parent` an ancestor of `tag` in the temporal-class [[hierarchy]]."
+  [tag parent]
+  (alter-var-root #'hierarchy derive tag parent)
+  nil)
+
 (defmulti ^:private add-type-info
   "Wraps value literals in `:value` clauses that includes base type info about the Field they're being compared against
   for easy driver QP implementation. Temporal literals (e.g., ISO-8601 strings) get wrapped in `:time` or
   `:absolute-datetime` instead which includes unit as well; temporal strings get parsed and converted to "
   {:arglists '([x info & {:keys [parse-datetime-strings?]}])}
-  (fn [x & _] (class x)))
+  (fn [x & _] (class x))
+  :hierarchy #'hierarchy)
 
 (defmethod add-type-info nil
   [_ info & _]
-  (value info nil))
+  (lib/value info nil))
 
 (defmethod add-type-info Object
   [this info & _]
-  (value info this))
+  (lib/value info this))
 
-(derive LocalDate      ::->absolute-datetime)
-(derive LocalDateTime  ::->absolute-datetime)
-(derive OffsetDateTime ::->absolute-datetime)
-(derive ZonedDateTime ::->absolute-datetime)
+(derive! LocalDate      ::->absolute-datetime)
+(derive! LocalDateTime  ::->absolute-datetime)
+(derive! OffsetDateTime ::->absolute-datetime)
+(derive! ZonedDateTime  ::->absolute-datetime)
 
 (prefer-method add-type-info ::->absolute-datetime Object)
 
@@ -76,8 +87,8 @@
   [this info & _]
   (lib/absolute-datetime this (get info :unit :default)))
 
-(derive LocalTime  ::->time)
-(derive OffsetTime ::->time)
+(derive! LocalTime  ::->time)
+(derive! OffsetTime ::->time)
 
 (prefer-method add-type-info ::->time Object)
 
@@ -185,45 +196,97 @@
   (let [t (parse-temporal-string-literal-to-class s OffsetTime)]
     (lib/time t target-unit)))
 
-(defmethod parse-temporal-string-literal :type/DateTime
-  [_effective-type s target-unit]
-  (let [t (parse-temporal-string-literal-to-class s LocalDateTime)]
-    (lib/absolute-datetime t target-unit)))
-
-(defn- date-literal-string? [s]
-  (not (str/includes? s "T")))
-
-(defmethod parse-temporal-string-literal :type/DateTimeWithTZ
-  [_effective-type s target-unit]
-  (let [t (parse-temporal-string-literal-to-class s OffsetDateTime)
+(defn- parse-datetime-string-literal [s target-unit klass]
+  (let [t (parse-temporal-string-literal-to-class s klass)
         target-unit (if (and (= target-unit :default)
-                             (date-literal-string? s))
+                             (try (LocalDate/parse s) true (catch Exception _ false)))
                       :day
                       target-unit)]
     (lib/absolute-datetime t target-unit)))
 
+(defmethod parse-temporal-string-literal :type/DateTime
+  [_effective-type s target-unit]
+  (parse-datetime-string-literal s target-unit LocalDateTime))
+
+(defmethod parse-temporal-string-literal :type/DateTimeWithTZ
+  [_effective-type s target-unit]
+  (parse-datetime-string-literal s target-unit OffsetDateTime))
+
 (defmethod parse-temporal-string-literal :type/DateTimeWithZoneID
   [_effective-type s target-unit]
-  (let [target-unit (if (and (= target-unit :default)
-                             (date-literal-string? s))
-                      :day
-                      target-unit)
-        t           (parse-temporal-string-literal-to-class s ZonedDateTime)]
-    (lib/absolute-datetime t target-unit)))
+  (parse-datetime-string-literal s target-unit ZonedDateTime))
 
 (defmethod add-type-info String
-  [s {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
-                                 :or   {parse-datetime-strings? true}}]
-  (if (and (or unit (when info (lib.types.isa/temporal? info)))
+  [s {:keys [unit], :as col} & {:keys [parse-datetime-strings?]
+                                :or   {parse-datetime-strings? true}}]
+  (if (and (or unit (when col (lib.types.isa/temporal? col)))
            parse-datetime-strings?
            (seq s))
-    (let [effective-type ((some-fn :effective-type :base-type) info)]
+    (let [effective-type ((some-fn :effective-type :base-type) col)]
       (parse-temporal-string-literal effective-type s (or unit :default)))
-    (value info s)))
+    (lib/value col s)))
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
 (def ^:private raw-value? (complement lib/clause?))
+
+;; Some queries carry temporal literals in their portable / wire form — e.g. Metabot's representations
+;; repair wraps `between` bounds as `[:absolute-datetime {} "2024-01-01" :day]`, and on CLJS a string
+;; is the only representation. The comparison arms below parse temporal strings that arrive as *raw*
+;; values, but would otherwise skip ones already wrapped in `:absolute-datetime`, leaving a bare string
+;; that later middleware (e.g. `optimize-temporal-filters`) chokes on. This predicate lets those arms
+;; detect such clauses; the unit travels with the string so a `:year`/`:month` literal keeps its bucket
+;; instead of collapsing to the field's default when re-parsed.
+(defn- string-valued-absolute-datetime
+  "If `x` is an `:absolute-datetime` clause whose literal is still an (unparsed) string, return a
+  `[string unit]` pair of that inner string and the clause's temporal unit; otherwise `nil`."
+  [x]
+  (when (lib/clause-of-type? x :absolute-datetime)
+    (let [[_tag _opts v unit] x]
+      (when (string? v) [v unit]))))
+
+(defn- wrappable-literal?
+  "A raw value, or a string-valued `:absolute-datetime` that still needs parsing."
+  [x]
+  (or (raw-value? x)
+      (some? (string-valued-absolute-datetime x))))
+
+(defn- wrap-literal-against-field
+  "Wrap a single comparison literal `x` against the type info of the `field` it is compared to.
+
+  A raw value, or a string-valued `:absolute-datetime`, is re-parsed through [[add-type-info]] so it
+  picks up the field's effective type and the report timezone — same as a raw string would. The
+  comparison field's own bucket still wins, but when the field is *unbucketed* the literal's own unit
+  is used as the fallback instead of `:default`, so e.g. `[:absolute-datetime {} \"2024\" :year]`
+  against an unbucketed field keeps its `:year` bucket instead of collapsing to a single instant. A
+  field carrying an explicit `:default` unit counts as unbucketed here — `add-default-temporal-unit`
+  stamps `:default` onto every temporal field ref on `:temporal/requires-default-unit` drivers, and an
+  LLM can author it directly — so the literal's unit still wins in that case.
+  Anything else — an already-parsed `:absolute-datetime`, `:now`, `:relative-datetime`, another
+  field — is returned untouched, so a *mixed* `:between` only wraps the bound(s) that need it."
+  [query path field x]
+  (if-let [[s unit] (string-valued-absolute-datetime x)]
+    (let [col (*type-info* query path field)]
+      ;; `contains?`, not `(#{nil :default} (:unit col))`: a set used as a fn returns the *found value*,
+      ;; so it would report `nil` (falsy) for an unbucketed `nil`-unit field and drop the fallback.
+      (add-type-info s (cond-> col
+                         (and unit (contains? #{nil :default} (:unit col))) (assoc :unit unit))))
+    (if (raw-value? x)
+      (add-type-info x (*type-info* query path field))
+      x)))
+
+(defn- parse-fieldless-literal
+  "Parse a string-valued `:absolute-datetime` standalone — using its own unit and no field type — for a
+  comparison of two literals where there is no field to wrap against (e.g. `[:= <abs-datetime-string>
+  <abs-datetime-string>]`). Without this the bare string survives to execution and later middleware
+  (e.g. `optimize-temporal-filters`) chokes on it. Anything else is returned untouched."
+  [x]
+  (if-let [[s unit] (string-valued-absolute-datetime x)]
+    ;; pre-parse to a `java.time` value (no field type / report timezone to apply here) so the result
+    ;; is the literal's own value — a date-only string stays a `LocalDate`, not a timezone-dependent
+    ;; instant — rather than routing through the tz-aware string path.
+    (add-type-info (u.date/parse s) {:unit (or unit :default)})
+    x))
 
 (defn- wrap-value-literals-in-clause
   [query path clause]
@@ -236,13 +299,23 @@
        (add-type-info x {:base-type x-type :effective-type x-type})
        (add-type-info y {:base-type y-type :effective-type y-type})])
 
-    ;; field and literal
-    [(tag :guard #{:= :!= :< :> :<= :>=}) opts field (x :guard raw-value?)]
-    [tag opts field (add-type-info x (*type-info* query path field))]
+    ;; field and literal. `field` is guarded as *not* a wrappable literal so that a comparison of two
+    ;; literals (e.g. `[:= <abs-datetime-string> <abs-datetime-string>]`) can't bind a literal as the
+    ;; `field` and leave it unwrapped — it falls through unchanged instead.
+    [(tag :guard #{:= :!= :< :> :<= :>=}) opts (field :guard (not (wrappable-literal? field))) (x :guard wrappable-literal?)]
+    [tag opts field (wrap-literal-against-field query path field x)]
 
     ;; literal and field (literal on LHS)
-    [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard raw-value?) field]
-    [tag opts (add-type-info x (*type-info* query path field)) field]
+    [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard wrappable-literal?) (field :guard (not (wrappable-literal? field)))]
+    [tag opts (wrap-literal-against-field query path field x) field]
+
+    ;; two literals, no field to wrap against — still parse a string-valued `:absolute-datetime` (using
+    ;; its own unit) so a bare string can't survive to execution. Guarded on
+    ;; `string-valued-absolute-datetime` so `[:= 1 2]`, two already-parsed bounds, etc. fall through
+    ;; unchanged; raw values stay raw since there's no field type to attach.
+    [(tag :guard #{:= :!= :< :> :<= :>=}) opts x y]
+    (when (or (string-valued-absolute-datetime x) (string-valued-absolute-datetime y))
+      [tag opts (parse-fieldless-literal x) (parse-fieldless-literal y)])
 
     [:datetime-diff opts (x :guard string?) (y :guard string?) unit]
     [:datetime-diff opts (add-type-info (u.date/parse x) nil) (add-type-info (u.date/parse y) nil) unit]
@@ -250,12 +323,16 @@
     [(tag :guard #{:datetime-add :datetime-subtract :convert-timezone :temporal-extract}) opts (field :guard string?) & args]
     (into [tag opts (add-type-info (u.date/parse field) nil)] args)
 
-    [:between opts field (min-val :guard raw-value?) (max-val :guard raw-value?)]
-    [:between
-     opts
-     field
-     (add-type-info min-val (*type-info* query path field))
-     (add-type-info max-val (*type-info* query path field))]
+    ;; wrap each bound independently so a *mixed* `:between` — e.g. a string-valued `:absolute-datetime`
+    ;; on one side and `:now` / `:relative-datetime` / an already-parsed `:absolute-datetime` on the
+    ;; other — still gets the wrappable bound coerced instead of falling through unwrapped.
+    [:between opts field min-val max-val]
+    (when (or (wrappable-literal? min-val) (wrappable-literal? max-val))
+      [:between
+       opts
+       field
+       (wrap-literal-against-field query path field min-val)
+       (wrap-literal-against-field query path field max-val)])
 
     [(tag :guard #{:starts-with :ends-with :contains}) opts field (s :guard string?) & more]
     (let [s (add-type-info s (*type-info* query path field), :parse-datetime-strings? false)]
@@ -318,11 +395,3 @@
                          (fn [clause]
                            (wrap-value-literals-in-clause nil nil clause)))
                         first)))))
-
-(mu/defn wrap-value-literals-in-mbql :- [:cat :keyword [:* :any]]
-  "Wrapper around `wrap-value-literals-in-mbql5` that converts the clause back to legacy MBQL.
-  DEPRECATED: This is for legacy compatibility and should not be used in new code."
-  {:deprecated "0.57.0"}
-  [mbql :- [:cat :keyword [:* :any]]]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (lib/->legacy-MBQL (wrap-value-literals-in-mbql5 mbql)))

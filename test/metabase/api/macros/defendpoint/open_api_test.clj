@@ -40,6 +40,24 @@
             (#'defendpoint.open-api/fix-json-schema
              (mjs/transform (ms/maps-with-unique-key [:sequential [:map [:id :int]]] :id)))))))
 
+(deftest ^:parallel default-params-are-optional-test
+  (testing "a param carrying a :default is advertised as optional, since omitting it is safe"
+    (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
+      (let [by-name (into {}
+                          (map (juxt :name identity))
+                          (#'defendpoint.open-api/schema->params*
+                           [:map
+                            [:required-param :string]
+                            [:defaulted-param {:default :api} [:enum :api :x]]
+                            [:optional-param {:optional true} :string]]
+                           (constantly :query)
+                           {}))]
+        (is (true?  (get-in by-name ["required-param" :required])))
+        (is (false? (get-in by-name ["defaulted-param" :required])))
+        (is (false? (get-in by-name ["optional-param" :required])))
+        (testing "the default value is still rendered in the param schema"
+          (is (= :api (get-in by-name ["defaulted-param" :schema :default]))))))))
+
 (deftest ^:parallel collect-definitions-test
   (binding [defendpoint.open-api/*definitions* (atom [])]
     (is (=? {:properties {:value {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}}

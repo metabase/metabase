@@ -64,7 +64,7 @@ const setupState = ({
   setupNotificationChannelsEndpoints({
     slack: { configured: isSlackSetup },
     email: { configured: isEmailSetup },
-  } as any);
+  });
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
@@ -80,6 +80,7 @@ const setupState = ({
 
   return createMockState({
     settings: mockSettings(settingValues),
+    // Unjustified type cast. FIXME
     currentUser: {
       ...user,
       permissions: {
@@ -92,7 +93,7 @@ const setupState = ({
   });
 };
 
-export function setupQuestionSharingMenu({
+export async function setupQuestionSharingMenu({
   isPublicSharingEnabled = false,
   isEmbeddingEnabled = false,
   isEmailSetup = false,
@@ -147,8 +148,17 @@ export function setupQuestionSharingMenu({
     </div>,
     { storeInitialState: state },
   );
+
+  // Wait for the admin menu button to settle so async endpoint mocks resolve
+  // inside act. Non-admin menus render synchronously, and model/archived
+  // questions render nothing at all.
+  const isModel = questionOverrides.type === "model";
+  const isArchived = questionOverrides.archived === true;
+  if (isAdmin && !isModel && !isArchived) {
+    await screen.findByTestId("sharing-menu-button");
+  }
 }
 
-export const openMenu = () => {
-  return userEvent.click(screen.getByTestId("sharing-menu-button"));
+export const openMenu = async () => {
+  await userEvent.click(screen.getByTestId("sharing-menu-button"));
 };

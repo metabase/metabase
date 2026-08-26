@@ -2,29 +2,31 @@
   "Lightweight MCP session management.
 
    An MCP session ID is just a random UUID handed out on `initialize` — no database
-   row is created. When a resource read needs an embedding session, we HMAC-derive a
-   separate session key from an instance-wide signing secret and lazily upsert a
-   `core_session` row keyed by its hash.
+   row is created. Query handles may lazily materialize a `core_session` row, keyed
+   by the hash of a deterministic value derived from the MCP session id.
 
-   The derivation (rather than using the MCP session id directly as the session key)
-   is so that the id we put on the wire in the `Mcp-Session-Id` header is *not* itself
-   a live embedding session secret: capturing the header should not be enough to
-   impersonate the embedded SDK iframe. Any webserver can recompute the same derived
-   key on demand without any per-session plaintext sitting at rest.
+   The backing value is derived rather than reusing the MCP session id directly, so
+   the correlation id on the wire remains distinct from any stored session material.
+   Any webserver can recompute the same value without per-session plaintext at rest.
 
-   MCP sessions themselves do not expire. The underlying `core_session` row has
-   its own TTL and will be reaped independently; if a subsequent resource read
-   finds it missing, `get-or-create-session-key!` will re-insert it."
+   MCP sessions themselves do not expire. Any backing `core_session` has its own
+   TTL and is re-created on demand for query-handle lifecycle management."
   (:require
+   [clojure.string :as str]
    [metabase.app-db.core :as app-db]
    [metabase.mcp.models.mcp-query-handle]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (java.nio ByteBuffer)
-   (java.util UUID)
+   (java.nio.charset StandardCharsets)
+   (java.security MessageDigest)
+   (java.time Instant)
+   (java.util Base64 UUID)
    (javax.crypto Mac)
    (javax.crypto.spec SecretKeySpec)))
 
@@ -75,19 +77,182 @@
                          (unchecked-long 0x8000000000000000))]    ; set RFC 4122 variant (10)
     (str (UUID. high low))))
 
+(def ^:private ui-credential-lifetime-seconds
+  "Lifetime of a rendered MCP Apps UI credential. This is deliberately short: the
+   credential is delivered to an iframe through a resource response."
+  300)
+
+(defn- base64url-encode [^String value]
+  (.encodeToString (.withoutPadding (Base64/getUrlEncoder)) (.getBytes value StandardCharsets/UTF_8)))
+
+(defn- base64url-encode-bytes [^bytes value]
+  (.encodeToString (.withoutPadding (Base64/getUrlEncoder)) value))
+
+(defn- base64url-decode [^String value]
+  (String. (.decode (Base64/getUrlDecoder) value) StandardCharsets/UTF_8))
+
+(defn- ui-credential-signature [^String payload]
+  (base64url-encode-bytes
+   (hmac-sha256 (mcp.settings/unobfuscated-mcp-embedding-signing-secret)
+                (str "mcp-ui-v1." payload))))
+
+(declare valid-id?)
+
+(defn issue-ui-credential
+  "Create a short-lived credential for the MCP Apps UI. It authenticates only
+   the narrow server-side UI request surface, never as a core Metabase session."
+  [session-id user-id]
+  (let [payload (base64url-encode
+                 (json/encode {:v 1 :uid user-id :sid session-id
+                               :exp (+ (.getEpochSecond (Instant/now)) ui-credential-lifetime-seconds)}))]
+    (str payload "." (ui-credential-signature payload))))
+
+(defn resolve-ui-credential
+  "Validate a rendered MCP Apps UI credential and return its claims, or nil.
+   Invalid and expired inputs intentionally have the same result and are never logged."
+  [credential]
+  (try
+    (let [[payload ^String signature & extra] (str/split (or credential "") #"\." -1)
+          ^String expected (when (and payload signature (empty? extra)) (ui-credential-signature payload))]
+      (when (and expected
+                 (MessageDigest/isEqual (.getBytes expected StandardCharsets/UTF_8)
+                                        (.getBytes signature StandardCharsets/UTF_8)))
+        (let [{:keys [v uid sid exp] :as claims} (json/decode+kw (base64url-decode payload))]
+          (when (and (= v 1) (integer? uid) (string? sid) (integer? exp)
+                     (valid-id? sid)
+                     (> exp (.getEpochSecond (Instant/now))))
+            claims))))
+    (catch Exception _ nil)))
+
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 
+(def ^:private session-payload-version
+  "Version for the unsigned JSON client-capability hint encoded in new MCP session ids."
+  1)
+
+(mr/def ::session-payload
+  "The unsigned client-capability hint carried in the second segment of an `Mcp-Session-Id`: the
+   payload version and whether the client can render MCP Apps UI. Server-minted and only echoed back
+   by clients; validated before we read its `:ui` flag, which is the only thing relayed onward."
+  [:map
+   [:v  :int]
+   [:ui :boolean]])
+
+(def ^:private max-session-id-length
+  "Maximum persisted length for `mcp_query_handle.mcp_session_id`."
+  254)
+
+(defn- encode-session-payload
+  "Encode a small JSON map for the second segment of `Mcp-Session-Id`.
+
+   MCP initialize capabilities are client-advertised hints, not authorization state. We include them in the
+   server-created session id so later requests can make the same tools/list decision on any Metabase webserver
+   without an in-memory cache or a DB row just for session metadata."
+  [payload]
+  (-> (json/encode payload)
+      (.getBytes StandardCharsets/UTF_8)
+      (->> (.encodeToString (.withoutPadding (Base64/getUrlEncoder))))))
+
+(defn- decode-session-payload
+  "Decode the optional client-capability hint from an `Mcp-Session-Id`.
+
+   Invalid payloads return nil so the whole session id can be treated as invalid by [[session-parts]]."
+  [encoded]
+  (when-not (str/blank? encoded)
+    (try
+      (-> (Base64/getUrlDecoder)
+          (.decode ^String encoded)
+          (String. StandardCharsets/UTF_8)
+          json/decode+kw)
+      (catch Exception _
+        nil))))
+
+(defn- parse-session-payload
+  "Parse the optional base64url JSON capability segment.
+
+   Plain UUID session ids are legacy ids issued before capability-aware tools/list and remain valid. Two-part ids
+   with a known payload version must include a supported payload shape so malformed capability hints do not silently
+   fall back to legacy behavior. Unknown payload versions remain valid but default to no UI capability, so rolling
+   deploy version skew does not invalidate the whole session."
+  [payload]
+  (cond
+    (nil? payload)
+    {:extended false}
+
+    (str/blank? payload)
+    (do
+      (log/warn "MCP session id contains a blank capability payload")
+      nil)
+
+    :else
+    (if-let [decoded-payload (decode-session-payload payload)]
+      (let [payload-map?         (map? decoded-payload)
+            payload-version      (when payload-map? (:v decoded-payload))
+            has-payload-version? (and payload-map? (contains? decoded-payload :v))
+            known-version?       (and (integer? payload-version)
+                                      (<= payload-version session-payload-version))
+            unknown-version?     (and (integer? payload-version)
+                                      (> payload-version session-payload-version))]
+        (cond
+          (and payload-map?
+               known-version?
+               (mr/validate ::session-payload decoded-payload))
+          {:extended true
+           :payload  (select-keys decoded-payload [:ui])}
+
+          ;; During rolling deploys, a newer node may mint a capability payload version this node does not understand.
+          ;; The payload is only a capability hint, so keep the session valid but fall back to no MCP Apps UI support.
+          (and has-payload-version?
+               unknown-version?)
+          {:extended true
+           :payload  {:ui false}}))
+      (log/warn "MCP session id contains an undecodable capability payload"))))
+
+(defn- session-parts
+  "Parse an MCP session id into a UUID correlator plus optional client-capability hint.
+
+   New session ids have the form `<uuid>.<base64url-json>`, currently with payload `{\"v\":1,\"ui\":true}`.
+   We keep the UUID as the first segment because existing MCP session behavior derives the embedding session key
+   from this server-created id, while the JSON segment lets us remember initialize-time UI capability statelessly
+   across multiple Metabase webservers."
+  [session-id]
+  (when (and (string? session-id)
+             (<= (count session-id) max-session-id-length))
+    (let [[uuid payload :as parts] (str/split session-id #"\." -1)]
+      (when (#{1 2} (count parts))
+        (when-let [uuid (parse-uuid uuid)]
+          (some-> (parse-session-payload payload)
+                  (assoc :uuid uuid)))))))
+
+(defn- create-session-id
+  "Create a stateless MCP session id containing client capability hints.
+
+   The server creates this id during initialize; clients only echo it back. The unsigned payload is intentionally
+   limited to non-security-sensitive capability hints such as whether the client says it can render MCP Apps UI."
+  [{:keys [supports-mcp-ui?]}]
+  (let [session-id (str (UUID/randomUUID)
+                        "."
+                        (encode-session-payload {:v  session-payload-version
+                                                 :ui (true? supports-mcp-ui?)}))]
+    (assert (<= (count session-id) max-session-id-length)
+            "MCP session id is too long")
+    session-id))
+
 (defn valid-id?
-  "Return true if `session-id` looks like a UUID (the format `create!` produces).
+  "Return true if `session-id` has a UUID correlator (the format `create!` produces).
    Format check only — authentication is handled separately by cookie or bearer token,
    not by the session ID itself."
   [session-id]
-  (and (string? session-id)
-       (try (UUID/fromString session-id) true
-            (catch IllegalArgumentException _ false))))
+  (some? (session-parts session-id)))
+
+(defn- assert-session-id!
+  [session-id]
+  (when-not (valid-id? session-id)
+    (throw (ex-info "Invalid MCP session id" {:session-id session-id})))
+  session-id)
 
 (defn create!
-  "Create a new MCP session. Returns a UUID string.
+  "Create a new MCP session. Returns a session id string.
    No database row is written — the session is just an opaque correlator until
    a resource read materializes it into a `core_session`.
 
@@ -95,8 +260,19 @@
    stateless (no server-side token store), we don't validate the user against
    future requests. This parameter exists so we can add durable, user-scoped
    sessions in the future without changing the call-site contract."
-  [_user-id]
-  (str (UUID/randomUUID)))
+  ([user-id]
+   (create! user-id nil))
+  ([_user-id metadata]
+   (create-session-id metadata)))
+
+(defn supports-mcp-ui?
+  "Return true if the client advertised MCP Apps UI support during initialize."
+  [session-id]
+  (when-let [{:keys [payload extended]} (session-parts session-id)]
+    (if extended
+      (true? (:ui payload))
+      ;; Legacy plain UUID sessions were issued before capability-aware tools/list; keep old behavior for them.
+      true)))
 
 (defn- get-or-create-embedding-session!
   "Materialize and return the `core_session` row backing this MCP session.
@@ -151,7 +327,7 @@
 (defn store-handle!
   "Insert a new handle row binding `encoded-query` to the calling user, and return the handle UUID.
 
-   `mcp-session-id` is recorded so DELETE /api/mcp can sweep the session's handles, and so reads can log
+   `mcp-session-id` is recorded so DELETE /api/metabase-mcp can sweep the session's handles, and so reads can log
    when a handle is resolved across sessions (see [[find-handle-row]]) — the read path itself is purely
    user-scoped, since handle UUIDs are globally unique.
 
@@ -160,6 +336,7 @@
   ([mcp-session-id user-id encoded-query]
    (store-handle! mcp-session-id user-id encoded-query nil))
   ([mcp-session-id user-id encoded-query prompt]
+   (assert-session-id! mcp-session-id)
    ;; Materializing a core_session here serves two purposes: its FK is what makes handles
    ;; cascade-delete when the session row is reaped, and its user_id is what find-handle-row
    ;; filters on for cross-session ownership.
@@ -173,6 +350,11 @@
                    prompt (assoc :prompt prompt)))
      handle-id)))
 
+(defn- handle-id?
+  [handle-id]
+  (and (string? handle-id)
+       (some? (parse-uuid handle-id))))
+
 (defn- find-handle-row
   "Look up the handle row by `handle-id`, scoped to `user-id`.
    Handle ids are globally unique UUIDs, so the join's `WHERE mqh.id = handle-id` returns at most one
@@ -180,7 +362,7 @@
    on the row only so harnesses that rotate MCP sessions between calls (e.g. ChatGPT) can be logged as
    cross-session resolutions for telemetry."
   [mcp-session-id user-id handle-id]
-  (when (and user-id handle-id)
+  (when (and user-id (handle-id? handle-id))
     ;; Single round-trip: join `mcp_query_handle` to `core_session` and filter on
     ;; `core_session.user_id`, so ownership is enforced in the WHERE clause.
     (let [row (t2/select-one :model/McpQueryHandle
@@ -218,6 +400,7 @@
    `core_session_id` was never set — e.g. handles for regular query payloads that
    aren't backed by an MCP iframe and so never materialize a `core_session`."
   [session-id user-id]
+  (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
     (t2/query {:delete-from :core_session
                :where       [:and

@@ -1,4 +1,3 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { Api, useDeleteDocumentMutation } from "metabase/api";
@@ -8,11 +7,13 @@ import { useSetArchive } from "metabase/archive/hooks";
 import { useSetCollection } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { useNavigate } from "metabase/router";
 
 import { getCurrentDocument } from "../selectors";
 
 export const DocumentArchivedEntityBanner = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const archive = useSetArchive();
   const setCollection = useSetCollection();
   const document = useSelector(getCurrentDocument);
@@ -38,7 +39,7 @@ export const DocumentArchivedEntityBanner = () => {
       }
       onDeletePermanently={async () => {
         await deleteDocument({ id: document.id }).unwrap();
-        dispatch(push("/trash"));
+        navigate("/trash");
         dispatch(
           addUndo({ message: t`This item has been permanently deleted.` }),
         );

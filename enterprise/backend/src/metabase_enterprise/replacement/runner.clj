@@ -84,7 +84,7 @@
                                       (vals measures))))]
       (when (seq queries)
         ;; Extract all referenced entity IDs across all queries
-        (let [referenced-ids (lib/all-referenced-entity-ids queries)]
+        (let [referenced-ids (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})]
           ;; Bulk load all metadata at once
           (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
       (merge {} cards tables dashboards transforms segments measures))))
@@ -135,7 +135,7 @@
               (try
                 (replacement.source-swap/swap-source! entity object old-source new-source)
                 (catch Exception e
-                  (log/warnf e "Failed to swap %s, continuing with next entity" entity)
+                  (log/warnf "Failed to swap %s, continuing with next entity: %s" entity (ex-message e))
                   (swap! failures conj {:entity entity :error (ex-message e)})))
               (replacement.protocols/advance! progress)))))
       (when-let [fs (seq @failures)]

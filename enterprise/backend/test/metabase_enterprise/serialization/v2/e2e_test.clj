@@ -16,6 +16,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
@@ -33,7 +35,6 @@
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here rely on the H2 test-data database via Card defaults, so we keep the H2 guard
 ;; off and re-enable the H2 path in the extract (production keeps it filtered).
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
                                                   models.database/assert-not-h2! (constantly nil)]
@@ -105,8 +106,7 @@
 (defn- clean-entity
   "Removes any comparison-confounding fields, like `:created_at`."
   [entity]
-  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule
-          :metabase_version))
+  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest e2e-storage-ingestion-test
@@ -525,7 +525,7 @@
                          [{:id model-eid         :model "Card"}]
                          [{:id card-eid          :model "Card"}]
                          [{:id "Linked database" :model "Database"}]}
-                       (set (serdes/dependencies extracted-dashboard))))
+                       (set (serdes/deserialization-dependencies extracted-dashboard))))
                 (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
             (testing "ingest and load"
               ;; ingest
@@ -808,12 +808,12 @@
               ;; ensuring field ids are stable by loading dataset in db first
               (mt/db)
               (mt/$ids nil
-                (testing "Column ids are different in different dbs")
-                (is (not= {:people.name       %people.name
-                           :orders.user_id    %orders.user_id
-                           :products.title    %products.title
-                           :orders.product_id %orders.product_id}
-                          @old-ids))
+                (testing "Column ids are different in different dbs"
+                  (is (not= {:people.name       %people.name
+                             :orders.user_id    %orders.user_id
+                             :products.title    %products.title
+                             :orders.product_id %orders.product_id}
+                            @old-ids)))
                 (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
                 (let [viz (t2/select-one-fn :visualization_settings :model/Card :entity_id (:entity_id @card1s))]
                   (testing "column names inside pivot table transferred"
@@ -839,7 +839,7 @@
           (testing "Hidden YAML files are still silently skipped"
             (let [{:keys [entities]} (#'ingest/ingest-all (io/file dump-dir))
                   files (->> entities
-                             (map (comp second second))
+                             (map val)
                              (map #(.getName ^File %))
                              set)]
               (is (not (contains? files ".hidden.yaml")))))
@@ -929,6 +929,62 @@
                            :dataset_query {:stages [{:aggregation [[:metric {} (:id new-metric)]]
                                                      :breakout    [[:field {} (mt/id :orders :user_id)]]}]}}
                           (t2/select-one :model/Card :name "Metric Consuming Question Card"))))))))))))
+
+(deftest gui-question-joined-to-native-source-card-survives-roundtrip-test
+  (testing "GUI question joining a native source-card should still run after serdes export+import (GHY-3801)"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (mt/with-temp
+            [:model/Collection {coll-id :id}                {:name "GHY-3801"}
+             :model/Card       {native-id :id
+                                native-eid :entity_id}      {:name          "Native Products"
+                                                             :collection_id coll-id
+                                                             :type          :question
+                                                             :display       :table
+                                                             :dataset_query {:type     :native
+                                                                             :database (mt/id)
+                                                                             :native   {:query "SELECT * FROM PRODUCTS"}}}
+             :model/Card       {gui-eid :entity_id}         {:name          "GUI Joins Native"
+                                                             :collection_id coll-id
+                                                             :type          :question
+                                                             :display       :table
+                                                             :dataset_query (mt/mbql-query nil
+                                                                              {:source-table (str "card__" native-id)
+                                                                               :joins        [{:fields       :all
+                                                                                               :strategy     :left-join
+                                                                                               :alias        "Products"
+                                                                                               :source-table $$products
+                                                                                               :condition    [:=
+                                                                                                              [:field "CATEGORY" {:base-type :type/Text}]
+                                                                                                              [:field %products.category {:join-alias "Products"}]]}]})}]
+            ;; Populate the native source card's result_metadata the way the app does when a user runs and
+            ;; saves the query. This is the state serdes must preserve across the round-trip.
+            (let [source-cols  (-> (qp/process-query (t2/select-one-fn :dataset_query [:model/Card :dataset_query] native-id))
+                                   (get-in [:data :results_metadata :columns]))
+                  source-names (mapv :name source-cols)]
+              (t2/update! :model/Card native-id {:result_metadata source-cols})
+              (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+                (storage/store! (seq extraction) (storage.files/file-writer dump-dir)))
+              (ts/with-db dest-db
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "serdes ingest succeeded")
+                (let [imported-native (t2/select-one :model/Card :entity_id native-eid)
+                      imported-gui    (t2/select-one :model/Card :entity_id gui-eid)]
+                  (testing "imported native card preserves its result_metadata columns"
+                    (is (= source-names (mapv :name (:result_metadata imported-native)))
+                        "Native source card lost result_metadata columns during serdes round-trip"))
+                  (testing "imported GUI question's query compiles without 'add alias info to join' errors"
+                    ;; Compile (not execute): the bug surfaces in add-alias-info during compilation, and serdes
+                    ;; strips warehouse connection details so the imported card can't actually be run here.
+                    (let [result (try
+                                   (qp.compile/compile (:dataset_query imported-gui))
+                                   (catch Throwable e
+                                     {:error (ex-message e)
+                                      :data  (ex-data e)}))]
+                      (is (not (and (map? result) (:error result)))
+                          (str "Expected query to compile but got error: "
+                               (when (map? result) (:error result)))))))))))))))
 
 (deftest schema-coercion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

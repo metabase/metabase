@@ -1,8 +1,7 @@
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { State } from "metabase/redux/store";
-import { getSetting } from "metabase/selectors/settings";
-import { getTokenFeature } from "metabase/setup";
+import { getSetting, getTokenFeature } from "metabase/settings";
 
 export const getIsGuestEmbedRaw = (state: SdkStoreState) =>
   state.sdk?.isGuestEmbed;
@@ -48,7 +47,7 @@ export const getAvailableFonts = (state: SdkStoreState) =>
 export const getHasTokenFeature = (state: SdkStoreState) => {
   // When the setting haven't been loaded or failed to query, we assume that the
   // feature is _enabled_ first.
-  if (!state.settings.values?.["token-features"]) {
+  if (!getSetting(state, "token-features")) {
     return true;
   }
 

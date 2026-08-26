@@ -47,14 +47,20 @@
             (throw (ex-info "Remote sync is enabled with read-only type, but no branch is set." {})))
           (when (remote-sync.object/dirty?)
             (if (some-> (settings/remote-sync-allow) (str/includes? "overwrite-unpublished"))
-              (impl/async-import! branch true {})
+              (impl/async-import! branch true {}
+                                  :on-success (fn [task-id _result]
+                                                (impl/publish-sync-event! :event/remote-sync-import task-id
+                                                                          {:branch branch :auto true} nil)))
               (throw (ex-info "Remote sync is enabled with read-only type, but there are unpublished changes. To force an overwrite, set `MB_REMOTE_SYNC_ALLOW=overwrite-unpublished`" {}))))))
       (when-not (collection/has-remote-synced-collection?)
         (if (nil? (settings/remote-sync-branch))
           (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")
-          (do
+          (let [branch (settings/remote-sync-branch)]
             (log/info "Remote sync is enabled but no remote-sync collection exists. Importing")
-            (impl/async-import! (settings/remote-sync-branch) true {})))))
+            (impl/async-import! branch true {}
+                                :on-success (fn [task-id _result]
+                                              (impl/publish-sync-event! :event/remote-sync-import task-id
+                                                                        {:branch branch :auto true} nil)))))))
     (when (collection/has-remote-synced-collection?)
       (log/info "Remote sync is disabled but a remote-synced collection exists. Marking collections as not remote-sync.")
       (collection/clear-remote-synced-collection!))))

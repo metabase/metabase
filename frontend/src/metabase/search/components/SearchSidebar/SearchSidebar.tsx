@@ -2,6 +2,13 @@ import { useState } from "react";
 import _ from "underscore";
 
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
+import { SearchFilterKeys } from "metabase/common/search/constants";
+import type {
+  FilterTypeKeys,
+  SearchFilterComponent,
+  SearchQueryParamValue,
+  URLSearchFilterQueryParams,
+} from "metabase/common/search/types";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { DropdownSidebarFilter } from "metabase/search/components/DropdownSidebarFilter";
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
@@ -13,13 +20,6 @@ import { NativeQueryFilter } from "metabase/search/components/filters/NativeQuer
 import { PersonalCollectionsFilter } from "metabase/search/components/filters/PersonalCollectionsFilter";
 import { SearchTrashedItemsFilter } from "metabase/search/components/filters/SearchTrashedItemsFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
-import { SearchFilterKeys } from "metabase/search/constants";
-import type {
-  FilterTypeKeys,
-  SearchFilterComponent,
-  SearchQueryParamValue,
-  URLSearchFilterQueryParams,
-} from "metabase/search/types";
 import { Stack } from "metabase/ui";
 
 type SearchSidebarProps = {

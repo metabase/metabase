@@ -172,6 +172,59 @@
                 [2 "williamson-domenica@yahoo.com" "yahoo" "yahoo.com"]]
                (mt/formatted-rows [int str str str] (qp/process-query query))))))))
 
+(deftest ^:parallel filter-on-string-expression-result-test
+  (testing "#13751 filter `=` on the result of a regex-match-first expression"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
+      (mt/dataset test-data
+        (let [mp       (mt/metadata-provider)
+              people   (lib.metadata/table mp (mt/id :people))
+              state    (lib.metadata/field mp (mt/id :people :state))
+              co-count (->> (-> (lib/query mp people)
+                                (lib/filter (lib/= state "CO"))
+                                (lib/aggregate (lib/count)))
+                            qp/process-query mt/rows ffirst long)
+              expr-q   (-> (lib/query mp people)
+                           (lib/expression "C" (lib/regex-match-first state "^C[A-Z]")))
+              expr-q   (-> expr-q
+                           (lib/filter (lib/= (lib/expression-ref expr-q "C") "CO"))
+                           (lib/aggregate (lib/count)))]
+          (is (pos? co-count))
+          (is (= co-count
+                 (->> expr-q qp/process-query mt/rows ffirst long)))))))
+  (testing "#14843 filter `!=` on the result of a length expression"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+      (mt/dataset test-data
+        (let [mp     (mt/metadata-provider)
+              people (lib.metadata/table mp (mt/id :people))
+              city   (lib.metadata/field mp (mt/id :people :city))
+              query  (as-> (lib/query mp people) q
+                       (lib/expression q "L" (lib/length city))
+                       (lib/filter q (lib/!= (lib/expression-ref q "L") 3))
+                       (lib/with-fields q [city])
+                       (lib/limit q 200))
+              rows   (mt/rows (qp/process-query query))]
+          (is (seq rows))
+          (is (not-any? #(= 3 (count (first %))) rows)))))))
+
+(deftest ^:parallel string-function-escape-literals-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
+    (mt/dataset test-data
+      (let [mp          (mt/metadata-provider)
+            venues      (lib.metadata/table mp (mt/id :venues))
+            venues-id   (lib.metadata/field mp (mt/id :venues :id))
+            venues-name (lib.metadata/field mp (mt/id :venues :name))
+            extract     (fn [expr]
+                          (let [q (as-> (lib/query mp venues) q
+                                    (lib/expression q "test" expr)
+                                    (lib/with-fields q [(lib/expression-ref q "test")])
+                                    (lib/order-by q venues-id :asc)
+                                    (lib/limit q 1))]
+                            (ffirst (mt/rows (qp/process-query q)))))]
+        (testing "#53527 a double-quote replacement literal strips the quote"
+          (is (= "ab" (extract (lib/replace "a\"b" "\"" "")))))
+        (testing "#56596 a `\\s` whitespace class keeps its backslash and captures a leading space"
+          (is (= " Medicine" (extract (lib/regex-match-first venues-name "\\s.*")))))))))
+
 (deftest ^:parallel url-extractions-test
   (testing "`:domain`, `:subdomain`, `:host`, and `:path` extractions from URLs should work correctly"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex/lookaheads-and-lookbehinds)

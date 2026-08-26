@@ -81,9 +81,9 @@
   (testing "request body keys are converted to kebab-case for harbormaster"
     (mt/with-premium-features #{:hosting}
       (let [received-body (atom nil)]
-        (with-redefs [hm.client/call (fn [_op body]
-                                       (reset! received-body body)
-                                       {:status "ok"})]
+        (mt/with-dynamic-fn-redefs [hm.client/call (fn [_op body]
+                                                     (reset! received-body body)
+                                                     {:status "ok"})]
           (mt/user-http-request :crowberto :post 200 "ee/cloud-proxy/mb-plan-change-plan-preview"
                                 {:new_plan_alias  "pro-cloud"
                                  :force_end_trial true})

@@ -60,7 +60,7 @@
                                            :channel_type :channel/email
                                            :details      {:type           "email/handlebars-resource"
                                                           :subject        "{{payload.custom.user_invited_email_subject}}"
-                                                          :path           "metabase/channel/email/new_user_invite.hbs"
+                                                          :path           "new_user_invite"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.object.email}}"}}]}]}
@@ -77,7 +77,7 @@
                                            :channel_type "channel/email"
                                            :details      {:type "email/handlebars-resource"
                                                           :subject "You set up an alert"
-                                                          :path "metabase/channel/email/notification_card_new_confirmation.hbs"
+                                                          :path "notification_card_new_confirmation"
                                                           :recipient-type "cc"}}
                             :recipients  [{:type    :notification-recipient/template
                                            :details {:pattern "{{payload.event_info.object.creator.email}}"}}]}]}
@@ -94,7 +94,7 @@
                                            :channel_type "channel/email"
                                            :details      {:type "email/handlebars-resource"
                                                           :subject "Your Slack connection stopped working"
-                                                          :path "metabase/channel/email/slack_token_error.hbs"
+                                                          :path "slack_token_error"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
@@ -113,7 +113,7 @@
                                            :channel_type :channel/email
                                            :details      {:type           "email/handlebars-resource"
                                                           :subject        "Comment on {{payload.event_info.entity_title}}"
-                                                          :path           "metabase/channel/email/comment_created.hbs"
+                                                          :path           "comment_created"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{payload.event_info.email}}"}}]}]}
@@ -130,11 +130,12 @@
                                   :channel_type :channel/email
                                   :details {:type "email/handlebars-resource"
                                             :subject "Support Access Grant Created"
-                                            :path "metabase/channel/email/support_access_grant.hbs"
+                                            :path "support_access_grant"
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
                                      :details {:pattern "{{payload.event_info.support_email}}"}}]}]}
-          ;; transform job failed
+          ;; an individual transform within a job failed — notifies the transform's last
+          ;; editor / creator (see metabase.transforms.jobs/notify-transform-failures)
           {:internal_id "system-event/transform-failed"
            :active true
            :payload_type :notification/system-event
@@ -147,10 +148,44 @@
                                   :channel_type :channel/email
                                   :details {:type "email/handlebars-resource"
                                             :subject "The job \"{{payload.event_info.job_name}}\" had failures"
-                                            :path "metabase/channel/email/transform_failed.hbs"
+                                            :path "transform_failed"
                                             :recipient-type "cc"}}
                        :recipients [{:type :notification-recipient/template
-                                     :details {:pattern "{{payload.event_info.email}}"}}]}]}]))
+                                     :details {:pattern "{{payload.event_info.email}}"}}]}]}
+          ;; DISABLED: replaced by digest
+          {:internal_id "system-event/transform-job-failed"
+           :active false
+           :payload_type :notification/system-event
+           :subscriptions [{:type :notification-subscription/system-event
+                            :event_name :event/transform-job-failed}]
+           :handlers [{:active true
+                       :channel_type :channel/email
+                       :channel_id nil
+                       :template {:name "Transform Job Failed email template"
+                                  :channel_type :channel/email
+                                  :details {:type "email/handlebars-resource"
+                                            :subject "The job \"{{payload.event_info.job_name}}\" had failures"
+                                            :path "transform_failed"
+                                            :recipient-type "bcc"}}
+                       :recipients [{:type :notification-recipient/group
+                                     :permissions_group_id (:id (perms/admin-group))}]}]}
+          ;; digest of cron transform job failures
+          {:internal_id   "system-event/transform-failure-digest"
+           :active        true
+           :payload_type  :notification/system-event
+           :subscriptions [{:type       :notification-subscription/system-event
+                            :event_name :event/transform-failure-digest}]
+           :handlers      [{:active       true
+                            :channel_type :channel/email
+                            :channel_id   nil
+                            :template     {:name         "Transform Failure Digest email template"
+                                           :channel_type :channel/email
+                                           :details      {:type           "email/handlebars-resource"
+                                                          :subject        "Transform jobs that failed in the last day"
+                                                          :path           "transform_failure_digest"
+                                                          :recipient-type "bcc"}}
+                            :recipients   [{:type                 :notification-recipient/group
+                                            :permissions_group_id (:id (perms/admin-group))}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]
@@ -189,10 +224,17 @@
     :else
     :skip))
 
+(defn- hydrate-existing-notification
+  "Hydrate an existing notification row for comparison. Don't use [[models.notification/hydrate-notification]]
+   so we can migrate on schema changes."
+  [notification]
+  (t2/hydrate notification :creator :payload :subscriptions
+              [:handlers :channel :template [:recipients :recipients-detail]]))
+
 (defn- sync-notification!
   [{:keys [internal_id] :as row}]
   (let [existing-notification (some-> (t2/select-one :model/Notification :internal_id internal_id)
-                                      models.notification/hydrate-notification)]
+                                      hydrate-existing-notification)]
     (u/prog1 (action existing-notification row)
       (case <>
         :create

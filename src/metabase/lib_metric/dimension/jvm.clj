@@ -8,7 +8,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.util.performance :as perf]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
@@ -82,14 +83,20 @@
    is required for FK / implicitly-joinable column resolution.
 
    For source-card queries (metrics based on models or saved questions), resolves
-   the card's table_id and uses that to find the database provider."
+   the card's table_id and uses that to find the database provider. Native-SQL
+   models have no underlying table (`:table_id` is nil), so in that case we fall
+   back to the card's `:database_id` and look up the database provider directly."
   [mp query-with-mp]
   (when (satisfies? lib-metric.provider/MetricMetadataProvider mp)
     (or (when-let [table-id (lib.util/source-table-id query-with-mp)]
           (lib-metric.provider/database-provider-for-table mp table-id))
         (when-let [card-id (lib.util/source-card-id query-with-mp)]
-          (when-let [table-id (t2/select-one-fn :table_id :model/Card card-id)]
-            (lib-metric.provider/database-provider-for-table mp table-id))))))
+          (when-let [{:keys [table_id database_id]}
+                     (t2/select-one [:model/Card :table_id :database_id] card-id)]
+            (or (when table_id
+                  (lib-metric.provider/database-provider-for-table mp table_id))
+                (when database_id
+                  (lib-metric.provider/database-provider-for-database mp database_id))))))))
 
 (defn- group-type->type
   "Convert a column group's group-type to a dimension group type string."
@@ -97,6 +104,16 @@
   (case group-type
     :group-type/main "main"
     (:group-type/join.explicit :group-type/join.implicit) "connection"))
+
+(defn- group-id
+  "Id for a column group, derived from the group's identity rather than generated.
+
+   The id is persisted on every dimension that belongs to the group and is one of the keys
+   `metabase.lib-metric.dimension/dimensions-changed?` compares, so a freshly generated id would
+   make every sync look like a change and rewrite the row — including on the read paths that sync
+   first."
+  ^String [type-str display-name]
+  (str (UUID/nameUUIDFromBytes (.getBytes (str type-str "/" display-name) "UTF-8"))))
 
 (defn compute-dimension-pairs
   "Compute dimension/mapping pairs from visible columns. IDs not yet assigned.
@@ -124,9 +141,11 @@
                                  (:is-from-join group-info)           :group-type/join.explicit
                                  (:is-implicitly-joinable group-info) :group-type/join.implicit
                                  :else                                :group-type/main)
-                   group-desc  {:id           (str (random-uuid))
-                                :type         (group-type->type group-type)
-                                :display-name (or (:display-name group-info) "Unknown")}
+                   group-kind  (group-type->type group-type)
+                   group-name  (or (:display-name group-info) "Unknown")
+                   group-desc  {:id           (group-id group-kind group-name)
+                                :type         group-kind
+                                :display-name group-name}
                    group-cols  (lib/columns-group-columns col-group)]
                (->> group-cols
                     (remove #(= :source/expressions (:lib/source %)))

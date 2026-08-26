@@ -1,5 +1,4 @@
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -12,6 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -37,6 +37,7 @@ const setup = ({
   isHosted = false,
   hasTransformFeature = false,
   transformsEnabled = false,
+  transformsSetupComplete = false,
   isAdmin = false,
   isStoreUser = false,
   canAccessDbDetails = false,
@@ -46,6 +47,7 @@ const setup = ({
   isHosted?: boolean;
   hasTransformFeature?: boolean;
   transformsEnabled?: boolean;
+  transformsSetupComplete?: boolean;
   isAdmin?: boolean;
   isStoreUser?: boolean;
   canAccessDbDetails?: boolean;
@@ -71,6 +73,7 @@ const setup = ({
       hosting: isHosted,
     }),
     "transforms-enabled": transformsEnabled,
+    "transforms-setup-complete": transformsSetupComplete,
     "is-hosted?": isHosted,
     "token-status": {
       status: "valid",
@@ -90,14 +93,9 @@ const setup = ({
   const path = "/transforms";
 
   renderWithProviders(
-    <Route
-      path={path}
-      component={() => (
-        <TransformsSectionLayout>
-          <div>List of transforms</div>
-        </TransformsSectionLayout>
-      )}
-    />,
+    <Route path={path} element={<TransformsSectionLayout />}>
+      <Route index element={<div>List of transforms</div>} />
+    </Route>,
     {
       storeInitialState: createMockState({
         settings,
@@ -129,6 +127,7 @@ describe("TransformSectionLayout", () => {
     it("should show allow you into transforms if transforms are enabled and writable databases exist", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         databases: [
           createTransformSupportedDatabase({ transforms_permissions: "write" }),
         ],
@@ -148,6 +147,7 @@ describe("TransformSectionLayout", () => {
       setup({
         hasTransformFeature: true,
         transformsEnabled: true,
+        transformsSetupComplete: true,
         databases: [
           createTransformSupportedDatabase({ transforms_permissions: "write" }),
         ],
@@ -188,6 +188,7 @@ describe("TransformSectionLayout", () => {
     it("should show empty state when no databases are writable or supported", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         databases: [
           createMockDatabase({ id: 1, transforms_permissions: "none" }),
           createMockDatabase({
@@ -214,6 +215,7 @@ describe("TransformSectionLayout", () => {
     it("should show empty state when transforms are enabled and the database list is empty", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         databases: [],
       });
 
@@ -223,6 +225,7 @@ describe("TransformSectionLayout", () => {
     it("should show the 'View your database connections' button linking to admin databases for admin users", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         isAdmin: true,
         databases: [],
       });
@@ -237,6 +240,7 @@ describe("TransformSectionLayout", () => {
     it("should show the 'View your database connections' button for users with manage database permission", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         isAdmin: false,
         canAccessDbDetails: true,
         databases: [],
@@ -253,6 +257,7 @@ describe("TransformSectionLayout", () => {
     it("should not show the 'View your database connections' button for non-admin users without manage database permission", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         isAdmin: false,
         databases: [],
       });
@@ -268,14 +273,13 @@ describe("TransformSectionLayout", () => {
     it("should show an error UI (not the empty state) when the databases request fails", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         databasesError: true,
       });
 
       expect(await screen.findByText(/error/i)).toBeInTheDocument();
       expect(
-        screen.queryByText(
-          "To use transforms, you need a writable database connection",
-        ),
+        screen.queryByText("No compatible database connection"),
       ).not.toBeInTheDocument();
     });
   });
@@ -288,9 +292,13 @@ const assertEnableScreen = async () =>
     await screen.findByText("Customize and clean up your data"),
   ).toBeInTheDocument();
 
-const assertNoWritableDatabasesEmptyState = async () =>
+const assertNoWritableDatabasesEmptyState = async () => {
   expect(
-    await screen.findByText(
-      "To use transforms, you need a writable database connection",
-    ),
+    await screen.findByText("No compatible database connection"),
   ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("tab", { name: "Transforms" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: "Jobs" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: "Runs" })).not.toBeInTheDocument();
+};

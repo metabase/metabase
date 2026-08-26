@@ -128,6 +128,60 @@ describe("MiniPicker", () => {
     });
   });
 
+  describe("schemas", () => {
+    it("can pick a named schema from a db with multiple schemas", async () => {
+      const { onChangeSpy } = await setup({ models: ["schema"] });
+      await userEvent.click(await screen.findByText("Mini Db"));
+      await userEvent.click(await screen.findByText("public"));
+
+      expect(onChangeSpy).toHaveBeenCalledWith({
+        model: "schema",
+        id: "public",
+        database_id: 1,
+        name: "public",
+      });
+      // terminates on the schema; never drills into tables
+      expect(screen.queryByText("weather")).not.toBeInTheDocument();
+    });
+
+    it('auto-selects schema-less db (schema = "")', async () => {
+      const { onChangeSpy } = await setup({ models: ["schema"] });
+      await userEvent.click(await screen.findByText("NoSchema Db"));
+
+      // selects immediately without showing a blank schema row
+      await waitFor(() => {
+        expect(onChangeSpy).toHaveBeenCalledWith({
+          model: "schema",
+          id: "",
+          database_id: 3,
+          name: "",
+        });
+      });
+
+      // path resets back to the database list so the picker stays reopenable
+      // instead of being stuck re-triggering the auto-select
+      expect(await screen.findByText("Mini Db")).toBeInTheDocument();
+      expect(await screen.findByText("Solo Db")).toBeInTheDocument();
+    });
+
+    it("does not auto-select a single named schema", async () => {
+      const { onChangeSpy } = await setup({ models: ["schema"] });
+      await userEvent.click(await screen.findByText("Solo Db"));
+
+      // a named single schema is still a deliberate pick
+      const onlySchema = await screen.findByText("only");
+      expect(onChangeSpy).not.toHaveBeenCalled();
+
+      await userEvent.click(onlySchema);
+      expect(onChangeSpy).toHaveBeenCalledWith({
+        model: "schema",
+        id: "only",
+        database_id: 2,
+        name: "only",
+      });
+    });
+  });
+
   describe("collections", () => {
     it("can pick a model", async () => {
       const { onChangeSpy } = await setup();

@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS_ID, ORDERS_ID } = SAMPLE_DATABASE;
 
 const verifiedFilterToggleButton = () =>
   cy
@@ -96,6 +96,30 @@ describe("scenarios > browse", () => {
       event: "browse_data_table_clicked",
       table_id: PRODUCTS_ID,
     });
+  });
+
+  it("opens a table at a clean /table/:slug URL that falls back to /question on edit", () => {
+    cy.visit("/");
+    H.browseDatabases().click();
+    cy.findByRole("heading", { name: "Sample Database" }).click();
+    cy.findByRole("heading", { name: "Products" }).click();
+
+    cy.log("a pristine table view keeps the canonical /table/:slug URL");
+    cy.findByRole("button", { name: /Summarize/ }).should("be.visible");
+    cy.location("pathname").should("eq", `/table/${PRODUCTS_ID}-products`);
+
+    cy.log("the clean URL survives a reload");
+    cy.reload();
+    cy.findByRole("button", { name: /Summarize/ }).should("be.visible");
+    cy.location("pathname").should("eq", `/table/${PRODUCTS_ID}-products`);
+
+    cy.log("editing the question falls back to the ad-hoc /question#hash form");
+    H.tableHeaderClick("Category");
+    H.popover()
+      .findByTestId("click-actions-sort-control-sort.ascending")
+      .click();
+    cy.location("pathname").should("eq", "/question");
+    cy.location("hash").should("not.be.empty");
   });
 
   it("can generate x-ray dashboard from a browse page", () => {
@@ -407,5 +431,36 @@ describe("issue 37907", () => {
 
     H.tableInteractive().findByTextEnsureVisible("Discount ($)").realHover();
     H.popover().should("include.text", "Discount amount.");
+  });
+});
+
+describe("issue 74433", () => {
+  const LONG_TABLE_NAME =
+    "thisisaverylongtablenamewithoutspacesthatshouldoverflowthetooltipboxbecausetherearenospacesforbreakingxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/table/${ORDERS_ID}`, {
+      display_name: LONG_TABLE_NAME,
+    });
+  });
+
+  it("table-name tooltip in Browse Databases should not overflow when the name has no spaces (metabase#74433)", () => {
+    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    // Browse cards actually have a <Title> as the child of the <Ellipsified> component,
+    // so we need to target the parent for the hover
+    cy.findByRole("heading", { name: LONG_TABLE_NAME }).parent().realHover();
+
+    H.tooltip()
+      .should("be.visible")
+      .and(($tooltip) => {
+        const tooltip = $tooltip[0];
+        expect(
+          tooltip.scrollWidth,
+          "tooltip content fits within its box",
+        ).to.be.lte(tooltip.clientWidth);
+      });
   });
 });

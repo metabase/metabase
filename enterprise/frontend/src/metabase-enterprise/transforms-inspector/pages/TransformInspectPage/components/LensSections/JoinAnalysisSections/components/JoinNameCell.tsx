@@ -28,7 +28,7 @@ export const JoinNameCell = ({
           .with("inner-join", () => "join_inner" as const)
           .with("full-join", () => "join_full_outer" as const)
           .otherwise(() => "join_left_outer" as const)}
-        c="brand"
+        c="core-brand"
       />
     </Tooltip>
     <Ellipsified>{joinAlias}</Ellipsified>

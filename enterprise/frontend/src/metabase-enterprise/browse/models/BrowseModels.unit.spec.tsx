@@ -27,11 +27,10 @@ const setup = (modelCount: number, recentModelCount = 5) => {
   // Add some instance analytics models to ensure they don't affect the page
   models.push(...mockInstanceAnalyticsModels);
 
-  const mockRecentModels = mockModels
-    .slice(0, recentModelCount)
-    .map((model) =>
-      createMockRecentModel(model as unknown as RecentCollectionItem),
-    );
+  const mockRecentModels = mockModels.slice(0, recentModelCount).map((model) =>
+    // Unjustified type cast. FIXME
+    createMockRecentModel(model as unknown as RecentCollectionItem),
+  );
   setupRecentViewsEndpoints(mockRecentModels);
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models);

@@ -1,4 +1,4 @@
-{{> metabase/channel/email/_dashsub_alert_header.hbs }}
+{{> _dashsub_alert_header }}
   <body style="padding: 0px; margin: 0px">
     <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 48px; table-layout: fixed;">
       <tr>
@@ -46,6 +46,12 @@
               {{/if}}
             </div>
             {{/each}}
+
+            {{#if payload.event_info.skipped_count}}
+            <div style="line-height: 20px; color: #656F76; font-weight: 400; margin: 24px auto 24px auto;">
+              {{payload.event_info.skipped_count}} downstream transform(s) didn&rsquo;t run because a transform they depend on failed.
+            </div>
+            {{/if}}
 
             <hr style="margin-top: 32px; margin-bottom: 32px;">
             <div style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: #656F76; text-align: center;">

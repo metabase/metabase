@@ -1,8 +1,4 @@
 import type {
-  CheckCardDependenciesRequest,
-  CheckDependenciesResponse,
-  CheckSnippetDependenciesRequest,
-  CheckTransformDependenciesRequest,
   DependencyGraph,
   DependencyNode,
   GetDependencyGraphRequest,
@@ -81,36 +77,6 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
       providesTags: (response) =>
         response ? provideDependencyNodeListTags(response.data) : [],
     }),
-    checkCardDependencies: builder.query<
-      CheckDependenciesResponse,
-      CheckCardDependenciesRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/dependencies/check-card",
-        body,
-      }),
-    }),
-    checkSnippetDependencies: builder.query<
-      CheckDependenciesResponse,
-      CheckSnippetDependenciesRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/dependencies/check-snippet",
-        body,
-      }),
-    }),
-    checkTransformDependencies: builder.query<
-      CheckDependenciesResponse,
-      CheckTransformDependenciesRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/dependencies/check-transform",
-        body,
-      }),
-    }),
   }),
 });
 
@@ -118,9 +84,9 @@ export const {
   useGetDependencyGraphQuery,
   useListNodeDependentsQuery,
   useListBreakingGraphNodesQuery,
+  useLazyListBreakingGraphNodesQuery,
   useListBrokenGraphNodesQuery,
+  useLazyListBrokenGraphNodesQuery,
   useListUnreferencedGraphNodesQuery,
-  useLazyCheckCardDependenciesQuery,
-  useLazyCheckSnippetDependenciesQuery,
-  useLazyCheckTransformDependenciesQuery,
+  useLazyListUnreferencedGraphNodesQuery,
 } = dependencyApi;

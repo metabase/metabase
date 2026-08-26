@@ -29,12 +29,12 @@
    [:type :string]
    [:database {:optional true} :int]
    [:schema {:optional true} [:maybe :string]]
-   [:name :string]])
+   [:name :string]
+   [:indexes {:optional true} [:sequential :map]]])
 
 (mr/def ::transform
   "A transform map as expected by execute-base! implementations."
   [:map
-   ;; The :id is only present for Global transforms, and missing for Workspace transforms.
    [:id {:optional true} pos-int?]
    [:source [:map [:type [:or :string :keyword]]]]
    [:target ::transform-target]
@@ -55,7 +55,9 @@
    [:column ::lib.schema.metadata/column]
    [:checkpoint-filter-field-id ::lib.schema.id/field]
    [:lo {:optional true} [:maybe ::checkpoint-bound]]
-   [:hi {:optional true} [:maybe ::checkpoint-bound]]])
+   [:hi {:optional true} [:maybe ::checkpoint-bound]]
+   ;; Count of source rows in (lo, hi] from the same scan that derived the watermark; nil if unavailable.
+   [:rows-available {:optional true} [:maybe :int]]])
 
 ;;; ------------------------------------------------- Options -------------------------------------------------
 

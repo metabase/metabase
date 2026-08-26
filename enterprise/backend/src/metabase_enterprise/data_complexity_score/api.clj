@@ -75,7 +75,7 @@
 ;; instead. In a clustered deployment the guard is per-node, so up to one pass per node can still
 ;; run concurrently; we accept that since superuser API traffic is low-volume. The Quartz job
 ;; already has its own concurrency control (`DisallowConcurrentExecution` + cluster lock for boot
-;; emission), so we deliberately don't share this guard with the task path; a daily cron run that
+;; emission), so we deliberately don't share this guard with the task path; a weekly cron run that
 ;; coincided with an API call shouldn't be cancelled.
 (defonce ^:private ^java.util.concurrent.atomic.AtomicBoolean api-scoring-running?
   (java.util.concurrent.atomic.AtomicBoolean. false))

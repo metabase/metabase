@@ -4,6 +4,7 @@ import type { GenericErrorResponse } from "./types";
  * @deprecated Use `getErrorMessage` from `metabase/api/utils` instead.
  */
 export function getResponseErrorMessage(error: unknown): string | undefined {
+  // Unjustified type cast. FIXME
   const response = error as GenericErrorResponse | undefined;
 
   if (!response) {

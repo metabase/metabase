@@ -2,9 +2,12 @@ import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import {
+  canManageSubscriptions as canManageSubscriptionsSelector,
+  useUserAcknowledgement,
+} from "metabase/current-user";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -20,7 +23,6 @@ import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { onOpenQuestionSettings } from "metabase/redux/query-builder";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
-import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

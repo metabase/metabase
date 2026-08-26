@@ -20,7 +20,7 @@
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name)))
       (mt/with-temp-vals-in-db :model/FieldValues (u/the-id (t2/select-one-pk :model/FieldValues :field_id (mt/id :categories :name))) {:values ["Good" "Bad"]}
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-          (with-redefs [metabase.parameters.chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-fn-redefs [metabase.parameters.chain-filter/use-cached-field-values? (constantly false)]
             (testing "GET /api/dashboard/:id/params/:param-key/values"
               (mt/let-url [url (api.dashboard-test/chain-filter-values-url dashboard "_CATEGORY_NAME_")]
                 (is (= {:values          [["African"] ["American"]]

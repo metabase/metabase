@@ -1,5 +1,3 @@
-import type { Location } from "history";
-
 import {
   canResetFilter,
   createTabSlug,
@@ -22,6 +20,7 @@ import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
+  createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
   createMockDatabase,
@@ -43,8 +42,13 @@ const DISABLED_ACTIONS_DATABASE = createMockDatabase({
 });
 const NO_ACTIONS_DATABASE = createMockDatabase({ id: 3 });
 
-function getMockLocationWithTab(slug: Location["query"][string]) {
-  return createMockLocation({ query: { tab: slug } });
+function getMockLocationWithTab(slug: string | string[] | null | undefined) {
+  const params = new URLSearchParams();
+  for (const value of slug == null ? [] : [slug].flat()) {
+    params.append("tab", value);
+  }
+  const search = params.toString();
+  return createMockLocation({ search: search ? `?${search}` : "" });
 }
 
 describe("Dashboard utils", () => {
@@ -56,6 +60,7 @@ describe("Dashboard utils", () => {
 
       const successfulFetch = Promise.resolve(data);
 
+      // Unjustified type cast. FIXME
       const result = (await fetchDataOrError(successfulFetch)) as any;
 
       expect(result.error).toBeUndefined();
@@ -76,6 +81,7 @@ describe("Dashboard utils", () => {
 
       const result = await fetchDataOrError(failedFetch);
       expect(result).toBeTruthy();
+      // Unjustified type cast. FIXME
       expect((result as { error: unknown }).error).toEqual(error);
     });
 
@@ -428,6 +434,32 @@ describe("Dashboard utils", () => {
         ]),
       );
     });
+
+    // A pivot query with no matching data still returns a single grand-total
+    // row, so "hide when empty" pivot cards must be hidden based on detail rows
+    // (pivot-grouping === 0), not raw row count. (metabase#74387)
+    it("hides a hide-when-empty pivot card whose only row is the grand total", () => {
+      const pivotTotalsOnlyData = createMockDatasetData({
+        cols: [
+          createMockColumn({ name: "CATEGORY", source: "breakout" }),
+          createMockColumn({ name: "VENDOR", source: "breakout" }),
+          createMockColumn({ name: "pivot-grouping", source: "breakout" }),
+          createMockColumn({ name: "max", source: "aggregation" }),
+        ],
+        rows: [[null, null, 3, null]],
+      });
+      const loadedWithPivotTotalsOnly = {
+        ...loadedWithData,
+        [hidingWhenEmptyCardId]: {
+          200: createMockDataset({ data: pivotTotalsOnlyData }),
+        },
+      };
+
+      const visibleIds = getVisibleCardIds(cards, loadedWithPivotTotalsOnly);
+      expect(visibleIds).toStrictEqual(
+        new Set([virtualCardId, normalCardId, visualizerCardId]),
+      );
+    });
   });
 
   describe("getCurrentTabDashboardCards", () => {
@@ -488,9 +520,7 @@ describe("Dashboard utils", () => {
           getMockLocationWithTab(["1-tab-name", "2-another-tab-name"]),
         ),
       ).toBe(null);
-      expect(parseTabSlug({ ...getMockLocationWithTab(""), query: {} })).toBe(
-        null,
-      );
+      expect(parseTabSlug(createMockLocation())).toBe(null);
     });
   });
 

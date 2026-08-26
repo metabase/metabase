@@ -34,7 +34,7 @@ People in the Data Analyst group will have table metadata and data structure acc
 
 _Data Studio > Tables_
 
-You can see all tables in all databases connected to your Metabase in **Data Studio > Tables**, together with their owner, row count, and published state. For now, Metabase only displays row counts for PostgreSQL tables.
+You can see all tables in all databases connected to your Metabase in **Data Studio > Tables**, together with their owner, visibility layer, row count, and published state. For now, Metabase only displays row counts for PostgreSQL tables.
 
 You can search for table names, but the search will only match beginnings of words in table names. So for example, if you search for "base", results will include names like "Baseball stats" and "All your base are belong to us", but the results won't include tables like "Metabase secrets".
 
@@ -125,3 +125,4 @@ Measures are saved aggregations on a table that people can use in the query buil
 - [Table metadata editing](../data-modeling/metadata-editing.md)
 - [Segments](./segments.md)
 - [Measures](./measures.md)
+- [Schema viewer](./schema-viewer.md)

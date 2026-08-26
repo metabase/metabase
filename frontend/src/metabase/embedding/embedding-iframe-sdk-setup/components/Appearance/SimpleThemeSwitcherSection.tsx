@@ -15,6 +15,7 @@ export const SimpleThemeSwitcherSection = ({
   return (
     <Radio.Group
       value={preset}
+      // Unjustified type cast. FIXME
       onChange={(value) => onPresetChange(value as MetabaseThemePreset)}
     >
       <Stack gap="sm">

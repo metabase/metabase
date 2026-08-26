@@ -8,7 +8,9 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   whitelabel: "metabase-enterprise/whitelabel",
   sandboxes: "metabase-enterprise/sandboxes",
   clean_up: "metabase-enterprise/clean_up",
-  tools: "metabase-enterprise/tools",
+  tools: "metabase-enterprise/monitor/tools",
+  monitor_dependency_diagnostics:
+    "metabase-enterprise/monitor/dependency-diagnostics",
   advanced_permissions: "metabase-enterprise/advanced_permissions",
   sharing: "metabase-enterprise/sharing",
   metabot: "metabase-enterprise/metabot",
@@ -21,6 +23,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   embedding: "metabase-enterprise/embedding",
   admin: "metabase-enterprise/admin",
   dependencies: "metabase-enterprise/dependencies",
+  schema_viewer: "metabase-enterprise/schema_viewer",
   feature_level_permissions: "metabase-enterprise/feature_level_permissions",
   shared: "metabase-enterprise/shared",
   transforms: "metabase-enterprise/transforms",
@@ -49,8 +52,8 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   google_drive: "metabase-enterprise/google_drive",
   content_verification: "metabase-enterprise/content_verification",
   moderation: "metabase-enterprise/moderation",
+  multi_factor_auth: "metabase-enterprise/multi_factor_auth",
   tenants: "metabase-enterprise/tenants",
-  workspaces: "metabase-enterprise/workspaces",
 
   // Embedding SDK specific plugins
   sdk_notifications: "embedding-sdk-ee/notifications",

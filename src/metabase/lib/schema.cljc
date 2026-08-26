@@ -63,7 +63,9 @@
 
 (mr/def ::stage.common
   [:map
-   {:decode/normalize normalize-stage-common}
+   {:decode/normalize normalize-stage-common
+    :decode/api       common/remove-internal-keys
+    :encode/serialize common/remove-internal-keys}
    [:parameters         {:optional true} [:ref ::lib.schema.parameter/parameters]]
    [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]])
 
@@ -101,7 +103,9 @@
      [:collection {:optional true} ::common/non-blank-string]
      ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
      ;; `:native` key), but their definition lives under this key.
-     [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
+     ;;
+     ;; Prior to 63, this was a map, but was changed to a list to preserve order with more than 8 template tags.
+     [:template-tags {:optional true} [:ref ::template-tag/template-tags]]
      ;; optional, set of Card IDs referenced by this query in `:card` template tags like `{{card}}`. This is added
      ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
      ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.
@@ -260,6 +264,22 @@
    [:page  pos-int?]
    [:items pos-int?]])
 
+(mr/def ::pivot
+  "Pivot intent. `:rows` and `:columns` are sequences of UUIDs that reference `:lib/uuid` values on breakouts of the
+  stage that carries this clause. `:show-row-totals` and `:show-column-totals` default to `true` when absent."
+  [:map
+   {:decode/normalize common/normalize-map}
+   [:rows               [:sequential ::common/uuid]]
+   [:columns            [:sequential ::common/uuid]]
+   [:show-row-totals    {:optional true} :boolean]
+   [:show-column-totals {:optional true} :boolean]])
+
+(mr/def ::pivot-only-on-last-stage
+  [:fn
+   {:error/message ":pivot is only allowed on the last stage of a query"}
+   (fn [{:keys [stages]}]
+     (not-any? :pivot (butlast stages)))])
+
 (defn- normalize-mbql-stage [m]
   (normalize-stage-common m))
 
@@ -300,7 +320,8 @@
      [:source-table       {:optional true} [:ref ::id/table]]
      [:source-card        {:optional true} [:ref ::id/card]]
      [:page               {:optional true} [:ref ::page]]
-     [:limit              {:optional true} nat-int?]]]
+     [:limit              {:optional true} nat-int?]
+     [:pivot              {:optional true} [:ref ::pivot]]]]
    [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
@@ -354,8 +375,6 @@
                                ;; it's supposed to be added to the top level. Investigate whether this was just a
                                ;; mistake or what.
                                :middleware)}
-   [:map
-    [:lib/type [:ref ::stage.type]]]
    [:multi {:dispatch      lib-type
             :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
@@ -363,7 +382,8 @@
    (common/disallowed-keys
     {:source-metadata "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"
      :source-query    ":source-query is not allowed in MBQL 5 queries."
-     :type            ":type is not allowed in a query stage in any version of MBQL"})])
+     :type            ":type is not allowed in a query stage in any version of MBQL"
+     :database        ":database is not allowed in a query stage, only at the top level of a query."})])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type
@@ -481,13 +501,13 @@
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
   ;; to be part of the query itself. It doesn't get saved along with the query in the app DB.
+  ;;
+  ;; [[common/internal-key?]] also drops all internal namespaced keys the query processor adds, keeping `:lib` keys like
+  ;; `:lib/type`.
   (let [keys-to-remove #{:lib/metadata :info :parameters :viz-settings}]
     (m/filter-keys (fn [k]
                      (and (not (contains? keys-to-remove k))
-                          (or (simple-keyword? k)
-                              ;; remove all random namespaced keys like
-                              ;; `:metabase.query-permissions.impl/perms`. Keep `:lib` keys like `:lib/type`
-                              (= (namespace k) "lib"))))
+                          (not (common/internal-key? k))))
                    query)))
 
 (defn- encode-query-for-hashing [query]
@@ -509,6 +529,7 @@
    [:map
     {:description        "Valid MBQL 5 query."
      :decode/normalize   #'normalize-query
+     :decode/api         #'common/remove-internal-keys
      :encode/serialize   #'serialize-query
      :encode/for-hashing #'encode-query-for-hashing}
     [:lib/type [:=
@@ -531,6 +552,18 @@
     [:settings    {:optional true} [:ref ::lib.schema.settings/settings]]
     [:constraints {:optional true} [:ref ::lib.schema.constraints/constraints]]
     [:middleware  {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
+    [:was-pivot
+     {:optional true
+      :description
+      "Whether this query was originally run as a pivot query. Stamped into the saved `json_query` by
+  `metabase.query-processor.middleware.process-userland-query` and sent back by clients re-downloading pivot query
+  results."}
+     [:maybe :boolean]]
+    [:pivot-rows         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:pivot-cols         {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:pivot-measures     {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:show-row-totals    {:optional true} [:maybe :boolean]]
+    [:show-column-totals {:optional true} [:maybe :boolean]]
     ;; TODO -- `:viz-settings` ?
     ;;
     ;; INFO
@@ -547,8 +580,10 @@
    ;;
    ;; CONSTRAINTS
    [:ref ::lib.schema.util/unique-uuids]
+   [:ref ::pivot-only-on-last-stage]
    (common/disallowed-keys
     {:expressions  ":expressions is not allowed in the top level of a query, only in MBQL stages"
+     :pivot        ":pivot is a stage clause and only allowed on the last stage of a query"
      :filter       ":filter is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
      :filters      ":filters is not allowed in the top level of a query, only in MBQL stages"
      :joins        ":joins is not allowed in the top level of a query, only in MBQL stages"

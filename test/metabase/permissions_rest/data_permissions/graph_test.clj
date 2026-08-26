@@ -52,7 +52,6 @@
             {:perms/view-data :blocked
              :perms/create-queries :no
              :perms/transforms :no
-             :perms/workspaces :no
              :perms/download-results :no}}})))))
 
 (deftest update-db-level-create-queries-permissions!-test
@@ -83,8 +82,7 @@
            {database-id-1
             {:perms/create-queries :query-builder
              :perms/view-data :unrestricted
-             :perms/transforms :no
-             :perms/workspaces :no}}}
+             :perms/transforms :no}}}
 
           {group-id-1
            {database-id-1
@@ -92,8 +90,7 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries :no
-             :perms/transforms :no
-             :perms/workspaces :no}}}
+             :perms/transforms :no}}}
 
           {group-id-1
            {database-id-1
@@ -155,7 +152,6 @@
            {database-id-1
             {:perms/create-queries :no
              :perms/transforms :no
-             :perms/workspaces :no
              :perms/view-data {"PUBLIC"
                                {table-id-1 :unrestricted
                                 table-id-2 :legacy-no-self-service}
@@ -163,9 +159,6 @@
                                {table-id-3 :unrestricted}}}}}
 
           ;; Restoring full data access and native query permissions
-          ;; Note: :perms/workspaces persists from the previous step (which forced it to :no when
-          ;; create-queries was :no). It would be cleared explicitly by a graph entry setting
-          ;; :workspaces :yes; we just exercise the cascade-clearance for transforms here.
           {group-id-1
            {database-id-1
             {:create-queries :query-builder-and-native
@@ -175,8 +168,7 @@
            {database-id-1
             {:perms/create-queries :query-builder-and-native
              :perms/view-data :unrestricted
-             :perms/transforms :yes
-             :perms/workspaces :no}}}
+             :perms/transforms :yes}}}
 
           ;; Setting data access permissions at the schema-level
           {group-id-1
@@ -188,7 +180,6 @@
            {database-id-1
             {:perms/create-queries :no
              :perms/transforms :no
-             :perms/workspaces :no
              :perms/view-data {"PUBLIC"
                                {table-id-1 :unrestricted
                                 table-id-2 :unrestricted}
@@ -204,7 +195,6 @@
             {:perms/create-queries :no
              :perms/view-data :blocked
              :perms/transforms :no
-             :perms/workspaces :no
              :perms/download-results :no}}})))))
 
 (deftest update-db-level-download-permissions!-test
@@ -583,3 +573,73 @@
           (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
                                                                                                     :create-queries :query-builder}}}
                                                                 :revision (:revision (data-perms.graph/api-graph))}))))))))
+
+(deftest reduce-into-graph-test
+  (let [reduce-into-graph @#'data-perms.graph/reduce-into-graph
+        row               (fn [group-id db-id perm-type schema table-id value]
+                            {:group-id group-id :db-id db-id :type perm-type
+                             :schema schema :table-id table-id :value value})]
+    (testing "rows ordered by (group, db) are folded into a nested group -> db -> perm-map graph"
+      (is (= {1 {10 {:perms/view-data       :unrestricted
+                     :perms/create-queries  {"PUBLIC" {100 :query-builder}}}}
+              2 {20 {:perms/view-data :blocked}}}
+             (reduce-into-graph
+              [(row 1 10 :perms/view-data      nil    nil :unrestricted)
+               (row 1 10 :perms/create-queries "PUBLIC" 100 :query-builder)
+               (row 2 20 :perms/view-data      nil    nil :blocked)]
+              identity))))
+    (testing "a nil table-id is a db-level perm; a present table-id is table-level keyed by schema then table-id"
+      (is (= {1 {10 {:perms/manage-database :yes
+                     :perms/view-data       {"PUBLIC" {100 :unrestricted
+                                                       101 :blocked}}}}}
+             (reduce-into-graph
+              [(row 1 10 :perms/manage-database nil      nil :yes)
+               (row 1 10 :perms/view-data       "PUBLIC" 100 :unrestricted)
+               (row 1 10 :perms/view-data       "PUBLIC" 101 :blocked)]
+              identity))))
+    (testing "a nil schema on a table-level row defaults to the empty-string schema key"
+      (is (= {1 {10 {:perms/view-data {"" {100 :unrestricted}}}}}
+             (reduce-into-graph
+              [(row 1 10 :perms/view-data nil 100 :unrestricted)]
+              identity))))
+    (testing "finalize is applied to each (group, db) perm-map, and entries it empties are dropped"
+      (is (= {1 {10 {:perms/view-data :unrestricted}}}
+             (reduce-into-graph
+              [(row 1 10 :perms/view-data nil nil :unrestricted)
+               (row 2 20 :perms/view-data nil nil :blocked)]
+              ;; keep the first group as-is, but empty the second so it should not appear in the graph
+              (fn [perm-map]
+                (if (= perm-map {:perms/view-data :unrestricted})
+                  perm-map
+                  {}))))))
+    (testing "an empty reducible yields an empty graph"
+      (is (= {} (reduce-into-graph [] identity))))))
+
+(deftest transforms-require-query-builder-and-native-test
+  (testing "Granting transforms permission requires \"Query builder and native\" (create-queries = :query-builder-and-native)"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                   :model/Database         {db-id :id}    {}]
+      ;; Clear default perms for the group
+      (t2/delete! :model/DataPermissions :group_id group-id)
+      (testing "transforms:yes together with create-queries:query-builder-and-native is allowed"
+        (is (nil? (data-perms.graph/update-data-perms-graph!
+                   {:groups {group-id {db-id {:view-data :unrestricted
+                                              :create-queries :query-builder-and-native
+                                              :transforms :yes}}}})))
+        (is (= :yes (data-perms/database-permission-for-user (mt/user->id :crowberto) :perms/transforms db-id))))
+      (testing "transforms:yes together with create-queries:query-builder is rejected"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Query builder and native"
+             (data-perms.graph/update-data-perms-graph!
+              {:groups {group-id {db-id {:view-data :unrestricted
+                                         :create-queries :query-builder
+                                         :transforms :yes}}}}))))
+      (testing "transforms:yes alone is rejected when existing create-queries is not query-builder-and-native"
+        ;; Downgrade create-queries so the group no longer has native access
+        (data-perms.graph/update-data-perms-graph!
+         {:groups {group-id {db-id {:view-data :unrestricted
+                                    :create-queries :query-builder}}}})
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Query builder and native"
+             (data-perms.graph/update-data-perms-graph!
+              {:groups {group-id {db-id {:transforms :yes}}}})))))))

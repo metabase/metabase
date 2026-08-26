@@ -55,8 +55,8 @@
                    :model/Table {t2-id :id} {:db_id db-id}
                    :model/Field _ {:table_id t1-id :name "id" :base_type :type/Integer}
                    :model/Field _ {:table_id t2-id :name "id" :base_type :type/Integer}]
-      (with-redefs [replacement.usages/transitive-usages
-                    (constantly [[:table t2-id]])]
+      (mt/with-dynamic-fn-redefs [replacement.usages/transitive-usages
+                                  (constantly [[:table t2-id]])]
         (let [result (replacement.source-check/check-replace-source
                       [:table t1-id] [:table t2-id])]
           (is (false? (:success result)))
@@ -283,8 +283,8 @@
                    ;; FK from t3 to t1 triggers implicit-joins
                    :model/Field _ {:table_id t3-id :name "t1_fk" :base_type :type/Integer
                                    :semantic_type :type/FK :fk_target_field_id f1-id}]
-      (with-redefs [replacement.usages/transitive-usages
-                    (constantly [[:table t2-id]])]
+      (mt/with-dynamic-fn-redefs [replacement.usages/transitive-usages
+                                  (constantly [[:table t2-id]])]
         (let [result (replacement.source-check/check-replace-source
                       [:table t1-id] [:table t2-id])]
           (is (false? (:success result)))

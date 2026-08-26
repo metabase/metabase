@@ -1,23 +1,48 @@
 import type { CustomVisualization } from "custom-viz";
+import type { ComponentType } from "react";
 
-import type { Visualization } from "metabase/visualizations/types/visualization";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import type {
+  Visualization,
+  VisualizationPassThroughProps,
+  VisualizationProps,
+} from "metabase/visualizations/types/visualization";
+import type {
+  CustomVizPluginRuntime,
+  VisualizationDisplay,
+} from "metabase-types/api";
+
+import { sanitizePluginSettings } from "./custom-viz-settings";
 
 /**
  * Assign properties derived from a vizDef onto a Visualization component
  * and merge in caller-specific overrides.
+ *
+ * `vizDef.settings` arrives as a near-membrane proxy from the plugin
+ * sandbox. Before the host visualization layer can read setting widget
+ * values, every function-shaped `widget` must be re-wrapped in a
+ * host-allocated `WidgetMount`. Because the host always allocates this
+ * wrapper itself, its plugin-id marker is host-controlled by construction —
+ * letting the host later distinguish mount-driven widgets from plain React
+ * components.
  */
 export function applyDefaultVisualizationProps(
-  Component: Visualization,
+  Component: ComponentType<VisualizationProps & VisualizationPassThroughProps>,
   vizDef: CustomVisualization<Record<string, unknown>>,
   settings: {
-    identifier: string;
+    identifier: VisualizationDisplay;
+    plugin: CustomVizPluginRuntime;
     getUiName: () => string;
     iconUrl?: string | undefined;
     isDev?: boolean;
   },
-) {
-  Object.assign(Component, {
-    settings: vizDef.settings ?? {},
+): Visualization {
+  const { plugin, ...componentSettings } = settings;
+  return Object.assign(Component, {
+    settings: {
+      ...columnSettings({ getHidden: () => true }),
+      ...sanitizePluginSettings(vizDef.settings, vizDef.mount, plugin),
+    },
     checkRenderable: vizDef.checkRenderable,
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
@@ -25,6 +50,7 @@ export function applyDefaultVisualizationProps(
     minSize: vizDef.minSize,
     defaultSize: vizDef.defaultSize,
     isDev: settings.isDev,
-    ...settings,
-  } satisfies Partial<Record<keyof Visualization, unknown>>);
+    pluginId: plugin.id,
+    ...componentSettings,
+  });
 }

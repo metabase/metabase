@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { ButtonGroup } from "metabase/common/components/ButtonGroup";
 import { ViewButton } from "metabase/common/components/ViewButton";
 import CS from "metabase/css/core/index.css";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -14,7 +13,7 @@ import {
   onOpenChartType,
 } from "metabase/redux/query-builder";
 import type { QueryBuilderUIControls } from "metabase/redux/store";
-import { Group } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
 
 import S from "./LeftViewFooterButtonGroup.module.css";
 
@@ -51,7 +50,7 @@ export const LeftViewFooterButtonGroup = () => {
 
   return (
     <Group className={cx(CS.flex1, S.Root)}>
-      <ButtonGroup className={S.FooterButtonGroup}>
+      <Button.Group className={S.FooterButtonGroup}>
         <ViewButton
           medium
           labelBreakpoint="sm"
@@ -78,7 +77,7 @@ export const LeftViewFooterButtonGroup = () => {
               : () => dispatch(onOpenChartSettings())
           }
         />
-      </ButtonGroup>
+      </Button.Group>
     </Group>
   );
 };

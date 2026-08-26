@@ -4,6 +4,7 @@ import { Box } from "metabase/ui";
 
 import { BreakoutPicker } from ".";
 
+// Unjustified type cast. FIXME
 const QUESTION_ID = (window as any).QUESTION_ID || 12;
 
 export default {

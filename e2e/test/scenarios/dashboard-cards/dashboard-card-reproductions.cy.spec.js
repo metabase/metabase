@@ -431,14 +431,6 @@ describe("issue 17160", () => {
     });
   }
 
-  function visitPublicSourceDashboard() {
-    cy.get("@sourceDashboardUUID").then((uuid) => {
-      cy.visit(`/public/dashboard/${uuid}`);
-
-      cy.findByTextEnsureVisible("Enormous Wool Car");
-    });
-  }
-
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
@@ -478,37 +470,6 @@ describe("issue 17160", () => {
 
     assertMultipleValuesFilterState();
   });
-
-  it(
-    "should pass multiple filter values to public questions and dashboards (metabase#17160-2)",
-    { tags: "@skip" },
-    () => {
-      // FIXME: setup public dashboards
-      setup();
-
-      // 1. Check click behavior connected to a public question
-      visitPublicSourceDashboard();
-
-      cy.findAllByText("click-behavior-question-label").eq(0).click();
-
-      cy.url().should("include", "/public/question");
-
-      assertMultipleValuesFilterState();
-
-      // 2. Check click behavior connected to a publicdashboard
-      visitPublicSourceDashboard();
-
-      cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
-
-      cy.url().should("include", "/public/dashboard");
-      cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(TARGET_DASHBOARD_NAME);
-
-      assertMultipleValuesFilterState();
-    },
-  );
 });
 
 describe("issue 18454", () => {
@@ -1663,5 +1624,39 @@ describe("issue 63416", () => {
       downloadUrl: `/api/dashboard/${this.dashboardId}/dashcard/*/card/*/query/csv`,
       assertParameters: [{ type: "string/=", value: ["Doohickey"] }],
     });
+  });
+});
+
+describe("issue 76056", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    H.createDashboard().then(({ body: dashboard }) => {
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("the dashcard actions panel should not have redundant horizontal space (metabase#76056)", () => {
+    H.editDashboard();
+    cy.button("Add action").click();
+    cy.button("Close").click();
+
+    H.showDashboardCardActions();
+
+    cy.findByTestId("dashboardcard-actions-panel")
+      .should("be.visible")
+      .then(($panel) => {
+        const panelRect = $panel[0].getBoundingClientRect();
+        const buttonRects = Array.from($panel[0].querySelectorAll("a")).map(
+          (button) => button.getBoundingClientRect(),
+        );
+        const maxRight = Math.max(...buttonRects.map((rect) => rect.right));
+        const minLeft = Math.min(...buttonRects.map((rect) => rect.left));
+        const contentWidth = maxRight - minLeft;
+
+        expect(panelRect.width).to.be.closeTo(contentWidth, 10);
+      });
   });
 });

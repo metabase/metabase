@@ -10,6 +10,7 @@ export const InsightsMenuItem = ({
   card,
   label,
   iconName = "external",
+  withDivider = false,
 }: InsightsMenuItemProps) => {
   const { data: auditInfo, error, isLoading } = useGetAuditInfoQuery();
 
@@ -25,13 +26,16 @@ export const InsightsMenuItem = ({
   const url = `${Urls.dashboard({ id: auditInfo.question_overview, name: "" })}?${params}`;
 
   return (
-    <Menu.Item
-      component={ForwardRefLink}
-      to={url}
-      target="_blank"
-      leftSection={<Icon name={iconName} />}
-    >
-      {label ?? t`Insights`}
-    </Menu.Item>
+    <>
+      {withDivider && <Menu.Divider role="separator" />}
+      <Menu.Item
+        component={ForwardRefLink}
+        to={url}
+        target="_blank"
+        leftSection={<Icon name={iconName} />}
+      >
+        {label ?? t`Insights`}
+      </Menu.Item>
+    </>
   );
 };

@@ -27,13 +27,20 @@ jest.mock("metabase/dashboard/selectors", () => ({
   getParameters: jest.fn(),
 }));
 
+// Unjustified type cast. FIXME
 const useSdkDispatchMock = useSdkDispatch as unknown as jest.Mock;
+// Unjustified type cast. FIXME
 const useSdkSelectorMock = useSdkSelector as unknown as jest.Mock;
+// Unjustified type cast. FIXME
 const startSdkListeningMock = startSdkListening as unknown as jest.Mock;
+// Unjustified type cast. FIXME
 const getDashboardCompleteMock = getDashboardComplete as unknown as jest.Mock;
+// Unjustified type cast. FIXME
 const getParameterValuesMock = getParameterValues as unknown as jest.Mock;
+// Unjustified type cast. FIXME
 const getParametersMock = getParameters as unknown as jest.Mock;
 
+// Unjustified type cast. FIXME
 const STATE_PARAM = {
   id: "p1",
   slug: "state",
@@ -42,6 +49,7 @@ const STATE_PARAM = {
   target: ["variable", ["template-tag", "state"]],
 } as unknown as UiParameter;
 
+// Unjustified type cast. FIXME
 const CATEGORY_PARAM = {
   id: "p2",
   slug: "category",
@@ -108,7 +116,7 @@ const setup = (options: SetupOptions = {}) => {
         parameters: props.parameters,
         onParametersChange: props.onParametersChange,
       }),
-    { initialProps: { parameters, onParametersChange } as RenderProps },
+    { initialProps: { parameters, onParametersChange } },
   );
 
   const updateSelectors = (next: Partial<typeof selectorState>) => {

@@ -20,7 +20,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
-   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -188,38 +187,6 @@
                               :unknown-error)))]
         (group-by classify schemas)))))
 
-(defn- classify-isolation-schemas
-  "Classifies workspace isolation schemas by age using a single query. Returns a map:
-   {:expired  schemas older than threshold (safe to delete)
-    :recent   schemas created within threshold (might be from parallel test)}"
-  [^java.sql.Connection conn schemas]
-  (if (empty? schemas)
-    {}
-    (let [threshold    (t/minus (t/instant) (t/hours hours-before-expired-threshold))
-          schema-list  (str/join "," (map #(str "'" % "'") schemas))
-          ;; Use pg_class_info joined with pg_namespace to get oldest object creation time per schema
-          sql          (str "SELECT TRIM(n.nspname) as schema_name, MIN(c.relcreationtime) as oldest "
-                            "FROM pg_class_info c "
-                            "JOIN pg_namespace n ON c.relnamespace = n.oid "
-                            "WHERE TRIM(n.nspname) IN (" schema-list ") "
-                            "GROUP BY n.nspname")
-          schema->time (with-open [stmt (.createStatement conn)
-                                   rset (.executeQuery stmt sql)]
-                         (loop [result {}]
-                           (if (.next rset)
-                             (recur (assoc result
-                                           (.getString rset "schema_name")
-                                           (.getTimestamp rset "oldest")))
-                             result)))]
-      (group-by (fn [schema-name]
-                  (if-let [oldest (get schema->time schema-name)]
-                    (if (t/before? (t/instant oldest) threshold)
-                      :expired
-                      :recent)
-                    ;; Schema not in pg_class_info means no objects - treat as expired
-                    :expired))
-                schemas))))
-
 ;;; --------------------------------- Enumeration ----------------------------------
 ;;;
 ;;; Pure (read-only) classifiers. Call from REPL to preview what cleanup WOULD do:
@@ -227,7 +194,7 @@
 ;;;     (with-open [c (.. (sql-jdbc.conn/connection-details->spec :redshift @db-connection-details)
 ;;;                       jdbc/get-connection)]
 ;;;       (rs-tx/orphan-schemas c))
-;;;     ;; => {:old [...] :expired-cache [...] :expired-isolation [...]}
+;;;     ;; => {:old [...] :expired-cache [...]}
 
 (defn- orphan-schemas
   "Classify every schema in the connected Redshift DB into orphan buckets.
@@ -236,48 +203,26 @@
      :expired-cache       -- model-persistence cache schemas past TTL
      :lacking-created-at  -- cache schemas with no `cache_info.created-at`
      :old-style-cache     -- cache schemas without a `cache_info` table at all
-     :expired-isolation   -- workspace-isolation schemas past TTL
 
    Pure: makes 1-2 catalog queries but does NOT drop anything. Use the
    `drop-orphan-*!` fns to act on the result."
   [^java.sql.Connection conn]
   (let [{old-convention   :old
-         caches-with-info :cache
-         isolation        :isolation} (reduce (fn [acc s]
-                                                (cond (sql.tu.unique-prefix/old-dataset-name? s)
-                                                      (update acc :old conj s)
-                                                      (str/starts-with? s "metabase_cache_")
-                                                      (update acc :cache conj s)
-                                                      (driver.u/workspace-isolated-schema? s)
-                                                      (update acc :isolation conj s)
-                                                      :else acc))
-                                              {:old [] :cache [] :isolation []}
-                                              (fetch-schemas conn))
+         caches-with-info :cache} (reduce (fn [acc s]
+                                            (cond (sql.tu.unique-prefix/old-dataset-name? s)
+                                                  (update acc :old conj s)
+                                                  (str/starts-with? s "metabase_cache_")
+                                                  (update acc :cache conj s)
+                                                  :else acc))
+                                          {:old [] :cache []}
+                                          (fetch-schemas conn))
         {expired-cache      :expired
          old-style-cache    :old-style-cache
-         lacking-created-at :lacking-created-at} (classify-cache-schemas conn caches-with-info)
-        {expired-isolation  :expired}            (classify-isolation-schemas conn isolation)]
+         lacking-created-at :lacking-created-at} (classify-cache-schemas conn caches-with-info)]
     {:old                (vec old-convention)
      :expired-cache      (vec expired-cache)
      :old-style-cache    (vec old-style-cache)
-     :lacking-created-at (vec lacking-created-at)
-     :expired-isolation  (vec expired-isolation)}))
-
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn- orphan-isolation-users
-  "Iso users (`mb__isolation_*`) older than [[hours-before-expired-threshold]].
-
-   Derived from [[orphan-schemas]] -- iso schema names and iso user names are
-   identical strings by construction (`workspace-isolation-namespace-name` ==
-   `workspace-isolation-user-name`). Schema is always created BEFORE user in
-   `init-workspace-isolation! :redshift`, so an orphan user without a paired
-   schema is structurally impossible; we don't need a separate query.
-
-   REPL-only convenience -- production path consumes the schemas result map
-   directly via [[delete-old-schemas!]]. Kept here so devs can preview without
-   knowing the orphan-map shape."
-  [^java.sql.Connection conn]
-  (:expired-isolation (orphan-schemas conn)))
+     :lacking-created-at (vec lacking-created-at)}))
 
 ;;; --------------------------------- Destruction ----------------------------------
 
@@ -292,8 +237,7 @@
     (doseq [[k fmt-str] [[:old                "Dropping old data schema: %s"]
                          [:expired-cache      "Dropping expired cache schema: %s"]
                          [:lacking-created-at "Dropping cache without created-at info: %s"]
-                         [:old-style-cache    "Dropping old cache schema without `cache_info` table: %s"]
-                         [:expired-isolation  "Dropping expired workspace isolation schema: %s"]]
+                         [:old-style-cache    "Dropping old cache schema without `cache_info` table: %s"]]
             schema (get orphans k)]
       (log/infof fmt-str schema)
       (try
@@ -301,39 +245,17 @@
         (catch Throwable e
           (log/infof "Failed to drop %s, skipping: %s" schema (ex-message e)))))))
 
-(defn- drop-orphan-isolation-users!
-  "Drop iso users paired with expired iso schemas. The schema was dropped first
-   (see [[drop-orphan-schemas!]]), so its default-priv dependencies on the user
-   are already gone -- DROP USER should succeed without REVOKE chasing.
-
-   Per-entry try/catch: a lingering grant from a NON-iso schema would block
-   DROP USER, but `grant-workspace-read-access!` issues those against
-   user-named input schemas which the production `destroy-workspace-isolation!`
-   revokes. If production ran, no orphan grants. If it didn't (the case this
-   cleanup catches), the user is dead-state anyway and a logged DROP failure
-   is fine."
-  [^java.sql.Statement stmt iso-usernames]
-  (doseq [iso-username iso-usernames]
-    (log/infof "Dropping expired workspace isolation user: %s" iso-username)
-    (try
-      (.execute stmt (format "DROP USER IF EXISTS \"%s\";" iso-username))
-      (catch Throwable e
-        (log/infof "Failed to drop user %s, skipping: %s" iso-username (ex-message e))))))
-
 (defn- delete-old-schemas!
-  "Remove unneeded schemas + users from redshift. Local databases are thrown
-  away after a test run; shared cloud instances are not. Test runs can leak
-  schemas (persisted models, workspace iso namespaces) and users (workspace
-  iso accounts), leading to clusters hitting the max-tables / max-users limits.
+  "Remove unneeded schemas from redshift. Local databases are thrown away after
+  a test run; shared cloud instances are not. Test runs can leak schemas
+  (e.g. persisted models), leading to clusters hitting the max-tables limits.
 
-  Glue: thin wrapper that calls the enumerator + droppers in order. To preview
-  from a REPL, call [[orphan-schemas]] / [[orphan-isolation-users]] directly."
+  Glue: thin wrapper that calls the enumerator + dropper in order. To preview
+  from a REPL, call [[orphan-schemas]] directly."
   [^java.sql.Connection conn]
-  (let [orphans       (orphan-schemas conn)
-        iso-usernames (:expired-isolation orphans)]
+  (let [orphans (orphan-schemas conn)]
     (with-open [stmt (.createStatement conn)]
-      (drop-orphan-schemas!         stmt orphans)
-      (drop-orphan-isolation-users! stmt iso-usernames))))
+      (drop-orphan-schemas! stmt orphans))))
 
 (defn- create-session-schema! [^java.sql.Connection conn]
   (with-open [stmt (.createStatement conn)]

@@ -24,9 +24,19 @@ import type { DatasetColumn, TableId } from "metabase-types/api";
  * used by functions that only need type-checking properties.
  */
 export interface FieldTypeInfo {
-  base_type?: string;
+  base_type?: string | null;
   effective_type?: string | null;
   semantic_type?: string | null;
+}
+
+/**
+ * The subset of column properties needed to classify a column as a dimension
+ * or metric. Satisfied by both Field and DatasetColumn.
+ */
+export interface ColumnClassificationInfo extends FieldTypeInfo {
+  name: string;
+  source?: string | null;
+  binning_info?: DatasetColumn["binning_info"];
 }
 
 /**
@@ -132,14 +142,14 @@ export const isStringLike = (field: FieldTypeInfo | null | undefined) =>
 export const isSummable = (field: FieldTypeInfo | null | undefined) =>
   isFieldType(SUMMABLE, field);
 
-const hasNonMetricName = (col: DatasetColumn) => {
+const hasNonMetricName = (col: ColumnClassificationInfo) => {
   const name = col.name.toLowerCase();
   return name === "id" || name.endsWith("_id") || name.endsWith("-id");
 };
 
-export const isDimension = (col: DatasetColumn) =>
+export const isDimension = (col: ColumnClassificationInfo) =>
   col.source !== "aggregation" || !!col.binning_info; // columns with binning_info are always dimensions (they represent categorical buckets)
-export const isMetric = (col: DatasetColumn) =>
+export const isMetric = (col: ColumnClassificationInfo) =>
   col.source !== "breakout" &&
   isSummable(col) &&
   !hasNonMetricName(col) &&

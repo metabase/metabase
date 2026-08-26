@@ -8,8 +8,13 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import type {
+  DatabaseEntityId,
+  Group,
+  GroupsPermissions,
+  PermissionsDatabase,
+  SpecialGroupType,
+} from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
@@ -17,12 +22,7 @@ import {
   limitDatabasePermission,
   navigateToGranularPermissions,
 } from "../../permissions";
-import type {
-  DataPermissionValue,
-  DatabaseEntityId,
-  PermissionSectionConfig,
-  SpecialGroupType,
-} from "../../types";
+import type { DataPermissionValue, PermissionSectionConfig } from "../../types";
 import { DataPermission, DataPermissionType } from "../../types";
 import {
   getPermissionWarning,
@@ -37,7 +37,7 @@ const buildAccessPermission = (
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database,
+  database: PermissionsDatabase,
 ): PermissionSectionConfig => {
   const accessPermissionConfirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
@@ -122,7 +122,7 @@ const buildNativePermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database,
+  database: PermissionsDatabase,
   accessPermissionValue: DataPermissionValue,
 ): PermissionSectionConfig => {
   const value = getSchemasPermission(
@@ -202,7 +202,6 @@ export const buildSchemasPermissions = ({
   database,
   permissionView,
   showTransformPermissions,
-  showWorkspacesPermissions,
 }: {
   entityId: DatabaseEntityId;
   groupId: number;
@@ -210,10 +209,9 @@ export const buildSchemasPermissions = ({
   permissions: GroupsPermissions;
   originalPermissions: GroupsPermissions;
   defaultGroup: Group;
-  database: Database;
+  database: PermissionsDatabase;
   permissionView: "group" | "database";
   showTransformPermissions: boolean;
-  showWorkspacesPermissions: boolean;
 }): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
 
@@ -254,7 +252,6 @@ export const buildSchemasPermissions = ({
       permissionSubject: "schemas",
       permissionView,
       showTransformPermissions,
-      showWorkspacesPermissions,
     }),
   ]);
 };

@@ -33,6 +33,7 @@ export interface MiniPickerContextValue {
   shouldShowLibrary?: boolean;
   forceSearch?: boolean;
   showSearchInput?: boolean;
+  includeHiddenSchemas?: boolean;
   searchInputPlaceholder?: string;
   searchParams?: MiniPickerSearchParams;
   onSearchResults?: (results: MiniPickerPickableItem[]) => void;

@@ -1,10 +1,9 @@
-import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetTableSelectionInfoQuery } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";
+import { trackDataStudioTablePublished } from "metabase/common/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,
@@ -13,7 +12,7 @@ import {
 } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_LIBRARY, type PublishTablesModalProps } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Button,
@@ -108,15 +107,16 @@ function ModalBody({
   });
   const [publishTables] = usePublishTablesMutation();
   const { sendSuccessToast } = useMetadataToasts();
-  const dispatch = useDispatch();
-  const dataCollection = PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
-    type: "library-data",
-  });
+  const navigate = useNavigate();
+  const { data: dataCollection, isLoading: isLoadingDataCollection } =
+    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
+      type: "library-data",
+    });
 
   if (isLoading || error != null || data == null || dataCollection == null) {
     return (
       <DelayedLoadingAndErrorWrapper
-        loading={isLoading || dataCollection == null}
+        loading={isLoading || isLoadingDataCollection || dataCollection == null}
         error={error}
       />
     );
@@ -135,7 +135,7 @@ function ModalBody({
     if (collection != null) {
       sendSuccessToast(
         t`Published`,
-        () => dispatch(push(Urls.dataStudioLibrary())),
+        () => navigate(Urls.dataStudioLibrary()),
         t`Go to ${collection.name}`,
       );
     } else {
@@ -150,7 +150,7 @@ function ModalBody({
   return (
     <FormProvider<BulkTableRequest>
       enableReinitialize
-      initialValues={{ collection_id: dataCollection.id as number }}
+      initialValues={{ collection_id: dataCollection.id }}
       onSubmit={handleSubmit}
     >
       <Form>
@@ -181,7 +181,7 @@ function ModalBody({
                 hasSearch: true,
                 hasRecents: false,
                 hasConfirmButtons: true,
-                canCreateCollections: false,
+                canCreateCollections: true,
               },
             }}
           />

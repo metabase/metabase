@@ -106,6 +106,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
           params: {
@@ -215,6 +216,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
         });
@@ -357,6 +359,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
         });
@@ -450,6 +453,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
 
       cy.get("@questionId").then(async (questionId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: questionId as unknown as number,
           resourceType: "question",
           params: {
@@ -551,6 +555,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
 
       cy.get("@dashboardId").then(async (dashboardId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: dashboardId as unknown as number,
           resourceType: "dashboard",
           params: {
@@ -677,6 +682,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
 
       cy.get("@dashboardId").then(async (dashboardId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: dashboardId as unknown as number,
           resourceType: "dashboard",
         });
@@ -845,6 +851,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
 
       cy.get("@dashboardId").then(async (dashboardId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: dashboardId as unknown as number,
           resourceType: "dashboard",
         });
@@ -966,6 +973,7 @@ describe("scenarios > embedding-sdk > guest-embed-parameters", () => {
 
       cy.get("@dashboardId").then(async (dashboardId) => {
         const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
           resourceId: dashboardId as unknown as number,
           resourceType: "dashboard",
           params: {

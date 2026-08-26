@@ -58,6 +58,7 @@ export const setupMetabaseInstance: CliStepMethod = async (state) => {
       }
 
       try {
+        // Unjustified type cast. FIXME
         const { errors } = JSON.parse(errorMessage) as {
           errors: Record<string, string>;
         };

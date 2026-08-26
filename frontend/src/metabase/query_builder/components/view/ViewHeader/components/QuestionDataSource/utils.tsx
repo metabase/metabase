@@ -33,11 +33,13 @@ export function getDataSourceParts({
   subHead,
   isObjectDetail,
   formatTableAsComponent = true,
+  hasMultipleSchemas = false,
 }: {
   question: Question;
   subHead?: boolean;
   isObjectDetail?: boolean;
   formatTableAsComponent?: boolean;
+  hasMultipleSchemas?: boolean;
 }): DataSourcePart[] {
   if (!question) {
     return [];
@@ -67,8 +69,9 @@ export function getDataSourceParts({
 
   const table = !isNative
     ? metadata.table(Lib.sourceTableOrCardId(query))
-    : (question.legacyNativeQuery() as NativeQuery).table();
-  if (table && table.hasSchema()) {
+    : // Unjustified type cast. FIXME
+      (question.legacyNativeQuery() as NativeQuery).table();
+  if (table?.schema_name && hasMultipleSchemas) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (database != null && !isBasedOnSavedQuestion) {
       parts.push({
@@ -147,13 +150,13 @@ function QuestionTableBadges({
   isLast,
 }: QuestionTableBadgesProps) {
   const badgeInactiveColor =
-    isLast && !subHead ? "text-primary" : "text-tertiary";
+    isLast && !subHead ? "text-primary" : "text-disabled";
 
   const parts = tables.map((table) => (
-    <HeadBreadcrumbs.Badge
+    <HeadBreadcrumbs.Breadcrumb
       key={table.id}
       to={hasLink ? getTableURL(table) : ""}
-      inactiveColor={badgeInactiveColor}
+      color={badgeInactiveColor}
     >
       <span>
         {table.displayName()}
@@ -169,7 +172,7 @@ function QuestionTableBadges({
           </span>
         )}
       </span>
-    </HeadBreadcrumbs.Badge>
+    </HeadBreadcrumbs.Breadcrumb>
   ));
 
   return (

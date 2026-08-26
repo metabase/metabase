@@ -1,5 +1,4 @@
 import {
-  CreateDashboardModal,
   EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
@@ -371,22 +370,6 @@ describe("scenarios > embedding-sdk > styles", () => {
   });
 
   describe("modals, popovers and tooltips", () => {
-    it("legacy WindowModal modals should render with our styles", () => {
-      // this test renders a create dashboard modal that, at this time, is using the legacy WindowModal
-      cy.mount(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <CreateDashboardModal />
-        </MetabaseProvider>,
-      );
-
-      H.modal()
-        .findByText("New dashboard")
-        .should("exist")
-        .and("have.css", "font-family", "Lato, Arial, sans-serif");
-
-      // TODO: good place for a visual regression test
-    });
-
     it("mantine modals should render with our styles", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
@@ -707,7 +690,7 @@ const getCssRulesThatApplyToElement = ($element: JQuery<HTMLElement>) => {
   ).flatMap((sheet) => {
     const cssRules = Array.from(sheet.cssRules).filter(
       (rule) => rule instanceof CSSStyleRule,
-    ) as CSSStyleRule[];
+    );
 
     return cssRules.filter((rule) => element.matches(rule.selectorText));
   });

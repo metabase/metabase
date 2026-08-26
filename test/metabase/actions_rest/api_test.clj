@@ -10,11 +10,12 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.test-util :as perms.test-util]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -227,6 +228,36 @@
                                 (mt/user-http-request :rasta :post 403 url params)))
                         (is (= {:rows-affected 1} (mt/user-http-request :crowberto :post 200 url params)))))))))))))))
 
+(deftest action-query-db-differs-from-declared-db-test
+  (testing "a query action cannot execute against a database other than the one its query targets"
+    (mt/dataset test-data
+      (let [target-db-id (mt/id)]                          ;; the DB the malicious query really targets; actions OFF here
+        (mt/dataset time-test-data
+          (mt/with-actions-enabled                         ;; actions enabled only on the model's DB (time-test-data)
+            (let [model-db-id (mt/id)]
+              (is (not= model-db-id target-db-id))
+              (mt/with-temp [:model/Card model {:type          :model
+                                                :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}]
+                (let [;; declare :database_id as the model's own (enabled) DB to try to pass every enablement gate...
+                      ;; ...while the query points at target-db-id, whose actions are disabled.
+                      action {:type          :query
+                              :model_id      (:id model)
+                              :database_id   model-db-id
+                              :name          "sneaky cross db action"
+                              :dataset_query {:type     "native"
+                                              :database target-db-id
+                                              :native   {:query "update people set source = 'pwned' where id = 1"}}
+                              :parameters    []}
+                      created (mt/user-http-request :crowberto :post 200 "action" action)]
+                  (testing "the declared database_id is overwritten with the query's real database on save"
+                    (is (= target-db-id (:database_id created))))
+                  (testing "execution is blocked because actions are disabled on the query's real DB"
+                    (is (partial= {:message "Actions are not enabled."
+                                   :data    {:database-id target-db-id}}
+                                  (mt/user-http-request :crowberto :post 400
+                                                        (format "action/%s/execute" (:id created))
+                                                        {:parameters {}})))))))))))))
+
 (deftest unified-action-create-test
   (mt/test-helpers-set-global-values!
     (mt/with-actions-enabled
@@ -395,6 +426,103 @@
                        :specific-errors {:model_id ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "query" :name "test"}))))))))))
 
+(deftest native-query-action-requires-native-permission-test
+  (testing "creating or updating a native query action requires native query permission on the database"
+    (mt/with-actions-enabled
+      (mt/with-actions-test-data-tables #{"users"}
+        (mt/with-model-cleanup [:model/Action]
+          (perms.test-util/with-restored-data-perms!
+            (mt/with-temp [:model/Card {model-id :id}
+                           {:type          :model
+                            :dataset_query (mt/mbql-query users)
+                            ;; personal collection so a non-admin has write permission on the model
+                            :collection_id (:id (collection/user->personal-collection (mt/user->id :rasta)))}]
+              (let [native-action   {:name          "native example"
+                                     :type          "query"
+                                     :model_id      model-id
+                                     :database_id   (mt/id)
+                                     :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                      "update users set name = 'foo' where id = {{x}}")
+                                     :parameters    [{:id "x" :type "number"}]}
+                    implicit-action {:name       "implicit example"
+                                     :type       "implicit"
+                                     :model_id   model-id
+                                     :kind       "row/create"
+                                     :parameters [{:id "id" :type "number"}]}
+                    set-native!     (fn [level]
+                                      (perms/set-database-permission! (perms/all-users-group) (mt/id)
+                                                                      :perms/create-queries level))]
+                (testing "without native permission, creating a native query action is rejected"
+                  (set-native! :query-builder)
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :post 403 "action" native-action))))
+                (testing "an implicit (non-native) action is unaffected by native permission"
+                  (is (=? {:type "implicit"}
+                          (mt/user-http-request :rasta :post 200 "action" implicit-action))))
+                (testing "with native permission, creating a native query action succeeds"
+                  (set-native! :query-builder-and-native)
+                  (let [created (mt/user-http-request :rasta :post 200 "action" native-action)]
+                    (is (=? {:type "query"} created))
+                    (testing "without native permission, updating to a native query is rejected"
+                      (set-native! :query-builder)
+                      (is (= "You don't have permissions to do that."
+                             (mt/user-http-request :rasta :put 403 (str "action/" (:id created))
+                                                   {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                     "update users set name = 'bar' where id = {{x}}")}))))
+                    (testing "with native permission, updating to a native query succeeds"
+                      (set-native! :query-builder-and-native)
+                      (is (=? {:type "query"}
+                              (mt/user-http-request :rasta :put 200 (str "action/" (:id created))
+                                                    {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                      "update users set name = 'baz' where id = {{x}}")}))))))))))))))
+
+(deftest remap-parameter-keys-test
+  (testing "remap-parameter-keys translates incoming parameter keys to the destination parameter's :id"
+    (let [action {:parameters [{:id "d800e41d-edde-49cb-b63b-2386aba34334"
+                                :slug "id"
+                                :name "ID"}
+                               {:id "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b"
+                                :slug "discount"
+                                :name "Discount"}]}]
+      (testing "slug-keyed input is remapped to :id"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (#'api.action/remap-parameter-keys action
+                                                  {"id" 1 "discount" 0.1}))))
+      (testing "already-:id-keyed input is passed through unchanged"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (#'api.action/remap-parameter-keys
+                action
+                {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                 "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}))))
+      (testing "display-name keys (`:name`) are NOT accepted — they pass through unchanged"
+        (is (= {"ID" 1 "Discount" 0.1}
+               (#'api.action/remap-parameter-keys action
+                                                  {"ID" 1 "Discount" 0.1}))))
+      (testing "unknown keys pass through unchanged so downstream validation still fires"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "bogus" 42}
+               (#'api.action/remap-parameter-keys action
+                                                  {"id" 1 "bogus" 42}))))
+      (testing "a mix of :id and :slug keys resolve together"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (#'api.action/remap-parameter-keys
+                action
+                {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                 "discount" 0.1}))))
+      (testing "empty parameters map → empty result"
+        (is (= {}
+               (#'api.action/remap-parameter-keys action {}))))
+      (testing "implicit-action style (no :slug) — :id-keyed input still passes through"
+        (let [implicit-action {:parameters [{:id "name" :name "Name"}
+                                            {:id "email" :name "Email"}]}]
+          (is (= {"name" "Foo" "email" "foo@bar.com"}
+                 (#'api.action/remap-parameter-keys
+                  implicit-action
+                  {"name" "Foo" "email" "foo@bar.com"}))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -521,6 +649,24 @@
                                      (format "action/%s/execute" action-id)
                                      {:parameters {:id 1 :name "European"}})))))))
 
+(deftest execute-action-by-entity-id-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+      (let [entity-id (t2/select-one-fn :entity_id :model/Action :id action-id)]
+        (testing "Action can be executed by entity_id"
+          (is (=? {:rows-affected 1}
+                  (mt/user-http-request :crowberto
+                                        :post 200
+                                        (format "action/%s/execute" entity-id)
+                                        {:parameters {:id 1 :name "European"}}))))
+        (testing "Unknown entity_id returns 404"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto
+                                       :post 404
+                                       (format "action/%s/execute"
+                                               "AAAAAAAAAAAAAAAAAAAAA")
+                                       {:parameters {:id 1 :name "European"}}))))))))
+
 (deftest execute-action-test-3
   (mt/with-actions-test-data-and-actions-enabled
     (mt/with-actions [{:keys [action-id]} unshared-action-opts]
@@ -613,10 +759,27 @@
                                              :visualization_settings {:fields {"name" {:id     "name"
                                                                                        :hidden true}}}}]
         (testing "Hidden parameter should fail gracefully"
-          (testing "GET /api/action/:id/execute"
+          (testing "POST /api/action/:id/execute"
             (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"last_login\" \"id\"}"}
                           (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
                                                 {:parameters {:name "Darth Vader"}})))))))))
+
+(deftest implicit-update-timestamp-round-trip-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-tables #{"users"}
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query users)}
+                          {action-id :action-id} {:type :implicit :kind "row/update"}]
+          (testing "a prefetched temporal value round-trips unchanged through an update execution (#32840)"
+            (let [fetch!      #(mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" action-id)
+                                                     {:parameters {"id" 1}})
+                  {:keys [last_login] :as fetched} (fetch!)
+                  local-value (.format ^java.time.OffsetDateTime last_login
+                                       (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss"))]
+              (is (some? last_login))
+              (mt/user-http-request :crowberto :post 200 (format "action/%d/execute" action-id)
+                                    {:parameters (assoc fetched :last_login local-value)})
+              (is (= last_login (:last_login (fetch!)))))))))))
 
 (deftest fetch-implicit-action-default-values-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -629,26 +792,26 @@
                         {query-action-id :action-id}  {:type :query}]
         (testing "403 if user does not have permission to view the action"
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :rasta :post 403 (format "action/%d/execute/values" update-action-id) {:parameters {"id" 1}}))))
         (testing "404 if id does not exist"
           (is (= "Not found."
-                 (mt/user-http-request :rasta :get 404 (format "action/%d/execute" Integer/MAX_VALUE) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :rasta :post 404 (format "action/%d/execute/values" Integer/MAX_VALUE) {:parameters {"id" 1}}))))
         (testing "returns empty map for query actions (not implicit)"
           (is (= {}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" query-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" query-action-id) {:parameters {"id" 1}}))))
         (testing "Can't fetch for create action"
           (is (= "Values can only be fetched for actions that require a Primary Key."
-                 (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" create-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" create-action-id) {:parameters {"id" 1}}))))
         (testing "fetch for update action return name and id"
           (is (= {:id 1 :name "Red Medicine"}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" update-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" update-action-id) {:parameters {"id" 1}}))))
         (testing "fetch for delete action returns the id only"
           (is (= {:id 1}
-                 (mt/user-http-request :crowberto :get 200 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))
+                 (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" delete-action-id) {:parameters {"id" 1}}))))
         (mt/with-actions-disabled
           (testing "error if actions is disabled"
             (is (= "Actions are not enabled."
-                   (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
+                   (:message (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" delete-action-id) {:parameters {"id" 1}}))))))))))
 
 ;; This is just to test the flow, a comprehensive tests for error type ares in
 ;; [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]

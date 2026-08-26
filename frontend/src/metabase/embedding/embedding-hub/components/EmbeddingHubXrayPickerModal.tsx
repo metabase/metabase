@@ -2,16 +2,15 @@ import cx from "classnames";
 import { dissoc } from "icepick";
 import { t } from "ttag";
 
-import { Api, dashboardApi } from "metabase/api";
+import { Api, dashboardApi, useLazyGetXrayDashboardQuery } from "metabase/api";
 import { invalidateTags, listTag } from "metabase/api/tags";
 import { Link } from "metabase/common/components/Link";
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
-import { AutoApi } from "metabase/services";
 import * as Urls from "metabase/urls";
-import type { Dashboard, TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 interface EmbeddingHubXrayPickerModalProps {
   opened: boolean;
@@ -24,14 +23,15 @@ export const EmbeddingHubXrayPickerModal = ({
 }: EmbeddingHubXrayPickerModalProps) => {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
+  const [fetchXrayDashboard] = useLazyGetXrayDashboardQuery();
 
   async function handleTableSelect(tableId: TableId) {
     onClose();
 
     try {
-      const xrayDashboard: Dashboard = await AutoApi.dashboard({
+      const xrayDashboard = await fetchXrayDashboard({
         subPath: `table/${tableId}`,
-      });
+      }).unwrap();
 
       const { data: savedDashboard } = await dispatch(
         dashboardApi.endpoints.saveDashboard.initiate(
@@ -68,7 +68,7 @@ export const EmbeddingHubXrayPickerModal = ({
     } catch {
       sendToast({
         icon: "warning",
-        toastColor: "error",
+        toastColor: "feedback-negative",
         message: t`Failed to create dashboard`,
       });
     }

@@ -9,16 +9,17 @@ import {
 import {
   AdminSettingInput,
   BasicAdminSettingInput,
-  SetByEnvVar,
 } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { NotFound } from "metabase/common/components/ErrorPages";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
+  useSetting,
   useUpdateSettingMutation,
-} from "metabase/api";
-import { NotFound } from "metabase/common/components/ErrorPages";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+} from "metabase/settings";
 import {
   Alert,
   Box,
@@ -96,6 +97,7 @@ export const UserProvisioning = () => {
   );
 
   const samlUserProvisioningEnabled = useSetting(
+    // Unjustified type cast. FIXME
     "saml-user-provisioning-enabled?" as any,
   );
   const showSamlWarning = samlUserProvisioningEnabled && !isScimInitialized;
@@ -178,6 +180,7 @@ export const UserProvisioning = () => {
               )}
               {isScimEnabledWithoutToken && !hasTokenGenerationError && (
                 <Alert
+                  size="compact"
                   color="warning"
                   icon={<Icon name="warning" />}
                 >{t`Generate a SCIM token below to complete the setup.`}</Alert>

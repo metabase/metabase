@@ -37,7 +37,7 @@
   [provider-key request]
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
 
-  (api/check-400 (sso-settings/oidc-enabled?) "OIDC is not enabled")
+  (api/check-400 (sso-settings/oidc-enabled) "OIDC is not enabled")
 
   (let [provider-config (sso-settings/get-oidc-provider provider-key)]
     (when-not provider-config
@@ -84,8 +84,8 @@
       (let [final-redirect (or (:redirect-url login-result) "/")
             base-response  (-> (response/redirect final-redirect)
                                (sso/clear-oidc-state-cookie))]
-        (log/infof "OIDC authentication successful for provider %s, user %s"
-                   provider-key (get-in login-result [:user :email]))
+        (log/infof "OIDC authentication successful for provider %s, user ID: %s"
+                   provider-key (get-in login-result [:user :id]))
         (if-let [session (:session login-result)]
           (request/set-session-cookies request
                                        base-response

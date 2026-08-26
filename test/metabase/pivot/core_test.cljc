@@ -221,6 +221,27 @@
               {:value "200%" :isSubtotal true :custom "attr"}]
              result)))))
 
+(deftest create-subtotal-node-test
+  (testing "labels a plain formatted value (CSV / FE path)"
+    (is (= "Totals for BA"
+           (:value (#'pivot/create-subtotal-node {:value "BA" :rawValue "BA"})))))
+  (testing "labels an XLSX formatter-map value using its formatted text"
+    (is (= "Totals for engineer"
+           (:value (#'pivot/create-subtotal-node
+                    {:value {:col {:name "bio"}
+                             :value "engineer"
+                             :xlsx-formatted-value "engineer"
+                             :styles nil}
+                     :rawValue "engineer"})))))
+  (testing "renders nil breakout values as (empty) instead of dumping the formatter map (#71220)"
+    (is (= "Totals for (empty)"
+           (:value (#'pivot/create-subtotal-node
+                    {:value {:col {:name "bio"}
+                             :value nil
+                             :xlsx-formatted-value nil
+                             :styles nil}
+                     :rawValue nil}))))))
+
 (deftest build-pivot-trees-test
   (testing "build-pivot-trees correctly builds basic row and column tree structures"
     (let [rows [[1 "A" "Y" 0 10]
@@ -544,8 +565,14 @@
 
 (deftest create-row-section-getter-test
   (testing "Returns a function that correctly retrieves cell values"
+    ;; Each body cell's `:clicked` payload must carry `:colIdx` and raw `:value`
+    ;; identifying the aggregation column the cell represents (issue #79023).
+    ;; Without them, drills like "See these X" on a pivot cell for a `CountIf` /
+    ;; `SumIf` / `Share` aggregation cannot lift the aggregation's inner filter,
+    ;; because the frontend has no way to enrich the click with the aggregation
+    ;; column, and the backend drill therefore can't find the aggregation UUID.
     (let [values-by-key {["A" 1] {:values [10 20]
-                                  :valueColumns [{:name "count"} {:name "sum"}]
+                                  :valueColNames ["count" "sum"]
                                   :data [{:value 1 :colIdx 0}
                                          {:value "A" :colIdx 1}
                                          {:value 10 :colIdx 2}
@@ -556,11 +583,13 @@
           value-formatters [#(str "$" %) #(str % "%")]
           col-indexes [1]
           row-indexes [0]
+          val-indexes [2 3]
           col-paths [["A"]]
           row-paths [[1]]
           color-getter (constantly "blue")
           getter (#'pivot/create-row-section-getter values-by-key subtotal-values value-formatters
-                                                    col-indexes row-indexes col-paths row-paths color-getter)
+                                                    col-indexes row-indexes val-indexes
+                                                    col-paths row-paths color-getter)
           result (getter 0 0)]
       (is (= [{:value "$10"
                :backgroundColor "blue"
@@ -569,7 +598,9 @@
                                 {:value 10 :colIdx 2}
                                 {:value 20 :colIdx 3}]
                          :dimensions [{:value 1 :colIdx 0}
-                                      {:value "A" :colIdx 1}]}}
+                                      {:value "A" :colIdx 1}]
+                         :colIdx 2
+                         :value 10}}
               {:value "20%"
                :backgroundColor "blue"
                :clicked {:data [{:value 1 :colIdx 0}
@@ -577,7 +608,9 @@
                                 {:value 10 :colIdx 2}
                                 {:value 20 :colIdx 3}]
                          :dimensions [{:value 1 :colIdx 0}
-                                      {:value "A" :colIdx 1}]}}]
+                                      {:value "A" :colIdx 1}]
+                         :colIdx 3
+                         :value 20}}]
              #?(:cljs (js->clj result :keywordize-keys true)
                 :clj result))))))
 

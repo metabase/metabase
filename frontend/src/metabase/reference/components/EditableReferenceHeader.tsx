@@ -1,12 +1,11 @@
 import cx from "classnames";
 import { memo } from "react";
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-import L from "metabase/common/components/List/List.module.css";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Ellipsified, Icon, TextInputBlurChange } from "metabase/ui";
+import L from "metabase/reference/components/List/List.module.css";
+import { Button, Ellipsified, Icon, TextInputBlurChange } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "./ReferenceHeader.module.css";
@@ -103,7 +102,7 @@ const EditableReferenceHeader = ({
             headerLink && (
               <Button
                 key="2"
-                primary
+                variant="filled"
                 className={cx(CS.flex, CS.flexAlignRight, CS.mr2)}
                 style={{ fontSize: 14 }}
               >
@@ -114,7 +113,7 @@ const EditableReferenceHeader = ({
         )}
         {user && user.is_superuser && !isEditing && (
           <Button
-            icon="pencil"
+            leftSection={<Icon name="pencil" />}
             style={{ fontSize: 14 }}
             type="button"
             onClick={startEditing}

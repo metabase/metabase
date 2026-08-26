@@ -3,15 +3,11 @@ import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import { Link } from "metabase/common/components/Link";
-import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import type {
-  ExportFormat,
-  TableExportFormat,
-} from "metabase/common/types/export";
-import { exportFormatPng, exportFormats } from "metabase/common/types/export";
+import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { useUserKeyValue } from "metabase/current-user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { useUserSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -25,7 +21,12 @@ import {
 } from "metabase/ui";
 import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
+import type {
+  Dataset,
+  ExportFormat,
+  TableExportFormat,
+} from "metabase-types/api";
+import { exportFormatPng, exportFormats } from "metabase-types/api";
 
 export type FormatPreference = {
   last_download_format: ExportFormat;
@@ -114,18 +115,31 @@ export const QuestionDownloadWidget = ({
 
   const handleFormatChange = (newFormat: ExportFormat) => {
     setUserSelectedFormat(newFormat);
+  };
 
-    // Save preference if user is logged in
-    if (newFormat && setFormatPreference) {
-      setFormatPreference({
-        last_download_format: newFormat,
-        last_table_download_format:
-          newFormat !== "png"
-            ? newFormat
-            : (formatPreference.last_table_download_format as TableExportFormat) ||
-              "csv",
-      });
+  const persistExportFormat = (exportFormat: ExportFormat) => {
+    if (!setFormatPreference) {
+      return;
     }
+
+    const preference: FormatPreference = {
+      last_download_format: exportFormat,
+      last_table_download_format:
+        exportFormat !== "png"
+          ? exportFormat
+          : formatPreference.last_table_download_format || "csv",
+    };
+
+    const isUnchanged =
+      preference.last_download_format ===
+        formatPreference.last_download_format &&
+      preference.last_table_download_format ===
+        formatPreference.last_table_download_format;
+    if (isUnchanged) {
+      return;
+    }
+
+    setFormatPreference(preference);
   };
 
   const { url: pivotExcelExportsDocsLink, showMetabaseLinks } = useDocsUrl(
@@ -140,6 +154,8 @@ export const QuestionDownloadWidget = ({
 
   const handleDownload = async () => {
     setLoading(true);
+
+    persistExportFormat(format);
 
     await onDownload({
       type: format,
@@ -174,7 +190,7 @@ export const QuestionDownloadWidget = ({
         {showPivotXlsxExportHint && (
           <Flex
             p="md"
-            bg="background-secondary"
+            bg="background_page-secondary"
             align="center"
             justify="space-between"
             className={CS.rounded}
@@ -184,7 +200,7 @@ export const QuestionDownloadWidget = ({
               <Link
                 target="_new"
                 to={pivotExcelExportsDocsLink}
-                style={{ color: "var(--mb-color-brand)" }}
+                style={{ color: "var(--mb-color-core-brand)" }}
               >
                 {t`Read the docs`}
               </Link>

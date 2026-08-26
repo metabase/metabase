@@ -46,20 +46,15 @@
   [metadata-providerable             :- ::lib.schema.metadata/metadata-providerable
    {:keys [parent-id], :as metadata} :- ::lib.schema.metadata/column]
   (if-some [parent-metadata (when parent-id (lib.metadata/field metadata-providerable parent-id))]
-    (let [{parent-name         :name
-           parent-nfc-path     :nfc-path
+    (let [{parent-nfc-path     :nfc-path
            parent-display-name :display-name} (add-parent-column-metadata metadata-providerable parent-metadata)
-          new-name                            (str parent-name
-                                                   \.
-                                                   ((some-fn :lib/original-name :name) metadata))
-          new-display-name                    (str parent-display-name
-                                                   ": "
-                                                   ((some-fn :lib/original-display-name :display-name)
-                                                    metadata))]
+          new-display-name (str parent-display-name
+                                ": "
+                                ((some-fn :lib/original-display-name :display-name) metadata))]
       (-> metadata
-          (assoc :name                                   new-name
-                 :nfc-path                               (conj (vec parent-nfc-path) (:name parent-metadata))
-                 :display-name                           new-display-name
+          (assoc :name                    (lib.field.util/parent-qualified-name metadata-providerable metadata)
+                 :nfc-path                (conj (vec parent-nfc-path) (:name parent-metadata))
+                 :display-name            new-display-name
                  ;; this is used by the `display-name-method` for `:metadata/column` in [[metabase.lib.field]]
                  :lib/simple-display-name new-display-name)))
     metadata))
@@ -78,7 +73,7 @@
                          (pos-int? table-id))
                     (first (lib.metadata.protocols/metadatas
                             (lib.metadata/->metadata-provider metadata-providerable)
-                            {:lib/type :metadata/column, :table-id table-id, :name #{id-or-name}})))]
+                            {:lib/type :metadata/column, :table-ids #{table-id}, :name #{id-or-name}})))]
     (-> col
         (assoc :lib/source                :source/table-defaults
                :lib/source-column-alias   (:name col)
@@ -124,10 +119,10 @@
       (if <>
         (log/debugf "Found match %s"
                     (pr-str (select-keys <> [:id :lib/desired-column-alias :lib/deduplicated-name])))
-        (log/debugf "Failed to find match for %s. Found:\n%s"
+        (log/debugf "Failed to find match for %s. Found: %s"
                     (pr-str id-or-name)
-                    (u/pprint-to-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
-                                          previous-stage-cols)))))))
+                    (pr-str (map #(select-keys % [:id :lib/desired-column-alias :lib/deduplicated-name])
+                                 previous-stage-cols)))))))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."
@@ -520,10 +515,10 @@
                    (m/find-first #(= (:id %) id-or-name) current-stage-metadata-columns))
           (if <>
             (log/debugf "Found match: %s" (pr-str (select-keys <> [:id :lib/source-column-alias :lib/deduplicated-name])))
-            (log/debugf "Failed to find match for %s. Found:\n%s"
+            (log/debugf "Failed to find match for %s. Found: %s"
                         (pr-str id-or-name)
-                        (u/pprint-to-str (map #(select-keys % [:id :lib/source-column-alias :lib/deduplicated-name])
-                                              current-stage-metadata-columns)))))))))
+                        (pr-str (map #(select-keys % [:id :lib/source-column-alias :lib/deduplicated-name])
+                                     current-stage-metadata-columns)))))))))
 
 (mu/defn- resolve-in-source-card-metadata :- [:maybe ::lib.metadata.calculation/visible-column]
   [query        :- ::lib.schema/query

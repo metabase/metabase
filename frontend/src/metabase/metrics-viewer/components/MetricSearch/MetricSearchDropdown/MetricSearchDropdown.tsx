@@ -63,7 +63,7 @@ export const MetricSearchDropdown = forwardRef<
 ) {
   const [isBrowsing, setIsBrowsing] = useState(false);
 
-  const libraryMetricsCollection =
+  const { data: libraryMetricsCollection, isLoading: isLoadingLibraryMetrics } =
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-metrics",
     });
@@ -93,6 +93,7 @@ export const MetricSearchDropdown = forwardRef<
       const firstElement =
         miniPickerRef.current?.querySelector('[role="menuitem"]');
       if (firstElement) {
+        // Unjustified type cast. FIXME
         (firstElement as HTMLElement).focus();
       }
       return true;
@@ -102,6 +103,7 @@ export const MetricSearchDropdown = forwardRef<
         miniPickerRef.current?.querySelectorAll('[role="menuitem"]') ?? [];
       const lastElement = elements[elements.length - 1];
       if (lastElement) {
+        // Unjustified type cast. FIXME
         (lastElement as HTMLElement).focus();
       }
       return true;
@@ -178,36 +180,38 @@ export const MetricSearchDropdown = forwardRef<
 
   return (
     <>
-      <MiniPicker
-        opened={!isBrowsing}
-        searchQuery={searchQuery}
-        onChange={handleSelectResult}
-        onClose={onClose}
-        models={MINI_PICKER_MODELS}
-        onBrowseAll={() => setIsBrowsing(true)}
-        forceSearch={true}
-        showSearchInput={searchQuery === undefined}
-        searchInputPlaceholder={t`Search metrics and measures…`}
-        searchParams={getSearchParams}
-        onSearchResults={handleSearchResults}
-        shouldHide={shouldHide}
-        menuProps={menuProps}
-        menuDropdownRef={miniPickerRef}
-      >
-        {anchorRect && (
-          <span
-            aria-hidden
-            style={{
-              position: "fixed",
-              left: anchorRect.left,
-              top: anchorRect.top,
-              width: 0,
-              height: 0,
-              pointerEvents: "none",
-            }}
-          />
-        )}
-      </MiniPicker>
+      {!isLoadingLibraryMetrics && (
+        <MiniPicker
+          opened={!isBrowsing}
+          searchQuery={searchQuery}
+          onChange={handleSelectResult}
+          onClose={onClose}
+          models={MINI_PICKER_MODELS}
+          onBrowseAll={() => setIsBrowsing(true)}
+          forceSearch={true}
+          showSearchInput={searchQuery === undefined}
+          searchInputPlaceholder={t`Search metrics and measures…`}
+          searchParams={getSearchParams}
+          onSearchResults={handleSearchResults}
+          shouldHide={shouldHide}
+          menuProps={menuProps}
+          menuDropdownRef={miniPickerRef}
+        >
+          {anchorRect && (
+            <span
+              aria-hidden
+              style={{
+                position: "fixed",
+                left: anchorRect.left,
+                top: anchorRect.top,
+                width: 0,
+                height: 0,
+                pointerEvents: "none",
+              }}
+            />
+          )}
+        </MiniPicker>
+      )}
       {isBrowsing && (
         <EntityPickerModal
           title={t`Pick a metric or measure`}
@@ -215,7 +219,7 @@ export const MetricSearchDropdown = forwardRef<
             libraryMetricsCollection
               ? {
                   model: "collection",
-                  id: libraryMetricsCollection.id as number,
+                  id: libraryMetricsCollection.id,
                 }
               : undefined
           }

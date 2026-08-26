@@ -3,12 +3,19 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [malli.transform :as mtx]
+   [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable InputStream)
@@ -34,29 +41,44 @@
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
 
-  Required:
-    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-4.1-mini\")
-
   Optional:
-    :system      - System prompt string
-    :input       - Sequence of AISDK parts and user messages
-    :tools       - Sequence of tool definition maps
-    :tool_choice - \"auto\" or \"required\"
-    :temperature - Sampling temperature
-    :max-tokens  - Maximum tokens in the response
-    :schema      - JSON Schema map for structured output; each provider forces a
-                   tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
-    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy"
+    :model            - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-5.4\")
+    :system           - System prompt string
+    :input            - Sequence of AISDK parts and user messages
+    :tools            - Sequence of tool definition maps
+    :tool_choice      - \"auto\" or \"required\"
+    :temperature      - Sampling temperature
+    :max-tokens       - Maximum tokens in the response
+    :schema           - JSON Schema map for structured output; each provider forces a
+                        tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :credentials      - Credentials of the provider connection serving this request, in that provider
+                        type's `:config` shape (e.g. `{:api-key ...}`), with the type's field defaults
+                        filled in. An adapter serves a request from these alone and throws without them.
+    :ai-proxy?        - When true, skip provider auth and use the Metabase AI proxy
+    :reasoning?       - When false, don't request thinking/reasoning and strip
+                        :reasoning parts from the replayed input (defaults true)
+    :reasoning-config - Explicit reasoning directive for an adapter re-hosting a non-native
+                        model on another provider's dialect, where the model-derived config
+                        does not apply. Dialect-shaped, not portable: on the Anthropic dialect
+                        it is the `thinking` block, sent verbatim. When set it wins over both
+                        the derived config and the suppression rules, and :reasoning parts
+                        survive into the replayed input.
+    :prompt-cache-key - prompt-cache affinity hint (the conversation id); adapters whose
+                        provider caches opt-in per key forward it (Mistral), others ignore it"
   [:map
-   [:model       {:optional true} :string]
-   [:system      {:optional true} [:maybe :string]]
-   [:input       {:optional true} [:sequential :map]]
-   [:tools       {:optional true} [:maybe [:sequential ToolEntry]]]
-   [:tool_choice {:optional true} [:maybe [:enum "auto" "required"]]]
-   [:temperature {:optional true} [:maybe number?]]
-   [:max-tokens  {:optional true} [:maybe :int]]
-   [:schema      {:optional true} :any]
-   [:ai-proxy?   {:optional true} [:maybe :boolean]]])
+   [:model            {:optional true} :string]
+   [:system           {:optional true} [:maybe :string]]
+   [:input            {:optional true} [:sequential :map]]
+   [:tools            {:optional true} [:maybe [:sequential ToolEntry]]]
+   [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
+   [:temperature      {:optional true} [:maybe number?]]
+   [:max-tokens       {:optional true} [:maybe :int]]
+   [:schema           {:optional true} :any]
+   [:credentials      {:optional true} [:maybe :map]]
+   [:ai-proxy?        {:optional true} [:maybe :boolean]]
+   [:reasoning?       {:optional true} [:maybe :boolean]]
+   [:reasoning-config {:optional true} [:maybe :map]]
+   [:prompt-cache-key {:optional true} [:maybe :string]]])
 
 (defn mkid
   "Generate a random id"
@@ -107,7 +129,7 @@
 
                 :else
                 (do
-                  (log/warn "SSE unexpected line" {:line line})
+                  (log/warn "SSE unexpected line" {:line-len (count line)})
                   (recur acc)))
               acc)))))
 
@@ -116,6 +138,17 @@
       (.close input))))
 
 ;;; AISDK5
+
+(def finish-reasons
+  "The AI SDK v5 `FinishReason` values a provider stop reason may be translated to."
+  #{"stop" "length" "content-filter" "tool-calls" "error" "other"})
+
+(defn stop-reason->finish-reason
+  "Translate a raw provider stop reason to an AI SDK v5 `FinishReason` through that provider's `stop-reasons` table.
+  Unmapped reasons → \"other\"; nil → nil."
+  [stop-reasons raw]
+  (when raw
+    (get stop-reasons raw "other")))
 
 (defn- parse-tool-arguments
   "Parse concatenated tool input deltas as JSON.
@@ -135,20 +168,61 @@
         ;; rather than a cryptic JSON parse stacktrace.
         {:_raw_arguments raw}))))
 
+(defn- try-decode-json-string
+  "If `v` is a string that looks like a JSON object or array, decode it.
+  Returns the decoded value on success, or the original value on failure."
+  [v]
+  (if (and (string? v)
+           (let [trimmed (str/trim v)]
+             (or (str/starts-with? trimmed "{")
+                 (str/starts-with? trimmed "["))))
+    (try
+      (json/decode+kw v)
+      (catch Exception _ v))
+    v))
+
+(defn- coerce-stringified-json
+  "Walk tool arguments and decode any string values that are actually stringified
+  JSON objects/arrays. LLMs sometimes double-encode nested arguments."
+  [args]
+  (if (map? args)
+    (reduce-kv (fn [m k v]
+                 (assoc m k (cond
+                              (string? v) (try-decode-json-string v)
+                              (map? v)    (coerce-stringified-json v)
+                              :else       v)))
+               {}
+               args)
+    args))
+
 (defn- aisdk-chunks->part [[chunk :as chunks]]
   (case (:type chunk)
     :start                 {:type :start
                             :id   (:messageId chunk)}
     :usage                 chunk
-    :error                 chunk
+    ;; Provider adapters emit AI SDK v5 error chunks (`{:type :error :errorText "..."}`). The rest of the
+    ;; pipeline — `format-error-line` and `metabot.persistence`'s turn finalize — keys off an internal
+    ;; `{:error {:message ...}}` part instead, so translate here. Internally-generated error parts (usage
+    ;; limits, agent-loop exceptions) already carry an `:error` map; pass those through unchanged.
+    :error                 (if (:error chunk)
+                             chunk
+                             {:type :error :error {:message (:errorText chunk)}})
     :text-start            {:type :text
                             :id   (:id chunk)
                             :text (->> (map :delta chunks)
                                        (str/join ""))}
-    :tool-input-start      {:type      :tool-input
-                            :id        (:toolCallId chunk)
-                            :function  (:toolName chunk)
-                            :arguments (parse-tool-arguments chunks)}
+    :reasoning-start       (let [pm (some :providerMetadata chunks)]
+                             (cond-> {:type :reasoning
+                                      :id   (:id chunk)
+                                      :text (->> (map :delta chunks)
+                                                 (str/join ""))}
+                               pm (assoc :provider-metadata pm)))
+    :tool-input-start      (let [pm (:providerMetadata chunk)]
+                             (cond-> {:type      :tool-input
+                                      :id        (:toolCallId chunk)
+                                      :function  (:toolName chunk)
+                                      :arguments (parse-tool-arguments chunks)}
+                               pm (assoc :provider-metadata pm)))
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)
@@ -195,6 +269,15 @@
                   ;; TODO: check if I can just pass through text-delta?
                   (rf {:type :text :id (:id chunk) :text (:delta chunk)}))
 
+              (and stream-text? (#{:reasoning-start :reasoning-end} (:type chunk)))
+              (cond-> (flush! result)
+                (:providerMetadata chunk)
+                (rf {:type :reasoning :id (:id chunk) :text "" :provider-metadata (:providerMetadata chunk)}))
+
+              (and stream-text? (= :reasoning-delta (:type chunk)))
+              (-> (flush! result)
+                  (rf {:type :reasoning :id (:id chunk) :text (:delta chunk)}))
+
               (not= chunk-id @current-id)
               (u/prog1 (flush! result)
                 (vreset! current-id chunk-id)
@@ -209,135 +292,318 @@
   []
   (aisdk-xf {:stream-text? true}))
 
-;;; AI SDK v4 Line Protocol Output
+(defn stamp-tool-titles-xf
+  "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
+  optional `:title-fn`. Stringified JSON is coerced and the tool's `:decode` is
+  applied first, when it has one, so the title describes the arguments the tool
+  will run with. A throwing title-fn or decode leaves the part untitled."
+  [tools]
+  (map (fn [part]
+         (let [{:keys [title-fn decode]} (when (= :tool-input (:type part))
+                                           (get tools (:function part)))]
+           (if title-fn
+             (let [title (try
+                           (title-fn (cond-> (coerce-stringified-json (:arguments part))
+                                       decode decode))
+                           (catch Throwable e
+                             (log/debug e "tool title-fn failed" {:tool (:function part)})
+                             nil))]
+               (cond-> part
+                 (string? title) (assoc :title title)))
+             part)))))
+
+;;; AI SDK SSE Output
 ;;
-;; Converts internal parts to the AI SDK v4 line protocol format used by the Python ai-service.
-;; Format examples:
-;;   0:"text content"           - Text (just the string, JSON encoded)
-;;   2:{"type":"state",...}     - Data parts
-;;   3:"error message"          - Errors
-;;   9:{"toolCallId":...}       - Tool calls
-;;   a:{"toolCallId":...}       - Tool results
-;;   d:{"finishReason":...}     - Finish message
-;;   e:{...}                    - Finish step
-;;   f:{"messageId":...}        - Start step
+;; Converts internal parts to the AI SDK v5+ SSE protocol: typed `UIMessageChunk`
+;; events (see `:metabase.metabot.schema.v2/ui-message-chunk`), one per
+;; `data: {json}` line, terminated by `data: [DONE]`.
 
-(defn format-text-line
-  "Format text part as AI SDK line: 0:\"content\""
-  [{:keys [text]}]
-  (str "0:" (json/encode text)))
+(def done-sse-line
+  "AI SDK stream terminator line."
+  "data: [DONE]\n")
 
-(defn format-data-line
-  "Format data part as AI SDK line: 2:{\"type\":...,\"version\":1,\"value\":...}"
-  [{:keys [data-type data] :as part}]
-  ;; Support both old format (data-type + data) and new format (data map with type inside)
-  (let [type-str (or data-type
-                     (get data :type)
-                     "data")
-        value    (or data (dissoc part :type :id))]
-    (str "2:" (json/encode {:type    (if (keyword? type-str) (name type-str) type-str)
-                            :version 1
-                            :value   value}))))
+(defn format-sse-event
+  "Format a payload map as an SSE event line: data: {JSON}\\n. The streaming
+  writer appends another newline, forming the blank-line event boundary."
+  [payload]
+  (str "data: "
+       (json/encode (schema.v2/check-ui-message-chunk "SSE event" payload))
+       "\n"))
 
 (defn format-error-line
-  "Format error part as AI SDK line.
-  Emits a JSON object when the error carries an :error-code, so clients can
-  distinguish typed errors from generic ones:
-    3:{\"message\":\"...\",\"error-code\":\"...\"}
-  Otherwise emits a plain string for backwards compatibility:
-    3:\"error message\""
+  "An `:error` part's AI SDK `error` SSE event line."
   [{:keys [error]}]
-  (let [msg        (or (:message error) (str error))
-        error-code (some-> (:error-code error) name)]
-    (str "3:" (json/encode (if error-code
-                             {"message" msg "error-code" error-code}
-                             msg)))))
+  (format-sse-event {:type "error" :errorText (or (:message error) (str error))}))
 
-(defn format-tool-call-line
-  "Format tool-input part as AI SDK line: 9:{\"toolCallId\":...,\"toolName\":...,\"args\":...}"
-  [{:keys [id function arguments]}]
-  (str "9:" (json/encode {:toolCallId id
-                          :toolName   function
-                          :args       (if (string? arguments)
-                                        arguments
-                                        (json/encode arguments))})))
+(defn format-error-frames
+  "SSE frames that close a stream which failed mid-flight: the `error` event, a
+  `finish` (finishReason \"error\"), and the `[DONE]` terminator — so the client
+  consumes a well-formed end instead of a truncated close."
+  [error-part]
+  (str (format-error-line error-part) "\n"
+       (format-sse-event {:type "finish" :finishReason "error"}) "\n"
+       done-sse-line "\n"))
 
-(defn format-tool-result-line
-  "Format tool-output part as AI SDK line: a:{\"toolCallId\":...,\"result\":...}
-  Always includes :result key (AI SDK protocol requirement). When there is only
-  an error and no result, :result is set to the error message string."
-  [{:keys [id result error]}]
-  (let [output (cond
-                 (string? result) result
-                 (map? result)    (or (:output result) (json/encode result))
-                 ;; When result is nil but error is present, use the error message as result
-                 ;; so the `result` key is always present in the output.
-                 (nil? result)    (some-> error :message str)
-                 :else            (str result))]
-    (str "a:" (json/encode (cond-> {:toolCallId id
-                                    :result     (or output "")}
-                             error (assoc :error (json/encode error)))))))
+(defn- ->message-metadata
+  "Translate accumulated per-model usage into the `finish` event's message
+  metadata.
 
-(defn format-finish-line
-  "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
-  [error? usage]
-  (str "d:" (json/encode {:finishReason (if error? "error" "stop") :usage (or usage {})})))
+  Input: `usage-by-model` is `{\"provider/model\" {:promptTokens N :completionTokens N}}`
+  cumulative over the turn; `last-call` is `{:promptTokens N :completionTokens N}` for the
+  turn's final LLM call alone.
 
-(defn format-start-line
-  "Format start part as AI SDK line: f:{\"messageId\":...}"
-  [{:keys [id messageId]}]
-  (str "f:" (json/encode {:messageId (or messageId id)})))
+  Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N
+                    :cacheCreationTokens N :cacheReadTokens N :cachedInputTokens N}
+            :usageByModel {\"provider/model\" {…}}
+            :contextWindowTokens N
+            :contextTokens N}`
 
-(defn aisdk-line-xf
-  "Transducer that converts internal parts to AI SDK v4 line protocol format.
-  Returns strings ready to be written to the output stream (without newlines).
+  `:contextTokens` is the final call's prompt + completion — how much of the window the
+  conversation now occupies, measured against the same model `:contextWindowTokens`
+  describes. Both context keys are omitted when unknown.
+
+  Returns nil if no usage was observed. The cache counts are a subset of
+  :inputTokens (`:cachedInputTokens` mirrors cache-read), 0 without provider caching."
+  [usage-by-model last-call context-window-tokens]
+  (when (seq usage-by-model)
+    (let [by-model (update-vals
+                    usage-by-model
+                    (fn [{:keys [promptTokens completionTokens
+                                 cacheCreationTokens cacheReadTokens]
+                          :or   {promptTokens 0 completionTokens 0
+                                 cacheCreationTokens 0 cacheReadTokens 0}}]
+                      {:inputTokens         promptTokens
+                       :outputTokens        completionTokens
+                       :totalTokens         (+ promptTokens completionTokens)
+                       :cacheCreationTokens cacheCreationTokens
+                       :cacheReadTokens     cacheReadTokens
+                       :cachedInputTokens   cacheReadTokens}))
+          totals   (reduce (partial merge-with +)
+                           {:inputTokens 0 :outputTokens 0 :totalTokens 0
+                            :cacheCreationTokens 0 :cacheReadTokens 0
+                            :cachedInputTokens 0}
+                           (vals by-model))
+          {:keys [promptTokens completionTokens]} last-call]
+      (cond-> {:usage        totals
+               :usageByModel by-model}
+        context-window-tokens (assoc :contextWindowTokens context-window-tokens)
+        promptTokens          (assoc :contextTokens (+ promptTokens (or completionTokens 0)))))))
+
+(defn- completion-finish-reason
+  "The wire `finishReason` for a completed turn. A provider `tool-calls` stop collapses to
+  `stop`: a turn that ends on a terminal tool call is a normal completion, not an incomplete
+  one. A loop stopped at max iterations surfaces as `tool-calls` instead, so the client can
+  offer to continue."
+  [finish-reason error? loop-finish-reason]
+  (cond
+    (= finish-reason "length")             "length"
+    error?                                 "error"
+    (= finish-reason "content-filter")     "content-filter"
+    (= loop-finish-reason :max-iterations) "tool-calls"
+    :else                                  "stop"))
+
+(defn- tool-output->wire-output
+  "The `tool-output-available` event's `:output` value: the LLM-facing output
+  string. The full result map (`:resources`, `:data-parts`, …) stays off the
+  wire — anything the client renders arrives as its own `:data` part."
+  [result]
+  (cond
+    (string? result) result
+    (map? result)    (or (:output result) "")
+    (nil? result)    ""
+    :else            (str result)))
+
+(defn parts->aisdk-sse-xf
+  "Transducer that converts internal parts to AI SDK SSE events: strings ready
+  to be written to the output stream, one `data: {json}\\n` per event, ending
+  with `data: [DONE]\\n`.
+
+  The agent loop emits `:start` per LLM call (iteration), but the protocol
+  expects a single `start` for the whole message, so subsequent `:start` parts
+  become step boundaries (`finish-step` + `start-step`).
+
+  Consecutive `:text` parts sharing an `:id` coalesce into one text block —
+  one `text-start`, many `text-delta`s, one `text-end`. Any intervening
+  non-text part (or end of stream) closes the open block first.
 
   Options:
-    :emit-usage? - When true, emit `:usage` parts as data lines (2:) in the SSE
-                   stream. Useful for dev/benchmarking. Default false.
-    :external-id - When set, force this id into the emitted `f:` (start) line
-                   so the client sees the same id we persist as
-                   `metabot_message.external_id`.
+    :message-id            - When set, force this id into the `start` event so the client
+                             sees the same id we persist as `metabot_message.external_id`.
+    :message-metadata      - When set, emitted as the `start` event's `messageMetadata`.
+    :context-window-tokens - When set, echoed as `finish.messageMetadata.contextWindowTokens`.
 
-  Input types and their output:
-    :text       -> 0:\"content\"
-    :data       -> 2:{\"type\":...,\"version\":1,\"value\":...}
-    :error      -> 3:\"message\"
-    :tool-input -> 9:{\"toolCallId\":...,\"toolName\":...,\"args\":...}
-    :tool-output -> a:{\"toolCallId\":...,\"result\":...}
-    :start      -> f:{\"messageId\":...}
-    :finish     -> d:{\"finishReason\":\"stop\",\"usage\":{...}}
-    :usage      -> 2:{\"type\":\"usage\",...} (when :emit-usage? true, else skipped)"
-  ([] (aisdk-line-xf nil))
-  ([{:keys [emit-usage? external-id]}]
+  Input types and their SSE events:
+    :start (1st)      -> start + start-step
+    :start (Nth)      -> finish-step + start-step
+    :text             -> [text-end]? [text-start]? text-delta
+    :reasoning        -> [reasoning-end]? [reasoning-start]? reasoning-delta (empty text -> nothing)
+    :tool-input-start -> tool-input-start
+    :tool-input       -> tool-input-available
+    :tool-output      -> tool-output-available | tool-output-error
+    :data             -> data-<data-type>
+    :error            -> [start + start-step]? error
+    :usage            -> (accumulated; emitted as finish.message_metadata)
+    :finish           -> (recorded — the completion arity emits the finish)
+    completion        -> [text-end]? finish-step + finish + [DONE]"
+  ([] (parts->aisdk-sse-xf nil))
+  ([{:keys [message-id message-metadata context-window-tokens]}]
    (fn [rf]
-     (let [error? (volatile! false)
-           usage  (volatile! nil)]
+     (let [error?            (volatile! false)
+           finish-error-code (volatile! nil)
+           finish-reason     (volatile! nil)
+           loop-finish-reason (volatile! nil)
+           started?          (volatile! false)
+           usage-by-model    (volatile! {})
+           ;; usage of the latest LLM call alone — the delta between consecutive
+           ;; cumulative snapshots for that call's model
+           last-call         (volatile! nil)
+           ;; non-nil while a text block is open; holds the block id so we can
+           ;; emit a matching text-end when the block closes
+           current-text-id   (volatile! nil)
+           ;; providers' native reasoning ids are long; emit short sequential wire
+           ;; ids, keeping the provider id only to detect block boundaries
+           current-reasoning-id (volatile! nil)
+           reasoning-n          (volatile! 0)
+           reasoning-wire-id    (volatile! nil)
+           start-event       (fn [id]
+                               (format-sse-event
+                                (cond-> {:type "start" :messageId id}
+                                  message-metadata (assoc :messageMetadata message-metadata))))
+           close-text-block  (fn [result]
+                               (if-let [id @current-text-id]
+                                 (do (vreset! current-text-id nil)
+                                     (rf result (format-sse-event {:type "text-end" :id id})))
+                                 result))
+           close-reasoning-block (fn [result]
+                                   (if @current-reasoning-id
+                                     (let [wid @reasoning-wire-id]
+                                       (vreset! current-reasoning-id nil)
+                                       (rf result (format-sse-event {:type "reasoning-end" :id wid})))
+                                     result))
+           ensure-started    (fn [result]
+                               (if @started?
+                                 result
+                                 (do (vreset! started? true)
+                                     (-> result
+                                         (rf (start-event (or message-id (mkid))))
+                                         (rf (format-sse-event {:type "start-step"}))))))]
        (fn
          ([] (rf))
          ([result]
-          (-> result
-              ;; Emit finish message with accumulated usage at the end
-              (rf (format-finish-line @error? (when emit-usage? @usage)))
-              (rf)))
+          (let [metadata (merge (->message-metadata @usage-by-model @last-call context-window-tokens)
+                                (when @finish-error-code {:errorCode @finish-error-code}))
+                finish   (cond-> {:type         "finish"
+                                  :finishReason (completion-finish-reason @finish-reason @error? @loop-finish-reason)}
+                           (seq metadata) (assoc :messageMetadata metadata))]
+            (-> result
+                close-text-block
+                close-reasoning-block
+                (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
+                (rf (format-sse-event finish))
+                (rf done-sse-line)
+                (rf))))
          ([result part]
-          (case (:type part)
-            :text        (rf result (format-text-line part))
-            :data        (rf result (format-data-line part))
-            :error       (do
-                           (vreset! error? true)
-                           (rf result (format-error-line part)))
-            :tool-input  (rf result (format-tool-call-line part))
-            :tool-output (rf result (format-tool-result-line part))
-            :start       (rf result (format-start-line
-                                     (cond-> part
-                                       external-id (assoc :messageId external-id))))
-            :finish      result ;; Don't emit here, we emit in completion arity
-            :usage       (do
-                           (vreset! usage (:usage part))
-                           result)
-            ;; Pass through unknown types as data
-            (rf result (format-data-line part)))))))))
+          ;; Any part of a different kind implicitly closes the open text or
+          ;; reasoning block before its own events are emitted; the :text and
+          ;; :reasoning branches handle their own closing (only on id change).
+          (let [result (cond-> result
+                         (not= :text (:type part))      close-text-block
+                         (not= :reasoning (:type part)) close-reasoning-block)]
+            (case (:type part)
+              :start
+              (if @started?
+                (-> result
+                    (rf (format-sse-event {:type "finish-step"}))
+                    (rf (format-sse-event {:type "start-step"})))
+                (do
+                  (vreset! started? true)
+                  (-> result
+                      (rf (start-event (or message-id (:id part) (mkid))))
+                      (rf (format-sse-event {:type "start-step"})))))
+
+              :text
+              (let [id (or (:id part) (mkid))]
+                (if (= id @current-text-id)
+                  (rf result (format-sse-event {:type "text-delta" :id id :delta (:text part)}))
+                  (let [result (close-text-block result)]
+                    (vreset! current-text-id id)
+                    (-> result
+                        (rf (format-sse-event {:type "text-start" :id id}))
+                        (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
+
+              ;; empty-text parts (signature/metadata carriers, redacted blocks) open
+              ;; no reasoning block; whitespace-only deltas (paragraph separators) flow
+              :reasoning
+              (if (empty? (:text part))
+                result
+                (let [id (or (:id part) (mkid))]
+                  (if (= id @current-reasoning-id)
+                    (rf result (format-sse-event {:type "reasoning-delta" :id @reasoning-wire-id :delta (:text part)}))
+                    (let [result (close-reasoning-block result)]
+                      (vreset! current-reasoning-id id)
+                      (vreset! reasoning-wire-id (str (vswap! reasoning-n inc)))
+                      (-> result
+                          (rf (format-sse-event {:type "reasoning-start" :id @reasoning-wire-id}))
+                          (rf (format-sse-event {:type "reasoning-delta" :id @reasoning-wire-id :delta (:text part)})))))))
+
+              :tool-input-start
+              (rf result (format-sse-event {:type       "tool-input-start"
+                                            :toolCallId (:id part)
+                                            :toolName   (:function part)}))
+
+              :tool-input
+              (rf result (format-sse-event (cond-> {:type       "tool-input-available"
+                                                    :toolCallId (:id part)
+                                                    :toolName   (:function part)
+                                                    :input      (:arguments part)}
+                                             (:title part) (assoc :title (:title part)))))
+
+              :tool-output
+              (rf result
+                  (format-sse-event
+                   (if-let [error (:error part)]
+                     {:type       "tool-output-error"
+                      :toolCallId (:id part)
+                      :errorText  (or (:message error) (str error))}
+                     {:type       "tool-output-available"
+                      :toolCallId (:id part)
+                      :output     (tool-output->wire-output (:result part))})))
+
+              :data
+              (rf result (format-sse-event {:type (str "data-" (or (:data-type part) "data"))
+                                            :id   (or (:id part) (mkid))
+                                            :data (:data part)}))
+
+              :error
+              (do
+                (vreset! error? true)
+                (when-let [code (some-> (:error-code (:error part)) name)]
+                  (vreset! finish-error-code code))
+                (rf (ensure-started result) (format-error-line part)))
+
+              :finish
+              (do
+                (when-let [fr (:finish-reason part)]
+                  (vreset! loop-finish-reason fr))
+                result)
+
+              :usage
+              ;; cumulative per-model snapshot; last-wins, emitted on finish
+              (let [model (or (:model part) "unknown")
+                    usage (:usage part)
+                    prev  (get @usage-by-model model)]
+                (vreset! last-call
+                         {:promptTokens     (- (:promptTokens usage 0) (:promptTokens prev 0))
+                          :completionTokens (- (:completionTokens usage 0) (:completionTokens prev 0))})
+                (vswap! usage-by-model assoc model usage)
+                (when-let [fr (:finish-reason part)]
+                  (vreset! finish-reason fr))
+                result)
+
+              ;; Unknown types: emit as data parts
+              (rf result (format-sse-event {:type (str "data-" (name (:type part)))
+                                            :id   (or (:id part) (mkid))
+                                            :data part}))))))))))
 
 ;;; Tool executor
 
@@ -378,32 +644,74 @@
       ;; Other errors
       (or (ex-message e) "Unknown error"))))
 
-(defn- try-decode-json-string
-  "If `v` is a string that looks like a JSON object or array, decode it.
-  Returns the decoded value on success, or the original value on failure."
-  [v]
-  (if (and (string? v)
-           (let [trimmed (str/trim v)]
-             (or (str/starts-with? trimmed "{")
-                 (str/starts-with? trimmed "["))))
-    (try
-      (json/decode+kw v)
-      (catch Exception _ v))
-    v))
+(def ^:private stringified-scalar-transformer
+  "Parses stringified numbers and booleans back into scalars, driven by the tool's own schema.
+  Restricted to the types models get wrong — strings, keywords and enums are left alone."
+  (mtx/transformer
+   {:name     :llm-stringified-scalars
+    :decoders (select-keys (mtx/-string-decoders)
+                           [:int :double :float :boolean 'int? 'double? 'float? 'boolean?
+                            'integer? 'nat-int? 'neg-int? 'pos-int? 'number? 'decimal?])}))
 
-(defn- coerce-stringified-json
-  "Walk tool arguments and decode any string values that are actually stringified
-  JSON objects/arrays. LLMs sometimes double-encode nested arguments."
-  [args]
-  (if (map? args)
-    (reduce-kv (fn [m k v]
-                 (assoc m k (cond
-                              (string? v) (try-decode-json-string v)
-                              (map? v)    (coerce-stringified-json v)
-                              :else       v)))
-               {}
-               args)
+(defn- tool-args-schema
+  "The schema for a tool's argument map, from its `[:=> [:cat args] out]` schema."
+  [tool]
+  (let [[_:=> [_:cat args] _out] (:schema tool)]
     args))
+
+(defn- coerce-stringified-scalars
+  "Coerce string tool `arguments` to the scalar types the tool's schema declares.
+  Some models send numbers as JSON strings, e.g. `{\"limit\": \"15\"}`.
+  Values that can't be parsed and tools without a usable schema are left alone."
+  [tool arguments]
+  (or (try
+        (some-> (tool-args-schema tool)
+                (mc/decode arguments stringified-scalar-transformer))
+        (catch Exception _ nil))
+      arguments))
+
+(defn- json-type-name
+  [v]
+  (cond
+    (nil? v)        "null"
+    (string? v)     "a string"
+    (boolean? v)    "a boolean"
+    (number? v)     "a number"
+    (map? v)        "an object"
+    (sequential? v) "an array"
+    :else           "an unsupported value"))
+
+(defn- argument-error-text
+  [arguments field messages]
+  (let [texts (->> (tree-seq coll? seq messages) (filter string?) distinct vec)]
+    (condp = texts
+      ["disallowed key"]       (str "`" (name field) "` is not a supported argument.")
+      ["missing required key"] (str "`" (name field) "` is required.")
+      (str "`" (name field) "` " (str/join "; " texts)
+           (when (every? string? messages)
+             (str "; received " (json-type-name (get arguments field))))
+           "."))))
+
+(defn- invalid-arguments-message
+  "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match."
+  [schema arguments]
+  (when-let [error (mr/explain schema arguments)]
+    (let [humanized (me/humanize error)]
+      (str "Invalid tool arguments: "
+           (if (map? humanized)
+             (str/join " " (for [[field messages] (sort-by (comp name key) humanized)]
+                             (argument-error-text arguments field messages)))
+             (str "expected an object of named arguments; received "
+                  (json-type-name arguments) "."))))))
+
+(defn- validate-tool-arguments!
+  [tool arguments]
+  (when (and (map? arguments) (contains? arguments :_raw_arguments))
+    (throw (ex-info "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
+                    {:agent-error? true})))
+  (when-let [schema (tool-args-schema tool)]
+    (when-let [message (invalid-arguments-message schema arguments)]
+      (throw (ex-info message {:agent-error? true})))))
 
 (defn- tool-decode-fn
   "Extract the `:decode` function from a tool definition map.
@@ -424,37 +732,49 @@
   arguments before invocation. The decode function can coerce values and throw
   `:agent-error?` exceptions for validation failures.
 
+  The arguments are then checked against the tool's declared schema in every
+  environment — `mu/defn` only instruments dev and test namespaces — and a
+  mismatch is returned to the model as a repair-oriented error.
+
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tool chunks]
-  (with-span :info {:name         :metabot.agent/run-tool
-                    :tool-name    tool-name
-                    :tool-call-id tool-call-id}
-    (let [start-ms (u/start-timer)
-          assoc-ms (fn [duration-ms]
-                     (fn [chunk]
-                       (cond-> chunk
-                         (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-          results  (try
-                     (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                           arguments (or (coerce-stringified-json arguments) {})
-                           decode    (tool-decode-fn tool)
-                           arguments (cond-> arguments decode decode)]
-                       (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
-                       (let [tool-fn (tool-call-fn tool)
-                             result  (tool-fn arguments)]
-                         (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
-                         (collect-tool-result tool-call-id tool-name result)))
-                     (catch Exception e
-                       (if (:agent-error? (ex-data e))
-                         (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                         (log/warn e "Tool execution failed" {:tool-name tool-name}))
-                       [{:type         :tool-output-available
-                         :toolCallId   tool-call-id
-                         :toolName     tool-name
-                         :error        {:message (concise-tool-error e)
-                                        :type    (str (type e))}}]))]
-      (mapv (assoc-ms (u/since-ms start-ms))
-            results))))
+  (ait/with-tool-call {:ai/tool-name    tool-name
+                       :ai/tool-call-id tool-call-id}
+    (with-span :info {:name         :metabot.agent/run-tool
+                      :tool-name    tool-name
+                      :tool-call-id tool-call-id}
+      (let [start-ms (u/start-timer)
+            assoc-ms (fn [duration-ms]
+                       (fn [chunk]
+                         (cond-> chunk
+                           (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
+            results  (try
+                       (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                             arguments (or (coerce-stringified-json arguments) {})
+                             arguments (coerce-stringified-scalars tool arguments)
+                             decode    (tool-decode-fn tool)
+                             arguments (cond-> arguments decode decode)
+                             _         (validate-tool-arguments! tool arguments)]
+                         (log/debug "Executing tool" {:tool-name tool-name})
+                         (when (ait/capture-active?)
+                           (ait/record! {:ai/tool-args arguments}))
+                         (let [tool-fn (tool-call-fn tool)
+                               result  (tool-fn arguments)]
+                           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
+                           (collect-tool-result tool-call-id tool-name result)))
+                       (catch Exception e
+                         (if (:agent-error? (ex-data e))
+                           (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
+                           (log/warn "Tool execution failed" {:tool-name tool-name :error (ex-message e)}))
+                         [{:type         :tool-output-available
+                           :toolCallId   tool-call-id
+                           :toolName     tool-name
+                           :error        {:message (concise-tool-error e)
+                                          :type    (str (type e))}}]))]
+        (when (ait/capture-active?)
+          (ait/record! {:ai/tool-output results}))
+        (mapv (assoc-ms (u/since-ms start-ms))
+              results)))))
 
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.
@@ -576,15 +896,30 @@
     s
     (str (subs s 0 limit) "…")))
 
+(defn- bounded-pr-str
+  "`pr-str` a body for error surfacing without first allocating an unbounded string.
+  Walks the body and slices every string leaf to `limit` before printing — so a parsed
+  JSON map like `{:detail \"<1MB>\"}` doesn't allocate the full 1MB leaf inside `pr-str`
+  only for the caller to truncate it back down. Collections also render under
+  `*print-length*`/`*print-level*` to bound element count and nesting depth."
+  [body limit]
+  (let [slice (fn [x] (cond-> x (string? x) (truncate-to limit)))]
+    (binding [*print-length* 100
+              *print-level*  10]
+      (pr-str (walk/postwalk slice body)))))
+
 (defn- truncate-to-preview-limit
   "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
   [s]
   (truncate-to s max-body-preview-chars))
 
-(defn- body-for-log
-  "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]]."
+(defn body-for-log
+  "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]].
+  Public so the agent loop's error logging bounds the body the same way.
+  Assumes a bounded input (a decoded ≤[[max-body-slurp-chars]] body) — the walk bounds rendered
+  output, not traversal, so a large unbounded collection would still be fully walked."
   [body]
-  (truncate-to (pr-str body) max-body-log-chars))
+  (truncate-to (bounded-pr-str body max-body-log-chars) max-body-log-chars))
 
 (defn- body-preview
   "Short snippet of an upstream response body for the user-facing exception message.
@@ -601,28 +936,26 @@
                                            (string? head) head
                                            :else          nil))
                     :else              nil)
-        ;; Surface *some* context to the user even for unrecognised shapes — the warn
-        ;; signals operators to add the new envelope shape to [[extract-error-message]].
-        ;; Truncate once: the warn line shouldn't carry a multi-MB pr-str any more than
-        ;; the user-facing exception message should.
+        ;; Surface *some* context in the message even for unrecognised shapes — a raw pr-str
+        ;; beats a bare "HTTP 500" with no clue what the upstream said. rethrow-api-error! logs
+        ;; the (bounded) body once already, so we don't warn again here.
         s         (or extracted
                       (when (and (or (map? body) (sequential? body)) (seq body))
-                        (let [capped (truncate-to-preview-limit (pr-str body))]
-                          (log/warnf "body-preview: unrecognised error body shape; pr-str=%s" capped)
-                          capped)))]
+                        (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))))]
     (some-> s str/trim not-empty truncate-to-preview-limit)))
 
 (def ^:private auth-error-statuses
   "Statuses whose upstream body may carry provider-side auth/account detail
-  (raw API keys, org/account names, tenant IDs). The full body still hits the
-  warn log; we just don't splice it into the message the caller sees."
+  (raw API keys, org/account names, tenant IDs). For these we don't splice a
+  body preview into the message the caller sees."
   #{401 403})
 
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
   `res->message` receives the decoded response map and returns the provider-specific message.
   A body preview is appended to the message except on 401/403 (see [[auth-error-statuses]]),
-  where the body may carry sensitive auth/account detail; the full body is still logged.
+  where the body may carry sensitive auth/account detail. The warn log carries provider and
+  status only — response bodies are never logged; the full body travels on the thrown ex-data.
   ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:headers`, `:body`, plus provider tags.
   Exceptions already tagged `:api-error true` are rethrown unchanged."
   [provider res->message ^Throwable e]
@@ -638,11 +971,8 @@
                       (body-preview (:body res)))
             msg     (cond-> base
                       preview (str " — " preview))]
-        ;; warnf (not warn) so the body renders into the message string, not as MDC.
-        ;; body-for-log caps the pr-str so a near-cap slurped stream can't flood the logs;
-        ;; the full body still survives in ex-data below.
-        (log/warnf "Provider API request failed: provider=%s status=%s body=%s"
-                   provider (:status res) (body-for-log (:body res)))
+        (log/warnf "Provider API request failed: provider=%s status=%s"
+                   provider (:status res))
         ;; Allow-list explicitly — clj-http responses carry :http-client (a Closeable),
         ;; :trace-redirects, :orig-content-encoding, etc., none of which should propagate downstream.
         ;; :headers is included so the retry path in metabase.metabot.self/parse-retry-after-header
@@ -670,6 +1000,24 @@
                          :exception-class exception-class}
                         e))))))
 
+(defn reducible-with-api-errors
+  "Wrap a reducible stream so exceptions thrown during its (lazy) consumption are
+  routed through [[rethrow-api-error!]], the same translation applied to
+  request-time failures. Provider adapters consume their SSE body outside the
+  request `try` (the reduction happens later, in the agent loop), so a
+  mid-stream failure — e.g. a `SocketTimeoutException` between chunks — would
+  otherwise surface raw instead of in the provider-friendly error shape.
+
+  Takes the reducible first so adapters can thread it straight off
+  [[sse-reducible]]/`capture-stream` with `->`."
+  [reducible provider res->message]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (try
+        (reduce rf init reducible)
+        (catch Exception e
+          (rethrow-api-error! provider res->message e))))))
+
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."
   [llm-type]
@@ -695,8 +1043,17 @@
           (throw (missing-api-key-ex llm-type))))))
 
 (defn request
-  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`)."
+  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`).
+  Forces a connection + socket timeout on every request so a hung upstream can
+  never block the caller forever. The timeouts default to the operator-tunable
+  `llm/llm-connection-timeout-ms` and `llm/llm-request-timeout-ms` settings (read
+  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  override either timeout per request by passing `:connection-timeout` /
+  `:socket-timeout` in `req`."
   [{:keys [url headers]} req]
-  (http/request (-> req
+  (llm/assert-llm-host-allowed! url)
+  (http/request (-> {:connection-timeout (llm/llm-connection-timeout-ms)
+                     :socket-timeout     (llm/llm-request-timeout-ms)}
+                    (merge req)
                     (update :url #(str url %))
                     (update :headers merge headers))))

@@ -1,14 +1,13 @@
 import { type ChangeEvent, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Input } from "metabase/common/components/Input";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import {
   type UpdateQueryHookProps,
   useBreakoutQueryHandlers,
 } from "metabase/query_builder/hooks";
-import { Box, DelayGroup } from "metabase/ui";
+import { Box, DelayGroup, Icon, Input, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -110,12 +109,19 @@ export function BreakoutColumnList({
   return (
     <>
       <Box mb="md">
-        <Input
-          fullWidth
+        <TextInput
           placeholder={t`Find...`}
           value={searchQuery}
-          leftIcon="search"
-          onResetClick={handleResetSearch}
+          leftSection={<Icon name="search" />}
+          rightSectionPointerEvents="all"
+          rightSection={
+            searchQuery.length > 0 ? (
+              <Input.ClearButton
+                c="text-secondary"
+                onClick={handleResetSearch}
+              />
+            ) : null
+          }
           onChange={handleChangeSearchQuery}
         />
       </Box>

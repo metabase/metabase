@@ -5,22 +5,27 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals";
-import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
+import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
+import { createMockState } from "metabase/redux/store/mocks";
+import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import type {
-  ChannelApiResponse,
   Notification,
   NotificationChannel,
+  UserListResult,
 } from "metabase-types/api";
 import {
   createMockCard,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserInfo,
+  createMockUserListResult,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import { createMockChannel } from "metabase-types/api/mocks/channel";
@@ -42,7 +47,7 @@ const expectNotConfigured = async (channel: string) =>
     within(await configuredAlerts()).queryByText(channel),
   ).not.toBeInTheDocument();
 
-describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
+describe("CreateOrEditQuestionAlertModal", () => {
   it("should show 'When this question has results' for question cards", async () => {
     setup({ isAdmin: true });
 
@@ -136,7 +141,7 @@ describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show daily and 8am as default schedule settings", async () => {
+  it("should show daily schedule with no time selected by default", async () => {
     setup({
       isAdmin: true,
       isEmailSetup: true,
@@ -146,13 +151,32 @@ describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
       expect(screen.getByText("New alert")).toBeInTheDocument();
     });
 
-    // Find the schedule type select (showing "daily")
     const scheduleTypeSelect = screen.getByTestId("select-frequency");
     expect(scheduleTypeSelect).toHaveValue("daily");
 
-    // Find the time selector (showing "8:00")
     const timeSelector = screen.getByTestId("select-time");
-    expect(timeSelector).toHaveValue("8:00");
+    expect(timeSelector).toHaveValue("");
+    expect(timeSelector).toHaveAttribute("placeholder", "HH:MM");
+    expect(
+      within(screen.getByTestId("select-am-pm")).getByRole("radio", {
+        name: "AM",
+      }),
+    ).toBeChecked();
+
+    expect(screen.getByRole("button", { name: /done/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /send now/i })).toBeEnabled();
+  });
+
+  it("should disable 'Send now' when there is nowhere to send the alert to", async () => {
+    setup({
+      isAdmin: true,
+      isEmailSetup: false,
+      isSlackSetup: true,
+    });
+
+    expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: /send now/i })).toBeDisabled();
   });
 
   it("should show the editing alert data when in edit mode", async () => {
@@ -264,13 +288,16 @@ describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
     const scheduleTypeSelect = screen.getByTestId("select-frequency");
     expect(scheduleTypeSelect).toHaveValue("daily");
 
-    // Change time from default 9:00 to 8:00
+    expect(screen.getByRole("button", { name: /done/i })).toBeDisabled();
+
+    // Explicitly select 8:00 as the alert time
     const timeSelector = screen.getByTestId("select-time");
     await userEvent.click(timeSelector);
     const option8am = screen.getByRole("option", { name: /8:00/i });
     await userEvent.click(option8am);
 
     const saveButton = screen.getByRole("button", { name: /done/i });
+    expect(saveButton).toBeEnabled();
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for 8am
@@ -279,10 +306,44 @@ describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
       expect(subscription.cron_schedule).toBe("0 0 8 * * ? *");
+    });
+
+    expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("should create a new notification with hourly schedule", async () => {
+    fetchMock.postOnce("path:/api/notification", { body: { id: 123 } });
+    const onAlertCreatedMock = jest.fn();
+
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      onAlertCreatedMock,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("New alert")).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId("select-frequency"));
+    await userEvent.click(screen.getByRole("option", { name: /hourly/i }));
+
+    const saveButton = screen.getByRole("button", { name: /done/i });
+    expect(saveButton).toBeEnabled();
+    await userEvent.click(saveButton);
+
+    const calls = fetchMock.callHistory.calls("path:/api/notification");
+    expect(calls.length).toBe(1);
+
+    await waitFor(async () => {
+      const requestBody = await calls[0].options?.body;
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
+
+      expect(subscription.cron_schedule).toBe("0 0 * * * ? *");
     });
 
     expect(onAlertCreatedMock).toHaveBeenCalledTimes(1);
@@ -310,7 +371,8 @@ describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
     const optionCustom = screen.getByRole("option", { name: /custom/i });
     await userEvent.click(optionCustom);
 
-    const cronInput = screen.getByDisplayValue("0 8 * * ?");
+    // A new alert has no hour picked yet, so the hour is left as a wildcard
+    const cronInput = screen.getByDisplayValue("0 * * * ?");
 
     await userEvent.clear(cronInput);
     await userEvent.type(cronInput, "0/10 8 * * ?");
@@ -324,7 +386,7 @@ describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
       expect(subscription.cron_schedule).toBe("0 0/10 8 * * ? *");
@@ -438,13 +500,155 @@ describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
 
     await waitFor(async () => {
       const requestBody = await calls[0].options?.body;
-      const subscription = JSON.parse(requestBody as string).subscriptions[0];
+      const subscription = JSON.parse(String(requestBody)).subscriptions[0];
 
       // Verify the cron schedule is for Tuesday at 2pm (day 3)
       expect(subscription.cron_schedule).toBe("0 0 14 ? * 3 *");
     });
 
     expect(onAlertUpdatedMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("should keep the subscription identity when the schedule loses its time and gets a new one", async () => {
+    const notificationId = 42;
+    const subscriptionId = 7;
+    fetchMock.putOnce(`path:/api/notification/${notificationId}`, {
+      body: { id: notificationId },
+    });
+
+    const mockNotification = createMockNotification({
+      id: notificationId,
+      subscriptions: [
+        createMockNotificationCronSubscription({
+          id: subscriptionId,
+          notification_id: notificationId,
+          cron_schedule: "0 0 9 * * ?",
+        }),
+      ],
+    });
+
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      editingNotification: mockNotification,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Edit alert")).toBeInTheDocument();
+    });
+
+    // Going through Custom drops the hour, so the alert is left without a
+    // subscription until a new time is picked
+    await userEvent.click(screen.getByTestId("select-frequency"));
+    await userEvent.click(screen.getByRole("option", { name: /custom/i }));
+
+    await userEvent.click(screen.getByTestId("select-frequency"));
+    await userEvent.click(screen.getByRole("option", { name: /daily/i }));
+
+    expect(
+      screen.getByRole("button", { name: /save changes/i }),
+    ).toBeDisabled();
+
+    await userEvent.click(screen.getByTestId("select-time"));
+    await userEvent.click(screen.getByRole("option", { name: /10:00/i }));
+
+    const saveButton = screen.getByRole("button", { name: /save changes/i });
+    expect(saveButton).toBeEnabled();
+    await userEvent.click(saveButton);
+
+    const calls = fetchMock.callHistory.calls(
+      `path:/api/notification/${notificationId}`,
+    );
+    expect(calls.length).toBe(1);
+
+    const subscription = JSON.parse(String(calls[0].options?.body))
+      .subscriptions[0];
+
+    expect(subscription.id).toBe(subscriptionId);
+    expect(subscription.notification_id).toBe(notificationId);
+    expect(subscription.cron_schedule).toBe("0 0 10 * * ? *");
+    expect(subscription.ui_display_type).toBe("cron/builder");
+  });
+
+  const OWNER_BLOCK_TITLE = /who owns this alert\?/i;
+
+  it("should not show the owner picker when creating a new alert", async () => {
+    setup({ isAdmin: true, isEmailSetup: true });
+
+    expect(await screen.findByText("New alert")).toBeInTheDocument();
+    expect(screen.queryByText(OWNER_BLOCK_TITLE)).not.toBeInTheDocument();
+  });
+
+  it("should not show the owner picker for non-admins editing an alert", async () => {
+    setup({
+      isAdmin: false,
+      userCanAccessSettings: true,
+      isEmailSetup: true,
+      editingNotification: createMockNotification(),
+    });
+
+    expect(await screen.findByText("Edit alert")).toBeInTheDocument();
+    expect(screen.queryByText(OWNER_BLOCK_TITLE)).not.toBeInTheDocument();
+  });
+
+  it("should show the current owner when an admin edits an alert", async () => {
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      editingNotification: createMockNotification({
+        creator_id: 3,
+        creator: createMockUserInfo({ common_name: "Ann Admin" }),
+      }),
+    });
+
+    expect(await screen.findByText(OWNER_BLOCK_TITLE)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Select a user")).toHaveValue(
+      "Ann Admin",
+    );
+  });
+
+  it("should send the new creator_id when an admin changes the owner", async () => {
+    const notificationId = 42;
+    fetchMock.putOnce(`path:/api/notification/${notificationId}`, {
+      body: { id: notificationId },
+    });
+
+    const newOwner = createMockUserListResult({
+      id: 7,
+      common_name: "New Owner",
+    });
+
+    setup({
+      isAdmin: true,
+      isEmailSetup: true,
+      users: [newOwner],
+      editingNotification: createMockNotification({
+        id: notificationId,
+        creator_id: 3,
+        creator: createMockUserInfo({ common_name: "Ann Admin" }),
+      }),
+    });
+
+    await screen.findByText("Edit alert");
+
+    await userEvent.click(screen.getByPlaceholderText("Select a user"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "New Owner" }),
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /save changes/i }),
+    );
+
+    const calls = fetchMock.callHistory.calls(
+      `path:/api/notification/${notificationId}`,
+    );
+    expect(calls.length).toBe(1);
+
+    await waitFor(async () => {
+      const requestBody = await calls[0].options?.body;
+      expect(JSON.parse(String(requestBody)).creator_id).toBe(7);
+    });
   });
 });
 
@@ -459,6 +663,7 @@ function setup({
   onAlertCreatedMock = jest.fn(),
   onAlertUpdatedMock = jest.fn(),
   cardType = "question",
+  users = [],
 }: {
   userCanAccessSettings?: boolean;
   isAdmin?: boolean;
@@ -470,6 +675,7 @@ function setup({
   onAlertCreatedMock?: jest.Mock;
   onAlertUpdatedMock?: jest.Mock;
   cardType?: "question" | "model" | "metric";
+  users?: UserListResult[];
 }) {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
@@ -493,10 +699,11 @@ function setup({
     slack: { configured: isSlackSetup },
     email: { configured: isEmailSetup },
     http: { configured: isHttpSetup },
-  } as ChannelApiResponse["channels"]);
+  });
 
   setupWebhookChannelsEndpoint(webhooksResult);
   setupUserRecipientsEndpoint({ users: [] });
+  setupUsersEndpoints(users);
 
   const currentUser = createMockUser(
     isAdmin ? { is_superuser: true } : undefined,
@@ -509,23 +716,30 @@ function setup({
       can_access_subscription: false,
     };
   }
-  const storeConfig = {
-    storeInitialState: {
-      currentUser,
-      qb: createMockQueryBuilderState({
-        card: mockCard,
-      }),
-      entities: createMockEntitiesState({
-        databases: [createSampleDatabase()],
-        questions: [mockCard],
-      }),
-      settings,
-    },
-  };
+  const storeInitialState = createMockState({
+    currentUser,
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+      questions: [mockCard],
+    }),
+    settings,
+  });
+  const storeConfig = { storeInitialState };
+
+  const metadata = getMetadata(storeInitialState);
+  // The modal takes `question` as a prop. In production it comes from the `getQuestion` selector
+  // which composes metrics and models into runnable ad-hoc questions.
+  // Matching that behavior here.
+  const savedQuestion = checkNotNull(metadata.question(mockCard.id));
+  const question =
+    cardType === "metric" || cardType === "model"
+      ? savedQuestion.composeQuestion()
+      : savedQuestion;
 
   if (editingNotification) {
     renderWithProviders(
-      <CreateOrEditQuestionAlertModalWithQuestion
+      <CreateOrEditQuestionAlertModal
+        question={question}
         editingNotification={editingNotification}
         onAlertUpdated={onAlertUpdatedMock}
         onClose={jest.fn()}
@@ -536,7 +750,8 @@ function setup({
   }
 
   renderWithProviders(
-    <CreateOrEditQuestionAlertModalWithQuestion
+    <CreateOrEditQuestionAlertModal
+      question={question}
       onAlertCreated={onAlertCreatedMock}
       onClose={jest.fn()}
     />,

@@ -66,6 +66,30 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("should not request a collection the current user does not have", () => {
+    // The question's Save affordance asks whether the user can write to the
+    // target collection. With no `targetCollection` that resolves to
+    // "personal" — which resolves to nothing for a user without a personal
+    // collection, and building a URL from that hits `/api/collection/undefined`.
+    cy.intercept("GET", "/api/user/current", (req) => {
+      req.continue((res) => {
+        delete res.body.personal_collection_id;
+      });
+    });
+    cy.intercept("GET", "/api/collection/undefined*").as(
+      "unresolvedCollection",
+    );
+
+    mountInteractiveQuestion();
+
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("Max of Quantity").should("be.visible");
+    });
+
+    cy.get("@unresolvedCollection.all").should("have.length", 0);
+  });
+
   it("should not show the expand button (metabase#68975)", () => {
     mountInteractiveQuestion();
 
@@ -339,6 +363,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     saveInteractiveQuestionAsNewQuestion({
       entityName: "Orders",
       questionName: "Sample Orders 4",
+      getModal: () => cy.findByTestId("modal"),
     });
 
     cy.wait("@createCard").then(({ response }) => {
@@ -647,22 +672,23 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     mountSdkContent(<TestComponent />);
 
     getSdkRoot().within(() => {
-      cy.findByText(`id = ${FIRST_COLLECTION_ENTITY_ID}`).should("exist");
+      cy.findByText(`id = ${FIRST_COLLECTION_ENTITY_ID}`).should("be.visible");
 
       cy.log("click on the button to switch target collection");
       cy.findByText("use second collection").click();
-      cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("exist");
+      cy.findByText(`id = ${SECOND_COLLECTION_ENTITY_ID}`).should("be.visible");
     });
 
-    cy.log("close any existing open popovers to reduce flakes");
-    cy.get("body").type("{esc}");
-
     getSdkRoot().within(() => {
-      cy.log("open the data picker");
-      cy.findByText("Pick your starting data").click();
+      cy.log(
+        "the data picker auto-opens after the target-collection re-render because no source table is selected; interact with the already-open popover directly instead of toggling it, which races the async auto-open",
+      );
+      H.popover()
+        .findByRole("link", { name: "Orders" })
+        .should("be.visible")
+        .click();
 
       cy.log("ensure that the interactive question still works");
-      H.popover().findByRole("link", { name: "Orders" }).click();
       cy.findByRole("button", { name: "Visualize" }).should("be.visible");
     });
   });
@@ -749,7 +775,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       });
 
       cy.log("back to previous result button should not be visible");
-      cy.findByText("No results!").should("be.visible");
+      cy.findByText("No results").should("be.visible");
       cy.findByText("Back to previous results").should("not.exist");
     });
   });

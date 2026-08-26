@@ -3,13 +3,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
-import { isAdminGroup, isDefaultGroup } from "metabase/admin/utils/groups";
 import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
+import { getUser } from "metabase/current-user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { Box, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
 import { getFullName } from "metabase/utils/user";
 import type { Group, Member, Membership } from "metabase-types/api";
@@ -50,6 +50,16 @@ export function GroupMembersTable({
     return _.partition(group.members, isApiKeyGroupMember).flat();
   }, [group.members]);
   const groupsPage = members.slice(offset, offset + pageSize);
+  const hasMembers = members.length > 0;
+
+  // An empty group renders just the call to action, without the column header.
+  if (!hasMembers && !showAddUser) {
+    return (
+      <Text c="text-secondary" ta="center" mt="xl">
+        {t`Add members to get started.`}
+      </Text>
+    );
+  }
 
   return (
     <>
@@ -83,7 +93,7 @@ export function GroupMembersTable({
         )}
       </AdminContentTable>
 
-      {members.length > 0 ? (
+      {hasMembers && (
         <Flex align="center" justify="flex-end" p="md">
           <PaginationControls
             page={page}
@@ -94,10 +104,6 @@ export function GroupMembersTable({
             onPreviousPage={handlePreviousPage}
           />
         </Flex>
-      ) : (
-        <Text size="lg" fw="700" ta="center" mt="4rem">
-          {t`A group is only as good as its members.`}
-        </Text>
       )}
     </>
   );
@@ -144,7 +150,7 @@ const UserMemberRow = ({
       {canRemove ? (
         <Box component="td" ta="right">
           <UnstyledButton onClick={() => onMembershipRemove(member)}>
-            <Icon name="close" c="text-tertiary" size={16} />
+            <Icon name="close" c="text-disabled" size={16} />
           </UnstyledButton>
         </Box>
       ) : null}
@@ -164,7 +170,7 @@ const ApiKeyMemberRow = ({ member }: { member: Member }) => (
     <Box component="td" ta="right">
       <Link to="/admin/settings/authentication/api-keys">
         <Tooltip label={t`API keys`} position="left">
-          <Icon name="link" c="text-tertiary" size={16} />
+          <Icon name="link" c="text-disabled" size={16} />
         </Tooltip>
       </Link>
     </Box>

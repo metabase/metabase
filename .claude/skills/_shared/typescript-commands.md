@@ -2,8 +2,8 @@
 
 - **Lint:** `bun run lint-eslint-pure`
   - Run ESLint on the codebase
-- **Format:** `bun run prettier`
-  - Format code using Prettier
+- **Format:** `bun run format`
+  - Format code with oxfmt (`oxfmt --write`); use `bun run lint-format-pure` to check without writing
 - **Type Check:** `bun run type-check-pure`
   - Run TypeScript type checking
 

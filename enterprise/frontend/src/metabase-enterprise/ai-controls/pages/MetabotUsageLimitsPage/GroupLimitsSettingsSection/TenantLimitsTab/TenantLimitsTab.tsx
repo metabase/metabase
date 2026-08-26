@@ -50,6 +50,7 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
           ...map,
           [limitObj.tenant_id]: limitObj.max_usage,
         }),
+        // Unjustified type cast. FIXME
         {} as TenantLimitsMap,
       ),
     [tenantLimits],
@@ -125,7 +126,12 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
         error={hasTenantsError ? t`Error loading tenants` : null}
       >
         {noTenantsToShow ? (
-          <Alert mb="md" variant="error" icon={<Icon name="warning" />}>
+          <Alert
+            size="compact"
+            mb="md"
+            color="error"
+            icon={<Icon name="warning" />}
+          >
             {t`No tenants to show`}
           </Alert>
         ) : (

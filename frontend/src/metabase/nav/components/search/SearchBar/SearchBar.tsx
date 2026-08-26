@@ -1,4 +1,4 @@
-import type { LocationDescriptorObject } from "history";
+import cx from "classnames";
 import { useKBar } from "kbar";
 import type {
   ChangeEvent,
@@ -6,55 +6,58 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useKeyboardShortcut } from "metabase/common/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { RecentsList } from "metabase/nav/components/search/RecentsList";
-import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
-import { zoomInRow } from "metabase/query_builder/actions";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { SearchAwareLocation } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
   isSearchPageLocation,
-} from "metabase/search/utils";
-import { getSetting } from "metabase/selectors/settings";
-import { Icon } from "metabase/ui";
+} from "metabase/common/search";
+import { RecentsList } from "metabase/nav/components/search/RecentsList";
+import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
+import { APP_BAR_HEIGHT } from "metabase/nav/constants";
+import { useSelector } from "metabase/redux";
+import type { To } from "metabase/router";
+import {
+  queryToSearch,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+} from "metabase/router";
+import { getSetting } from "metabase/settings";
+import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { SearchResult } from "metabase-types/api";
 
 import { CommandPaletteTrigger } from "./CommandPaletteTrigger";
-import {
-  CloseSearchButton,
-  SearchBarRoot,
-  SearchIcon,
-  SearchInput,
-  SearchInputContainer,
-  SearchResultsFloatingContainer,
-} from "./SearchBar.styled";
+import S from "./SearchBar.module.css";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
-type RouterProps = {
-  location: SearchAwareLocation;
-};
-
-type OwnProps = {
+type Props = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
+  /**
+   * Override how a search result is handled. When omitted, results navigate
+   * via `modelToUrl`. The main-app caller injects a callback that zooms in on
+   * indexed-entity results that match the current QB page.
+   */
+  onSearchItemSelect?: (result: SearchResult) => void;
 };
 
-type Props = RouterProps & OwnProps;
-
-function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
+function SearchBar({
+  onSearchActive,
+  onSearchInactive,
+  onSearchItemSelect: onSearchItemSelectProp,
+}: Props) {
+  const location = useLocation();
+  const navigationType = useNavigationType();
   const isTypeaheadEnabled = useSelector((state) =>
     getSetting(state, "search-typeahead-enabled"),
   );
@@ -75,14 +78,13 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   const previousLocation = usePrevious(location);
   const container = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const hasSearchText = searchText.trim().length > 0;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) =>
-      dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation: To) => navigate(nextLocation),
+    [navigate],
   );
 
   const onInputContainerClick = useCallback(() => {
@@ -96,15 +98,13 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
 
   const onSearchItemSelect = useCallback(
     (result: SearchResult) => {
-      // if we're already looking at the right model, don't navigate, just update the zoomed in row
-      const isSameModel = result?.model_id === location?.state?.cardId;
-      if (isSameModel && result.model === "indexed-entity") {
-        dispatch(zoomInRow({ objectId: result.id }));
+      if (onSearchItemSelectProp) {
+        onSearchItemSelectProp(result);
       } else {
         onChangeLocation(modelToUrl(result));
       }
     },
-    [dispatch, onChangeLocation, location?.state?.cardId],
+    [onSearchItemSelectProp, onChangeLocation],
   );
 
   useOnClickOutside(container, setInactive);
@@ -145,11 +145,11 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, [previousLocation, location]);
 
   useEffect(() => {
-    if (previousLocation !== location && location.action !== "REPLACE") {
+    if (previousLocation !== location && navigationType !== "REPLACE") {
       // deactivate search when page changes
       setInactive();
     }
-  }, [previousLocation, location, setInactive]);
+  }, [previousLocation, location, navigationType, setInactive]);
 
   const goToSearchApp = useCallback(() => {
     const shouldPersistFilters = isSearchPageLocation(previousLocation);
@@ -160,8 +160,8 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
       ...filters,
     };
     onChangeLocation({
-      pathname: "search",
-      query,
+      pathname: "/search",
+      search: queryToSearch(query),
     });
   }, [onChangeLocation, previousLocation, searchFilters, searchText]);
 
@@ -194,11 +194,25 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   };
 
   return (
-    <SearchBarRoot ref={container}>
-      <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
-        <SearchIcon name="search" isActive={isActive} />
-        <SearchInput
-          isActive={isActive}
+    <Box
+      ref={container}
+      w="100%"
+      maw={{ sm: rem(232) }}
+      pos={{ sm: "relative" }}
+    >
+      <Flex
+        className={cx(S.container, { [S.active]: isActive })}
+        align="center"
+        pos="relative"
+        flex="1 1 auto"
+        onClick={onInputContainerClick}
+      >
+        <Icon
+          name="search"
+          className={cx(S.searchIcon, { [S.active]: isActive })}
+        />
+        <input
+          className={cx(S.input, { [S.active]: isActive })}
           value={searchText}
           placeholder={t`Search` + "…"}
           maxLength={200}
@@ -207,33 +221,45 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
           ref={searchInput}
         />
         {isSmallScreen() && isActive && (
-          <CloseSearchButton onClick={handleClickOnClose}>
+          <UnstyledButton
+            className={S.closeButton}
+            display="flex"
+            w={rem(48)}
+            h="100%"
+            aria-label={t`Close search`}
+            onClick={handleClickOnClose}
+          >
             <Icon name="close" />
-          </CloseSearchButton>
+          </UnstyledButton>
         )}
         {!isSmallScreen() && !isWithinIframe() && isActive && (
           <CommandPaletteTrigger onClick={handleCommandPaletteTriggerClick} />
         )}
-      </SearchInputContainer>
+      </Flex>
       {isActive && isTypeaheadEnabled && (
-        <SearchResultsFloatingContainer data-testid="search-results-floating-container">
+        <Box
+          pos="absolute"
+          left={0}
+          right={0}
+          top={{ base: APP_BAR_HEIGHT, sm: rem(42) }}
+          c="text-primary"
+          data-testid="search-results-floating-container"
+        >
           {hasSearchText ? (
             <SearchResultsDropdown
               searchText={searchText}
               onSearchItemSelect={onSearchItemSelect}
               goToSearchApp={goToSearchApp}
-              isSearchBar={true}
+              context="search-bar"
             />
           ) : (
             <RecentsList />
           )}
-        </SearchResultsFloatingContainer>
+        </Box>
       )}
-    </SearchBarRoot>
+    </Box>
   );
 }
-
-export const SearchBar = withRouter(SearchBarView);
 
 // for some reason our unit test don't work if this is a name export ¯\_(ツ)_/¯
 // eslint-disable-next-line import/no-default-export

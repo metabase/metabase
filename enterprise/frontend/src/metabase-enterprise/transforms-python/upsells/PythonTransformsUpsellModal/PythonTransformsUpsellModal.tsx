@@ -4,9 +4,10 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { trackUpsellViewed } from "metabase/common/components/upsells/components/analytics";
 import { useStoreUrl } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
-import { getIsHosted } from "metabase/setup/selectors";
+import { useSetting } from "metabase/settings";
 import {
   Button,
   Center,
@@ -43,8 +44,10 @@ export function PythonTransformsUpsell({
     t`Add a separate database connection for write operations`,
   ];
 
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canPurchaseTransforms = isStoreUser || isAdmin;
 
   const { isLoading, error, advancedTransformsAddOn, hadAdvancedTransforms } =
     useTransformsBilling();
@@ -96,7 +99,7 @@ export function PythonTransformsUpsell({
             p={shouldShowLeftColumn ? "3rem 1.5rem" : "3rem"}
             flex={1}
             gap="md"
-            bg={shouldShowLeftColumn ? "background-secondary" : undefined}
+            bg={shouldShowLeftColumn ? "background_page-secondary" : undefined}
           >
             {!shouldShowLeftColumn && (
               <>
@@ -112,7 +115,7 @@ export function PythonTransformsUpsell({
               {bulletPoints.map((point) => (
                 <Flex direction="row" gap="sm" key={point}>
                   <Center w={24} h={24} flex="0 0 auto">
-                    <Icon name="check_filled" size={16} c="brand" />
+                    <Icon name="check_filled" size={16} c="core-brand" />
                   </Center>
                   <Text c="text-secondary" lh="lg">
                     {point}
@@ -120,14 +123,16 @@ export function PythonTransformsUpsell({
                 </Flex>
               ))}
             </Stack>
-            {!isStoreUser && (
+            {!canPurchaseTransforms && (
               <Text fw="bold" lh="md">
                 {anyStoreUserEmailAddress
                   ? t`Please ask a Store Admin (${anyStoreUserEmailAddress}) to enable this for you.`
                   : t`Please ask a Store Admin to enable this for you.`}
               </Text>
             )}
-            {isStoreUser && !isHosted && <SelfHostedStorePurchaseLink />}
+            {canPurchaseTransforms && !isHosted && (
+              <SelfHostedStorePurchaseLink />
+            )}
           </Stack>
         </Flex>
       )}
@@ -138,9 +143,11 @@ export function PythonTransformsUpsell({
 export function PythonTransformsUpsellModal({
   onClose,
 }: PythonTransformsUpsellModalProps) {
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const { isStoreUser } = useSelector(getStoreUsers);
-  const shouldShowLeftColumn = isStoreUser && isHosted;
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canPurchaseTransforms = isStoreUser || isAdmin;
+  const shouldShowLeftColumn = canPurchaseTransforms && isHosted;
   const onSuccess = useCallback(() => {
     window.location.href = Urls.transformList(); // On success, do a full-page redirect to transforms list
   }, []);

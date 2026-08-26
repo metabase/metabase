@@ -52,6 +52,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     H.getDashboardCard().realHover();
     H.getDashboardCardMenu().click();
     H.popover().findByText("Edit question").click();
+    cy.findByRole("button", { name: "Visualize" }).should("be.visible");
     cy.findByLabelText(backButtonLabel).click();
     cy.findByTestId("dashboard-header")
       .findByText(dashboardName)

@@ -61,7 +61,7 @@
     (try
       (qp/process-query query' result-metadata-rff)
       (catch Throwable e
-        (log/error e "Error running query to determine Card result metadata")
+        (log/errorf "Error running query to determine Card result metadata: %s" (ex-message e))
         []))))
 
 (mu/defn- metadata-from-driver :- [:sequential :map]

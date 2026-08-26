@@ -175,13 +175,33 @@
 (defmethod global-type-settings :default [_ _viz-settings]
   {})
 
+(defn currency-settings?
+  "Whether a column's viz `settings` indicate it should be formatted as currency.
+
+  True when `number-style` is explicitly \"currency\", or when a currency / currency label style is set without any
+  `number-style`. The latter case matters because the column-formatting UI hides the style dropdown for
+  currency-semantic columns, so `number-style` is frequently never persisted -- the currency options are then the only
+  signal. Both the CSV (`metabase.formatter.impl`) and XLSX export paths share this predicate so they agree on what
+  counts as currency; when they diverged, CSV showed the symbol while XLSX dropped it (GDGT-2398)."
+  [settings]
+  (let [number-style (::mb.viz/number-style settings)]
+    (boolean
+     (or (= number-style "currency")
+         ;; No explicit number-style, but the user picked a currency or a currency label style -- treat as currency.
+         (and (nil? number-style)
+              (or (::mb.viz/currency-style settings)
+                  (::mb.viz/currency settings)))))))
+
 (defn- column-setting-defaults
   "Look up the setting defaults based on any information in the column-settings. This is the case when a column has no
   special type (e.g. a number) but the user has specified that the type is currency. We prefer the currency defaults to
   the number defaults."
   [global-column-settings column-settings]
-  (case (::mb.viz/number-style column-settings)
-    "currency" (:type/Currency global-column-settings)
+  (if (currency-settings? column-settings)
+    ;; Inject number-style "currency" so consumers that key off it (e.g. the XLSX writer) treat the column as currency
+    ;; even when the user never persisted an explicit number-style.
+    (merge {::mb.viz/number-style "currency"}
+           (:type/Currency global-column-settings))
     {}))
 
 (defn- ensure-global-viz-settings

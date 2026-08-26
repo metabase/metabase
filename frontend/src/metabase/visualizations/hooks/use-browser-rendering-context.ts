@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { usePalette } from "metabase/common/hooks/use-palette";
 import { useMantineTheme } from "metabase/ui";
 import { color } from "metabase/ui/colors";
-import { getFontFamilyValue } from "metabase/ui/fonts";
+import { getFontFamilyValue } from "metabase/utils/fonts";
 import {
   measureTextHeight,
   measureTextWidth,

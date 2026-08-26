@@ -10,7 +10,7 @@
 }
 
 .flexContainer.selected {
-  outline: 2px solid var(--mb-color-brand);
+  outline: 2px solid var(--mb-color-core-brand);
   outline-offset: 2px;
 }
 

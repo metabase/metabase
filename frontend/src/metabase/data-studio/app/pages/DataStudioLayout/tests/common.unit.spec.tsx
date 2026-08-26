@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
+import * as Urls from "metabase/urls";
 
 import { setup } from "./setup";
 
@@ -23,7 +24,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Tables")).toBeInTheDocument();
+      expect(screen.getByText("Connected data")).toBeInTheDocument();
     });
 
     it("should render content area", async () => {
@@ -37,98 +38,93 @@ describe("DataStudioLayout", () => {
     });
   });
 
-  describe("transforms menu item upsell icon", () => {
-    it("should not display upsell icon when plan is OSS", async () => {
-      // OSS plan is determined by having no token features or basic features only
-      setup({
-        remoteSyncBranch: "main",
-        tokenFeatures: {},
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      // Transforms menu item should be present
-      expect(screen.getByText("Transforms")).toBeInTheDocument();
-
-      // Upsell gem should not be displayed within the transforms link
-      const transformsLink = screen.getByText("Transforms").closest("a");
-      expect(transformsLink).toBeInTheDocument();
-
-      const upsellGems = screen.queryAllByTestId("upsell-gem");
-      // Filter to only upsell gems within transforms link
-      const transformsUpsellGems = upsellGems.filter((gem) =>
-        transformsLink?.contains(gem),
-      );
-      expect(transformsUpsellGems).toHaveLength(0);
-    });
-
-    it("should display upsell icon when plan is not OSS and transforms feature is not available", async () => {
-      // Non-OSS plan with some features but transforms not enabled
-      setup({
-        remoteSyncBranch: "main",
-        tokenFeatures: {
-          hosting: true, // Makes it a starter plan
-          "transforms-basic": false, // Transforms feature not available
-        },
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      // Transforms menu item should be present
-      expect(screen.getByText("Transforms")).toBeInTheDocument();
-
-      // Upsell gem should be displayed within the transforms link
-      const transformsLink = screen.getByText("Transforms").closest("a");
-      expect(transformsLink).toBeInTheDocument();
-
-      const upsellGems = screen.queryAllByTestId("upsell-gem");
-      // Filter to only upsell gems within transforms link
-      const transformsUpsellGems = upsellGems.filter((gem) =>
-        transformsLink?.contains(gem),
-      );
-      expect(transformsUpsellGems.length).toBeGreaterThan(0);
-    });
-
-    it("should not display upsell icon when plan is not OSS and transforms feature is available", async () => {
-      // Non-OSS plan with transforms feature enabled
-      setup({
-        remoteSyncBranch: "main",
-        tokenFeatures: {
-          hosting: true, // Makes it a starter plan
-          "transforms-basic": true, // Transforms feature available
-        },
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
-      });
-
-      // Transforms menu item should be present
-      expect(screen.getByText("Transforms")).toBeInTheDocument();
-
-      // Upsell gem should not be displayed within the transforms link
-      const transformsLink = screen.getByText("Transforms").closest("a");
-      expect(transformsLink).toBeInTheDocument();
-
-      const upsellGems = screen.queryAllByTestId("upsell-gem");
-      // Filter to only upsell gems within transforms link
-      const transformsUpsellGems = upsellGems.filter((gem) =>
-        transformsLink?.contains(gem),
-      );
-      expect(transformsUpsellGems).toHaveLength(0);
-    });
-  });
-
-  describe("workspaces tab", () => {
-    it("does not render the Workspaces tab on OSS", async () => {
-      setup({ remoteSyncBranch: "main" });
+  describe("transforms nav tab", () => {
+    it("shows Data transformation when setup is incomplete", async () => {
+      setup({ transformsSetupComplete: false, transformsEnabled: false });
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Workspaces")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
+    });
+
+    it("hides Data transformation when setup is complete but transforms are disabled", async () => {
+      setup({ transformsSetupComplete: true, transformsEnabled: false });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Data transformation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows Data transformation when transforms are enabled", async () => {
+      setup({ transformsSetupComplete: true, transformsEnabled: true });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
+    });
+
+    it("shows Data transformation for non-admins when setup is incomplete", async () => {
+      setup({
+        isAdmin: false,
+        transformsSetupComplete: false,
+        transformsEnabled: false,
+      });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Jobs")).not.toBeInTheDocument();
+    });
+
+    it("hides the transform nav tab for non-admins without access when setup is complete", async () => {
+      setup({
+        isAdmin: false,
+        canAccessTransforms: false,
+        transformsSetupComplete: true,
+        transformsEnabled: true,
+      });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Data transformation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows Data transformation for non-admins with transform access when enabled", async () => {
+      setup({
+        isAdmin: false,
+        canAccessTransforms: true,
+        transformsSetupComplete: true,
+        transformsEnabled: true,
+      });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
+    });
+  });
+  describe("settings tab", () => {
+    it("shows Settings for admins after transform setup is complete", async () => {
+      setup({ isAdmin: true, transformsSetupComplete: true });
+
+      const tab = await screen.findByLabelText("Settings");
+      expect(tab).toHaveAttribute("href", Urls.dataStudioSettings());
+    });
+
+    it("hides Settings before transform setup is complete", async () => {
+      setup({ isAdmin: true, transformsSetupComplete: false });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Settings")).not.toBeInTheDocument();
+    });
+
+    it("hides Settings for non-admins even after transform setup is complete", async () => {
+      setup({
+        isAdmin: false,
+        canAccessTransforms: true,
+        transformsSetupComplete: true,
+        transformsEnabled: true,
+      });
+
+      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Settings")).not.toBeInTheDocument();
     });
   });
 });

@@ -1,5 +1,5 @@
 import type { FormikHelpers } from "formik";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { c, jt, t } from "ttag";
 import * as Yup from "yup";
 
@@ -24,7 +24,6 @@ import {
   Group,
   Icon,
   ScrollArea,
-  Text,
   Title,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
@@ -36,24 +35,43 @@ import {
 
 import { buildAuthInfo } from "./utils";
 
-const validationSchema = Yup.object({
-  url: Yup.string()
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .url(t`Please enter a correctly formatted URL`)
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    .required(t`Please enter a correctly formatted URL`),
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  name: Yup.string().required(t`Please add a name`),
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  description: Yup.string().required(t`Please add a description`),
-  "auth-method": Yup.string()
-    .required()
-    .equals(["none", "header", "query-param", "request-body"]),
-  "fe-form-type": Yup.string()
-    .required()
-    .equals(["none", "basic", "bearer", "api-key"]),
-  "auth-info": Yup.object(),
-});
+function getValidationSchema() {
+  return Yup.object({
+    url: Yup.string()
+      .required(t`Please enter a correctly formatted URL`)
+      .test(
+        "is-http-url",
+        t`Please enter a correctly formatted URL`,
+        (value) => value != null && isValidWebhookUrl(value),
+      ),
+    name: Yup.string().required(t`Please add a name`),
+    description: Yup.string().required(t`Please add a description`),
+    "auth-method": Yup.string()
+      .required()
+      .equals(["none", "header", "query-param", "request-body"]),
+    "fe-form-type": Yup.string()
+      .required()
+      .equals(["none", "basic", "bearer", "api-key"]),
+    "auth-info": Yup.object(),
+  });
+}
+
+/**
+ * Approximates the backend validator (metabase.util/url?), which unlike Yup's
+ * .url() accepts bare hostnames such as http://webhook-tester:8080/
+ */
+function isValidWebhookUrl(value: string): boolean {
+  if (value !== value.trim() || !value.includes("://")) {
+    return false;
+  }
+
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 const styles = {
   wrapperProps: {
@@ -133,10 +151,10 @@ const renderAuthSection = (type: string) => {
             label={t`Add to`}
             groupProps={{ mb: "1.5rem", mt: "0.5rem" }}
           >
-            <Chip value="header" variant="brand">
+            <Chip value="header" variant="filled">
               {t`Header`}
             </Chip>
-            <Chip value="query-param" variant="brand">
+            <Chip value="query-param" variant="filled">
               {t`Query param`}
             </Chip>
           </FormChipGroup>
@@ -178,6 +196,7 @@ export const WebhookForm = ({
   const { label: testButtonLabel, setLabel: setTestButtonLabel } =
     useActionButtonLabel({ defaultLabel: t`Send a test` });
   const [testChannel, { error }] = useTestChannelMutation();
+  const [validationSchema] = useState(getValidationSchema());
 
   const errorData = useMemo(() => {
     if (isNotificationChannelTestErrorResponse(error)) {
@@ -224,19 +243,12 @@ export const WebhookForm = ({
     >
       {({ dirty, values, setFieldError, setFieldValue }) => (
         <Form>
-          <Alert
-            variant="light"
-            mb="1.5rem"
-            style={{ backgroundColor: "var(--mb-color-background-secondary)" }}
-            px="1.5rem"
-            py="1rem"
-            radius="0.5rem"
-          >
-            <Text>{jt`You can send the payload of any Alert to this destination whenever the Alert is triggered. ${(
+          <Alert size="compact" variant="light" mb="1.5rem">
+            {jt`You can send the payload of any Alert to this destination whenever the Alert is triggered. ${(
               <ExternalLink key="link" href={docsUrl}>
                 {t`Learn about Alerts`}
               </ExternalLink>
-            )}`}</Text>
+            )}`}
           </Alert>
           <Box mb="1.5rem">
             <Flex align="end" gap="1rem">
@@ -264,7 +276,7 @@ export const WebhookForm = ({
                 <Box
                   py="0.5rem"
                   px="1.5rem"
-                  bg="background-secondary"
+                  bg="background_page-secondary"
                   style={{ borderRadius: "0.5rem" }}
                   data-testid="notification-test-response"
                 >
@@ -311,16 +323,16 @@ export const WebhookForm = ({
               }
             }}
           >
-            <Chip value="none" variant="brand">
+            <Chip value="none" variant="filled">
               {t`None`}
             </Chip>
-            <Chip value="basic" variant="brand">
+            <Chip value="basic" variant="filled">
               {t`Basic`}
             </Chip>
-            <Chip value="bearer" variant="brand">
+            <Chip value="bearer" variant="filled">
               {t`Bearer`}
             </Chip>
-            <Chip value="api-key" variant="brand">
+            <Chip value="api-key" variant="filled">
               {t`API Key`}
             </Chip>
           </FormChipGroup>
@@ -347,7 +359,7 @@ export const WebhookForm = ({
               <FormSubmitButton
                 disabled={!dirty}
                 label={submitLabel}
-                variant="filled"
+                variant="brand"
               />
             </Group>
           </Flex>

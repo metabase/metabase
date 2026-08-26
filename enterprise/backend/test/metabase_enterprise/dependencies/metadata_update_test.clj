@@ -108,7 +108,7 @@
       :grandchild-data {}
       :should-traverse? true})))
 
-(deftest ^:sequential card-update-updates-child-metadata-test
+(deftest ^:synchronized card-update-updates-child-metadata-test
   (testing "card updates update child card metadata"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
@@ -133,7 +133,7 @@
                                      [:model/Card :id :result_metadata :card_schema]
                                      :id [:in [parent-id child-id grandchild-id]])))
             (t2/update! :model/Card parent-id {:dataset_query (lib/query mp orders)})
-            (with-redefs [async/submit! (fn [f] (f))]
+            (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
               (events/publish-event! :event/card-update
                                      {:object (assoc parent-card :dataset_query (lib/query mp orders))
                                       :previous-object parent-card
@@ -143,7 +143,7 @@
                                      [:model/Card :id :result_metadata :card_schema]
                                      :id [:in [parent-id child-id grandchild-id]])))))))))
 
-(deftest ^:sequential native-card-update-does-not-update-children-test
+(deftest ^:synchronized native-card-update-does-not-update-children-test
   (testing "native card updates do not update children"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
@@ -158,7 +158,7 @@
                                               :to_entity_type :card
                                               :to_entity_id parent-id}]
             (t2/update! :model/Card child-id {:result_metadata nil})
-            (with-redefs [async/submit! (fn [f] (f))]
+            (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
               (events/publish-event! :event/card-update
                                      {:object (assoc parent-card :dataset_query native-query)
                                       :previous-object parent-card
@@ -168,7 +168,7 @@
                                      [:model/Card :id :result_metadata :card_schema]
                                      :id child-id)))))))))
 
-(deftest ^:sequential model-update-passes-down-new-values-test
+(deftest ^:synchronized model-update-passes-down-new-values-test
   (testing "model updates pass down new result metadata"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
@@ -194,7 +194,7 @@
                                                 [0 :display_name]
                                                 "new-name")]
               (t2/update! :model/Card parent-id {:result_metadata new-result-metadata})
-              (with-redefs [async/submit! (fn [f] (f))]
+              (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-result-metadata)
                                         :previous-object parent-card
@@ -204,7 +204,7 @@
                                        [:model/Card :id :result_metadata :card_schema]
                                        :id [:in [child-id grandchild-id]]))))))))))
 
-(deftest ^:sequential model-update-respects-child-overrides-test
+(deftest ^:synchronized model-update-respects-child-overrides-test
   (testing "model updates respect child metadata edits"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
@@ -237,7 +237,7 @@
               (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
               (t2/update! :model/Card grandchild-id {:result_metadata new-grandchild-metadata})
-              (with-redefs [async/submit! (fn [f] (f))]
+              (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-parent-metadata)
                                         :previous-object parent-card
@@ -247,7 +247,7 @@
                                        [:model/Card :id :result_metadata :card_schema]
                                        :id [:in [child-id grandchild-id]]))))))))))
 
-(deftest ^:sequential model-update-stops-recursing-when-child-metadata-is-unchanged-test
+(deftest ^:synchronized model-update-stops-recursing-when-child-metadata-is-unchanged-test
   (testing "model updates stop recursing when they hit a child whose metadata didn't change"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
@@ -279,7 +279,7 @@
               (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
               (t2/update! :model/Card grandchild-id {:result_metadata nil})
-              (with-redefs [async/submit! (fn [f] (f))]
+              (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-parent-metadata)
                                         :previous-object parent-card
@@ -345,7 +345,7 @@
                   :filter-field-id filter-field-id}))))))
 
 ;; Integration test that a real DB sync triggers re-analysis of an updated table.
-(deftest ^:sequential sync-removed-column-triggers-reanalysis-test
+(deftest ^:synchronized sync-removed-column-triggers-reanalysis-test
   (testing "When sync detects a removed column, re-analyzing the card shows errors"
     (with-syncable-db!
       (fn [{:keys [card-id filter-field-id]}]
@@ -383,7 +383,7 @@
 
 ;; Integration test that a DB sync which doesn't change anything about a table does not trigger re-analysis of all
 ;; cards which depend on that table.
-(deftest ^:sequential sync-without-changes-does-not-trigger-reanalysis-test
+(deftest ^:synchronized sync-without-changes-does-not-trigger-reanalysis-test
   (testing "When sync makes no changes to a table or its fields, the card is not re-analyzed"
     (with-syncable-db!
       (fn [{:keys [card-id db-id filter-field-id table-id]}]
@@ -391,14 +391,14 @@
                                                       :analyzed_entity_type :card
                                                       :analyzed_entity_id card-id)
               db-deps-checked       (atom [])
-              original-deps-check   @#'deps.events/synced-db->direct-dependents-of-changed-tables
+              original-deps-check   (mt/original-fn #'deps.events/synced-db->direct-dependents-of-changed-tables)
               table-before          (into {} (t2/select-one :model/Table :id table-id))
               filter-field-before   (into {} (t2/select-one :model/Field :id filter-field-id))]
           ;; Re-sync the database, having made no changes to it.
-          (with-redefs [deps.events/synced-db->direct-dependents-of-changed-tables
-                        (fn [db-id]
-                          (u/prog1 (original-deps-check db-id)
-                            (swap! db-deps-checked conj [db-id <>])))]
+          (mt/with-dynamic-fn-redefs [deps.events/synced-db->direct-dependents-of-changed-tables
+                                      (fn [db-id]
+                                        (u/prog1 (original-deps-check db-id)
+                                          (swap! db-deps-checked conj [db-id <>])))]
             (sync/sync-database! (mt/db)))
           (testing "sync doesn't update tables or fields that haven't changed"
             (let [table-after        (into {} (t2/select-one :model/Table :id table-id))

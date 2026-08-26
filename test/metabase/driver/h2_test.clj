@@ -1,4 +1,4 @@
-(ns metabase.driver.h2-test
+(ns ^:mb/driver-tests metabase.driver.h2-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.h2-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -22,38 +22,20 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.test.data.datasets :as mtd]
-   [metabase.test.data.env :as tx.env]
-   [metabase.test.data.interface :as tx]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-;; temporary hack to run all tests against both the old :h2 and new mbql5 :h2
-;; remove this once :h2 does mbql5 by default!
-(defn- test-driver [driver thunk]
-  (when (contains? (tx.env/test-drivers) driver)
-    (testing (str "\n" driver "\n")
-      (driver/with-driver (tx/the-driver-with-test-extensions driver)
-        (thunk))
-      ;; the above is the original definition of test-driver, but we add in
-      ;; this clause to avoid having to rewrite all the tests below twice:
-      (when (= driver :h2)
-        (driver/with-driver (tx/the-driver-with-test-extensions :h2-mbql5)
-          (thunk))))))
-
-(use-fixtures :each (fn [f]
-                      ;; NB: because of test parallelism, this *will* affect other non-h2
-                      ;; tests, but the check above in the test-driver function will
-                      ;; prevent it from actually doing anything different in those tests.
-                      ;; The kondo ignore is the exemption: this `with-redefs` is
-                      ;; parallel-safe by construction (the redef target is a no-op
-                      ;; identity for h2, and the inner conditional in `test-driver`
-                      ;; prevents it from affecting non-h2 tests).
-                      #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-                      (with-redefs [mtd/-test-driver test-driver]
-                        (f))))
+(deftest ^:parallel connection-hosts-test
+  (testing "local H2 databases have no network host"
+    (is (= [] (driver/connection-hosts :h2 {:db "file:./sample.db"})))
+    (is (= [] (driver/connection-hosts :h2 {:db "mem:test"}))))
+  (testing "remote H2 TCP and SSL connection strings expose their hosts"
+    (are [db expected] (= expected (driver/connection-hosts :h2 {:db db}))
+      "tcp://10.0.0.5:9092/sample"          ["10.0.0.5"]
+      "jdbc:h2:tcp://db.example.com/sample" ["db.example.com"]
+      "ssl://[::1]:9092/sample"             ["::1"])))
 
 (deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -257,7 +239,6 @@
 
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
-    #_{:clj-kondo/ignore [:equals-true]}
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select 1"
       "update venues set name = 'bill'"
@@ -345,6 +326,42 @@
       (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
                       "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                       "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
+
+(deftest ^:parallel unsupported-functions-detection-test
+  (let [hits #'h2/unsupported-functions-in-query]
+    (testing "unsupported built-in functions are detected regardless of statement type, casing, or comments"
+      (are [expected query] (= expected (hits query))
+        #{"FILE_READ"}   "SELECT FILE_READ('a','UTF-8')"
+        #{"CSVREAD"}     "CALL CSVREAD('a')"
+        #{"FILE_WRITE"}  "WITH w AS (SELECT FILE_WRITE(STRINGTOUTF8('x'),'y') AS b) SELECT b FROM w"
+        #{"CSVWRITE"}    "CALL CSVWRITE('a','SELECT 1')"
+        #{"LINK_SCHEMA"} "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')"
+        #{"MEMORY_USED"} "select memory_used()"
+        ;; a comment between the function name and its arg list is still detected
+        #{"FILE_READ"}   "SELECT FiLe_ReAd/* c */ ('x')"
+        #{"FILE_READ"}   "SELECT 1 AS \"a'\", FILE_READ('/cat_pics.gif','UTF-8')"
+        #{"FILE_READ"}   "SELECT 'FILE_READ' AS col" ;; the name only appears inside a string literal but we disallow it anyway
+        ))
+    (testing "ordinary queries are not flagged"
+      (are [query] (nil? (hits query))
+        "SELECT * FROM orders"
+        ;; identifier merely containing an unsupported name as a substring
+        "SELECT my_file_read_col FROM t"
+        nil))))
+
+(deftest ^:parallel check-read-only-rejects-unsupported-functions-test
+  (testing "unsupported built-in functions are rejected even inside an allowed SELECT/CALL"
+    (are [query] (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"not supported in native queries"
+                  (mt/with-metadata-provider (mt/id)
+                    (#'h2/check-read-only-statements
+                     {:database 1
+                      :type     :native
+                      :native   {:query query}})))
+      "SELECT FILE_READ('a','UTF-8')"
+      "CALL CSVREAD('a')"
+      "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')")))
 
 (deftest disallowed-commands-in-action-test
   (mt/test-driver :h2

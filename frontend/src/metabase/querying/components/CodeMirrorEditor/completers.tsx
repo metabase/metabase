@@ -9,7 +9,7 @@ import {
   useLazyListCardAutocompleteSuggestionsQuery,
   useListSnippetsQuery,
 } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { isNotNull } from "metabase/utils/types";
 import type { Card, CardId, DatabaseId, Field } from "metabase-types/api";
 

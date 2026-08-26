@@ -5,13 +5,17 @@
    [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
+   [malli.core :as mc]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.throttle :as u.throttle]
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
@@ -21,7 +25,7 @@
    [throttle.core :as throttle])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.net URLEncoder)))
+   (java.net URI URLEncoder)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,12 +36,22 @@
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
 
+(defn- site-path-prefix
+  "Path component of site-url with no trailing slash (e.g. `/metabase` when Metabase is hosted
+   under a subpath), or an empty string when site-url has no path or is unset."
+  []
+  (or (some-> (system/site-url) (URI.) (.getPath) (str/replace #"/$" "") not-empty)
+      ""))
+
 (defn- csrf-cookie-opts
-  "Cookie options for the CSRF cookie. Sets `:secure` when site-url is HTTPS."
+  "Cookie options for the CSRF cookie. Sets `:secure` when site-url is HTTPS.
+   The cookie `:path` is the path the *browser* sees, so it must include the subpath prefix
+   when Metabase is hosted under one — otherwise the cookie is never sent back with the
+   consent form POST and CSRF validation fails."
   [max-age]
   (cond-> {:http-only true
            :same-site :strict
-           :path      "/oauth/authorize"
+           :path      (str (site-path-prefix) "/oauth/authorize")
            :max-age   max-age}
     (some-> (system/site-url) (str/starts-with? "https"))
     (assoc :secure true)))
@@ -86,12 +100,31 @@
     (str (subs s 0 (- max-len 3)) "...")
     s))
 
+(defn- requested-scope-descriptions
+  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description}` maps for the
+   consent page, so the user sees exactly what the client is asking for. Falls back to the raw scope
+   string when a scope has no registered human-readable description. Returns nil when no scope was
+   requested."
+  [scope-param]
+  (when-let [scope-str (some-> scope-param str not-empty)]
+    (->> (str/split scope-str #"\s+")
+         (remove str/blank?)
+         distinct
+         (mapv (fn [s]
+                 {:scope        s
+                  :description  (or (some-> (api-scope/scope-description s) str) s)
+                  ;; Flag the broad first-party grant so the consent page can warn about it without
+                  ;; hardcoding the scope string in the view.
+                  :full-access? (= s oauth-server/full-access-scope)})))))
+
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
   [provider parsed approved request]
   (let [url (if approved
               (oidc/authorize provider parsed (str (:metabase-user-id request)))
               (oidc/deny-authorization provider parsed "access_denied" "User denied the request"))]
+    ;; Record an audit event for the user's decision on this client's registration.
+    (client-event/record-decision! (:client_id parsed) (:metabase-user-id request) approved)
     (-> {:status  302
          :headers {"Location" url}
          :body    ""}
@@ -157,7 +190,21 @@
 (api.macros/defendpoint :post "/register"
   :- [:map [:status [:enum 201 400 403 404 429]] [:body :any]]
   "Handles dynamic client registration (RFC 7591)."
-  [_route-params _query-params body :- :any
+  [_route-params
+   _query-params
+   body :- [:maybe {:decode/api {:enter (fn [body] (when (map? body) body))}}
+            ;; the RFC 7591 client metadata we keep -- see the column list in `metabase.oauth-server.store`
+            [:map
+             [:application_type           {:optional true} [:maybe :string]]
+             [:client_name                {:optional true} [:maybe :string]]
+             [:client_uri                 {:optional true} [:maybe :string]]
+             [:contacts                   {:optional true} [:maybe [:sequential :string]]]
+             [:grant_types                {:optional true} [:maybe [:sequential :string]]]
+             [:logo_uri                   {:optional true} [:maybe :string]]
+             [:redirect_uris              {:optional true} [:maybe [:sequential :string]]]
+             [:response_types             {:optional true} [:maybe [:sequential :string]]]
+             [:scope                      {:optional true} [:maybe :string]]
+             [:token_endpoint_auth_method {:optional true} [:maybe :string]]]]
    request]
   (if-not (oauth-settings/oauth-server-dynamic-registration-enabled)
     {:status  403
@@ -191,6 +238,8 @@
                       client-id  (:client_id response)]
                   ;; Mark as dynamically registered (the library doesn't know about registration_type)
                   (proto/update-client (:client-store provider) client-id {:registration-type "dynamic"})
+                  ;; Open the audit trail for this DCR client with a pending decision.
+                  (client-event/record-registration! client-id)
                   {:status  201
                    :headers {"Content-Type" "application/json"}
                    :body    response})
@@ -203,8 +252,10 @@
 (api.macros/defendpoint :get "/register/:client-id"
   :- [:map [:status [:enum 200 401 404]] [:body :map]]
   "Handles client configuration read (RFC 7592)."
-  [{:keys [client-id]}
-   _query-params _body
+  [{:keys [client-id]} :- [:map
+                           [:client-id ms/NonBlankString]]
+   _query-params
+   _body
    request]
   (or (when-let [provider (oauth-server/get-provider)]
         (let [token (oauth-server/extract-bearer-token request)]
@@ -218,10 +269,23 @@
                :body    body}))))
       {:status 404 :body {:error "not_found"}}))
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/authorize"
   :- [:map [:status [:enum 200 302 400 404]] [:body [:or :string :map]]]
   "Handles the authorization endpoint (GET /oauth/authorize)."
-  [_route-params query-params _body
+  [_route-params
+   query-params :- [:map
+                    [:client_id             {:optional true} [:maybe :string]]
+                    [:response_type         {:optional true} [:maybe :string]]
+                    [:redirect_uri          {:optional true} [:maybe :string]]
+                    [:scope                 {:optional true} [:maybe :string]]
+                    [:state                 {:optional true} [:maybe :string]]
+                    [:code_challenge        {:optional true} [:maybe :string]]
+                    [:code_challenge_method {:optional true} [:maybe :string]]
+                    [:nonce                 {:optional true} [:maybe :string]]
+                    [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]
+                    [::mc/default [:map-of :keyword :string]]]
+   _body
    request]
   (if-not (:metabase-user-id request)
     {:status  302
@@ -238,14 +302,14 @@
                    :headers {"Content-Type" "text/html; charset=utf-8"}
                    :body    (consent-page/render-consent-page
                              {:client-name  (some-> (:client-name client) (truncate 64))
-                              :client-id    (:client_id parsed)
                               :nonce        (:nonce request)
                               :csrf-token   csrf-token
                               :params-sig   params-sig
+                              :scopes       (requested-scope-descriptions (:scope oauth-params))
                               :oauth-params oauth-params})}
                   (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
             (catch ExceptionInfo e
-              (log/warn e "OAuth authorize request failed")
+              (log/warnf "OAuth authorize request failed: %s" (ex-message e))
               {:status  400
                :headers {"Content-Type" "application/json"}
                :body    {:error             "invalid_request"
@@ -255,7 +319,22 @@
 (api.macros/defendpoint :post "/authorize/decision"
   :- [:map [:status [:enum 302 400 401 403 404 429]] [:body [:or :string :map]]]
   "Handles the authorization decision (POST /oauth/authorize/decision)."
-  [_route-params _query-params body
+  [_route-params
+   _query-params
+   body :- [:map {:decode/api {:enter (fn [body] (if (map? body) body {}))}}
+            [:csrf_token            {:optional true} [:maybe :string]]
+            [:params_sig            {:optional true} [:maybe :string]]
+            [:approved              {:optional true} [:maybe :string]]
+            [:client_id             {:optional true} [:maybe :string]]
+            [:response_type         {:optional true} [:maybe :string]]
+            [:redirect_uri          {:optional true} [:maybe :string]]
+            [:scope                 {:optional true} [:maybe :string]]
+            [:state                 {:optional true} [:maybe :string]]
+            [:code_challenge        {:optional true} [:maybe :string]]
+            [:code_challenge_method {:optional true} [:maybe :string]]
+            [:nonce                 {:optional true} [:maybe :string]]
+            [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]
+            [::mc/default [:map-of :keyword :string]]]
    request]
   (if-not (:metabase-user-id request)
     {:status  401
@@ -288,7 +367,7 @@
                          :body    {:error "params_tampered"}}
                         (redirect-authorization-decision provider parsed approved request)))
                     (catch ExceptionInfo e
-                      (log/warn e "OAuth authorization decision failed")
+                      (log/warnf "OAuth authorization decision failed: %s" (ex-message e))
                       {:status  400
                        :headers {"Content-Type" "application/json"}
                        :body    {:error             "invalid_request"
@@ -298,7 +377,19 @@
 (api.macros/defendpoint :post "/token"
   :- [:map [:status [:enum 200 400 401 404 429]] [:body :map]]
   "Handles the token endpoint (POST /oauth/token)."
-  [_route-params _query-params body
+  [_route-params
+   _query-params
+   body :- [:map {:decode/api {:enter (fn [body] (if (map? body) body {}))}}
+            [:grant_type    {:optional true} [:maybe :string]]
+            [:code          {:optional true} [:maybe :string]]
+            [:redirect_uri  {:optional true} [:maybe :string]]
+            [:refresh_token {:optional true} [:maybe :string]]
+            [:client_id     {:optional true} [:maybe :string]]
+            [:client_secret {:optional true} [:maybe :string]]
+            [:scope         {:optional true} [:maybe :string]]
+            [:code_verifier {:optional true} [:maybe :string]]
+            [:resource      {:optional true} [:maybe [:or :string [:sequential :string]]]]
+            [::mc/default [:map-of :keyword :string]]]
    request]
   (let [ip-address (request/ip-address request)
         ;; Fall back to IP when client_id isn't in the body (e.g. confidential clients using
@@ -316,7 +407,7 @@
                              "Pragma"        "no-cache"}
                    :body    response})
                 (catch ExceptionInfo e
-                  (log/warn e "OAuth token request failed")
+                  (log/warnf "OAuth token request failed: %s" (ex-message e))
                   (let [data  (ex-data e)
                         error (or (:error data) "invalid_request")]
                     {:status  (if (= error "invalid_client") 401 400)
@@ -330,7 +421,13 @@
 (api.macros/defendpoint :post "/revoke"
   :- [:map [:status [:enum 200 404]]]
   "Handles the token revocation endpoint (POST /oauth/revoke) per RFC 7009."
-  [_route-params _query-params _body
+  [_route-params
+   _query-params
+   _body :- [:map {:decode/api {:enter (fn [body] (if (map? body) body {}))}}
+             [:token           {:optional true} [:maybe :string]]
+             [:token_type_hint {:optional true} [:maybe :string]]
+             [:client_id       {:optional true} [:maybe :string]]
+             [:client_secret   {:optional true} [:maybe :string]]]
    request]
   (or (when-let [provider (oauth-server/get-provider)]
         ((oidc/revocation-handler provider) request))

@@ -107,16 +107,16 @@
                                                    :query (str "[{\"$addFields\": {}}\n"
                                                                " {\"$limit\":1}]")}}}]
         (mt/with-temporary-setting-values [enable-query-caching true]
-          (let [orig-freeze! @#'middleware.cache.impl/freeze!
+          (let [orig-freeze! (mt/original-fn #'middleware.cache.impl/freeze!)
                 freeze-started (atom false)
                 thrown-data (atom [])]
-            (with-redefs [middleware.cache.impl/freeze! (fn [& args]
-                                                          (reset! freeze-started true)
-                                                          (try
-                                                            (apply orig-freeze! args)
-                                                            (catch Throwable t
-                                                              (swap! thrown-data conj t)
-                                                              (throw t))))]
+            (mt/with-dynamic-fn-redefs [middleware.cache.impl/freeze! (fn [& args]
+                                                                        (reset! freeze-started true)
+                                                                        (try
+                                                                          (apply orig-freeze! args)
+                                                                          (catch Throwable t
+                                                                            (swap! thrown-data conj t)
+                                                                            (throw t))))]
               (let [model-based-query (-> (mt/mbql-query orders {:source-table (str "card__" (:id c))})
                                           (update :cache_strategy assoc
                                                   ;; Enable caching for current query

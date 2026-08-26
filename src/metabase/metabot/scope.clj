@@ -17,6 +17,8 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 ;; SQL
+(api-scope/defscope agent-sql-construct "agent:sql:construct"
+  (deferred-tru "Construct SQL queries"))
 (api-scope/defscope agent-sql-create "agent:sql:create"
   (deferred-tru "Create SQL queries"))
 (api-scope/defscope agent-sql-edit "agent:sql:edit"
@@ -37,6 +39,16 @@
 ;; Question (saved cards via Agent API)
 (api-scope/defscope agent-question-create "agent:question:create"
   (deferred-tru "Create saved questions"))
+(api-scope/defscope agent-question-update "agent:question:update"
+  (deferred-tru "Update saved questions"))
+(api-scope/defscope agent-question-execute "agent:question:execute"
+  (deferred-tru "Run saved questions"))
+
+;; Metric (saved metric cards via Agent API)
+(api-scope/defscope agent-metric-create "agent:metric:create"
+  (deferred-tru "Create metrics"))
+(api-scope/defscope agent-metric-update "agent:metric:update"
+  (deferred-tru "Update metrics"))
 
 ;; Transforms
 (api-scope/defscope agent-transforms-read "agent:transforms:read"
@@ -48,11 +60,31 @@
 (api-scope/defscope agent-snippets-read "agent:snippets:read"
   (deferred-tru "View SQL snippets"))
 
+;; Timelines
+(api-scope/defscope agent-timelines-read "agent:timelines:read"
+  (deferred-tru "View timelines and timeline events"))
+
+;; Explorations (Research mode)
+(api-scope/defscope agent-explorations-read "agent:explorations:read"
+  (deferred-tru "View exploration research candidates"))
+(api-scope/defscope agent-explorations-write "agent:explorations:write"
+  (deferred-tru "Edit an exploration research plan"))
+
 ;; Dashboard
 (api-scope/defscope agent-dashboard-create "agent:dashboard:create"
   (deferred-tru "Create dashboards"))
+(api-scope/defscope agent-dashboard-update "agent:dashboard:update"
+  (deferred-tru "Update dashboards"))
 (api-scope/defscope agent-dashboard-subscribe "agent:dashboard:subscribe"
   (deferred-tru "Subscribe to dashboard alerts"))
+
+;; Collection
+(api-scope/defscope agent-collection-create "agent:collection:create"
+  (deferred-tru "Create collections"))
+
+;; SQL execution (MCP execute_sql tool, distinct from execute_query)
+(api-scope/defscope agent-sql-execute "agent:sql:execute"
+  (deferred-tru "Execute raw SQL queries"))
 
 ;; Document
 (api-scope/defscope agent-document-read "agent:document:read"
@@ -69,6 +101,10 @@
   (deferred-tru "Edit charts and visualizations"))
 (api-scope/defscope agent-viz-navigate "agent:viz:navigate"
   (deferred-tru "Navigate to visualizations"))
+(api-scope/defscope agent-viz-mcp-ui-query "agent:viz:mcp-ui:query"
+  (deferred-tru "Render query visualizations in the MCP UI"))
+(api-scope/defscope agent-viz-mcp-ui-drill-through "agent:viz:mcp-ui:drill-through"
+  (deferred-tru "Render drill-through visualizations in the MCP UI"))
 
 ;; Alert
 (api-scope/defscope agent-alert-create "agent:alert:create"
@@ -91,14 +127,6 @@
   (deferred-tru "View todos"))
 (api-scope/defscope agent-todo-write "agent:todo:write"
   (deferred-tru "Create and edit todos"))
-
-;; Table
-(api-scope/defscope agent-table-read "agent:table:read"
-  (deferred-tru "View table metadata and field values"))
-
-;; Metric
-(api-scope/defscope agent-metric-read "agent:metric:read"
-  (deferred-tru "View metric definitions"))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot permission type definitions
@@ -139,6 +167,18 @@
   consumers should fall back to `perm-type-defaults`."
   nil)
 
+(def ^:dynamic *current-user-capabilities*
+  "The request's capabilities (strings/keywords as sent by the API). Bound in the request path
+  alongside `*current-user-scope*` so capability-gated checks (e.g. which skills are loadable)
+  match the manifest, which is built from the same capabilities. Defaults to `#{}`."
+  #{})
+
+(def ^:dynamic *current-loadable-skill-ids*
+  "Request-scoped atom containing the set of skill ids that appeared in the current
+  profile's skill manifest. When bound, `load_skill` rejects ids outside this set
+  even if the skill otherwise satisfies capability/scope gates."
+  nil)
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Permission → Scope mapping
 ;;; ──────────────────────────────────────────────────────────────────
@@ -147,8 +187,14 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*" "agent:question:*"}
-   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"}})
+   ;; `agent:timelines:*` and `agent:explorations:*` are granted under nlq: the
+   ;; NLQ-gated :explorations profile offers the exploration + read-only timeline
+   ;; tools (and its prompt instructs their use), so NLQ-only users must not have
+   ;; them silently scope-filtered away.
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:metric:*"
+                                        "agent:question:*" "agent:timelines:*" "agent:explorations:*"}
+   :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"
+                                        "agent:timelines:*" "agent:collection:*"}})
 
 (def always-granted-scopes
   "Scopes granted to every user regardless of permissions."
@@ -183,6 +229,16 @@
   metabase-enterprise.metabot.permissions
   [_user-id]
   all-yes-permissions)
+
+(defn missing-permission
+  "Validate a resolved metabot `perms` map against required permissions. Always
+  checks the base `:permission/metabot`. When `required-perm` is non-nil, also
+  checks that permission. Returns the first permission keyword that's not `:yes`,
+  or nil when all required perms are granted."
+  [perms required-perm]
+  (cond
+    (not= :yes (:permission/metabot perms))                   :permission/metabot
+    (and required-perm (not= :yes (get perms required-perm))) required-perm))
 
 (defn user-metabot-perms->scopes
   "Convert a resolved metabot permissions map into a set of scope strings.

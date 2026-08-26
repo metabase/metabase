@@ -53,6 +53,7 @@ describe("FormattedParameterValue", () => {
 
   it("should render the placeholder with truncation when there is no value", () => {
     setup({
+      // Unjustified type cast. FIXME
       value: null as any,
       parameter: createMockParameter(),
       placeholder: "Filter this long column name",

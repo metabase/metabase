@@ -1,27 +1,26 @@
 import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
-import type {
-  DatabaseEntityId,
-  EntityId,
-  SchemaEntityId,
-  TableEntityId,
-} from "metabase/admin/permissions/types";
 import {
   isSchemaEntityId,
   isTableEntityId,
 } from "metabase/admin/permissions/utils/data-entity-id";
 import {
-  entityIdToMetadataTableFields,
-  metadataTableToTableEntityId,
+  getDatabaseSchema,
+  getDatabaseSchemaNames,
+  isTableUnderEntityId,
+  tableToTableEntityId,
 } from "metabase/admin/permissions/utils/metadata";
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
 import {
   DataPermission,
   DataPermissionValue,
+  type DatabaseEntityId,
   type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionsDatabase,
+  type SchemaEntityId,
+  type TableEntityId,
 } from "metabase-types/api";
 
 import {
@@ -75,7 +74,7 @@ export function updateFieldsPermission(
   groupId: number,
   entityId: TableEntityId,
   value: any,
-  database: Database,
+  database: PermissionsDatabase,
   permission: DataPermission,
 ) {
   const { databaseId, tableId } = entityId;
@@ -105,11 +104,11 @@ export function updateTablesPermission(
   groupId: number,
   { databaseId, schemaName }: SchemaEntityId,
   value: any,
-  database: Database,
+  database: PermissionsDatabase,
   permission: DataPermission,
 ) {
-  const schema = database.schema(schemaName);
-  const tableIds = schema?.tables?.map((t: Table) => t.id);
+  const schema = getDatabaseSchema(database, schemaName);
+  const tableIds = schema?.tables.map((table) => table.id);
 
   permissions = updateSchemasPermission(
     permissions,
@@ -137,10 +136,10 @@ export function updateSchemasPermission(
   groupId: number,
   { databaseId }: DatabaseEntityId,
   value: DataPermissionValue,
-  database: Database,
+  database: PermissionsDatabase,
   permission: DataPermission,
 ) {
-  const schemaNames = database && database.schemaNames();
+  const schemaNames = getDatabaseSchemaNames(database);
   const schemaNamesOrNoSchema =
     schemaNames &&
     schemaNames.length > 0 &&
@@ -162,9 +161,9 @@ export function updateSchemasPermission(
 export function updateEntityPermission(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   value: DataPermissionValue,
-  database: Database,
+  database: PermissionsDatabase,
   permission: DataPermission,
 ) {
   if (isTableEntityId(entityId)) {
@@ -200,10 +199,10 @@ export function updateEntityPermission(
 export function restrictCreateQueriesPermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   permission: DataPermission,
   value: DataPermissionValue,
-  database: Database,
+  database: PermissionsDatabase,
 ) {
   const currDbCreateQueriesPermission = getSchemasPermission(
     permissions,
@@ -233,7 +232,7 @@ export function restrictCreateQueriesPermissionsIfNeeded(
     isMakingGranularCreateQueriesChange || shouldRestrictForSomeReason;
 
   if (shouldRestrictNative) {
-    const schemaNames = (database && database.schemaNames()) ?? [null];
+    const schemaNames = getDatabaseSchemaNames(database);
 
     schemaNames.forEach((schemaName) => {
       permissions = updateTablesPermission(
@@ -280,7 +279,7 @@ const hasFullCreateQueriesAccess = (
 export function revokeTransformsPermissionIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   permission: DataPermission,
   value: DataPermissionValue,
 ): GroupsPermissions {
@@ -331,70 +330,16 @@ export function revokeTransformsPermissionIfNeeded(
   return permissions;
 }
 
-export function revokeWorkspacesPermissionIfNeeded(
-  permissions: GroupsPermissions,
-  groupId: number,
-  entityId: EntityId,
-  permission: DataPermission,
-  value: DataPermissionValue,
-): GroupsPermissions {
-  if (
-    permission !== DataPermission.VIEW_DATA &&
-    permission !== DataPermission.CREATE_QUERIES
-  ) {
-    return permissions;
-  }
-
-  const { databaseId } = entityId;
-
-  const viewDataValue =
-    permission === DataPermission.VIEW_DATA
-      ? value
-      : getSchemasPermission(
-          permissions,
-          groupId,
-          { databaseId },
-          DataPermission.VIEW_DATA,
-        );
-
-  const createQueriesValue =
-    permission === DataPermission.CREATE_QUERIES
-      ? value
-      : getSchemasPermission(
-          permissions,
-          groupId,
-          { databaseId },
-          DataPermission.CREATE_QUERIES,
-        );
-
-  const hasRequiredPermissions =
-    hasFullViewDataAccess(viewDataValue) &&
-    hasFullCreateQueriesAccess(createQueriesValue);
-
-  if (!hasRequiredPermissions) {
-    return updatePermission(
-      permissions,
-      groupId,
-      databaseId,
-      DataPermission.WORKSPACES,
-      [],
-      DataPermissionValue.NO,
-    );
-  }
-
-  return permissions;
-}
-
 function inferEntityPermissionValueFromChildTables(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
-  database: Database,
+  entityId: PermissionEntityId,
+  database: PermissionsDatabase,
   permission: DataPermission,
 ): DataPermissionValue {
   const entityIdsForDescendantTables = _.chain(database.tables)
-    .filter((t) => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
-    .map(metadataTableToTableEntityId)
+    .filter((table) => isTableUnderEntityId(table, entityId))
+    .map(tableToTableEntityId)
     .value();
 
   const entityIdsByPermValue = _.chain(entityIdsForDescendantTables)
@@ -402,6 +347,7 @@ function inferEntityPermissionValueFromChildTables(
     .groupBy(_.identity)
     .value();
 
+  // Unjustified type cast. FIXME
   const keys = Object.keys(entityIdsByPermValue) as DataPermissionValue[];
   const allTablesHaveSamePermissions = keys.length === 1;
 
@@ -417,11 +363,12 @@ function inferEntityPermissionValueFromChildTables(
 export function inferAndUpdateEntityPermissions(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
-  database: Database,
+  entityId: PermissionEntityId,
+  database: PermissionsDatabase,
   permission: DataPermission,
 ) {
   const { databaseId } = entityId;
+  // Unjustified type cast. FIXME
   const schemaName = (entityId as SchemaEntityId).schemaName ?? "";
 
   if (schemaName) {

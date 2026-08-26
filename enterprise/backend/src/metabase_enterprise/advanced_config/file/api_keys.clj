@@ -57,7 +57,7 @@
     ;; Check if there's an existing API key with the same name first
     (if-let [existing-api-key (select-api-key name)]
       (do
-        (log/info (u/format-color :blue "API key with name %s already exists, skipping" (pr-str name)))
+        (log/info (u/format-color :blue "API key with ID %s already exists, skipping" (u/the-id existing-api-key)))
         existing-api-key)
       (let [group-id     (case group
                            "admin"     (u/the-id (perms/admin-group))
@@ -73,7 +73,7 @@
         (when (t2/exists? :model/ApiKey :key_prefix prefix)
           (throw (ex-info (format "API key with prefix '%s' already exists. Keys must have unique prefixes." prefix)
                           {:name name :prefix prefix})))
-        (log/info (u/format-color :green "Creating new API key %s" (pr-str name)))
+        (log/info (u/format-color :green "Creating new API key"))
         ;; Create a user for the API key
         (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))
               user  (first

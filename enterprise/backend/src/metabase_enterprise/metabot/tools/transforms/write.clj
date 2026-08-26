@@ -2,6 +2,7 @@
   "Tools for writing/editing Python transform source code."
   (:require
    [metabase-enterprise.transforms-python.api :as transforms-python.api]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.tools.transforms.write :as transforms-write]
    [metabase.metabot.tools.util :as metabot.tools.u]
@@ -78,7 +79,7 @@
                               true                  (assoc-in [:source :body] new-python))]
     ;; Store in memory if we have an ID
     (when (and transform_id memory-atom)
-      (swap! memory-atom assoc-in [:state :transforms (str transform_id)] suggested-transform))
+      (swap! memory-atom memory/set-transform transform_id suggested-transform))
     (log/debug "Python transform written" {:transform-id transform_id
                                            :python-length (count new-python)})
     {:structured-output {:transform suggested-transform

@@ -1,6 +1,5 @@
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
+import type { ComponentProps } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -13,22 +12,28 @@ import {
   setupSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { ModelResult } from "metabase/browse/models";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import type { DashboardState } from "metabase/redux/store";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { dayjs } from "metabase/dayjs";
+import type { DashboardState, StoreDashboard } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockQueryBuilderState,
   createMockState,
 } from "metabase/redux/store/mocks";
+import { Route, useLocation, useParams } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
-import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
+import type {
+  Card,
+  Dashboard,
+  DashboardId,
+  ModelResult,
+  User,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -36,7 +41,16 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import MainNavbar from "../MainNavbar";
+import { MainNavbar } from "../MainNavbar";
+
+/** Feeds `MainNavbar` its route props the way `Navbar` does in the app. */
+function RoutedMainNavbar(
+  props: Omit<ComponentProps<typeof MainNavbar>, "location" | "params">,
+) {
+  const location = useLocation();
+  const params = useParams();
+  return <MainNavbar {...props} location={location} params={params} />;
+}
 
 export type SetupOpts = {
   pathname?: string;
@@ -171,14 +185,14 @@ export async function setup({
 
   let dashboardId: DashboardId | null = null;
   const dashboardsForState: DashboardState["dashboards"] = {};
-  const dashboardsForEntities: Dashboard[] = [];
+  let storeDashboard: StoreDashboard | undefined;
   if (openDashboard) {
     dashboardId = openDashboard.id;
-    dashboardsForState[openDashboard.id] = {
+    storeDashboard = {
       ...openDashboard,
       dashcards: openDashboard.dashcards.map((c) => c.id),
     };
-    dashboardsForEntities.push(openDashboard);
+    dashboardsForState[openDashboard.id] = storeDashboard;
   }
 
   const storeInitialState = createMockState({
@@ -188,7 +202,6 @@ export async function setup({
       dashboards: dashboardsForState,
     }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
-    entities: createMockEntitiesState({ dashboards: dashboardsForEntities }),
     settings: mockSettings({
       "application-name": applicationName,
       "uploads-settings": {
@@ -218,7 +231,7 @@ export async function setup({
   renderWithProviders(
     <Route
       path={route}
-      component={(props) => <MainNavbar {...props} isOpen />}
+      element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
     />,
     {
       storeInitialState,

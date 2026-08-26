@@ -1,6 +1,6 @@
 import { msgid, ngettext } from "ttag";
 
-import { SearchResult } from "metabase/search/components/SearchResult";
+import { SearchResult } from "metabase/common/components/SearchResult";
 import { Paper, Stack, Text } from "metabase/ui";
 import type { SearchResult as ApiSearchResult } from "metabase-types/api";
 

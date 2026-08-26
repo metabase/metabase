@@ -162,7 +162,7 @@
       [:or ::mbql.s/absolute-datetime ::mbql.s/value])))
 
 (deftest ^:parallel expression-value-wrapped-literals-test
-  (are [value] (not (me/humanize (mr/explain ::mbql.s/MBQLQuery
+  (are [value] (not (me/humanize (mr/explain ::mbql.s/MBQLInnerQuery
                                              {:source-table 1, :expressions {"expr" [:value value nil]}})))
     ""
     "192.168.1.1"
@@ -176,7 +176,7 @@
 
 ;; Allowed in #67203 and above
 (deftest ^:parallel expression-unwrapped-literals-test
-  (are [value] (mr/validate ::mbql.s/MBQLQuery {:source-table 1, :expressions {"expr" value}})
+  (are [value] (mr/validate ::mbql.s/MBQLInnerQuery {:source-table 1, :expressions {"expr" value}})
     ""
     "192.168.1.1"
     "2025-03-11"

@@ -194,11 +194,11 @@ Once you've gotten everything set up in your SAML provider, you'll need to confi
 
 ## Creating Metabase accounts with SSO
 
-> Paid plans [charge for each additional account](../cloud/how-billing-works.md#what-counts-as-a-user-account).
+> Paid plans [charge for each additional account](https://www.metabase.com/how-billing-works#what-counts-as-a-user-account).
 
 A new SSO login will automatically create a new Metabase account.
 
-Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase, [even if they previously had a password login](./managing.md#signing-in-via-sso-disables-your-password-login).
 
 ## Disabling password logins
 

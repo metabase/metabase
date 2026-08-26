@@ -517,3 +517,14 @@
       (is (not= (:display-name (first join-infos))
                 (:display-name (second join-infos)))
           "Join column groups for the same table should have different display names"))))
+
+(deftest ^:parallel breakout-groups-for-added-fk-test
+  (testing "#36122 a newly-FK'd column produces its own implicit-join breakout group"
+    (let [rating (assoc (meta/field-metadata :reviews :rating)
+                        :semantic-type      :type/FK
+                        :fk-target-field-id (meta/id :products :id))
+          mp     (lib.tu/mock-metadata-provider meta/metadata-provider {:fields [rating]})
+          query  (lib/query mp (meta/table-metadata :reviews))
+          groups (lib/group-columns (lib/breakoutable-columns query))]
+      (is (= #{"Reviews" "Product" "Rating"}
+             (set (map #(:display-name (lib/display-info query %)) groups)))))))

@@ -1,10 +1,20 @@
 import { createAction } from "redux-actions";
 
-import { Questions } from "metabase/entities/questions";
+import { cardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { createThunkAction } from "metabase/redux";
-import { setUIControls } from "metabase/redux/query-builder";
-import { updateUserSetting } from "metabase/redux/settings";
+import {
+  OPEN_DATA_REFERENCE_AT_QUESTION,
+  SET_DATA_REFERENCE_STACK,
+  SET_MODAL_SNIPPET,
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+  SET_SNIPPET_COLLECTION_ID,
+  TOGGLE_DATA_REFERENCE,
+  TOGGLE_SNIPPET_SIDEBAR,
+  TOGGLE_TEMPLATE_TAGS_EDITOR,
+} from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { settingsApi } from "metabase/settings";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
@@ -24,10 +34,8 @@ import {
 
 import { updateQuestion } from "./core/updateQuestion";
 
-export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE);
 
-export const SET_DATA_REFERENCE_STACK = "metabase/qb/SET_DATA_REFERENCE_STACK";
 export const setDataReferenceStack = createAction(SET_DATA_REFERENCE_STACK);
 
 export const POP_DATA_REFERENCE_STACK = "metabase/qb/POP_DATA_REFERENCE_STACK";
@@ -49,34 +57,31 @@ export const pushDataReferenceStack = createThunkAction(
   },
 );
 
-export const OPEN_DATA_REFERENCE_AT_QUESTION =
-  "metabase/qb/OPEN_DATA_REFERENCE_AT_QUESTION";
 export const openDataReferenceAtQuestion = createThunkAction(
   OPEN_DATA_REFERENCE_AT_QUESTION,
   (id: CardId) => async (dispatch: Dispatch) => {
-    const action = await dispatch(
-      Questions.actions.fetch(
-        { id },
-        { noEvent: true, useCachedForbiddenError: true },
-      ),
+    // forceRefetch: false so a permanently-forbidden card (403) is served from
+    // RTK Query's cache instead of re-hitting /api/card/:id on every open, matching
+    // the former `useCachedForbiddenError` behavior.
+    const card = await runRtkEndpoint(
+      { id, ignore_error: true },
+      dispatch,
+      cardApi.endpoints.getCard,
+      { forceRefetch: false },
     );
-    const question = Questions.HACK_getObjectFromAction(action);
-    if (question) {
+    if (card) {
       return [
-        { type: "database", id: question.database_id },
-        { type: "question", id: question.id },
+        { type: "database", id: card.database_id },
+        { type: "question", id: card.id },
       ];
     }
   },
 );
 
-export const TOGGLE_TEMPLATE_TAGS_EDITOR =
-  "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";
 export const toggleTemplateTagsEditor = createAction(
   TOGGLE_TEMPLATE_TAGS_EDITOR,
 );
 
-export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
 export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR);
 
 export const SET_IS_SHOWING_SNIPPET_SIDEBAR =
@@ -88,36 +93,12 @@ export const setIsShowingSnippetSidebar = (
   isShowingSnippetSidebar,
 });
 
-export const SET_IS_NATIVE_EDITOR_OPEN =
-  "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN";
-export const setIsNativeEditorOpen = createThunkAction(
-  SET_IS_NATIVE_EDITOR_OPEN,
-  (isNativeEditorOpen: boolean, toggleDataReference?: boolean) =>
-    (dispatch) => {
-      if (toggleDataReference) {
-        dispatch(
-          setUIControls({
-            isNativeEditorOpen,
-            isShowingDataReference: isNativeEditorOpen,
-          }),
-        );
-      } else {
-        dispatch(setUIControls({ isNativeEditorOpen }));
-      }
-    },
-);
-
-export const SET_NATIVE_EDITOR_SELECTED_RANGE =
-  "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
 export const setNativeEditorSelectedRange = createAction(
   SET_NATIVE_EDITOR_SELECTED_RANGE,
 );
 
-export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
 export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
 
-export const SET_SNIPPET_COLLECTION_ID =
-  "metabase/qb/SET_SNIPPET_COLLECTION_ID";
 export const setSnippetCollectionId = createAction(SET_SNIPPET_COLLECTION_ID);
 
 export const openSnippetModalWithSelectedText =
@@ -139,6 +120,7 @@ export const insertSnippet =
     if (!question) {
       return;
     }
+    // Unjustified type cast. FIXME
     const query = question.legacyNativeQuery() as NativeQuery;
     const queryText = query.queryText();
     const nativeEditorCursorOffset =
@@ -164,6 +146,7 @@ export const setTemplateTag = createThunkAction(
       if (!question) {
         return;
       }
+      // Unjustified type cast. FIXME
       const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query.setTemplateTag(tag.name, tag).question();
       dispatch(updateQuestion(newQuestion));
@@ -180,6 +163,7 @@ export const setTemplateTagConfig = createThunkAction(
       if (!question) {
         return;
       }
+      // Unjustified type cast. FIXME
       const query = question.legacyNativeQuery() as NativeQuery;
       const newQuestion = query
         .setTemplateTagConfig(tag, parameterConfig)
@@ -190,7 +174,7 @@ export const setTemplateTagConfig = createThunkAction(
 );
 
 export const rememberLastUsedDatabase = (id: DatabaseId) =>
-  updateUserSetting({
+  settingsApi.endpoints.updateSetting.initiate({
     key: "last-used-native-database-id",
     value: id,
   });

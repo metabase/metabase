@@ -274,7 +274,7 @@
 ;;
 ;; :value clauses are also used to wrap top-level literal values in expression clauses.
 (defclause value
-  value    :any
+  value    [:ref ::lib.schema.literal/value.value]
   type-info [:maybe ::ValueTypeInfo])
 
 (defmethod options-style-method :value [_tag] ::options-style.last-always.snake_case)
@@ -362,7 +362,10 @@
     ::raw-int         [:field x nil]
     :field-id         (let [[_tag id] x]
                         ;; sometimes the old FE code was dumb and passed in `:field-literal` wrapped inside` `:field-id`
-                        (if (sequential? id)
+                        (if (and (sequential? id)
+                                 (contains? #{"field-literal" "field" "field-id" "datetime-field" "binning-strategy"
+                                              :field-literal :field :field-id :datetime-field :binning-strategy}
+                                            (first id)))
                           (normalize-field id)
                           [:field id nil]))
     :field-literal    (let [[_tag field-name base-type] x]
@@ -391,7 +394,9 @@
                             [_tag dest-field-id _opts]     (normalize-field dest-field)]
                         [:field dest-field-id {:source-field source-field-id}])
     :field            (let [[_tag id-or-name opts] x]
-                        (assert ((some-fn nil? map?) opts) "Attempted to normalize an MBQL 5 :field clause as MBQL 4")
+                        (when-not ((some-fn nil? map?) opts)
+                          (throw (ex-info "Attempted to normalize an MBQL 5 :field clause as MBQL 4"
+                                          {:clause x})))
                         ;; if someone accidentally nests `:field` clauses fix it for them
                         (if (and (sequential? id-or-name)
                                  ((some-fn keyword? string?) (first id-or-name))
@@ -1543,7 +1548,7 @@
   [:map
    [:field-id ::lib.schema.id/field]
    [:op       (into [:enum] lib.schema.template-tag/allowed-source-filter-ops)]
-   [:value    :any]])
+   [:value    [:ref ::lib.schema.parameter/parameter.value]]])
 
 ;; Example:
 ;;
@@ -1569,7 +1574,7 @@
    ::TemplateTag.Common
    [:map
     ;; default value for this parameter
-    [:default  {:optional true} :any]
+    [:default  {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
     ;; whether or not a value for this parameter is required in order to run the query
     [:required {:optional true} :boolean]]])
 
@@ -1691,12 +1696,7 @@
   Map of template tag name -> template tag definition"
   [:and
    [:map-of
-    {:decode/normalize (fn [m]
-                         (when (and (map? m)
-                                    (seq m))
-                           (update-keys m (fn [k]
-                                            (cond-> k
-                                              (keyword? k) u/qualified-name)))))}
+    {:decode/normalize #'lib.schema.template-tag/normalize-template-tag-map}
     ::lib.schema.common/non-blank-string
     [:ref ::TemplateTag]]
    [:ref ::lib.schema.template-tag/template-tag-map.validate-names]])
@@ -1732,33 +1732,44 @@
      :source-table ":source-table is only allowed in MBQL inner queries."
      :fields       ":fields is only allowed in MBQL inner queries."})])
 
-(mr/def ::NativeQuery
+(mr/def ::TopLevelNativeInnerQuery
   "Schema for a valid, normalized native [inner] query."
-  [:merge
-   {:decode/normalize #'remove-empty-keys-from-native-inner-query}
-   ::NativeQuery.Common
-   [:map
-    [:query :some]]])
+  [:and
+   [:merge
+    {:decode/normalize #'remove-empty-keys-from-native-inner-query}
+    ::NativeQuery.Common
+    [:map
+     [:query :some]]]
+   (lib.schema.common/disallowed-keys
+    {:native "A top-level native inner query should have the :query key, not :native"})])
 
 (mr/def ::NativeSourceQuery
-  [:merge
-   {:decode/normalize #'remove-empty-keys-from-native-inner-query}
-   ::NativeQuery.Common
-   [:map
-    [:native :some]]])
+  [:and
+   [:merge
+    {:decode/normalize #'remove-empty-keys-from-native-inner-query}
+    ::NativeQuery.Common
+    [:map
+     [:native :some]]]
+   (lib.schema.common/disallowed-keys
+    {:query "A top-level native inner query should have the :native key, not :query"})])
 
 (mr/def ::SourceQuery
   "Schema for a valid value for a `:source-query`."
-  [:multi
-   {:dispatch (fn [x]
-                (if ((every-pred map? :native) x)
-                  :native
-                  :mbql))}
-   ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
-   ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
-   ;; queries).
-   [:native [:ref ::NativeSourceQuery]]
-   [:mbql   [:ref ::MBQLQuery]]])
+  [:and
+   ;; normalize the keys in the map first so we can check for the presence of `:native` versus `:mbql` in the `:multi`
+   ;; schema below. Carried on the `:and` rather than on a keyless `[:map ...]` sibling, which would declare no keys
+   ;; and so strip the whole query while decoding.
+   {:decode/normalize lib.schema.common/normalize-map}
+   [:multi
+    {:dispatch (fn [x]
+                 (if ((every-pred map? :native) x)
+                   :native
+                   :mbql))}
+    ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
+    ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
+    ;; queries).
+    [:native [:ref ::NativeSourceQuery]]
+    [:mbql   [:ref ::MBQLInnerQuery]]]])
 
 (defn- normalize-legacy-column
   "Normalize legacy column metadata when using [[metabase.lib.normalize/normalize]]."
@@ -1843,17 +1854,35 @@
      [:base_type          {:default :type/*} ::lib.schema.common/base-type]
      [:display_name       :string]
      [:name               :string]
+     [:active             {:optional true} :boolean]
      [:description        {:optional true} [:maybe :string]]
      [:binning_info       {:optional true} [:maybe [:ref ::legacy-column-metadata.binning-info]]]
+     [:coercion_strategy  {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
+     [:database_type      {:optional true} [:maybe :string]]
      [:effective_type     {:optional true} ::lib.schema.common/base-type]
      [:converted_timezone {:optional true} [:maybe [:ref ::lib.schema.expression.temporal/timezone-id]]]
      [:field_ref          {:optional true} [:maybe [:ref ::Reference]]]
+     ;; implicit-join provenance -- the FE renders "Orders → Category" from these, and drill-thru needs them to
+     ;; rebuild the `:source-field` option
+     [:fk_field_id        {:optional true} [:maybe ::lib.schema.id/field]]
+     [:fk_field_name      {:optional true} [:maybe :string]]
+     [:fk_join_alias      {:optional true} [:maybe [:ref ::lib.schema.join/alias]]]
+     [:fk_target_field_id {:optional true} [:maybe ::lib.schema.id/field]]
      ;; Fingerprint is required in order to use BINNING
      [:fingerprint        {:optional true} [:maybe [:ref ::lib.schema.metadata.fingerprint/fingerprint]]]
+     [:has_field_values   {:optional true} [:maybe [:ref ::lib.schema.metadata/column.has-field-values]]]
      [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
+     [:inherited_temporal_unit {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
+     [:nfc_path           {:optional true} [:maybe [:sequential :string]]]
+     [:position           {:optional true} [:maybe :int]]
+     [:remapped_from      {:optional true} [:maybe :string]]
+     [:remapped_to        {:optional true} [:maybe :string]]
+     [:selected?          {:optional true} :boolean]
      ;; name is allowed to be empty in some databases like SQL Server.
      [:semantic_type      {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+     [:settings           {:optional true} [:maybe [:map {:closed false}]]]
      [:source             {:optional true} [:maybe [:ref ::lib.schema.metadata/column.legacy-source]]]
+     [:table_id           {:optional true} [:maybe [:ref ::SourceTable]]]
      [:unit               {:optional true} [:maybe [:ref ::lib.schema.temporal-bucketing/unit]]]
      [:visibility_type    {:optional true} [:maybe [:ref ::lib.schema.metadata/column.visibility-type]]]]
     [:ref ::legacy-column-metadata.qualified-keys]]
@@ -2051,7 +2080,7 @@
                 (into #{} (map without-temporal-unit) breakout)
                 (into #{} (map without-temporal-unit) fields))))]))
 
-(mr/def ::MBQLQuery
+(mr/def ::MBQLInnerQuery
   [:and
    [:map
     {:decode/normalize lib.schema.common/normalize-map}
@@ -2078,9 +2107,10 @@
    ;;    {:aggregation "ROWS"} => {:aggregation nil}
    ;;
    ;; but not actually remove that key; so we need this second pass to remove it.
+   ;; open: this only exists to run a second normalization pass, so it must not constrain (or strip) any keys
    [:schema
     {:decode/normalize #'remove-empty-keys-from-mbql-inner-query}
-    :map]
+    [:map {:closed false}]]
    ;;
    ;; CONSTRAINTS
    ;;
@@ -2095,7 +2125,9 @@
      :type               "An inner query must not include :type, this will cause us to mix it up with an outer query"
      :aggregation-idents ":aggregation-idents is deprecated and should not be used"
      :breakout-idents    ":breakout-idents is deprecated and should not be used"
-     :expression-idents  ":expression-idents is deprecated and should not be used"})])
+     :expression-idents  ":expression-idents is deprecated and should not be used"
+     :query              "An inner query should not itself contain :query -- something must have been nested improperly"
+     :native             "An inner MBQL query should not have :native -- this is only for inner native queries"})])
 
 (mr/def ::WidgetType
   "Schema for valid values of `:widget-type` for a `::TemplateTag.FieldFilter`."
@@ -2187,8 +2219,9 @@
 
 (mr/def ::Query
   [:and
-   [:map
-    {:decode/normalize #'normalize-query}]
+   ;; carried here rather than on a keyless `[:map ...]` sibling, which would declare no keys and so strip the whole
+   ;; query while decoding
+   {:decode/normalize #'normalize-query}
    ;; need to move source metadata to the correct location FIRST so it gets normalized by the schema below
    [:ref ::CheckQueryDoesNotHaveSourceMetadata]
    [:map
@@ -2198,8 +2231,8 @@
       {:decode/normalize helpers/normalize-keyword
        :description "Type of query. `:query` = MBQL; `:native` = native."}
       :query :native]]
-    [:native     {:optional true} [:ref ::NativeQuery]]
-    [:query      {:optional true} [:ref ::MBQLQuery]]
+    [:native     {:optional true} [:ref ::TopLevelNativeInnerQuery]]
+    [:query      {:optional true} [:ref ::MBQLInnerQuery]]
     [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     ;;
     ;; OPTIONS

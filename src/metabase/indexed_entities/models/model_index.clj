@@ -8,6 +8,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.core :as qp]
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
@@ -95,7 +96,7 @@
                              :limit        (inc max-indexed-values)}})
                 :data :rows (filter valid-tuples?))]
       (catch Exception e
-        (log/warnf e "Error fetching indexed values for model %s" (:id model))
+        (log/warnf "Error fetching indexed values for model %s: %s" (:id model) (ex-message e))
         [(ex-message e) []]))))
 
 (defn find-changes
@@ -156,8 +157,8 @@
                                      "indexed")}))
         (run! search/update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id model-index)))
         (catch Exception e
-          (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
-                      (:id model-index) (:model_id model-index))
+          (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
+                      (:id model-index) (:model_id model-index) (ex-message e))
           (t2/update! :model/ModelIndex (:id model-index)
                       {:state      "error"
                        :error      (ex-message e)
@@ -205,6 +206,8 @@
    :joins        {:model_index [:model/ModelIndex [:= :model_index.id :this.model_index_id]]
                   :model       [:model/Card [:= :model.id :model_index.model_id]]
                   :collection  [:model/Collection [:= :collection.id :model.collection_id]]}})
+
+(perms/define-collection-based-visibility! "indexed-entity" :denormalized-from :model/Card)
 
 ;; TODO resolve the toucan2 issue preventing us from using this hook
 (underive :model/ModelIndexValue :hook/search-index)

@@ -219,9 +219,10 @@
 ;;; EXIST ANYMORE, BUT MAYBE YOU CAN GO LOOKING FOR IT IF YOU NEED TO?)
 ;;;
 ;;; This is only running against Postgres since we're just testing general behavior for formatting different types
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)"
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-driver :postgres
       (let [query     (mt/dataset attempted-murders
                         (mt/mbql-query attempts
@@ -322,8 +323,6 @@
   [message {:keys [query viz-settings assertions endpoints user expected-status]}]
   (testing message
     (let [expected-status   (or expected-status 200)
-          query-json        (json/encode query)
-          viz-settings-json (some-> viz-settings json/encode)
           public-uuid       (str (random-uuid))
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
@@ -345,9 +344,9 @@
                   (let [results (mt/user-http-request user :post expected-status
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      {:format_rows            true
-                                                       :query                  query-json
-                                                       :visualization_settings viz-settings-json})]
+                                                      (cond-> {:format_rows true
+                                                               :query       query}
+                                                        viz-settings (assoc :visualization_settings viz-settings)))]
                     ((-> assertions export-format) results))
 
                   :card
@@ -393,7 +392,7 @@
   [results]
   (if (map? results)
     (throw (ex-info "Error in CSV export" results))
-    (csv/read-csv results)))
+    (csv/read-csv (u/strip-bom results))))
 
 (deftest basic-export-test
   (do-test!

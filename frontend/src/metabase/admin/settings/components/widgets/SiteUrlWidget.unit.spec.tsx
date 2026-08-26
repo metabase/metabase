@@ -33,6 +33,7 @@ const setup = (props: { isHosted?: boolean; isEnvSetting?: boolean }) => {
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
       createMockSettingDefinition({
+        // Unjustified type cast. FIXME
         key: key as SettingKey,
         value,
         is_env_setting: props.isEnvSetting && key === "site-url",

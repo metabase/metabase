@@ -9,6 +9,6 @@ export const CopyButtonContainer = styled.div`
   z-index: 2;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

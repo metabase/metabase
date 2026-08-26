@@ -11,5 +11,5 @@ export const ExplainerTextContainer = styled.p`
 
 export const BrandLinkWithLeftMargin = styled(ExternalLink)`
   margin-left: var(--mantine-spacing-sm);
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;

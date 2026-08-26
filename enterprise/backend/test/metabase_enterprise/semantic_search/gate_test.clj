@@ -9,7 +9,7 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.test.util :as mt]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
@@ -255,8 +255,10 @@
 (deftest flush-watermark!-test
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
-        model1         {:provider "foo" :model-name "m1" :vector-dimensions 42}
-        model2         {:provider "foo" :model-name "m2" :vector-dimensions 42}
+        model1         (semantic.tu/resolved-mock-embedding-model
+                        :provider "foo" :model-name "m1" :vector-dimensions 42)
+        model2         (semantic.tu/resolved-mock-embedding-model
+                        :provider "foo" :model-name "m2" :vector-dimensions 42)
         index1         (semantic.index-metadata/qualify-index (semantic.index/default-index model1) index-metadata)
         index2         (semantic.index-metadata/qualify-index (semantic.index/default-index model2) index-metadata)
         watermark      {:last-poll (ts "2025-01-01T13:00:00Z")
@@ -324,10 +326,10 @@
             (is (== 4 (mt/metric-value system :metabase-search/semantic-gate-write-documents)))
             (is (== 2 (mt/metric-value system :metabase-search/semantic-gate-write-modified))))
           (testing ":metabase-search/semantic-gate-timeout-ms is updated on timeout"
-            (with-redefs [semantic.gate/execute-upsert!
-                          (fn [& _] (throw (org.postgresql.util.PSQLException.
-                                            "ERROR: canceling statement due to statement timeout"
-                                            org.postgresql.util.PSQLState/QUERY_CANCELED)))]
+            (mt/with-dynamic-fn-redefs [semantic.gate/execute-upsert!
+                                        (fn [& _] (throw (org.postgresql.util.PSQLException.
+                                                          "ERROR: canceling statement due to statement timeout"
+                                                          org.postgresql.util.PSQLState/QUERY_CANCELED)))]
               (let [ex (try
                          (sut pgvector index-metadata docs)
                          (catch Exception e e))]

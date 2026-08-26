@@ -168,13 +168,16 @@ describe(
 
         // Options step
         cy.findByLabelText("Allow people to drill through on data points")
+          .scrollIntoView()
           .should("be.visible")
           .should("be.disabled");
         cy.findByLabelText("Allow downloads")
+          .scrollIntoView()
           .should("be.visible")
           .should("be.disabled")
           .should("be.checked");
         cy.findByLabelText("Allow people to save new questions")
+          .scrollIntoView()
           .should("be.visible")
           .should("be.disabled");
 

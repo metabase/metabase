@@ -1,12 +1,13 @@
-import type { MetricUrls } from "metabase/metrics/types";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import * as Urls from "metabase/urls";
 
 export const dataStudioMetricUrls: MetricUrls = {
   about: Urls.dataStudioMetric,
   overview: Urls.dataStudioMetricOverview,
   query: Urls.dataStudioMetricQuery,
+  dimensions: Urls.dataStudioMetricDimensions,
   dependencies: Urls.dataStudioMetricDependencies,
-  caching: Urls.dataStudioMetricCaching,
   history: Urls.dataStudioMetricHistory,
   database: (databaseId) => Urls.dataStudioData({ databaseId }),
+  table: (_databaseId, tableId) => Urls.dataStudioTable(tableId),
 };

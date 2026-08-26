@@ -37,7 +37,7 @@ export function ChartSettingsButton({
       <Modal
         opened={isOpened}
         onClose={close}
-        size="85%"
+        size="95%"
         padding={0}
         withCloseButton={false}
         styles={{

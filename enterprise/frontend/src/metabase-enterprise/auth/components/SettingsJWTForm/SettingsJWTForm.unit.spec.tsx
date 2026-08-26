@@ -6,6 +6,7 @@ import {
   setupGenerateRandomTokenEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -24,13 +25,21 @@ const GROUPS = [
 const setup = async ({
   jwtEnabled,
   useTenants,
+  configured,
 }: {
   jwtEnabled?: boolean;
   useTenants?: boolean;
+  configured?: boolean;
 } = {}) => {
   setupSettingsEndpoints([
     { key: "use-tenants", value: useTenants ?? false },
     { key: "jwt-enabled", value: jwtEnabled ?? false },
+    ...(configured
+      ? ([
+          { key: "jwt-identity-provider-uri", value: "http://example.com" },
+          { key: "jwt-shared-secret", value: "590ab155f412d477b8ab9c8b0e7b" },
+        ] as const)
+      : []),
   ]);
   setupPropertiesEndpoints(
     createMockSettings({
@@ -39,18 +48,18 @@ const setup = async ({
     }),
   );
   setupUpdateSettingsEndpoint();
+  setupUpdateSettingEndpoint();
   setupGenerateRandomTokenEndpoint("1234abcd");
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
 
-  renderWithProviders(<SettingsJWTForm />);
+  renderWithProviders(<SettingsJWTForm />, { withUndos: true });
 
   await screen.findByText("Server Settings");
 };
 
 describe("SettingsJWTForm", () => {
   const ATTRS = {
-    "jwt-user-provisioning-enabled?": false,
     "jwt-identity-provider-uri": "http://example.com",
     "jwt-shared-secret":
       "590ab155f412d477b8ab9c8b0e7b2e3ab4d4523e83770a724a2088edbde7f19a",
@@ -107,6 +116,39 @@ describe("SettingsJWTForm", () => {
     // it's strange that there's no special JWT endpoint when other SSO methods have endpoints with fancy validation 🤷‍♀️
     expect(url).toMatch(/\/api\/setting$/);
     expect(body).toEqual(ATTRS);
+  });
+
+  it("should only update the mappings setting when adding a group mapping", async () => {
+    await setup({ jwtEnabled: true, configured: true });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /New mapping/ }),
+    );
+    await userEvent.type(
+      await screen.findByLabelText("New group mapping name"),
+      "cn=People",
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Add" }));
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    const [{ url, body }] = puts;
+    expect(url).toMatch(/\/api\/setting\/jwt-group-mappings$/);
+    expect(body).toEqual({ value: { "cn=People": [] } });
+  });
+
+  it("shows a toast after saving", async () => {
+    await setup({ jwtEnabled: true, configured: true });
+
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: /JWT Identity Provider URI/ }),
+      "/extra",
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save changes" }),
+    );
+
+    expect(await screen.findByText("Changes saved")).toBeInTheDocument();
   });
 
   it("should not show tenant attribute unless tenanting is on", async () => {

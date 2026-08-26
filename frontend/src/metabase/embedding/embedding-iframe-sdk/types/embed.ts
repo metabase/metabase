@@ -1,6 +1,4 @@
 import type { CollectionBrowserListColumns } from "embedding-sdk-bundle/components/public/CollectionBrowser";
-import type { MetabaseError } from "embedding-sdk-bundle/errors";
-import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import type {
   EntityTypeFilterKeys,
   MetabaseAuthMethod,
@@ -9,6 +7,8 @@ import type {
 } from "embedding-sdk-bundle/types";
 import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
 import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
+import type { MetabaseError } from "embedding-sdk-shared/errors";
+import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
 import type {
   SdkIframeDashboardEmbedSettings,
   SdkIframeQuestionEmbedSettings,
@@ -188,6 +188,9 @@ export interface BrowserEmbedOptions {
   /** Which entities to show on the collection browser */
   collectionEntityTypes?: CollectionBrowserEntityTypes[];
 
+  /** Whether to show questions that belong to a dashboard in the collection browser. Defaults to false. */
+  collectionShowDashboardQuestions?: boolean;
+
   /** Which entities to show on the question's data picker */
   dataPickerEntityTypes?: EmbeddingEntityType[];
 
@@ -266,6 +269,19 @@ export type SdkIframeEmbedBaseSettings = {
     // Callback to handle link clicks. Return { handled: true } to prevent default navigation.
     handleLink?: (url: string) => { handled: boolean };
   };
+
+  // Type inlined (not CustomVizDisplayType) so hovering the public setting shows the format.
+  /**
+   * Opt-in support for EE custom visualization plugins inside the embed.
+   *
+   * Pass an allowlist of `custom:`-prefixed plugin identifiers (manifest
+   * `name`), e.g. `["custom:Thumbs", "custom:Calendar"]`. Only
+   * listed plugins are loaded. Omit or pass `[]` to disable.
+   *
+   * Ignored in guest embeds: custom visualizations need an authenticated
+   * user.
+   */
+  allowedCustomVisualizations?: `custom:${string}`[];
 };
 
 export type SdkIframeEmbedAuthTypeSettings = {

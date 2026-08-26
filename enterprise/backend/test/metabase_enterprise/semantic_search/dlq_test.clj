@@ -8,6 +8,7 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.test :as mt]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
@@ -121,6 +122,38 @@
             (is (= 2 (:retry_count (first results))))
             (is (= t2 (:error_gated_at (first results))))))))))
 
+(deftest dlq-entry-upsert-schema-qualified-test
+  (testing "the conflict predicate references the target by bare name when the DLQ table is schema-qualified
+            (app-db mode); a qualified reference would not resolve inside ON CONFLICT DO UPDATE"
+    (let [pgvector       (semantic.env/get-pgvector-datasource!)
+          schema         (str "dlq_test_schema_" (System/nanoTime))
+          index-metadata (assoc (semantic.tu/unique-index-metadata)
+                                :schema schema
+                                :index-table-qualifier (str schema ".%s"))
+          index-id       42]
+      (try
+        (jdbc/execute! pgvector [(str "CREATE SCHEMA " schema)])
+        (semantic.dlq/create-dlq-table-if-not-exists! pgvector index-metadata index-id)
+        (let [t1    (ts "2025-01-01T10:00:00Z")
+              t2    (ts "2025-01-01T11:00:00Z")
+              entry (fn [gated-at retry]
+                      [{:gate_id           "gate1"
+                        :retry_count       retry
+                        :attempt_at        t1
+                        :last_attempted_at t2
+                        :error_gated_at    gated-at}])]
+          (is (= 1 (semantic.dlq/add-entries! pgvector index-metadata index-id (entry t1 0))))
+          (is (= 1 (semantic.dlq/add-entries! pgvector index-metadata index-id (entry t2 2)))
+              "the conflict-update path must work against a schema-qualified table")
+          (let [table-name (semantic.dlq/dlq-table-name-kw index-metadata index-id)
+                [row]      (jdbc/execute! pgvector
+                                          (sql/format {:select [:*] :from [table-name]} :quoted true)
+                                          {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
+            (is (= 2 (:retry_count row)))
+            (is (= t2 (:error_gated_at row)))))
+        (finally
+          (jdbc/execute! pgvector [(str "DROP SCHEMA IF EXISTS " schema " CASCADE")]))))))
+
 (deftest dlq-poll-test
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
@@ -229,7 +262,7 @@
           ;; add everything to dlq
           (add-gate-to-dlq! pgvector index-metadata @index-id-ref)
           (vreset! clock-ref (.plus (.instant clock) semantic.dlq/initial-backoff))
-          (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Forced failure")))]
+          (mt/with-dynamic-fn-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Forced failure")))]
             (let [result (semantic.dlq/dlq-retry-loop! pgvector index-metadata index @index-id-ref
                                                        :max-run-duration (Duration/ofSeconds 1)
                                                        :max-batch-size 10)]
@@ -298,13 +331,13 @@
           (is (= {"card_1" 1 "card_2" 1} (frequencies (map :id (:successes outcome)))))
           (is (= {} (frequencies (map :gate_id (:failures outcome)))))))
       (testing "failures across upsert/delete are aggregated"
-        (with-redefs [semantic.index/upsert-index!      (fn [& _] (throw (RuntimeException. "Upsert failed")))
-                      semantic.index/delete-from-index! (fn [& _] (throw (RuntimeException. "Delete failed")))]
+        (mt/with-dynamic-fn-redefs [semantic.index/upsert-index!      (fn [& _] (throw (RuntimeException. "Upsert failed")))
+                                    semantic.index/delete-from-index! (fn [& _] (throw (RuntimeException. "Delete failed")))]
           (let [outcome (semantic.dlq/try-batch! pgvector index gate-docs)]
             (is (= {"card_1" 1 "card_2" 1} (frequencies (map (comp :gate_id :dlq-entry) (:failures outcome)))))
             (is (= {} (frequencies (map :id (:successes outcome))))))))
       (testing "partial failure is representable"
-        (with-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Upsert failed")))]
+        (mt/with-dynamic-fn-redefs [semantic.index/upsert-index! (fn [& _] (throw (RuntimeException. "Upsert failed")))]
           (let [outcome (semantic.dlq/try-batch! pgvector index gate-docs)]
             (is (= {"card_1" 1} (frequencies (map (comp :gate_id :dlq-entry) (:failures outcome)))))
             (is (= {"card_2" 1} (frequencies (map :id (:successes outcome))))))))

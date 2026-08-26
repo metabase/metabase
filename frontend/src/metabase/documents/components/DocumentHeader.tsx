@@ -1,22 +1,25 @@
 import { useCallback, useState } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { useListCommentsQuery } from "metabase/api";
+import { getListCommentsQuery } from "metabase/comments/utils";
 import {
   DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
-import { useSetting } from "metabase/common/hooks";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
+import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   ActionIcon,
   Box,
   Button,
   Flex,
   Icon,
+  Loader,
   Menu,
   Text,
   TextInput,
@@ -24,12 +27,12 @@ import {
   Transition,
   type TransitionProps,
 } from "metabase/ui";
+import { waitUntilNextFramePainted } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { Document } from "metabase-types/api";
 
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
-import { getListCommentsQuery } from "../utils/api";
 
 import { DocumentPublicLinkPopover } from "./DocumentHeader/DocumentPublicLinkPopover/DocumentPublicLinkPopover";
 import S from "./DocumentHeader.module.css";
@@ -73,11 +76,16 @@ export const DocumentHeader = ({
   onArchive,
   onShowHistory,
 }: DocumentHeaderProps) => {
-  const { hasComments } = useListCommentsQuery(getListCommentsQuery(document), {
-    selectFromResult: ({ data }) => ({
-      hasComments: !isNewDocument && !!data?.comments?.length,
-    }),
-  });
+  const { hasComments } = useListCommentsQuery(
+    getListCommentsQuery(
+      document ? { target_id: document.id, target_type: "document" } : null,
+    ),
+    {
+      selectFromResult: ({ data }) => ({
+        hasComments: !isNewDocument && !!data?.comments?.length,
+      }),
+    },
+  );
 
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const isAdmin = useSelector(getUserIsAdmin);
@@ -85,23 +93,37 @@ export const DocumentHeader = ({
 
   const hasPublicLink = !!document?.public_uuid;
 
-  const handlePrint = useCallback(() => {
+  const { prepareForPrint } = usePrintContext();
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPreparingForPrint, setIsPreparingForPrint] = useState(false);
+
+  const handlePrint = useCallback(async () => {
+    setIsPreparingForPrint(true);
+    try {
+      await prepareForPrint();
+    } finally {
+      setIsPreparingForPrint(false);
+    }
+    setIsMenuOpen(false);
+    await waitUntilNextFramePainted();
     window.print();
     trackDocumentPrint(document);
-  }, [document]);
+  }, [document, prepareForPrint]);
+
+  const handleMenuChange = useCallback(
+    (opened: boolean) => {
+      if (!opened && isPreparingForPrint) {
+        return;
+      }
+
+      setIsMenuOpen(opened);
+    },
+    [isPreparingForPrint],
+  );
 
   return (
-    <Flex
-      justify="space-between"
-      align="flex-start"
-      gap="1rem"
-      mt="xl"
-      pt="xl"
-      pb="1rem"
-      maw={900}
-      mx="auto"
-      w="100%"
-    >
+    <Flex className={S.documentHeader}>
       <Flex direction="column" className={S.titleContainer}>
         <TextInput
           aria-label={t`Document Title`}
@@ -184,7 +206,11 @@ export const DocumentHeader = ({
           </Tooltip>
         )}
         {!document?.archived && (
-          <Menu position="bottom-end">
+          <Menu
+            position="bottom-end"
+            opened={isMenuOpen}
+            onChange={handleMenuChange}
+          >
             <Menu.Target>
               <ActionIcon
                 variant="subtle"
@@ -197,7 +223,15 @@ export const DocumentHeader = ({
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item
-                leftSection={<Icon name="document" />}
+                leftSection={
+                  isPreparingForPrint ? (
+                    <Loader size="xs" />
+                  ) : (
+                    <Icon name="document" />
+                  )
+                }
+                closeMenuOnClick={false}
+                disabled={isPreparingForPrint}
                 onClick={handlePrint}
               >
                 {t`Print Document`}

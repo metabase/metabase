@@ -1,7 +1,8 @@
-import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
+import { embedApi, publicApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { applyParameters } from "metabase/common/utils/card";
 import { fetchDataOrError } from "metabase/dashboard/utils";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
@@ -10,13 +11,15 @@ import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
+import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { updateMetadata } from "metabase/redux/metadata";
+import { useLocation, useParams } from "metabase/router";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { EmbedApi, PublicApi, maybeUsePivotEndpoint } from "metabase/services";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -30,13 +33,10 @@ import type { EntityToken } from "metabase-types/api/entity";
 
 import { PublicOrEmbeddedQuestionView } from "../PublicOrEmbeddedQuestionView";
 
-export const PublicOrEmbeddedQuestion = ({
-  params: { uuid, token },
-  location,
-}: {
-  location: Location;
-  params: { uuid: string; token: EntityToken };
-}) => {
+export const PublicOrEmbeddedQuestion = () => {
+  const location = useLocation();
+  const { uuid, token } = useParams<{ uuid: string; token: EntityToken }>();
+
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
   // we cannot use `metadata` directly otherwise hooks will re-run on every metadata change
@@ -63,9 +63,17 @@ export const PublicOrEmbeddedQuestion = ({
     try {
       let card;
       if (token) {
-        card = await EmbedApi.card({ token });
+        card = await runRtkEndpoint(
+          { token },
+          dispatch,
+          embedApi.endpoints.getEmbedCard,
+        );
       } else if (uuid) {
-        card = await PublicApi.card({ uuid });
+        card = await runRtkEndpoint(
+          { uuid },
+          dispatch,
+          publicApi.endpoints.getPublicCard,
+        );
       } else {
         throw { status: 404 };
       }
@@ -86,7 +94,7 @@ export const PublicOrEmbeddedQuestion = ({
       );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
-        location.query,
+        parseSearchQuery(location.search),
       );
 
       setCard(card);
@@ -124,21 +132,22 @@ export const PublicOrEmbeddedQuestion = ({
     try {
       setResult(null);
 
-      let newResult: Dataset | { error: unknown };
+      const runQuery = makePivotAwareQueryRunner(dispatch);
+
+      let resultPromise: Promise<Dataset>;
       if (token) {
         // embeds apply parameter values server-side
-        newResult = (await fetchDataOrError(
-          maybeUsePivotEndpoint(
-            EmbedApi.cardQuery,
-            card,
-            metadataRef.current,
-          )({
+        resultPromise = runQuery(
+          embedApi.endpoints.getEmbedCardQuery,
+          card,
+          metadataRef.current,
+          {
             token,
             parameters: JSON.stringify(
               getParameterValuesBySlug(parameters, parameterValues),
             ),
-          }),
-        )) as Dataset | { error: unknown };
+          },
+        );
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(
@@ -148,24 +157,29 @@ export const PublicOrEmbeddedQuestion = ({
           [],
           { sparse: true },
         );
-        newResult = (await fetchDataOrError(
-          maybeUsePivotEndpoint(
-            PublicApi.cardQuery,
-            card,
-            metadataRef.current,
-          )({
+        resultPromise = runQuery(
+          publicApi.endpoints.getPublicCardQuery,
+          card,
+          metadataRef.current,
+          {
             uuid,
             parameters: JSON.stringify(datasetQuery.parameters),
-          }),
-        )) as Dataset | { error: unknown };
+          },
+        );
       } else {
         throw { status: 404 };
       }
+
+      // Unjustified type cast. FIXME
+      const newResult = (await fetchDataOrError(resultPromise)) as
+        | Dataset
+        | { error: unknown };
 
       // If error is object it is because it was a non-query error
       if (typeof newResult.error === "object") {
         dispatch(setErrorPage(newResult.error));
       } else {
+        // Unjustified type cast. FIXME
         setResult(newResult as Dataset);
       }
     } catch (error) {
@@ -196,7 +210,7 @@ export const PublicOrEmbeddedQuestion = ({
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <EmbeddingEntityContextProvider uuid={uuid} token={token}>
+      <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
         <PublicOrEmbeddedQuestionView
           initialized={initialized}
           card={card}

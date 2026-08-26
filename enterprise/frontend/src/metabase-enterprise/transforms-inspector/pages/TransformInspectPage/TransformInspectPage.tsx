@@ -1,29 +1,35 @@
-import type { Location } from "history";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useLocation, useParams } from "metabase/router";
+import { TransformDisconnectedDatabaseBanner } from "metabase/transforms/components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "metabase/transforms/components/TransformHeader";
+import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { RunSection } from "metabase/transforms/pages/TransformRunPage/RunSection";
-import { Alert, Center, Icon, Text } from "metabase/ui";
+import { isMissingSourceDatabase } from "metabase/transforms/utils";
+import { Alert, Center, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { InspectorContent } from "./components/InspectorContent";
 import type { RouteParams } from "./types";
 
-type TransformInspectPageProps = {
-  params: RouteParams;
-  location: Location;
-};
-
-export const TransformInspectPage = ({
-  params,
-  location,
-}: TransformInspectPageProps) => {
+export const TransformInspectPage = () => {
+  const location = useLocation();
+  const params = useParams<RouteParams>();
   const transformId = Urls.extractEntityId(params.transformId);
+  const {
+    transform,
+    isLoading: isLoadingTransform,
+    error: transformError,
+  } = useTransformWithPolling(transformId);
+  const { readOnly, permissionsReadOnly, isLoadingDatabases, databasesError } =
+    useTransformPermissions({ transform });
 
-  const { transform, isLoading, error } = useTransformWithPolling(transformId);
+  const isLoading = isLoadingTransform || isLoadingDatabases;
+  const error = transformError || databasesError;
 
   if (isLoading || error || !transform) {
     return (
@@ -35,21 +41,38 @@ export const TransformInspectPage = ({
 
   return (
     <PageContainer data-testid="transform-inspect-content">
-      <TransformHeader transform={transform} />
-      {transform.last_run?.status !== "succeeded" ? (
-        <>
-          <Alert color="brand" icon={<Icon name="info" />}>
-            <Text>{t`To inspect the transform you need to run it first.`}</Text>
-          </Alert>
-          <RunSection transform={transform} noTitle={true} />
-        </>
-      ) : (
-        <InspectorContent
-          transform={transform}
-          params={params}
-          location={location}
-        />
-      )}
+      <TransformHeader transform={transform} readOnly={readOnly} />
+      {match({
+        hasSucceeded: transform.last_run?.status === "succeeded",
+        isMissingSourceDatabase: isMissingSourceDatabase(transform),
+      })
+        .with({ isMissingSourceDatabase: true }, () => (
+          <TransformDisconnectedDatabaseBanner transform={transform} />
+        ))
+        .with({ hasSucceeded: false }, () => (
+          <>
+            <Alert
+              size="compact"
+              color="core-brand"
+              icon={<Icon name="info" />}
+            >
+              {t`To inspect the transform you need to run it first.`}
+            </Alert>
+            <RunSection
+              transform={transform}
+              noTitle={true}
+              readOnly={readOnly}
+              permissionsReadOnly={permissionsReadOnly}
+            />
+          </>
+        ))
+        .otherwise(() => (
+          <InspectorContent
+            transform={transform}
+            params={params}
+            location={location}
+          />
+        ))}
     </PageContainer>
   );
 };

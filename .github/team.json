@@ -4,7 +4,6 @@
       "name": "Querying Platform",
       "label": ".Team/QueryingPlatform",
       "members": [
-        "bshepherdson",
         "metamben",
         "rileythomp",
         "camsaul",
@@ -48,7 +47,8 @@
       "members": [
         "fraserdrops",
         "nemanjaglumac",
-        "romeovs"
+        "romeovs",
+        "ChrisVandoo"
       ]
     },
     {
@@ -56,15 +56,14 @@
       "label": ".Team/Metabot",
       "members": [
         "appleby",
-        "noahmoss",
         "retro",
         "sloansparger",
-        "somtom",
         "tsplude",
         "lbrdnk",
-        "piranha",
         "crisptrutski",
-        "undrfined"
+        "undrfined",
+        "andreis",
+        "prascuna"
       ]
     },
     {
@@ -89,11 +88,12 @@
         "npfitz",
         "johnswanson",
         "nvoxland",
-        "edpaget",
+        "bshepherdson",
         "deniskaber",
         "andsalves",
         "kevinkelleher12",
-        "AndreyChernykh"
+        "AndreyChernykh",
+        "bowbahdoe"
       ]
     },
     {
@@ -120,7 +120,15 @@
         "iethree",
         "bpander",
         "gantoreno",
-        "losrebellos"
+        "losrebellos",
+        "tmashara"
+      ]
+    },
+    {
+      "name": "Security Engineering",
+      "label": ".Team/SecurityEngineering",
+      "members": [
+        "enthym-aa"
       ]
     }
   ]

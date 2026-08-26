@@ -2,6 +2,7 @@
   "Tests for /api/table endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.warehouse-schema-rest.api.table-test]}}}}}}
   (:require
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -11,16 +12,21 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.upload.core :as upload]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.api.table :as api.table]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent Executors)))
 
 (set! *warn-on-reflection* true)
 
@@ -43,6 +49,7 @@
     :name                        "test-data (h2)"
     :is_attached_dwh             false
     :is_sample                   false
+    :is_stub                     false
     :is_full_sync                true
     :is_on_demand                false
     :description                 nil
@@ -238,15 +245,12 @@
         (testing "returns 404 for tables that don't exist"
           (mt/user-http-request :rasta :get 404 (format "table/%d/data" 133713371337)))))))
 
-(defn- query-metadata-defaults []
-  (table-defaults))
-
 (deftest ^:parallel sensitive-fields-included-test
   (mt/with-premium-features #{}
     (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
       (testing "Sensitive fields are included"
         (is (= (merge
-                (query-metadata-defaults)
+                (table-defaults)
                 (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
@@ -329,7 +333,7 @@
     (testing "GET api/table/:id/query_metadata"
       (testing "Sensitive fields should not be included"
         (is (= (merge
-                (query-metadata-defaults)
+                (table-defaults)
                 (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
@@ -388,6 +392,23 @@
                  :id           (mt/id :users)})
                (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
             "Make sure that getting the User table does *not* include password info")))))
+
+(deftest query-metadata-transform-hydration-test
+  (testing "GET /api/table/:id/query_metadata hydrates the source :transform based on transforms availability (GDGT-2523)"
+    (mt/with-temp [:model/Transform transform {:name   "My transform"
+                                               :source {:type  "query"
+                                                        :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                               :target {:database (mt/id) :table "my_transform_table"}}
+                   :model/Table     {table-id :id} {:db_id        (mt/id)
+                                                    :transform_id (:id transform)}]
+      (testing "self-hosted (not hosted) without :transforms-basic still hydrates the source transform"
+        (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+          (mt/with-premium-features #{}
+            (is (=? {:transform {:id (:id transform)}}
+                    (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" table-id)))))))
+      (testing "hosted instance without :transforms-basic does not hydrate the source transform"
+        (mt/with-premium-features #{:hosting}
+          (is (nil? (:transform (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata" table-id))))))))))
 
 (deftest fk-target-permissions-test
   (testing "GET /api/table/:id/query_metadata"
@@ -642,7 +663,7 @@
   (mt/with-premium-features #{}
     (testing "GET /api/table/:id/query_metadata"
       (is (= (merge
-              (query-metadata-defaults)
+              (table-defaults)
               (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
                           :collection)
               {:schema       "PUBLIC"
@@ -1085,6 +1106,16 @@
                  (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
                       :fields
                       (map u/the-id))))))
+      (testing "Can we set custom field ordering with a wrapped {:field_order [...]} body?"
+        (let [custom-field-order [(mt/id :venues :name) (mt/id :venues :id) (mt/id :venues :price)
+                                  (mt/id :venues :latitude) (mt/id :venues :longitude) (mt/id :venues :category_id)]]
+          (is (=? {:success true}
+                  (mt/user-http-request :crowberto :put 200 (format "table/%s/fields/order" (mt/id :venues))
+                                        {:field_order custom-field-order})))
+          (is (= custom-field-order
+                 (->> (t2/hydrate (t2/select-one :model/Table :id (mt/id :venues)) :fields)
+                      :fields
+                      (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))
 
@@ -1114,7 +1145,7 @@
     (mt/with-empty-db
       (testing "Happy path"
         (upload-test/with-uploads-enabled!
-          (is (= {:status 200, :body nil}
+          (is (= {:status 204, :body nil}
                  (update-csv-via-api! :metabase.upload/append)))))
       (testing "Failure paths return an appropriate status code and a message in the body"
         (upload-test/with-uploads-disabled!
@@ -1145,7 +1176,7 @@
     (mt/with-empty-db
       (testing "Happy path"
         (upload-test/with-uploads-enabled!
-          (is (= {:status 200, :body nil}
+          (is (= {:status 204, :body nil}
                  (update-csv-via-api! :metabase.upload/replace)))))
       (testing "Failure paths return an appropriate status code and a message in the body"
         (upload-test/with-uploads-disabled!
@@ -1167,6 +1198,65 @@
                             :file     file}))
             (is (not (.exists file)) "File should be deleted after replace-csv!")))))))
 
+(def ^:private multipart-request-options
+  {:request-options {:headers {"content-type" "multipart/form-data"}}})
+
+(deftest update-csv-too-large-test
+  ;; One byte over the cap is enough: the multipart middleware aborts streaming the file part as soon as it
+  ;; crosses the limit, so the oversized body is never fully buffered.
+  (let [oversized (byte-array (inc upload/max-upload-size-bytes))
+        calls     (atom 0)]
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
+      (doseq [endpoint ["append-csv" "replace-csv"]]
+        (testing (format "POST /api/table/:id/%s rejects a file over the size cap with a 413" endpoint)
+          (is (= "Uploaded content exceeded limits."
+                 (mt/user-http-request :crowberto :post 413 (format "table/%d/%s" (mt/id :venues) endpoint)
+                                       multipart-request-options
+                                       {:file oversized})))))
+      (is (zero? @calls) "the endpoint bodies should never run"))))
+
+(deftest update-csv-too-many-parts-test
+  (let [calls (atom 0)]
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
+      (doseq [endpoint ["append-csv" "replace-csv"]]
+        (testing (format "POST /api/table/:id/%s rejects too many multipart parts with a 413" endpoint)
+          (is (= "Uploaded content exceeded limits."
+                 (mt/user-http-request :crowberto :post 413 (format "table/%d/%s" (mt/id :venues) endpoint)
+                                       multipart-request-options
+                                       [[:collection_id "root"]
+                                        [:file (byte-array [97 44 98 10 49 44 50])]
+                                        [:file (byte-array [99 44 100 10 51 44 52])]])))))
+      (is (zero? @calls) "the endpoint bodies should never run"))))
+
+(deftest update-csv-with-extra-field-test
+  (let [calls (atom 0)]
+    ;; like the real handler, the stub owns the uploaded tempfile and must delete it
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [{:keys [file]}]
+                                                        (swap! calls inc)
+                                                        (io/delete-file file :silently)
+                                                        {:status 200, :body ""})]
+      (doseq [endpoint ["append-csv" "replace-csv"]]
+        (testing (format "POST /api/table/:id/%s accepts the collection_id field the frontend sends" endpoint)
+          (mt/user-http-request :crowberto :post 200 (format "table/%d/%s" (mt/id :venues) endpoint)
+                                multipart-request-options
+                                [[:collection_id "root"]
+                                 [:file (byte-array [97 44 98 10 49 44 50])]])))
+      (is (= 2 @calls) "the endpoint bodies should run"))))
+
+(deftest update-csv-smuggled-file-part-test
+  (let [calls (atom 0)]
+    (mt/with-dynamic-fn-redefs [api.table/update-csv! (fn [& _] (swap! calls inc) nil)]
+      (doseq [endpoint  ["append-csv" "replace-csv"]
+              ;; collection_id is caught by its :string constraint, unknown names by the closed map
+              part-name [:collection_id :unexpected_part]]
+        (testing (format "POST /api/table/:id/%s rejects a second file part smuggled as %s"
+                         endpoint (name part-name))
+          (mt/user-http-request :crowberto :post 400 (format "table/%d/%s" (mt/id :venues) endpoint)
+                                multipart-request-options
+                                [[:file (byte-array [97 44 98 10 49 44 50])]
+                                 [part-name (byte-array [99 44 100 10 51 44 52])]])))
+      (is (zero? @calls) "the endpoint bodies should never run"))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/table/:id/sync_schema                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1185,11 +1275,14 @@
 (deftest trigger-metadata-sync-for-table-test
   (testing "Can we trigger a metadata sync for a table?"
     (let [sync-called? (promise)
-          timeout (* 10 1000)]
+          timeout (* 60 1000)]
       (mt/with-premium-features #{:audit-app}
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
                        :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
-          (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+          ;; `with-redefs` would restore `sync-table!` when the request returns, before the async sync runs.
+          ;; `submit-task!` is stubbed so the sync doesn't queue behind other tasks on the 1-thread executor.
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! future-call
+                                      sync/sync-table!        (deliver-when-tbl sync-called? table)]
             (mt/user-http-request :crowberto :post 200 (format "table/%d/sync_schema" (u/the-id table))))))
       (testing "sync called?"
         (is (true?
@@ -1199,18 +1292,27 @@
   (testing "POST /api/table/:id/sync_schema"
     (testing "User with manage-table-metadata permission can sync table"
       (let [sync-called? (promise)
-            timeout (* 10 1000)]
-        (mt/with-premium-features #{:audit-app}
-          (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
-                         :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
-            (mt/with-no-data-perms-for-all-users!
-              ;; Grant only manage-table-metadata permission for this table
-              (data-perms/set-table-permission! (perms-group/all-users) (:id table) :perms/manage-table-metadata :yes)
-              (with-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
-                (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))
-                (testing "sync called?"
-                  (is (true?
-                       (deref sync-called? timeout :sync-never-called))))))))))))
+            timeout (* 60 1000)
+            ;; Isolated pool: the shared one is process-wide and holds fire-and-forget tasks left behind by
+            ;; earlier tests, each with the default two-hour timeout. One of those still running ahead of
+            ;; this sync starves it past the deref below, which is what happens on driver CI, where those
+            ;; leftover tasks are real syncs over the network.
+            pool (Executors/newSingleThreadExecutor)]
+        (try
+          (mt/with-premium-features #{:audit-app}
+            (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}
+                           :model/Table    table       {:db_id db-id :schema "PUBLIC"}]
+              (mt/with-no-data-perms-for-all-users!
+                ;; Grant only manage-table-metadata permission for this table
+                (data-perms/set-table-permission! (perms-group/all-users) (:id table) :perms/manage-table-metadata :yes)
+                (with-redefs [quick-task/executor (delay pool)]
+                  (mt/with-dynamic-fn-redefs [sync/sync-table! (deliver-when-tbl sync-called? table)]
+                    (mt/user-http-request :rasta :post 200 (format "table/%d/sync_schema" (u/the-id table)))
+                    (testing "sync called?"
+                      (is (true?
+                           (deref sync-called? timeout :sync-never-called)))))))))
+          (finally
+            (.shutdownNow pool)))))))
 
 (deftest sync-schema-mirror-database-test
   (testing "POST /api/table/:id/sync_schema"
@@ -1218,10 +1320,19 @@
       (mt/with-temp [:model/Database {source-db-id :id} {:engine "h2", :details (:details (mt/db))}
                      :model/Database {mirror-db-id :id} {:engine "h2"
                                                          :details (:details (mt/db))
-                                                         :router_database_id source-db-id}
-                     :model/Table    table              {:db_id mirror-db-id :schema "PUBLIC"}]
-        (is (= "Not found."
-               (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" (u/the-id table)))))))))
+                                                         :router_database_id source-db-id}]
+        ;; A table can't exist on a mirror (destination) db in production (destinations aren't synced),
+        ;; so a normal `with-temp :model/Table` trips the destination-permission guard. Insert it
+        ;; directly to fabricate the mirror-db table this 404 test needs.
+        (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                {:db_id      mirror-db-id
+                                                 :schema     "PUBLIC"
+                                                 :name       "mirror_table"
+                                                 :active     true
+                                                 :created_at :%now
+                                                 :updated_at :%now})]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :post 404 (format "table/%d/sync_schema" table-id)))))))))
 
 (deftest ^:parallel sync-schema-nonexistent-table-test
   (testing "POST /api/table/:id/sync_schema"
@@ -1333,6 +1444,37 @@
                       (map :id)
                       set))))))))
 
+(deftest published-only-filter-test
+  (testing "GET /api/table?published-only=true"
+    (testing "filters tables that are not published"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {table-1-id :id} {:db_id db-id
+                                                    :name "table_1"
+                                                    :active true
+                                                    :is_published true}
+                     :model/Table {table-2-id :id} {:db_id db-id
+                                                    :name "table_2"
+                                                    :active true
+                                                    :is_published false}]
+        (testing "both tables returned without filter"
+          (is (= #{table-1-id table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table")
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))
+        (testing "both tables returned with published-only=false"
+          (is (= #{table-1-id table-2-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table" :published-only false)
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))
+        (testing "only table-1 is returned with published-only=true"
+          (is (= #{table-1-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "table" :published-only true)
+                      (filter #(= (:db_id %) db-id))
+                      (map :id)
+                      set))))))))
+
 (deftest no-fks-for-missing-tables-test
   (testing "Check that we don't return foreign keys for missing/inactive tables"
     (mt/with-temp-test-data
@@ -1421,3 +1563,16 @@
           (data-perms/set-table-permission! (perms-group/all-users) table-id :perms/create-queries :query-builder)
           (let [response (mt/user-http-request :rasta :get 202 (format "table/%d/data" table-id))]
             (is (map? response))))))))
+
+(deftest bulk-update-tables-visibility-persists-test
+  (testing "PUT /api/table with an ids vector flips visibility_type on every listed table"
+    (mt/with-temp [:model/Table {t1 :id} {:db_id (mt/id) :visibility_type nil}
+                   :model/Table {t2 :id} {:db_id (mt/id) :visibility_type nil}]
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :visibility_type "hidden"})
+      (is (= [:hidden :hidden]
+             (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2])))
+      (mt/user-http-request :crowberto :put 200 "table"
+                            {:ids [t1 t2] :visibility_type nil})
+      (is (= [nil nil]
+             (map #(t2/select-one-fn :visibility_type :model/Table :id %) [t1 t2]))))))

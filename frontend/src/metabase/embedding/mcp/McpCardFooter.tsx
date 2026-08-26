@@ -11,6 +11,7 @@ export interface McpCardFooterProps {
   app: App | null;
   footerStyle: CSSProperties;
   instanceUrl: string;
+  isFeedbackEnabled: boolean;
   isSubmittingFeedback: boolean;
   onSelectFeedback: (feedback: McpFeedbackChoice) => void;
   submittedFeedback: McpFeedbackChoice | null;
@@ -20,6 +21,7 @@ export const McpCardFooter = ({
   app,
   footerStyle,
   instanceUrl,
+  isFeedbackEnabled,
   isSubmittingFeedback,
   onSelectFeedback,
   submittedFeedback,
@@ -28,15 +30,17 @@ export const McpCardFooter = ({
     h="50px"
     align="center"
     justify="space-between"
-    bg="background-secondary"
+    bg="background_page-secondary"
     style={footerStyle}
   >
     <Flex align="center" gap="xs">
-      <McpFeedbackButtons
-        isSubmitting={isSubmittingFeedback}
-        submittedFeedback={submittedFeedback}
-        onSelectFeedback={onSelectFeedback}
-      />
+      {isFeedbackEnabled && (
+        <McpFeedbackButtons
+          isSubmitting={isSubmittingFeedback}
+          submittedFeedback={submittedFeedback}
+          onSelectFeedback={onSelectFeedback}
+        />
+      )}
     </Flex>
 
     <McpExploreButton app={app} instanceUrl={instanceUrl} />

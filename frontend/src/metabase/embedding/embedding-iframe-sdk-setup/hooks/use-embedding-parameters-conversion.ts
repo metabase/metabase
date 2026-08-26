@@ -23,7 +23,9 @@ export const useEmbeddingParametersConversion = () => {
           return acc;
         },
         {
+          // Unjustified type cast. FIXME
           hiddenParameters: [] as string[],
+          // Unjustified type cast. FIXME
           lockedParameters: [] as string[],
         },
       );

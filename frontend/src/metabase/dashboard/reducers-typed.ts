@@ -1,3 +1,4 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
 import { assocIn, dissocIn } from "icepick";
 import { omit } from "underscore";
@@ -9,8 +10,8 @@ import {
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
-import { Questions } from "metabase/entities/questions";
 import { handleActions } from "metabase/redux";
+import { CARD_UPDATED } from "metabase/redux/cards";
 import {
   INITIALIZE,
   RESET,
@@ -24,6 +25,7 @@ import {
   REVERT_CARD_TO_REVISION,
 } from "metabase/redux/query-builder";
 import type {
+  DashboardLinkTargets,
   DashboardSidebarName,
   StoreDashboard,
 } from "metabase/redux/store/dashboard";
@@ -295,6 +297,21 @@ function newDashboard(
   };
 }
 
+// Replaced rather than merged: the targets belong to the dashboard being
+// loaded, and a stale entry would let a removed click behavior keep resolving.
+export function linkTargets(
+  state: DashboardLinkTargets = INITIAL_DASHBOARD_STATE.linkTargets,
+  action: UnknownAction,
+): DashboardLinkTargets {
+  if (fetchDashboard.fulfilled.match(action)) {
+    return action.payload.linkTargets;
+  }
+  if (action.type === RESET) {
+    return INITIAL_DASHBOARD_STATE.linkTargets;
+  }
+  return state;
+}
+
 export const dashboards = createReducer(
   INITIAL_DASHBOARD_STATE.dashboards,
   (builder) => {
@@ -305,10 +322,11 @@ export const dashboards = createReducer(
       }))
       .addCase(
         setDashboardAttributes,
-        (state, { payload: { id, attributes, isDirty = true } }) => ({
-          ...state,
-          [id]: newDashboard(state[id], attributes, isDirty),
-        }),
+        (state, { payload: { id, attributes, isDirty = true } }) => {
+          // Cast to avoid infinite type instantiation error.
+          const dashboards = state as Record<string, StoreDashboard>;
+          dashboards[id] = newDashboard(dashboards[id], attributes, isDirty);
+        },
       )
       .addCase(addCardToDash, (state, { payload: dashcard }) => {
         state[dashcard.dashboard_id].dashcards.push(dashcard.id);
@@ -432,7 +450,7 @@ export const dashcardData = createReducer(
         return dissocIn(state, [dashcardId, cardId]);
       })
       .addCase<string, { type: string; payload: { object?: Card } }>(
-        Questions.actionTypes.UPDATE,
+        CARD_UPDATED,
         (state, { payload: { object: card } }) => {
           if (card) {
             const { id } = card;

@@ -1,7 +1,9 @@
 import type { ComponentType } from "react";
 
 import type { Column, RowValue, Series } from "./data";
+import type { TextMeasurer } from "./measure-text";
 import type {
+  BaseVisualizationSettings,
   CreateDefineSetting,
   CustomVisualizationSettingDefinition,
   CustomVisualizationSettings,
@@ -11,22 +13,15 @@ import type {
  * Export this function to define a custom visualization.
  */
 export type CreateCustomVisualization<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = (
   props: CreateCustomVisualizationProps<TSettings>,
 ) => CustomVisualization<TSettings>;
 
 export type CreateCustomVisualizationProps<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = {
   defineSetting: ReturnType<CreateDefineSetting<TSettings>>;
-
-  /**
-   * Returns a URL for a static asset declared in the plugin manifest.
-   * Use this to reference images and other static files from your plugin.
-   * @example getAssetUrl("icon.svg")
-   */
-  getAssetUrl: (assetPath: string) => string;
 
   /**
    * Locale to render visualization with (e.g. "de", "ja", "en").
@@ -34,7 +29,7 @@ export type CreateCustomVisualizationProps<
   locale: string;
 };
 
-export type CustomVisualization<TSettings extends Record<string, unknown>> = {
+export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
   /**
    * A unique visualization identifier. It's not shown in the UI.
    */
@@ -82,11 +77,12 @@ export type CustomVisualization<TSettings extends Record<string, unknown>> = {
   ) => void | never;
 
   /**
-   * Mount the visualization into the container. Called once per visualization
-   * instance. Return a handle whose update() receives new props and unmount()
-   * tears down the React tree.
+   * Mount a plugin-supplied React component into the host-provided
+   * container. The host uses this to render both the visualization itself
+   * and per-setting widgets; in all cases the render uses the plugin's
+   * React instance (because `mount` is constructed inside the sandbox).
    */
-  mount: CustomVisualizationMount<TSettings>;
+  mount: CustomVisualizationMount;
 
   /**
    * Static visualization renderer (server-side PNG/PDF path, not sandboxed).
@@ -107,23 +103,26 @@ export type VisualizationGridSize = {
   height: number;
 };
 
+export type ColorGetter = (colorName: string) => string;
+
+export interface RenderingContext {
+  getColor: ColorGetter;
+  measureText: TextMeasurer;
+  fontFamily: string;
+  colorScheme: "light" | "dark";
+}
+
 export type CustomVisualizationProps<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = {
   width: number | null;
-
   height: number | null;
-
   series: Series;
-
   settings: CustomVisualizationSettings<TSettings>;
-
-  colorScheme: "light" | "dark";
-
+  renderingContext: RenderingContext;
   onClick: (
     clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
   ) => void;
-
   onHover: (hoverObject?: HoverObject | null) => void;
 };
 
@@ -137,17 +136,17 @@ export type CustomVisualizationMountHandle<TProps> = {
 };
 
 /**
- * Mount adapter signature. Plugin owns its React tree and renders into
- * the host-provided container. All DOM writes originate sandbox-side.
+ * Generic mount adapter. The plugin owns its React tree and renders the
+ * supplied `Component` into the host-provided container using the
+ * plugin's React. Reused for the visualization and per-setting widgets.
  */
-export type CustomVisualizationMount<
-  TSettings extends Record<string, unknown>,
-> = (
+export type CustomVisualizationMount = <P extends object>(
+  Component: ComponentType<P>,
   container: Element,
-  initialProps: CustomVisualizationProps<TSettings>,
-) => CustomVisualizationMountHandle<CustomVisualizationProps<TSettings>>;
+  initialProps: P,
+) => CustomVisualizationMountHandle<P>;
 
-export type ClickObject<TSettings extends Record<string, unknown>> = {
+export type ClickObject<TSettings extends BaseVisualizationSettings> = {
   /** The raw value of the clicked cell. */
   value?: RowValue;
 
@@ -270,4 +269,16 @@ declare const ClickBehaviorSymbol: unique symbol;
  */
 export type ClickBehavior = {
   readonly [ClickBehaviorSymbol]: "ClickBehavior";
+};
+
+export type BaseWidgetProps<
+  TValue,
+  TSettings extends BaseVisualizationSettings,
+> = {
+  id: string;
+  value: TValue | undefined;
+  onChange: (value?: TValue | null) => void;
+  onChangeSettings: (
+    settings: Partial<CustomVisualizationSettings<TSettings>>,
+  ) => void;
 };

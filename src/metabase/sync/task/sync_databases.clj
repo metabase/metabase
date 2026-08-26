@@ -83,12 +83,13 @@
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [driver.settings/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true
+                            driver.settings/*allow-testing-sqlite-connections* true]
                     (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
                   nil
                   (catch Throwable e
                     e))]
-      (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
+      (log/warnf "Cannot sync Database %d: %s" database-id (ex-message ex))
       (database-routing/with-database-routing-off
         (let [db-id            (:id database)
               metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
@@ -120,6 +121,9 @@
                           {:database-id database-id
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
+
+      (t2/select-one-fn :is_stub :model/Database :id database-id)
+      (log/warnf "Skipping scheduled sync for Database %d: it is a stub." database-id)
 
       :else
       (sync-and-analyze-database*! database-id))))
@@ -294,9 +298,9 @@
       ;; delete the existing trigger
       (nil? new-trigger)
       (do
-        (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. It will no longer run on a schedule."
+        (log/infof "Trigger for \"%s\" of Database %d has been removed. It will no longer run on a schedule."
                    (:name task-info)
-                   (:name database))
+                   (u/the-id database))
         (delete-trigger! database task-info))
 
       ;; need to recreate the new trigger
@@ -304,13 +308,13 @@
            (nil? existing-trigger-with-same-schedule))
       (do
         (if (delete-trigger! database task-info)
-          (log/infof "Trigger for \"%s\" of Database \"%s\" has been updated. The new schedule is: \"%s\""
+          (log/infof "Trigger for \"%s\" of Database %d has been updated. The new schedule is: \"%s\""
                      (:name task-info)
-                     (:name database)
+                     (u/the-id database)
                      (cron-schedule database task-info))
-          (log/infof "A trigger for \"%s\" of Database \"%s\" has been enabled with schedule: \"%s\""
+          (log/infof "A trigger for \"%s\" of Database %d has been enabled with schedule: \"%s\""
                      (:name task-info)
-                     (:name database)
+                     (u/the-id database)
                      (cron-schedule database task-info)))
         (task/add-trigger! new-trigger))
 
@@ -323,9 +327,15 @@
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf :model/Database)]
   (doseq [task all-tasks]
-    (if (and (= audit/audit-db-id (:id database))
-             (= task sync-analyze-task-info))
+    (cond
+      (:is_stub database)
+      (log/info (u/format-color :red "Not scheduling sync task for stub database"))
+
+      (and (= audit/audit-db-id (:id database))
+           (= task sync-analyze-task-info))
       (log/info (u/format-color :red "Not scheduling sync task for audit database"))
+
+      :else
       (update-db-trigger-if-needed! database task))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -365,7 +375,7 @@
                                  (sync.schedules/default-randomized-schedule))))
                   (inc counter)
                   (catch Exception e
-                    (log/warnf e "Error updating database %d for randomized schedules" (u/the-id db))
+                    (log/warnf "Error updating database %d for randomized schedules: %s" (u/the-id db) (ex-message e))
                     counter))))
              (t2/reducible-query
               {:select [:*]

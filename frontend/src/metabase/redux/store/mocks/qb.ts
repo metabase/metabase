@@ -19,7 +19,7 @@ export const createMockQueryBuilderUIControlsState = (
   isShowingQuestionInfoSidebar: false,
   isShowingSnippetSidebar: false,
   isShowingTimelineSidebar: false,
-  isShowingAIQuestionAnalysisSidebar: false,
+  focusedTimelineEventIds: null,
   initialChartSetting: {},
   isShowingRawTable: false,
   isNativeEditorOpen: false,
@@ -64,7 +64,7 @@ export const createMockQueryBuilderState = (
   queryStatus: "complete",
   queryResults: null,
   queryStartTime: null,
-  cancelQueryDeferred: null,
+  cancelQueryController: null,
 
   card: null,
   originalCard: null,

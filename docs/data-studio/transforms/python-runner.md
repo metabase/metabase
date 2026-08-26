@@ -11,7 +11,7 @@ To run Python transforms from a self-hosted Metabase, you'll need to configure a
 
 ## Prerequisites
 
-- Docker installed and running.
+- Docker installed and running, or an infrastructure that can run containers.
 - **Self-hosted Metabase Pro or Enterprise license** (Python Runner requires a Pro/Enterprise plan).
 - For production: an S3-compatible storage bucket (AWS S3, MinIO, etc.).
 
@@ -69,13 +69,13 @@ docker network create metabase-network
 docker run -d \
   --network metabase-network \
   -e AUTH_TOKEN=your-secure-token-here \
-  --name python-runner metabase/python-runner:latest
+  --name python-runner --hostname python-runner metabase/python-runner:latest
 
 docker run -d \
   --network metabase-network \
   -p 3000:3000 \
   -e MB_PYTHON_RUNNER_URL=http://python-runner:5000 \
-  -e MB_PYTHON_RUNNER_API_TOKEN=your-secure-token-here \
+  -e MB_PYTHON_RUNNER_API_TOKEN=<your-secure-token-here> \
   -e MB_PYTHON_STORAGE_S_3_ENDPOINT=https://s3.amazonaws.com \
   -e MB_PYTHON_STORAGE_S_3_BUCKET=your-bucket-name \
   -e MB_PYTHON_STORAGE_S_3_REGION=us-east-1 \
@@ -97,82 +97,27 @@ docker run -d \
 
 These settings can also be configured in the Metabase UI at **Admin** > **Settings** > **Python Runner**. Note that environment variables take precedence over UI settings.
 
-| Variable                                  | Description                                                                        |
-| ----------------------------------------- | ---------------------------------------------------------------------------------- |
-| `MB_PYTHON_RUNNER_URL`                    | URL where Metabase can reach the Python Runner (e.g., `http://python-runner:5000`) |
-| `MB_PYTHON_RUNNER_API_TOKEN`              | Authentication token. Must match `AUTH_TOKEN` in the Python Runner.                |
-| `MB_PYTHON_STORAGE_S_3_ENDPOINT`          | S3 endpoint URL.                                                                   |
-| `MB_PYTHON_STORAGE_S_3_BUCKET`            | S3 bucket name for storing Python artifacts                                        |
-| `MB_PYTHON_STORAGE_S_3_REGION`            | AWS region (e.g., `us-east-1`)                                                     |
-| `MB_PYTHON_STORAGE_S_3_ACCESS_KEY`        | S3 access key                                                                      |
-| `MB_PYTHON_STORAGE_S_3_SECRET_KEY`        | S3 secret key                                                                      |
-| `MB_PYTHON_STORAGE_S_3_PATH_STYLE_ACCESS` | (Optional) Set to `true` for S3-compatible services like MinIO or LocalStack       |
+| Variable                                   | Description                                                                        |
+| ------------------------------------------ | ---------------------------------------------------------------------------------- |
+| `MB_PYTHON_RUNNER_URL`                     | URL where Metabase can reach the Python Runner (e.g., `http://python-runner:5000`) |
+| `MB_PYTHON_RUNNER_API_TOKEN`               | Authentication token. Must match `AUTH_TOKEN` in the Python Runner.                |
+| `MB_PYTHON_STORAGE_S_3_ENDPOINT`           | S3 endpoint URL.                                                                   |
+| `MB_PYTHON_STORAGE_S_3_CONTAINER_ENDPOINT` | S3 endpoint seen from the runner container, if different from the main endpoint.   |
+| `MB_PYTHON_STORAGE_S_3_BUCKET`             | S3 bucket name for storing Python artifacts                                        |
+| `MB_PYTHON_STORAGE_S_3_REGION`             | AWS region (e.g., `us-east-1`)                                                     |
+| `MB_PYTHON_STORAGE_S_3_ACCESS_KEY`         | S3 access key                                                                      |
+| `MB_PYTHON_STORAGE_S_3_SECRET_KEY`         | S3 secret key                                                                      |
+| `MB_PYTHON_STORAGE_S_3_PATH_STYLE_ACCESS`  | (Optional) Set to `true` for S3-compatible services like MinIO or LocalStack       |
+
+`MB_PYTHON_STORAGE_S_3_CONTAINER_ENDPOINT` is the host Metabase signs into the presigned URLs the runner uploads to and downloads from. Set it when the runner resolves storage by a different hostname than Metabase does.
 
 ## Using Docker Compose
 
-Docker Compose simplifies managing multiple containers. Below are example configurations for different scenarios.
+Below are example configurations for different scenarios.
 
-### Simple setup with LocalStack
+### Self-hosted storage with MinIO
 
-For simple setup and local testing, you can use LocalStack to simulate S3:
-
-```yml
-name: metabase-python-runner
-services:
-  metabase:
-    image: metabase/metabase-enterprise:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - MB_PYTHON_RUNNER_URL=http://python-runner:5000
-      - MB_PYTHON_RUNNER_API_TOKEN=your-secure-token-here
-      - MB_PYTHON_STORAGE_S_3_ENDPOINT=http://localstack:4566
-      - MB_PYTHON_STORAGE_S_3_BUCKET=metabase-python-runner
-      - MB_PYTHON_STORAGE_S_3_REGION=us-east-1
-      - MB_PYTHON_STORAGE_S_3_PATH_STYLE_ACCESS=true
-      - MB_PYTHON_STORAGE_S_3_ACCESS_KEY=test
-      - MB_PYTHON_STORAGE_S_3_SECRET_KEY=test
-    depends_on:
-      localstack-init:
-        condition: service_completed_successfully
-      python-runner:
-        condition: service_started
-
-  python-runner:
-    image: metabase/python-runner:latest
-    environment:
-      - AUTH_TOKEN=your-secure-token-here
-
-  localstack:
-    image: localstack/localstack:latest
-    environment:
-      - SERVICES=s3
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  localstack-init:
-    image: localstack/localstack:latest
-    entrypoint:
-      ["/bin/sh", "-c", "awslocal s3 mb s3://metabase-python-runner || true"]
-    environment:
-      - AWS_ENDPOINT_URL=http://localstack:4566
-    depends_on:
-      localstack:
-        condition: service_healthy
-```
-
-Then run:
-
-```bash
-docker compose up -d
-```
-
-### Production setup
-
-For production, use an external S3-compatible storage service:
+[MinIO](https://min.io/) is an S3-compatible server you can run yourself, which makes it a common pick for self-hosted Metabase. This Compose file runs Metabase, the Python runner, MinIO, and a short-lived container that creates the bucket Metabase will use — neither MinIO nor Metabase creates that bucket for you.
 
 ```yml
 name: metabase-python-runner
@@ -184,12 +129,16 @@ services:
     environment:
       - MB_PYTHON_RUNNER_URL=http://python-runner:5000
       - MB_PYTHON_RUNNER_API_TOKEN=${AUTH_TOKEN}
-      - MB_PYTHON_STORAGE_S_3_ENDPOINT=${S3_ENDPOINT}
-      - MB_PYTHON_STORAGE_S_3_BUCKET=${S3_BUCKET}
-      - MB_PYTHON_STORAGE_S_3_REGION=${S3_REGION:-us-east-1}
-      - MB_PYTHON_STORAGE_S_3_ACCESS_KEY=${S3_ACCESS_KEY}
-      - MB_PYTHON_STORAGE_S_3_SECRET_KEY=${S3_SECRET_KEY}
+      - MB_PYTHON_STORAGE_S_3_ENDPOINT=http://minio:9000
+      - MB_PYTHON_STORAGE_S_3_CONTAINER_ENDPOINT=http://minio:9000
+      - MB_PYTHON_STORAGE_S_3_BUCKET=metabase-python-runner
+      - MB_PYTHON_STORAGE_S_3_REGION=us-east-1
+      - MB_PYTHON_STORAGE_S_3_PATH_STYLE_ACCESS=true
+      - MB_PYTHON_STORAGE_S_3_ACCESS_KEY=${MINIO_ROOT_USER}
+      - MB_PYTHON_STORAGE_S_3_SECRET_KEY=${MINIO_ROOT_PASSWORD}
     depends_on:
+      minio-init:
+        condition: service_completed_successfully
       python-runner:
         condition: service_started
 
@@ -197,21 +146,58 @@ services:
     image: metabase/python-runner:latest
     environment:
       - AUTH_TOKEN=${AUTH_TOKEN}
+
+  minio:
+    image: quay.io/minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set local http://minio:9000 "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}" >/dev/null 2>&1; do
+          echo "waiting for minio..."; sleep 2;
+        done
+        mc mb --ignore-existing local/metabase-python-runner
+
+volumes:
+  minio-data: {}
 ```
 
-Create a `.env` file with your configuration:
+Both S3 endpoint variables point at `http://minio:9000` because Metabase and the runner share the Compose network and reach MinIO by the same hostname. `MB_PYTHON_STORAGE_S_3_CONTAINER_ENDPOINT` sets the host Metabase signs into the presigned URLs the runner uploads to and downloads from — if your runner resolves storage by a different hostname than Metabase does, set this to the runner's view of it.
+
+Create a `.env` file:
 
 ```bash
 AUTH_TOKEN=your-secure-token-here
-S3_ENDPOINT=https://s3.amazonaws.com
-S3_BUCKET=metabase-python-runner
-S3_REGION=us-east-1
-S3_ACCESS_KEY=your-access-key
-S3_SECRET_KEY=your-secret-key
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
 ```
 
-Then run:
+Then bring everything up and try a transform:
 
-```bash
-docker compose up -d
-```
+1. Put a strong shared secret in `AUTH_TOKEN` (the runner and Metabase have to agree on it):
+
+   ```bash
+   openssl rand -hex 32
+   ```
+
+2. Start the stack:
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. You'll need a Pro or Enterprise license with the [Advanced transforms add-on](addons.md). In Metabase, [enable transforms](transforms-overview.md#enable-transforms), then [create a Python transform](python-transforms.md#create-a-python-transform) and click **Run**.
+
+4. Open **Data Studio > Jobs > Runs** and find your run. If it failed, the run's logs will usually tell you whether Metabase couldn't reach the runner, or the runner couldn't reach MinIO.

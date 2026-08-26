@@ -91,10 +91,11 @@ export function MetricsSegmentFilterPillPopover({
                 {(metricCount ?? 0) > 1 && (
                   <Badge
                     circle
-                    color="filter"
+                    color="core-filter"
                     // override background from Badge.config.tsx
                     styles={{ root: { background: "var(--badge-bg)" } }}
                     ml="xs"
+                    variant="light"
                   >
                     {metricCount}
                   </Badge>

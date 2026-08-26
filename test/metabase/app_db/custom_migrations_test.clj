@@ -1129,11 +1129,11 @@
                   (testing "the persist-models-enabled is assoced back to options"
                     (is (= {:options  "{\"persist-models-enabled\":true}"
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] success-id)))
+                           (t2/select-one [:model/Database :settings :options] success-id))))
+                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
                     (is (= {:options  nil
                             :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] empty-options-id))))
-                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"))))))]
+                           (t2/select-one [:model/Database :settings :options] empty-options-id)))))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
@@ -1689,30 +1689,30 @@
           (is (not (contains? model-revision-object "type"))))))))
 
 (deftest ^:mb/old-migrations-test card-revision-add-type-null-character-test
-  (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)")
-  (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
-    (let [user-id          (:id (new-instance-with-default :core_user))
-          db-id            (:id (new-instance-with-default :metabase_database))
-          card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
-          viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
-          card-revision-id (:id (new-instance-with-default :revision
-                                                           {:object    (json/encode
-                                                                        (assoc (dissoc card :type)
-                                                                               :visualization_settings viz-settings))
-                                                            :model     "Card"
-                                                            :model_id  (:id card)
-                                                            :user_id   user-id}))]
-      (testing "sanity check revision object"
-        (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
-          (testing "doesn't have type"
-            (is (not (contains? card-revision-object "type"))))))
-      (testing "after migration card revisions should have type"
-        (migrate!)
-        (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
-          (is (= "question" (get card-revision-object "type")))
-          (testing "original visualization_settings should be preserved"
-            (is (= viz-settings
-                   (get card-revision-object "visualization_settings")))))))))
+  (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)"
+    (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
+      (let [user-id          (:id (new-instance-with-default :core_user))
+            db-id            (:id (new-instance-with-default :metabase_database))
+            card             (new-instance-with-default :report_card {:dataset false :creator_id user-id :database_id db-id})
+            viz-settings     "{\"table.pivot_column\":\"\u0000..\\u0000\"}" ; note the escaped and unescaped null characters
+            card-revision-id (:id (new-instance-with-default :revision
+                                                             {:object   (json/encode
+                                                                         (assoc (dissoc card :type)
+                                                                                :visualization_settings viz-settings))
+                                                              :model    "Card"
+                                                              :model_id (:id card)
+                                                              :user_id  user-id}))]
+        (testing "sanity check revision object"
+          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+            (testing "doesn't have type"
+              (is (not (contains? card-revision-object "type"))))))
+        (testing "after migration card revisions should have type"
+          (migrate!)
+          (let [card-revision-object (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)]
+            (is (= "question" (get card-revision-object "type")))
+            (testing "original visualization_settings should be preserved"
+              (is (= viz-settings
+                     (get card-revision-object "visualization_settings"))))))))))
 
 (deftest ^:mb/old-migrations-test delete-scan-field-values-trigger-test
   (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
@@ -1977,8 +1977,8 @@
                 (is (not-empty settings-after))
                 (is (every? encryption/possibly-encrypted-string?
                             (map :value settings-after)))
-                (is (= (set (map #(update % :value encryption/maybe-decrypt) settings-before))
-                       (set (map #(update % :value encryption/maybe-decrypt) settings-after))))))))))))
+                (is (= (set (map #(update % :value encryption/maybe-decrypt-accepting-plaintext) settings-before))
+                       (set (map #(update % :value encryption/maybe-decrypt-accepting-plaintext) settings-after))))))))))))
 
 (deftest ^:mb/old-migrations-test migrate-uploads-settings-test-2
   (testing "MigrateUploadsSettings with invalid settings state (missing uploads-database-id) doesn't fail."
@@ -2701,6 +2701,60 @@
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
 
+(deftest encrypt-auth-identity-credentials-test
+  (testing "v58.2026-08-25T00:00:00 : plaintext auth_identity.credentials rows are encrypted, encrypted rows untouched"
+    (encryption-test/with-secret-key "encrypt-creds-test-key-1234"
+      (impl/test-migrations ["v58.2026-08-25T00:00:00"] [migrate!]
+        (let [user-id  (:id (new-instance-with-default :core_user))
+              ins-cred (fn [provider creds-str]
+                         (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                                  :provider    provider
+                                                                  :credentials creds-str
+                                                                  :created_at  :%now
+                                                                  :updated_at  :%now}))
+              plain-id (ins-cred "password" (json/encode {:password_hash "h" :password_salt "s"}))
+              enc-str  (encryption/maybe-encrypt (json/encode {:password_hash "h2" :password_salt "s2"}))
+              enc-id   (ins-cred "google" enc-str)
+              raw-cred (fn [id] (t2/select-one-fn :credentials :auth_identity :id id))]
+          (is (not (encryption/possibly-encrypted-string? (raw-cred plain-id))))
+          (migrate!)
+          (testing "plaintext credentials are encrypted and decrypt to the original value"
+            (is (encryption/possibly-encrypted-string? (raw-cred plain-id)))
+            (is (= {:password_hash "h" :password_salt "s"}
+                   (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext (raw-cred plain-id))))))
+          (testing "already-encrypted credentials row is left unchanged"
+            (is (= enc-str (raw-cred enc-id)))))))))
+
+(deftest encrypt-api-keys-test
+  (testing "v58.2026-08-25T00:00:01 : plaintext api_key.key hashes are encrypted, encrypted rows untouched"
+    (encryption-test/with-secret-key "encrypt-api-keys-test-key-1234"
+      (impl/test-migrations ["v58.2026-08-25T00:00:01"] [migrate!]
+        (let [user-id  (:id (new-instance-with-default :core_user {:entity_id (u/generate-nano-id)}))
+              ins-key  (fn [prefix key-str]
+                         (:id (new-instance-with-default :api_key {:name          (str "k-" prefix)
+                                                                   :user_id       user-id
+                                                                   :creator_id    user-id
+                                                                   :updated_by_id user-id
+                                                                   :key           key-str
+                                                                   :key_prefix    prefix})))
+              plain-id (ins-key "mb_plai" "plaintext-bcrypt-hash")
+              enc-str  (encryption/maybe-encrypt "another-bcrypt-hash")
+              enc-id   (ins-key "mb_encr" enc-str)
+              raw-key  (fn [id] (t2/select-one-fn :key :api_key :id id))]
+          (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
+          (migrate!)
+          (testing "plaintext key is encrypted and decrypts to the original hash"
+            (is (encryption/possibly-encrypted-string? (raw-key plain-id)))
+            (is (= "plaintext-bcrypt-hash"
+                   (encryption/maybe-decrypt-accepting-plaintext (raw-key plain-id)))))
+          (testing "already-encrypted key row is left unchanged"
+            (is (= enc-str (raw-key enc-id))))
+          (testing "rollback decrypts keys back to the plaintext hash so downgraded code can still verify them"
+            (migrate! :down 57)
+            (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
+            (is (= "plaintext-bcrypt-hash" (raw-key plain-id)))
+            (is (= "another-bcrypt-hash" (raw-key enc-id)))))))))
+
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
     (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]
@@ -2908,6 +2962,34 @@
             (is (not (contains? strategy :checkpoint-filter)))))
         (testing "Native transform strategy is stripped (can't resolve source table)"
           (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))
+
+(deftest backfill-mfa-confirmed-at-test
+  (testing "v59.2026-07-10T22:29:17: confirmed_at is lifted out of the credentials JSON into the column"
+    (encryption-test/with-secret-key "backfill-mfa-test-key-1234"
+      (impl/test-migrations ["v59.2026-07-10T22:29:17"] [migrate!]
+        (let [confirmed-at "2026-07-01T12:00:00Z"
+              insert-identity!
+              (fn [user-id credentials-str]
+                (t2/insert-returning-pk! :auth_identity {:user_id     user-id
+                                                         :provider    "totp"
+                                                         :credentials credentials-str
+                                                         :created_at  :%now
+                                                         :updated_at  :%now}))
+              enc-confirmed   (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s1" :confirmed_at confirmed-at})))
+              plain-confirmed (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (json/encode {:secret "s2" :confirmed_at confirmed-at}))
+              pending         (insert-identity! (:id (new-instance-with-default :core_user))
+                                                (encryption/maybe-encrypt
+                                                 (json/encode {:secret "s3"})))]
+          (migrate!)
+          (testing "encrypted confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id enc-confirmed))))
+          (testing "legacy plaintext confirmed row gets the column"
+            (is (some? (t2/select-one-fn :confirmed_at :auth_identity :id plain-confirmed))))
+          (testing "pending (unconfirmed) enrollment stays null"
+            (is (nil? (t2/select-one-fn :confirmed_at :auth_identity :id pending)))))))))
 
 (deftest backfill-transform-target-tables-test
   (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"

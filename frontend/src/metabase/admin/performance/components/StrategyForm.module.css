@@ -1,0 +1,25 @@
+.option {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+}
+
+.option[data-combobox-selected] {
+  background-color: var(--mb-color-background_surface-selected);
+}
+
+.form {
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.formFixedHeight {
+  overflow: hidden;
+}
+
+.modalBody {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  margin-top: var(--mantine-spacing-xl);
+}

@@ -67,7 +67,7 @@ export const NameDescriptionInput = ({
         leftSection={
           <Group
             align="center"
-            c="text-tertiary"
+            c="text-disabled"
             gap={10}
             flex="1"
             fs="lg"
@@ -77,7 +77,7 @@ export const NameDescriptionInput = ({
             ref={sectionRef}
             wrap="nowrap"
           >
-            <Icon flex="0 0 auto" name={nameIcon} size={20} c="brand" />
+            <Icon flex="0 0 auto" name={nameIcon} size={20} c="core-brand" />
 
             {namePrefix && (
               <Ellipsified
@@ -85,7 +85,7 @@ export const NameDescriptionInput = ({
                 lines={1}
                 tooltip={namePrefix}
               >
-                <Text c="text-tertiary" component="span" size="lg">
+                <Text c="text-disabled" component="span" size="lg">
                   {namePrefix}
                   {":"}
                 </Text>

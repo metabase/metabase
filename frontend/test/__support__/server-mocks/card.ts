@@ -5,6 +5,7 @@ import type {
   Card,
   CardId,
   CardQueryMetadata,
+  ConcreteTableId,
   DashboardId,
   Dataset,
   GetPublicCard,
@@ -74,6 +75,17 @@ export function setupCardsUsingModelEndpoint(card: Card, usedBy: Card[] = []) {
   });
 }
 
+export function setupCardsForTableEndpoint(
+  tableId: ConcreteTableId,
+  cards: Card[] = [],
+) {
+  fetchMock.get({
+    url: "path:/api/card",
+    query: { f: "table", model_id: tableId },
+    response: cards,
+  });
+}
+
 export function setupCardCreateEndpoint() {
   fetchMock.post(
     "path:/api/card",
@@ -100,6 +112,25 @@ export function setupUnauthorizedCardEndpoints(card: Card) {
 
 export function setupUnauthorizedCardsEndpoints(cards: Card[]) {
   cards.forEach((card) => setupUnauthorizedCardEndpoints(card));
+}
+
+/**
+ * Makes the card's own endpoints (the card, its query metadata, and running its
+ * query) all return 403, i.e. a card the current user has no access to at all.
+ */
+export function setupForbiddenCardEndpoints(cardId: CardId) {
+  fetchMock.get(`path:/api/card/${cardId}`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+  fetchMock.get(`path:/api/card/${cardId}/query_metadata`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
+  fetchMock.post(`path:/api/card/${cardId}/query`, {
+    status: 403,
+    body: PERMISSION_ERROR,
+  });
 }
 
 export function setupCardQueryEndpoints(card: Card, dataset: Dataset) {

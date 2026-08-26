@@ -7,11 +7,12 @@ import {
   useToggleReactionMutation,
   useUpdateCommentMutation,
 } from "metabase/api";
-import { getCommentsUrl } from "metabase/comments/utils";
+import { useCommentUrl } from "metabase/comments/hooks/use-comment-url";
+import type { CommentExtraRenderer } from "metabase/comments/types";
+import { getCommentNodeId } from "metabase/comments/utils";
 import { useToast } from "metabase/common/hooks";
-import { setHoveredChildTargetId } from "metabase/documents/documents.slice";
-import { useDispatch, useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
+import { getUser } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { Avatar, Stack, Timeline, rem } from "metabase/ui";
 import type {
   Comment,
@@ -26,11 +27,12 @@ import S from "./Discussion.module.css";
 import { DiscussionComment } from "./DiscussionComment";
 
 export interface DiscussionProps {
-  childTargetId: EntityId | null;
+  childTargetId: string | null;
   comments: Comment[];
   targetId: EntityId;
   targetType: CommentEntityType;
-  enableHoverHighlight?: boolean;
+  onHoverChange?: (childTargetId: string | undefined) => void;
+  renderExtra?: CommentExtraRenderer;
 }
 
 export const Discussion = ({
@@ -38,10 +40,10 @@ export const Discussion = ({
   comments,
   targetId,
   targetType,
-  enableHoverHighlight = false,
+  onHoverChange,
+  renderExtra,
 }: DiscussionProps) => {
   const currentUser = useSelector(getUser);
-  const dispatch = useDispatch();
   const [, setNewComment] = useState<DocumentContent>();
   const parentCommentId = comments[0].id;
   const [sendToast] = useToast();
@@ -51,6 +53,8 @@ export const Discussion = ({
   const [updateComment] = useUpdateCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
   const [toggleReaction] = useToggleReactionMutation();
+
+  const commentsUrl = useCommentUrl({ childTargetId: effectiveChildTargetId });
 
   const handleSubmit = async (doc: DocumentContent) => {
     const { error } = await createComment({
@@ -64,19 +68,23 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to send comment`,
       });
     }
   };
 
   const handleDeleteComment = async (comment: Comment) => {
-    const { error } = await deleteComment(comment.id);
+    const { error } = await deleteComment({
+      id: comment.id,
+      target_type: comment.target_type,
+      target_id: comment.target_id,
+    });
 
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to delete comment`,
       });
     }
@@ -91,7 +99,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to resolve comment`,
       });
     }
@@ -106,7 +114,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to unresolve comment`,
       });
     }
@@ -124,58 +132,59 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
+        iconColor: "feedback-warning",
         message: t`Failed to update comment`,
       });
     }
   };
 
   const handleCopyLink = (comment: Comment) => {
-    const url = getCommentsUrl({
-      childTargetId: effectiveChildTargetId,
-      targetId,
-      targetType,
-      comment,
-    });
+    const url = `${commentsUrl}#${getCommentNodeId(comment)}`;
 
     navigator.clipboard.writeText(`${window.location.origin}${url}`);
     sendToast({ icon: "check", message: t`Copied link` });
   };
 
-  const handleReaction = async (comment: Comment, emoji: string) => {
-    const { error } = await toggleReaction({ id: comment.id, emoji });
+  const handleToggleReaction = async (
+    comment: Comment,
+    emoji: string,
+    errorMessage: string,
+  ) => {
+    if (!currentUser) {
+      return;
+    }
+
+    const { error } = await toggleReaction({
+      id: comment.id,
+      emoji,
+      target_type: comment.target_type,
+      target_id: comment.target_id,
+      currentUser,
+    });
 
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "warning",
-        message: t`Failed to add reaction`,
+        iconColor: "feedback-warning",
+        message: errorMessage,
       });
     }
   };
 
-  const handleReactionRemove = async (comment: Comment, emoji: string) => {
-    const { error } = await toggleReaction({ id: comment.id, emoji });
+  const handleReaction = (comment: Comment, emoji: string) =>
+    handleToggleReaction(comment, emoji, t`Failed to add reaction`);
 
-    if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "warning",
-        message: t`Failed to remove reaction`,
-      });
-    }
-  };
+  const handleReactionRemove = (comment: Comment, emoji: string) =>
+    handleToggleReaction(comment, emoji, t`Failed to remove reaction`);
 
   const handleMouseEnter = () => {
-    if (enableHoverHighlight && effectiveChildTargetId) {
-      dispatch(setHoveredChildTargetId(String(effectiveChildTargetId)));
+    if (effectiveChildTargetId) {
+      onHoverChange?.(String(effectiveChildTargetId));
     }
   };
 
   const handleMouseLeave = () => {
-    if (enableHoverHighlight) {
-      dispatch(setHoveredChildTargetId(undefined));
-    }
+    onHoverChange?.(undefined);
   };
 
   return (
@@ -199,6 +208,7 @@ export const Discussion = ({
             onCopyLink={handleCopyLink}
             onReaction={handleReaction}
             onReactionRemove={handleReactionRemove}
+            renderExtra={renderExtra}
           />
         ))}
         {!comments[0]?.is_resolved && currentUser && (

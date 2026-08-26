@@ -58,7 +58,7 @@
 
 (defmethod ->honeysql :default
   [driver mbql-5-clause]
-  (sql.qp/->honeysql driver (lib/->legacy-MBQL mbql-5-clause)))
+  (sql.qp/->honeysql driver mbql-5-clause))
 
 (defn- honeysql->prepared-stmt-subs
   "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
@@ -119,6 +119,7 @@
    [:replacement-snippet     {:optional true} :string] ; allowed to be blank if this is an optional param
    [:prepared-statement-args {:optional true} [:maybe [:sequential :any]]]])
 
+;; TODO (Cam 2026-05-21) Update this to take an explicit `metadata-providerable`
 (defmulti ->replacement-snippet-info
   "Return information about how `value` should be converted to SQL, as a map with keys `:replacement-snippet` and
   `:prepared-statement-args`.
@@ -309,7 +310,6 @@
             (->honeysql driver form))]
     (cond
       (params.ops/operator? param-type)
-      #_{:clj-kondo/ignore [:deprecated-var]}
       (->> (assoc params :target [:dimension (field->field-ref driver field param-type value)])
            params.ops/to-clause
            lib/desugar-filter-clause
@@ -319,7 +319,6 @@
 
       (params.dates/exclusion-date-type param-type value)
       (let [field-ref (field->field-ref driver field param-type value)]
-        #_{:clj-kondo/ignore [:deprecated-var]}
         (->> (params.dates/date-string->filter value field-ref)
              lib/desugar-filter-clause
              driver-api/wrap-value-literals-in-mbql5
@@ -349,7 +348,11 @@
   [driver col alias replacement-snippet-info]
   (if (str/blank? alias)
     replacement-snippet-info
-    (let [[old-name] (->> (lib/ref col)
+    (let [field-ref  (-> (lib/ref col)
+                         (lib/update-options assoc
+                                             driver-api/qp.add.source-table (:table-id col)
+                                             ::compiling-field-filter?      true))
+          [old-name] (->> field-ref
                           (->honeysql driver)
                           (sql.qp/format-honeysql driver))]
       (update replacement-snippet-info :replacement-snippet str/replace old-name alias))))

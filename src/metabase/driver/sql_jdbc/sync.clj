@@ -39,10 +39,11 @@
   describe-table
   describe-table-fields
   describe-table-fields-xf
-  describe-table-fks
   describe-table-indexes
   get-catalogs
-  pattern-based-database-type->base-type]
+  pattern-based-database-type->base-type
+  reducible-fks-for-tables-matching-options
+  reducible-table-fks-from-jdbc-metadata]
  [sql-jdbc.describe-database
   describe-database
   fast-active-tables

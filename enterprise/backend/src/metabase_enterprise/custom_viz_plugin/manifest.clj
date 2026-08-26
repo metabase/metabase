@@ -2,10 +2,12 @@
   "Parsing and validation for custom visualization plugin manifest files (metabase-plugin.json)."
   (:require
    [clojure.string :as str]
+   [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr])
   (:import
    (org.semver4j Semver)))
 
@@ -27,6 +29,22 @@
       (log/warnf "Failed to parse %s: %s" manifest-filename (ex-message e))
       nil)))
 
+(def ^:private ManifestFieldTypes
+  "Type requirements for the manifest fields Metabase reads. The map is open —
+   extra keys pass through — and every field is optional here; `name` presence
+   is enforced separately with a friendlier message."
+  [:map
+   [:name     {:optional true} [:maybe :string]]
+   [:icon     {:optional true} [:maybe :string]]
+   [:metabase {:optional true} [:maybe [:map [:version {:optional true} [:maybe :string]]]]]
+   [:sdk      {:optional true} [:maybe [:map [:version {:optional true} [:maybe :string]]]]]])
+
+(defn validation-error
+  "Humanized description of `manifest`'s type violations (e.g. a numeric
+   `sdk.version`), or nil when the manifest is well-formed."
+  [manifest]
+  (some-> (mr/explain ManifestFieldTypes manifest) me/humanize))
+
 ;;; ------------------------------------------------ Version ------------------------------------------------
 
 (defn compatible?
@@ -47,6 +65,45 @@
           (log/warnf "Invalid version range in manifest: %s — %s" metabase_version (ex-message e))
           false)))))
 
+(def tested-sdk-version-range
+  "npm-semver range of @metabase/custom-viz versions this Metabase release was
+   tested against. Any npm range syntax works (e.g. `2.0`, `2.0 - 2.1`,
+   `>=2.0.0 <3.0.0`) — keep it to versions that were actually tested, and keep
+   it readable: it's shown verbatim in admin UI warnings."
+  "2.0")
+
+(defn sdk-version-tested?
+  "Whether `sdk-version` satisfies [[tested-sdk-version-range]]. A nil/blank
+   version means the bundle predates stamping and was built with SDK 1.x.
+   Malformed or non-string versions count as untested. Pre-release and build
+   metadata is stripped before matching so canary versions match like their
+   releases."
+  [sdk-version]
+  (if-let [v (when (or (nil? sdk-version) (string? sdk-version))
+               (Semver/coerce (if (str/blank? sdk-version) "1.0.0" sdk-version)))]
+    (.satisfies (.withClearedPreReleaseAndBuild v) ^String tested-sdk-version-range)
+    false))
+
+(defn warnings
+  "Soft version warnings for a plugin. Computed at read time and never stored,
+   since they depend on the running Metabase version. Each warning carries a
+   machine-readable `:type` plus params the frontend builds messages from.
+   A wrong-typed `sdk.version` is treated as unstamped — uploads are validated,
+   but serdes-imported manifests are not."
+  [{:keys [metabase_version manifest] :as plugin}]
+  (let [sdk-version (let [v (get-in manifest [:sdk :version])]
+                      (when (string? v) v))]
+    (cond-> []
+      (not (sdk-version-tested? sdk-version))
+      (conj {:type             "sdk-version-mismatch"
+             :sdk_version      sdk-version
+             :tested_sdk_range tested-sdk-version-range})
+
+      (not (compatible? plugin))
+      (conj {:type             "metabase-version-mismatch"
+             :metabase_version metabase_version
+             :current_version  (:tag config/mb-version-info)}))))
+
 ;;; ------------------------------------------------ Assets ------------------------------------------------
 
 (def ^:private image-extensions
@@ -59,16 +116,6 @@
   (let [lower (u/lower-case-en path)]
     (some #(str/ends-with? lower %) image-extensions)))
 
-(def ^:private allowed-asset-extensions
-  "File extensions allowed for static asset serving (images + JSON)."
-  (into image-extensions #{".json"}))
-
-(defn- allowed-asset-file?
-  "Returns true if the file path has a recognized allowed extension."
-  [^String path]
-  (let [lower (u/lower-case-en path)]
-    (some #(str/ends-with? lower %) allowed-asset-extensions)))
-
 (defn safe-relative-path?
   "Returns true if path normalizes to a relative path with no directory traversal."
   [^String path]
@@ -77,25 +124,19 @@
          (not (.startsWith normalized "..")))))
 
 (defn asset-paths
-  "List the static asset paths whitelisted by the manifest.
-   Includes paths from the `assets` array (filtered to allowed extensions and
-   safe relative paths) and the `icon` (if it's an image filename).
-   Only explicitly listed paths are supported — no glob patterns."
+  "List the static asset paths the backend will serve for a plugin.
+   Custom viz plugins do not ship arbitrary assets — the only servable asset is the
+   plugin `icon` (when it's an image with a safe relative path). Authors who need
+   images inline them (e.g. base64) into their single JS bundle."
   [manifest]
-  (let [declared  (filter (every-pred allowed-asset-file? safe-relative-path?) (get manifest :assets []))
-        icon-name (when-let [icon (:icon manifest)]
-                    (when (and (image-file? icon) (safe-relative-path? icon)) icon))]
-    (distinct (concat declared (when icon-name [icon-name])))))
+  (when-let [icon (:icon manifest)]
+    (when (and (image-file? icon) (safe-relative-path? icon))
+      [icon])))
 
 (defn asset-content-type
-  "Return the MIME content type for an allowed asset file, or nil if not recognized.
-   Allows image files and JSON files (for locale translations)."
+  "Return the MIME content type for an image asset file, or nil if not recognized.
+   Only the plugin icon is served, so only image types are allowed."
   [^String path]
-  (cond
-    (str/ends-with? path ".json")
-    "application/json"
-
-    :else
-    (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
-      (when (and ct (str/starts-with? ct "image/"))
-        ct))))
+  (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
+    (when (and ct (str/starts-with? ct "image/"))
+      ct)))

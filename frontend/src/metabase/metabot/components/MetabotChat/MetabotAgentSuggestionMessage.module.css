@@ -1,9 +1,9 @@
 .container {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 .headerOpened {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .suggestionEditor {
@@ -19,7 +19,11 @@
 }
 
 .suggestionEditorOnlyNew {
-  background: color-mix(in srgb, var(--mb-color-success) 11%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--mb-color-feedback-positive) 11%,
+    transparent
+  );
 
   :global {
     .cm-gutters {

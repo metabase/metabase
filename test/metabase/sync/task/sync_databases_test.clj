@@ -201,6 +201,36 @@
                 (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id})))
               (is (zero? @calls)))))))))
 
+(deftest sync-and-analyze-database!-skips-stub-databases-test
+  (testing "sync-and-analyze-database! short-circuits for stub databases — inner orchestrator never runs"
+    (mt/with-temp [:model/Database {db-id :id}      {:is_stub false}
+                   :model/Database {stub-id :id}    {:is_stub true}]
+      (let [calls (atom 0)]
+        (with-redefs [task.sync-databases/sync-and-analyze-database*! (fn [_] (swap! calls inc))]
+          (testing "non-stub: inner orchestrator is called"
+            (reset! calls 0)
+            (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" db-id}))
+            (is (= 1 @calls)))
+          (testing "stub: inner orchestrator is not called"
+            (reset! calls 0)
+            (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" stub-id}))
+            (is (zero? @calls))))))))
+
+(deftest check-and-schedule-tasks-for-db!-skips-stub-databases-test
+  (testing "check-and-schedule-tasks-for-db! schedules no triggers for stub databases"
+    (mt/with-temp [:model/Database non-stub {:is_stub false}
+                   :model/Database stub     {:is_stub true}]
+      (let [calls (atom 0)]
+        (with-redefs [task.sync-databases/update-db-trigger-if-needed! (fn [_ _] (swap! calls inc))]
+          (testing "non-stub: triggers are considered for scheduling"
+            (reset! calls 0)
+            (task.sync-databases/check-and-schedule-tasks-for-db! non-stub)
+            (is (pos? @calls)))
+          (testing "stub: no scheduling calls are made"
+            (reset! calls 0)
+            (task.sync-databases/check-and-schedule-tasks-for-db! stub)
+            (is (zero? @calls))))))))
+
 (deftest check-orphaned-jobs-removed-test
   (testing "jobs for orphaned databases are removed during sync run"
     (with-scheduler-setup!

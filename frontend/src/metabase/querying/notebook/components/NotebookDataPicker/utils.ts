@@ -1,5 +1,6 @@
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
+import { isConcreteTableId } from "metabase-types/api";
 
 type Props = {
   query: Lib.Query;
@@ -32,6 +33,8 @@ export const getUrl = ({
     };
 
     return isModel ? Urls.model(payload) : Urls.card(payload);
+  } else if (isConcreteTableId(tableId)) {
+    return Urls.table({ id: tableId, name: tableInfo.displayName });
   } else {
     return Urls.tableRowsQuery(databaseId, tableId);
   }
@@ -45,7 +48,9 @@ export const isObjectWithModel = (
     item !== null &&
     "model" in item &&
     "id" in item &&
+    // Unjustified type cast. FIXME
     typeof (item as any).model === "string" &&
+    // Unjustified type cast. FIXME
     typeof (item as any).id === "number"
   );
 };

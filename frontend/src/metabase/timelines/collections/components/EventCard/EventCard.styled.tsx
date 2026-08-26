@@ -20,7 +20,7 @@ export const CardThread = styled.div`
 `;
 
 export const CardThreadIcon = styled(Icon)`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   width: 1rem;
   height: 1rem;
 `;
@@ -31,13 +31,13 @@ export const CardThreadIconContainer = styled.div`
   align-items: center;
   width: 2rem;
   height: 2rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 1rem;
 `;
 
 export const CardThreadStroke = styled.div`
   flex: 1 1 auto;
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const CardBody = styled.div`
@@ -52,7 +52,7 @@ interface CardTitleProps {
 
 const cardTitleHoverStyles = css`
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 
@@ -72,7 +72,7 @@ export const CardDescription = styled(Markdown)`
 `;
 
 export const CardDateInfo = styled.div`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-size: 0.75rem;
   line-height: 1.5rem;
   font-weight: bold;

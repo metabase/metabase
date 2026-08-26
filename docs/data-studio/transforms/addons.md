@@ -37,7 +37,7 @@ With basic transforms, you can:
 
 - **Metabase Cloud**: Basic transform functionality on Metabase Cloud - Starter, Pro, or Enterprise - comes with an additional small fee per successful transform run, see [Pricing](https://www.metabase.com/pricing).
 
-  Only people logged in with an email of a [Metabase Store admins](../../cloud/accounts-and-billing.md#add-people-to-manage-your-metabase-store-account) (not just Metabase _instance_ admins) can enable basic transforms. To enable Basic transforms on Metabase Cloud, see [Enable transforms](./transforms-overview.md#enable-transforms).
+  Only people logged in with an email of a [Metabase Store admin](../../cloud/accounts-and-billing.md#add-managers) (not just Metabase _instance_ admins) can [enable basic transforms](./transforms-overview.md#enable-transforms).
 
 ### Cancel basic transforms
 
@@ -65,11 +65,13 @@ The Advanced transforms add-on comes with an additional charge per successful tr
 
 To enable Advanced transforms functionality, you need to have [Basic transforms](#basic-transforms) already, see [Enable basic transforms](#enable-basic-transforms).
 
+For the full self-hosted setup see [Set up transforms on a self-hosted Metabase](transforms-overview.md#set-up-transforms-on-a-self-hosted-metabase).
+
 There are two ways to enable Advanced transforms:
 
 - **From your Metabase instance**: you can navigate to a feature requiring advanced transforms (like Python transforms or transform inspector), and follow the prompts to upgrade.
 
-  To enable Advanced transforms from your Metabase instance, you need to be logged into the instance with the same email as a [Metabase Store admin](../../cloud/accounts-and-billing.md#add-people-to-manage-your-metabase-store-account), because Advanced transform incur an additional charge.
+  To enable Advanced transforms from your Metabase instance, you need to be logged into the instance with the same email as a [Metabase Store admin](../../cloud/accounts-and-billing.md#add-managers), because Advanced transform incur an additional charge.
 
 - **From [Metabase Store](https://store.metabase.com)**:
 

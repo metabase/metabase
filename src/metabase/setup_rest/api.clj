@@ -45,11 +45,9 @@
                                                           :email        email
                                                           :first_name   first-name
                                                           :last_name    last-name
-                                                          :password     (str (random-uuid))
                                                           :is_superuser true))
         user-id    (u/the-id new-user)]
-    ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
-    (t2/update! :model/AuthIdentity :provider "password" :user_id user-id {:credentials {:plaintext_password password}})
+    (auth-identity/set-password! user-id password)
     (let [session (auth-identity/create-session-with-auth-tracking! new-user device-info :provider/password)]
       {:session-key (:key session), :user-id user-id, :session session})))
 
@@ -94,6 +92,9 @@
                                                      :password password
                                                      :device-info (request/device-info request)})]
                   (setup-set-settings! {:email email :site-name site-name :site-locale site-locale})
+                  ;; the setup token can never be used again now that the first User exists -- clear it out so we don't
+                  ;; keep an unusable token-like value around in (public) Settings responses.
+                  (setup/clear-token!)
                   user-info))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this

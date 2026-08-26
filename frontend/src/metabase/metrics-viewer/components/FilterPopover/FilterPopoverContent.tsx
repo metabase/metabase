@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import { FilterPickerBody } from "metabase/common/metrics/components/FilterPicker/FilterPickerBody";
 import {
   Badge,
   Box,
@@ -222,7 +222,7 @@ function MetricGroupList({
                   <Flex align="center" gap="xs" fw={700}>
                     <span>{group.metricName}</span>
                     {(group.metricCount ?? 0) > 1 && (
-                      <Badge circle c="text-hover">
+                      <Badge circle color="brand" variant="light">
                         {group.metricCount}
                       </Badge>
                     )}

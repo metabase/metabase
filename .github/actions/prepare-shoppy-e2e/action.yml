@@ -88,14 +88,14 @@ runs:
         REPO_URL="https://github.com/metabase/shoppy.git"
         echo "Checking if branch '${SAMPLE_APP_BRANCH_NAME}' exists in ${REPO_URL}..."
         if git ls-remote --exit-code --heads "$REPO_URL" "${SAMPLE_APP_BRANCH_NAME}"; then
-          echo "sample_app_branch_exists=true" >> $GITHUB_OUTPUT
+          echo "sample_app_branch_exists=true" >> "$GITHUB_OUTPUT"
         else
-          echo "sample_app_branch_exists=false" >> $GITHUB_OUTPUT
+          echo "sample_app_branch_exists=false" >> "$GITHUB_OUTPUT"
         fi
 
     - name: Configure AWS credentials
       if: ${{ steps.check-sample-app-branch.outputs.sample_app_branch_exists == 'true' }}
-      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d8854
+      uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885
       with:
         role-to-assume: ${{ inputs.shoppy-iam-role }}
         role-session-name: GitHub_to_AWS_via_FederatedOIDC

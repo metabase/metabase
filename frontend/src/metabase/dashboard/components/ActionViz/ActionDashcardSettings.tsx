@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
-import { Button } from "metabase/common/components/Button";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
+import { Button } from "metabase/ui";
 import type {
   ActionDashboardCard,
   Dashboard,
@@ -25,6 +24,7 @@ import {
   ActionParameterMappingForm,
   getTargetKey,
 } from "./ActionParameterMapping";
+import { ConnectedActionPicker } from "./ActionPicker";
 import { ExplainerText } from "./ExplainerText";
 import {
   getParameterDefaultValue,
@@ -107,7 +107,7 @@ export function ActionDashcardSettings({
           </ParameterMapperContainer>
         )}
         <ModalActions>
-          <Button primary onClick={onClose} disabled={isFormInvalid}>
+          <Button variant="filled" onClick={onClose} disabled={isFormInvalid}>
             {t`Done`}
           </Button>
         </ModalActions>

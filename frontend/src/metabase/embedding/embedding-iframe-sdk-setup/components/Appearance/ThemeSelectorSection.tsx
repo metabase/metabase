@@ -105,7 +105,7 @@ export const ThemeSelectorSection = ({
       <Icon
         name="revert"
         size={12}
-        c="brand"
+        c="core-brand"
         onClick={handleResetColors}
         aria-label={t`Reset colors`}
         style={{ cursor: "pointer" }}

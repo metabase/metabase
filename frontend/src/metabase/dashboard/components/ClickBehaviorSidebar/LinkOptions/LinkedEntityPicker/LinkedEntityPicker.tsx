@@ -2,21 +2,21 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import { isPublicCollection } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { isPublicCollection } from "metabase/common/collections/utils";
 import { DashboardName } from "metabase/common/components/DashboardName";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   DashboardPickerModal,
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import CS from "metabase/css/core/index.css";
 import {
   ClickMappings,
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
-import { Questions } from "metabase/entities/questions";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Icon, Select } from "metabase/ui";
@@ -39,8 +39,9 @@ import S from "../LinkOptions.module.css";
 const LINK_TARGETS = {
   // TODO: we can probably just have one picker to pick either a question or a dashboard
   question: {
+    // Unjustified type cast. FIXME
     Name: ({ id }: { id: CardId | DashboardId | undefined }) => (
-      <Questions.Name id={id} />
+      <QuestionName id={id as CardId | undefined} />
     ),
     PickerComponent: QuestionPickerModal,
     pickerIcon: "bar" as const,
@@ -49,7 +50,7 @@ const LINK_TARGETS = {
   },
   dashboard: {
     Name: ({ id }: { id: CardId | DashboardId | undefined }) => (
-      <DashboardName id={id as DashboardId | undefined} />
+      <DashboardName id={id} />
     ),
     PickerComponent: DashboardPickerModal,
     pickerIcon: "dashboard" as const,
@@ -206,6 +207,7 @@ export function LinkedEntityPicker({
           tabId: undefined,
         });
       } else {
+        // Unjustified type cast. FIXME
         updateSettings({
           ...clickBehavior,
           targetId,
@@ -307,6 +309,7 @@ export function LinkedEntityPicker({
       {isPickerOpen && (
         <PickerComponent
           title={getModalTitle()}
+          // Unjustified type cast. FIXME
           value={initialPickerValue as any} // typescript isn't smart enough to know which picker we're using
           onChange={(newTarget) => {
             handleSelectLinkTargetEntityId(newTarget.id);

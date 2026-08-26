@@ -19,6 +19,7 @@
    :cache-refresh
    :collection
    :map-tiles
+   :metric
    :pulse
    :dashboard-subscription
    :dashboard
@@ -39,7 +40,8 @@
    :table-grid
    :table-rows-sample
    :transform-inspector
-   :slackbot])
+   :slackbot
+   :exploration])
 
 (mr/def ::hash
   #?(:clj bytes?

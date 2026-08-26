@@ -1,18 +1,19 @@
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 
-import { useChartTypes } from "./useChartTypes";
 import { useDateFilter } from "./useDateFilter";
+import { useMcpVisualizationSelector } from "./useMcpVisualizationSelector";
 import { useTemporalGranularity } from "./useTemporalGranularity";
 
-export function useMcpQueryControls() {
+export function useMcpQueryControls(queryKey: string | null) {
   const { question, updateQuestion, queryResults } = useSdkQuestionContext();
 
-  const {
-    sensibleChartTypes,
-    hasOnlyTable,
-    selectedChartType,
-    handleDisplayChange,
-  } = useChartTypes(question, queryResults, updateQuestion);
+  const { sensibleChartTypes, selectedChartType, handleDisplayChange } =
+    useMcpVisualizationSelector({
+      question,
+      queryResults,
+      updateQuestion,
+      queryKey,
+    });
 
   const {
     temporalColumn,
@@ -55,10 +56,8 @@ export function useMcpQueryControls() {
       : undefined;
 
   const hasQueryResults = !!question && !!queryResults;
-  const canShowChartControls = hasQueryResults && !hasOnlyTable;
 
-  const hasChartTypeSelector =
-    canShowChartControls && sensibleChartTypes.length > 1;
+  const hasChartTypeSelector = hasQueryResults && sensibleChartTypes.length > 1;
 
   const hasTimeControls = hasQueryResults && !!(timeRange || timeGranularity);
 

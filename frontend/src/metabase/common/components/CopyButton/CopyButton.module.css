@@ -1,6 +1,6 @@
 .CopyButton {
   &:focus {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
     border-radius: var(--mantine-radius-xs);
   }
 }

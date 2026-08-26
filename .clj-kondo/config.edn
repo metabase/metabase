@@ -7,7 +7,6 @@
 
   :aliased-namespace-symbol     {:level :warning}
   :case-symbol-test             {:level :warning}
-  :condition-always-true        {:level :warning}
   :def-fn                       {:level :warning}
   :dynamic-var-not-earmuffed    {:level :warning}
   :equals-expected-position     {:level :warning, :only-in-test-assertion true}
@@ -50,9 +49,11 @@
   ;; disabled linters
   ;;
 
+  :constant-condition {:level :off} ; TODO (sashko): too confused by defenterprises, some hook/config is needed
   :redundant-ignore {:level :off} ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
   :unexpected-recur {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
   :redundant-primitive-coercion {:level :off} ; there are many defensive boolean coercions, kondo looks too much into it
+  :type-mismatch {:level :off} ; Still quite raw, can sometimes give useful insights, but sometimes is just confused
 
   ;;
   ;; globally-enabled custom linters
@@ -61,6 +62,7 @@
   :metabase/check-def-check-not-uppercase-name               {:level :warning}
   :metabase/check-def-no-underscores                         {:level :warning}
   :metabase/check-me-humanize                                {:level :warning}
+  :metabase/check-testing-not-empty                          {:level :warning}
   :metabase/defsetting-must-specify-export                   {:level :warning}
   :metabase/defsetting-namespace                             {:level :warning}
   :metabase/discourage-millis-duration                       {:level :warning}
@@ -178,14 +180,28 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     ;; only writes .clj-kondo/ratchets.edn, from a :once fixture that finishes before the parallel tests
+     dev.kondo-ratchet/fix!
+     metabase.ai-tracing.core/record!
      metabase.api.macros.defendpoint.tools-manifest/assert-optional-fields-nullable!
      metabase.channel.core/send!
+     metabase.channel.render.pdf/draw-too-large!
+     metabase.channel.render.pdf/draw-no-results!
+     metabase.channel.render.pdf/render-card-cell!
+     metabase.channel.render.pdf.font/load-fonts!
      metabase.warehouses.models.database/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.mcp.usage/record-mcp-session!
+     metabase.mcp.usage/record-mcp-session-end!
+     metabase.mcp.usage/record-mcp-tool-call!
      metabase.notification.models/create-notification!
      metabase.oauth-server.core/reset-provider!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
+     ;; MCP usage tests isolate their rows by unique keys (session id / tool name / duration /
+     ;; client version) and clean up only those, so these deletes are safe in parallel.
+     metabase-enterprise.mcp.usage-test/cleanup!
+     metabase-enterprise.mcp.usage-test/cleanup-calls!
      ;; Workspace isolation functions are safe in parallel tests because they operate on
      ;; isolated, test-specific workspaces and databases that don't affect other tests
      metabase-enterprise.workspaces.isolation/destroy-workspace-isolation!
@@ -247,9 +263,6 @@
   ;; misc config for built-in linters
   ;;
 
-  :invalid-arity       {:skip-args [metabase.util.match/match-one
-                                    metabase.util.match/match-many
-                                    metabase.util.match/replace]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -269,7 +282,6 @@
     (metabase.util.match/match-many)
     (metabase.util.match/replace-in)
     (metabase.util.match/replace)
-    (metabase.driver-api.core/match)
     (metabase.driver-api.core/match-one)
     (metabase.driver-api.core/match-many)
     (metabase.driver-api.core/replace)
@@ -289,7 +301,10 @@
     metabase.query-processor.util/normalize-token                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
-  {clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
+  {metabase-enterprise.entity-retrieval.core/search-unfiltered {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
+   metabase.entity-retrieval.core/search-unfiltered            {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
+   metabase.entity-retrieval.mirror/search-unfiltered          {:message "Permission bypass risk: library-index hits are unfiltered — resolve each entity and drop what the current user can't read"}
+   clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
    clojure.core/println                               {:message "Use metabase.util.log instead of clojure.core/println"}
    clojure.core/printf                                {:message "Use metabase.util.log instead of clojure.core/printf"}
    clojure.core/prn                                   {:message "Use metabase.util.log instead of clojure.core/prn"}
@@ -388,6 +403,7 @@
     metabase.channel.render.core              channel.render
     metabase.cloud-migration.core             cloud-migration
     metabase.eid-translation.core             eid-translation
+    metabase.llm.test-util                    llm.tu
     metabase.login-history.core               login-history
     metabase.model-persistence.core           model-persistence
     metabase.notification.core                notification
@@ -444,6 +460,10 @@
   instaparse.core/defparser                                                             clojure.core/def
   metabase-enterprise.action-v2.test-util/with-test-tables!                             clojure.core/let
   metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
+  metabase-enterprise.entity-retrieval.reconcile-test/with-isolated-index                 clojure.core/fn
+  metabase-enterprise.mfa.enrollment-flow-test/with-fresh-user-session!                  clojure.core/fn
+  metabase-enterprise.mfa.login-flow-test/with-enrolled-rasta!                           clojure.core/fn
+  metabase-enterprise.mfa.recovery-codes-test/with-confirmed-enrollment!                 clojure.core/fn
   metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
@@ -452,6 +472,8 @@
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
+  metabase.app-db.connection/with-unshared-connection                                   clojure.core/fn
+  metabase.app-db.core/with-unshared-connection                                         clojure.core/fn
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
   metabase.app-db.custom-migrations/define-migration                                    clj-kondo.lint-as/def-catch-all
   metabase.app-db.custom-migrations/define-reversible-migration                         clj-kondo.lint-as/def-catch-all
@@ -460,6 +482,7 @@
   metabase.channel.impl.http-test/with-captured-http-requests                           clojure.core/fn
   metabase.channel.impl.http-test/with-server                                           clojure.core/let
   metabase.collections.models.collection-test/with-collection-in-location               clojure.core/let
+  metabase.collections.test-utils/with-library                                          clojure.core/fn
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
   metabase.driver.mongo.connection/with-mongo-database                                  clojure.core/let
   metabase.driver.mongo.query-processor/mongo-let                                       clojure.core/let
@@ -473,6 +496,7 @@
   metabase.notification.test-util/with-card-notification                                clojure.core/let
   metabase.notification.test-util/with-system-event-notification!                       clojure.core/let
   metabase.notification.test-util/with-temp-notification                                clojure.core/let
+  metabase.osi.ai-context.api-test/with-test-entry                                      clojure.core/let
   metabase.premium-features.core/defenterprise-schema                                   clj-kondo.lint-as/def-catch-all
   metabase.premium-features.defenterprise/defenterprise-schema                          clj-kondo.lint-as/def-catch-all
   metabase.premium-features.settings/define-premium-feature                             clojure.core/def
@@ -481,7 +505,9 @@
   metabase.query-processor.pipeline-queries-test/mbql5-query                            clojure.core/->
   metabase.query-processor.pipeline-queries-test/run-mbql5-query                        clojure.core/->
   metabase.query-processor.error-type/deferror                                          clojure.core/def
+  metabase.query-processor.core/with-reducible-deserialized-results                     clojure.core/let
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
+  metabase.query-processor.result-serialization/with-reducible-deserialized-results     clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
   metabase.search.api-test/do-test-users                                                clojure.core/let
@@ -498,7 +524,6 @@
   metabase.test.data.interface/defdataset                                               clojure.core/def
   metabase.test.data.interface/defdataset-edn                                           clojure.core/def
   metabase.test.embedded-postgres.core/with-system                                      clojure.core/let
-  metabase.test.gentest/defgentest                                                      clojure.test/deftest
   metabase.test/defdataset                                                              clojure.core/def
   metabase.test/let-url                                                                 clojure.core/let
   metabase.test/with-actions                                                            clojure.core/let
@@ -509,6 +534,7 @@
   metabase.test/with-temp-empty-app-db                                                  clojure.core/let
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
+  metabase.transforms-rest.api.transform-runs-test/with-runs-fixture!                   clojure.core/fn
   metabase.upload.impl-test/with-upload-table!                                          clojure.core/let
   metabase.util/for-map                                                                 clojure.core/for
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
@@ -539,6 +565,7 @@
  {:analyze-call
   {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
+   cljs.test/testing                                                                                                         hooks.clojure.test/testing
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
    clojure.core/def                                                                                                          hooks.clojure.core.def/lint-def
    clojure.core/definterface                                                                                                 hooks.clojure.core.def/lint-def
@@ -557,6 +584,7 @@
    clojure.core/-                                                                                                            hooks.metabase.util.timing/discourage-millis-duration
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
+   clojure.test/testing                                                                                                      hooks.clojure.test/testing
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
    malli.error/humanize                                                                                                      hooks.malli.error/humanize
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
@@ -572,7 +600,7 @@
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations
-   metabase.channel.render.js.svg/with-static-viz-context                                                                    hooks.common/with-one-top-level-binding
+   metabase.channel.render.js.pool/with-static-viz-context                                                                   hooks.common/with-one-top-level-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.classloader.core/require                                                                                         hooks.clojure.core.require/lint-require
@@ -605,9 +633,13 @@
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
+   metabase.metrics.api-dimension-test/with-seeded-metric                                                                    hooks.common/with-one-binding
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
    metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
+   metabase.mq.core/with-queue                                                                                               hooks.common/let-second
+   metabase.mq.test-util/with-test-mq                                                                                        hooks.common/with-one-binding
+   metabase.mq.core/def-listener!                                                                                            hooks.metabase.mq.impl/def-listener
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*
@@ -650,7 +682,6 @@
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
    metabase.test.data/mbql-query                                                                                             hooks.metabase.test.data/mbql-query
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
-   metabase.test.gentest/iterate                                                                                             hooks.metabase.test.gentest/iterate*
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.generators.jvm/with-random-cards                                                                       hooks.metabase.test.util.generators.jvm/with-random-cards
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
@@ -699,6 +730,10 @@
    metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
+   metabase.util.match/match-one                                                                                             hooks.metabase.util.match/match-one
+   metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
+   metabase.util.match/replace                                                                                               hooks.metabase.util.match/replace
+   metabase.util.match/replace-in                                                                                            hooks.metabase.util.match/replace-in
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
    metabase.util/format-color                                                                                                hooks.metabase.util/format-color
    metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!
@@ -712,6 +747,7 @@
    clojurewerkz.quartzite.schedule.simple/schedule                                              macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                                        macros.quartz/build-trigger
    metabase-enterprise.database-routing.e2e-test/with-temp-dbs!                                 macros.metabase-enterprise.database-routing.e2e-test/with-temp-dbs!
+   metabase-enterprise.database-routing.e2e-test/with-routing-setup!                            macros.metabase-enterprise.database-routing.e2e-test/with-routing-setup!
    metabase-enterprise.impersonation.util-test/with-impersonations!                             macros.metabase-enterprise.impersonation.util-test/with-impersonations!
    metabase-enterprise.query-reference-validation.api-test/with-test-setup!                     macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
    metabase-enterprise.sandbox.test-util/with-gtaps!                                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
@@ -742,6 +778,7 @@
    metabase.test/with-temporary-raw-setting-values                                              macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.users.models.user-test/with-groups!                                                 macros.metabase.users.models.user-test/with-groups!
    metabase.util.namespaces/import-fn                                                           macros.metabase.util.namespaces/import-fn
+   metabase.util.namespaces/import-macro                                                        macros.metabase.util.namespaces/import-macro
    metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world}}
 
  :config-in-comment
@@ -763,7 +800,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
    :name    metabase-lib}
@@ -799,16 +836,8 @@
   ;;
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
    :name    general-qp-and-driver-test-namespaces}
-
   {:pattern "(?:^mage.*)"
-   :name    mage-namespaces}
-  ;;
-  ;; Namespaces where `with-redefs` is still the idiom because they haven't been audited for conversion
-  ;; to `with-dynamic-fn-redefs` yet (enterprise tests, driver tests). The linter's nudge is too noisy
-  ;; here — audit can happen in follow-up PRs.
-  ;;
-  {:pattern "^(?:metabase-enterprise\\..+-test(?:\\..+)?|metabase\\.driver\\..+-test(?:\\..+)?)$"
-   :name    prefer-with-dynamic-fn-redefs-unaudited}]
+   :name    mage-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -832,9 +861,10 @@
   metabase.util.time-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
 
-  ;; Enterprise tests and driver tests haven't been audited yet — silence the linter so CI can ship.
-  prefer-with-dynamic-fn-redefs-unaudited
-  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+  ;; classloader sits below `util` in the module graph, so it can't use `metabase.util.log` without creating
+  ;; a cycle; it gets to use tools.logging directly.
+  metabase.classloader.impl
+  {:linters {:discouraged-namespace {clojure.tools.logging {:level :off}}}}
 
   source-namespaces
   {:linters
@@ -930,10 +960,7 @@
 
     :deprecated-namespace
     {:exclude
-     [metabase.driver.common.parameters.dates
-      metabase.driver.common.parameters.operators
-      metabase.driver.common.parameters.values
-      metabase.legacy-mbql.normalize
+     [metabase.legacy-mbql.normalize
       metabase.legacy-mbql.schema
       metabase.legacy-mbql.schema.helpers
       metabase.legacy-mbql.schema.macros

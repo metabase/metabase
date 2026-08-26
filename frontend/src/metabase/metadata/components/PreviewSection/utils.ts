@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
 import type { Dataset, Field } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
+
+export { is403Error } from "metabase/utils/errors";
 
 export function getPreviewTypeData() {
   return [
@@ -23,10 +24,6 @@ export function getDataErrorMessage(data: Dataset): string {
   }
 
   return error ?? t`Something went wrong`;
-}
-
-export function is403Error(error: unknown): boolean {
-  return isObject(error) && error.status === 403;
 }
 
 export function isFieldHidden(field: Field) {

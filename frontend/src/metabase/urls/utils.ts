@@ -1,4 +1,4 @@
-import api from "metabase/api/legacy-client";
+import { getBasename } from "metabase/utils/basename";
 
 export function appendSlug(path: string | number, slug?: string) {
   return slug ? `${path}-${slug}` : String(path);
@@ -32,11 +32,11 @@ export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
 }
 
 export function getSubpathSafeUrl(url: string) {
-  const basename = api.basename;
+  const basename = getBasename();
   const normalizedUrl =
     !basename || !url || url.startsWith("/") ? url : `/${url}`;
 
-  return `${api.basename}${normalizedUrl}`;
+  return `${basename}${normalizedUrl}`;
 }
 
 /**
@@ -88,13 +88,20 @@ export function parseEnumParam<T extends string>(
   return item != null ? item : undefined;
 }
 
+/**
+ * An empty array means the param is absent (`URLSearchParams.getAll` returns one
+ * for a key that is not in the URL), so it parses to `undefined` the way `null`
+ * does, keeping "no filter" distinct from "empty filter".
+ */
 export function parseListParam<T>(
   value: unknown,
   parseItem: (item: unknown) => T | undefined,
 ): T[] | undefined {
   if (value != null) {
     const array = Array.isArray(value) ? value : [value];
-    return array.map(parseItem).filter((item) => item != null);
+    return array.length > 0
+      ? array.map(parseItem).filter((item) => item != null)
+      : undefined;
   } else {
     return undefined;
   }

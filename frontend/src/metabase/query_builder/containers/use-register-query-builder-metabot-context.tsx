@@ -1,16 +1,12 @@
-import dayjs from "dayjs";
-import { match } from "ts-pattern";
-
+import { dayjs } from "metabase/dayjs";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
-import { CHART_ANALYSIS_RENDER_FORMATS } from "metabase/metabot/utils/chart-analysis";
 import {
-  getChartImagePngDataUri,
-  getChartSelector,
-  getChartSvgSelector,
-  getVisualizationSvgDataUri,
-} from "metabase/visualizations/lib/image-exports";
+  extractRemappings,
+  getVisualizationTransformed,
+} from "metabase/visualizations";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { transformSeries as transformCartesianSeries } from "metabase/visualizations/visualizations/CartesianChart/definition-legacy";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -24,7 +20,7 @@ import type {
 import {
   getFirstQueryResult,
   getQuestion,
-  getTransformedSeries,
+  getRawSeries,
   getVisibleTimelineEvents,
   getVisualizationSettings,
 } from "../selectors";
@@ -92,15 +88,30 @@ const getMetrics = (visualizationSettings: ComputedVisualizationSettings) => {
   return [];
 };
 
+// Turns the raw query result series into the per-series shape Metabot consumes.
+//
+// For most charts that means `getVisualizationTransformed`. Row charts are the exception: their `transformSeries`
+// (RowChart.tsx) overrides `cols` to `[dimension, metric]` but leaves the original un-pivoted `rows` in place. The
+// resulting misaligned cols/rows makes the reduce below read a text dimension's values as the numeric metric and send
+// those strings to Metabot as `y_values`, crashing the analysis (BOT-1598).  So for row charts we call
+// `transformCartesianSeries` instead. It pivots `rows` and `cols` together yielding a correctly aligned breakout
+// series whose `y_values` are guaranteed to be the metric.
+function transformSeries(rawSeries: RawSeries): RawSeries {
+  const remappedSeries = extractRemappings(rawSeries);
+  return rawSeries[0]?.card.display === "row"
+    ? transformCartesianSeries(remappedSeries)
+    : getVisualizationTransformed(remappedSeries).series;
+}
+
 export function processSeriesData(
-  transformedSeriesData: RawSeries,
+  seriesData: RawSeries,
   visualizationSettings: ComputedVisualizationSettings | undefined,
 ) {
   if (!visualizationSettings) {
     return {};
   }
 
-  return transformedSeriesData
+  return transformSeries(seriesData)
     .filter((series) => !!series.data.cols && !!series.data.rows)
     .reduce(
       (acc, series, index) => {
@@ -141,6 +152,7 @@ export function processSeriesData(
           },
         });
       },
+      // Unjustified type cast. FIXME
       {} as Record<string, MetabotSeriesConfig>,
     );
 }
@@ -156,25 +168,7 @@ function processTimelineEvents(timelineEvents: TimelineEvent[]) {
     .slice(0, 20);
 }
 
-function getVisualizationDataUri(question: Question) {
-  const cardId = question.id();
-  const display = question.card().display;
-
-  const format =
-    (CHART_ANALYSIS_RENDER_FORMATS as Record<string, "png" | "svg" | "none">)[
-      display
-    ] ?? ("none" as const);
-
-  return match(format)
-    .with("none", () => undefined)
-    .with("svg", () =>
-      getVisualizationSvgDataUri(getChartSvgSelector({ cardId })),
-    )
-    .with("png", () => getChartImagePngDataUri(getChartSelector({ cardId })))
-    .exhaustive();
-}
-
-const getChartConfigs = async ({
+const getChartConfigs = ({
   question,
   series,
   visualizationSettings,
@@ -184,11 +178,10 @@ const getChartConfigs = async ({
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
   timelineEvents: TimelineEvent[];
-}): Promise<MetabotChartConfig[]> => {
+}): MetabotChartConfig[] => {
   try {
     return [
       {
-        image_base_64: await getVisualizationDataUri(question),
         title: question.displayName(),
         description: question.description(),
         series: processSeriesData(series, visualizationSettings),
@@ -212,7 +205,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
   isMetabotEnabled,
 }: {
   question: Question | undefined;
-  series: RawSeries;
+  series: RawSeries | null;
   visualizationSettings: ComputedVisualizationSettings | undefined;
   timelineEvents: TimelineEvent[];
   queryResult: any;
@@ -231,6 +224,13 @@ export const registerQueryBuilderMetabotContextFn = async ({
 
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
+  const hasDataSource = isNative
+    ? Lib.databaseID(query) != null
+    : Lib.sourceTableOrCardId(query) != null;
+  if (!hasDataSource) {
+    return {};
+  }
+
   const queryCtx = {
     query: question.datasetQuery(),
     sql_engine: isNative ? Lib.engine(query) : undefined,
@@ -240,12 +240,15 @@ export const registerQueryBuilderMetabotContextFn = async ({
     error: queryResult?.error?.toString(),
   };
 
-  const chart_configs = await getChartConfigs({
-    question,
-    series,
-    visualizationSettings,
-    timelineEvents,
-  });
+  const chart_configs =
+    series != null
+      ? getChartConfigs({
+          question,
+          series,
+          visualizationSettings,
+          timelineEvents,
+        })
+      : [];
 
   return {
     user_is_viewing: [
@@ -264,7 +267,7 @@ export const useRegisterQueryBuilderMetabotContext = () => {
   useRegisterMetabotContextProvider(
     async (state) => {
       const question = getQuestion(state);
-      const series = getTransformedSeries(state);
+      const series = getRawSeries(state);
       const visualizationSettings = getVisualizationSettings(state);
       const timelineEvents = getVisibleTimelineEvents(state);
       const queryResult = getFirstQueryResult(state);

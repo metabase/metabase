@@ -1,12 +1,12 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
-import { PUT } from "metabase/api/legacy-client";
 import {
   isPublicEmbedding,
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import type { DisplayTheme } from "metabase/embedding/types";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useUpdateSettingMutation } from "metabase/settings";
 import type { MantineThemeOverride } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
 import { ThemeProvider } from "metabase/ui/components/theme/ThemeProvider";
@@ -77,6 +77,8 @@ const useColorSchemeFromHash = ({
 };
 
 export const AppThemeProvider = (props: AppThemeProviderProps) => {
+  const [updateSetting] = useUpdateSettingMutation();
+
   const schemeFromHash = useColorSchemeFromHash({
     enabled: isStaticEmbedding() || isPublicEmbedding(),
   });
@@ -102,14 +104,17 @@ export const AppThemeProvider = (props: AppThemeProviderProps) => {
     return () => MetabaseSettings.off("color-scheme", updateSetting);
   }, [setColorSchemeFromSettings]);
 
-  const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {
-    await PUT("/api/setting/:key")({
-      key: "color-scheme",
-      value: value,
-    });
+  const handleUpdateColorScheme = useCallback(
+    async (value: ColorScheme) => {
+      await updateSetting({
+        key: "color-scheme",
+        value,
+      }).unwrap();
 
-    setUserColorSchemeAfterUpdate(value);
-  }, []);
+      setUserColorSchemeAfterUpdate(value);
+    },
+    [updateSetting],
+  );
 
   // Whitelabel colors management
   const [whitelabelColors, setWhitelabelColors] = useState<

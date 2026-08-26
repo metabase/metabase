@@ -29,7 +29,7 @@
       (let [token-info-response (http/post (format google-auth-token-info-url token))
             {first-name :given_name last-name  :family_name :keys [email]}
             (sso.google/google-auth-token-info token-info-response)]
-        (log/infof "Successfully authenticated Google Sign-In token for: %s %s" first-name last-name)
+        (log/info "Successfully authenticated Google Sign-In token")
         ;; Always return user data - let login! handle account creation policy
         {:success? true
          :user-data {:email email
@@ -38,12 +38,12 @@
                      :sso_source :google}
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e
-        (log/errorf e "Google authentication failed: %s" (.getMessage e))
+        (log/errorf "Google authentication failed: %s" (.getMessage e))
         {:success? false
          :error :authentication-failed
          :message (.getMessage e)})
       (catch Exception e
-        (log/errorf e "Unexpected error during Google authentication: %s" (.getMessage e))
+        (log/errorf "Unexpected error during Google authentication: %s" (.getMessage e))
         {:success? false
          :error :server-error
          :message "An unexpected error occurred during authentication"}))))

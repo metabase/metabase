@@ -22,6 +22,22 @@
 (deftest ^:parallel geojson-schema-test
   (is (@#'geojson.settings/CustomGeoJSONValidator test-custom-geojson)))
 
+(deftest ^:parallel builtin-region-geojson-test
+  (testing "Built-in regions resolve to parsed GeoJSON data read from the classpath"
+    (let [us (geojson.settings/builtin-region-geojson "us_states")]
+      (is (= "STATE" (:region_key us)))
+      (is (= "NAME" (:region_name us)))
+      (is (= "FeatureCollection" (get-in us [:data "type"])))
+      (is (pos? (count (get-in us [:data "features"])))))
+    (let [world (geojson.settings/builtin-region-geojson "world_countries")]
+      (is (= "ISO_A2" (:region_key world)))
+      (is (pos? (count (get-in world [:data "features"]))))))
+  (testing "Keyword region keys are accepted"
+    (is (some? (geojson.settings/builtin-region-geojson :us_states))))
+  (testing "Unknown / non-built-in regions return nil"
+    (is (nil? (geojson.settings/builtin-region-geojson "narnia")))
+    (is (nil? (geojson.settings/builtin-region-geojson nil)))))
+
 (deftest ^:parallel validate-geojson-test
   (testing "It validates URLs and files appropriately (classpath resources disabled by default)"
     (let [examples {;; Internal metadata for GCP
@@ -33,6 +49,10 @@
                     "http://fe80::"                            false
                     "169.254.169.254"                          false
                     "http://169.254.169.254/secret-stuff.json" false
+                    "http://0.0.0.0"                           false
+                    "http://[::]"                              false
+                    "http://100.64.0.1"                        false
+                    "http://[fc00::1]"                         false
                     ;; alternate IPv4 encodings (hex, octal, integer)
                     "http://0xa9fea9fe"                        false
                     "https://0xa9fea9fe"                       false

@@ -179,7 +179,8 @@
   (testing "POST /events with app_mention uses visible channel reply (not streaming)"
     (tu/with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
-            event-body   tu/base-mention-event]
+            channel-id   "C-MENTION-TEST"
+            event-body   (assoc-in tu/base-mention-event [:event :channel] channel-id)]
         (tu/with-slackbot-mocks
           {:ai-text mock-ai-text}
           (fn [{:keys [post-calls stream-calls stop-stream-calls]}]
@@ -187,8 +188,12 @@
                                       (tu/slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk      #(>= (count @post-calls) 1)
-                       :done?      true?
+              ;; Poll on the slack_msg_id backfill rather than the post call. The backfill runs after
+              ;; post-thread-reply returns, so waiting on post-calls alone races the DB update in CI.
+              (u/poll {:thunk      #(t2/select-one :model/MetabotMessage
+                                                   :channel_id channel-id :role "assistant"
+                                                   :slack_msg_id [:not= nil])
+                       :done?      some?
                        :timeout-ms 5000})
               (testing "a single threaded reply is posted with the answer"
                 (is (= 1 (count @post-calls)))
@@ -198,8 +203,42 @@
                 (is (empty? @stream-calls))
                 (is (empty? @stop-stream-calls)))
               (testing "assistant message in DB has slack_msg_id backfilled"
-                (let [msg (t2/select-one :model/MetabotMessage :channel_id "C123" :role "assistant")]
+                (let [msg (t2/select-one :model/MetabotMessage :channel_id channel-id :role "assistant")]
                   (is (some? (:slack_msg_id msg))))))))))))
+
+(deftest app-mention-long-answer-fits-slack-blocks-test
+  (testing "POST /events with app_mention truncates a long answer so Slack accepts it (BOT-1606)"
+    (tu/with-slackbot-setup
+      (let [channel-id "C-LONG-ANSWER-TEST"
+            event-body (assoc-in tu/base-mention-event [:event :channel] channel-id)]
+        (tu/with-slackbot-mocks
+          {:ai-text tu/oversized-answer}
+          (fn [{:keys [post-calls]}]
+            (let [response (mt/client :post 200 "metabot/slack/events"
+                                      (tu/slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (u/poll {:thunk      #(t2/select-one :model/MetabotMessage
+                                                   :channel_id channel-id :role "assistant"
+                                                   :slack_msg_id [:not= nil])
+                       :done?      some?
+                       :timeout-ms 5000})
+              (is (= 1 (count @post-calls)))
+              (let [blocks (:blocks (first @post-calls))]
+                (testing "no block is over its limit -- unlike the untruncated answer"
+                  (is (nil? (tu/oversized-block-error blocks)))
+                  ;; The control has to name the block type the answer actually goes in, or it would
+                  ;; assert a section rule no longer in play and pass whatever the code does.
+                  (is (some? (tu/oversized-block-error [{:type "markdown" :text tu/oversized-answer}]))
+                      "the answer really is past the limit, so the case under test is the real one"))
+                (testing "the answer is cut to the limit, and the message says why"
+                  (is (= tu/slack-markdown-text-limit
+                         (count (:text (first blocks)))))
+                  (is (some (fn [block]
+                              (and (= "context" (:type block))
+                                   (str/includes? (get-in block [:elements 0 :text])
+                                                  "too long to post in Slack")))
+                            blocks)))))))))))
 
 (deftest stream-start-failure-test
   (testing "When start-stream fails, falls back to a regular message"
@@ -223,6 +262,29 @@
                             @post-calls)))
                 (testing "stop-stream is never called"
                   (is (= 0 (count @stop-stream-calls))))))))))))
+
+;; Not ^:parallel: `with-prometheus-system!` redefs a process-global var.
+(deftest dm-response-undeliverable-metric-test
+  (testing "a DM whose stream and plain-text fallback both fail is counted as undeliverable"
+    (tu/with-slackbot-setup
+      (mt/with-prometheus-system! [_ system]
+        (let [event-body tu/base-dm-event]
+          (tu/with-slackbot-mocks
+            {:ai-text "Here is your answer"}
+            (fn [_]
+              ;; `post-thread-reply` delegates to `post-message`, so failing that fails the
+              ;; fallback too -- the user ends up with nothing at all.
+              (mt/with-dynamic-fn-redefs
+                [slackbot.client/stop-stream  (constantly {:ok false :error "invalid_blocks"})
+                 slackbot.client/post-message (constantly {:ok false :error "channel_not_found"})]
+                (let [response (mt/client :post 200 "metabot/slack/events"
+                                          (tu/slack-request-options event-body)
+                                          event-body)]
+                  (is (= "ok" response))
+                  (u/poll {:thunk      #(mt/metric-value system :metabase-slackbot/responses-undeliverable)
+                           :done?      pos?
+                           :timeout-ms 5000})
+                  (is (= 1.0 (mt/metric-value system :metabase-slackbot/responses-undeliverable))))))))))))
 
 (deftest ai-request-error-stops-stream-test
   (testing "When the agent loop throws after the stream has started, the stream is stopped"
@@ -815,7 +877,8 @@
                           :profile_id      "slackbot"
                           :external_id     external-id
                           :total_tokens    5
-                          :data            [{:_type "TEXT" :role "assistant" :content "hi"}]}))]
+                          :data            [{:type "text" :text "hi"}]
+                          :data_version    2}))]
       {:conv-id conv-id :external-id external-id :message-id msg-id})))
 
 (defn- tear-down-slackbot-feedback!
@@ -916,7 +979,8 @@
                      :profile_id      "slackbot"
                      :user_id         lucky-id
                      :total_tokens    0
-                     :data            [{:_type "TEXT" :role "user" :content "+1"}]})
+                     :data            [{:type "text" :text "+1"}]
+                     :data_version    2})
         (let [rasta-result (#'slackbot/handle-feedback-modal-submission
                             (modal-submission-payload {:conv-id     conv-id
                                                        :external-id external-id
@@ -957,8 +1021,8 @@
       (is (nil? result) "handler returns nil and does not schedule async work")
       (is (zero? (t2/count :model/MetabotFeedback :user_id rasta-id
                            {:where [:in :message_id
-                                    {:select [:id] :from [:metabot_message]
-                                     :where [:= :external_id "nothing-to-match"]}]}))
+                                    ^:allow-subquery {:select [:id] :from [:metabot_message]
+                                                      :where [:= :external_id "nothing-to-match"]}]}))
           "no feedback row written for unresolvable submissions"))))
 
 (deftest handle-feedback-modal-submission-lurker-test
@@ -997,7 +1061,8 @@
                                   :channel_id      channel-id
                                   :slack_msg_id    message-ts
                                   :total_tokens    5
-                                  :data            [{:_type "TEXT" :role "assistant" :content "hi"}]}))
+                                  :data            [{:type "text" :text "hi"}]
+                                  :data_version    2}))
               ;; external-id intentionally omitted from the button payload — only channel + ts are present
               payload    (modal-submission-payload {:conv-id     conv-id
                                                     :external-id nil

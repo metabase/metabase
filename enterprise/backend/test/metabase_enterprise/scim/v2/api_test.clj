@@ -20,13 +20,13 @@
   run."
   [thunk]
   (mt/with-additional-premium-features #{:scim}
-    (mt/with-temporary-setting-values [scim-enabled true]
+    (mt/with-temporary-setting-values [scim-enabled true
+                                       site-url     "http://localhost:3000"]
       (let [current-masked-key (-> (t2/select-one :model/ApiKey :scope :scim)
                                    (dissoc :masked_key))
             temp-unmasked-key  (-> (#'scim/refresh-scim-api-key! (mt/user->id :crowberto))
                                    :unmasked_key)]
         (try
-          (#'scim/backfill-required-entity-ids!)
           (binding [*scim-api-key* temp-unmasked-key]
             (thunk))
           (finally
@@ -77,7 +77,7 @@
           (is (== 1 (mt/metric-value system :metabase-scim/response-ok)))
           (is (== 1 (mt/metric-value system :metabase-scim/response-error))))
         (testing "Unexpected server error (500)"
-          (with-redefs [scim-api/scim-response #(throw (Exception.))]
+          (mt/with-dynamic-fn-redefs [scim-api/scim-response #(throw (Exception.))]
             (scim-client :get 500 "ee/scim/v2/Users")
             (is (== 1 (mt/metric-value system :metabase-scim/response-ok)))
             (is (== 2 (mt/metric-value system :metabase-scim/response-error)))))))))

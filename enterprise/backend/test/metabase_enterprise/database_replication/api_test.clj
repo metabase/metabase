@@ -50,16 +50,16 @@
         (is (= "PG replication is only supported for PostgreSQL databases."
                (mt/user-http-request :crowberto :post 400 (str "ee/database-replication/connection/" (:id mysql-db)))))
         (let [url (str "ee/database-replication/connection/" (:id postgres-db))]
-          (with-redefs [hm.client/call (constantly [{:id 123, :type "pg_replication"}])]
+          (mt/with-dynamic-fn-redefs [hm.client/call (constantly [{:id 123, :type "pg_replication"}])]
             (mt/with-temporary-setting-values [database-replication-connections {(:id postgres-db) {:connection-id 123}}]
               (is (= "Database already has an active replication connection." (mt/user-http-request :crowberto :post 400 url)))))
-          (with-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
+          (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
             (is (mt/user-http-request :crowberto :post 500 url))))))))
 
 (deftest delete-fail-test
   (mt/with-premium-features #{:attached-dwh :etl-connections :etl-connections-pg :hosting}
     (mt/with-temporary-setting-values [is-hosted? true, store-api-url "foo", api-key "foo"]
-      (with-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
+      (mt/with-dynamic-fn-redefs [hm.client/call (fn [& _] (throw (ex-info "test err" {})))]
         (is (mt/user-http-request :crowberto :delete 500 "ee/database-replication/connection/99"))))))
 
 (deftest lifecycle-test

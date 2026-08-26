@@ -1,0 +1,285 @@
+import { createSelector } from "@reduxjs/toolkit";
+
+import { getUser } from "metabase/current-user";
+import {
+  getDashboard,
+  getDashboardId,
+  getIsEditing as getIsEditingDashboard,
+} from "metabase/dashboard/shell-selectors";
+import { getCurrentDocument } from "metabase/documents/selectors";
+import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
+import { getCurrentExploration } from "metabase/explorations/selectors";
+import {
+  getIsSavedQuestionChanged,
+  getQuestion,
+} from "metabase/query_builder/selectors/question";
+import type { State } from "metabase/redux/store";
+import { type RouterProps, getDetailViewState } from "metabase/selectors/app";
+import * as Urls from "metabase/urls";
+import { selectIsWithinIframe } from "metabase/utils/iframe";
+
+export const getRouterPath = (state: State, props: RouterProps) => {
+  return props?.location?.pathname ?? window.location.pathname;
+};
+
+export const getRouterHash = (state: State, props: RouterProps) => {
+  return props?.location?.hash ?? window.location.hash;
+};
+
+export const getIsAdminApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/admin/");
+});
+
+export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/data-studio");
+});
+
+export const getIsMonitorApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/monitor");
+});
+
+export const getIsDataApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith(`${Urls.DATA_APP_ROOT_URL}/`);
+});
+
+export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/explore");
+});
+
+export const getIsLogoVisible = createSelector(
+  [selectIsWithinIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) => {
+    return !isEmbeddingIframe || embedOptions.logo;
+  },
+);
+
+export const getIsSearchVisible = createSelector(
+  [selectIsWithinIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) => {
+    return !isEmbeddingIframe || embedOptions.search;
+  },
+);
+
+export const getIsNewButtonVisible = createSelector(
+  [selectIsWithinIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) => {
+    return !isEmbeddingIframe || embedOptions.new_button;
+  },
+);
+
+export const getIsAppSwitcherVisible = createSelector(
+  [selectIsWithinIframe],
+  (isEmbeddingIframe) => !isEmbeddingIframe,
+);
+
+const PATHS_WITHOUT_NAVBAR = [
+  /^\/setup/,
+  /^\/auth/,
+  /^\/data-studio/,
+  /^\/monitor/,
+  // Data apps run full-page with their own custom chrome (a hover-down panel),
+  // so neither the left navbar nor the top app bar should be shown.
+  new RegExp(`^${Urls.DATA_APP_ROOT_URL}/`),
+  /\/model\/.*\/query/,
+  /\/model\/.*\/columns/,
+  /\/model\/.*\/metadata/,
+  /\/model\/query/,
+  /\/model\/columns/,
+  /\/model\/metadata/,
+  /\/transform\/new\/.*\/query/,
+];
+
+const PATHS_WITH_COLLECTION_BREADCRUMBS = [
+  /\/question\//,
+  /\/model\//,
+  /\/metric\//,
+  /\/dashboard\//,
+  /\/document\//,
+];
+
+// Paths where collection identity comes from the URL itself, so breadcrumbs
+// can render without needing a question/dashboard/document in redux state.
+const STANDALONE_COLLECTION_BREADCRUMB_PATHS = [/\/collection\//];
+const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
+
+export const getIsCollectionPathVisible = createSelector(
+  [
+    getQuestion,
+    getDashboard,
+    getCurrentDocument,
+    getRouterPath,
+    selectIsWithinIframe,
+    getEmbedOptions,
+    getCurrentExploration,
+  ],
+  (
+    question,
+    dashboard,
+    document,
+    path,
+    isEmbedded,
+    embedOptions,
+    exploration,
+  ) => {
+    if (isEmbedded && !embedOptions.breadcrumbs) {
+      return false;
+    }
+
+    const isModelDetail = /\/model\/.*\/detail\/.*/.test(path);
+    if (isModelDetail) {
+      return true;
+    }
+
+    if (
+      STANDALONE_COLLECTION_BREADCRUMB_PATHS.some((pattern) =>
+        pattern.test(path),
+      )
+    ) {
+      return true;
+    }
+
+    return (
+      ((question != null && question.isSaved()) ||
+        dashboard != null ||
+        document !== null ||
+        exploration != null) &&
+      PATHS_WITH_COLLECTION_BREADCRUMBS.some((pattern) => pattern.test(path))
+    );
+  },
+);
+
+export const getIsQuestionLineageVisible = createSelector(
+  [getIsSavedQuestionChanged, getRouterPath],
+  (isSavedQuestionChanged, path) =>
+    isSavedQuestionChanged &&
+    PATHS_WITH_QUESTION_LINEAGE.some((pattern) => pattern.test(path)),
+);
+
+export const getIsNavBarEnabled = createSelector(
+  [
+    getUser,
+    getRouterPath,
+    getIsEditingDashboard,
+    selectIsWithinIframe,
+    getEmbedOptions,
+  ],
+  (currentUser, path, isEditingDashboard, isEmbedded, embedOptions) => {
+    if (!currentUser || isEditingDashboard) {
+      return false;
+    }
+    if (isEmbedded && !embedOptions.side_nav) {
+      return false;
+    }
+
+    return !PATHS_WITHOUT_NAVBAR.some((pattern) => pattern.test(path));
+  },
+);
+
+const getIsEmbeddedAppBarVisible = createSelector(
+  [
+    getEmbedOptions,
+    getIsQuestionLineageVisible,
+    getIsCollectionPathVisible,
+    getIsNavBarEnabled,
+  ],
+  (
+    embedOptions,
+    isQuestionLineageVisible,
+    isCollectionPathVisible,
+    isNavBarEnabled,
+  ) => {
+    const anyEmbeddedAppBarElementVisible =
+      isNavBarEnabled ||
+      embedOptions.search ||
+      embedOptions.new_button ||
+      embedOptions.logo ||
+      isQuestionLineageVisible ||
+      isCollectionPathVisible;
+    return embedOptions.top_nav && anyEmbeddedAppBarElementVisible;
+  },
+);
+
+export const getIsAppBarVisible = createSelector(
+  [
+    getUser,
+    getRouterPath,
+    getRouterHash,
+    getIsAdminApp,
+    getIsDataStudioApp,
+    getIsMonitorApp,
+    getIsEditingDashboard,
+    selectIsWithinIframe,
+    getIsEmbeddedAppBarVisible,
+  ],
+  (
+    currentUser,
+    path,
+    hash,
+    isAdminApp,
+    isDataStudioApp,
+    isMonitorApp,
+    isEditingDashboard,
+    isEmbedded,
+    isEmbeddedAppBarVisible,
+  ) => {
+    const isFullscreen = hash.includes("fullscreen");
+
+    if (
+      !currentUser ||
+      (isEmbedded && !isEmbeddedAppBarVisible) ||
+      isAdminApp ||
+      isDataStudioApp ||
+      isMonitorApp ||
+      isEditingDashboard ||
+      isFullscreen
+    ) {
+      return false;
+    }
+    return !PATHS_WITHOUT_NAVBAR.some((pattern) => pattern.test(path));
+  },
+);
+
+export const getCollectionId = createSelector(
+  [
+    getQuestion,
+    getDashboard,
+    getDashboardId,
+    getCurrentDocument,
+    getDetailViewState,
+    getRouterPath,
+    getCurrentExploration,
+  ],
+  (
+    question,
+    dashboard,
+    dashboardId,
+    document,
+    detailView,
+    path,
+    exploration,
+  ) => {
+    if (detailView) {
+      return detailView.collectionId;
+    }
+
+    if (document) {
+      return document.collection_id;
+    }
+
+    if (dashboardId) {
+      return dashboard?.collection_id;
+    }
+
+    const questionCollectionId = question?.collectionId();
+    if (questionCollectionId != null) {
+      return questionCollectionId;
+    }
+
+    if (exploration) {
+      return exploration.collection_id;
+    }
+
+    // On a collection page the URL itself identifies the current collection.
+    return Urls.extractCollectionIdFromPath(path);
+  },
+);

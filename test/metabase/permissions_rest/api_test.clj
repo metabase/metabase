@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.permissions-rest.api :as api.permissions]
    [metabase.permissions-rest.api-test-util :as perm-test-util]
@@ -15,7 +16,11 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]))
+
+(set! *warn-on-reflection* true)
 
 ;; there are some issues where it doesn't look like the hydrate function for `member_count` is being added (?)
 (comment api.permissions/keep-me)
@@ -162,6 +167,61 @@
     (testing "requires superuers"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
+
+(deftest invite-group-ids-test
+  (testing "GET /api/permissions/invite-group-ids"
+    (mt/with-temp [:model/Collection       coll      {}
+                   :model/Dashboard        dash      {:collection_id (u/the-id coll)}
+                   :model/PermissionsGroup readers   {:name "Readers"}
+                   :model/PermissionsGroup writers   {:name "Writers"}
+                   :model/PermissionsGroup no-access {:name "No access"}]
+      (perms/grant-collection-read-permissions! readers coll)
+      (perms/grant-collection-readwrite-permissions! writers coll)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+      (perms/grant-collection-read-permissions! (perms-group/data-analyst) coll)
+      (let [ids (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                           :type "dashboard" :id (u/the-id dash)))]
+        (testing "includes ids of groups with read or read-write access to the item's collection"
+          (is (contains? ids (u/the-id readers)))
+          (is (contains? ids (u/the-id writers)))
+          (is (contains? ids (u/the-id (perms-group/all-users)))))
+        (testing "the ids are unfiltered: system-managed groups like Data Analysts are included when they hold a grant"
+          (is (contains? ids (u/the-id (perms-group/data-analyst)))))
+        (testing "excludes groups without access"
+          (is (not (contains? ids (u/the-id no-access)))))
+        (testing "excludes the Administrators group, whose access is implicit rather than granted"
+          (is (not (contains? ids (u/the-id (perms-group/admin))))))))
+    (testing "works for questions, resolving the card's collection"
+      (mt/with-temp [:model/Collection       coll {}
+                     :model/Card             card {:collection_id (u/the-id coll)}
+                     :model/PermissionsGroup g    {:name "Q Readers"}]
+        (perms/grant-collection-read-permissions! g coll)
+        (is (contains? (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                                  :type "question" :id (u/the-id card)))
+                       (u/the-id g)))))
+    (testing "resolves the Root collection for items with no collection_id"
+      (mt/with-temp [:model/PermissionsGroup g    {:name "Root Readers"}
+                     :model/Dashboard        dash {:collection_id nil}
+                     :model/Permissions      _    {:group_id (u/the-id g), :object "/collection/root/read/"}]
+        (is (contains? (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                                  :type "dashboard" :id (u/the-id dash)))
+                       (u/the-id g)))))
+    (testing "returns no ids for an item in a personal collection (no permission rows exist)"
+      (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
+        (mt/with-temp [:model/Dashboard dash {:collection_id (u/the-id personal-coll)}]
+          (is (= [] (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                          :type "dashboard" :id (u/the-id dash)))))))
+    (testing "requires superuser, even for users who can read the item"
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Dashboard  dash {:collection_id (u/the-id coll)}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "permissions/invite-group-ids"
+                                     :type "dashboard" :id (u/the-id dash))))))
+    (testing "returns 404 for a nonexistent item"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 "permissions/invite-group-ids"
+                                   :type "dashboard" :id Integer/MAX_VALUE))))))
 
 (deftest create-group-test
   (testing "POST /permissions/group"
@@ -393,6 +453,32 @@
                (do-perm-put "permissions/graph?force=false" 409)))
         (do-perm-put "permissions/graph?force=true" 200)))))
 
+;; NOTE: `oss-preserves-sandboxed-view-data-test` lives in
+;; `metabase-enterprise.sandbox.api.permissions-test`: it references the EE-only `:model/Sandbox` model,
+;; which is not on the OSS classpath. It exercises OSS-token graph semantics under `with-premium-features #{}`.
+
+(deftest oss-edit-create-queries-on-blocked-row-test
+  (testing "PUT /api/permissions/graph in OSS: a create-queries-only edit on a :blocked database returns 200 and bumps view-data to :unrestricted"
+    (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                   :model/Database {db-id :id} {}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (data-perms/set-database-permission! gid db-id :perms/view-data :blocked))
+      (mt/with-premium-features #{}
+        (mt/user-http-request
+         :crowberto :put 200 "permissions/graph"
+         (assoc-in (data-perms.graph/api-graph) [:groups gid db-id :create-queries] :query-builder-and-native))
+        (is (= :unrestricted (data-perms/table-permission-for-groups #{gid} :perms/view-data db-id nil)))))))
+
+(deftest update-graph-response-echoes-only-modified-groups-test
+  (testing "PUT /api/permissions/graph response :groups map contains only the request's modified group ids"
+    (mt/with-temp [:model/PermissionsGroup g1 {} :model/PermissionsGroup g2 {}]
+      (let [body (assoc-in (data-perms.graph/api-graph)
+                           [:groups (u/the-id g1) (mt/id) :view-data] :unrestricted)
+            resp (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                       (update body :groups select-keys [(u/the-id g1)]))]
+        (is (= #{(u/the-id g1)} (set (keys (:groups resp)))))
+        (is (not (contains? (:groups resp) (u/the-id g2))))))))
+
 (deftest can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"
     (let [table-id (mt/id :venues)]
@@ -430,9 +516,14 @@
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
-      (mt/with-premium-features #{}
-        (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                                                               (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Table            {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+        (mt/with-premium-features #{}
+          (mt/assert-has-premium-feature-error
+           "Sandboxes"
+           (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                 (assoc (data-perms.graph/api-graph)
+                                        :sandboxes [{:group_id group-id, :table_id table-id, :card_id 1}]))))))))
 
 (deftest update-perms-graph-blocked-view-data-test
   (testing "PUT /api/permissions/graph"
@@ -573,3 +664,61 @@
           (is (=? {:magic_group_type "all-external-users"
                    :name "All tenant users"}
                   (get-magic-group "all-external-users"))))))))
+
+;;; ---------------------------------------- Performance tests ------------------------------------------
+
+(defn- count-db-calls
+  "Execute `f` and return the number of database calls (queries) made during its execution."
+  [f]
+  (let [call-count (atom 0)]
+    (methodical/add-aux-method-with-unique-key!
+     #'t2.pipeline/transduce-execute-with-connection
+     :around :default
+     (fn [next-method rf conn query-type model query]
+       (swap! call-count inc)
+       (next-method rf conn query-type model query))
+     ::query-counter)
+    (try
+      (f)
+      (finally
+        (methodical/remove-aux-method-with-unique-key!
+         #'t2.pipeline/transduce-execute-with-connection
+         :around :default
+         ::query-counter)))
+    @call-count))
+
+(deftest permissions-graph-update-query-count-test
+  (testing "PUT /api/permissions/graph should not make an excessive number of DB calls"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (let [num-groups 28
+              num-tables 382
+              now        (java.time.OffsetDateTime/now)
+              table-ids  (t2/insert-returning-pks! (t2/table-name :model/Table)
+                                                   (for [i (range num-tables)]
+                                                     {:db_id      db-id
+                                                      :name       (format "table_%d" i)
+                                                      :schema     "PUBLIC"
+                                                      :active     true
+                                                      :created_at now
+                                                      :updated_at now}))
+              group-ids  (t2/insert-returning-pks! :model/PermissionsGroup
+                                                   (for [i (range num-groups)]
+                                                     {:name (str "perf-test-group-" i "-" (random-uuid))}))]
+          (try
+            (let [base-graph    (data-perms.graph/api-graph {:group-ids group-ids})
+                  view-perms    {"PUBLIC" (zipmap table-ids (repeat :unrestricted))}
+                  cq-perms      {"PUBLIC" (zipmap table-ids (repeat :query-builder))}
+                  updated-graph (reduce (fn [g gid]
+                                          (-> g
+                                              (assoc-in [:groups gid db-id :view-data] view-perms)
+                                              (assoc-in [:groups gid db-id :create-queries] cq-perms)))
+                                        base-graph
+                                        group-ids)
+                  num-calls     (count-db-calls
+                                 #(mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                                        updated-graph))]
+              (is (<= num-calls 100)
+                  (format "Expected at most 100 database calls, got %d" num-calls)))
+            (finally
+              (t2/delete! :model/PermissionsGroup :id [:in group-ids]))))))))

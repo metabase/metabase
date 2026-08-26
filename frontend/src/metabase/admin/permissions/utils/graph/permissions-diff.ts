@@ -1,8 +1,8 @@
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   ConcreteTableId,
   GroupInfo,
   GroupsPermissions,
+  PermissionsDatabase,
 } from "metabase-types/api";
 
 import type {
@@ -28,7 +28,7 @@ function diffDatabasePermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
   groupId: number,
-  database: Database,
+  database: PermissionsDatabase,
 ): Partial<DatabasePermissionsDiff> {
   const databaseDiff: {
     grantedTables: NonNullable<DatabasePermissionsDiff["grantedTables"]>;
@@ -61,7 +61,8 @@ function diffDatabasePermissions(
       groupId,
       {
         databaseId: database.id,
-        schemaName: table.schema_name || "",
+        schemaName: table.schema || "",
+        // A permission entity always names a real warehouse table, never a card.
         tableId: table.id as ConcreteTableId,
       },
       DataPermission.VIEW_DATA,
@@ -71,7 +72,8 @@ function diffDatabasePermissions(
       groupId,
       {
         databaseId: database.id,
-        schemaName: table.schema_name || "",
+        schemaName: table.schema || "",
+        // A permission entity always names a real warehouse table, never a card.
         tableId: table.id as ConcreteTableId,
       },
       DataPermission.VIEW_DATA,
@@ -95,7 +97,7 @@ function diffGroupPermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
   groupId: number,
-  databases: Database[],
+  databases: PermissionsDatabase[],
 ): Partial<GroupPermissionsDiff> {
   const groupDiff: {
     databases: Record<number | string, Partial<DatabasePermissionsDiff>>;
@@ -113,6 +115,7 @@ function diffGroupPermissions(
     }
   }
   deleteIfEmpty(groupDiff, "databases");
+  // Unjustified type cast. FIXME
   return groupDiff as Partial<GroupPermissionsDiff>;
 }
 
@@ -120,7 +123,7 @@ export function diffDataPermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
   groups: GroupInfo[],
-  databases: Database[],
+  databases: PermissionsDatabase[],
 ): PermissionsGraphDiff {
   const permissionsDiff: {
     groups: Record<number | string, Partial<GroupPermissionsDiff>>;
@@ -139,5 +142,6 @@ export function diffDataPermissions(
       }
     }
   }
+  // Unjustified type cast. FIXME
   return permissionsDiff as PermissionsGraphDiff;
 }

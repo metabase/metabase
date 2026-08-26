@@ -25,3 +25,9 @@
       ;; I guess we can't use `setup-token!` because it's marked as `:setter :none` even tho we are literally setting it
       ;; right here. `:setter :none` is meant for settings whose values are programmatically generated -- Cam
       (setting/set-value-of-type! :string :setup-token (str (random-uuid)))))
+
+(defn clear-token!
+  "Clear out the setup token. Called once the first User has been created -- the token can never be used again, so we
+  don't keep an unusable token-like value around in (public) Settings responses."
+  []
+  (setting/set-value-of-type! :string :setup-token nil))

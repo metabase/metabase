@@ -113,6 +113,7 @@ export function setupDeleteUploadManagementDeleteEndpoint(failureId?: number) {
       : // fetch-mock doesn't like returning true directly
         new Response(JSON.stringify(true), {
           status: 200,
+          headers: { "Content-Type": "application/json" },
         });
   });
 }

@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -61,6 +62,13 @@
    [:itemsPerPage ms/IntGreaterThanOrEqualToZero]
    [:Resources [:sequential SCIMUser]]])
 
+(mr/def ::patch-value
+  "A single attribute value in a PATCH operation. The strings clients send for booleans are parsed by the handler."
+  [:or ms/NonBlankString :boolean])
+
+(def ^:private patch-value?
+  (mr/validator ::patch-value))
+
 (def UserPatch
   "Malli schema for a user patch operation"
   [:map
@@ -68,9 +76,16 @@
    [:Operations
     [:sequential [:map
                   [:op ms/NonBlankString]
-                  [:value [:or [:map-of [:or :keyword :string]
-                                [:or ms/NonBlankString ms/BooleanValue]]
-                           ms/NonBlankString ms/BooleanValue]]]]]])
+                  ;; which attribute the operation targets; `nil` means the value is a map of attribute -> value
+                  [:path {:optional true} [:maybe ms/NonBlankString]]
+                  ;; dispatched on shape rather than written as `[:or [:map-of ...] ...]`: request decoding would
+                  ;; run the `:map-of` decoder over a scalar value and throw
+                  [:value [:multi {:dispatch #(if (map? %) :map :scalar)}
+                           [:map [:and
+                                  [:map-of [:or :keyword :string] :any]
+                                  [:fn {:error/message "attribute value must be a non-blank string or a boolean"}
+                                   #(every? patch-value? (vals %))]]]
+                           [:scalar ::patch-value]]]]]]])
 
 (def SCIMGroup
   "Malli schema for a SCIM group."
@@ -274,7 +289,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Users/:id" :id #"[^/]+"]
   "Update a user."
-  [{:keys [id]}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]
    _query-params
    scim-user :- SCIMUser]
   (with-prometheus-counters
@@ -298,13 +314,27 @@
                                :status      400
                                :status-code 400})))))))))
 
+(defn- patch->boolean
+  "SCIM sends `active` as a JSON boolean, but clients in the wild send the strings \"true\"/\"false\" too. Anything
+  else is an error rather than a value."
+  [path value]
+  (cond
+    (boolean? value)
+    value
+
+    (and (string? value) (contains? #{"true" "false"} (u/lower-case-en value)))
+    (Boolean/parseBoolean (u/lower-case-en value))
+
+    :else
+    (throw-scim-error 400 (format "Invalid value for %s: %s" path (pr-str value)))))
+
 (defn- patch->user-updates
   [acc path value]
   (if (and (nil? path) (map? value))
     (reduce-kv patch->user-updates acc value)
     (let [path-str (some-> path name)]
       (case path-str
-        "active"          (assoc acc :is_active (Boolean/valueOf (u/lower-case-en value)))
+        "active"          (assoc acc :is_active (patch->boolean path-str value))
         "userName"        (assoc acc :email value)
         "name.givenName"  (assoc acc :first_name value)
         "name.familyName" (assoc acc :last_name value)
@@ -480,7 +510,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Groups/:id" :id #"[^/]+"]
   "Update a group."
-  [{:keys [id]}
+  [{:keys [id]} :- [:map
+                    [:id ms/NonBlankString]]
    _query-params
    scim-group :- SCIMGroup]
   (with-prometheus-counters

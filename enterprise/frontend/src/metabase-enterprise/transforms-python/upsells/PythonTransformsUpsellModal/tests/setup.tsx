@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
@@ -10,6 +8,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -21,11 +20,13 @@ import { PythonTransformsUpsellModal } from "../PythonTransformsUpsellModal";
 export const setup = ({
   isHosted,
   isStoreUser,
+  isAdmin = isStoreUser,
   billingPeriodMonths = 12,
   isEnterprise = false,
 }: {
   isOpen?: boolean;
   isHosted: boolean;
+  isAdmin?: boolean;
   isStoreUser: boolean;
   billingPeriodMonths?: number | undefined;
   isEnterprise?: boolean;
@@ -33,9 +34,10 @@ export const setup = ({
   const onClose = jest.fn();
 
   const storeUserEmail = "store-user@example.com";
-  const currentUser = createMockUser(
-    isStoreUser ? { email: storeUserEmail, is_superuser: true } : undefined,
-  );
+  const currentUser = createMockUser({
+    ...(isStoreUser ? { email: storeUserEmail } : {}),
+    is_superuser: isAdmin,
+  });
 
   const settings = {
     "is-hosted?": isHosted,
@@ -70,7 +72,7 @@ export const setup = ({
 
   renderWithProviders(
     <Route
-      component={() => <PythonTransformsUpsellModal onClose={onClose} />}
+      element={<PythonTransformsUpsellModal onClose={onClose} />}
       path="/"
     />,
     {

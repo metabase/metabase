@@ -41,6 +41,7 @@
   (:refer-clojure :exclude [select-keys mapv #?(:clj for)])
   (:require
    [medley.core :as m]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.expression :as lib.expression]
@@ -138,8 +139,10 @@
     (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition
                               query stage-number column column-ref :filter)]
       (let [temporal-unit (lib.temporal-bucket/temporal-bucket column-ref)
+            binning (lib.binning/binning column-ref)
             column (cond-> (:column drill-details)
-                     temporal-unit (assoc :temporal-unit temporal-unit))]
+                     temporal-unit (assoc :temporal-unit temporal-unit)
+                     binning       (assoc :lib/binning binning))]
         (merge drill-details
                {:lib/type   :metabase.lib.drill-thru/drill-thru
                 :type       :drill-thru/quick-filter

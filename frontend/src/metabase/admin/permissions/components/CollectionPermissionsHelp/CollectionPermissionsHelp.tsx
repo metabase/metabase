@@ -18,21 +18,21 @@ export const CollectionPermissionsHelp = () => {
       <Stack gap={16} mt="1rem">
         <PermissionHelpDescription
           icon="check"
-          iconColor="success"
+          iconColor="feedback-positive"
           name={t`Curate`}
           description={t`The group can view, save, edit, pin, and archive items in the collection.`}
         />
 
         <PermissionHelpDescription
           icon="permissions_limited"
-          iconColor="warning"
+          iconColor="feedback-warning"
           name={t`View`}
           description={t`The group can view items in a collection.`}
         />
 
         <PermissionHelpDescription
           icon="close"
-          iconColor="error"
+          iconColor="feedback-negative"
           name={t`No access`}
           description={t`The group won't even see the collection listed.`}
         />

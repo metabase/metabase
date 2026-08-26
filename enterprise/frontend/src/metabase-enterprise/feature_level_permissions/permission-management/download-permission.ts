@@ -1,31 +1,30 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { Messages } from "metabase/admin/permissions/constants/messages";
+import { navigateToGranularPermissions } from "metabase/admin/permissions/permissions";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
   DataPermissionType,
-  type EntityId,
   type PermissionOption,
   type PermissionSectionConfig,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getFieldsPermission,
   getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
-import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import {
   DataPermission,
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
+  type SchemaEntityId,
+  type TableEntityId,
 } from "metabase-types/api";
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
@@ -46,7 +45,7 @@ export const DOWNLOAD_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     label: t`No`,
     value: DataPermissionValue.NONE,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   limited: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -67,7 +66,7 @@ export const DOWNLOAD_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
     label: t`Granular`,
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
-    iconColor: "warning",
+    iconColor: "feedback-warning",
   },
 };
 
@@ -81,36 +80,61 @@ const DOWNLOAD_PERMISSIONS_DESC = [
 const getPermissionValue = (
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   permissionSubject: PermissionSubject,
+  permission: DataPermission,
 ) => {
   switch (permissionSubject) {
     case "fields":
       return getFieldsPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as TableEntityId,
-        DataPermission.DOWNLOAD,
+        permission,
       );
     case "tables":
       return getTablesPermission(
         permissions,
         groupId,
+        // Unjustified type cast. FIXME
         entityId as SchemaEntityId,
-        DataPermission.DOWNLOAD,
+        permission,
       );
     default:
-      return getSchemasPermission(
-        permissions,
-        groupId,
-        entityId,
-        DataPermission.DOWNLOAD,
-      );
+      return getSchemasPermission(permissions, groupId, entityId, permission);
   }
 };
 
+const getEffectiveDownloadPermissionValue = (
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: PermissionEntityId,
+  permissionSubject: PermissionSubject,
+) => {
+  const viewDataPermissionValue = getPermissionValue(
+    permissions,
+    groupId,
+    entityId,
+    permissionSubject,
+    DataPermission.VIEW_DATA,
+  );
+
+  if (viewDataPermissionValue === DataPermissionValue.BLOCKED) {
+    return DOWNLOAD_PERMISSION_OPTIONS.none.value;
+  }
+
+  return getPermissionValue(
+    permissions,
+    groupId,
+    entityId,
+    permissionSubject,
+    DataPermission.DOWNLOAD,
+  );
+};
+
 export const buildDownloadPermission = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
@@ -124,9 +148,15 @@ export const buildDownloadPermission = (
 
   const value = isBlockPermission
     ? DOWNLOAD_PERMISSION_OPTIONS.none.value
-    : getPermissionValue(permissions, groupId, entityId, permissionSubject);
+    : getPermissionValue(
+        permissions,
+        groupId,
+        entityId,
+        permissionSubject,
+        DataPermission.DOWNLOAD,
+      );
 
-  const defaultGroupValue = getPermissionValue(
+  const defaultGroupValue = getEffectiveDownloadPermissionValue(
     permissions,
     defaultGroup.id,
     entityId,
@@ -174,8 +204,7 @@ export const buildDownloadPermission = (
     ],
     postActions: hasChildEntities
       ? {
-          controlled: () =>
-            push(getGroupFocusPermissionsUrl(groupId, entityId)),
+          controlled: () => navigateToGranularPermissions(groupId, entityId),
         }
       : undefined,
   };

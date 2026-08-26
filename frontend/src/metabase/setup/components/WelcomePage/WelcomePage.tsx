@@ -4,19 +4,14 @@ import { t } from "ttag";
 
 import { DefaultLogoIcon } from "metabase/common/components/LogoIcon";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Button } from "metabase/ui";
 
 import { goToNextStep, loadDefaults } from "../../actions";
 import { LOCALE_TIMEOUT } from "../../constants";
 import { getIsLocaleLoaded } from "../../selectors";
 import { SetupHelp } from "../SetupHelp";
 
-import {
-  PageBody,
-  PageButton,
-  PageMain,
-  PageRoot,
-  PageTitle,
-} from "./WelcomePage.styled";
+import { PageBody, PageMain, PageRoot, PageTitle } from "./WelcomePage.styled";
 
 export const WelcomePage = (): JSX.Element | null => {
   const [isElapsed] = useTimeout(LOCALE_TIMEOUT);
@@ -44,9 +39,9 @@ export const WelcomePage = (): JSX.Element | null => {
           {t`Looks like everything is working.`}{" "}
           {t`Now let’s get to know you, connect to your data, and start finding you some answers!`}
         </PageBody>
-        <PageButton primary autoFocus onClick={handleStepSubmit}>
+        <Button variant="filled" mt="xl" autoFocus onClick={handleStepSubmit}>
           {t`Let's get started`}
-        </PageButton>
+        </Button>
       </PageMain>
       <SetupHelp />
     </PageRoot>

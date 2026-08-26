@@ -32,7 +32,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)
@@ -42,6 +41,18 @@
    (org.mozilla.universalchardet UniversalDetector)))
 
 (set! *warn-on-reflection* true)
+
+(def max-upload-size-bytes
+  "Maximum size in bytes of a file that can be uploaded to create or update an upload table.
+  Keep in sync with `MAX_UPLOAD_SIZE` in `frontend/src/metabase/redux/uploads.ts`.
+  The limit documented in `docs/exploration-and-organization/uploads.md` must match as well."
+  (* 50 1024 1024))
+
+(def max-upload-part-count
+  "Maximum number of multipart parts accepted by the CSV upload endpoints.
+  Ring's :max-file-count option counts every part, form fields included, so this must allow for the
+  collection_id field the frontend sends alongside the file part."
+  2)
 
 ;; TODO: move these to a more appropriate namespace if they need to be reused
 (defmulti max-bytes
@@ -244,9 +255,7 @@
   [header-and-rows]
   (let [header (first header-and-rows)
         auto-pk-indices (auto-pk-column-indices header)]
-    (cond->> header-and-rows
-      auto-pk-indices
-      (map (partial remove-indices auto-pk-indices)))))
+    (map (partial remove-indices auto-pk-indices) header-and-rows)))
 
 (defn- file-size-mb [csv-file]
   (/ (.length ^File csv-file) 1048576.0))
@@ -366,6 +375,33 @@
   (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver "_")})]
     (mapv (comp keyword generator-fn)
           (for [h header] (normalize-column-name driver h)))))
+
+(defn- match-column-names
+  "Return the existing field name that each CSV `header` column should be written to.
+
+   - Columns are matched to fields by name, independent of the order they appear in the CSV.
+   - When several headers resolve to the same name, they are matched by display name so each value
+     lands in the column it came from.
+   - When columns can't be told apart even by display name, they are matched by the order they appear in."
+  [driver header name->field]
+  (let [positional (mapv name (derive-column-names driver header))
+        normalized (mapv #(normalize-column-name driver %) header)
+        collisions (into #{} (keep (fn [[col-name freq]] (when (> freq 1) col-name))) (frequencies normalized))]
+    (if (empty? collisions)
+      positional
+      ;; Map each colliding field's display name (scoped to its normalized name) back to its positional
+      ;; name, then re-match the colliding columns by display name.
+      (let [display->name (into {}
+                                (for [[norm pos] (map vector normalized positional)
+                                      :when (collisions norm)
+                                      :let  [field (name->field pos)]
+                                      :when field]
+                                  [[norm (:display_name field)] pos]))]
+        (mapv (fn [norm pos display]
+                (if (collisions norm)
+                  (get display->name [norm display] pos)
+                  pos))
+              normalized positional (derive-display-names driver header))))))
 
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
@@ -562,9 +598,6 @@
                          :file-extension extension
                          :mime-type      mime-type}))))))
 
-(defn- check-workspace-mode! []
-  (workspaces/check-not-in-workspace-mode! "CSV upload"))
-
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
 
@@ -595,7 +628,6 @@
        [:db-id ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
-  (check-workspace-mode!)
   (let [database (or (t2/select-one :model/Database :id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
@@ -789,13 +821,9 @@
                                      auto-pk?
                                      without-auto-pk-columns)
                 name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
-                ;; Gotcha: Long column names, which get sanitized and truncated to the same string, will be match to the
-                ;; database columns based on their order. If their order in the new upload differs from that in previous
-                ;; uploads, they will be matched incorrectly.
-                ;; We accept this edge case (customers can reorder CSV columns to fix) rather than rejecting uploads
-                ;; with ambiguous column names even when the order is consistent (see #44926/#issuecomment-3524373073).
-                ;; Future idea: match on display names for smart re-ordering.
-                column-names       (map name (derive-column-names driver header))
+                ;; Match colliding columns to existing fields by display name so reordering them between
+                ;; uploads doesn't write data to the wrong column. See [[match-column-names]] (GDGT-2233).
+                column-names       (match-column-names driver header name->field)
                 display-names      (for [h header] (normalize-display-name h))
                 create-auto-pk?    (and
                                     auto-pk?
@@ -872,7 +900,7 @@
         (ex-info (tru "The table must be an uploaded table.")
                  {:status-code 422})
 
-        (not (mi/can-read? table))
+        (not (mi/can-query? table))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403}))))
 
@@ -890,13 +918,17 @@
 (defn- can-delete-error
   "Returns an ExceptionInfo object if the user cannot delete the given upload. Returns nil otherwise."
   [table database]
-  (when-not (:is_attached_dwh database) ;; gsheets uploads: deletable, but we cannot write + they aren't is_upload
+  (if (:is_attached_dwh database)
+    ;; gsheets uploads: deletable, but we cannot write + they aren't is_upload
+    (when-not api/*is-superuser?*
+      (ex-info (tru "You don''t have permissions to do that.")
+               {:status-code 403}))
     (cond
       (not (:is_upload table))
       (ex-info (tru "The table must be an uploaded table.")
                {:status-code 422})
 
-      (not (mi/can-write? table))
+      (not (and (mi/can-query? table) (mi/can-write? table)))
       (ex-info (tru "You don''t have permissions to do that.")
                {:status-code 403}))))
 
@@ -957,7 +989,6 @@
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:action update-action-schema]]]
-  (check-workspace-mode!)
   (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
         database (table/database table)
         replace? (= :metabase.upload/replace action)]

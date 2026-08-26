@@ -1,23 +1,27 @@
 import _ from "underscore";
 
 import {
+  cardApi,
   databaseApi,
   invalidateNotificationsApiCache,
   revisionApi,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import { Questions } from "metabase/entities/questions";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
+import { createQuestionCard, updateQuestionCard } from "metabase/redux/cards";
 import {
+  API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
+  RELOAD_CARD,
   REVERT_CARD_TO_REVISION,
+  SET_CARD_AND_RUN,
   SOFT_RELOAD_CARD,
   clearQueryResult,
   onCloseSidebars,
@@ -29,7 +33,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { isNotNull } from "metabase/utils/types";
-import { getDefaultSize } from "metabase/visualizations";
+import { getRegisteredDefaultSize } from "metabase/visualizations";
 import { shouldOpenInBlankWindow } from "metabase/visualizations/lib/open-url";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
@@ -62,15 +66,14 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());
 
-    const action = await dispatch(
-      Questions.actions.fetch({ id: outdatedCard?.id }, { reload: true }),
+    return runRtkEndpoint(
+      { id: outdatedCard?.id },
+      dispatch,
+      cardApi.endpoints.getCard,
     );
-
-    return Questions.HACK_getObjectFromAction(action);
   };
 });
 
-export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedQuestion = getQuestion(getState());
@@ -81,10 +84,11 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
       return;
     }
 
-    const action = await dispatch(
-      Questions.actions.fetch({ id: outdatedQuestion.id() }, { reload: true }),
+    const card = await runRtkEndpoint(
+      { id: outdatedQuestion.id() },
+      dispatch,
+      cardApi.endpoints.getCard,
     );
-    const card = Questions.HACK_getObjectFromAction(action);
 
     dispatch(loadMetadataForCard(card));
 
@@ -101,7 +105,6 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - clicking in the entity details view
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
-export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = (
   nextCard: Card,
   { shouldUpdateUrl = true } = {},
@@ -215,7 +218,6 @@ export const setDatasetQuery =
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
-export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = (
   question: Question,
   options?: OnCreateOptions,
@@ -354,7 +356,7 @@ export const revertToRevision = createThunkAction(
   REVERT_CARD_TO_REVISION,
   (cardId, revision) => {
     return async (dispatch) => {
-      await entityCompatibleQuery(
+      await runRtkEndpoint(
         {
           id: cardId,
           entity: "card",
@@ -376,15 +378,16 @@ async function reduxCreateQuestion(
   options?: OnCreateOptions,
 ) {
   const display = question.display();
-  const size = getDefaultSize(display);
-  const action = await dispatch(
-    Questions.actions.create({
+  const size = getRegisteredDefaultSize(display);
+  // Unjustified type cast. FIXME
+  const card = (await dispatch(
+    createQuestionCard({
       ...question.card(),
       dashboard_tab_id: options?.dashboardTabId,
-      ...(size && { size_x: size.width, size_y: size.height }),
+      ...(size && { size: { size_x: size.width, size_y: size.height } }),
     }),
-  );
-  return question.setCard(Questions.HACK_getObjectFromAction(action));
+  )) as Card;
+  return question.setCard(card);
 }
 
 async function reduxUpdateQuestion(
@@ -401,8 +404,9 @@ async function reduxUpdateQuestion(
 
   const card = _.omit(fullCard, ...keysToOmit);
 
-  const action = await dispatch(
-    Questions.actions.update({ id: question.id() }, card),
-  );
-  return question.setCard(Questions.HACK_getObjectFromAction(action));
+  // Unjustified type cast. FIXME
+  const updatedCard = (await dispatch(
+    updateQuestionCard({ id: question.id(), ...card }),
+  )) as Card;
+  return question.setCard(updatedCard);
 }

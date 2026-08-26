@@ -1,6 +1,6 @@
 import { fieldApi, tableApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities/utils";
-import { updateMetadata } from "metabase/redux/metadata-typed";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { TableSchema } from "metabase/schema";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
@@ -37,7 +37,7 @@ export const fetchTableMetadata =
     options: FetchOptions = {},
   ) =>
   async (dispatch: Dispatch) =>
-    entityCompatibleQuery(
+    runRtkEndpoint(
       { id, ...params, ...options.params },
       dispatch,
       tableApi.endpoints.getTableQueryMetadata,
@@ -58,7 +58,7 @@ export const fetchTableForeignKeys =
     if (table?.fks != null) {
       return { id, fks: table.fks };
     }
-    const fks = await entityCompatibleQuery(
+    const fks = await runRtkEndpoint(
       id,
       dispatch,
       tableApi.endpoints.listTableForeignKeys,
@@ -78,20 +78,18 @@ export const fetchTableMetadataAndForeignKeys =
   async (dispatch: Dispatch, getState: GetState) => {
     await dispatch(fetchTableMetadata({ id }, options));
 
+    // Unjustified type cast. FIXME
     const table = getMetadataUnfiltered(getState()).table(id) as ForeignKeyHost;
-    await Promise.all([
+    await Promise.allSettled([
       ...getTableForeignKeyTableIds(table).map((tableId) =>
         dispatch(fetchTableMetadata({ id: tableId }, options)),
       ),
       // overridden model FK columns have fk_target_field_id but don't have a
       // target — in this case we load the field instead of the table
       ...getTableForeignKeyFieldIds(table).map((fieldId) =>
-        entityCompatibleQuery(
-          { id: fieldId },
-          dispatch,
-          fieldApi.endpoints.getField,
-          { forceRefetch: options.reload ?? false },
-        ),
+        runRtkEndpoint({ id: fieldId }, dispatch, fieldApi.endpoints.getField, {
+          forceRefetch: options.reload ?? false,
+        }),
       ),
     ]);
   };

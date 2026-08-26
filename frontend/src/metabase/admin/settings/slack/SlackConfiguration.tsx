@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import { useGetSlackAppInfoQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Stack, Text } from "metabase/ui";
+
+import { useGetSlackAppInfoQuery } from "../api/slack";
 
 import { SlackBugReportChannelInput } from "./SlackBugReportChannelInput";
 
@@ -33,7 +34,7 @@ export const SlackConfiguration = () => {
           w={80}
           h={80}
           bdrs="sm"
-          bd="1px solid var(--mb-color-border)"
+          bd="1px solid var(--mb-color-border-neutral)"
         />
         <Stack gap="sm" align="flex-start">
           <Button

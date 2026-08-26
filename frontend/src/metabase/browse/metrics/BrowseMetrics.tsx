@@ -7,13 +7,11 @@ import { skipToken } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { useDocsUrl } from "metabase/common/hooks";
-import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
-import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
+import { canUserCreateQueries } from "metabase/current-user";
 import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import { canUserCreateQueries } from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -27,12 +25,14 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import S from "../components/BrowseContainer.module.css";
 
 import { MetricsTable } from "./MetricsTable";
 import { trackNewMetricInitiated } from "./analytics";
 import type { MetricFilterSettings, MetricResult } from "./types";
+import { useFetchMetrics } from "./use-fetch-metrics";
 
 const {
   contentVerificationEnabled,
@@ -48,7 +48,7 @@ export function BrowseMetrics() {
   const isEmpty = !isLoading && !error && !metrics?.length;
   const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
 
-  const libraryMetricCollection =
+  const { data: libraryMetricCollection } =
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
       type: "library-metrics",
     });
@@ -58,7 +58,7 @@ export function BrowseMetrics() {
   });
 
   const hasDataAccess = useSelector(canUserCreateQueries);
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = isWithinIframe();
 
   const canCreateMetric = !isEmbeddingIframe && hasDataAccess;
 
@@ -242,6 +242,7 @@ function useFilteredMetrics(metricFilters: MetricFilterSettings) {
 
   const isLoading = hasVerifiedMetrics.isLoading || metricsResult.isLoading;
   const error = hasVerifiedMetrics.error || metricsResult.error;
+  // Unjustified type cast. FIXME
   const metrics = metricsResult.data?.data as MetricResult[] | undefined;
 
   return {

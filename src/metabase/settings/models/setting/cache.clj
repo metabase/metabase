@@ -3,7 +3,7 @@
   lookup."
   (:require
    [clojure.core :as core]
-   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -74,7 +74,7 @@
   (log/debug "Updating value of settings-last-updated in DB...")
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
   (let [current-timestamp-as-string-honeysql (h2x/cast (if (= (mdb/db-type) :mysql) :char :text)
-                                                       [:raw "current_timestamp"])]
+                                                       (h2x/current-datetime-honeysql-form (mdb/db-type)))]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
     (or (pos? (t2/update! :setting  {:key settings-last-updated-key} {:value current-timestamp-as-string-honeysql}))
         ;; ...at which point we will try to INSERT a new row. Note that it is entirely possible two instances can both
@@ -85,9 +85,10 @@
           ;; Use `simple-insert!` because we do *not* want to trigger pre-insert behavior, such as encrypting `:value`
           (t2/insert! (t2/table-name (t2/resolve-model :model/Setting)) :key settings-last-updated-key, :value current-timestamp-as-string-honeysql)
           (catch java.sql.SQLException e
-            ;; go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
+            ;; go ahead and log the whole SQLException message chain anyway on the off chance that it *wasn't* just a
+            ;; race condition issue
             (log/errorf "Error updating Settings last updated value: %s"
-                        (with-out-str (jdbc/print-sql-exception-chain e)))))))
+                        (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
   (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting :key settings-last-updated-key)))

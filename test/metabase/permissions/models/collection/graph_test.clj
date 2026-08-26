@@ -582,3 +582,7 @@
           (is (malli= [:map [:id :int] [:user_id :int] [:before :some] [:after :some]]
                       (t2/select-one :model/CollectionPermissionGraphRevision (inc (:revision before))))
               "Values for before and after should be present in the revision."))))))
+
+(deftest issue-70596-large-collection-ids-test
+  (testing "graph/graph doesn't throw when called with more collection IDs than the bind parameter limit (#70596)"
+    (is (map? (graph/graph nil (set (range 1 70001)) nil)))))

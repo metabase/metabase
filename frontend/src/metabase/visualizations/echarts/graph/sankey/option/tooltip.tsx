@@ -1,13 +1,12 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 import { t } from "ttag";
 
-import { formatPercent } from "metabase/static-viz/lib/numbers";
+import { formatPercent } from "metabase/utils/formatting";
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import {
   EChartsTooltip,
   type EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import { getPercent } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import {
   getMarkerColorClass,
   getTooltipBaseOption,
@@ -15,6 +14,7 @@ import {
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
+import { getPercent } from "../../../tooltip/utils";
 import type { SankeyChartModel } from "../model/types";
 
 interface ChartItemTooltipProps {
@@ -44,7 +44,11 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
     const targetNode = chartModel.data.nodes.find(
       (node) => node.rawName === data.target,
     );
-    header = `${formatters.source(node.displayName)} → ${formatters.target(targetNode?.displayName ?? data.target)}`;
+    const headerSource = formatters.source(node?.displayName ?? data.source);
+    const headerTarget = formatters.target(
+      targetNode?.displayName ?? data.target,
+    );
+    header = `${headerSource} → ${headerTarget}`;
   }
 
   if (!node) {

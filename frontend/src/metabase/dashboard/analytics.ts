@@ -21,27 +21,6 @@ export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   });
 };
 
-export type DashboardAccessedVia =
-  | "internal"
-  | "public-link"
-  | "static-embed"
-  | "interactive-iframe-embed"
-  | "sdk-embed";
-
-export const trackExportDashboardToPDF = ({
-  dashboardId,
-  dashboardAccessedVia,
-}: {
-  dashboardId?: DashboardId;
-  dashboardAccessedVia: DashboardAccessedVia;
-}) => {
-  trackSchemaEvent("dashboard", {
-    event: "dashboard_pdf_exported",
-    dashboard_id: getDashboardId(dashboardId),
-    dashboard_accessed_via: dashboardAccessedVia,
-  });
-};
-
 export const trackDashboardWidthChange = (
   dashboardId: DashboardId,
   width: DashboardWidth,

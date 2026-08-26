@@ -21,7 +21,7 @@ const VALID_CASES = [
   },
   {
     code: `import { trackPageView } from "metabase/analytics";`,
-    filename: "/path/to/routes.jsx",
+    filename: "/path/to/routes.tsx",
   },
   // Restricted specifiers are fine in analytics.* files.
   {

@@ -1,12 +1,13 @@
-import type { Dayjs } from "dayjs";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 
+import type { Dayjs } from "metabase/dayjs";
 import type {
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { Extent } from "metabase/visualizations/types";
 import type {
   Card,
@@ -214,7 +215,7 @@ export type ComboChartDataDensity = BaseChartDataDensity & {
   type: "combo";
   seriesDataKeysWithLabels: DataKey[];
   stackedDisplayWithLabels: StackDisplay[];
-  totalNumberOfDots: number;
+  numberOfDotsBySeriesKey: Record<DataKey, number>;
 };
 
 export type BaseCartesianChartModel = {
@@ -230,6 +231,7 @@ export type BaseCartesianChartModel = {
   splitPanelYAxisModels?: YAxisModel[];
   xAxisModel: XAxisModel;
 
+  cardsColumns: CartesianChartColumns[];
   columnByDataKey: Record<DataKey, DatasetColumn>;
 
   // Allows to use multiple ECharts series options to represent single data series

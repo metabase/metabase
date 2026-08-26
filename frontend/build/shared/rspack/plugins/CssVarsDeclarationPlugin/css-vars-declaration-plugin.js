@@ -108,6 +108,7 @@ class CssVarsDeclarationPlugin {
    * @param {CssVarConfig} config
    */
   #processConfig(project, config) {
+    /** @type {Set<string>} */
     const cssVars = new Set();
 
     // Add static variables
@@ -126,6 +127,7 @@ class CssVarsDeclarationPlugin {
       }
 
       const sourceFile = project.addSourceFileAtPath(filePath);
+      /** @type {Set<string>} */
       const extracted = new Set();
 
       for (const name of source.names) {

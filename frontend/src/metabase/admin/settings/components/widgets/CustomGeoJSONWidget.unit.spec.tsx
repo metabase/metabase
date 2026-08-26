@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import {
   findRequests,
   setupGeoJSONEndpoint,
+  setupGeoJSONEndpointWithError,
+  setupMalformedGeoJSONEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -16,6 +18,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockGeoJSONFeatureCollection,
+  createMockProjectedGeoJSONFeatureCollection,
   createMockSettingDefinition,
   createMockSettings,
 } from "metabase-types/api/mocks";
@@ -177,11 +180,11 @@ describe("CustomGeoJSONWIdget", () => {
 
     // Select map features for key and name
     const keySelect = within(screen.getByTestId("map-region-key-select"));
-    await userEvent.click(await keySelect.findByTestId("select-button"));
+    await userEvent.click(await keySelect.findByPlaceholderText(/Select/));
     await userEvent.click(await screen.findByText("scalerank"));
 
     const nameSelect = within(screen.getByTestId("map-region-name-select"));
-    await userEvent.click(await nameSelect.findByTestId("select-button"));
+    await userEvent.click(await nameSelect.findByPlaceholderText(/Select/));
     await userEvent.click(screen.getByText("featureclass"));
 
     // Save and check body contains data
@@ -197,6 +200,7 @@ describe("CustomGeoJSONWIdget", () => {
     const puts = await findRequests("PUT");
     const { body } = puts[0];
     const testMapEntry = Object.values(body.value).find(
+      // Unjustified type cast. FIXME
       (item) => (item as CustomGeoJSONMap).name === "Test Two",
     );
     expect(testMapEntry).toEqual({
@@ -241,11 +245,11 @@ describe("CustomGeoJSONWIdget", () => {
 
     // Select map features for key and name
     const keySelect = within(screen.getByTestId("map-region-key-select"));
-    await userEvent.click(await keySelect.findByTestId("select-button"));
+    await userEvent.click(await keySelect.findByPlaceholderText(/Select/));
     await userEvent.click(await screen.findByText("featureclass"));
 
     const nameSelect = within(screen.getByTestId("map-region-name-select"));
-    await userEvent.click(await nameSelect.findByTestId("select-button"));
+    await userEvent.click(await nameSelect.findByPlaceholderText(/Select/));
     await userEvent.click(screen.getByText("scalerank"));
 
     await userEvent.click(screen.getByRole("button", { name: /Save map/i }));
@@ -260,6 +264,7 @@ describe("CustomGeoJSONWIdget", () => {
     const puts = await findRequests("PUT");
     const { body } = puts[0];
     const testMapEntry = Object.values(body.value).find(
+      // Unjustified type cast. FIXME
       (item) => (item as CustomGeoJSONMap).name === "Test Edit",
     );
     expect(testMapEntry).toEqual({
@@ -267,6 +272,67 @@ describe("CustomGeoJSONWIdget", () => {
       region_key: "featureclass",
       region_name: "scalerank",
       url: "https://test.com/download/GeoJSON_two.json",
+    });
+  });
+
+  describe("load errors", () => {
+    const loadMap = async (url: string) => {
+      await userEvent.click(screen.getByRole("button", { name: "Add a map" }));
+      await userEvent.type(
+        screen.getByPlaceholderText(
+          "Like https://my-mb-server.com/maps/my-map.json",
+        ),
+        url,
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Load/i }));
+    };
+
+    it("should show the error the server rejected the URL with", async () => {
+      const url = "bad-url";
+      await setup({});
+      setupGeoJSONEndpointWithError({
+        url,
+        message:
+          "Invalid GeoJSON file location: must start with http:// or https://. " +
+          "URLs referring to hosts that supply internal hosting metadata are prohibited.",
+      });
+
+      await loadMap(url);
+
+      expect(
+        await screen.findByText(/Invalid GeoJSON file location/),
+      ).toBeInTheDocument();
+    });
+
+    it("should show an error when the payload has no features", async () => {
+      const url = "https://test.com/download/not-geojson.json";
+      await setup({});
+      setupMalformedGeoJSONEndpoint({ url, payload: { type: "Topology" } });
+
+      await loadMap(url);
+
+      expect(
+        await screen.findByText(
+          "Invalid custom GeoJSON: does not contain features",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should show an error when coordinates are not lat/lng", async () => {
+      const url = "https://test.com/download/projected.json";
+      await setup({});
+      setupMalformedGeoJSONEndpoint({
+        url,
+        payload: createMockProjectedGeoJSONFeatureCollection(),
+      });
+
+      await loadMap(url);
+
+      expect(
+        await screen.findByText(
+          "Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude",
+        ),
+      ).toBeInTheDocument();
     });
   });
 

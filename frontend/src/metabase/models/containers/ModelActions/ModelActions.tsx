@@ -1,29 +1,30 @@
-import type { LocationDescriptor } from "history";
 import { useEffect, useMemo, useState } from "react";
-import { replace } from "react-router-redux";
 import { useMount } from "react-use";
-import _ from "underscore";
 
-import { useListActionsQuery, useListDatabasesQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useListActionsQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { Questions } from "metabase/entities/questions";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import ModelActionsView from "metabase/models/components/ModelActions";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { connect } from "metabase/redux";
+import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { fetchTableForeignKeys } from "metabase/redux/tables";
+import { Outlet, useNavigate, useParams } from "metabase/router";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Card } from "metabase-types/api";
 
-type OwnProps = {
-  params: {
-    slug: string;
-  };
-  children: React.ReactNode;
+type ModelActionsParams = {
+  slug: string;
 };
 
 type EntityLoadersProps = {
@@ -33,24 +34,21 @@ type EntityLoadersProps = {
 type DispatchProps = {
   loadMetadataForCard: (card: Card) => void;
   fetchTableForeignKeys: (params: { id: Table["id"] }) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
 };
 
-type Props = OwnProps & EntityLoadersProps & DispatchProps;
+type Props = EntityLoadersProps & DispatchProps;
 
 const mapDispatchToProps = {
   loadMetadataForCard,
   fetchTableForeignKeys,
-  onChangeLocation: replace,
 };
 
 function ModelActions({
   model,
-  children,
   loadMetadataForCard,
   fetchTableForeignKeys,
-  onChangeLocation,
 }: Props) {
+  const navigate = useNavigate();
   useListDatabasesQuery();
   const { data: actions = [] } = useListActionsQuery({
     "model-id": model.id(),
@@ -85,7 +83,7 @@ function ModelActions({
         loadMetadataForCard(card);
       }
     } else {
-      onChangeLocation(Urls.card(card));
+      navigate(Urls.card(card), { replace: true });
     }
   });
 
@@ -106,21 +104,31 @@ function ModelActions({
         model={model}
         shouldShowActionsUI={shouldShowActionsUI}
       />
-      {/* Required for rendering child `ModalRoute` elements */}
-      {children}
+      {/* Required for rendering child modal routes */}
+      <Outlet />
     </>
   );
 }
 
-function getModelId(state: State, props: OwnProps) {
-  return Urls.extractEntityId(props.params.slug);
+function ModelActionsLoader(dispatchProps: DispatchProps) {
+  const params = useParams<ModelActionsParams>();
+  const modelId = Urls.extractEntityId(params.slug);
+  const { isLoading, error } = useGetCardQuery(
+    modelId != null ? { id: modelId } : skipToken,
+  );
+  const model = useSelector((state) =>
+    modelId != null ? getMetadata(state).question(modelId) : undefined,
+  );
+
+  if (!model) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return <ModelActions model={model} {...dispatchProps} />;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Questions.load({ id: getModelId, entityAlias: "model" }),
-  connect<null, DispatchProps, OwnProps & EntityLoadersProps, State>(
-    null,
-    mapDispatchToProps,
-  ),
-)(ModelActions);
+export default connect<unknown, DispatchProps, unknown, State>(
+  null,
+  mapDispatchToProps,
+)(ModelActionsLoader);

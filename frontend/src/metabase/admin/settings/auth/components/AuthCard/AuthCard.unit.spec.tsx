@@ -25,7 +25,7 @@ describe("AuthCard", () => {
 
     renderWithProviders(<AuthCard {...props} />);
     await userEvent.click(screen.getByLabelText("ellipsis icon"));
-    await screen.findByRole("dialog");
+    await screen.findByRole("menu");
     await userEvent.click(screen.getByText("Pause"));
 
     expect(props.onChange).toHaveBeenCalledWith(false);
@@ -39,7 +39,7 @@ describe("AuthCard", () => {
 
     renderWithProviders(<AuthCard {...props} />);
     await userEvent.click(screen.getByLabelText("ellipsis icon"));
-    await screen.findByRole("dialog");
+    await screen.findByRole("menu");
     await userEvent.click(screen.getByText("Resume"));
 
     expect(props.onChange).toHaveBeenCalledWith(true);
@@ -53,7 +53,7 @@ describe("AuthCard", () => {
 
     renderWithProviders(<AuthCard {...props} />);
     await userEvent.click(screen.getByLabelText("ellipsis icon"));
-    await screen.findByRole("dialog");
+    await screen.findByRole("menu");
     await userEvent.click(screen.getByText("Deactivate"));
     await userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
 

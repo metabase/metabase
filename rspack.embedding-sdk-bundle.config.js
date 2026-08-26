@@ -8,6 +8,9 @@ const BundleAnalyzerPlugin =
 const prefixwrap = require("postcss-prefixwrap");
 
 const mainConfig = require("./rspack.main.config");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
 const { resolve } = require("path");
 const path = require("path");
 
@@ -22,6 +25,9 @@ const {
 } = require("./frontend/build/embedding-sdk/rspack/shared");
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const {
   EXTERNAL_DEPENDENCIES,
 } = require("./frontend/build/embedding-sdk/constants/external-dependencies");
@@ -56,6 +62,12 @@ const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
 
 // Name prefix for all chunked-entry output files (runtime, split chunks, entry)
 const CHUNKED_PREFIX = "embedding-sdk-chunk";
+
+// The chunked entry's own chunks: the entry, its runtime and the pieces
+// splitChunks carves out of them. Excludes the legacy monolithic entry, the
+// bootstrap, and every on-demand chunk.
+const isChunkedEntryChunk = (chunk) =>
+  (chunk.name || "").startsWith(CHUNKED_PREFIX);
 
 const config = {
   ...mainConfig,
@@ -108,6 +120,7 @@ const config = {
 
   module: {
     rules: [
+      SIDE_EFFECT_FREE_RULE,
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
@@ -205,28 +218,57 @@ const config = {
     // but leave the legacy monolithic entry as a single file.
     splitChunks: {
       chunks: (chunk) => {
-        // Only split chunks that belong to the chunked entry
-        // (the entry itself + its runtime). Never split the legacy
-        // monolithic "embedding-sdk" or the bootstrap.
-        const name = chunk.name || "";
-        return name.startsWith(CHUNKED_PREFIX);
+        // Split chunks that belong to the chunked entry (the entry itself +
+        // its runtime), plus the on-demand (async) chunks, so modules shared
+        // by several async chunks are deduplicated instead of copied into
+        // each one. Never split the legacy monolithic "embedding-sdk" or the
+        // bootstrap.
+        return isChunkedEntryChunk(chunk) || !chunk.canBeInitial();
       },
       // Keep chunk count low (~10-12) so HTTP/1.1 clients (no reverse proxy)
       // can load them in 1-2 waves (6 connections per domain).
       // maxSize is the primary lever — larger maxSize = fewer chunks.
       maxInitialRequests: 10,
+      // Same ceiling for an on-demand load. Not binding today (a chart needs
+      // its own chunk plus a shared one); it caps how far the split can go if
+      // more lazy entry points are added, at the cost of duplicating again.
+      maxAsyncRequests: 10,
       maxSize: 5_000_000,
       minSize: 100_000,
+      // The groups below are told apart by their `chunks` filter, not by size
+      // or test, so the priorities are what keep a module out of the wrong one.
       cacheGroups: {
         vendors: {
           test: /[\\/]node_modules[\\/]/,
+          // Only the chunked entry's own (initial) chunks: giving async
+          // modules the "vendor" name would merge them into the eagerly
+          // loaded vendor chunks and grow the initial payload.
+          chunks: isChunkedEntryChunk,
           // Use a fixed name prefix so rspack merges vendors into a few chunks
           // (governed by maxSize) rather than one-per-package.
           name: "vendor",
+          priority: 10,
+          reuseExistingChunk: true,
+        },
+        // Modules shared by two or more async chunks (e.g. echarts, pulled in
+        // by every lazily loaded chart) move into a shared async chunk that
+        // loads alongside whichever chart chunk needs it first.
+        asyncCommons: {
+          chunks: "async",
+          minChunks: 2,
+          // Deliberately below the 100 kb the other groups inherit. echarts
+          // clears that bar on its own, but the viz code the chart chunks
+          // share does not, and would stay duplicated across all of them.
+          minSize: 20_000,
+          // No fixed name: rspack derives one per set of sharing chunks, so a
+          // table or scalar chart does not end up loading echarts.
+          priority: 5,
           reuseExistingChunk: true,
         },
         default: {
           minChunks: 1,
+          chunks: isChunkedEntryChunk,
+          priority: 0,
           reuseExistingChunk: true,
         },
       },
@@ -234,6 +276,7 @@ const config = {
   },
 
   plugins: [
+    ...bundleStatsPlugins("stats-embedding-sdk.json"),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
     // https://github.com/remarkjs/remark/discussions/903
@@ -349,6 +392,31 @@ const config = {
         );
       },
     },
+    // Stop `.hot-update` files for the sdk being written to the disk. HMR doesn't work for the SDK bundle anyway
+    {
+      name: "drop-sdk-hot-update-assets",
+      apply(compiler) {
+        compiler.hooks.compilation.tap(
+          "drop-sdk-hot-update-assets",
+          (compilation) => {
+            compilation.hooks.processAssets.tap(
+              {
+                name: "drop-sdk-hot-update-assets",
+                // Run last, after the HMR plugin has emitted the deltas.
+                stage: rspack.Compilation.PROCESS_ASSETS_STAGE_REPORT,
+              },
+              (assets) => {
+                for (const name of Object.keys(assets)) {
+                  if (name.includes(".hot-update.")) {
+                    compilation.deleteAsset(name);
+                  }
+                }
+              },
+            );
+          },
+        );
+      },
+    },
     shouldAnalyzeBundles &&
       new BundleAnalyzerPlugin({
         analyzerMode: "static",
@@ -364,9 +432,6 @@ config.resolve.alias = {
   "sdk-iframe-embedding-ee-plugins":
     ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
   "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
-
-  // Allows importing side effects that applies only to the SDK.
-  "sdk-specific-imports": SDK_BUNDLE_SRC_PATH + "/lib/sdk-specific-imports.ts",
 };
 
 if (config.cache) {

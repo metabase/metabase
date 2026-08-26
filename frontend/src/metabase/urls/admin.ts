@@ -136,6 +136,10 @@ export function dataModelSegmentRevisions(segmentId: SegmentId) {
   return `${dataModelSegment(segmentId)}/revisions`;
 }
 
+export function generalSettings() {
+  return "/admin/settings/general";
+}
+
 export function uploadsSettings() {
   return "/admin/settings/uploads";
 }
@@ -160,45 +164,18 @@ export function customVizDev() {
   return `${customViz()}/development`;
 }
 
-export function adminToolsHelp() {
-  return "/admin/tools/help";
+export function adminHelp() {
+  return "/admin/help";
 }
 
-export function adminToolsTasksBase() {
-  return "/admin/tools/tasks";
-}
-export function adminToolsTasksList() {
-  return `${adminToolsTasksBase()}/list`;
+export function adminHelpGrantAccess() {
+  return `${adminHelp()}/grant-access`;
 }
 
-export function adminToolsTaskDetails(taskId: number) {
-  return `${adminToolsTasksList()}/${taskId}`;
+export function adminAiSettings() {
+  return "/admin/metabot";
 }
 
-export function adminToolsTasksRuns() {
-  return `${adminToolsTasksBase()}/runs`;
-}
-
-export function adminToolsTaskRunDetails(runId: number) {
-  return `${adminToolsTasksRuns()}/${runId}`;
-}
-
-export function adminToolsJobs() {
-  return "/admin/tools/jobs";
-}
-
-export function adminToolsLogs() {
-  return "/admin/tools/logs";
-}
-
-export function adminToolsErrors() {
-  return "/admin/tools/errors";
-}
-
-export function adminToolsModelCaching() {
-  return "/admin/tools/model-caching";
-}
-
-export function adminToolsGrantAccess() {
-  return "/admin/tools/help/grant-access";
+export function adminMcpSettings() {
+  return `${adminAiSettings()}/mcp`;
 }

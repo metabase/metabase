@@ -1,16 +1,11 @@
-import { unifiedMergeView } from "@codemirror/merge";
 import { useDisclosure } from "@mantine/hooks";
-import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
-import { useContext, useMemo, useState } from "react";
-import { push } from "react-router-redux";
+import { useContext, useEffect, useState } from "react";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useLazyGetTransformQuery } from "metabase/api";
-import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { MetabotContext } from "metabase/metabot/context";
 import {
   type MetabotAgentDataPartMessage,
@@ -19,8 +14,8 @@ import {
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
@@ -43,47 +38,13 @@ import type {
 } from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
+import {
+  SuggestionPreviewContent,
+  loadSuggestionPreview,
+} from "./lazySuggestionPreviewContent";
 
 export type SuggestionMessage = Omit<MetabotAgentDataPartMessage, "part"> & {
-  part: Extract<MetabotDataPart, { type: "transform_suggestion" }>;
-};
-
-const PreviewContent = ({
-  oldSource,
-  newSource,
-}: {
-  oldSource: string;
-  newSource: string;
-}) => {
-  const extensions = useMemo(
-    () =>
-      _.compact([
-        oldSource &&
-          unifiedMergeView({
-            original: oldSource,
-            mergeControls: false,
-            collapseUnchanged: {
-              margin: 1,
-              minSize: 1,
-            },
-          }),
-      ]),
-    [oldSource],
-  );
-
-  return (
-    <CodeMirror
-      className={cx(
-        EditorS.editor,
-        S.suggestionEditor,
-        !oldSource && S.suggestionEditorOnlyNew,
-      )}
-      extensions={extensions}
-      value={newSource}
-      readOnly
-      autoCorrect="off"
-    />
-  );
+  part: Extract<MetabotDataPart, { type: "data-transform_suggestion" }>;
 };
 
 const useGetOldTransform = ({
@@ -119,6 +80,7 @@ export const AgentSuggestionMessage = ({
   readonly?: boolean;
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const metadata = useSelector(getMetadata);
   const { suggestionActions } = useContext(MetabotContext);
   const { sendErrorToast } = useMetadataToasts();
@@ -126,7 +88,7 @@ export const AgentSuggestionMessage = ({
   const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
 
   const suggestedTransform: MetabotSuggestedTransform = {
-    ...message.part.value,
+    ...message.part.data,
     active: true,
     suggestionId: message.metadata?.suggestionId ?? message.id,
   };
@@ -164,6 +126,21 @@ export const AgentSuggestionMessage = ({
     error,
   } = useGetOldTransform({ editorTransform, suggestedTransform });
 
+  // The preview is a separate chunk. Waiting for it inside the existing
+  // "Loading preview" state means one loading state rather than two in a row.
+  const [isPreviewLoaded, setIsPreviewLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    loadSuggestionPreview().then(() => {
+      if (!cancelled) {
+        setIsPreviewLoaded(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const oldSource = originalTransform
     ? getSourceCode(originalTransform, metadata)
     : "";
@@ -190,14 +167,14 @@ export const AgentSuggestionMessage = ({
       return;
     }
 
-    dispatch(push(getTransformUrl(suggestedTransform)) as UnknownAction);
+    navigate(getTransformUrl(suggestedTransform));
   };
 
   return (
     <Paper
       shadow="none"
       radius="md"
-      bg="background-primary"
+      bg="background_page-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
@@ -213,7 +190,7 @@ export const AgentSuggestionMessage = ({
           <Text size="sm">{suggestedTransform.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">
-          <Text size="sm" c={isNew ? "saturated-blue" : "text-secondary"}>
+          <Text size="sm" c={isNew ? "core-blue-saturated" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
           <Flex align="center" justify="center" h="md" w="md">
@@ -227,22 +204,25 @@ export const AgentSuggestionMessage = ({
         transitionDuration={0}
         transitionTimingFunction="linear"
       >
-        {match({ isLoading, error })
+        {match({ isLoading: isLoading || !isPreviewLoaded, error })
           .with({ error: P.not(P.nullish) }, () => (
             <Flex
               p="md"
-              bg="background-secondary"
+              bg="background_page-secondary"
               justify="center"
               align="center"
               gap="sm"
             >
-              <Text mb="1px" c="danger">{t`Failed to load preview`}</Text>
+              <Text
+                mb="1px"
+                c="feedback-negative"
+              >{t`Failed to load preview`}</Text>
             </Flex>
           ))
           .with({ isLoading: true }, () => (
             <Flex
               p="md"
-              bg="background-secondary"
+              bg="background_page-secondary"
               justify="center"
               align="center"
               gap="sm"
@@ -252,7 +232,10 @@ export const AgentSuggestionMessage = ({
             </Flex>
           ))
           .with({ isLoading: false }, () => (
-            <PreviewContent oldSource={oldSource} newSource={newSource} />
+            <SuggestionPreviewContent
+              oldSource={oldSource}
+              newSource={newSource}
+            />
           ))
           .exhaustive()}
 
@@ -262,7 +245,7 @@ export const AgentSuggestionMessage = ({
           align="center"
           justify="space-between"
           style={{
-            borderTop: opened ? `1px solid var(--mb-color-border)` : "",
+            borderTop: opened ? `1px solid var(--mb-color-border-neutral)` : "",
           }}
         >
           <Flex
@@ -278,7 +261,9 @@ export const AgentSuggestionMessage = ({
                 variant="subtle"
                 fw="normal"
                 fz="sm"
-                c={canApply && !readonly ? "success" : "text-tertiary"}
+                c={
+                  canApply && !readonly ? "feedback-positive" : "text-disabled"
+                }
                 disabled={!canApply || readonly}
                 onClick={handleApply}
               >

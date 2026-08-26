@@ -1,0 +1,7 @@
+.searchResultsList {
+  overflow: hidden;
+}
+
+.resultsContainer {
+  overflow-y: auto;
+}

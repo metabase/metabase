@@ -28,6 +28,17 @@ export function load(app) {
       .map(([key, value]) => `${key}: ${value}`)
       .join("\n");
 
-    page.contents = `---\n${yamlItems}\n---\n\n${page.contents}`;
+    // Generate a redirect_from for the parallel `embedding/api/<Name>` path.
+    // Snippets in `sdk/api/snippets/*.md` link with relative `./api/X.md`; when
+    // included into a doc outside `sdk/` (e.g. `embedding/parameters.md`),
+    // that resolves to `embedding/api/X` instead of `embedding/sdk/api/X`.
+    // The redirect makes those URLs resolve via 301 instead of 404'ing.
+    const pageName = page.url.replace(/\.html$/, "");
+    const redirectBlock =
+      pageName && pageName !== "index"
+        ? `\nredirect_from:\n  - /docs/latest/embedding/api/${pageName}`
+        : "";
+
+    page.contents = `---\n${yamlItems}${redirectBlock}\n---\n\n${page.contents}`;
   });
 }

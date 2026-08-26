@@ -1,7 +1,8 @@
-import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase/redux/store/visualizer";
+import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
 import { isCartesianChart } from "metabase/visualizations";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
+import { getSeriesWithDisplay } from "metabase/visualizations/lib/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getDefaultDimensionFilter,
@@ -106,19 +107,19 @@ function pickColumns(
 export function getInitialStateForCardDataSource(
   card: Card,
   dataset: Dataset,
-): VisualizerVizDefinitionWithColumnsAndFallbacks {
+): VisualizerVizDefinitionWithColumnsAndPreloadedDatasets {
   const {
     data: { cols: originalColumns },
   } = dataset;
 
-  const state: VisualizerVizDefinitionWithColumnsAndFallbacks = {
+  const state: VisualizerVizDefinitionWithColumnsAndPreloadedDatasets = {
     display: isVisualizerSupportedVisualization(card.display)
       ? card.display
       : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
     settings: {},
-    datasetFallbacks: { [card.id]: dataset },
+    preloadedDatasets: { [card.id]: dataset },
   };
 
   const dataSource = createDataSource("card", card.id, card.name);
@@ -158,15 +159,15 @@ export function getInitialStateForCardDataSource(
   }
 
   const computedSettings: ComputedVisualizationSettings =
-    getComputedSettingsForSeries([
-      {
-        ...dataset,
-        // Using state.display to get viz settings
-        // relevant to a new visualization vs. original card
-        // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
-        card: { ...card, display: state.display ?? card.display },
-      },
-    ]);
+    getComputedSettingsForSeries(
+      // Using state.display to get viz settings
+      // relevant to a new visualization vs. original card
+      // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
+      getSeriesWithDisplay(
+        [{ ...dataset, card }],
+        state.display ?? card.display,
+      ),
+    );
 
   const columnsToRefs: Record<string, string> = {};
   const columns = pickColumns(card.display, originalColumns, computedSettings);

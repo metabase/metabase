@@ -180,7 +180,7 @@
 
     ;; this should not happen (and cannot happen in CLJ land)
     ;; but it does seem to happen in JS land with broken MLv1 queries
-    (do (log/error "with-join-value should not be called with" (pr-str field-or-join))
+    (do (log/error "with-join-value should not be called with this type of value")
         field-or-join)))
 
 (mu/defn maybe-resolve-join :- [:maybe ::lib.schema.join/join]
@@ -371,10 +371,7 @@
                                                                                                     (with-join-alias field-ref nil))]
                                                (when-not (:metabase.lib.field.resolution/fallback-metadata? resolved)
                                                  resolved))
-                                             (log/debugf "Failed to find matching column in join %s for ref %s, found:\n%s"
-                                                         (pr-str join-alias)
-                                                         (pr-str field-ref)
-                                                         (pr-str (map (juxt :id :lib/join-alias :lib/source-column-alias) cols))))]
+                                             (log/debug "Failed to find matching column in join for ref"))]
 
                         :when     (and match
                                        (not (false? (:active match))))]
@@ -514,6 +511,45 @@
                                                   identity))
                                           fields)))]
     (u/assoc-dissoc joinable :fields fields)))
+
+(defn- stranded-join-refs
+  "Refs in `a-join`'s conditions or exposed `:fields` that point at source columns missing from `cols` (a proposed new
+  source projection). Non-empty means narrowing the source to `cols` would leave the join referencing columns its
+  subquery no longer returns."
+  [a-join cols]
+  (let [join-alias (:alias a-join)
+        field-refs (when (sequential? (:fields a-join))
+                     (:fields a-join))
+        cond-refs  (when join-alias
+                     (match/match-many (:conditions a-join)
+                       [:field (opts :guard (= (:join-alias opts) join-alias)) _] &match))]
+    (into []
+          (remove (fn [a-ref]
+                    (lib.equality/find-matching-column
+                     (lib.options/update-options a-ref dissoc :join-alias :source-field) cols)))
+          (concat field-refs cond-refs))))
+
+(mu/defn with-join-source-fields :- ::lib.join.util/partial-join
+  "Set the `:fields` projection on the join's source subquery (the first stage of `a-join`). `cols` is a coll of
+  column metadatas from the source Table or Card; `nil`/empty dissocs, reverting to implicit-all.
+
+  Throws if the join's first stage is not an MBQL stage, or if narrowing the source to `cols` would strand a column the
+  join still references in its conditions or its exposed `:fields`.
+
+  For what the join EXPOSES to its outer stage, see [[with-join-fields]]."
+  [a-join :- ::lib.join.util/partial-join
+   cols   :- [:maybe [:sequential some?]]] ; ideally [:sequential ::lib.schema.metadata/column]
+  (let [first-stage-type (-> a-join :stages first :lib/type)]
+    (when-not (= :mbql.stage/mbql first-stage-type)
+      (throw (ex-info "with-join-source-fields requires the join's first stage to be an MBQL stage"
+                      {:first-stage-type first-stage-type
+                       :join             a-join}))))
+  (let [refs (not-empty (mapv lib.ref/ref cols))]
+    (when refs
+      (when-let [stranded (not-empty (stranded-join-refs a-join cols))]
+        (throw (ex-info "with-join-source-fields would strand references the join still needs"
+                        {:join a-join, :cols cols, :stranded stranded}))))
+    (update-in a-join [:stages 0] u/assoc-dissoc :fields refs)))
 
 (defn- select-home-column
   [home-cols cond-fields]
@@ -1045,7 +1081,13 @@
     (case j-fields
       :all        (map #(assoc % :selected? true))
       (:none nil) (map #(assoc % :selected? false))
-      (mapcat #(lib.equality/mark-selected-columns [%] j-fields)))))
+      ;; Per-column check against `j-fields` avoids the spurious
+      ;; "N refs are selected, but we found 1 matches" warning that
+      ;; `mark-selected-columns` emits when given a single column and many refs.
+      (map (fn [col]
+             (assoc col :selected?
+                    (boolean (some #(lib.equality/find-matching-column nil -1 % [col])
+                                   j-fields))))))))
 
 (def ^:private xform-fix-source-for-joinable-columns
   (map #(assoc % :lib/source :source/joins)))
@@ -1194,8 +1236,15 @@
                stage-number (lib.util/canonical-stage-index query stage-number)
                available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
                available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
-               sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
-               sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+               ;; `:default` (the explicit "Don't bin" state) isn't listed in
+               ;; `available-temporal-buckets`, but it should still propagate — a join needs both
+               ;; sides bucketed the same way. Accept it alongside `nil` and the available units.
+               sync-lhs? (or (nil? unit)
+                             (= :default unit)
+                             (contains? (set (map :unit available-lhs)) unit))
+               sync-rhs? (or (nil? unit)
+                             (= :default unit)
+                             (contains? (set (map :unit available-rhs)) unit))]
            (cond-> join-condition
              sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
              sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))))

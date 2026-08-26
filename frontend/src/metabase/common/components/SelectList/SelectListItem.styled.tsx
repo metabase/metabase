@@ -7,6 +7,7 @@ import { Text, type TextProps } from "metabase/ui";
 
 import { EntityIcon } from "../EntityIcon";
 
+// Unjustified type cast. FIXME
 export const ItemTitle = styled(Text)<TextProps>`
   margin: 0;
   word-break: break-word;
@@ -14,11 +15,11 @@ export const ItemTitle = styled(Text)<TextProps>`
 
 export const ItemIcon = styled(EntityIcon)`
   justify-self: end;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 const activeItemCss = css`
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
 
   ${ItemIcon},
   ${ItemTitle} {

@@ -1,3 +1,16 @@
+.documentHeader {
+  align-items: flex-start;
+  background-color: var(--mb-color-background-primary);
+  gap: var(--mantine-spacing-md);
+  justify-content: space-between;
+  margin-bottom: var(--mantine-spacing-md);
+  margin-inline: auto;
+  margin-top: var(--mantine-spacing-xl);
+  max-width: 56.25rem;
+  padding-top: var(--mantine-spacing-xl);
+  width: 100%;
+}
+
 .titleInput {
   border: none !important;
   padding: 0 !important;
@@ -14,7 +27,14 @@
   flex-shrink: 0;
 
   .commentsIcon:hover {
-    color: var(--mb-color-text-hover);
-    background-color: var(--mb-color-background-hover);
+    color: var(--mb-color-text-brand-hover);
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}
+
+@media print {
+  .documentHeader {
+    max-width: none;
+    margin-inline: 0;
   }
 }

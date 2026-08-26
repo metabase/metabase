@@ -1,0 +1,68 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Per-mount component usage event for the Metabase Embedding SDK",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "embedding_sdk",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "component": {
+      "description": "Name of the SDK component that was mounted. Null for provider-init beacon events.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "properties": {
+      "description": "Component-specific dimension values captured at mount time. Null for provider-init beacon events.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "description": "String or null value for a tracked component property dimension.",
+        "type": [
+          "string",
+          "null"
+        ],
+        "maxLength": 1024
+      }
+    },
+    "global": {
+      "description": "Session-level flags repeated on each event.",
+      "type": "object",
+      "properties": {
+        "auth_method": {
+          "description": "Authentication method used for the embedding. `session` (reuses the current Metabase user session from the cookie) is not applicable to the SDK — SDK users are always pre-authenticated via API key or SSO.",
+          "type": "string",
+          "enum": [
+            "api_key",
+            "sso",
+            "guest"
+          ],
+          "maxLength": 1024
+        },
+        "sdk_version": {
+          "description": "SDK package version string.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 1024
+        },
+        "locale_used": {
+          "description": "Whether the consumer set an explicit locale.",
+          "type": "boolean"
+        }
+      },
+      "required": ["auth_method", "sdk_version", "locale_used"],
+      "additionalProperties": true
+    }
+  },
+  "required": ["global"],
+  "additionalProperties": false
+}

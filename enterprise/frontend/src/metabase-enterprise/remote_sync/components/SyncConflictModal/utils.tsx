@@ -3,7 +3,12 @@ import { t } from "ttag";
 
 import type { RemoteSyncConflictVariant } from "metabase-types/api";
 
-export type OptionValue = "push" | "force-push" | "new-branch" | "discard";
+export type OptionValue =
+  | "push"
+  | "force-push"
+  | "new-branch"
+  | "merge"
+  | "discard";
 
 export const getContinueButtonText = (optionValue?: OptionValue) => {
   switch (optionValue) {
@@ -11,6 +16,8 @@ export const getContinueButtonText = (optionValue?: OptionValue) => {
     case "force-push":
     case "new-branch":
       return t`Push changes`;
+    case "merge":
+      return t`Merge changes`;
     case "discard":
       return t`Delete unsynced changes`;
     default:
@@ -20,12 +27,19 @@ export const getContinueButtonText = (optionValue?: OptionValue) => {
 
 export const getModalTitle = (
   variant: RemoteSyncConflictVariant,
+  canMerge?: boolean,
 ): ReactNode => {
   switch (variant) {
     case "push":
-      return (
+      // The push variant is shown when the remote branch has advanced. When the changes can be merged
+      // cleanly we frame it as new remote changes; otherwise we call out the conflict.
+      return canMerge ? (
         <>
-          {t`Your branch is behind the remote branch.`}{" "}
+          {t`The remote branch has new changes.`} {t`What do you want to do?`}
+        </>
+      ) : (
+        <>
+          {t`Some of your changes conflict with the remote branch.`}{" "}
           {t`What do you want to do?`}
         </>
       );

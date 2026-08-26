@@ -1,0 +1,14 @@
+/* Size to content (no empty space for short strategies); cap at the viewport
+   and let the body scroll only when the content would overflow. */
+.content {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}

@@ -42,7 +42,7 @@
               body default-email-override-settings]
           (doseq [;; test what happens on both a successful and an unsuccessful connection.
                   [success? f] {true  (fn [thunk]
-                                        (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+                                        (mt/with-dynamic-fn-redefs [email/test-smtp-settings (constantly {::email/error nil})]
                                           (thunk)))
                                 false (fn [thunk]
                                         (with-redefs [email/retry-delay-ms 0]
@@ -75,12 +75,12 @@
         (testing "Updating values with obfuscated password (#23919)"
           (mt/with-temporary-setting-values [email-smtp-host-override "www.test.com"
                                              email-smtp-password-override "preexisting"]
-            (with-redefs [email/test-smtp-connection (fn [settings]
-                                                       (let [obfuscated? (str/starts-with? (:pass settings) "****")]
-                                                         (is (not obfuscated?) "We received an obfuscated password!")
-                                                         (if obfuscated?
-                                                           {::email/error (ex-info "Sent obfuscated password" {})}
-                                                           settings)))]
+            (mt/with-dynamic-fn-redefs [email/test-smtp-connection (fn [settings]
+                                                                     (let [obfuscated? (str/starts-with? (:pass settings) "****")]
+                                                                       (is (not obfuscated?) "We received an obfuscated password!")
+                                                                       (if obfuscated?
+                                                                         {::email/error (ex-info "Sent obfuscated password" {})}
+                                                                         settings)))]
               (testing "If we don't change the password we don't see the password"
                 (let [payload (-> (email-override-settings)
                                   ;; user changes one property
@@ -107,7 +107,7 @@
       (mt/with-premium-features [:cloud-custom-smtp]
         (tu/discard-setting-changes [email-smtp-host-override email-smtp-port-override email-smtp-security-override
                                      email-smtp-username-override email-smtp-password-override]
-          (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+          (mt/with-dynamic-fn-redefs [email/test-smtp-settings (constantly {::email/error nil})]
             (is (= (-> default-email-override-settings
                        (assoc :with-corrections {})
                        (update :email-smtp-security-override name))

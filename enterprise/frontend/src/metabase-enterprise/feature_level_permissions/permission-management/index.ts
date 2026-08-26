@@ -1,21 +1,18 @@
-import type {
-  EntityId,
-  PermissionSectionConfig,
-  PermissionSubject,
-  SpecialGroupType,
-} from "metabase/admin/permissions/types";
+import type { PermissionSectionConfig } from "metabase/admin/permissions/types";
 import { isNotNull } from "metabase/utils/types";
 import type {
   DataPermissionValue,
   Group,
   GroupsPermissions,
+  PermissionEntityId,
+  PermissionSubject,
+  SpecialGroupType,
 } from "metabase-types/api";
 
 import { buildDataModelPermission } from "./data-model-permission";
 import { buildDetailsPermission } from "./details-permission";
 import { buildDownloadPermission } from "./download-permission";
 import { buildTransformsPermission } from "./transforms-permission";
-import { buildWorkspacesPermission } from "./workspaces-permission";
 
 export const getFeatureLevelDataPermissions = ({
   entityId,
@@ -27,9 +24,8 @@ export const getFeatureLevelDataPermissions = ({
   permissionSubject,
   permissionView,
   showTransformPermissions = false,
-  showWorkspacesPermissions = false,
 }: {
-  entityId: EntityId;
+  entityId: PermissionEntityId;
   groupId: number;
   groupType: SpecialGroupType;
   permissions: GroupsPermissions;
@@ -38,7 +34,6 @@ export const getFeatureLevelDataPermissions = ({
   permissionSubject: PermissionSubject;
   permissionView?: "group" | "database";
   showTransformPermissions?: boolean;
-  showWorkspacesPermissions?: boolean;
 }): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
   const isExternal = groupType === "external";
@@ -88,22 +83,10 @@ export const getFeatureLevelDataPermissions = ({
       )
     : null;
 
-  const workspacesPermission = showWorkspacesPermissions
-    ? buildWorkspacesPermission(
-        entityId,
-        groupId,
-        isAdmin,
-        permissions,
-        defaultGroup,
-        permissionSubject,
-      )
-    : null;
-
   return [
     downloadPermission,
     dataModelPermission,
     detailsPermission,
     transformsPermission,
-    workspacesPermission,
   ].filter(isNotNull);
 };

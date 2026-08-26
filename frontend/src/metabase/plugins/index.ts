@@ -1,5 +1,4 @@
 // Re-export all plugins from OSS modules (excluding reinitialize functions to avoid conflicts)
-export { PLUGIN_API } from "./oss/api";
 export {
   PLUGIN_AUDIT,
   type InsightsLinkProps,
@@ -15,10 +14,23 @@ export {
 } from "./oss/auth";
 export {
   PLUGIN_CACHING,
+  PerformanceTabId,
+  defaultMinDurationMs,
+  doNotCacheStrategyValidationSchema,
+  getAdaptiveStrategyValidationSchema,
+  getPerformanceTabMetadata,
+  getPositiveIntegerSchema,
+  inheritStrategyValidationSchema,
+  isModelWithClearableCache,
+  strategies,
   type InvalidateNowButtonProps,
+  type MetricCachingModalProps,
+  type ModelWithClearableCache,
   type SidebarCacheSectionProps,
   type SidebarCacheFormProps,
   type PreemptiveCachingSwitchProps,
+  type StrategyData,
+  type StrategyLabel,
 } from "./oss/caching";
 export {
   PLUGIN_COLLECTIONS,
@@ -28,7 +40,10 @@ export {
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
 export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
-export { PLUGIN_CUSTOM_VIZ } from "./oss/custom-viz";
+export {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "./oss/custom-viz";
 export {
   PLUGIN_CONTENT_VERIFICATION,
   type ModelFilterControlsProps,
@@ -43,7 +58,6 @@ export {
   PLUGIN_REDUX_MIDDLEWARES,
   PLUGIN_LOGO_ICON_COMPONENTS,
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
-  PLUGIN_ADMIN_TOOLS,
   PLUGIN_SELECTORS,
   PLUGIN_FORM_WIDGETS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
@@ -59,15 +73,22 @@ export {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_TABLE_EDITING,
 } from "./oss/database";
+export { PLUGIN_DATA_APPS } from "./oss/data-apps";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
 export {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   type SdkIframeEmbedSetupModalProps,
   type SdkIframeEmbedSetupModalInitialState,
+  type SdkIframeEmbedSetupExperience,
+  type LegacyStaticEmbeddingModalProps,
 } from "./oss/embedding-iframe-sdk-setup";
 export { PLUGIN_EMBEDDING_SDK } from "./oss/embedding-sdk";
-export { PLUGIN_ENTITIES } from "./oss/entities";
+export {
+  PLUGIN_NOTIFICATIONS_SDK,
+  type DashboardSubscriptionsButtonProps,
+  type QuestionAlertsButtonProps,
+} from "./oss/notifications-sdk";
 export {
   PLUGIN_LIBRARY,
   type CollectionPermissionsModalProps,
@@ -80,6 +101,10 @@ export {
   type MetabaseAIProviderSetupProps,
 } from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
+export {
+  PLUGIN_MULTI_FACTOR_AUTH,
+  type AuthChallengeFormProps,
+} from "./oss/multi-factor-auth";
 export {
   PLUGIN_MODERATION,
   type RevisionOrModerationEvent,
@@ -104,6 +129,10 @@ export {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_GROUP_MANAGERS,
+  type PermissionAction,
+  type PermissionConfirmationProps,
+  type PermissionOption,
+  type PostActionFunction,
 } from "./oss/permissions";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export {
@@ -114,6 +143,7 @@ export {
   type SourceReplacementTriggeredFrom,
 } from "./oss/replacement";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
+export { PLUGIN_SCHEMA_VIEWER } from "./oss/schema-viewer";
 export {
   PLUGIN_SEMANTIC_SEARCH,
   type SearchSettingsWidgetProps,
@@ -125,6 +155,8 @@ export {
   type MoveSnippetModalProps,
   type SnippetCollectionPermissionsModalProps,
   type SnippetCollectionPickerModalProps,
+  type SnippetSidebarContext,
+  type SnippetSidebarMenuOption,
 } from "./oss/snippets";
 export {
   PLUGIN_TRANSFORMS,
@@ -138,21 +170,14 @@ export {
 export {
   PLUGIN_DEPENDENCIES,
   type DependencyGraphPageContextType,
-  type CheckDependenciesFormProps,
-  type CheckDependenciesModalProps,
-  type UseCheckDependenciesProps,
-  type UseCheckDependenciesResult,
 } from "./oss/dependencies";
+export { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "./oss/monitor";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
 export {
   PLUGIN_WRITABLE_CONNECTION,
   type WritableConnectionInfoSectionProps,
 } from "./oss/writable-connection";
-export {
-  PLUGIN_WORKSPACES,
-  type AdminConnectionInfoSectionProps,
-} from "./oss/workspaces";
 export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
@@ -166,11 +191,9 @@ export type {
   SyncedCollectionsSidebarSectionProps,
 } from "./types";
 
-// Export a single reinitialize function that calls all individual reinitialize functions
-import { reinitialize as reinitializeNotificationsSdk } from "../../embedding-sdk-bundle/components/public/notifications";
+import { reinitializeRequestHandlers } from "metabase/api/client";
 
 import { reinitialize as reinitializeAiControls } from "./oss/ai-controls";
-import { reinitialize as reinitializeApi } from "./oss/api";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
 import { reinitialize as reinitializeAuth } from "./oss/auth";
 import { reinitialize as reinitializeCaching } from "./oss/caching";
@@ -179,21 +202,25 @@ import { reinitialize as reinitializeContentTranslation } from "./oss/content-tr
 import { reinitialize as reinitializeContentVerification } from "./oss/content-verification";
 import { reinitialize as reinitializeCore } from "./oss/core";
 import { reinitialize as reinitializeCustomViz } from "./oss/custom-viz";
+import { reinitialize as reinitializeDataApps } from "./oss/data-apps";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
 import { reinitialize as reinitializeDependencies } from "./oss/dependencies";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
 import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
 import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embedding-iframe-sdk-setup";
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
-import { reinitialize as reinitializeEntities } from "./oss/entities";
 import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
+import { reinitialize as reinitializeMonitor } from "./oss/monitor";
+import { reinitialize as reinitializeMultiFactorAuth } from "./oss/multi-factor-auth";
+import { reinitialize as reinitializeNotificationsSdk } from "./oss/notifications-sdk";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeReplacement } from "./oss/replacement";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
+import { reinitialize as reinitializeSchemaViewer } from "./oss/schema-viewer";
 import { reinitialize as reinitializeSecurityCenter } from "./oss/security-center";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
 import { reinitialize as reinitializeSettings } from "./oss/settings";
@@ -204,7 +231,6 @@ import { reinitialize as reinitializeTenants } from "./oss/tenants";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
-import { reinitialize as reinitializeWorkspaces } from "./oss/workspaces";
 import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
 /**
  * Mostly for test purposes, reinitialize all plugins.
@@ -215,7 +241,7 @@ export function reinitialize() {
   reinitializeNotificationsSdk();
 
   reinitializeAiControls();
-  reinitializeApi();
+  reinitializeRequestHandlers();
   reinitializeAudit();
   reinitializeAuth();
   reinitializeCaching();
@@ -224,20 +250,23 @@ export function reinitialize() {
   reinitializeContentVerification();
   reinitializeCore();
   reinitializeCustomViz();
+  reinitializeDataApps();
   reinitializeDatabase();
   reinitializeEmbedding();
   reinitializeEmbeddingIframeSdk();
   reinitializeEmbeddingIframeSdkSetup();
   reinitializeEmbeddingSdk();
-  reinitializeEntities();
   reinitializeLibrary();
   reinitializeMetabot();
   reinitializeModelPersistence();
   reinitializeModeration();
+  reinitializeMonitor();
+  reinitializeMultiFactorAuth();
   reinitializePermissions();
   reinitializeRemoteSync();
   reinitializeReplacement();
   reinitializeResourceDownloads();
+  reinitializeSchemaViewer();
   reinitializeSecurityCenter();
   reinitializeSemanticSearch();
   reinitializeSettings();
@@ -249,6 +278,5 @@ export function reinitialize() {
   reinitializeTransforms();
   reinitializeUploadManagement();
   reinitializeWhitelabel();
-  reinitializeWorkspaces();
   reinitializeWritableConnection();
 }

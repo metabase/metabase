@@ -10,7 +10,6 @@ type Settings = {
 
 const createVisualization: CreateCustomVisualization<Settings> = ({
   defineSetting,
-  getAssetUrl,
 }) => {
   const VisualizationComponent = ({
     height,
@@ -41,18 +40,13 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
           height: "100%",
         }}
       >
-        <img
-          alt={meetsThreshold ? "Above threshold" : "Below threshold"}
-          src={
-            meetsThreshold
-              ? getAssetUrl("thumbs-up.png")
-              : getAssetUrl("thumbs-down.png")
-          }
-          style={{
-            height: finalHeight,
-            width: "auto",
-          }}
-        />
+        <div
+          role="img"
+          aria-label={meetsThreshold ? "Above threshold" : "Below threshold"}
+          style={{ fontSize: finalHeight, lineHeight: 1 }}
+        >
+          {meetsThreshold ? "👍" : "👎"}
+        </div>
       </div>
     );
   };

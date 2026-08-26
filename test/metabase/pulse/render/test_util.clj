@@ -19,11 +19,29 @@
    [metabase.query-processor.test :as qp]
    [toucan2.core :as t2])
   (:import
+   (java.awt.image BufferedImage)
+   (java.io ByteArrayOutputStream)
+   (javax.imageio ImageIO)
    (org.apache.batik.anim.dom SVGOMDocument AbstractElement$ExtendedNamedNodeHashMap)
    (org.apache.batik.dom GenericText)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
+
+(defn blank-tile-png
+  "A blank 256×256 PNG tile, as bytes — a stand-in basemap tile for static map render tests."
+  ^bytes []
+  (let [img (BufferedImage. 256 256 BufferedImage/TYPE_INT_RGB)
+        out (ByteArrayOutputStream.)]
+    (ImageIO/write img "png" out)
+    (.toByteArray out)))
+
+(defn fake-tile-routes
+  "clj-http fake-routes map serving [[blank-tile-png]] for any tile URL matching `url-pattern`."
+  [url-pattern]
+  {url-pattern (constantly {:status  200
+                            :headers {}
+                            :body    (blank-tile-png)})})
 
 (def test-card
   {:id 1

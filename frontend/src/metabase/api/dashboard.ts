@@ -1,11 +1,13 @@
-import { PLUGIN_API } from "metabase/plugins";
-import { DashboardSchema, QueryMetadataSchema } from "metabase/schema";
+import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
   Dashboard,
+  DashboardCardQueryRequest,
   DashboardId,
+  DashboardParameterValuesRequest,
   DashboardQueryMetadata,
+  Dataset,
   FieldId,
   FieldValue,
   GetDashboardQueryMetadataRequest,
@@ -18,16 +20,19 @@ import type {
   ListCollectionItemsResponse,
   ListDashboardsRequest,
   ListDashboardsResponse,
+  ParameterValues,
   SaveDashboardRequest,
+  SearchDashboardParameterValuesRequest,
   UpdateDashboardPropertyRequest,
   UpdateDashboardRequest,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { Api, type RtkCacheKeyed } from "./api";
 import {
   idTag,
   invalidateTags,
   listTag,
+  provideCardQueryTags,
   provideDashboardListTags,
   provideDashboardQueryMetadataTags,
   provideDashboardTags,
@@ -35,7 +40,7 @@ import {
   provideValidDashboardFilterFieldTags,
   tag,
 } from "./tags";
-import { hydrateLegacyEntities } from "./utils/hydrate-legacy-entities";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
 
 export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
@@ -70,17 +75,16 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboards) =>
           dashboards ? provideDashboardListTags(dashboards) : [],
-        onQueryStarted: hydrateLegacyEntities([DashboardSchema]),
       }),
       getDashboard: builder.query<Dashboard, GetDashboardRequest>({
-        query: ({ id, ignore_error }) => ({
+        query: ({ id, ignore_error, ...params }) => ({
           method: "GET",
           url: `/api/dashboard/${id}`,
+          params,
           noEvent: ignore_error,
         }),
         providesTags: (dashboard) =>
           dashboard ? provideDashboardTags(dashboard) : [],
-        onQueryStarted: hydrateLegacyEntities(DashboardSchema),
       }),
       getDashboardQueryMetadata: builder.query<
         DashboardQueryMetadata,
@@ -93,26 +97,78 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (metadata) =>
           metadata ? provideDashboardQueryMetadataTags(metadata) : [],
-        onQueryStarted: hydrateLegacyEntities(QueryMetadataSchema),
+        onQueryStarted: hydrateMetadataStore(QueryMetadataSchema),
+      }),
+      getDashboardCardQuery: builder.query<
+        Dataset,
+        DashboardCardQueryRequest & RtkCacheKeyed
+      >({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
+          method: "POST",
+          url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
+          body,
+        }),
+        providesTags: (_data, _error, { cardId }) =>
+          provideCardQueryTags(cardId),
+      }),
+      getDashboardCardQueryPivot: builder.query<
+        Dataset,
+        DashboardCardQueryRequest & RtkCacheKeyed
+      >({
+        query: ({ dashboardId, dashcardId, cardId, ...body }) => ({
+          method: "POST",
+          url: `/api/dashboard/pivot/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query`,
+          body,
+        }),
+        providesTags: (_data, _error, { cardId }) =>
+          provideCardQueryTags(cardId),
       }),
       getRemappedDashboardParameterValue: builder.query<
         FieldValue,
         GetRemappedDashboardParameterValueRequest
       >({
-        query: ({ dashboard_id, parameter_id, ...params }) => ({
+        query: ({ entityIdentifier, ...params }) => ({
           method: "GET",
-          url: PLUGIN_API.getRemappedDashboardParameterValueUrl(
-            dashboard_id,
-            parameter_id,
-          ),
+          url: "/api/dashboard/:dashId/params/:paramId/remapping",
+          // In an embed the override rewrites `:dashId` → `:entityIdentifier` and
+          // drops the real `dashId` from the params (see
+          // override-requests-for-embeds); a null `entityIdentifier` is omitted
+          // so it never reaches the querystring.
+          params: { ...params, ...(entityIdentifier && { entityIdentifier }) },
+        }),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
+      }),
+      getDashboardParameterValues: builder.query<
+        ParameterValues,
+        DashboardParameterValuesRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: "/api/dashboard/:dashId/params/:paramId/values",
           params,
         }),
-        providesTags: (_response, _error, { parameter_id }) =>
-          provideParameterValuesTags(parameter_id),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
+      }),
+      searchDashboardParameterValues: builder.query<
+        ParameterValues,
+        SearchDashboardParameterValuesRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: "/api/dashboard/:dashId/params/:paramId/search/:query",
+          params,
+        }),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
-        Omit<ListCollectionItemsRequest, "id"> & { id: DashboardId }
+        Omit<
+          ListCollectionItemsRequest,
+          "id" | "q" | "include_available_models"
+        > & { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({
           method: "GET",
@@ -163,6 +219,9 @@ export const dashboardApi = Api.injectEndpoints({
             tag("parameter-values"),
             listTag("revision"),
             listTag("subscription"),
+            // Archiving the dashboard the user has as their homepage clears the homepage server-side.
+            // getCurrentUser provides this tag, so invalidating it refetches the user.
+            idTag("user-homepage-dashboard", id),
           ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({
@@ -263,9 +322,13 @@ export const {
   useGetDashboardQuery,
   useLazyGetDashboardQuery,
   useGetDashboardQueryMetadataQuery,
+  useGetDashboardCardQueryQuery,
+  useGetDashboardCardQueryPivotQuery,
   useListDashboardsQuery,
   useListDashboardItemsQuery,
   useGetRemappedDashboardParameterValueQuery,
+  useGetDashboardParameterValuesQuery,
+  useSearchDashboardParameterValuesQuery,
   useGetValidDashboardFilterFieldsQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
@@ -280,6 +343,8 @@ export const {
   useUpdateDashboardEmbeddingParamsMutation,
   endpoints: {
     getDashboard,
+    getDashboardParameterValues,
+    searchDashboardParameterValues,
     deleteDashboardPublicLink,
     createDashboard,
     createDashboardPublicLink,

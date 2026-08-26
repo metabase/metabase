@@ -17,22 +17,30 @@
     min-height: 39px;
     padding: 8px 10px 6px 10px;
     border-radius: 6px;
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
 
     &.isOpen {
-      background-color: color-mix(in srgb, var(--mb-color-brand), white 10%);
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-core-brand),
+        white 10%
+      );
     }
 
     &:hover,
     &:focus {
-      background-color: color-mix(in srgb, var(--mb-color-brand), white 10%);
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-core-brand),
+        white 10%
+      );
     }
   }
 
   &.noColumnStyle {
     --no-column-style-alpha-color: color-mix(
       in srgb,
-      var(--mb-color-brand),
+      var(--mb-color-core-brand),
       white 45%
     );
 
@@ -43,12 +51,12 @@
     border-radius: 4px;
 
     &.isOpen {
-      border-color: var(--mb-color-brand);
+      border-color: var(--mb-color-core-brand);
     }
 
     &:hover,
     &:focus {
-      border-color: var(--mb-color-brand);
+      border-color: var(--mb-color-core-brand);
     }
   }
 }

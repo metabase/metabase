@@ -1,4 +1,8 @@
-import { getNextMilestone, setMilestoneForCommits } from "./milestones";
+import {
+  checkMilestoneForRelease,
+  getNextMilestone,
+  setMilestoneForCommits,
+} from "./milestones";
 import type { Milestone } from "./types";
 
 describe('milestones', () => {
@@ -96,6 +100,72 @@ describe('milestones', () => {
       })).resolves.toBeUndefined();
 
       expect(github.rest.issues.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('checkMilestoneForRelease', () => {
+    // string sentinels so paginate can dispatch on which rest endpoint it got
+    const listMilestones = 'listMilestones';
+    const listForRepo = 'listForRepo';
+    const listMatchingRefs = 'listMatchingRefs';
+
+    const buildGithub = ({
+      milestones = [{ number: 620, title: '0.62' }] as Milestone[],
+      tags = [] as { ref: string }[],
+    } = {}) => {
+      const rest = {
+        issues: { listMilestones, listForRepo },
+        git: { listMatchingRefs },
+        repos: { compareCommitsWithBasehead: jest.fn() },
+      };
+      const paginate = jest.fn((fn: unknown) => {
+        if (fn === listMilestones) return Promise.resolve(milestones);
+        if (fn === listMatchingRefs) return Promise.resolve(tags);
+        return Promise.resolve([]); // listForRepo -> no milestone issues
+      });
+      return { paginate, rest };
+    };
+
+    it('is a no-op for a pre-release, bailing before any API calls (a major .0 is always cut as a beta/RC)', async () => {
+      const github = buildGithub();
+
+      await expect(checkMilestoneForRelease({
+        github: github as any,
+        owner: 'metabase',
+        repo: 'metabase',
+        version: 'v0.62.0-beta',
+        commitHash: 'b36890cda1b4bd8009b3c416c071937273fe87dc',
+      })).resolves.toBeUndefined();
+
+      // never attempt the compare with an `undefined` base ref
+      expect(github.rest.repos.compareCommitsWithBasehead).not.toHaveBeenCalled();
+      // and bail before touching the API at all — not even the tag list
+      expect(github.paginate).not.toHaveBeenCalled();
+    });
+
+    it('safety net: skips when there is no prior stable tag in this major, without comparing against `undefined`', async () => {
+      // A stable .0 shouldn't happen by convention, but if one ever reaches
+      // here, getLastReleaseTag finds no stable base and we must not feed
+      // `undefined` into the compare API.
+      const github = buildGithub({
+        tags: [
+          { ref: 'refs/tags/v0.62.0-beta' },
+          { ref: 'refs/tags/v0.62.0-RC1' },
+        ],
+      });
+
+      await expect(checkMilestoneForRelease({
+        github: github as any,
+        owner: 'metabase',
+        repo: 'metabase',
+        version: 'v0.62.0',
+        commitHash: 'b36890cda1b4bd8009b3c416c071937273fe87dc',
+      })).resolves.toBeUndefined();
+
+      expect(github.rest.repos.compareCommitsWithBasehead).not.toHaveBeenCalled();
+      // only the tag list was queried, then we bailed before milestone lookups
+      expect(github.paginate).toHaveBeenCalledWith(listMatchingRefs, expect.anything());
+      expect(github.paginate).not.toHaveBeenCalledWith(listMilestones, expect.anything());
     });
   });
 });

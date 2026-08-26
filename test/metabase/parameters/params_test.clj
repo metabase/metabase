@@ -3,6 +3,9 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.params-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.params :as params]
    [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.test :as mt]
@@ -169,7 +172,8 @@
                                                                            :target  [:dimension
                                                                                      [:field "CATEGORY" {:base-type :type/Text}]
                                                                                      {:stage-number 2}]}]}]
-        (let [param-fields (-> (t2/hydrate dashboard :param_fields) :param_fields)]
+        (let [param-fields (lib-be/with-metadata-provider-cache
+                             (-> (t2/hydrate dashboard :param_fields) :param_fields))]
           (is (=? {"p1" [{:id (mt/id :products :id)}]
                    "p2" [{:id (mt/id :products :id)}]
                    "p3" [{:id (mt/id :products :id)}]
@@ -266,3 +270,44 @@
           (is (= #{(mt/id :orders :id)
                    (mt/id :products :id)}
                  (params/card->template-tag-field-ids card))))))))
+
+(deftest ^:parallel dashcards->param-field-ids-bulk-loads-metadata-test
+  (testing "name-based parameter targets are resolved via filterable-columns, whose metadata is bulk-loaded across all
+            the dashboard's cards up front instead of one card at a time (no N+1)"
+    (mt/dataset test-data
+      (let [mp             (mt/metadata-provider)
+            orders-query   (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            products-query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+        (mt/with-temp
+          [:model/Card          src1 {:database_id     (mt/id) :table_id (mt/id :orders)
+                                      :dataset_query   orders-query
+                                      :result_metadata (lib/returned-columns orders-query)}
+           :model/Card          agg1 {:database_id   (mt/id)
+                                      :dataset_query {:database (mt/id) :type :query
+                                                      :query    {:source-table (str "card__" (:id src1)) :aggregation [[:count]]}}}
+           :model/Card          src2 {:database_id     (mt/id) :table_id (mt/id :products)
+                                      :dataset_query   products-query
+                                      :result_metadata (lib/returned-columns products-query)}
+           :model/Card          agg2 {:database_id   (mt/id)
+                                      :dataset_query {:database (mt/id) :type :query
+                                                      :query    {:source-table (str "card__" (:id src2)) :aggregation [[:count]]}}}
+           :model/Dashboard     {dash-id :id} {}
+           :model/DashboardCard dc1 {:dashboard_id dash-id :card_id (:id agg1)
+                                     :parameter_mappings [{:parameter_id "p1" :card_id (:id agg1)
+                                                           :target [:dimension [:field "PRODUCT_ID" {:base-type :type/Integer}]]}]}
+           :model/DashboardCard dc2 {:dashboard_id dash-id :card_id (:id agg2)
+                                     :parameter_mappings [{:parameter_id "p2" :card_id (:id agg2)
+                                                           :target [:dimension [:field "CATEGORY" {:base-type :type/Text}]]}]}]
+          (let [dashcards (-> (t2/select :model/DashboardCard :id [:in [(:id dc1) (:id dc2)]])
+                              (t2/hydrate :card :series))]
+            ;; Each is a single set load, so this count is constant in the number of cards -- it must NOT grow with more
+            ;; dashcards/Cards/Tables (that would be the N+1 this preloading exists to prevent).
+            ;; - one bulk fetch of the source Cards
+            ;; - one bulk fetch of those Cards' result-metadata Fields
+            ;; - one bulk fetch of those Fields' FK targets
+            ;; - one bulk fetch of the FK-target Tables
+            ;; - one bulk fetch of those Tables' columns
+            (is (= 5 (lib-be/with-metadata-provider-cache
+                       (t2/with-call-count [call-count]
+                         (params/dashcards->param-field-ids dashcards)
+                         (call-count)))))))))))

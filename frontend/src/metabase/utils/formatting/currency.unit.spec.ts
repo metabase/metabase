@@ -51,6 +51,7 @@ describe("getCurrencySymbol", () => {
     ["NZD", "NZ$"],
     ["HKD", "HK$"],
     ["BTC", "₿"],
+    ["XPF", "CFPF"],
     ["OOPS", "OOPS"],
   ];
 

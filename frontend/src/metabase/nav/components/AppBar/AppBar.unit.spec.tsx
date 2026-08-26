@@ -6,8 +6,7 @@ import {
 } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import type { AppBarProps } from "./AppBar";
-import AppBar from "./AppBar";
+import { AppBar, type AppBarProps } from "./AppBar";
 
 function NewItemButtonMock() {
   return <div data-testid="new-button" />;
@@ -32,8 +31,6 @@ function QuestionLineageMock() {
 jest.mock("../NewItemButton", () => NewItemButtonMock);
 jest.mock("../search/SearchBar/SearchBar", () => SearchBarMock);
 jest.mock("../search/SearchButton/SearchButton", () => ({ SearchButton }));
-jest.mock("../../containers/CollectionBreadcrumbs", () => BreadcrumbsMock);
-jest.mock("../../containers/QuestionLineage", () => QuestionLineageMock);
 
 describe("AppBar", () => {
   let matchMediaSpy: jest.SpyInstance;
@@ -179,6 +176,8 @@ describe("AppBar", () => {
 const getProps = (opts?: Partial<AppBarProps>): AppBarProps => ({
   detailView: null,
   currentUser: createMockUser(),
+  collectionBreadcrumbs: <BreadcrumbsMock />,
+  questionLineage: <QuestionLineageMock />,
   onToggleNavbar: jest.fn(),
   onCloseNavbar: jest.fn(),
   ...opts,

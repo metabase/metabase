@@ -45,13 +45,13 @@ describe("getMcpChartTypes", () => {
     ).toEqual(["bar", "table"]);
   });
 
-  it("shows area instead of table when table is not visible", () => {
+  it("does not add a fallback chart for scalar results when table is not visible", () => {
     expect(
       getChartTypes({
-        defaultDisplay: "pie",
-        sensibleVisualizations: ["pie", "bar", "line"],
+        defaultDisplay: "scalar",
+        sensibleVisualizations: ["scalar"],
         canShowTable: false,
       }),
-    ).toEqual(["pie", "bar", "area"]);
+    ).toEqual(["scalar"]);
   });
 });

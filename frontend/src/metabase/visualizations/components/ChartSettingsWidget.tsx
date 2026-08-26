@@ -2,19 +2,23 @@ import cx from "classnames";
 import type { CSSProperties, ComponentType } from "react";
 
 import FormS from "metabase/css/components/form.module.css";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
+import type { WidgetMount } from "metabase-types/api";
 
-import { Root } from "./ChartSettingsWidget.styled";
+import S from "./ChartSettingsWidget.module.css";
+
+export type ChartSettingsWidgetVariant = "default" | "form-field";
 
 type Props = {
   title?: string;
   description?: string;
   hint?: string;
   hidden?: boolean;
-  widget?: string | ComponentType<{ id: string }>;
+  widget?: string | ComponentType<{ id: string }> | WidgetMount;
   inline?: boolean;
   props?: Record<string, unknown>;
-  variant?: "default" | "form-field";
+  variant?: ChartSettingsWidgetVariant;
   dataTestId?: string;
   id: string;
   style?: CSSProperties;
@@ -38,12 +42,13 @@ const ChartSettingsWidget = ({
 }: Props) => {
   const isFormField = variant === "form-field";
   return (
-    <Root
+    <Box
       hidden={hidden}
-      className={cx({
+      className={cx(S.root, {
         [FormS.FormField]: isFormField,
+        [S.inline]: inline && !hidden,
       })}
-      inline={inline}
+      mb="lg"
       data-testid={dataTestId ?? `chart-settings-widget-${extraWidgetProps.id}`}
       data-field-title={title}
       style={style}
@@ -53,7 +58,7 @@ const ChartSettingsWidget = ({
           <Text
             component="label"
             fw="bold"
-            fz={isFormField ? "0.88em" : undefined}
+            fz={isFormField ? "0.75rem" : undefined}
             lh={variant === "default" ? "normal" : "0.875rem"}
             htmlFor={extraWidgetProps.id}
           >
@@ -71,8 +76,16 @@ const ChartSettingsWidget = ({
           {description}
         </Box>
       )}
-      {Widget && <Widget {...extraWidgetProps} {...props} />}
-    </Root>
+      {Widget &&
+        (PLUGIN_CUSTOM_VIZ.isWidgetMount(Widget) ? (
+          <PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget
+            mount={Widget}
+            widgetProps={{ ...extraWidgetProps, ...props }}
+          />
+        ) : (
+          <Widget {...extraWidgetProps} {...props} />
+        ))}
+    </Box>
   );
 };
 

@@ -1,14 +1,19 @@
+import path from "path";
+
 import type { StorybookConfig } from "@storybook/react-webpack5";
 const appConfig = require("../rspack.main.config.js");
 const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 const { CSS_CONFIG } = require("../frontend/build/shared/rspack/css-config");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("../frontend/build/shared/rspack/side-effect-free-modules");
 
 const mainAppStories = [
   "../frontend/**/*.mdx",
-  "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
-  "../enterprise/frontend/**/*.stories.@(js|jsx|ts|tsx)",
+  "../frontend/*/!(embedding-sdk-bundle|embedding-sdk-shared)/**/*.stories.@(ts|tsx)",
+  "../enterprise/frontend/*/!(embedding-sdk-ee|embedding-sdk-package)/**/*.stories.@(ts|tsx)",
 ];
 
 // Allow filtering to specific story files via env var (used by stress tests)
@@ -43,6 +48,9 @@ const config: StorybookConfig = {
   },
   typescript: {
     reactDocgen: "react-docgen-typescript",
+    reactDocgenTypescriptOptions: {
+      tsconfigPath: path.resolve(__dirname, "../tsconfig.json"),
+    },
   },
 
   webpackFinal: (config) => {
@@ -75,6 +83,7 @@ const config: StorybookConfig = {
       module: {
         ...config.module,
         rules: [
+          SIDE_EFFECT_FREE_RULE,
           ...(config.module?.rules ?? []).filter(
             (rule) => !isCSSRule(rule) && !isSvgRule(rule),
           ),

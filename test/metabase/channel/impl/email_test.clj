@@ -7,6 +7,10 @@
    [metabase.channel.impl.email :as email.impl]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.notification.send :as notification.send]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]))
 
 (deftest bcc-enabled-test
@@ -24,6 +28,31 @@
                                                  :message      "Test message"})
           (is (=? {:to ["ngoc@metabase.com"]}
                   @sent-message)))))))
+
+(deftest email-channel-respects-recipient-cap-test
+  (testing "channel/send! :channel/email splits oversized recipient lists into batches of at most `email-max-recipients-per-message`"
+    (let [sent (atom [])]
+      (mt/with-dynamic-fn-redefs [email/send-email! (fn [_ details]
+                                                      (swap! sent conj (or (:bcc details) (:to details)))
+                                                      details)]
+        (mt/with-temporary-setting-values [email-from-address               "metamailman@metabase.com"
+                                           email-smtp-host                  "fake_smtp_host"
+                                           email-smtp-port                  587
+                                           email-max-recipients-per-message 10]
+          (let [recipients (mapv #(format "user-%03d@metabase.test" %) (range 25))]
+            (channel/send! {:type :channel/email}
+                           {:subject        "Job failed"
+                            :recipients     recipients
+                            :message-type   :html
+                            :message        "<p>uh oh</p>"
+                            :recipient-type :bcc})
+            (testing "one SMTP call per batch — 25 recipients capped at 10 → 3 batches"
+              (is (= 3 (count @sent))))
+            (testing "no batch exceeds the cap"
+              (is (every? #(<= (count %) 10) @sent)))
+            (testing "every recipient appears exactly once, in order"
+              (is (= recipients (vec (mapcat identity @sent))))
+              (is (apply distinct? (mapcat identity @sent))))))))))
 
 (deftest assoc-attachment-booleans-test
   (testing "assoc-attachment-booleans function"
@@ -129,7 +158,7 @@
     (mt/with-prometheus-system! [_ system]
       (let [template {:details {:type :email/handlebars-resource
                                 :subject "Test"
-                                :path "metabase/channel/email/notification_card.hbs"}}]
+                                :path "notification_card"}}]
         ;; render-body will throw if the payload doesn't match the template, but the metric
         ;; fires before the render, so we just need to not blow up
         (try (#'email.impl/render-body template {})
@@ -151,13 +180,44 @@
              (#'email.impl/notification-recipients->emails recipients {}))))))
 
 (deftest render-body-logging-test
-  (testing "rendering a user-provided template logs the template body at debug level"
+  (testing "rendering a user-provided template logs a debug message, without leaking the template body"
     (mt/with-log-messages-for-level [messages :debug]
       (let [template {:details {:type :email/handlebars-text
                                 :subject "Test"
                                 :body "Hello {{name}}"}}]
         (#'email.impl/render-body template {:name "World"})
         (is (some (fn [{:keys [message]}]
-                    (and (re-find #"Rendering user-provided template" message)
-                         (re-find #"Hello" message)))
-                  (messages)))))))
+                    (re-find #"Rendering user-provided template" message))
+                  (messages)))
+        (testing "the template body itself is not logged"
+          (is (not (some (fn [{:keys [message]}]
+                           (re-find #"Hello" message))
+                         (messages)))))))))
+
+(deftest email-branding-hidden-when-whitelabel-test
+  (testing "the 'Made with Metabase' footer respects the :whitelabel premium feature"
+    (notification.tu/with-notification-testing-setup!
+      (notification.tu/with-card-notification
+        [notification {:card         {:name          "Orders question"
+                                      :dataset_query (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                           (lib/limit 1)))}
+                       :subscriptions [{:type          :notification-subscription/cron
+                                        :cron_schedule "0 0 0 * * ? *"}]
+                       :handlers      [{:channel_type :channel/email
+                                        :recipients   [{:type    :notification-recipient/user
+                                                        :user_id (mt/user->id :crowberto)}]}]}]
+        (let [render! (fn []
+                        (-> (notification.tu/with-captured-channel-send!
+                              (#'notification.send/send-notification-sync! notification))
+                            :channel/email first :message first :content))]
+          (testing "branding link is present without whitelabel"
+            (mt/with-premium-features #{}
+              (is (str/includes? (render!) "Made with"))))
+          ;; Whitelabeling is only wired up in EE builds (`enable-whitelabeling?` is gated on
+          ;; `config/ee-available?`), so `:whitelabel` can never hide the footer on OSS builds.
+          ;; The EE app-db jobs run this same file with EE on the classpath and cover the hidden case.
+          (mt/when-ee-evailable
+           (testing "branding link is hidden with whitelabel"
+             (mt/with-premium-features #{:whitelabel}
+               (is (not (str/includes? (render!) "Made with")))))))))))

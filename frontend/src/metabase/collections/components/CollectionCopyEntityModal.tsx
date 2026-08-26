@@ -6,9 +6,9 @@ import {
   useCopyDashboardMutation,
   useCopyDocumentMutation,
 } from "metabase/api";
-import { useInitialCollectionId } from "metabase/collections/hooks";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import { entityTypeForObject } from "metabase/entities/utils";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
+import { CopyModal } from "metabase/common/components/CopyModal";
+import { entityTypeForObject } from "metabase/redux/store/entities";
 
 const getTitle = (entityObject: any, isShallowCopy: boolean) => {
   if (entityObject.model !== "dashboard") {
@@ -64,7 +64,7 @@ function CollectionCopyEntityModal({
   };
 
   return (
-    <EntityCopyModal
+    <CopyModal
       overwriteOnInitialValuesChange
       entityType={entityTypeForObject(entityObject)}
       entityObject={{
