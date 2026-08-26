@@ -9,7 +9,7 @@
    [toucan2.tools.transformed :as t2.transformed]))
 
 (declare cleanup-cutoff-sqlvec delete-ended-before-sqlvec list-tasks-sqlvec
-         list-tasks-joined-sqlvec count-tasks-sqlvec unique-tasks-sqlvec
+         count-tasks-sqlvec unique-tasks-sqlvec
          insert-task-history-sqlvec update-task-history-sqlvec statuses-for-run-sqlvec
          tasks-for-run-sqlvec mark-orphaned-tasks-sqlvec)
 

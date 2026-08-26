@@ -80,37 +80,8 @@
    [:status {:optional true} (into [:enum] task-history-status)]
    [:task {:optional true} [:string {:min 1}]]])
 
-(def ^:private joined-sort-columns
-  "Sort columns that live on the LEFT JOINed `metabase_database` table (query `list-tasks-joined`
-  instead of `list-tasks`)."
-  #{:db_name :db_engine})
-
-(def ^:private sort-col->sql
-  "Closed map from sort-column param to the column it orders by. The values here (plus the
-  ASC/DESC picked by `case` below) are the only SQL text that ever reaches the `:sql:order-by`
-  param in task_history.sql -- input *selects* from these dev-authored literals, it never
-  becomes SQL text."
-  {:started_at "task_history.started_at"
-   :ended_at   "task_history.ended_at"
-   :duration   "task_history.duration"
-   :task       "task_history.task"
-   :status     "task_history.status"
-   :db_name    "metabase_database.name"
-   :db_engine  "metabase_database.engine"})
-
-(defn- order-by-fragment
-  "ORDER BY fragment for [[all]]: selects among the `sort-col->sql` literals -- `col`/`dir` are
-  lookup keys and never appear in the result, so an unexpected value throws rather than reaching
-  the SQL. A secondary `id DESC` key makes ordering deterministic for low-cardinality columns."
-  [col dir]
-  (let [col-sql (or (sort-col->sql col)
-                    (throw (ex-info "Invalid sort column" {:sort_column col})))]
-    (str col-sql
-         (case dir :asc " ASC" :desc " DESC")
-         ", task_history.id DESC")))
-
 (def ^:private available-sort-columns
-  (set (keys sort-col->sql)))
+  #{:started_at :ended_at :duration :task :status :db_name :db_engine})
 
 (def SortParams
   "Sorting map schema."
@@ -128,14 +99,15 @@
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]
    params :- [:maybe [:merge FilterParams SortParams]]]
-  (let [col    (or (:sort_column params) :started_at)
-        dir    (or (:sort_direction params) :desc)
-        sqlvec ((if (joined-sort-columns col) queries/list-tasks-joined-sqlvec queries/list-tasks-sqlvec)
-                (assoc (list-tasks-params params)
-                       :order-by (order-by-fragment col dir)
-                       :limit    (or limit Long/MAX_VALUE)
-                       :offset   (or offset 0)))]
-    (t2/select :model/TaskHistory sqlvec)))
+  ;; sort column/direction are plain *value* params: the query's CASE no-op sort keys pick the
+  ;; active ORDER BY line, so no SQL text is ever built or spliced for sorting.
+  (t2/select :model/TaskHistory
+             (queries/list-tasks-sqlvec
+              (assoc (list-tasks-params params)
+                     :sort-col (name (or (:sort_column params) :started_at))
+                     :sort-dir (name (or (:sort_direction params) :desc))
+                     :limit    (or limit Long/MAX_VALUE)
+                     :offset   (or offset 0)))))
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."

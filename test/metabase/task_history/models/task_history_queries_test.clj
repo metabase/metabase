@@ -16,6 +16,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.task-history.models.task-history :as task-history]
+   [metabase.task-history.models.task-history-queries :as queries]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -24,10 +25,11 @@
 ;;;; 1. Lint: the raw-splice surface of SQL-in-files
 
 (def ^:private raw-splice-allowlist
-  "HugSQL `.sql` files may contain raw-splice params ONLY if listed here. Adding an entry requires
-  that every value passed to the param comes from a closed map of dev-authored string literals
-  (see `order-by-fragments` in [[metabase.task-history.models.task-history]]), never from input."
-  {"src/metabase/task_history/models/task_history.sql" #{"order-by"}})
+  "HugSQL `.sql` files may contain raw-splice params ONLY if listed here. Currently empty: even
+  dynamic ORDER BY is expressed with value params (CASE no-op sort keys in `list-tasks`), so no
+  query needs a splice. Adding an entry requires that every value passed to the param comes from
+  a closed set of dev-authored string literals, never from input."
+  {})
 
 (defn- raw-splice-params
   "Return the set of raw-splice param names (`:sql:x`, `:snip:x`, and their `*` variants) used in
@@ -48,13 +50,15 @@
              splices)
           "Raw-splice params (:sql:/:snip:) in .sql files must match the allowlist exactly."))))
 
-(deftest order-by-fragments-shape-test
-  (testing "every possible ORDER BY fragment is a column/direction list, nothing more"
-    (doseq [col (keys @#'task-history/sort-col->sql)
-            dir [:asc :desc]]
-      (testing (pr-str [col dir])
-        (is (re-matches #"[a-z_.]+ (?:ASC|DESC)(?:, [a-z_.]+ (?:ASC|DESC))*"
-                        (#'task-history/order-by-fragment col dir)))))))
+(deftest hostile-sort-params-test
+  (testing "hostile sort values are inert: they ride as bound params, match no CASE line, and
+            ordering falls through to the id DESC tie-break"
+    (let [sqlvec (#'queries/list-tasks-sqlvec {:task nil, :status nil
+                                               :sort-col "1); insert into x values (1); --"
+                                               :sort-dir "asc"
+                                               :limit 10, :offset 0})]
+      (is (not (str/includes? (first sqlvec) "insert into x")))
+      (is (some #{"1); insert into x values (1); --"} (rest sqlvec))))))
 
 ;;;; 2. Golden equivalence with the previous HoneySQL implementation
 
