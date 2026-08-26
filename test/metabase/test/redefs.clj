@@ -45,6 +45,18 @@
             (let [message (ex-message e)]
               (when-not (contains? (first (swap-vals! prewarm-failures-logged conj message)) message)
                 (log/warnf "Could not materialize the test dataset before with-temp: %s" message))))))
+      ;; Materialize the test users and their Personal Collections for the same reason as the dataset above.
+      ;; `user->personal-collection` is a get-or-create, and the permissions path calls it on every API request. One
+      ;; first created inside the transaction is rolled back, so every later request tries to create it again, and
+      ;; the parallel ones time out waiting on each other's COLLECTION table lock.
+      (when-not @(resolve 'metabase.test.data.impl/*skip-dataset-prewarm?*)
+        (try
+          ((resolve 'metabase.test.initialize/initialize-if-needed!) :test-users-personal-collections)
+          (catch Throwable e
+            (let [message (ex-message e)]
+              (when-not (contains? (first (swap-vals! prewarm-failures-logged conj message)) message)
+                (log/warnf "Could not materialize the test users' Personal Collections before with-temp: %s"
+                           message))))))
       (binding [*in-with-temp* true]
         (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
           (next-method model attributes f))))
