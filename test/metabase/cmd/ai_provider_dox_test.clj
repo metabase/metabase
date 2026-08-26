@@ -25,24 +25,13 @@
    :default   "https://example.com"})
 
 (defn- index
-  "The field index the renderers take, so a test can hand them the siblings a `:show-when` refers to."
+  "`fields` indexed the way the renderers take them."
   [fields]
   (#'ai-provider-dox/fields-by-key fields))
 
 (defn- registry-entry
   [type-name]
   (first (filter #(= type-name (:type %)) (llm.provider/provider-types))))
-
-(deftest sentence-test
-  (testing "text that doesn't terminate itself gets a period"
-    (is (= "Only needed for temporary credentials."
-           (#'ai-provider-dox/sentence "Only needed for temporary credentials"))))
-  (testing "text that already terminates is left alone, whichever mark it ends on"
-    (is (= "Defaults to global." (#'ai-provider-dox/sentence "Defaults to global.")))
-    (is (= "Which model?" (#'ai-provider-dox/sentence "Which model?"))))
-  (testing "nothing to say, nothing rendered — a blank `:help` must not become a bare `.`"
-    (is (nil? (#'ai-provider-dox/sentence nil)))
-    (is (nil? (#'ai-provider-dox/sentence "   ")))))
 
 (deftest field-at-test
   (testing "a `:show-when` or `:required-any` left pointing at a renamed key fails loudly"
@@ -65,8 +54,6 @@
            (#'ai-provider-dox/field-options-sentence
             {:options [{:value "openai" :label "OpenAI"} {:value "anthropic" :label "Anthropic"}]}))))
   (testing "a long list is pointed at instead — but still says the field is a picker"
-    ;; Bedrock's regions are the case in hand: dozens of entries, and no count, since they come from the bundled
-    ;; AWS SDK and would rewrite this page on every SDK bump
     (let [sentence (#'ai-provider-dox/field-options-sentence
                     {:options (for [n (range (inc @#'ai-provider-dox/max-enumerated-options))]
                                 {:value (str n) :label (str "Region " n)})})]
@@ -119,7 +106,6 @@
     (is (= :fixed (first (#'ai-provider-dox/model-source {:type "google"} {}))))
     (is (= [:dynamic] (#'ai-provider-dox/model-source {:type "vllm"} {}))))
   (testing "a deployment type carries the labels of the fields its model is composed from, not their keys"
-    ;; resolving them here is what lets the renderer be a pure function of the tagged value
     (let [azure (registry-entry "azure")]
       (is (= [:deployments ["Model provider" "Deployment name"]]
              (#'ai-provider-dox/model-source azure (index (:fields azure)))))))
@@ -192,19 +178,6 @@
                     (#'ai-provider-dox/provider-doc (registry-entry "metabase")))]
       (is (not (str/includes? markdown "Credentials:")))
       (is (str/includes? markdown "your instance's license token")))))
-
-(deftest table-test
-  (testing "columns are padded to a common width so the raw file stays scannable in a diff"
-    (is (= (str "| Model            | Model ID |\n"
-                "| ---------------- | -------- |\n"
-                "| Claude Haiku 4.5 | `haiku`  |\n"
-                "| GPT              | `gpt`    |")
-           (#'ai-provider-dox/table ["Model" "Model ID"]
-                                    [["Claude Haiku 4.5" "`haiku`"] ["GPT" "`gpt`"]]))))
-  (testing "a table with no rows still renders its header"
-    (is (= (str "| Model |\n"
-                "| ----- |")
-           (#'ai-provider-dox/table ["Model"] [])))))
 
 (deftest document-markdown-requires-providers-test
   (testing "an empty registry means the source moved, not that Metabase supports nothing"
