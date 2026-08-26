@@ -2,30 +2,7 @@ name: Frontend
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      skip-lint:
-        type: boolean
-        default: false
-      skip-custom-viz:
-        type: boolean
-        default: false
   workflow_dispatch:
-    inputs:
-      skip:
-        description: "Skip main frontend jobs (type-check, unit tests, timezone tests)"
-        type: boolean
-        default: false
-      skip-lint:
-        description: "Skip linting jobs (oxfmt, eslint, css variables check)"
-        type: boolean
-        default: false
-      skip-custom-viz:
-        description: "Skip custom-viz package tests"
-        type: boolean
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
@@ -39,8 +16,19 @@ env:
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
 
 jobs:
+  # Three questions of one diff — the main suite, the linters, and custom-viz —
+  # so this reads `results` rather than making three separate calls. `forced`
+  # covers the master/release/ci:run-all case, where `results` is empty.
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: frontend_all, e2e_all, custom_viz_all
+
   fe-lint:
-    if: ${{ !inputs.skip-lint }}
+    needs: should-run
+    if: >-
+      ${{ needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).frontend_all == 'true'
+      || fromJSON(needs.should-run.outputs.results).e2e_all == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -74,7 +62,8 @@ jobs:
         run: bun run lint-css
 
   fe-type-check:
-    if: ${{ !inputs.skip }}
+    needs: should-run
+    if: ${{ needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).frontend_all == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -89,7 +78,8 @@ jobs:
         name: Check types
 
   fe-tests-unit:
-    if: ${{ !inputs.skip }}
+    needs: should-run
+    if: ${{ needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).frontend_all == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -134,7 +124,8 @@ jobs:
           enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
 
   fe-tests-timezones:
-    if: ${{ !inputs.skip }}
+    needs: should-run
+    if: ${{ needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).frontend_all == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -147,7 +138,8 @@ jobs:
   # The custom-viz package is an isolated Bun workspace under
   # enterprise/frontend/src/custom-viz
   fe-custom-viz:
-    if: ${{ !inputs.skip-custom-viz }}
+    needs: should-run
+    if: ${{ needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).custom_viz_all == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     defaults:

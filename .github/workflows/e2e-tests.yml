@@ -2,25 +2,33 @@ name: E2E Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      specs:
-        type: string
-        required: false
-        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-e2e
   cancel-in-progress: true
 
 jobs:
+  # csv so the narrowing below can compare the two changed-file lists.
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: e2e_all
+      list-files: csv
+
   e2e-matrix-builder:
+    needs: should-run
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
       chunks: 50
-      specs: ${{ inputs.specs }}
+      # e2e_all_files lists every change that triggers e2e at all. When it is
+      # identical to the changed spec list, only specs moved and we can run just
+      # those. Never narrow on a forced run or outside a pull request — there we
+      # always want the full suite, even though the file lists still compute.
+      specs: >-
+        ${{ needs.should-run.outputs.forced != 'true' &&
+        github.event_name == 'pull_request' &&
+        fromJSON(needs.should-run.outputs.results).e2e_all_files == fromJSON(needs.should-run.outputs.results).e2e_specs_files &&
+        fromJSON(needs.should-run.outputs.results).e2e_specs_files || '' }}
 
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
@@ -57,9 +65,9 @@ jobs:
     name: ${{ matrix.name }}-${{ matrix.edition }}
     uses: ./.github/workflows/e2e-test.yml
     needs:
+      - should-run
       - e2e-matrix-builder
-    if: |
-      !cancelled() && !inputs.skip
+    if: ${{ needs.should-run.outputs.changed == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}

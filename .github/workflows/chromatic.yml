@@ -12,24 +12,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  files-changed:
-    name: Check which files changed
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 3
-    outputs:
-      frontend_all: ${{ steps.changes.outputs.frontend_all }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: frontend_all
 
   fe-chromatic:
-    needs: files-changed
-    if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
+    needs: should-run
+    if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.should-run.outputs.changed == 'true')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout repository

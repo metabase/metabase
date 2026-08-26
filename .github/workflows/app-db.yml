@@ -2,14 +2,6 @@ name: App DB Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
-        type: boolean
-        default: false
 
   # Run one app-DB job on demand, against the ref you dispatch on, optionally under a profiler.
   # Everything else about the job -- services, matrix legs, test args, quarantine gating -- is
@@ -55,8 +47,15 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  # This suite decides for itself whether the commit needs it.
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: backend_all
+
   app-db-matrix:
-    if: ${{ !inputs.skip }}
+    needs: should-run
+    if: ${{ needs.should-run.outputs.changed == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Determine app DB versions
@@ -69,7 +68,7 @@ jobs:
         id: versions
         uses: actions/github-script@v9
         env:
-          RUN_ALL: ${{ inputs.force-run }}
+          RUN_ALL: ${{ needs.should-run.outputs.forced == 'true' }}
         with:
           script: | # js
             const runAll = process.env.RUN_ALL === 'true';
@@ -134,8 +133,10 @@ jobs:
             }
 
   be-tests-mariadb:
-    needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
+    needs: ["should-run", app-db-matrix]
+    if: >-
+      ${{ needs.should-run.outputs.changed == 'true'
+      && (inputs.app-db == '' || inputs.app-db == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -175,7 +176,7 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
@@ -220,8 +221,10 @@ jobs:
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-mysql:
-    needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'mysql') }}
+    needs: ["should-run", app-db-matrix]
+    if: >-
+      ${{ needs.should-run.outputs.changed == 'true'
+      && (inputs.app-db == '' || inputs.app-db == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -261,7 +264,7 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below
@@ -314,8 +317,10 @@ jobs:
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   be-tests-postgres:
-    needs: app-db-matrix
-    if: ${{ !inputs.skip && (inputs.app-db == '' || inputs.app-db == 'postgres') }}
+    needs: ["should-run", app-db-matrix]
+    if: >-
+      ${{ needs.should-run.outputs.changed == 'true'
+      && (inputs.app-db == '' || inputs.app-db == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -345,7 +350,7 @@ jobs:
             exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.should-run.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
       # actual serious env vars below

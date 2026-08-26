@@ -26,23 +26,13 @@ jobs:
             contains(github.event.pull_request.labels.*.name, 'double-backport') ||
             contains(github.event.pull_request.labels.*.name, 'triple-backport') }}" >> "$GITHUB_OUTPUT"
 
-  files-changed:
-    name: Check which files changed
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 3
-    outputs:
-      docs: ${{ steps.changes.outputs.docs }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: docs
 
   backport-reminder:
-    needs: [ files-changed, flags ]
+    needs: [ should-run, flags ]
     if: ${{ !cancelled() }}
     name: Decide whether to backport or not
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -52,7 +42,7 @@ jobs:
       - name: Fail if backport decision label is missing
         if: >
           github.event_name == 'pull_request' &&
-          needs.files-changed.outputs.docs == 'true' &&
+          needs.should-run.outputs.changed == 'true' &&
           needs.flags.outputs.has_backport_label == 'false'
         run: |
           echo "::error::PR has docs changes and is missing a backport decision label. Add one of: no-backport, backport, single-backport, double-backport, or triple-backport"

@@ -1,0 +1,210 @@
+name: Files changed
+description: >
+  Answer one question about a commit — did it touch these parts of the repo? —
+  using dorny/paths-filter against .github/file-paths.yaml. Runs the diff once
+  and turns it into plain booleans, so a caller states which filters it cares
+  about instead of spelling the same OR out across a job's `if:` conditions.
+
+  Requires the repository to be checked out already, as every local action does:
+  the runner loads this action out of the workspace, so a caller cannot reach it
+  without a checkout that has also brought along the filter config. Jobs that
+  exist only to ask this question should call .github/workflows/util.should-run.yml
+  instead, which owns the checkout for you.
+
+inputs:
+  any-of:
+    description: >
+      Filter names from the filter file, comma- or newline-separated. `changed`
+      is 'true' when the commit matched at least one of them. `name: true` is
+      accepted alongside a bare `name`, so a multi-line list reads either way.
+      A name the filter file doesn't define is an error, not a quiet 'false'.
+    required: false
+    default: ""
+  all-of:
+    description: >
+      Filter names, in the same forms `any-of` accepts, that must *all* have
+      matched. Give both and the commit has to satisfy the `any-of` OR and the
+      `all-of` AND together.
+    required: false
+    default: ""
+  filters:
+    description: "Path to the paths-filter configuration, relative to the repo root."
+    required: false
+    default: .github/file-paths.yaml
+  list-files:
+    description: >
+      Format for the `files` output: none, csv, shell, json or escape. `none`
+      (the default) skips it, which keeps the outputs small.
+    required: false
+    default: none
+  base:
+    description: >
+      Git ref to diff against. Leave empty to let paths-filter decide: the PR
+      base for pull requests, the pushed-over commit for pushes.
+    required: false
+    default: ""
+  token:
+    description: "Token used to read the changed file list from the API. Defaults to github.token."
+    required: false
+    default: ""
+
+outputs:
+  changed:
+    description: >
+      'true' when the commit satisfied `any-of` (at least one matched) and
+      `all-of` (every one matched). 'false' when neither input is given.
+    value: ${{ steps.evaluate.outputs.changed }}
+  files:
+    description: >
+      Files matched by the named filters, in the `list-files` format. Empty
+      when `list-files` is `none`. Several filters are concatenated rather than
+      merged, so overlapping ones can list a file twice.
+    value: ${{ steps.evaluate.outputs.files }}
+  results:
+    description: >
+      Every paths-filter output as a JSON object, for a job that needs more than
+      one answer out of a single diff:
+      fromJSON(steps.<id>.outputs.results).frontend_all.
+    value: ${{ steps.evaluate.outputs.results }}
+
+runs:
+  using: composite
+  steps:
+    - name: Test which files changed
+      id: filter
+      uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      with:
+        token: ${{ inputs.token || github.token }}
+        filters: ${{ inputs.filters }}
+        list-files: ${{ inputs.list-files }}
+        base: ${{ inputs.base }}
+
+    - name: Answer the question
+      id: evaluate
+      shell: bash
+      env:
+        RESULTS: ${{ toJSON(steps.filter.outputs) }}
+        FILTERS: ${{ inputs.filters }}
+        ANY_OF: ${{ inputs.any-of }}
+        ALL_OF: ${{ inputs.all-of }}
+        LIST_FILES: ${{ inputs.list-files }}
+      run: |
+        set -euo pipefail
+
+        # A delimiter no file list can accidentally terminate.
+        delim="ghadelim-$RANDOM$RANDOM-$$"
+        emit() { printf '%s<<%s\n%s\n%s\n' "$1" "$delim" "$2" "$delim" >> "$GITHUB_OUTPUT"; }
+
+        # Parked on disk so the jq lookups below can all read the same file.
+        FILE="$RUNNER_TEMP/files-changed-results.json"
+        printf '%s' "$RESULTS" | jq -c . > "$FILE"
+        emit results "$(cat "$FILE")"
+
+        # Filter names: `a, b`, one per line, or the `a: true` map form. Anything
+        # other than `true` on the right is a typo we would rather not guess at.
+        # Errors go to stderr so command substitution can't swallow them.
+        parse() {
+          local entry name value
+          while IFS= read -r entry; do
+            name="${entry%%:*}"
+            value="${entry#"$name"}"
+            name="$(printf '%s' "$name" | tr -d '[:space:]')"
+            value="$(printf '%s' "${value#:}" | tr -d '[:space:]')"
+            [ -n "$name" ] || continue
+            if [ -n "$value" ] && [ "$value" != "true" ]; then
+              echo "::error::Don't know what to do with the $2 entry '$entry' — write '$name' or '$name: true'." >&2
+              return 1
+            fi
+            printf '%s\n' "$name"
+          done < <(printf '%s\n' "$1" | tr ',' '\n')
+        }
+
+        # Fills the `names` global; a parse failure takes the whole step down.
+        read_names() {
+          local raw line
+          names=()
+          raw="$(parse "$1" "$2")" || exit 1
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              names+=("$line")
+            fi
+          done <<< "$raw"
+        }
+
+        read_names "$ANY_OF" any-of
+        any_names=("${names[@]+"${names[@]}"}")
+        read_names "$ALL_OF" all-of
+        all_names=("${names[@]+"${names[@]}"}")
+
+        if [ ${#any_names[@]} -eq 0 ] && [ ${#all_names[@]} -eq 0 ]; then
+          emit changed false
+          emit files ""
+          echo "Neither any-of nor all-of given; read the answer from the results output."
+          exit 0
+        fi
+
+        # Every name either side asked about, in order, without repeats.
+        referenced=()
+        while IFS= read -r name; do
+          if [ -n "$name" ]; then
+            referenced+=("$name")
+          fi
+        done < <(printf '%s\n' "${any_names[@]+"${any_names[@]}"}" \
+                                "${all_names[@]+"${all_names[@]}"}" | awk 'NF && !seen[$0]++')
+
+        # A name with no filter behind it would otherwise report false forever,
+        # quietly switching off whatever job depends on it.
+        missing=()
+        for name in "${referenced[@]}"; do
+          jq -e --arg k "$name" 'has($k)' "$FILE" >/dev/null || missing+=("$name")
+        done
+        if [ ${#missing[@]} -gt 0 ]; then
+          echo "::error::$FILTERS defines no filter named: ${missing[*]}" >&2
+          exit 1
+        fi
+
+        matched() { [ "$(jq -r --arg k "$1" '.[$k]' "$FILE")" = "true" ]; }
+
+        # any-of is an OR, all-of an AND, and asking both means both must hold.
+        changed=true
+        if [ ${#any_names[@]} -gt 0 ]; then
+          changed=false
+          for name in "${any_names[@]}"; do
+            if matched "$name"; then
+              changed=true
+              break
+            fi
+          done
+        fi
+        if [ "$changed" = true ] && [ ${#all_names[@]} -gt 0 ]; then
+          for name in "${all_names[@]}"; do
+            if ! matched "$name"; then
+              changed=false
+              break
+            fi
+          done
+        fi
+
+        parts=()
+        for name in "${referenced[@]}"; do
+          matched_files="$(jq -r --arg k "${name}_files" '.[$k] // ""' "$FILE")"
+          if [ -n "$matched_files" ] && [ "$matched_files" != "[]" ]; then
+            parts+=("$matched_files")
+          fi
+        done
+
+        files=""
+        if [ ${#parts[@]} -gt 0 ]; then
+          # Concatenate rather than merge: `shell` and `escape` values are quoted
+          # for a shell, so splitting them back apart on whitespace would maul any
+          # path containing a space.
+          case "$LIST_FILES" in
+            json) files="$(printf '%s\n' "${parts[@]}" | jq -sc 'add')" ;;
+            csv) files="$(IFS=','; printf '%s' "${parts[*]}")" ;;
+            *) files="$(IFS=' '; printf '%s' "${parts[*]}")" ;;
+          esac
+        fi
+
+        emit changed "$changed"
+        emit files "$files"
+        echo "changed=$changed for: ${referenced[*]}"

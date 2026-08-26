@@ -2,10 +2,6 @@ name: Semantic Search Tests
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
 
   # Run one semantic-search job on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the job -- services, matrix legs, test args, quarantine gating --
@@ -53,8 +49,17 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  # This suite decides for itself whether the commit needs it.
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: backend_all
+
   semantic-search-tests-h2:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'h2') }}
+    needs: should-run
+    if: >-
+      ${{ needs.should-run.outputs.changed == 'true'
+      && (inputs.suite == '' || inputs.suite == 'h2') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -99,7 +104,10 @@ jobs:
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-mariadb:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mariadb') }}
+    needs: should-run
+    if: >-
+      ${{ needs.should-run.outputs.changed == 'true'
+      && (inputs.suite == '' || inputs.suite == 'mariadb') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -165,7 +173,10 @@ jobs:
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-mysql:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'mysql') }}
+    needs: should-run
+    if: >-
+      ${{ needs.should-run.outputs.changed == 'true'
+      && (inputs.suite == '' || inputs.suite == 'mysql') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -238,7 +249,10 @@ jobs:
           quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
   semantic-search-tests-postgres:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'postgres') }}
+    needs: should-run
+    if: >-
+      ${{ needs.should-run.outputs.changed == 'true'
+      && (inputs.suite == '' || inputs.suite == 'postgres') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -306,7 +320,10 @@ jobs:
   # MB_PGVECTOR_DB_URL is deliberately unset. The dedicated-harness tests gate themselves off; the
   # appdb-pgvector-mode round trip (and the URL-independent unit tests) run for real.
   semantic-search-tests-appdb-mode:
-    if: ${{ !inputs.skip && (inputs.suite == '' || inputs.suite == 'appdb-mode') }}
+    needs: should-run
+    if: >-
+      ${{ needs.should-run.outputs.changed == 'true'
+      && (inputs.suite == '' || inputs.suite == 'appdb-mode') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:

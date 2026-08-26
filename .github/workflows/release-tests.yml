@@ -12,24 +12,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  files-changed:
-    name: Check which files changed
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 3
-    outputs:
-      release_source: ${{ steps.changes.outputs.release_source }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Test which files changed
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-        id: changes
-        with:
-          token: ${{ github.token }}
-          filters: .github/file-paths.yaml
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: release_source
 
   release-type-check:
-    needs: files-changed
-    if: needs.files-changed.outputs.release_source == 'true'
+    needs: should-run
+    if: needs.should-run.outputs.changed == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -47,8 +37,8 @@ jobs:
         run: bun run --cwd release type-check
 
   release-tests-unit:
-    needs: files-changed
-    if: needs.files-changed.outputs.release_source == 'true'
+    needs: should-run
+    if: needs.should-run.outputs.changed == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -66,8 +56,8 @@ jobs:
         run: bun run --cwd release test:unit
 
   ci-conductor-tests:
-    needs: files-changed
-    if: needs.files-changed.outputs.release_source == 'true'
+    needs: should-run
+    if: needs.should-run.outputs.changed == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
@@ -87,8 +77,8 @@ jobs:
         run: bun run --cwd release/ci-conductor test
 
   release-test-build:
-    needs: files-changed
-    if: needs.files-changed.outputs.release_source == 'true'
+    needs: should-run
+    if: needs.should-run.outputs.changed == 'true'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:

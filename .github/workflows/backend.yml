@@ -2,14 +2,6 @@ name: Backend
 
 on:
   workflow_call:
-    inputs:
-      skip:
-        type: boolean
-        default: false
-      force-run:
-        description: Run the full suite regardless of the diff (master / release branches).
-        type: boolean
-        default: false
 
   # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
   # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
@@ -46,8 +38,69 @@ env:
   ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
+  # This suite decides for itself whether the commit needs it.
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: backend_all
+
+  # Folds the static-viz source check into the single signal every job below
+  # reads. It always runs: a job that can be skipped takes its dependents with
+  # it unless they all opt out with !cancelled(), and one plain condition is
+  # worth more than the couple of minutes this costs on the fast path.
+  gate:
+    name: Decide whether the backend suite runs
+    needs: should-run
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+      forced: ${{ needs.should-run.outputs.forced }}
+    env:
+      # A change to a file the static-viz bundle pulls in can break backend
+      # tests without touching backend_all, so we check — but only when the
+      # diff hasn't already said yes, and never when ci:skip turned the run off.
+      NEEDS_STATIC_VIZ: >-
+        ${{ needs.should-run.outputs.changed != 'true'
+        && needs.should-run.outputs.skipped != 'true' }}
+    steps:
+      - uses: actions/checkout@v6
+        if: ${{ env.NEEDS_STATIC_VIZ == 'true' }}
+      - name: Prepare front-end environment
+        if: ${{ env.NEEDS_STATIC_VIZ == 'true' }}
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        if: ${{ env.NEEDS_STATIC_VIZ == 'true' }}
+        uses: ./.github/actions/prepare-backend
+      # static-viz-sources.yaml is emitted by this build and is gitignored, so
+      # the bundle has to exist before we can ask which of its sources moved.
+      - name: Build static-viz frontend
+        if: ${{ env.NEEDS_STATIC_VIZ == 'true' }}
+        run: bun run build-static-viz
+        env:
+          MB_EDITION: ee
+      - name: Check for static viz changes
+        id: static_viz
+        if: ${{ env.NEEDS_STATIC_VIZ == 'true' }}
+        uses: ./.github/actions/files-changed
+        with:
+          filters: .github/static-viz-sources.yaml
+          any-of: static_viz
+      - name: Decide
+        id: decide
+        env:
+          CHANGED: ${{ needs.should-run.outputs.changed }}
+          STATIC_VIZ: ${{ steps.static_viz.outputs.changed }}
+        run: |
+          if [ "$CHANGED" = "true" ] || [ "$STATIC_VIZ" = "true" ]; then
+            echo "run=true" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "run=false" | tee -a "$GITHUB_OUTPUT"
+          fi
+
   be-linter-clj-kondo:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Clj-Kondo
@@ -59,7 +112,8 @@ jobs:
         run: ./bin/mage kondo
 
   be-linter-eastwood:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     name: Eastwood
@@ -71,8 +125,9 @@ jobs:
         name: Run Eastwood linter
 
   be-linter-eastwood-test:
+    needs: gate
     # Master / release safety net: lint every backend test namespace.
-    if: ${{ !inputs.skip && inputs.force-run }}
+    if: ${{ needs.gate.outputs.run == 'true' && needs.gate.outputs.forced == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: Eastwood (tests only)
@@ -84,8 +139,9 @@ jobs:
         name: Run Eastwood linter on our backend tests
 
   be-linter-eastwood-test-changed:
+    needs: gate
     # Lint only the test namespaces touched by the diff.
-    if: ${{ !inputs.skip && !inputs.force-run && github.event_name == 'pull_request' }}
+    if: ${{ needs.gate.outputs.run == 'true' && !(needs.gate.outputs.forced == 'true') && github.event_name == 'pull_request' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     name: Eastwood (changed tests only)
@@ -142,7 +198,8 @@ jobs:
         run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
 
   be-tests:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -185,7 +242,7 @@ jobs:
               :partition/index 1
     name: "Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
     env:
-      # __ADDITIONAL_EXCLUDED_TAG__: ${{ !inputs.force-run && ':mb/old-migrations-test' || '' }}
+      # __ADDITIONAL_EXCLUDED_TAG__: ${{ needs.gate.outputs.forced != 'true' && ':mb/old-migrations-test' || '' }}
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
     steps:
@@ -339,7 +396,8 @@ jobs:
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
@@ -355,7 +413,8 @@ jobs:
         run: clojure -M:ee:drivers:load-namespaces
 
   be-cljfmt:
-    if: ${{ !inputs.skip }}
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     name: Cljfmt

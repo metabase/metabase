@@ -3,38 +3,40 @@ name: SDK
 on:
   workflow_call:
     inputs:
-      cli-snippets-type-check:
-        description: "Whether to run cli snippets type check."
-        required: true
+      uberjar-built:
+        description: >
+          Whether the caller's uberjar build succeeded. Only the two jobs that
+          fetch the jar consult it. It stays an input because it is the result of
+          a sibling job in the calling workflow — the one thing this workflow
+          genuinely cannot work out for itself.
         type: boolean
-      docs-snippets-type-check:
-        description: "Whether to run docs snippets type check."
-        required: true
-        type: boolean
-      documentation-validation:
-        description: "Whether to run documentation generation validation check."
-        required: true
-        type: boolean
-      component-tests:
-        description: "Whether to run component tests."
-        required: true
-        type: boolean
-      host-sample-apps-tests:
-        description: "Whether to run host and sample apps compatibility tests."
-        required: true
-        type: boolean
-      skip:
-        description: Whether to skip running tests due to one of the artifacts failing to build.
-        required: true
-        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
+  # Five questions of one diff, so this reads `results` rather than making five
+  # separate calls. `skip` stays an input: it reports an upstream build failure,
+  # which is about job results rather than about the diff.
+  should-run:
+    uses: ./.github/workflows/util.should-run.yml
+    with:
+      any-of: embedding_sdk_components, frontend_sources, embedding_documentation, embedding_sdk_ci, embedding_sdk_host_sample_apps
+
+  # The dist every job below unpacks. Building it here rather than in run-tests
+  # turns "did the package build?" from a value the caller had to compute into
+  # an ordinary dependency: a skipped or failed build takes the tests with it.
+  build-package:
+    needs: should-run
+    if: ${{ needs.should-run.outputs.changed == 'true' }}
+    uses: ./.github/workflows/embedding-sdk-package-build.yml
+    secrets: inherit
+
   embedding-sdk-cli-snippets-type-check:
-    if: inputs.cli-snippets-type-check && !inputs.skip
+    needs: [should-run, build-package]
+    if: ${{ (needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).frontend_sources == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -50,7 +52,8 @@ jobs:
         run: bun run embedding-sdk:cli-snippets:type-check
 
   embedding-sdk-docs-snippets-type-check:
-    if: inputs.docs-snippets-type-check && !inputs.skip
+    needs: [should-run, build-package]
+    if: ${{ (needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).embedding_documentation == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -66,7 +69,8 @@ jobs:
         run: bun run embedding-sdk:docs-snippets:type-check
 
   embedding-sdk-api-documentation-generation-validation:
-    if: inputs.documentation-validation && !inputs.skip
+    needs: [should-run, build-package]
+    if: ${{ (needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).frontend_sources == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
@@ -115,14 +119,16 @@ jobs:
 
   # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   embedding-sdk-component-tests:
+    needs: [should-run, build-package]
     name: "SDK component tests"
-    if: inputs.component-tests && !inputs.skip
+    if: ${{ inputs.uberjar-built && (needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).embedding_sdk_components == 'true') }}
     uses: ./.github/workflows/embedding-sdk-component-tests.yml
     secrets: inherit
 
   not-required-embedding-sdk-apps-compatibility-tests:
+    needs: [should-run, build-package]
     name: "SDK e2e tests for compatibility with (host/sample) apps"
-    if: inputs.host-sample-apps-tests && !inputs.skip
+    if: ${{ inputs.uberjar-built && (needs.should-run.outputs.forced == 'true' || fromJSON(needs.should-run.outputs.results).embedding_sdk_host_sample_apps == 'true') }}
     uses: ./.github/workflows/embedding-sdk-host-sample-apps-tests.yml
     secrets: inherit
 
