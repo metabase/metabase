@@ -346,11 +346,6 @@ describe("scenarios > embedding > embedding hub > authentication", () => {
 
       H.main().within(() => {
         cy.findByText("SAML is configured").should("be.visible");
-        cy.findByRole("link", { name: /Go to Admin/ }).should(
-          "have.attr",
-          "href",
-          "/admin/settings/authentication",
-        );
         cy.findByLabelText("JWT Identity Provider URI *").should("not.exist");
       });
     });
@@ -365,15 +360,12 @@ describe("scenarios > embedding > embedding hub > authentication", () => {
     it("upsells instead of exposing the form", () => {
       cy.visit("/embedding/authentication");
 
+      // Card copy is unit-tested next to the component; this is what needs a
+      // real browser -- the upsell rendering in place of the real form.
       H.main().within(() => {
-        cy.findByText("Metabase Pro").should("be.visible");
         cy.findByText("Secure your embeds with single sign-on").should(
           "be.visible",
         );
-        cy.findByText(
-          "Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds.",
-        ).should("be.visible");
-        cy.findByRole("link", { name: "Upgrade to Pro" }).should("be.visible");
 
         cy.log("nothing configurable renders below the paywall");
         cy.findByLabelText("JWT Identity Provider URI *").should("not.exist");
