@@ -100,9 +100,9 @@
   (let [path (-> (or uri "/") strip-base-path)]
     (->> (route-preloads)
          (some (fn [[route markup render-when-signed-out?]]
-                 (when (and (or signed-in? render-when-signed-out?)
-                            (clout/route-matches route {:uri path}))
-                   markup))))))
+                 (and (or signed-in? render-when-signed-out?)
+                      (clout/route-matches route {:uri path})
+                      markup))))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
