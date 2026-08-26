@@ -329,22 +329,15 @@ jobs:
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
-              :partition/total 3
+              :partition/total 2
               :partition/index 0
           - name: Driver Tests Part 2
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
-              :partition/total 3
+              :partition/total 2
               :partition/index 1
-          - name: Driver Tests Part 3
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 2
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -367,6 +360,10 @@ jobs:
         test-args: ${{ matrix.job.test-args }}
         quarantine-engine: ${{ vars.QUARANTINE_ENGINE }}
 
+  # there's no need for this to be a completely separate job; it should be
+  # just another test or set of tests inside metabase.driver.databricks-test,
+  # but for the time being let's just get rid of the full duplication and just
+  # run the tests that are affected by the multi-catalog behavior.
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
@@ -376,27 +373,10 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - name: Driver Tests Part 1
+          - name: Driver Tests
             test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
+              :only metabase.driver.databricks-test
               :fail-fast? true
-              :partition/total 3
-              :partition/index 0
-          - name: Driver Tests Part 2
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 1
-          - name: Driver Tests Part 3
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 3
-              :partition/index 2
     env:
       CI: 'true'
       DRIVERS: databricks
