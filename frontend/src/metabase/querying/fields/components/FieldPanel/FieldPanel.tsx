@@ -66,7 +66,6 @@ export const FieldPanel = ({
             <Box mb="1.5rem">
               <Checkbox
                 variant="stacked"
-                size="xs"
                 label={
                   <Text fw={700} ml="0.375rem" lh="1rem">
                     {groupItem.isSelected ? t`Remove all` : t`Add all`}
@@ -97,7 +96,6 @@ export const FieldPanel = ({
                     checked={columnItem.isSelected}
                     disabled={columnItem.isDisabled}
                     mb="1.5rem"
-                    size="xs"
                     aria-label={columnItem.displayName}
                     onChange={() => handleColumnToggle(columnItem)}
                   />
