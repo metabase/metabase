@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import type { WidgetMount } from "custom-viz";
-import { type ComponentType, useEffect } from "react";
+import type { ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 
 import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
@@ -9,22 +9,9 @@ import { wrapPluginWidget } from "../widget-mount";
 
 import { CustomVizSettingWidget } from "./CustomVizSettingWidget";
 
-type TestWidgetProps = {
-  title?: string;
-  value?: number;
-  onChangeSettings?: (settings: Record<string, unknown>) => void;
-};
+type TestWidgetProps = { title?: string; value?: number };
 
-const WRITTEN_SETTINGS = {
-  value: 2,
-  "gauge.segments": [{ min: { type: "card", id: 1, column: "count" } }],
-};
-
-function TestWidget({ title, onChangeSettings }: TestWidgetProps) {
-  useEffect(() => {
-    onChangeSettings?.(WRITTEN_SETTINGS);
-  }, [onChangeSettings]);
-
+function TestWidget({ title }: TestWidgetProps) {
   return (
     <div data-testid="plugin-widget">
       <h1>{title}</h1>
@@ -66,7 +53,6 @@ function prepareWidget(pluginId = 1) {
   const mount = wrapPluginWidget(
     widgetMount,
     createMockCustomVizPluginRuntime({ id: pluginId }),
-    new Set(["value"]),
   );
   return {
     mount,
@@ -143,21 +129,5 @@ describe("CustomVizSettingWidget", () => {
     await waitFor(() => {
       expect(getWidgetContainer()).toHaveAttribute("data-plugin-sandbox", "11");
     });
-  });
-
-  it("lets the widget write only the plugin's own settings", async () => {
-    const warn = jest
-      .spyOn(console, "warn")
-      .mockImplementation(() => undefined);
-    const onChangeSettings = jest.fn();
-
-    setup({ widgetProps: { title: "Setting 1", onChangeSettings } });
-
-    await waitFor(() => {
-      expect(onChangeSettings).toHaveBeenCalledWith({ value: 2 });
-    });
-    expect(warn).toHaveBeenCalledTimes(1);
-
-    warn.mockRestore();
   });
 });

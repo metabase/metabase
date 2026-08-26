@@ -149,17 +149,10 @@ type CommonVisualizationSettings = {
 };
 
 /**
- * Setting ids a plugin may not define. `column` and `column_settings` are
- * contributed by Metabase to power the built-in per-column formatting popover;
- * the rest make Metabase run another saved question (dynamic goals).
+ * Setting ids contributed to every custom visualization by the host (they
+ * power the built-in per-column formatting popover).
  */
-export type ReservedVisualizationSettingId =
-  | "column"
-  | "column_settings"
-  | "graph.goal_value"
-  | "progress.goal"
-  | "gauge.segments"
-  | "scalar.segments";
+export type ReservedVisualizationSettingId = "column" | "column_settings";
 
 export type BaseVisualizationSettings = Record<string, unknown> & {
   [K in ReservedVisualizationSettingId]?: `${K} is a reserved setting id added by Metabase; remove it
@@ -169,16 +162,6 @@ export type BaseVisualizationSettings = Record<string, unknown> & {
 export type CustomVisualizationSettings<
   TSettings extends BaseVisualizationSettings,
 > = TSettings & CommonVisualizationSettings;
-
-/** Metabase-owned settings a plugin may write alongside its own. */
-export type WritableCommonVisualizationSettingId = Exclude<
-  keyof CommonVisualizationSettings,
-  "column"
->;
-
-type WritableSettingId<TSettings extends BaseVisualizationSettings> =
-  | (keyof TSettings & string)
-  | WritableCommonVisualizationSettingId;
 
 export type CreateDefineSetting<TSettings extends BaseVisualizationSettings> =
   () => <
@@ -260,7 +243,7 @@ export type CreateDefineSetting<TSettings extends BaseVisualizationSettings> =
      * related settings so they aren't silently recalculated under the new
      * context and lose user intent.
      */
-    writeDependencies?: WritableSettingId<TSettings>[];
+    writeDependencies?: string[];
 
     /**
      * Setting IDs that are reset to `null` whenever this setting changes.
@@ -270,7 +253,7 @@ export type CreateDefineSetting<TSettings extends BaseVisualizationSettings> =
      * invalidate derived settings whose stored value becomes stale or meaningless
      * after the change.
      */
-    eraseDependencies?: WritableSettingId<TSettings>[];
+    eraseDependencies?: string[];
 
     /**
      * Widget to render for this setting: either a built-in widget name

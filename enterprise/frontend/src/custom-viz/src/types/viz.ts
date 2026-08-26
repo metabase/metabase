@@ -120,7 +120,9 @@ export type CustomVisualizationProps<
   series: Series;
   settings: CustomVisualizationSettings<TSettings>;
   renderingContext: RenderingContext;
-  onClick: (clickObject: ClickObject | null) => void;
+  onClick: (
+    clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
+  ) => void;
   onHover: (hoverObject?: HoverObject | null) => void;
 };
 
@@ -144,7 +146,7 @@ export type CustomVisualizationMount = <P extends object>(
   initialProps: P,
 ) => CustomVisualizationMountHandle<P>;
 
-export type ClickObject = {
+export type ClickObject<TSettings extends BaseVisualizationSettings> = {
   /** The raw value of the clicked cell. */
   value?: RowValue;
 
@@ -164,6 +166,9 @@ export type ClickObject = {
 
   /** The DOM element that was clicked. Used to anchor popovers. */
   element?: Element;
+
+  /** Visualization settings at the time of the click. */
+  settings?: CustomVisualizationSettings<TSettings>;
 
   /**
    * The full row of data and column metadata for the clicked data point.

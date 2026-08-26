@@ -198,16 +198,11 @@ settings: {
 | `eraseDependencies`            | Setting IDs reset to `null` when this setting changes.                               |
 | `persistDefault`               | When `true`, writes the computed default to stored settings on first render.         |
 
-> **Note:** The setting ids `column_settings` and `column` (they power the built-in
-> column formatting popover) and `graph.goal_value`, `progress.goal`, `gauge.segments`,
-> `scalar.segments` (they can make Metabase run another saved question) are reserved by
-> Metabase. TypeScript rejects them in your `Settings` type, and Metabase ignores setting
-> definitions that use them. To apply the formatting people pick in the popover, pass the
-> result of `settings.column?.(col)` to `formatValue`.
->
-> `onChangeSettings`, `writeDependencies`, and `eraseDependencies` accept only your own
-> setting ids plus `card.title`, `card.description`, `card.hide_empty`, and
-> `click_behavior`; other keys are dropped with a console warning.
+> **Note:** The setting ids `column_settings` and `column` are reserved by Metabase
+> (they power the built-in column formatting popover). TypeScript rejects them in your
+> `Settings` type, and Metabase ignores setting definitions that use them. To apply
+> the formatting people pick in the popover, pass the result of `settings.column?.(col)`
+> to `formatValue`.
 
 ### Built-in widgets
 

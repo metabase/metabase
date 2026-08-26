@@ -6,9 +6,7 @@ import type {
 } from "custom-viz";
 import type { ComponentType } from "react";
 
-import { GOAL_SETTING_KEYS } from "metabase/visualizations/lib/dynamic-goals";
 import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
-import { isFunction, isObject } from "metabase-types/guards";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
 import { getWidgetMountPlugin, isWidgetMount } from "./widget-mount";
@@ -39,10 +37,6 @@ function setupMount() {
   return { mount, calls, handle };
 }
 
-function mockWarn() {
-  return jest.spyOn(console, "warn").mockImplementation(() => undefined);
-}
-
 describe("sanitizePluginSettings", () => {
   it("returns undefined when the plugin declares no settings", () => {
     const { mount } = setupMount();
@@ -59,7 +53,7 @@ describe("sanitizePluginSettings", () => {
 
     const sanitized = sanitizePluginSettings({ threshold }, mount, PLUGIN);
 
-    expect(sanitized?.threshold).toEqual(threshold);
+    expect(sanitized?.threshold).toBe(threshold);
   });
 
   it("skips definitions that are not objects", () => {
@@ -75,19 +69,16 @@ describe("sanitizePluginSettings", () => {
   });
 
   it("drops settings with reserved ids and warns, keeping the rest", () => {
-    const warn = mockWarn();
+    const warn = jest
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
     const { mount } = setupMount();
     const threshold = definePluginSetting({ widget: "number" });
-    const reservedIds = ["column", "column_settings", ...GOAL_SETTING_KEYS];
 
     const sanitized = sanitizePluginSettings(
       {
-        ...Object.fromEntries(
-          reservedIds.map((id) => [
-            id,
-            definePluginSetting({ widget: "input" }),
-          ]),
-        ),
+        column: definePluginSetting({ widget: "input" }),
+        column_settings: definePluginSetting({ widget: "input" }),
         threshold,
       },
       mount,
@@ -95,95 +86,15 @@ describe("sanitizePluginSettings", () => {
     );
 
     expect(sanitized).toEqual({ threshold });
-    expect(warn).toHaveBeenCalledTimes(reservedIds.length);
-    for (const id of reservedIds) {
-      expect(warn).toHaveBeenCalledWith(
-        `Custom viz setting "${id}" uses a reserved id and was ignored.`,
-      );
-    }
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith(
+      'Custom viz setting "column" uses a reserved id and was ignored.',
+    );
+    expect(warn).toHaveBeenCalledWith(
+      'Custom viz setting "column_settings" uses a reserved id and was ignored.',
+    );
 
     warn.mockRestore();
-  });
-
-  describe("getProps", () => {
-    it("hands the plugin only the series and settings", () => {
-      const { mount } = setupMount();
-      const getProps = jest.fn(() => ({ placeholder: "Threshold" }));
-      const series = [{ card: {}, data: {} }];
-      const settings = { threshold: 1 };
-
-      const sanitized = sanitizePluginSettings(
-        { threshold: definePluginSetting({ widget: "number", getProps }) },
-        mount,
-        PLUGIN,
-      );
-      const definition = getRuntimeDefinition(sanitized?.threshold);
-
-      expect(definition.widget).toBe("number");
-      expect(
-        definition.getProps?.(series, settings, jest.fn(), {}, jest.fn()),
-      ).toEqual({ placeholder: "Threshold" });
-      expect(getProps).toHaveBeenCalledWith(series, settings);
-    });
-  });
-
-  describe("write and erase dependencies", () => {
-    it("keeps the plugin's own settings and writable card settings, dropping the rest", () => {
-      const warn = mockWarn();
-      const { mount } = setupMount();
-
-      const sanitized = sanitizePluginSettings(
-        {
-          threshold: definePluginSetting({
-            widget: "number",
-            writeDependencies: [
-              "label",
-              "card.title",
-              "gauge.segments",
-              "series_settings",
-            ],
-            eraseDependencies: ["label", "graph.goal_value", 42],
-          }),
-          label: definePluginSetting({ widget: "input" }),
-        },
-        mount,
-        PLUGIN,
-      );
-
-      expect(getRuntimeDefinition(sanitized?.threshold)).toMatchObject({
-        widget: "number",
-        writeDependencies: ["label", "card.title"],
-        eraseDependencies: ["label"],
-      });
-      expect(warn).toHaveBeenCalledTimes(2);
-      expect(warn).toHaveBeenCalledWith(
-        'Custom viz setting "threshold" depends on settings it cannot write and they were ignored: gauge.segments, series_settings.',
-      );
-      expect(warn).toHaveBeenCalledWith(
-        'Custom viz setting "threshold" depends on settings it cannot write and they were ignored: graph.goal_value.',
-      );
-
-      warn.mockRestore();
-    });
-
-    it("normalizes non-array dependencies to an empty list", () => {
-      const { mount } = setupMount();
-
-      const sanitized = sanitizePluginSettings(
-        {
-          threshold: definePluginSetting({
-            widget: "number",
-            writeDependencies: "label",
-          }),
-        },
-        mount,
-        PLUGIN,
-      );
-
-      expect(
-        getRuntimeDefinition(sanitized?.threshold).writeDependencies,
-      ).toEqual([]);
-    });
   });
 
   describe("component widgets", () => {
@@ -209,7 +120,7 @@ describe("sanitizePluginSettings", () => {
       expect(getRuntimeDefinition(original).widget).toBe(Widget);
     });
 
-    it("delegates mounting, updating and unmounting to the plugin's shared mount function", () => {
+    it("delegates mounting to the plugin's shared mount function", () => {
       const { mount, calls, handle } = setupMount();
       const sanitized = sanitizePluginSettings(
         { customWidget: definePluginSetting({ widget: Widget }) },
@@ -223,55 +134,7 @@ describe("sanitizePluginSettings", () => {
       const mountHandle = widget(container, initialProps);
 
       expect(calls).toEqual([{ Component: Widget, container, initialProps }]);
-
-      mountHandle.update({ id: "customWidget", value: 1 });
-      expect(handle.update).toHaveBeenCalledWith({
-        id: "customWidget",
-        value: 1,
-      });
-
-      mountHandle.unmount();
-      expect(handle.unmount).toHaveBeenCalledTimes(1);
-    });
-
-    it("lets the widget write only the plugin's own settings", () => {
-      const warn = mockWarn();
-      const { mount, calls } = setupMount();
-      const onChangeSettings = jest.fn();
-      const sanitized = sanitizePluginSettings(
-        {
-          customWidget: definePluginSetting({ widget: Widget }),
-          threshold: definePluginSetting({ widget: "number" }),
-        },
-        mount,
-        PLUGIN,
-      );
-
-      const widget = getMountWidget(sanitized?.customWidget);
-      widget(document.createElement("div"), {
-        id: "customWidget",
-        onChangeSettings,
-      });
-      const mountedProps = calls[0].initialProps;
-      if (!isObject(mountedProps)) {
-        throw new Error("Expected the widget to be mounted with props");
-      }
-      getCallback(
-        mountedProps,
-        "onChangeSettings",
-      )({
-        customWidget: "a",
-        threshold: 1,
-        "gauge.segments": [{ min: { type: "card", id: 1, column: "x" } }],
-      });
-
-      expect(onChangeSettings).toHaveBeenCalledWith({
-        customWidget: "a",
-        threshold: 1,
-      });
-      expect(warn).toHaveBeenCalledTimes(1);
-
-      warn.mockRestore();
+      expect(mountHandle).toBe(handle);
     });
   });
 
@@ -332,25 +195,17 @@ function definePluginSetting(
 
 type RuntimeSettingDefinition = {
   title?: string;
-  widget?: WidgetMount | string;
-  getProps?: (...args: unknown[]) => unknown;
-  writeDependencies?: string[];
-  eraseDependencies?: string[];
+  widget: WidgetMount | string;
 };
 
-function getRuntimeDefinition(definition: unknown): RuntimeSettingDefinition {
+function getRuntimeDefinition(
+  definition:
+    | CustomVisualizationSettingDefinition<Record<string, unknown>>
+    | undefined,
+): RuntimeSettingDefinition {
   // The branded type is opaque by design; at runtime it's a plain
   // definition object, which is what these assertions inspect.
-  return definition as RuntimeSettingDefinition;
-}
-
-function getCallback(source: Record<string, unknown>, name: string) {
-  const callback = source[name];
-  if (!isFunction(callback)) {
-    throw new Error(`Expected "${name}" to be a function`);
-  }
-
-  return callback;
+  return definition as unknown as RuntimeSettingDefinition;
 }
 
 function getMountWidget(
@@ -360,8 +215,8 @@ function getMountWidget(
 ): WidgetMount {
   const { widget } = getRuntimeDefinition(definition);
 
-  if (typeof widget !== "function") {
-    throw new Error(`Expected a WidgetMount, got widget "${String(widget)}"`);
+  if (typeof widget === "string") {
+    throw new Error(`Expected a WidgetMount, got widget name "${widget}"`);
   }
 
   return widget;
