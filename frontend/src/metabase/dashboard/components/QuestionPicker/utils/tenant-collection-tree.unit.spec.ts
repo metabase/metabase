@@ -1,11 +1,11 @@
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
-import type { ExpandedCollection } from "metabase/redux/store";
 import type { Collection, CollectionId } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
   COLLECTIONS_TOP_LEVEL_ID,
+  type ExpandedCollection,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
   createSyntheticTopLevel,
   flattenCollectionTree,
@@ -14,7 +14,10 @@ import {
 } from "./tenant-collection-tree";
 
 const expandCollections = (collections: Collection[] = []) =>
-  getExpandedCollectionsById(collections, null);
+  getExpandedCollectionsById(collections, null) as Record<
+    CollectionId,
+    ExpandedCollection
+  >;
 
 describe("mergeBaseCollectionsAtTopLevel", () => {
   it("adds Collections to base collection paths", () => {
