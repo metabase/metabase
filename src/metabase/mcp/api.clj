@@ -95,7 +95,7 @@
 (defn- handle-resources-list [id _params token-scopes]
   (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
 
-(defn- handle-resources-read [id params session-id token-scopes]
+(defn- handle-resources-read [id params _session-id token-scopes]
   (let [uri (:uri params)]
     (if (or (not (string? uri)) (str/blank? uri))
       (jsonrpc-error id -32602 "Missing required parameter: uri")
