@@ -15,6 +15,7 @@
 (deftest create-session-with-password-auth-tracking-test
   (testing "Creating a session with password authentication tracks the auth_identity_id"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-123"
                          :embedded false
@@ -63,6 +64,7 @@
 (deftest create-session-updates-last-used-at-test
   (testing "Creating a session updates the last_used_at timestamp on the AuthIdentity"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-last-used"
                          :embedded false
@@ -77,6 +79,7 @@
 (deftest multiple-sessions-same-auth-identity-test
   (testing "Multiple sessions can reference the same AuthIdentity"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info-1 {:device_id "device-1"
                            :embedded false
@@ -99,6 +102,7 @@
 (deftest session-cascade-delete-on-auth-identity-deletion-test
   (testing "Deleting an AuthIdentity cascades to delete associated Sessions"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-cascade"
                          :embedded false
@@ -116,6 +120,7 @@
     (mt/with-temp [:model/User user {}
                    :model/AuthIdentity google-auth {:user_id (:id user)
                                                     :provider "google"}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-multi"
                          :embedded false
@@ -158,6 +163,7 @@
 (deftest session-inherits-expires-at-test
   (testing "Session inherits expires_at from auth-identity"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [expires-at (t/plus (t/offset-date-time) (t/days 7))
             password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")]
         (t2/update! :model/AuthIdentity (:id password-auth) {:expires_at expires-at})
@@ -176,6 +182,7 @@
 (deftest session-no-expires-at-when-auth-identity-has-none-test
   (testing "Session has no expires_at when auth-identity doesn't have one"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-no-expires"
                          :embedded false
