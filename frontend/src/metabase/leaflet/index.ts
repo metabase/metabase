@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
 export { L };
+export type * from "leaflet";
 
 let drawLoaded: Promise<void> | undefined;
 
