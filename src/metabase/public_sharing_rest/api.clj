@@ -196,7 +196,7 @@
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (api/check-404 (t2/select-one :model/Card :id (public-sharing/public-uuid->id :model/Card uuid)))]
+  (let [card (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))]
     (apply process-query-for-card-with-id card export-format parameters options)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -297,7 +297,7 @@
   `dashboard-param-remapped-value` only need `:resolved-params`, which they hydrate themselves. Matches how the embed
   param-value endpoints fetch the Dashboard."
   [uuid]
-  (api/check-404 (t2/select-one :model/Dashboard :id (public-sharing/public-uuid->id :model/Dashboard uuid))))
+  (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -368,7 +368,7 @@
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
-        dashboard (api/check-404 (t2/select-one :model/Dashboard :id (public-sharing/public-uuid->id :model/Dashboard uuid)))
+        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
         dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))]
     (process-query-for-dashcard
      :dashboard     dashboard
@@ -398,7 +398,7 @@
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
-        dashboard (api/check-404 (t2/select-one :model/Dashboard :id (public-sharing/public-uuid->id :model/Dashboard uuid)))
+        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
         dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))]
     (u/prog1 (process-query-for-dashcard
               :dashboard     dashboard
@@ -530,7 +530,7 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (t2/select-one :model/Card :id (public-sharing/public-uuid->id :model/Card uuid))]
+  (let [card (public-sharing/public-uuid->model :model/Card uuid)]
     (request/as-admin
       (queries/card-param-values card param-key))))
 
@@ -545,7 +545,7 @@
                                       [:param-key ms/NonBlankString]
                                       [:query     ms/NonBlankString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (t2/select-one :model/Card :id (public-sharing/public-uuid->id :model/Card uuid))]
+  (let [card (public-sharing/public-uuid->model :model/Card uuid)]
     (request/as-admin
       (queries/card-param-values card param-key query))))
 
@@ -560,7 +560,7 @@
                                 [:param-key ms/NonBlankString]]
    {:keys [value]}          :- [:map [:value :string]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (t2/select-one :model/Card :id (public-sharing/public-uuid->id :model/Card uuid))]
+  (let [card (public-sharing/public-uuid->model :model/Card uuid)]
     (request/as-admin
       (queries/card-param-remapped-value card param-key (codec/url-decode value)))))
 
@@ -650,7 +650,7 @@
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [card      (api/check-404 (t2/select-one :model/Card :id card-id :archived false))
-        dashboard (api/check-404 (t2/select-one :model/Dashboard :id (public-sharing/public-uuid->id :model/Dashboard uuid)))
+        dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
         dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))]
     (process-query-for-dashcard
      :dashboard     dashboard
@@ -732,7 +732,7 @@
        [:latField ::api.tiles/legacy-ref]
        [:lonField ::api.tiles/legacy-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (api/check-404 (t2/select-one :model/Card :id (public-sharing/public-uuid->id :model/Card uuid)))]
+  (let [card (api/check-404 (public-sharing/public-uuid->model :model/Card uuid))]
     (request/as-admin
       (api.tiles/process-tiles-query-for-card card parameters zoom x y latField lonField))))
 
@@ -757,7 +757,7 @@
        [:latField ::api.tiles/legacy-ref]
        [:lonField ::api.tiles/legacy-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [dashboard (api/check-404 (t2/select-one :model/Dashboard :id (public-sharing/public-uuid->id :model/Dashboard uuid)))
+  (let [dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
         dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
         card      (api/check-404 (t2/select-one :model/Card card-id))]
     (request/as-admin

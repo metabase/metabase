@@ -1,5 +1,6 @@
 (ns metabase.public-sharing.core
   (:require
+   [medley.core :as m]
    [metabase.public-sharing.settings :as public-sharing.settings]
    [toucan2.core :as t2]))
 
@@ -65,3 +66,17 @@
           (t2/select [model :id :public_uuid]
                      :public_uuid_prefix (public-uuid-prefix uuid)
                      :archived false))))
+
+(defn public-uuid->model
+  "Resolve a shared entity's public `uuid` to the full matching `model` row, or nil. Like [[public-uuid->id]] but
+  returns the whole instance so callers needn't re-select it by id.
+
+  Selects full rows narrowed by the indexed `public_uuid_prefix` and compares the model-decrypted `public_uuid` in
+  memory (see [[public-uuid->id]] for why the prefix + in-memory `=` is needed). A value written outside the model —
+  e.g. a plaintext uuid forged via raw SQL — fails the strict decrypting read and errors out rather than resolving."
+  [model uuid]
+  (when uuid
+    (m/find-first #(= uuid (:public_uuid %))
+                  (t2/select model
+                             :public_uuid_prefix (public-uuid-prefix uuid)
+                             :archived false))))
