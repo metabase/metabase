@@ -21,9 +21,7 @@ export function DashboardWideEventsSidebar() {
   const { visibleEventIds, partiallyVisibleEventIds } = useSelector(
     getDashboardTimelineEventsAggregate,
   );
-  const selectedEventIds = useSelector((state) =>
-    getDashCardSelectedTimelineEventIds(state),
-  );
+  const selectedEventIds = useSelector(getDashCardSelectedTimelineEventIds);
 
   return (
     <Sidebar data-testid="dashboard-events-sidebar">
