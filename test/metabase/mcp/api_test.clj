@@ -812,40 +812,25 @@
                :structuredContent {:query "card__1"}}
               result)))))
 
-(deftest ui-tools-return-fresh-ui-credentials-test
-  (testing "each successful UI tool call returns a credential outside model-visible content"
-    (let [[session-id _] (initialize!)
-          credentials     (atom ["credential-1" "credential-2"])]
-      (with-redefs [mcp.session/issue-ui-credential (fn [_session-id _user-id]
-                                                      (let [credential (first @credentials)]
-                                                        (swap! credentials rest)
-                                                        credential))]
-        (let [visualize-result (get-in (mcp-request (jsonrpc-request "tools/call"
-                                                                     {:name      "visualize_query"
-                                                                      :arguments {:query "card__1"}})
-                                                    {"mcp-session-id" session-id})
-                                       [:body :result])
-              handle           (mt/with-current-user (mt/user->id :crowberto)
-                                 (mcp.session/store-handle! session-id
-                                                            (mt/user->id :crowberto)
-                                                            "card__2"))
-              drill-result     (get-in (mcp-request (jsonrpc-request "tools/call"
-                                                                     {:name      "render_drill_through"
-                                                                      :arguments {:handle handle}})
-                                                    {"mcp-session-id" session-id})
-                                       [:body :result])]
-          (is (= "credential-1"
-                 (get-in visualize-result [:_meta :com.metabase/mcp-apps :credential])))
-          (is (= session-id
-                 (get-in visualize-result [:_meta :com.metabase/mcp-apps :sessionId])))
-          (is (= "credential-2"
-                 (get-in drill-result [:_meta :com.metabase/mcp-apps :credential])))
-          (is (= session-id
-                 (get-in drill-result [:_meta :com.metabase/mcp-apps :sessionId])))
-          (is (not (str/includes? (pr-str (select-keys visualize-result [:content :structuredContent]))
-                                  "credential-1")))
-          (is (not (str/includes? (pr-str (select-keys drill-result [:content :structuredContent]))
-                                  "credential-2"))))))))
+(deftest ui-tools-do-not-return-ui-credentials-test
+  (testing "visualization tools leave credential minting to their app-only refresh tools"
+    (let [[session-id _]  (initialize!)
+          visualize-result (get-in (mcp-request (jsonrpc-request "tools/call"
+                                                                 {:name      "visualize_query"
+                                                                  :arguments {:query "card__1"}})
+                                                {"mcp-session-id" session-id})
+                                   [:body :result])
+          handle           (mt/with-current-user (mt/user->id :crowberto)
+                             (mcp.session/store-handle! session-id
+                                                        (mt/user->id :crowberto)
+                                                        "card__2"))
+          drill-result     (get-in (mcp-request (jsonrpc-request "tools/call"
+                                                                 {:name      "render_drill_through"
+                                                                  :arguments {:handle handle}})
+                                                {"mcp-session-id" session-id})
+                                   [:body :result])]
+      (is (nil? (get-in visualize-result [:_meta :com.metabase/mcp-apps])))
+      (is (nil? (get-in drill-result [:_meta :com.metabase/mcp-apps]))))))
 
 (deftest mcp-ui-auth-refresh-tools-test
   (testing "UI auth refresh tools are app-only and inherit their resource scopes"
@@ -879,8 +864,6 @@
           credential     (get-in result [:_meta :com.metabase/mcp-apps :credential])]
       (is (string? credential))
       (is (= session-id (get-in result [:_meta :com.metabase/mcp-apps :sessionId])))
-      (is (= "refresh_visualize_query_ui_credential"
-             (get-in result [:_meta :com.metabase/mcp-apps :refreshTool])))
       (is (not (str/includes? (pr-str (select-keys result [:content :structuredContent]))
                               credential))))))
 
@@ -1734,7 +1717,7 @@
         (is (str/includes? html2 "refresh_visualize_query_ui_credential"))))))
 
 (deftest mcp-ui-credential-validation-test
-  (testing "a UI tool result provides the scoped UI request surface, but not general API access"
+  (testing "an app-only refresh tool provides the scoped UI request surface, but not general API access"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (oauth-server/reset-provider!)
@@ -1744,8 +1727,8 @@
               session-id  (get-in initialize [:headers "Mcp-Session-Id"])
               tool-result (mcp-request-with-bearer token 200
                                                    (jsonrpc-request "tools/call"
-                                                                    {:name      "visualize_query"
-                                                                     :arguments {:query "card__1"}})
+                                                                    {:name      "refresh_visualize_query_ui_credential"
+                                                                     :arguments {}})
                                                    {"mcp-session-id" session-id})
               credential  (get-in tool-result [:body :result :_meta :com.metabase/mcp-apps :credential])
               headers     {"x-metabase-mcp-ui-auth" credential}]
