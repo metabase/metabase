@@ -5,6 +5,7 @@ import {
   ALL_USERS_GROUP_ID,
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { CollectionId } from "metabase-types/api";
 
 import {
   runContentDiagnosticsScan,
@@ -25,7 +26,7 @@ type CollectionGraph = {
   groups: Record<string, Record<string, string>>;
 };
 
-function revokeNonAdminAccess(collectionId: number | string) {
+function revokeNonAdminAccess(collectionId: CollectionId) {
   cy.request<CollectionGraph>("GET", "/api/collection/graph").then(
     ({ body: graph }) => {
       const groups = Object.fromEntries(
