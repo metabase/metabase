@@ -86,7 +86,7 @@ const baseConfig = {
     "<rootDir>/target/cljs_dev/",
   ],
   testPathIgnorePatterns: [
-    "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
+    "<rootDir>/frontend/.*\\.tz\\.unit\\.spec\\.[jt]sx?$",
     "<rootDir>/release/.*",
   ],
   testMatch: ["<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}"],
