@@ -3,7 +3,7 @@ import type { ReactNode, Ref } from "react";
 import { NumberInput } from "metabase/ui";
 import type { GoalValue } from "metabase-types/api";
 
-const RIGHT_SECTION_WIDTH = 38;
+import { RIGHT_SECTION_WIDTH } from "./constants";
 
 type Props = {
   "aria-label"?: string;
