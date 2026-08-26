@@ -1,27 +1,14 @@
 /* eslint-env node */
+const path = require("path");
+
 const { sources } = require("@rspack/core");
+
+const { deriveRoutePreloads } = require("./route-preloads/derive");
 
 const MANIFEST_FILENAME = "route-preloads.json";
 
-/**
- * Which chunk serves which URL, generated from the route tree.
- *
- * A page in its own chunk is only requested once `app-main` has downloaded,
- * parsed and run, so its fetch starts hundreds of milliseconds after the
- * document arrives. The backend reads the manifest this table produces and
- * writes `<link rel="preload">` into the page it serves, which moves that fetch
- * alongside the download of `app-main` instead of after it.
- *
- * `route-preloads.unit.spec.ts` derives this file from the real route tree and
- * fails when it drifts. Regenerate it rather than editing it by hand:
- *
- *   UPDATE_ROUTE_PRELOADS=1 bun run test-unit-keep-cljs route-preloads
- *
- * `patterns` are clout routes, the same matcher the API endpoints use. The
- * backend takes the first row that matches, and the rows are ordered deepest
- * first, so a narrower row shields the wider one it sits inside.
- */
-const ROUTE_PRELOADS = require("./route-preloads.generated.json");
+// `compiler.context` is the entry's directory, not the checkout.
+const REPO_ROOT = path.resolve(__dirname, "../../../..");
 
 /**
  * The files a chunk group needs, its shared chunks included. Files already in
@@ -39,12 +26,28 @@ function groupFiles(group, initialFiles) {
   return files;
 }
 
+/**
+ * Writes `route-preloads.json`: which files the page each URL renders needs.
+ *
+ * The rows are derived from the route files on every build, so nothing is
+ * checked in and nothing can drift. Deriving reads source rather than importing
+ * the app, which keeps this out of the loaders and the ClojureScript build; see
+ * `route-preloads/derive.js`.
+ *
+ * Development skips it. The hints only pay for themselves on a real network,
+ * and the backend serves the page without them when the manifest is absent.
+ */
 class RoutePreloadManifest {
-  constructor(routes = ROUTE_PRELOADS) {
-    this.routes = routes;
+  constructor({ enabled = true, root = REPO_ROOT } = {}) {
+    this.enabled = enabled;
+    this.root = root;
   }
 
   apply(/** @type {import("webpack").Compiler} */ compiler) {
+    if (!this.enabled) {
+      return;
+    }
+
     const publicPath = compiler.options.output.publicPath || "";
 
     compiler.hooks.thisCompilation.tap(
@@ -65,8 +68,10 @@ class RoutePreloadManifest {
               }
             }
 
+            const { rows } = deriveRoutePreloads(this.root);
+
             const missing = [];
-            const entries = this.routes.map((route) => {
+            const entries = rows.map((route) => {
               const files = route.chunks.flatMap((name) => {
                 const group = compilation.namedChunkGroups.get(name);
                 if (!group) {
@@ -86,8 +91,8 @@ class RoutePreloadManifest {
               compilation.errors.push(
                 new Error(
                   `route-preloads: no chunk is named ${[...new Set(missing)].join(", ")}. ` +
-                    "Regenerate route-preloads.generated.json with " +
-                    "UPDATE_ROUTE_PRELOADS=1 bun run test-unit-keep-cljs route-preloads",
+                    "The route files name it in a `webpackChunkName` comment, " +
+                    "so either the comment or the chunk it names has moved.",
                 ),
               );
               return;
@@ -105,4 +110,4 @@ class RoutePreloadManifest {
   }
 }
 
-module.exports = { ROUTE_PRELOADS, RoutePreloadManifest, MANIFEST_FILENAME };
+module.exports = { RoutePreloadManifest, MANIFEST_FILENAME };
