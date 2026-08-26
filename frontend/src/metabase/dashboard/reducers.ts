@@ -40,6 +40,7 @@ import {
   editingDashboard,
   isAddParameterPopoverOpen,
   isNavigatingBackToDashboard,
+  linkTargets,
   loadingControls,
   loadingDashCards,
   missingActionParameters,
@@ -273,6 +274,7 @@ const combinedDashboardReducer = combineReducers({
   loadingDashCards,
   dashcards,
   dashcardData,
+  linkTargets,
   draftParameterValues,
   // Combined reducer needs to init state for every slice
   selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,

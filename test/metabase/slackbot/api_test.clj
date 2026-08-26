@@ -225,14 +225,15 @@
                        :timeout-ms 5000})
               (is (= 1 (count @post-calls)))
               (let [blocks (:blocks (first @post-calls))]
-                (testing "no section block is over the limit -- unlike the untruncated answer"
-                  (is (nil? (tu/oversized-section-error blocks)))
-                  (is (some? (tu/oversized-section-error [{:type "section"
-                                                           :text {:type "mrkdwn" :text tu/oversized-answer}}]))
+                (testing "no block is over its limit -- unlike the untruncated answer"
+                  (is (nil? (tu/oversized-block-error blocks)))
+                  ;; The control has to name the block type the answer actually goes in, or it would
+                  ;; assert a section rule no longer in play and pass whatever the code does.
+                  (is (some? (tu/oversized-block-error [{:type "markdown" :text tu/oversized-answer}]))
                       "the answer really is past the limit, so the case under test is the real one"))
                 (testing "the answer is cut to the limit, and the message says why"
-                  (is (= tu/slack-section-text-limit
-                         (count (get-in (first blocks) [:text :text]))))
+                  (is (= tu/slack-markdown-text-limit
+                         (count (:text (first blocks)))))
                   (is (some (fn [block]
                               (and (= "context" (:type block))
                                    (str/includes? (get-in block [:elements 0 :text])
