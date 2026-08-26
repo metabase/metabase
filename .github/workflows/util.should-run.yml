@@ -42,7 +42,7 @@ on:
         # through to it. Anything other than 'true' means don't run.
         value: >-
           ${{ jobs.should-run.outputs.verdict == 'defer'
-          && jobs.check-files.outputs.changed
+          && jobs.should-run.outputs.changed
           || jobs.should-run.outputs.verdict }}
       forced:
         description: >
@@ -58,22 +58,30 @@ on:
         value: ${{ jobs.should-run.outputs.verdict == 'false' }}
       files:
         description: "Files matched by the named filters, in the `list-files` format."
-        value: ${{ jobs.check-files.outputs.files }}
+        value: ${{ jobs.should-run.outputs.files }}
       results:
         description: >
           Every paths-filter output as a JSON object, for a caller needing more
           than one answer. `{}` when the verdict short-circuited the file check,
           so fromJSON() is always safe — pair it with `forced`.
-        value: ${{ jobs.check-files.outputs.results || '{}' }}
+        value: ${{ jobs.should-run.outputs.results || '{}' }}
 
 jobs:
-  # check the override labels and branch first
+  # One runner answers both halves: the override labels and the branch decide
+  # first, and the file check runs only when they defer to it. A second job
+  # would spend another runner spin-up to reach the same verdict.
   should-run:
     name: Decide which jobs should run
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       verdict: ${{ steps.decide.outputs.verdict }}
+      changed: ${{ steps.changes.outputs.changed }}
+      files: ${{ steps.changes.outputs.files }}
+      results: ${{ steps.changes.outputs.results }}
     steps:
       - name: Decide whether we should force-run, force-skip, or defer to file checks
         id: decide
@@ -86,25 +94,15 @@ jobs:
             || 'defer' }}
         run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
 
-  check-files:
-    needs: should-run
-    if: ${{ needs.should-run.outputs.verdict == 'defer' }}
-    name: Check which files changed
-    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      changed: ${{ steps.changes.outputs.changed }}
-      files: ${{ steps.changes.outputs.files }}
-      results: ${{ steps.changes.outputs.results }}
-    steps:
+      # only do this if we get "defer" from the previous step
       - uses: actions/checkout@v6
+        if: steps.decide.outputs.verdict == 'defer'
         with:
           sparse-checkout: .github
+
       - name: Test which files changed
         id: changes
+        if: steps.decide.outputs.verdict == 'defer'
         uses: ./.github/actions/files-changed
         with:
           any-of: ${{ inputs.any-of }}
