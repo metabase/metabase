@@ -82,3 +82,11 @@ export const InteractiveContent = {
     children: sampleArgs.interactive,
   },
 };
+
+export const Opened = {
+  render: DefaultTemplate,
+  args: {
+    children: sampleArgs.simple,
+    opened: true,
+  },
+};

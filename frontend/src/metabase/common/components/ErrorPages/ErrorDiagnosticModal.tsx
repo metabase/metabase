@@ -48,7 +48,7 @@ export const ErrorDiagnosticModal = ({
     return (
       <Modal opened onClose={onClose}>
         <Stack align="center" justify="center" mb="xl">
-          <Text w="bold" color="text-secondary" mb="sm">
+          <Text fw="bold" color="text-secondary" mb="sm">
             {c(
               "loading message indicating that we are gathering debugging information to aid in providing technical support",
             ).t`Gathering diagnostic information...`}

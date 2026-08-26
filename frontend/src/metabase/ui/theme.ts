@@ -148,9 +148,11 @@ export const getThemeOverrides = (
     ...DEFAULT_METABASE_COMPONENT_THEME,
     colorScheme,
   },
-  shadows: colorScheme === "dark" ? DARK_SHADOWS : LIGHT_SHADOWS,
-  spacing: SPACING_SCALE,
-  radius: RADIUS_SCALE,
+  shadows: {
+    ...(colorScheme === "dark" ? DARK_SHADOWS : LIGHT_SHADOWS),
+  },
+  spacing: { ...SPACING_SCALE },
+  radius: { ...RADIUS_SCALE },
   defaultRadius: "xs",
   fontSizes: {
     xs: rem(11),

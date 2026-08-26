@@ -39,6 +39,9 @@ export const dateTimePickerOverrides = {
       calendarHeaderControl: CalendarStyles.calendarHeaderControl,
     },
     styles: {
+      levelsGroup: {
+        gap: "var(--mantine-spacing-lg)",
+      },
       weekdaysRow: {
         boxSizing: "border-box",
       },

@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 
-import { Grid, Paper, type PaperProps, Text } from "metabase/ui";
+import { Grid, Paper, type PaperProps, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 
 const theme = getThemeOverrides();
@@ -44,6 +44,16 @@ const DefaultTemplate = (args: PaperProps) => (
   </Paper>
 );
 
+const ShadowMatrixTemplate = (args: PaperProps) => (
+  <Stack gap="xxl" maw="24rem">
+    {shadowOptions.map((shadow) => (
+      <Paper key={shadow} {...args} p="xl" shadow={shadow}>
+        <Text fw="bold">Shadow {shadow}</Text>
+      </Paper>
+    ))}
+  </Stack>
+);
+
 const GridTemplate = (args: PaperProps) => (
   <Grid
     columns={argTypes.radius.options.length + 1}
@@ -82,6 +92,11 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
+};
+
+export const ShadowMatrix = {
+  render: ShadowMatrixTemplate,
+  name: "Shadow matrix",
 };
 
 export const NoBorder = {

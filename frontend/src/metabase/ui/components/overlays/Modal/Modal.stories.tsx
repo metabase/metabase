@@ -114,6 +114,17 @@ const SingleButtonTemplate = (args: ModalProps) => {
   );
 };
 
+const OpenedTemplate = (args: ModalProps) => (
+  <Modal {...args} title="Add to dashboard?" opened onClose={() => undefined}>
+    <Text>Choose a dashboard for this question.</Text>
+    <Flex direction="row" justify="flex-end" mt="lg">
+      <Button type="submit" variant="filled">
+        Add
+      </Button>
+    </Flex>
+  </Modal>
+);
+
 const NoBodyTextTemplate = (args: ModalProps) => {
   const [isOpen, setOpen] = useState(false);
   const handleOpen = () => setOpen(true);
@@ -154,6 +165,10 @@ export const SentenceCaseTitles = {
 
 export const Confirmation = {
   render: ConfirmationTemplate,
+};
+
+export const Opened = {
+  render: OpenedTemplate,
 };
 
 export const SingleButton = {

@@ -10,6 +10,28 @@ const SHADOW_SCALE_KEYS = [
   "lg_outline",
 ];
 
+const LIGHT_SHADOWS = {
+  xs: "0 1px 3px 0 rgba(0, 0, 0, 0.07)",
+  xs_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 3px 0 rgba(0, 0, 0, 0.07)",
+  sm: "0 1px 4px 0 rgba(0, 0, 0, 0.05), 0 5px 15px 0 rgba(0, 0, 0, 0.10)",
+  sm_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 1px 4px 0 rgba(0, 0, 0, 0.05), 0 5px 15px 0 rgba(0, 0, 0, 0.10)",
+  lg_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.07), 0 5px 15px 0 rgba(0, 0, 0, 0.15), 0 30px 60px 0 rgba(0, 0, 0, 0.20)",
+};
+
+const DARK_SHADOWS = {
+  xs: "0 1px 3px 0 rgba(0, 0, 0, 0.20)",
+  xs_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.20)",
+  sm: "0 1px 4px 0 rgba(0, 0, 0, 0.07), 0 5px 15px 0 rgba(0, 0, 0, 0.20)",
+  sm_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 1px 4px 0 rgba(0, 0, 0, 0.07), 0 5px 15px 0 rgba(0, 0, 0, 0.20)",
+  lg_outline:
+    "0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 5px 15px 0 rgba(0, 0, 0, 0.20), 0 30px 60px 0 rgba(0, 0, 0, 0.40)",
+};
+
 const SPACING_SCALE = {
   none: rem(0),
   xxxs: rem(2),
@@ -95,15 +117,12 @@ describe("theme scales (GDGT-2486)", () => {
   });
 
   describe("shadows", () => {
-    it.each(["light", "dark"] as const)(
-      "defines the full elevation set in %s mode",
-      (colorScheme) => {
-        const shadows = getThemeOverrides(colorScheme).shadows;
-        expect(Object.keys(shadows ?? {}).sort()).toEqual(
-          [...SHADOW_SCALE_KEYS].sort(),
-        );
-      },
-    );
+    it.each([
+      ["light", LIGHT_SHADOWS],
+      ["dark", DARK_SHADOWS],
+    ] as const)("maps every elevation in %s mode", (colorScheme, expected) => {
+      expect(getThemeOverrides(colorScheme).shadows).toEqual(expected);
+    });
 
     it("uses a stronger shadow set in dark mode", () => {
       const light = getThemeOverrides("light").shadows ?? {};
@@ -121,6 +140,15 @@ describe("theme scales (GDGT-2486)", () => {
       expect(whitelabeled.spacing).toEqual(plain.spacing);
       expect(whitelabeled.radius).toEqual(plain.radius);
       expect(whitelabeled.shadows).toEqual(plain.shadows);
+    });
+
+    it("returns independent mutable scale objects", () => {
+      const first = getThemeOverrides();
+      const second = getThemeOverrides();
+
+      expect(first.spacing).not.toBe(second.spacing);
+      expect(first.radius).not.toBe(second.radius);
+      expect(first.shadows).not.toBe(second.shadows);
     });
   });
 
@@ -176,13 +204,20 @@ describe("theme scales (GDGT-2486)", () => {
         );
       }
 
-      expect(
-        getExtendedComponentTheme(components.DatePicker).styles,
-      ).toMatchObject({
-        levelsGroup: {
-          gap: "var(--mantine-spacing-lg)",
-        },
-      });
+      for (const componentName of [
+        "DateInput",
+        "DatePicker",
+        "DateTimePicker",
+        "MonthPicker",
+      ]) {
+        expect(
+          getExtendedComponentTheme(components[componentName]).styles,
+        ).toMatchObject({
+          levelsGroup: {
+            gap: "var(--mantine-spacing-lg)",
+          },
+        });
+      }
     });
   });
 });
