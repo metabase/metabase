@@ -105,10 +105,10 @@ export const useMetabot = (): UseMetabotResult => {
   const errorMessages = useMemo<SdkMetabotErrorMessage[]>(
     () =>
       agent.messages
-        .filter((m) => m.outcome.type === "errored")
+        .filter((m) => m.status.type === "errored")
         .map(
           (m) =>
-            (m.outcome.type === "errored" && m.outcome.display) || {
+            (m.status.type === "errored" && m.status.display) || {
               type: "message",
               message: t`Something went wrong`,
             },

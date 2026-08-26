@@ -12,13 +12,12 @@ import {
   type MetabotAgentId,
   type MetabotAgentTurnDisplayError,
   type MetabotAgentTurnError,
-  type MetabotAgentTurnIncompleteMessage,
-  type MetabotChatMessage,
   type MetabotDataPart,
   type MetabotDebugToolCallMessage,
+  type MetabotIncompleteFinishReason,
   type MetabotMessage,
-  type MetabotMessageOutcome,
   type MetabotMessagePart,
+  type MetabotMessageStatus,
   forkConversation,
   isChainOfThoughtMessage,
 } from "metabase/metabot/state";
@@ -59,10 +58,10 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "data-static_viz" }, () => false)
     .exhaustive();
 
-const isUserVisibleDataPartMessage = (
-  message: MetabotAgentDataPartMessage,
+const isUserVisibleAgentDataPart = (
+  part: MetabotAgentDataPartMessage,
 ): boolean =>
-  match(message)
+  match(part)
     .with({ part: { type: "data-code_edit" } }, ({ metadata }) => {
       return metadata?.codeEditBuffer?.source.database_id != null;
     })
@@ -71,7 +70,7 @@ const isUserVisibleDataPartMessage = (
 const isUserVisiblePart = (part: MetabotMessagePart): boolean =>
   match(part)
     .with({ type: "text" }, () => true)
-    .with({ type: "data_part" }, (part) => isUserVisibleDataPartMessage(part))
+    .with({ type: "data_part" }, (part) => isUserVisibleAgentDataPart(part))
     .with({ type: "tool_call" }, () => false)
     .with({ type: "chain_of_thought" }, () => true)
     .exhaustive();
@@ -94,7 +93,7 @@ export const PartContainer = ({
   className,
   ...props
 }: FlexProps & {
-  chatRole: MetabotChatMessage["role"];
+  chatRole: MetabotMessage["role"];
 }) => (
   <Flex
     className={cx(
@@ -200,6 +199,7 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
 
 type AgentPartProps = {
   part: MetabotMessagePart;
+  externalId?: string;
   debug: boolean;
   readonly: boolean;
   conversationId: string;
@@ -211,6 +211,7 @@ type AgentPartProps = {
 
 const AgentPart = ({
   part,
+  externalId,
   debug,
   readonly,
   conversationId,
@@ -232,6 +233,7 @@ const AgentPart = ({
     .with({ type: "data_part" }, (p) => (
       <AgentDataPart
         part={p}
+        externalId={externalId}
         debug={debug}
         readonly={readonly}
         conversationId={conversationId}
@@ -241,11 +243,7 @@ const AgentPart = ({
       <AgentToolCallPart part={p} onSelect={onToolCallSelect} />
     ))
     .with({ type: "chain_of_thought" }, (p) => (
-      <MetabotChainOfThought
-        part={p}
-        isStreaming={isStreaming}
-        supportsReasoning={supportsReasoning}
-      />
+      <MetabotChainOfThought part={p} supportsReasoning={supportsReasoning} />
     ))
     .exhaustive();
 
@@ -371,7 +369,7 @@ export const AgentMessage = ({
 }: AgentMessageProps) => {
   const messageId = message.externalId ?? "";
   const isFailed =
-    message.outcome.type === "errored" || message.outcome.type === "aborted";
+    message.status.type === "errored" || message.status.type === "aborted";
   const canActOnMessage = !readonly && !!messageId;
 
   const visibleParts = debug
@@ -398,22 +396,21 @@ export const AgentMessage = ({
     />
   );
 
-  const outcome = (
-    <MessageOutcome
-      outcome={message.outcome}
+  const status = (
+    <MessageStatus
+      status={message.status}
       debug={debug}
       onRetry={onRetry}
       onContinue={onContinue}
       onRefreshConversation={onRefreshConversation}
     />
   );
-  const hasAlert =
-    message.outcome.type !== "done" && message.outcome.type !== "streaming";
-  // a reply whose parts carried no action bar — because it produced nothing
-  // renderable — hosts its actions on the outcome row instead
-  const showActionsInOutcomeRow =
-    !isStreaming && !hideActions && actionsIndex === -1;
-  const needsOutcomeRow = hasAlert || showActionsInOutcomeRow;
+  const needsStatusRow =
+    message.status.type !== "done" &&
+    message.status.type !== "streaming" &&
+    !(message.status.type === "in_progress" && visibleParts.length > 0);
+  const showActionsInStatusRow =
+    needsStatusRow && !isStreaming && !hideActions && actionsIndex === -1;
 
   return (
     <>
@@ -426,6 +423,7 @@ export const AgentMessage = ({
         >
           <AgentPart
             part={part}
+            externalId={message.externalId}
             debug={debug}
             readonly={readonly}
             conversationId={conversationId}
@@ -437,10 +435,10 @@ export const AgentMessage = ({
           {index === actionsIndex && actions}
         </PartContainer>
       ))}
-      {needsOutcomeRow && (
+      {needsStatusRow && (
         <PartContainer chatRole="agent" data-testid="metabot-chat-message">
-          {outcome}
-          {showActionsInOutcomeRow && actions}
+          {status}
+          {showActionsInStatusRow && actions}
         </PartContainer>
       )}
     </>
@@ -541,20 +539,20 @@ const AgentErroredTurnAlert = ({
   );
 };
 
-const MessageOutcome = ({
-  outcome,
+const MessageStatus = ({
+  status,
   debug,
   onRetry,
   onContinue,
   onRefreshConversation,
 }: {
-  outcome: MetabotMessageOutcome;
+  status: MetabotMessageStatus;
   debug: boolean;
   onRetry?: () => void;
   onContinue?: (resumePrompt: string) => void;
   onRefreshConversation?: () => void;
 }) =>
-  match(outcome)
+  match(status)
     .with({ type: "done" }, () => null)
     .with({ type: "streaming" }, () => null)
     .with({ type: "errored" }, (o) => (
@@ -615,7 +613,7 @@ const AbortedTurnAlert = ({
 };
 
 const getIncompleteTurnConfig = (
-  finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
+  finishReason: MetabotIncompleteFinishReason,
   metabotName: string,
 ): { message: string; resumePrompt?: string } =>
   match(finishReason)
@@ -640,7 +638,7 @@ const IncompleteTurnAlert = ({
   contextWindowFull,
   onContinue,
 }: {
-  finishReason: MetabotAgentTurnIncompleteMessage["finishReason"];
+  finishReason: MetabotIncompleteFinishReason;
   contextWindowFull?: boolean;
   onContinue?: (resumePrompt: string) => void;
 }) => {

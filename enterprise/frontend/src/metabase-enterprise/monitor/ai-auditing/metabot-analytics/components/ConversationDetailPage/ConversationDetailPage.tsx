@@ -13,11 +13,11 @@ import {
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
 import { useBranchableMessages } from "metabase/metabot/hooks";
 import type {
-  MetabotAgentTextChatMessage,
-  MetabotChatMessage,
   MetabotDebugToolCallMessage,
+  MetabotMessage,
+  MetabotMessagePart,
 } from "metabase/metabot/state/types";
-import { normalizeFetchedChatMessages } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import { convertSlackMessage } from "metabase/metabot/utils/slack-mrkdwn";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -45,6 +45,7 @@ import { checkNotNull } from "metabase/utils/types";
 import { getUserName } from "metabase/utils/user";
 import { useGetMetabotAnalyticsConversationQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
 import type {
+  ConversationDetail,
   ConversationFeedback,
   GeneratedQuery,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
@@ -54,6 +55,19 @@ import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 import { ConversationHeader } from "./ConversationHeader";
 import { ForkBoundary } from "./ForkBoundary";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
+
+const SLACK_PROFILE_IDS = ["slackbot", "slack"];
+
+function normalizeMessages(conversation: ConversationDetail | undefined) {
+  const messages = conversation?.messages ?? [];
+  if (!SLACK_PROFILE_IDS.includes(conversation?.profile_id ?? "")) {
+    return messages;
+  }
+  return messages.map((message) => ({
+    ...convertSlackMessage(message),
+    parent_message_id: message.parent_message_id,
+  }));
+}
 
 export function ConversationDetailPage() {
   const params = useParams();
@@ -91,24 +105,13 @@ export function ConversationDetailPage() {
     refetchOnMountOrArgChange: true,
   });
 
-  const isSlack =
-    conversation?.profile_id === "slackbot" ||
-    conversation?.profile_id === "slack";
-
   const conversationMessages = useMemo(
-    () => conversation?.messages ?? [],
-    [conversation?.messages],
+    () => normalizeMessages(conversation),
+    [conversation],
   );
 
-  const { messages, getExtraActions } = useBranchableMessages(
-    conversationMessages,
-    { isSlack },
-  );
-
-  const feedbackChatMessages = normalizeFetchedChatMessages(
-    conversationMessages,
-    { isSlack },
-  );
+  const { messages, getExtraActions } =
+    useBranchableMessages(conversationMessages);
 
   if (isLoading || error) {
     return (
@@ -139,9 +142,7 @@ export function ConversationDetailPage() {
 
   const forkBoundaryMessage = fork_boundary_message_id
     ? messages.findLast(
-        (message) =>
-          "externalId" in message &&
-          message.externalId === fork_boundary_message_id,
+        (message) => message.externalId === fork_boundary_message_id,
       )
     : undefined;
 
@@ -179,7 +180,7 @@ export function ConversationDetailPage() {
                     <FeedbackCard
                       key={item.id}
                       feedback={item}
-                      chatMessages={feedbackChatMessages}
+                      messages={conversationMessages}
                       conversationId={convoId}
                     />
                   ))}
@@ -255,23 +256,25 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
+const isTextPart = (part: MetabotMessagePart) => part.type === "text";
+
 function FeedbackCard({
   feedback,
-  chatMessages,
+  messages,
   conversationId,
 }: {
   feedback: ConversationFeedback;
-  chatMessages: MetabotChatMessage[];
+  messages: MetabotMessage[];
   conversationId: string;
 }) {
-  const agentResponse = feedback.external_id
-    ? chatMessages.find(
-        (message): message is MetabotAgentTextChatMessage =>
-          message.role === "agent" &&
-          message.type === "text" &&
-          message.externalId === feedback.external_id,
-      )
-    : undefined;
+  const agentResponse = useMemo(() => {
+    const message = feedback.external_id
+      ? messages.find(({ externalId }) => externalId === feedback.external_id)
+      : undefined;
+    return message
+      ? { ...message, parts: message.parts.filter(isTextPart) }
+      : undefined;
+  }, [feedback.external_id, messages]);
 
   const submitterName = feedback.user
     ? getUserName(feedback.user) || null
@@ -300,14 +303,8 @@ function FeedbackCard({
         )}
         {agentResponse && (
           <AgentMessage
-            message={{
-              id: agentResponse.id,
-              externalId: agentResponse.externalId,
-              role: "agent",
-              parts: [agentResponse],
-              outcome: { type: "done" },
-            }}
-            debug
+            message={agentResponse}
+            debug={false}
             readonly
             hideActions
             conversationId={conversationId}

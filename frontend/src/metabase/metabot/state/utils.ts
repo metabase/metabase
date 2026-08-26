@@ -17,7 +17,7 @@ export const isChainOfThoughtMessage = (
   part.type === "chain_of_thought";
 
 export const hasInProgressMessage = (messages: MetabotMessage[]): boolean =>
-  messages.at(-1)?.outcome.type === "in_progress";
+  messages.at(-1)?.status.type === "in_progress";
 
 export const parseSlashCommand = (
   message: string,

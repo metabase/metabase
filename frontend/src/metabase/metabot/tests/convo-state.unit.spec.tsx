@@ -188,13 +188,14 @@ describe("metabot > convo state", () => {
 
     await enterChatMessage("Who is your favorite?");
     await waitFor(() => expect(agentSpy).toHaveBeenCalledTimes(1));
+    const firstReqBody = await lastReqBody(agentSpy);
 
     hideMetabot(store.dispatch);
     showMetabot(store.dispatch);
     await enterChatMessage("Hi!");
     const reqBody = await lastReqBody(agentSpy);
     // the thread survives hide/show: the next request still points at the prior turn
-    expect(reqBody.parent_message_id).toBe("msg_test_favorite");
+    expect(reqBody.parent_message_id).toBe(firstReqBody.assistant_message_id);
   });
 
   it("should start a new conversation when the new conversation button is clicked", async () => {

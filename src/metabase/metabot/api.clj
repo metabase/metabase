@@ -192,9 +192,10 @@
 
   `:assistant-msg-id` is the PK of the placeholder assistant row created by
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
-  `:external-id` is the assistant row's `external_id`, emitted as the SSE
-  `start` event's `messageId` so the client can correlate streamed messages
-  with feedback. `:user-external-id` is the turn's user row `external_id`,
+  `:external-id` is the assistant row's `external_id` — the client-minted
+  `assistant_message_id` when the request supplied one — echoed as the SSE
+  `start` event's `messageId` so a client that omitted one can still tell what
+  was persisted. `:user-external-id` is the turn's user row `external_id`,
   emitted as the `start` event's `messageMetadata.userMessageId`.
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state."

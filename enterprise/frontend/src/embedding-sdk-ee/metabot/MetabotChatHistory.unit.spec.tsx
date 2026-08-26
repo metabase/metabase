@@ -19,7 +19,7 @@ const makeVisibleState = (parts: MetabotMessagePart[]) =>
       id: `message-${index}`,
       role: part.role,
       parts: [part],
-      outcome: { type: "done" },
+      status: { type: "done" },
     })),
   );
 
@@ -52,12 +52,18 @@ describe("MetabotChatHistory", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should not render generated_entity card data_part messages in the message list", () => {
+  it("does not render an agent message for a card-only reply", () => {
     setup({
       ui: <MetabotChatHistory />,
       metabotInitialState: makeVisibleState([
         {
-          id: "1",
+          id: "prompt",
+          role: "user",
+          type: "text",
+          message: "Show me orders",
+        },
+        {
+          id: "card",
           role: "agent",
           type: "data_part",
           part: {
@@ -81,9 +87,8 @@ describe("MetabotChatHistory", () => {
       ]),
     });
 
-    expect(
-      screen.queryByTestId("metabot-chat-message"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText("Show me orders")).toBeInTheDocument();
+    expect(screen.getAllByTestId("metabot-chat-message")).toHaveLength(1);
   });
 
   it("should not render chain_of_thought messages (app-only reasoning UI)", () => {

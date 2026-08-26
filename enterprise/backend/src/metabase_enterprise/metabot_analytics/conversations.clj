@@ -254,7 +254,7 @@
        :total_tokens                (transduce (keep :total_tokens) + 0 all-messages)
        :profile_id                  (some #(when (= :assistant (:role %)) (:profile_id %)) all-messages)
        :slack_permalink             (slack-permalink conversation)
-       :messages                    (metabot-persistence/messages->flat-messages
+       :messages                    (metabot-persistence/messages->threaded-client-messages
                                      all-messages {:include-rewound-errors? true})
        :queries                     (analytics.queries/messages->generated-queries all-messages)
        :search_count                (analytics.queries/count-tool-invocations all-messages "search")

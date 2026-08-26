@@ -42,29 +42,31 @@ import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
 
 type AgentDataPartProps = {
   part: MetabotAgentDataPartMessage;
+  externalId?: string;
   readonly: boolean;
   debug: boolean;
   conversationId: string;
 };
 
 export const AgentDataPart = ({
-  part: message,
+  part,
+  externalId,
   readonly,
   debug,
   conversationId,
 }: AgentDataPartProps) =>
-  match(message)
+  match(part)
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
       <AgentTodoListMessage todos={part.data} />
     ))
-    .with({ part: { type: "data-transform_suggestion" } }, (msg) => (
-      <AgentSuggestionMessage message={msg} readonly={readonly} />
+    .with({ part: { type: "data-transform_suggestion" } }, (dataPart) => (
+      <AgentSuggestionMessage message={dataPart} readonly={readonly} />
     ))
     .with({ part: { type: "data-navigate_to" } }, ({ part }) => {
       const sourcePills = (
         <NavigateToTablePills
           path={part.data}
-          messageId={readonly ? undefined : message.externalId}
+          messageId={readonly ? undefined : externalId}
         />
       );
 
@@ -80,7 +82,7 @@ export const AgentDataPart = ({
         <CodeEditTablePills
           value={part.data}
           buffer={metadata?.codeEditBuffer}
-          messageId={readonly ? undefined : message.externalId}
+          messageId={readonly ? undefined : externalId}
         />
       );
 
@@ -103,7 +105,7 @@ export const AgentDataPart = ({
           />
           <GeneratedCardTablePills
             value={part.data}
-            messageId={readonly ? undefined : message.externalId}
+            messageId={readonly ? undefined : externalId}
           />
         </Stack>
       ),
@@ -129,8 +131,8 @@ export const AgentDataPart = ({
     .with({ part: { type: "data-static_viz" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
-    .exhaustive((msg: unknown) => {
-      console.warn("AgentDataPart received an unexpected value:", msg);
+    .exhaustive((dataPart: unknown) => {
+      console.warn("AgentDataPart received an unexpected value:", dataPart);
       return null;
     });
 

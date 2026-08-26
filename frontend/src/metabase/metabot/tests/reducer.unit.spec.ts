@@ -14,6 +14,7 @@ import type { MetabotSuggestedTransform } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
 
 import { METABOT_PROFILE_OVERRIDES } from "../constants";
+import { sendAgentRequest } from "../state/actions";
 import {
   createConversation,
   getMetabotInitialState,
@@ -446,6 +447,25 @@ describe("metabot reducer", () => {
     });
   });
 
+  it("settles an aborted rejection that carries no payload", () => {
+    const conversationId = testConversationId("omnibot");
+    const store = createTestStore();
+    store.dispatch(metabotActions.startAgentMessage({ conversationId }));
+
+    store.dispatch({
+      type: sendAgentRequest.rejected.type,
+      error: { message: "Aborted" },
+      meta: {
+        aborted: true,
+        arg: { conversation_id: conversationId, loadId: 0 },
+      },
+    });
+
+    expect(convoForAgent(store, "omnibot").messages.at(-1)?.status).toEqual({
+      type: "aborted",
+    });
+  });
+
   describe("tool calls", () => {
     const conversationId = testConversationId("omnibot");
     const getToolCallMessages = (store: ReturnType<typeof createTestStore>) =>
@@ -585,7 +605,7 @@ describe("metabot reducer", () => {
       expect(chain?.type === "chain_of_thought" && chain.steps).toEqual([
         { kind: "reasoning", text: "Thinking" },
       ]);
-      expect(getConvo(store)?.activeChainId).toBe(chain?.id);
+      expect(chain?.finished).toBe(false);
     });
 
     it("interleaves tool calls between reasoning blocks in order", () => {
@@ -649,7 +669,7 @@ describe("metabot reducer", () => {
 
       // the chain message stays in history, and its id is released
       expect(getChain(store)).toBeDefined();
-      expect(getConvo(store)?.activeChainId).toBeUndefined();
+      expect(getChain(store)?.finished).toBe(true);
 
       // later reasoning starts a fresh chain after the answer text
       store.dispatch(metabotActions.reasoningStart({ conversationId }));
@@ -761,7 +781,7 @@ describe("metabot reducer", () => {
         }),
       );
 
-      expect(getConvo(store)?.activeChainId).toBeUndefined();
+      expect(getConvo(store)?.messages).toEqual([]);
       expect(getConvo(store)?.lastTokenUsage).toBeUndefined();
     });
   });

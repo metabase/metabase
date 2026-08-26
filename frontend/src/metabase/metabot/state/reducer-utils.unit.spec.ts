@@ -58,7 +58,6 @@ describe("chain of thought duration timing", () => {
       closeChain(d);
     });
     expect(chainOf(convo)).toBeUndefined();
-    expect(convo.activeChainId).toBeUndefined();
   });
 
   it("advances endedAtMs when a tool ends, so a turn ending on a tool counts its runtime", () => {
@@ -96,6 +95,6 @@ describe("chain tool step dedupe", () => {
     expect(chains[0].steps).toEqual([
       expect.objectContaining({ kind: "tool", id: "t1", title: "revenue" }),
     ]);
-    expect(convo.activeChainId).toBeUndefined();
+    expect(chains[0].finished).toBe(true);
   });
 });

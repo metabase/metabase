@@ -16,6 +16,7 @@ import {
   enterChatMessage,
   forkButton,
   lastChatMessage,
+  lastReqBody,
   mockAgentEndpoint,
   mockForkEndpoint,
   setup,
@@ -39,26 +40,32 @@ const forkedConversation = createMockMetabotConversationDetail({
 
 const setupWithReply = async () => {
   const { store } = setup();
-  mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
+  const agentEndpoint = mockAgentEndpoint({
+    events: whoIsYourFavoriteResponse,
+  });
 
   await enterChatMessage("Who is your favorite?");
+  const agentRequestBody = await lastReqBody(agentEndpoint);
   const lastMessage = (await lastChatMessage())!;
 
-  return { store, lastMessage };
+  return {
+    store,
+    lastMessage,
+    assistantMessageId: agentRequestBody.assistant_message_id,
+  };
 };
 
 describe("metabot > fork", () => {
   it("forks the conversation from an assistant message", async () => {
-    const { store, lastMessage } = await setupWithReply();
+    const { store, lastMessage, assistantMessageId } = await setupWithReply();
     const forkEndpoint = mockForkEndpoint(forkedConversation);
 
     await userEvent.click(await forkButton(lastMessage));
 
-    await waitFor(() =>
-      expect(
-        forkEndpoint.calls({ body: { message_id: "msg_test_favorite" } }),
-      ).toHaveLength(1),
-    );
+    await waitFor(() => expect(forkEndpoint.calls()).toHaveLength(1));
+    expect(await forkEndpoint.calls()[0].request?.json()).toEqual({
+      message_id: assistantMessageId,
+    });
 
     await waitFor(() =>
       expect(conversationIdForAgent(store)).toBe("forked-convo-id"),

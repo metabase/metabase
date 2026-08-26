@@ -1,4 +1,5 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
@@ -10,7 +11,9 @@ import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
+import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
+import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -64,6 +67,19 @@ const QuerySuggestionProbe = ({ question }: { question: Question }) => {
   return <div data-testid="qb-proposed-sql">{proposedSql}</div>;
 };
 
+const ChatMessagesProbe = () => {
+  const { conversationId, messages } = useMetabotAgent("omnibot");
+
+  return (
+    <Messages
+      messages={messages}
+      isDoingScience={false}
+      debug={false}
+      conversationId={conversationId}
+    />
+  );
+};
+
 describe("query builder code edits from omnibot", () => {
   beforeEach(() => {
     setupEnterprisePlugins();
@@ -73,6 +89,20 @@ describe("query builder code edits from omnibot", () => {
       "path:/api/metabot/permissions/user-permissions",
       createMockUserMetabotPermissions(),
     );
+    fetchMock.post("path:/api/llm/extract-sources", {
+      tables: [
+        {
+          id: 2,
+          name: "ORDERS",
+          schema: "PUBLIC",
+          display_name: "Orders",
+          description: null,
+          columns: [],
+        },
+      ],
+      card_ids: [],
+    });
+    fetchMock.get(`path:/api/database/${TEST_DB.id}`, TEST_DB);
   });
 
   afterEach(() => {
@@ -126,6 +156,7 @@ describe("query builder code edits from omnibot", () => {
     const { store } = renderWithProviders(
       <MetabotProvider>
         <QuerySuggestionProbe question={question} />
+        <ChatMessagesProbe />
       </MetabotProvider>,
       {
         storeInitialState: storeInitialState,
@@ -145,6 +176,7 @@ describe("query builder code edits from omnibot", () => {
         sendAgentRequest({
           message: "Please rewrite this query",
           conversation_id: convo.conversationId,
+          assistant_message_id: "msg_test_code_edit",
           isFullPageMetabot: false,
           context: {
             user_is_viewing: [
@@ -192,6 +224,16 @@ describe("query builder code edits from omnibot", () => {
           part: expect.objectContaining({ type: "data-code_edit" }),
         }),
       ]),
+    });
+    fetchMock.post("path:/api/metabot/source-feedback", 200);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Source is correct" }),
+    );
+    const [, feedbackRequest] = fetchMock.callHistory.lastCall(
+      "path:/api/metabot/source-feedback",
+    )!;
+    expect(JSON.parse(String(feedbackRequest?.body))).toMatchObject({
+      message_id: "msg_test_code_edit",
     });
 
     expect(requestBody?.context).toEqual(

@@ -1,7 +1,7 @@
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { merge } from "icepick";
 import type { WritableDraft } from "immer";
-import { match } from "ts-pattern";
+import { P, isMatching, match } from "ts-pattern";
 
 import {
   METABOT_PROFILE_OVERRIDES,
@@ -16,6 +16,7 @@ import {
   type MetabotConversationState,
   type MetabotDebugToolCallMessage,
   type MetabotMessage,
+  type MetabotMessagePart,
   type MetabotSearchResults,
   type MetabotState,
   fixedMetabotAgentIds,
@@ -30,15 +31,16 @@ export type AgentPayloadAction<
   Value extends Record<string, any> = Record<string, any>,
 > = PayloadAction<{ agentId: MetabotAgentId } & Value>;
 
+const isOpenAgentMessage = isMatching({
+  role: "agent",
+  status: { type: P.union("streaming", "in_progress") },
+});
+
 export const openAgentMessage = (
   convo: WritableDraft<MetabotConversationState>,
 ): WritableDraft<MetabotMessage> => {
   const message = convo.messages.at(-1);
-  if (
-    message?.role !== "agent" ||
-    (message.outcome.type !== "streaming" &&
-      message.outcome.type !== "in_progress")
-  ) {
+  if (!isOpenAgentMessage(message)) {
     throw new Error("Metabot conversation has no open agent message");
   }
   return message;
@@ -54,7 +56,7 @@ export const startUserMessage = (
     role: "user",
     externalId,
     parts: [],
-    outcome: { type: "done" },
+    status: { type: "done" },
   });
   return convo.messages[convo.messages.length - 1];
 };
@@ -68,7 +70,7 @@ export const startAgentMessage = (
     role: "agent",
     externalId,
     parts: [],
-    outcome: { type: "streaming" },
+    status: { type: "streaming" },
   });
 };
 
@@ -105,12 +107,13 @@ export const pushNewToolCall = (
   });
 };
 
-const activeChain = (convo: WritableDraft<MetabotConversationState>) => {
-  const chain = convo.activeChainId
-    ? openAgentMessage(convo).parts.find((p) => p.id === convo.activeChainId)
-    : undefined;
-  return chain?.type === "chain_of_thought" ? chain : undefined;
-};
+const isOpenChain = (
+  part: WritableDraft<MetabotMessagePart>,
+): part is WritableDraft<MetabotAgentChainOfThoughtMessage> =>
+  part.type === "chain_of_thought" && !part.finished;
+
+const activeChain = (convo: WritableDraft<MetabotConversationState>) =>
+  openAgentMessage(convo).parts.findLast(isOpenChain);
 
 const stampChainSpan = (
   chain: WritableDraft<MetabotAgentChainOfThoughtMessage>,
@@ -137,11 +140,11 @@ export const ensureChain = (
     role: "agent",
     type: "chain_of_thought",
     steps: [],
+    finished: false,
     startedAtMs: nowMs,
     endedAtMs: nowMs,
   };
   openAgentMessage(convo).parts.push(chain);
-  convo.activeChainId = chain.id;
   return chain;
 };
 
@@ -202,7 +205,7 @@ export const addChainTool = (
   if (title) {
     existing.step.title = title;
   }
-  if (existing.chain.id === convo.activeChainId) {
+  if (!existing.chain.finished) {
     stampChainSpan(existing.chain, nowMs);
   }
 };
@@ -256,8 +259,7 @@ export const endChainTool = (
     return;
   }
   found.step.status = "ended";
-  const chainStillActive = found.chain.id === convo.activeChainId;
-  if (chainStillActive && nowMs != null) {
+  if (!found.chain.finished && nowMs != null) {
     found.chain.endedAtMs = nowMs;
   }
 };
@@ -269,21 +271,28 @@ export const closeChain = (
   const chain = activeChain(convo);
   if (chain && chain.steps.length === 0) {
     dropChain(convo, chain.id);
-  } else if (chain && nowMs != null) {
-    chain.endedAtMs = nowMs;
+  } else if (chain) {
+    chain.finished = true;
+    if (nowMs != null) {
+      chain.endedAtMs = nowMs;
+    }
   }
-  convo.activeChainId = undefined;
 };
 
 export const getRequestConversation = (
   state: WritableDraft<MetabotState>,
-  action: { meta: { arg: { conversation_id: string } } },
+  action: { meta: { arg: { conversation_id: string; loadId: number } } },
 ) => {
-  const { conversation_id } = action.meta.arg;
+  const { conversation_id, loadId } = action.meta.arg;
   const convo = state.conversations[conversation_id];
 
   if (!convo) {
     console.warn(`Unable to find metabot conversation ${conversation_id}`);
+    return undefined;
+  }
+
+  if (convo.loadId !== loadId) {
+    return undefined;
   }
 
   return convo;
@@ -309,7 +318,7 @@ export const createConversation = (
   messages: [],
   state: {},
   activeToolCalls: [],
-  activeChainId: undefined,
+  loadId: 0,
   profileOverride: undefined,
   forkedFromConversationId: undefined,
   ...overrides,

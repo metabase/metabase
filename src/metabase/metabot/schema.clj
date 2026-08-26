@@ -44,3 +44,61 @@
   "Normalize dynamic state-map keys to strings according to [[::state]]."
   [state]
   (mc/decode ::state state (mtx/transformer {:name :normalize})))
+
+;;; ------------------------------- Client message shape -------------------------------
+
+(mr/def ::client-message-part
+  "One part of a persisted message: its a text, tool call, or data blob."
+  [:multi {:dispatch :type}
+   ["text"
+    [:map
+     [:id      :string]
+     [:role    [:enum "user" "agent"]]
+     [:type    [:= "text"]]
+     [:message :string]]]
+   ["tool_call"
+    [:map
+     [:id       :string]
+     [:role     [:= "agent"]]
+     [:type     [:= "tool_call"]]
+     [:name     :string]
+     [:args     [:maybe :string]]
+     [:status   [:enum "started" "ended"]]
+     ;; both can be absent if a call is unresolved  and
+     ;; conversation is loaded while agent loop is still running
+     [:result   {:optional true} [:maybe :string]]
+     [:is_error {:optional true} :boolean]]]
+   ["data_part"
+    [:map
+     [:id   :string]
+     [:role [:= "agent"]]
+     [:type [:= "data_part"]]
+     [:part [:map
+             [:type :string]
+             [:data :any]]]]]])
+
+(mr/def ::client-message-status
+  "Where a message's turn got to."
+  [:multi {:dispatch :type}
+   ["done" [:map [:type [:= "done"]]]]
+   ["aborted" [:map [:type [:= "aborted"]]]]
+   ["in_progress" [:map [:type [:= "in_progress"]]]]
+   ["errored"
+    [:map
+     [:type  [:= "errored"]]
+     ;; the decoded `error` column, or its raw text when it isn't JSON
+     [:error [:or
+              :string
+              [:map
+               [:message {:optional true} :string]
+               [:type    {:optional true} :string]
+               [:data    {:optional true} :any]]]]]]])
+
+(mr/def ::client-message
+  "One persisted message as the client models it."
+  [:map
+   [:id         :string]
+   [:externalId {:optional true} :string]
+   [:role       [:enum "user" "agent"]]
+   [:parts      [:sequential ::client-message-part]]
+   [:status     ::client-message-status]])

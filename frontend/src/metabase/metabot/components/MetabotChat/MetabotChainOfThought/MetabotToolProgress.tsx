@@ -11,12 +11,10 @@ import { buildDisplayItems, isRenderableStep } from "./utils";
 
 export const MetabotToolProgress = ({
   part,
-  isStreaming,
 }: {
   part: MetabotAgentChainOfThoughtMessage;
-  isStreaming: boolean;
 }) => {
-  if (!isStreaming) {
+  if (part.finished) {
     return null;
   }
 

@@ -57,7 +57,7 @@ const addAgentMessage = (
 const cardMessage = (id: string, sourceTable = 1) =>
   // `addAgentMessage` types its payload with a non-distributive `Omit` that
   // collapses the message union to common keys, so the branch-specific `part`
-  // field fails excess-property checks (see the fuller note on `agentTurn`
+  // field fails excess-property checks (see the fuller note on `addAgentMessage`
   // above).
   ({
     conversationId,

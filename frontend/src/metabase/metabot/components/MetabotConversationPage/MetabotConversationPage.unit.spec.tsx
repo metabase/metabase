@@ -113,7 +113,7 @@ const inProgressDetail = () =>
       createMockMetabotTextMessage("user", "Loaded question"),
       createMockMetabotMessage({
         role: "agent",
-        outcome: { type: "in_progress" },
+        status: { type: "in_progress" },
       }),
     ],
   });
@@ -210,6 +210,9 @@ describe("MetabotConversationPage", () => {
 
     expect(await screen.findByText("Loaded question")).toBeInTheDocument();
     expect(await screen.findByText("Thinking")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-response-loader"),
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-send-message"),

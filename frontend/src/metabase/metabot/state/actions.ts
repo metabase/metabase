@@ -46,6 +46,7 @@ import {
 import { metabot } from "./reducer";
 import {
   getAgentRequestMetadata,
+  getConversationLoadId,
   getConversationTitle,
   getDebugMode,
   getDeveloperMessage,
@@ -73,7 +74,6 @@ export const {
   addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
-  setMessageExternalIds,
   setConversationSnapshot,
   setConversationTitle,
   setNavigateToPath,
@@ -398,6 +398,7 @@ export const submitInput = createAsyncThunk<
       dispatch(
         addUserMessage({
           id: messageId,
+          externalId: userMessageId,
           ..._.omit(data, ["context", "metabot_id"]),
           message: prompt,
           conversationId,
@@ -414,6 +415,7 @@ export const submitInput = createAsyncThunk<
           assistant_message_id: assistantMessageId,
           ...(profile ? { profile_id: profile } : {}),
           isFullPageMetabot: isFullPageMetabot ?? false,
+          loadId: getConversationLoadId(getState(), conversationId),
         }),
       );
       signal.addEventListener("abort", () => {
@@ -481,7 +483,7 @@ const findCodeEditBuffer = (
 
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
-  MetabotAgentRequest & { isFullPageMetabot: boolean },
+  MetabotAgentRequest & { isFullPageMetabot: boolean; loadId: number },
   { rejectValue: SendAgentRequestError }
 >(
   "metabase/metabot/sendAgentRequest",
@@ -489,8 +491,13 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const { isFullPageMetabot, ...request } = payload;
+    const { isFullPageMetabot, loadId, ...request } = payload;
     const conversationId = request.conversation_id;
+
+    const dispatchIfCurrent: typeof dispatch = (action) =>
+      getConversationLoadId(getState(), conversationId) === loadId
+        ? dispatch(action)
+        : undefined;
 
     let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
@@ -514,18 +521,18 @@ export const sendAgentRequest = createAsyncThunk<
         {
           onDataPart: function handleDataPart(part) {
             const pushDataPart = (
-              message: Omit<
-                MetabotAgentDataPartMessage,
-                "id" | "role" | "externalId"
-              >,
-            ) => dispatch(addAgentMessage({ ...message, conversationId }));
+              message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
+            ) =>
+              dispatchIfCurrent(
+                addAgentMessage({ ...message, conversationId }),
+              );
 
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "data-state" }, (part) => (state = part.data))
               .with({ type: "data-conversation-title" }, (part) => {
                 receivedTitle = true;
-                dispatch(
+                dispatchIfCurrent(
                   setConversationTitle({ conversationId, title: part.data }),
                 );
               })
@@ -533,10 +540,12 @@ export const sendAgentRequest = createAsyncThunk<
                 pushDataPart({ type: "data_part", part });
               })
               .with({ type: "data-code_edit" }, (part) => {
-                dispatch(addSuggestedCodeEdit({ ...part.data, active: true }));
+                dispatchIfCurrent(
+                  addSuggestedCodeEdit({ ...part.data, active: true }),
+                );
 
                 if (part.data.buffer_id === "qb") {
-                  dispatch(setIsNativeEditorOpen(true));
+                  dispatchIfCurrent(setIsNativeEditorOpen(true));
                 }
                 pushDataPart({
                   type: "data_part",
@@ -557,7 +566,7 @@ export const sendAgentRequest = createAsyncThunk<
                   active: true,
                   suggestionId,
                 };
-                dispatch(addSuggestedTransform(suggestedTransform));
+                dispatchIfCurrent(addSuggestedTransform(suggestedTransform));
 
                 const editorTransform = request.context.user_is_viewing
                   .filter(
@@ -581,7 +590,7 @@ export const sendAgentRequest = createAsyncThunk<
 
                 if (isEmbeddingSdk()) {
                   if (part.data.type === "card") {
-                    dispatch(setNavigateToPath(path));
+                    dispatchIfCurrent(setNavigateToPath(path));
                   }
                   pushDataPart({ type: "data_part", part });
                   return;
@@ -590,7 +599,7 @@ export const sendAgentRequest = createAsyncThunk<
                 navigate(path);
               })
               .with({ type: "data-entity_saved" }, (part) => {
-                dispatch(
+                dispatchIfCurrent(
                   markChartSaved({
                     entityId: part.data.chart_id,
                     cardId: part.data.card_id,
@@ -598,7 +607,7 @@ export const sendAgentRequest = createAsyncThunk<
                 );
                 const { tool_call_id, title } = part.data;
                 if (tool_call_id && title) {
-                  dispatch(
+                  dispatchIfCurrent(
                     toolCallTitled({
                       conversationId,
                       toolCallId: tool_call_id,
@@ -610,7 +619,7 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "data-tool_title" }, (part) => {
                 const { tool_call_id, title } = part.data;
-                dispatch(
+                dispatchIfCurrent(
                   toolCallTitled({
                     conversationId,
                     toolCallId: tool_call_id,
@@ -625,7 +634,7 @@ export const sendAgentRequest = createAsyncThunk<
                 () => {},
               )
               .with({ type: "data-search_results" }, (part) => {
-                dispatch(
+                dispatchIfCurrent(
                   toolCallSearchResults({
                     conversationId,
                     toolCallId: part.data.tool_call_id,
@@ -637,16 +646,14 @@ export const sendAgentRequest = createAsyncThunk<
               .exhaustive();
           },
           onStart: function handleStart(event) {
-            dispatch(
-              setMessageExternalIds({
-                conversationId,
-                agentMessageId: event.messageId,
-                userMessageId: event.messageMetadata?.userMessageId,
-              }),
-            );
+            if (event.messageId !== request.assistant_message_id) {
+              throw new Error(
+                `Metabot server started message ${event.messageId}, but the client opened ${request.assistant_message_id}`,
+              );
+            }
           },
           onTextPart: function handleTextPart(delta) {
-            dispatch(
+            dispatchIfCurrent(
               addAgentTextDelta({
                 conversationId,
                 text: delta,
@@ -655,10 +662,12 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onReasoningStart: function handleReasoningStart() {
-            dispatch(reasoningStart({ conversationId, nowMs: Date.now() }));
+            dispatchIfCurrent(
+              reasoningStart({ conversationId, nowMs: Date.now() }),
+            );
           },
           onReasoningDelta: function handleReasoningDelta(event) {
-            dispatch(
+            dispatchIfCurrent(
               reasoningDelta({
                 conversationId,
                 text: event.delta,
@@ -667,7 +676,7 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onToolInputStart: function handleToolInputStart(event) {
-            dispatch(
+            dispatchIfCurrent(
               toolCallStart({
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
@@ -678,7 +687,7 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onToolInputAvailable: function handleToolInputAvailable(event) {
-            dispatch(
+            dispatchIfCurrent(
               toolCallArgs({
                 toolCallId: event.toolCallId,
                 toolName: event.toolName,
@@ -690,7 +699,7 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onToolResultPart: function handleToolResultPart(event) {
-            dispatch(
+            dispatchIfCurrent(
               toolCallEnd({
                 toolCallId: event.toolCallId,
                 result:
@@ -703,7 +712,7 @@ export const sendAgentRequest = createAsyncThunk<
             );
           },
           onToolErrorPart: function handleToolErrorPart(event) {
-            dispatch(
+            dispatchIfCurrent(
               toolCallEnd({
                 toolCallId: event.toolCallId,
                 result: event.errorText,

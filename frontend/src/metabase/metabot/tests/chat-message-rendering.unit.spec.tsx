@@ -7,6 +7,7 @@ import {
   createMockMetabotConversationDetail,
   createMockMetabotMessage,
   createMockMetabotTextMessage,
+  createMockMetabotToolCallPart,
   setupCardEndpoints,
   setupCollectionByIdEndpoint,
   setupDocumentEndpoints,
@@ -15,9 +16,9 @@ import {
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import type {
-  MetabotAgentTurnIncompleteMessage,
+  MetabotIncompleteFinishReason,
   MetabotMessage,
-  MetabotMessageOutcome,
+  MetabotMessageStatus,
 } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
@@ -64,7 +65,7 @@ const setup = (
         externalId: "msg-1",
         role: "agent",
         parts: [],
-        outcome: { type: "done" },
+        status: { type: "done" },
         ...message,
       }}
       {...props}
@@ -121,6 +122,14 @@ describe("AgentMessage", () => {
     const [, agentMessage] = screen.getAllByTestId("metabot-chat-message");
     expect(
       within(agentMessage).queryByTestId("metabot-chat-message-copy"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders nothing for a done reply with no visible parts", () => {
+    setup({ parts: [createMockMetabotToolCallPart()] }, { onFork: jest.fn() });
+
+    expect(
+      screen.queryByTestId("metabot-chat-message"),
     ).not.toBeInTheDocument();
   });
 
@@ -249,10 +258,10 @@ describe("AgentMessage", () => {
     });
   });
 
-  describe("turn_errored", () => {
+  describe("errored status", () => {
     it("shows locked message for metabase_ai_managed_locked errors", () => {
       setup({
-        outcome: {
+        status: {
           type: "errored",
           error: { type: "metabase_ai_managed_locked" },
           display: {
@@ -277,7 +286,7 @@ describe("AgentMessage", () => {
 
     it("shows the custom display message when provided", () => {
       setup({
-        outcome: {
+        status: {
           type: "errored",
           error: { type: "stream_error" },
           display: {
@@ -293,7 +302,7 @@ describe("AgentMessage", () => {
     });
 
     it("shows generic alert message when display message is missing", () => {
-      setup({ outcome: { type: "errored", error: { type: "stream_error" } } });
+      setup({ status: { type: "errored", error: { type: "stream_error" } } });
 
       expect(screen.getByText(/Something went wrong/)).toBeInTheDocument();
     });
@@ -337,7 +346,7 @@ describe("AgentMessage", () => {
     it("renders the raw error payload as a debug card when debug is true", () => {
       setup(
         {
-          outcome: {
+          status: {
             type: "errored",
             error: { type: "stream_error", message: "boom" },
           },
@@ -353,14 +362,14 @@ describe("AgentMessage", () => {
     });
   });
 
-  describe("turn_incomplete", () => {
-    const incompleteOutcome = (
-      finishReason: MetabotAgentTurnIncompleteMessage["finishReason"],
-    ): MetabotMessageOutcome => ({ type: "incomplete", finishReason });
+  describe("incomplete status", () => {
+    const incompleteStatus = (
+      finishReason: MetabotIncompleteFinishReason,
+    ): MetabotMessageStatus => ({ type: "incomplete", finishReason });
 
     it("offers to continue a length-limited response", async () => {
       const onContinue = jest.fn();
-      setup({ outcome: incompleteOutcome("length") }, { onContinue });
+      setup({ status: incompleteStatus("length") }, { onContinue });
 
       expect(
         screen.getByText(/was cut off because it hit the maximum length/),
@@ -373,7 +382,7 @@ describe("AgentMessage", () => {
 
     it("offers to continue a step-limited response", async () => {
       const onContinue = jest.fn();
-      setup({ outcome: incompleteOutcome("tool-calls") }, { onContinue });
+      setup({ status: incompleteStatus("tool-calls") }, { onContinue });
 
       expect(
         screen.getByText(/paused after reaching its step limit/),
@@ -387,7 +396,7 @@ describe("AgentMessage", () => {
     it("shows a terminal notice when the context window is full", () => {
       setup(
         {
-          outcome: {
+          status: {
             type: "incomplete",
             finishReason: "length",
             contextWindowFull: true,
@@ -404,7 +413,7 @@ describe("AgentMessage", () => {
 
     it("explains a content-filtered response without offering to continue", () => {
       setup(
-        { outcome: incompleteOutcome("content-filter") },
+        { status: incompleteStatus("content-filter") },
         {
           onContinue: jest.fn(),
         },
@@ -417,7 +426,7 @@ describe("AgentMessage", () => {
     });
 
     it("falls back to a generic notice for other reasons", () => {
-      setup({ outcome: incompleteOutcome("other") });
+      setup({ status: incompleteStatus("other") });
 
       expect(
         screen.getByText(/stopped before it finished/),

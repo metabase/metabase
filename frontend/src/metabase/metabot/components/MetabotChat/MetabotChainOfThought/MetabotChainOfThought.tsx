@@ -24,25 +24,23 @@ import {
 
 type MetabotChainOfThoughtProps = {
   part: MetabotAgentChainOfThoughtMessage;
-  isStreaming: boolean;
   supportsReasoning?: boolean;
 };
 
 export const MetabotChainOfThought = ({
   part,
-  isStreaming,
   supportsReasoning = true,
 }: MetabotChainOfThoughtProps) => {
   if (!supportsReasoning) {
-    return <MetabotToolProgress part={part} isStreaming={isStreaming} />;
+    return <MetabotToolProgress part={part} />;
   }
-  return <ChainOfThought part={part} isStreaming={isStreaming} />;
+  return <ChainOfThought part={part} />;
 };
 
 const ChainOfThought = ({
   part,
-  isStreaming,
 }: Omit<MetabotChainOfThoughtProps, "supportsReasoning">) => {
+  const isStreaming = !part.finished;
   const { open, toggle } = useAutoCollapseOnSettle(isStreaming);
   const now = useNow(isStreaming);
   const preview = useMeteredLabel(latestPreviewLabel(part.steps), !open);

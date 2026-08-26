@@ -3,8 +3,15 @@ import fetchMock, {
   type UserRouteConfig,
 } from "fetch-mock";
 
-import type { MetabotMessage } from "metabase/metabot/state/types";
-import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
+import type { MetabotConversationDetail } from "metabase/metabot/api";
+import type {
+  MetabotAgentChainOfThoughtMessage,
+  MetabotAgentDataPartMessage,
+  MetabotAgentTextChatMessage,
+  MetabotDebugToolCallMessage,
+  MetabotMessage,
+} from "metabase/metabot/state/types";
+import type { ParentedMessage } from "metabase/metabot/utils/message-tree";
 import type {
   LlmConnectionModels,
   LlmProviderConnection,
@@ -23,6 +30,7 @@ import type {
   SuggestedMetabotPromptsResponse,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import { createMockLlmProviderConnection } from "metabase-types/api/mocks/llm";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
 
@@ -84,7 +92,7 @@ export function createMockMetabotMessage(
     id: `message-${++messageCount}`,
     role: "agent",
     parts: [],
-    outcome: { type: "done" },
+    status: { type: "done" },
     ...opts,
   };
 }
@@ -98,6 +106,88 @@ export function createMockMetabotTextMessage(
   return {
     ...message,
     parts: [{ id: `${message.id}-text`, role, type: "text", message: text }],
+  };
+}
+
+let partCount = 0;
+
+export function createMockParentedMessage(
+  id: string,
+  parentMessageId: string | null,
+  opts?: Partial<Omit<MetabotMessage, "id">>,
+): ParentedMessage {
+  return {
+    ...createMockMetabotMessage({ ...opts, id }),
+    parent_message_id: parentMessageId,
+  };
+}
+
+export function createMockMetabotTextPart(
+  opts?: Partial<MetabotAgentTextChatMessage>,
+): MetabotAgentTextChatMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "text",
+    message: "answer",
+    ...opts,
+  };
+}
+
+export function createMockMetabotToolCallPart(
+  opts?: Partial<MetabotDebugToolCallMessage>,
+): MetabotDebugToolCallMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "tool_call",
+    name: "search",
+    status: "ended",
+    ...opts,
+  };
+}
+
+export function createMockMetabotChainOfThoughtPart(
+  opts?: Partial<MetabotAgentChainOfThoughtMessage>,
+): MetabotAgentChainOfThoughtMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "chain_of_thought",
+    steps: [],
+    finished: true,
+    ...opts,
+  };
+}
+
+export function createMockMetabotGeneratedCardPart({
+  databaseId = 1,
+  tableId = 2,
+  ...opts
+}: Partial<MetabotAgentDataPartMessage> & {
+  databaseId?: number;
+  tableId?: number;
+} = {}): MetabotAgentDataPartMessage {
+  return {
+    id: `part-${++partCount}`,
+    role: "agent",
+    type: "data_part",
+    part: {
+      type: "data-generated_entity",
+      data: {
+        type: "card",
+        id: "card-1",
+        title: "Orders",
+        query: {
+          id: "query-1",
+          query: createMockStructuredDatasetQuery({
+            database: databaseId,
+            query: { "source-table": tableId },
+          }),
+        },
+      },
+    },
+    ...opts,
   };
 }
 

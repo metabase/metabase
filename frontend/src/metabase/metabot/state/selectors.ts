@@ -141,6 +141,11 @@ export const getConversation = createSelector(
   },
 );
 
+export const getConversationLoadId = createSelector(
+  getConversation,
+  (convo) => convo.loadId,
+);
+
 export const getConversationTitle = createSelector(
   getConversation,
   (convo) => convo.title,
@@ -229,7 +234,7 @@ export const getPromptText = (message: MetabotMessage) =>
 export const getMessageIdToRewind = createSelector(
   [getMessages],
   (messages) => {
-    if (messages.at(-1)?.outcome.type !== "errored") {
+    if (messages.at(-1)?.status.type !== "errored") {
       return undefined;
     }
     const promptMessage = messages.findLast((t) => t.role === "user");

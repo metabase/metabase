@@ -37,7 +37,11 @@ export function MetabotChatHistory() {
     [messages],
   );
 
-  const hasMessages = chatMessages.some((message) => message.parts.length > 0);
+  const messagePartCount = useMemo(
+    () => chatMessages.reduce((count, msg) => count + msg.parts.length, 0),
+    [chatMessages],
+  );
+  const hasMessages = messagePartCount > 0;
 
   // Auto-scroll to bottom when new messages are received
   useEffect(() => {
@@ -45,7 +49,7 @@ export function MetabotChatHistory() {
       scrollContainerRef.current.scrollTop =
         scrollContainerRef.current.scrollHeight;
     }
-  }, [chatMessages.length, metabot.isDoingScience]);
+  }, [messagePartCount, metabot.isDoingScience]);
 
   return (
     <Stack
