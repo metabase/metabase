@@ -46,6 +46,11 @@
   [fields]
   (#'ai-provider-dox/fields-by-key fields))
 
+(defn- ctx
+  "The per-provider context the renderers take."
+  [fields & {:keys [requires env-vars]}]
+  {:requires requires :env-vars env-vars :fields-index (index fields)})
+
 (defn- registry-entry
   "The live registry entry for `type-name`, which is what the section renderers take."
   [type-name]
@@ -94,20 +99,21 @@
 (deftest ^:parallel field-requires-sentence-test
   (let [fields   [access-key-field secret-key-field api-key-field]
         requires {:access-key-id     [:secret-access-key]
-                  :secret-access-key [:access-key-id :api-key]}]
+                  :secret-access-key [:access-key-id :api-key]}
+        bedrock  (ctx fields :requires requires)]
     (testing "a field that needs one sibling names it"
       (is (= "Only together with **Secret access key**."
-             (#'ai-provider-dox/field-requires-sentence access-key-field requires (index fields)))))
+             (#'ai-provider-dox/field-requires-sentence access-key-field bedrock))))
     (testing "a field that needs several names them all"
       (is (= "Only together with **Access key ID** and **API key**."
-             (#'ai-provider-dox/field-requires-sentence secret-key-field requires (index fields)))))
+             (#'ai-provider-dox/field-requires-sentence secret-key-field bedrock))))
     (testing "a field that stands on its own says nothing"
-      (is (nil? (#'ai-provider-dox/field-requires-sentence api-key-field requires (index fields)))))
+      (is (nil? (#'ai-provider-dox/field-requires-sentence api-key-field bedrock))))
     (testing "a `:requires` left pointing at a renamed key fails loudly"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"No credential field named :nope"
                             (#'ai-provider-dox/field-requires-sentence
-                             access-key-field {:access-key-id [:nope]} (index fields)))))))
+                             access-key-field (assoc bedrock :requires {:access-key-id [:nope]})))))))
 
 (deftest ^:parallel field-hosted-sentence-test
   (testing "a field whose help changes on Metabase Cloud says how"
@@ -121,11 +127,6 @@
                (assoc access-key-field :help (:hosted-help access-key-field))))))
   (testing "a field Metabase Cloud treats no differently says nothing"
     (is (nil? (#'ai-provider-dox/field-hosted-sentence api-key-field)))))
-
-(defn- ctx
-  "The per-provider context [[ai-provider-dox/field-entry]] renders a field against."
-  [fields & {:keys [requires env-vars]}]
-  {:requires requires :env-vars env-vars :fields-index (index fields)})
 
 (deftest ^:parallel field-entry-test
   (testing "a required field names itself, links to its docs in the admin form's own words, and gives its env var"
@@ -162,59 +163,65 @@
 
 (deftest model-source-test
   (testing "each provider type resolves to the source its models really come from"
-    (is (= :known (first (#'ai-provider-dox/model-source {:type "anthropic"} {}))))
-    (is (= :fixed (first (#'ai-provider-dox/model-source {:type "google"} {}))))
-    (is (= [:dynamic] (#'ai-provider-dox/model-source {:type "vllm"} {}))))
-  (testing "a deployment type carries the labels of the fields its model is composed from, not their keys"
-    (let [azure (registry-entry "azure")]
-      (is (= [:deployments ["Model provider" "Deployment name"]]
-             (#'ai-provider-dox/model-source azure (index (:fields azure)))))))
+    (is (= :known (first (#'ai-provider-dox/model-source (registry-entry "anthropic")))))
+    (is (= :fixed (first (#'ai-provider-dox/model-source (registry-entry "google")))))
+    (is (= [:dynamic] (#'ai-provider-dox/model-source (registry-entry "vllm")))))
+  (testing "a deployment type carries the keys of the fields its model is composed from; labelling them is the
+            renderer's job"
+    (is (= [:deployments [:model-family :deployment-name]]
+           (#'ai-provider-dox/model-source (registry-entry "azure")))))
   (testing "a provider added to the registry but wired up nowhere fails loudly"
     ;; two guards stand behind this, and a brand-new type hits the first one: `known-models` refuses to answer for a
     ;; provider its `case` doesn't name, rather than shrugging and returning nil
     (is (thrown-with-msg? clojure.lang.ExceptionInfo
                           #"Unknown LLM provider"
-                          (#'ai-provider-dox/model-source {:type "brand-new"} {}))))
+                          (#'ai-provider-dox/model-source {:type "brand-new"}))))
   (testing "a provider known to have no allow-list, and no other model source either, fails loudly too"
     ;; the second guard: registering a type as having no allow-list isn't enough to document it
     (mt/with-dynamic-fn-redefs [metabot.self/known-models (constantly nil)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"No model source for provider type"
-                            (#'ai-provider-dox/model-source {:type "brand-new"} {}))))))
+                            (#'ai-provider-dox/model-source {:type "brand-new"}))))))
 
 (deftest ^:parallel models-markdown-test
   (testing "an adapter allow-list becomes a table with context windows"
     (let [markdown (#'ai-provider-dox/models-markdown
                     [:known {"claude-haiku" {:display-name "Claude Haiku 4.5" :context-window 200000}}]
-                    "Anthropic")]
+                    {} "Anthropic")]
       (is (str/includes? markdown "| Context window (tokens) |"))
       (is (str/includes? markdown "| 200,000"))))
   (testing "a model with no context window still gets a row, dashed out under its neighbours"
     (is (str/includes? (#'ai-provider-dox/models-markdown
                         [:known {"deepseek-v4-flash" {:display-name "DeepSeek V4 Flash"}
                                  "deepseek-v4-pro"   {:display-name "DeepSeek V4 Pro" :context-window 131072}}]
-                        "DeepSeek")
+                        {} "DeepSeek")
                        "| —")))
   (testing "a provider that publishes no context windows at all loses the column, rather than showing dashes"
     (let [markdown (#'ai-provider-dox/models-markdown
                     [:known {"deepseek-v4-pro" {:display-name "DeepSeek V4 Pro"}}]
-                    "DeepSeek")]
+                    {} "DeepSeek")]
       (is (str/includes? markdown "| Model "))
       (is (not (str/includes? markdown "Context window")))
       (is (not (str/includes? markdown "—")))))
   (testing "a registry-pinned catalog becomes a table with no context window column"
     (let [markdown (#'ai-provider-dox/models-markdown
                     [:fixed [{:id "google/gemini-3.5-flash" :display_name "gemini-3.5-flash"}]]
-                    "Google Gemini Enterprise")]
+                    {} "Google Gemini Enterprise")]
       (is (str/includes? markdown "| Model "))
       (is (not (str/includes? markdown "Context window")))))
-  (testing "Azure explains that the model comes from the deployment instead"
-    (is (str/includes? (#'ai-provider-dox/models-markdown
-                        [:deployments ["Model provider" "Deployment name"]]
-                        "Microsoft Azure")
-                       "**Model provider** and **Deployment name**")))
+  (testing "Azure explains that the model comes from the deployment instead, naming the fields by their labels"
+    (let [azure (registry-entry "azure")]
+      (is (str/includes? (#'ai-provider-dox/models-markdown
+                          [:deployments (:model-fields azure)]
+                          (index (:fields azure))
+                          "Microsoft Azure")
+                         "**Model provider** and **Deployment name**"))))
+  (testing "a deployment field left pointing at a renamed key fails loudly"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"No credential field named :nope"
+                          (#'ai-provider-dox/models-markdown [:deployments [:nope]] {} "Microsoft Azure"))))
   (testing "vLLM says the catalog depends on the server"
-    (is (str/includes? (#'ai-provider-dox/models-markdown [:dynamic] "vLLM")
+    (is (str/includes? (#'ai-provider-dox/models-markdown [:dynamic] {} "vLLM")
                        "whichever models your vLLM server is serving"))))
 
 (deftest ^:parallel provider-section-test
