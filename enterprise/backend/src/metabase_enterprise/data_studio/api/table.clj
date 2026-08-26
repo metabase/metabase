@@ -149,6 +149,48 @@
   [:map
    [:target_collection [:maybe (ms/InstanceOf :model/Collection)]]])
 
+(def ^:private PublishingUser
+  [:map {:closed true}
+   [:id ms/PositiveInt]
+   [:common_name :string]])
+
+(def ^:private PublishingInfo
+  [:map {:closed true}
+   [:published_at [:maybe ms/TemporalInstant]]
+   [:published_by [:maybe PublishingUser]]])
+
+(def ^:private unavailable-publishing-info
+  {:published_at nil
+   :published_by nil})
+
+(defn- publishing-info
+  [table-id]
+  (if-let [{:keys [timestamp topic], user-id :user_id}
+           (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
+                          :topic [:in [:table-publish :table-unpublish]]
+                          :model "Table"
+                          :model_id table-id
+                          {:order-by [[:timestamp :desc] [:id :desc]]})]
+    (if (= topic :table-publish)
+      {:published_at timestamp
+       :published_by (when user-id
+                       (some-> (t2/select-one [:model/User :id :first_name :last_name :email] user-id)
+                               (select-keys [:id :common_name])))}
+      unavailable-publishing-info)
+    unavailable-publishing-info))
+
+(api.macros/defendpoint :get "/:id/publishing-info" :- PublishingInfo
+  "Return the latest publishing event for a published table."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body
+   _request]
+  (api/check-data-analyst)
+  (let [table (api/read-check :model/Table id)]
+    (if (:is_published table)
+      (publishing-info id)
+      unavailable-publishing-info)))
+
 (defn- can-publish?
   "Publishing a table means that it's now query-able by a new set of people. So we should not allow you to publish a
   table if you don't *already* have permissions to query it - otherwise, maybe you can just publish it to circumvent your
