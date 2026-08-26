@@ -6,7 +6,6 @@
    [metabase.config.core :as config]
    [metabase.request.core :as request]
    [metabase.server.streaming-response]
-   [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -77,8 +76,7 @@
   (let [{:strs [origin x-forwarded-host host user-agent]} headers]
     (when (and (mdb/db-is-set-up?)
                (not (system/site-url))
-               (or (not (setup/has-user-setup))
-                   superuser?)
+               superuser?
                (not (#{"/api/health" "/livez" "/readyz"} uri))
                (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
       ;; `origin` already carries a scheme; the `*-host` headers normally don't, so prepend the scheme the proxy

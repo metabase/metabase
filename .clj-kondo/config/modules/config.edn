@@ -2187,7 +2187,6 @@
            request
            session
            settings
-           setup
            sso
            system
            tracing
