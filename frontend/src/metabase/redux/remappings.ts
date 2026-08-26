@@ -15,12 +15,12 @@ import type {
   RowValue,
 } from "metabase-types/api";
 
-import { updateMetadata } from "./metadata";
+import { getFieldRemappings, updateMetadata } from "./metadata";
 
 export const addRemappings =
   (fieldId: FieldId, remappings: FieldValue[]) =>
   (dispatch: Dispatch, getState: GetState) => {
-    const existing = getState().entities.fields?.[fieldId]?.remappings ?? [];
+    const existing = getFieldRemappings(getState(), fieldId);
     const merged = Array.from(
       new Map(
         existing
