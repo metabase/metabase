@@ -1,5 +1,4 @@
 /* eslint-env node */
-/* eslint-disable no-console -- printing the result is what this script is for */
 
 /**
  * Loads a page repeatedly in a throttled headless Chrome and reports how long
@@ -28,12 +27,15 @@ const cpuThrottle = Number(process.env.CPU_THROTTLE || 4);
 const mbps = Number(process.env.NETWORK_MBPS || 10);
 const latency = Number(process.env.NETWORK_LATENCY || 40);
 const keepCache = Boolean(process.env.WARM);
+// Signs the load in, so the document carries what a real user's does: their
+// locale and, once the build writes them, the route's preload hints.
+const sessionCookie = process.env.SESSION_COOKIE || "";
 const port = 9222 + Number(process.env.PORT_OFFSET || 0);
 
 if (!url) {
   console.error("usage: node measure.js <url> [runs]");
   console.error(
-    "env: CPU_THROTTLE NETWORK_MBPS NETWORK_LATENCY WARM PORT_OFFSET",
+    "env: CPU_THROTTLE NETWORK_MBPS NETWORK_LATENCY WARM PORT_OFFSET SESSION_COOKIE",
   );
   process.exit(1);
 }
@@ -100,6 +102,9 @@ const READ_METRICS = `JSON.stringify((() => {
 async function launchChrome() {
   const chrome = spawn(CHROME, [
     "--headless=new",
+    // The harness only ever loads its own server on localhost, and a Chrome
+    // installed by CI has no SUID sandbox binary to use.
+    "--no-sandbox",
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${fs.mkdtempSync("/tmp/metabase-bench-")}`,
     "--no-first-run",
@@ -137,6 +142,14 @@ async function loadOnce() {
       latency,
       downloadThroughput: (mbps * 1024 * 1024) / 8,
       uploadThroughput: (mbps * 1024 * 1024) / 8,
+    });
+  }
+
+  if (sessionCookie) {
+    await session.send("Network.setCookie", {
+      name: "metabase.SESSION",
+      value: sessionCookie,
+      url,
     });
   }
 
@@ -195,7 +208,9 @@ function median(values) {
   const at = (key, from = 0) =>
     Number(median(results.slice(from).map((result) => result[key])).toFixed(1));
 
-  console.log(
+  // Written with a callback rather than console.log so the process cannot exit
+  // with the JSON still buffered in a pipe.
+  process.stdout.write(
     JSON.stringify(
       {
         url,
@@ -206,6 +221,10 @@ function median(values) {
         scripts: results[0].scriptCount,
         scriptKb: Number((results[0].scriptBytes / 1024).toFixed(1)),
         firstLoadMs: Number(results[0].domContentLoaded.toFixed(1)),
+        secondLoadMs:
+          results.length > 1
+            ? Number(results[1].domContentLoaded.toFixed(1))
+            : null,
         medianDomContentLoadedMs: at("domContentLoaded"),
         steadyStateMs: results.length > 2 ? at("domContentLoaded", 2) : null,
         everyRunMs: results.map((result) =>
@@ -214,7 +233,7 @@ function median(values) {
       },
       null,
       2,
-    ),
+    ) + "\n",
+    () => process.exit(0),
   );
-  process.exit(0);
 })();
