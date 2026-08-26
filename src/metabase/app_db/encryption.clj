@@ -111,8 +111,8 @@
                  :where  [:in :id (keys id->value)]}))
 
 (defn- rewrite-page!
-  "Convert up to `batch-size` rows of `table`.`column` with an id above `after-id`, using `f`. Returns the greatest id
-  seen, or nil when nothing was left to do."
+  "Convert up to `batch-size` rows of `table`.`column` with an id above `after-id`, using `f`. Returns
+  `{:last-id <greatest id seen> :converted <rows written>}`, or nil when nothing was left to do."
   [table column f after-id batch-size]
   (let [rows (t2/query {:select   [:id [column :value]]
                         :from     [table]
@@ -131,7 +131,7 @@
         (doseq [chunk (byte-bounded-chunks changed)]
           (update-page! table column chunk))
         ;; ordered by id, so the last row is the greatest
-        (:id (last rows))))))
+        {:last-id (:id (last rows)) :converted (count changed)}))))
 
 (defn- column-key
   "Stable string identity for a column, used as the progress map's key. A string so the cursor survives a JSON
@@ -159,19 +159,26 @@
 
 (defn rewrite-dwh-derived-columns!
   "Convert [[dwh-derived-columns]] with `f`, resuming from `progress` and stopping once `deadline-ms` has passed (nil
-  runs to completion). Returns `{:progress <map> :pages <n>}`; ask [[sweep-complete?]] whether it finished."
+  runs to completion). Returns `{:progress <map> :pages <n> :converted <n>}`; ask [[sweep-complete?]] whether it
+  finished."
   [f progress deadline-ms batch-size]
-  (loop [progress (or progress {})
-         pages    0]
+  (loop [progress  (or progress {})
+         pages     0
+         converted 0]
     (if-let [[[table column :as pair] after-id] (pending progress)]
-      (if-let [last-id (rewrite-page! table column f after-id batch-size)]
-        (let [progress (assoc progress (column-key pair) last-id)
-              pages    (inc pages)]
+      (if-let [page (rewrite-page! table column f after-id batch-size)]
+        (let [progress  (assoc progress (column-key pair) (:last-id page))
+              pages     (inc pages)
+              converted (+ converted (long (:converted page)))]
+          (log/debugf "Encryption sweep: %s.%s converted %d row(s), now at id %d"
+                      (name table) (name column) (:converted page) (:last-id page))
           (if (and deadline-ms (>= (System/currentTimeMillis) deadline-ms))
-            {:progress progress :pages pages}
-            (recur progress pages)))
-        (recur (assoc progress (column-key pair) done) pages))
-      {:progress progress :pages pages})))
+            {:progress progress :pages pages :converted converted}
+            (recur progress pages converted)))
+        (do
+          (log/infof "Encryption sweep: finished %s.%s" (name table) (name column))
+          (recur (assoc progress (column-key pair) done) pages converted)))
+      {:progress progress :pages pages :converted converted})))
 
 (defn encrypt-value
   "Encrypt one already-serialized column value, leaving anything already encrypted alone so a re-run is a no-op.

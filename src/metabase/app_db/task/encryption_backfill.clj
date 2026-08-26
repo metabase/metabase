@@ -18,7 +18,7 @@
   (:import
    (java.time Instant)
    (java.util Date)
-   (org.quartz DisallowConcurrentExecution JobExecutionContext)))
+   (org.quartz DisallowConcurrentExecution)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,7 +32,10 @@
   10)
 
 (def ^:private startup-delay-seconds 30)
-(def ^:private continuation-delay-seconds 20)
+
+(def ^:private interval-seconds
+  "How often the job fires. `DisallowConcurrentExecution` keeps a slow run from overlapping the next fire."
+  20)
 
 ;; Stored as a raw `setting` row rather than a `defsetting`, for the same reason `encryption-check` is: the app-db
 ;; module can't depend on the settings module without a cycle.
@@ -70,41 +73,29 @@
     :already-complete (log/debug "Encryption backfill already complete.")
     nil))
 
-(declare schedule-run!)
-
 (defn- run-batch!
-  "Convert for at most [[run-seconds]]. Returns a result map whose `:status` drives rescheduling."
+  "Convert for at most [[run-seconds]]. Returns a result map whose `:status` says whether there is work left."
   []
   (let [reason (readiness)]
     (if (not= reason :ready)
       {:status :skipped :reason reason}
       (let [deadline (+ (System/currentTimeMillis) (* 1000 (long run-seconds)))
-            {:keys [progress pages]} (mdb.encryption/rewrite-dwh-derived-columns!
-                                      mdb.encryption/encrypt-value (read-progress) deadline batch-size)]
+            {:keys [progress] :as result} (mdb.encryption/rewrite-dwh-derived-columns!
+                                           mdb.encryption/encrypt-value (read-progress) deadline batch-size)]
         (save-progress! progress)
-        {:status (if (mdb.encryption/sweep-complete? progress) :complete :more)
-         :pages  pages
-         :progress progress}))))
-
-(def ^:private retry-delay-seconds
-  "Backoff after a failed batch, so a deterministic failure retries occasionally rather than every few seconds."
-  (* 15 60))
+        (assoc result :status (if (mdb.encryption/sweep-complete? progress) :complete :more))))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Encrypt warehouse-derived columns left over from before the upgrade."}
-  EncryptionBackfill [ctx]
-  ;; reschedule on the way out of a failure too, then rethrow. The trigger is one-shot, so without this a single bad
-  ;; page would end the sweep until the next restart.
-  (let [scheduler (.getScheduler ^JobExecutionContext ctx)
-        {:keys [status] :as result} (try
-                                      (run-batch!)
-                                      (catch Throwable e
-                                        (schedule-run! scheduler retry-delay-seconds)
-                                        (throw e)))]
-    (if (= status :more)
-      (do (log/debug "Encryption backfill batch complete" result)
-          (schedule-run! scheduler continuation-delay-seconds))
-      (log/info "Encryption backfill finished" result))))
+  EncryptionBackfill [_ctx]
+  (let [{:keys [status reason] :as result} (run-batch!)]
+    (case status
+      ;; the trigger repeats, so there is nothing to reschedule; just stop it once there is no more work
+      :more     (log/info "Encryption backfill in progress" (dissoc result :status))
+      :complete (do (log/info "Encryption backfill finished" (dissoc result :status))
+                    (task/delete-task! job-key trigger-key))
+      :skipped  (do (log-skip reason)
+                    (task/delete-task! job-key trigger-key)))))
 
 (defn- build-job []
   (jobs/build
@@ -112,20 +103,19 @@
    (jobs/of-type EncryptionBackfill)
    (jobs/with-identity job-key)))
 
-(defn- build-trigger [delay-seconds]
+(defn- build-trigger []
   (triggers/build
    (triggers/with-identity trigger-key)
    (triggers/for-job job-key)
-   (triggers/start-at (Date/from (.plusSeconds (Instant/now) (long delay-seconds))))
+   (triggers/start-at (Date/from (.plusSeconds (Instant/now) (long startup-delay-seconds))))
    (triggers/with-schedule
-    (simple/schedule (simple/with-misfire-handling-instruction-fire-now)))))
-
-(defn- schedule-run! [scheduler delay-seconds]
-  (task/schedule-task! scheduler (build-job) (build-trigger delay-seconds)))
+    (simple/schedule
+     (simple/with-interval-in-seconds interval-seconds)
+     (simple/repeat-forever)))))
 
 (defmethod task/init! ::EncryptionBackfill
   [_]
   (let [reason (readiness)]
     (if (= reason :ready)
-      (schedule-run! (task/scheduler) startup-delay-seconds)
+      (task/schedule-task! (build-job) (build-trigger))
       (log-skip reason))))

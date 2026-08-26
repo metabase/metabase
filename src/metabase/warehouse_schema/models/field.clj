@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.field
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [honey.sql :as sql]
    [medley.core :as m]
@@ -17,7 +18,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.memoize :as u.memo]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
@@ -103,10 +103,10 @@
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
 ;; the metadata provider reads this for every field of every table in a query, so decrypting it uncached shows up
-;; on the hot path. Keyed on the stored value, which only changes when a field is re-analyzed.
+;; on the hot path. Same one-hour TTL as `mi/transform-encrypted-json`.
 (def ^:private cached-encrypted-fingerprints
   (update (mi/transform-encrypted transform-json-fingerprints)
-          :out u.memo/fast-bounded :bounded/threshold 10000))
+          :out memoize/ttl :ttl/threshold (* 60 60 1000)))
 
 (t2/deftransforms :model/Field
   {:base_type         transform-field-base-type
