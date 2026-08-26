@@ -1766,9 +1766,19 @@
   [setting]
   (maybe-encrypt setting))
 
+(defn- decrypt-setting-value-on-read
+  "Decrypt a Setting `value` on read, tolerating an undecryptable value by returning it unchanged so a stale row (e.g.
+  left by a botched key change) degrades gracefully at the reader instead of throwing on every read. The strict throw
+  from [[encryption/maybe-decrypt-accepting-plaintext]] still applies where it matters — the key-rotation path, which
+  does not swallow it."
+  [value]
+  (try
+    (encryption/maybe-decrypt-accepting-plaintext value)
+    (catch Throwable _ value)))
+
 (t2/define-after-select :model/Setting
   [setting]
   ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
   (if (= "encryption-check" (:key setting))
     setting
-    (update setting :value encryption/maybe-decrypt-accepting-plaintext)))
+    (update setting :value decrypt-setting-value-on-read)))

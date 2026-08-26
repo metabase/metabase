@@ -2748,7 +2748,12 @@
             (is (= "plaintext-bcrypt-hash"
                    (encryption/maybe-decrypt-accepting-plaintext (raw-key plain-id)))))
           (testing "already-encrypted key row is left unchanged"
-            (is (= enc-str (raw-key enc-id)))))))))
+            (is (= enc-str (raw-key enc-id))))
+          (testing "rollback decrypts keys back to the plaintext hash so downgraded code can still verify them"
+            (migrate! :down 57)
+            (is (not (encryption/possibly-encrypted-string? (raw-key plain-id))))
+            (is (= "plaintext-bcrypt-hash" (raw-key plain-id)))
+            (is (= "another-bcrypt-hash" (raw-key enc-id)))))))))
 
 (deftest backfill-transform-target-db-id-test
   (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
