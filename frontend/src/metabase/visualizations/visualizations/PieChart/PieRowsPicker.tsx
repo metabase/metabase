@@ -7,6 +7,7 @@ import {
   type ComputedVisualizationSettings,
   createHexToAccentNumberMap,
   getPickerColorAlias,
+  withColorName,
 } from "metabase/viz-core";
 import type { PieRow, RawSeries } from "metabase-types/api";
 
@@ -45,13 +46,17 @@ export function PieRowsPicker({
     return color(getPickerColorAlias(accentKey));
   };
 
-  const onChangeSeriesColor = (sliceKey: string, color: string) =>
+  const onChangeSeriesColor = (
+    sliceKey: string,
+    color: string,
+    colorName?: string,
+  ) =>
     onChangeSettings({
       "pie.rows": pieRows.map((row) => {
         if (row.key !== sliceKey) {
           return row;
         }
-        return { ...row, color, defaultColor: false };
+        return withColorName({ ...row, color, defaultColor: false }, colorName);
       }),
     });
 

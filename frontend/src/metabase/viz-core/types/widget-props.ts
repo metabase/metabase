@@ -89,7 +89,11 @@ export type ChartSettingSeriesOrderProps = {
   ) => void;
   series: Series;
   hasEditSettings: boolean;
-  onChangeSeriesColor: (seriesKey: string, color: string) => void;
+  onChangeSeriesColor: (
+    seriesKey: string,
+    color: string,
+    colorName?: string,
+  ) => void;
   onSortEnd: (newItems: ChartSettingSeriesOrderItem[]) => void;
   isSortable?: boolean;
   accentColorOptions?: AccentColorOptions;

@@ -176,9 +176,11 @@ export const BaseChartSettings = ({
   }, []);
 
   const handleChangeSeriesColor = useCallback(
-    (seriesKey: string, color: string) => {
+    (seriesKey: string, color: string, colorName?: string) => {
       if (chartSettings) {
-        onChange?.(updateSeriesColor(chartSettings, seriesKey, color));
+        onChange?.(
+          updateSeriesColor(chartSettings, seriesKey, color, colorName),
+        );
       }
     },
     [chartSettings, onChange],

@@ -1,3 +1,4 @@
+import { color } from "metabase/ui/colors";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import type { PieRow, RawSeries } from "metabase-types/api";
 import {
@@ -174,5 +175,35 @@ describe("getColors", () => {
         (color) => color.startsWith("#") && color.length === 7,
       ),
     ).toBe(true);
+  });
+
+  it("should use the palette color a slice records over its stored color", () => {
+    // getColors only reads rows and cols off the series
+    const rawSeries = [
+      {
+        data: createMockDatasetData({
+          rows: [["Doohickey", 1]],
+          cols: [
+            createMockColumn({ name: "Category" }),
+            createMockColumn({ name: "Count" }),
+          ],
+        }),
+      },
+    ] as RawSeries;
+    const settings = {
+      "pie.metric": "Count",
+      "pie.dimension": "Category",
+      // getColors only reads the key, color and defaultColor of a row
+      "pie.rows": [
+        {
+          key: "Doohickey",
+          defaultColor: false,
+          color: "#000000",
+          color_name: "accent3",
+        },
+      ] as PieRow[],
+    };
+
+    expect(getColors(rawSeries, settings).Doohickey).toBe(color("accent3"));
   });
 });

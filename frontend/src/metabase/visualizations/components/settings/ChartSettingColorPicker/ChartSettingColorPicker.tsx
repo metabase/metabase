@@ -5,7 +5,7 @@ import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box } from "metabase/ui";
-import { getAccentColors } from "metabase/ui/colors/groups";
+import { getNamedAccentColors } from "metabase/ui/colors/groups";
 import type { AccentColorOptions } from "metabase/ui/colors/types";
 
 interface ChartSettingColorPickerProps {
@@ -13,7 +13,7 @@ interface ChartSettingColorPickerProps {
   value: string;
   title?: string;
   pillSize?: PillSize;
-  onChange?: (newValue: string) => void;
+  onChange?: (newValue: string, colorName?: string) => void;
   accentColorOptions?: AccentColorOptions;
 }
 
@@ -39,7 +39,7 @@ export const ChartSettingColorPicker = ({
     <Box className={cx(CS.flex, CS.alignCenter, className)}>
       <ColorSelector
         value={value}
-        colors={getAccentColors(accentColorOptions)}
+        colors={getNamedAccentColors(accentColorOptions)}
         withinPortal={withinPortal}
         onChange={onChange}
         pillSize={pillSize}

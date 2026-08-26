@@ -5,6 +5,7 @@ import type { PillSize } from "metabase/common/components/ColorPill";
 import { ColorPill } from "metabase/common/components/ColorPill";
 import { Center, Popover } from "metabase/ui";
 
+import type { ColorSelectorOption } from "./ColorSelectorPopover";
 import { ColorSelectorPopover } from "./ColorSelectorPopover";
 
 export type ColorSelectorAttributes = Omit<
@@ -14,9 +15,9 @@ export type ColorSelectorAttributes = Omit<
 
 export interface ColorSelectorProps extends ColorSelectorAttributes {
   value: string;
-  colors: string[];
+  colors: ColorSelectorOption[];
   pillSize?: PillSize;
-  onChange?: (newValue: string) => void;
+  onChange?: (newValue: string, colorName?: string) => void;
   withinPortal?: boolean;
 }
 

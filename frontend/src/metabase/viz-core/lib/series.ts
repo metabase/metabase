@@ -1,4 +1,4 @@
-import { assocIn } from "icepick";
+import { assocIn, dissocIn } from "icepick";
 
 import type {
   Card,
@@ -17,8 +17,23 @@ export const updateSeriesColor = (
   settings: VisualizationSettings,
   seriesKey: string,
   color: string,
+  colorName?: string,
 ) => {
-  return assocIn(settings, [SERIES_SETTING_KEY, seriesKey, "color"], color);
+  const updated = assocIn(
+    settings,
+    [SERIES_SETTING_KEY, seriesKey, "color"],
+    color,
+  );
+
+  // A color picked outside the palette has no name, and any name left over
+  // from an earlier pick would keep overriding it.
+  return colorName == null
+    ? dissocIn(updated, [SERIES_SETTING_KEY, seriesKey, "color_name"])
+    : assocIn(
+        updated,
+        [SERIES_SETTING_KEY, seriesKey, "color_name"],
+        colorName,
+      );
 };
 
 export const getNameForCard = (card: SeriesCard) => {

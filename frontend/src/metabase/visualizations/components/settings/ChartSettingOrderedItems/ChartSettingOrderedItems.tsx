@@ -19,7 +19,7 @@ interface SortableColumnFunctions<T> {
   onAdd?: (item: T) => void;
   onEnable?: (item: T) => void;
   getItemName: (item: T) => string;
-  onColorChange?: (item: T, color: string) => void;
+  onColorChange?: (item: T, color: string, colorName?: string) => void;
 }
 interface ChartSettingOrderedItemsProps<
   T extends ChartSettingOrderedItem,
@@ -80,7 +80,8 @@ export function ChartSettingOrderedItems<T extends ChartSettingOrderedItem>({
             }
             onColorChange={
               onColorChange
-                ? (color: string) => onColorChange(item, color)
+                ? (color: string, colorName?: string) =>
+                    onColorChange(item, color, colorName)
                 : undefined
             }
             color={getItemColor(item)}

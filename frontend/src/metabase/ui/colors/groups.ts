@@ -1,10 +1,15 @@
 import Color from "color";
 import _ from "underscore";
 
+import { ACCENT_COLOR_NAMES_MAP } from "./constants/accents";
 import { ACCENT_COUNT, color } from "./palette";
-import type { AccentColorOptions, ColorName, ColorPalette } from "./types";
+import type { AccentColorOptions, ColorPalette, NamedColor } from "./types";
 
-export const getAccentColors = (
+/**
+ * Accent colors paired with their palette names, so that a picked color can be
+ * stored as a reference to the palette instead of a fixed value.
+ */
+export const getNamedAccentColors = (
   {
     main = true,
     light = true,
@@ -13,63 +18,60 @@ export const getAccentColors = (
     gray = true,
   }: AccentColorOptions = {},
   palette?: ColorPalette,
-): string[] => {
-  const ranges: string[][] = [];
+): NamedColor[] => {
+  const ranges: NamedColor[][] = [];
   if (main) {
-    ranges.push(getMainAccentColors(palette, gray));
+    ranges.push(getNamedAccents("base", palette, gray));
   }
   if (light) {
-    ranges.push(getLightAccentColors(palette, gray));
+    ranges.push(getNamedAccents("tint", palette, gray));
   }
   if (dark) {
-    ranges.push(getDarkAccentColors(palette, gray));
+    ranges.push(getNamedAccents("shade", palette, gray));
   }
 
   return harmony ? _.unzip(ranges).flat() : ranges.flat();
 };
 
-const getBaseAccentsNames = (withGray = false) => {
-  const accents: ColorName[] = _.times(
-    ACCENT_COUNT,
-    // Unjustified type cast. FIXME
-    (i) => `accent${i}` as ColorName,
-  );
-  if (withGray) {
-    accents.push("accent-gray");
-  }
+export const getAccentColors = (
+  options: AccentColorOptions = {},
+  palette?: ColorPalette,
+): string[] => getNamedAccentColors(options, palette).map(({ value }) => value);
 
-  return accents;
+const getNamedAccents = (
+  variant: "base" | "tint" | "shade",
+  palette?: ColorPalette,
+  withGray = false,
+): NamedColor[] => {
+  const accents = withGray
+    ? ACCENT_COLOR_NAMES_MAP
+    : ACCENT_COLOR_NAMES_MAP.slice(0, ACCENT_COUNT);
+
+  return accents.map((accent) => {
+    const name = accent[variant];
+
+    // Ensure that colors are defined in hex, not HSLA
+    return { name, value: Color(color(name, palette)).hex() };
+  });
 };
 
 export const getMainAccentColors = (
   palette?: ColorPalette,
   withGray = false,
-): string[] => {
-  // Ensure that colors are defined in hex, not HSLA
-  return getBaseAccentsNames(withGray).map((accent) =>
-    Color(color(accent, palette)).hex(),
-  );
-};
+): string[] =>
+  getAccentColors({ light: false, dark: false, gray: withGray }, palette);
 
 export const getLightAccentColors = (
   palette?: ColorPalette,
   withGray = false,
-): string[] => {
-  return getBaseAccentsNames(withGray).map((accent) =>
-    // Unjustified type cast. FIXME
-    Color(color(`${accent}-light` as ColorName, palette)).hex(),
-  );
-};
+): string[] =>
+  getAccentColors({ main: false, dark: false, gray: withGray }, palette);
 
 export const getDarkAccentColors = (
   palette?: ColorPalette,
   withGray = false,
-) => {
-  return getBaseAccentsNames(withGray).map((accent) =>
-    // Unjustified type cast. FIXME
-    Color(color(`${accent}-dark` as ColorName, palette)).hex(),
-  );
-};
+): string[] =>
+  getAccentColors({ main: false, light: false, gray: withGray }, palette);
 
 export const getStatusColorRanges = (): string[][] => {
   return [
