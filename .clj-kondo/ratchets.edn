@@ -32,7 +32,6 @@
                  :missing-protocol-method                                             3
                  :non-arg-vec-return-type-hint                                        1
                  :reduce-without-init                                                 3
-                 :redundant-fn-wrapper                                                1
                  :syntax                                                              2
                  :uninitialized-var                                                   1
                  :unquote-not-syntax-quoted                                           1
