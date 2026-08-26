@@ -47,28 +47,19 @@ jobs:
       - name: Get version number
         id: get-version
         uses: actions/github-script@v9
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
         with:
           script: | # js
-            const {
-              getMajorVersionFromRef,
-              getMajorVersion,
-            } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { getMajorVersionFromRef } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             console.log({ context });
 
-            // if the version is explicitly set, use that
-            if (context.payload?.inputs?.version) {
-              core.exportVariable('VERSION', context.payload.inputs.version);
-              return;
-            }
+            const version = process.env.VERSION_INPUT || getMajorVersionFromRef(context.payload.ref);
 
-            // otherwise, get the version from the ref (branch or tag)
-            const ref = context.payload.ref;
-            const majorVersion = getMajorVersionFromRef(ref);
-
-            console.log({ ref, majorVersion });
-            core.exportVariable('VERSION', majorVersion);
-            core.setOutput('version', majorVersion);
+            console.log({ version });
+            core.exportVariable('VERSION', version);
+            core.setOutput('version', version);
 
       - name: generate release Log
         if: ${{ steps.get-version.outputs.version != '' }}
