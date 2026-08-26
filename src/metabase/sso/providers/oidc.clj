@@ -72,12 +72,19 @@
 ;;; -------------------------------------------------- User Data Extraction --------------------------------------------------
 
 (defn- email-verified-claim
-  "Normalize the id-token `email_verified` claim (OIDC Core §5.1) to true, false, or nil when absent."
+  "Normalize the id-token `email_verified` claim (OIDC Core §5.1) to true, false, or nil when absent.
+   Any value other than boolean/string `true` counts as unverified."
   [claims]
-  (case (:email_verified claims)
-    (true "true")   true
-    (false "false") false
-    nil))
+  (let [verified (:email_verified claims)]
+    (cond
+      (nil? verified)                            nil
+      (or (true? verified) (= verified "true")) true
+      :else                                      false)))
+
+(defn- subject
+  "The token's `sub` claim as a string (OIDC requires a string; tolerate IdPs that send a number)."
+  [claims]
+  (some-> (:sub claims) str))
 
 (defn- extract-user-data
   "Extract user data from ID token claims.
@@ -97,7 +104,7 @@
         email (get claims (keyword email-attr))
         first-name (get claims (keyword firstname-attr))
         last-name (get claims (keyword lastname-attr))
-        provider-id (:sub claims)]
+        provider-id (subject claims)]
     (when email
       (cond-> {:email email
                :first_name first-name
@@ -108,14 +115,18 @@
 
 ;;; -------------------------------------------------- Identity Linking --------------------------------------------------
 
+(defn- normalize-domain
+  [domain]
+  (-> domain str/trim (str/replace #"^@" "") u/lower-case-en))
+
 (defn- trusted-email-domain?
   "True if `email`'s domain is listed in the provider's `:trusted-email-domains` (\"*\" trusts every domain)."
   [email domains]
   (boolean
-   (when email
+   (when-let [email-domain (some-> email u/email->domain u/lower-case-en)]
      (some (fn [domain]
-             (or (= domain "*")
-                 (str/ends-with? (u/lower-case-en email) (str "@" (u/lower-case-en domain)))))
+             (let [domain (normalize-domain domain)]
+               (or (= domain "*") (= domain email-domain))))
            domains))))
 
 (defn- may-auto-link?
@@ -125,56 +136,75 @@
            (true? (email-verified-claim claims)))
       (trusted-email-domain? email (:trusted-email-domains config))))
 
-(defn- link-identity!
-  "Point the user's single AuthIdentity row for `provider` (unique per user+provider) at (iss, sub)."
+(defn- linked-to-other-user?
+  "True if (provider, iss, sub) is already linked to a user other than `user-id`. Rows without a stored iss count."
+  [provider user-id sub iss]
+  (boolean
+   (some (fn [row]
+           (and (not= (:user_id row) user-id)
+                (let [stored-iss (get-in row [:metadata :iss])]
+                  (or (nil? stored-iss) (= stored-iss iss)))))
+         (t2/select :model/AuthIdentity :provider (name provider) :provider_id sub))))
+
+(defn link-identity!
+  "Point `user-id`'s single AuthIdentity row for `provider` (unique per user+provider) at (iss, sub). Returns
+   {:success? true}, or a failure map when that identity is already linked to another user."
   [provider user-id auth-identity sub iss]
-  (if auth-identity
-    (t2/update! :model/AuthIdentity (:id auth-identity)
-                {:provider_id sub
-                 :metadata    (assoc (:metadata auth-identity) :iss iss)})
-    (t2/insert! :model/AuthIdentity {:user_id     user-id
-                                     :provider    (name provider)
-                                     :provider_id sub
-                                     :metadata    {:iss iss}})))
+  (if (linked-to-other-user? provider user-id sub iss)
+    (do (log/warnf "OIDC login rejected: token identity is already linked to a different user than %d" user-id)
+        {:success? false
+         :error :identity-already-linked
+         :message "This identity provider account is already linked to a different Metabase account. Please contact your administrator."})
+    (do (if auth-identity
+          (auth-identity/merge-metadata! auth-identity {:iss iss} {:provider_id sub})
+          (t2/insert! :model/AuthIdentity {:user_id     user-id
+                                           :provider    (name provider)
+                                           :provider_id sub
+                                           :metadata    {:iss iss}}))
+        {:success? true})))
 
 (defn- verify-or-link-identity!
   "Enforce that the token's (iss, sub) matches the AuthIdentity linked to the email-resolved user, linking it
    first when the provider's linking policy allows. Returns {:success? true} or a failure map."
   [provider user claims config email]
-  (let [sub           (:sub claims)
-        iss           (:iss claims)
-        auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider (name provider))
-        stored-iss    (get-in auth-identity [:metadata :iss])
-        ;; rows created before iss tracking have no :iss in metadata and count for any issuer
-        same-iss?     (and (:provider_id auth-identity)
-                           (or (nil? stored-iss) (= stored-iss iss)))]
-    (cond
-      (str/blank? sub)
+  (let [sub (subject claims)
+        iss (:iss claims)]
+    (if (str/blank? sub)
       {:success? false
        :error :invalid-token
        :message "ID token is missing the sub claim"}
+      (let [auth-identity (t2/select-one :model/AuthIdentity :user_id (:id user) :provider (name provider))
+            stored-sub    (:provider_id auth-identity)
+            stored-iss    (get-in auth-identity [:metadata :iss])
+            same-sub?     (= stored-sub sub)]
+        (cond
+          (and same-sub? (= stored-iss iss))
+          {:success? true}
 
-      (and same-iss? (= (:provider_id auth-identity) sub))
-      (do (when (nil? stored-iss)
-            (t2/update! :model/AuthIdentity (:id auth-identity)
-                        {:metadata (assoc (:metadata auth-identity) :iss iss)}))
-          {:success? true})
+          ;; rows created before iss tracking have no :iss in metadata; a matching sub backfills it
+          (and same-sub? (nil? stored-iss))
+          (do (auth-identity/merge-metadata! auth-identity {:iss iss})
+              {:success? true})
 
-      same-iss?
-      (do (log/warnf "OIDC login rejected: token subject does not match the identity linked to user %d" (:id user))
-          {:success? false
-           :error :identity-mismatch
-           :message "This identity provider account is linked to a different identity for this Metabase account. Please contact your administrator."})
+          (and stored-sub (= stored-iss iss))
+          (do (log/warnf "OIDC login rejected: token subject does not match the identity linked to user %d" (:id user))
+              {:success? false
+               :error :identity-mismatch
+               :message "This identity provider account is linked to a different identity for this Metabase account. Please contact your administrator."})
 
-      (may-auto-link? claims config email)
-      (do (link-identity! provider (:id user) auth-identity sub iss)
-          {:success? true})
+          ;; no link yet, a link to a different issuer, or a legacy link (no iss, so possibly another issuer's):
+          ;; establishing/replacing the link is governed by the provider's linking policy
+          (may-auto-link? claims config email)
+          (do (when stored-sub
+                (log/infof "OIDC login: relinking user %d from %s to the token's identity" (:id user)
+                           (if stored-iss (str "issuer " stored-iss) "a legacy identity without issuer")))
+              (link-identity! provider (:id user) auth-identity sub iss))
 
-      :else
-      (do (log/warnf "OIDC login rejected: no linked identity for user %d and the token cannot establish one" (:id user))
-          {:success? false
-           :error :account-linking-required
-           :message "Your identity provider account is not linked to this Metabase account. Please contact your administrator."}))))
+          :else
+          (do (log/warnf "OIDC login rejected: no linked identity for user %d and the token cannot establish one" (:id user))
+              {:success? false
+               :error :account-linking-required
+               :message "Your identity provider account is not linked to this Metabase account. Please contact your administrator."}))))))
 
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
@@ -267,8 +297,18 @@
   [provider {:keys [user claims] :as request}]
   ;; `user` was resolved by email alone; before provisioning/session creation, require the token's
   ;; (iss, sub) to match (or establish, per policy) that user's linked identity
-  (if-not (and (true? (:success? request)) user claims)
+  (cond
+    ;; failures/redirects, and new users (provisioned with their (iss, sub) by create-user!)
+    (not (and (true? (:success? request)) user))
     (next-method provider request)
+
+    ;; never fall through to email-only login for an existing user without the token's claims
+    (not claims)
+    {:success? false
+     :error :invalid-token
+     :message "ID token claims are missing"}
+
+    :else
     (let [result (verify-or-link-identity! provider user claims (:oidc-config request)
                                            (get-in request [:user-data :email]))]
       (if (:success? result)

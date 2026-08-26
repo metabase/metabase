@@ -388,6 +388,44 @@
               (is (= initial-session-count (t2/count :model/Session :user_id (:id user)))
                   "No new session should be created"))))))))
 
+(deftest link-only-mode-relinks-auth-identity-test
+  (testing "Link-only mode relinks an already-linked user to the Slack identity they just authenticated with"
+    (mt/with-temporary-setting-values
+      [slack-connect-enabled true
+       slack-connect-client-id "test-client-id"
+       slack-connect-client-secret "test-secret"
+       slack-connect-authentication-mode "link-only"]
+      (mt/with-temp [:model/User user {:email "relink@example.com"}
+                     :model/AuthIdentity {ai-id :id} {:user_id (:id user)
+                                                      :provider "slack-connect"
+                                                      :provider_id "U_OLD"}]
+        (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                    (fn [_issuer] slack-discovery-doc)
+                                    oidc.state/validate-oidc-callback
+                                    (fn [_request _state _provider & _opts]
+                                      {:valid? true :nonce "test-nonce" :redirect "/"})
+                                    http/post
+                                    (fn [_url _opts]
+                                      {:status 200
+                                       :body {:id_token "valid-token" :access_token "access-token-123"}})
+                                    oidc.tokens/validate-id-token
+                                    (fn [_token _config _nonce]
+                                      {:valid? true
+                                       :claims {:sub "U_NEW"
+                                                :iss "https://slack.com"
+                                                :aud "test-client-id"
+                                                :email "relink@example.com"}})]
+          (let [result (auth-identity/login! :provider/slack-connect
+                                             {:code "test-code"
+                                              :state "test-state"
+                                              :redirect-uri "https://metabase.example.com/auth/sso/slack-connect/callback"
+                                              :authenticated-user (delay user)
+                                              :device-info {:device_id "test-device" :device_description "Test Device" :ip_address "127.0.0.1" :embedded false :token_exchange false}})
+                auth-identity (t2/select-one :model/AuthIdentity :id ai-id)]
+            (is (true? (:success? result)))
+            (is (= "U_NEW" (:provider_id auth-identity)))
+            (is (= "https://slack.com" (get-in auth-identity [:metadata :iss])))))))))
+
 ;;; -------------------------------------------------- Settings Validation Tests --------------------------------------------------
 
 (deftest slack-connect-configured-test

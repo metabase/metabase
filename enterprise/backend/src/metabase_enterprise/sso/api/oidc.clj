@@ -16,6 +16,11 @@
 
 ;;; -------------------------------------------------- Schema --------------------------------------------------
 
+(def ^:private trusted-email-domains-schema
+  "\"*\" or a dotted hostname, optionally with a leading @."
+  [:sequential [:re {:error/message "must be an email domain such as mycompany.com, or *"}
+                #"^\s*@?(\*|[^\s@,/]+(\.[^\s@,/]+)+)\s*$"]])
+
 (def ^:private oidc-provider-create-schema
   [:map {:closed true}
    [:key :string]
@@ -27,7 +32,7 @@
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
    [:auto-link-verified-email {:optional true} :boolean]
-   [:trusted-email-domains {:optional true} [:sequential :string]]
+   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
@@ -43,7 +48,7 @@
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
    [:auto-link-verified-email {:optional true} :boolean]
-   [:trusted-email-domains {:optional true} [:sequential :string]]
+   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]
@@ -60,7 +65,7 @@
    [:enabled {:optional true} :boolean]
    [:attribute-map {:optional true} [:map-of :string :string]]
    [:auto-link-verified-email {:optional true} :boolean]
-   [:trusted-email-domains {:optional true} [:sequential :string]]
+   [:trusted-email-domains {:optional true} trusted-email-domains-schema]
    [:group-sync {:optional true} [:map {:closed true}
                                   [:enabled {:optional true} :boolean]
                                   [:group-attribute {:optional true} :string]

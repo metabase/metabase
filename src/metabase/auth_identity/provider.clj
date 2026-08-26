@@ -333,6 +333,13 @@
   []
   [:email :first_name :last_name :sso_source])
 
+(defn- auth-identity-row
+  "AuthIdentity row linking `user-id` to the `:provider-id`/`:provider-metadata` carried in SSO `user-data`."
+  [user-id provider user-data]
+  (cond-> {:user_id user-id :provider (name provider)}
+    (:provider-id user-data)       (assoc :provider_id (:provider-id user-data))
+    (:provider-metadata user-data) (assoc :metadata (:provider-metadata user-data))))
+
 (mu/defn update-user!
   "Updates a user from user-data in the request"
   [{user-id :id} :- [:map [:id ms/PositiveInt]]
@@ -354,9 +361,7 @@
                   (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
                     reactivating? (assoc :is_superuser false))))
     (when-not (t2/exists? :model/AuthIdentity :user_id user-id :provider (name provider))
-      (t2/insert! :model/AuthIdentity (cond-> {:user_id user-id :provider (name provider)}
-                                        (:provider-id user-data)       (assoc :provider_id (:provider-id user-data))
-                                        (:provider-metadata user-data) (assoc :metadata (:provider-metadata user-data)))))
+      (t2/insert! :model/AuthIdentity (auth-identity-row user-id provider user-data)))
     (t2/select-one [:model/User :id :is_active :last_login] user-id)))
 
 (mu/defn- create-user!
@@ -385,9 +390,7 @@
       (u/prog1
         (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id]
                                        (select-keys user-data insert-fields))
-        (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
-                                          (:provider-id user-data)       (assoc :provider_id (:provider-id user-data))
-                                          (:provider-metadata user-data) (assoc :metadata (:provider-metadata user-data))))
+        (t2/insert! :model/AuthIdentity (auth-identity-row (:id <>) provider user-data))
         (notification/with-skip-sending-notification true
           (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
                                                                      :sso_source (name provider))}))))))

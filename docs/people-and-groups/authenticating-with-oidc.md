@@ -114,13 +114,18 @@ Here's how Metabase decides whether to let someone in:
 - If the ID token says the email is unverified (`email_verified` is `false`), Metabase rejects the login.
 - If the account is already linked to an identity from that issuer, the token's `sub` claim must match. If it doesn't, Metabase rejects the login.
 - If the account isn't linked yet (or is linked to a different issuer), Metabase links it automatically when the IdP says the email is verified (`email_verified` is `true`). Otherwise, Metabase rejects the login until the account can be linked.
+- If the token's identity is already linked to a different Metabase account, Metabase rejects the login.
+
+Accounts linked before Metabase started recording the issuer are treated as unlinked when the `sub` claim doesn't match, so they get relinked under the same rules on their next login.
+
+If your IdP doesn't send the `email_verified` claim, people with existing accounts that aren't linked yet won't be able to log in after upgrading until you either turn on that claim at the IdP or add your domains to **Trusted email domains** (see below).
 
 New accounts created by [auto-provisioning](#user-provisioning) get linked on their first login.
 
 To change how Metabase links existing accounts, go to **Admin settings** > **Authentication** > **OIDC** > **Account linking**:
 
 - **Automatically link accounts with a verified email** (on by default): links the identity to the existing account with that email when the token includes `email_verified: true`. Turn this off to never link accounts automatically based on the email claim alone.
-- **Trusted email domains** (empty by default): a comma-separated list of email domains to link even when the token has no `email_verified` claim. Use this if your IdP doesn't send `email_verified` but you manage the accounts on it. Use `*` to trust all domains. Only list domains where people can't sign up with an email address on their own.
+- **Trusted email domains** (empty by default): a comma-separated list of email domains to link even when the token has no `email_verified` claim. Use this if your IdP doesn't send `email_verified` but you manage the accounts on it. Domains are matched exactly (case-insensitive), so `mycompany.com` doesn't cover `sub.mycompany.com`. Use `*` to trust all domains. Only list domains where people can't sign up with an email address on their own.
 
 If you configure providers with the `MB_OIDC_PROVIDERS` environment variable, set `auto-link-verified-email` (boolean) and `trusted-email-domains` (array of strings) in the provider JSON. See [Environment variables](#environment-variables).
 

@@ -43,6 +43,23 @@ import {
 import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import type { Group, GroupId } from "metabase-types/api";
 
+// "*" or a dotted hostname; leading "@" and case are normalized away first
+const TRUSTED_EMAIL_DOMAIN_REGEX = /^(\*|[^\s@,/]+(\.[^\s@,/]+)+)$/;
+
+export function parseTrustedEmailDomains(value: string | null): string[] {
+  if (!value) {
+    return [];
+  }
+  return Array.from(
+    new Set(
+      value
+        .split(/[\s,]+/)
+        .map((domain) => domain.trim().replace(/^@/, "").toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+}
+
 function getOidcFormSchema() {
   return Yup.object({
     "login-prompt": Yup.string().required(t`Login prompt is required`),
@@ -60,7 +77,17 @@ function getOidcFormSchema() {
     "attribute-firstname": Yup.string().nullable().default("given_name"),
     "attribute-lastname": Yup.string().nullable().default("family_name"),
     "auto-link-verified-email": Yup.boolean().default(true),
-    "trusted-email-domains": Yup.string().nullable().default(null),
+    "trusted-email-domains": Yup.string()
+      .nullable()
+      .default(null)
+      .test(
+        "trusted-email-domains",
+        t`Enter domains like mycompany.com, separated by commas`,
+        (value) =>
+          parseTrustedEmailDomains(value ?? null).every((domain) =>
+            TRUSTED_EMAIL_DOMAIN_REGEX.test(domain),
+          ),
+      ),
     "group-sync-enabled": Yup.boolean().default(false),
     "group-attribute": Yup.string().nullable().default("groups"),
   });
@@ -146,12 +173,9 @@ function formValuesToProvider(
     attributeMap["last_name"] = values["attribute-lastname"];
   }
 
-  const trustedEmailDomains = values["trusted-email-domains"]
-    ? values["trusted-email-domains"]
-        .split(",")
-        .map((domain) => domain.trim())
-        .filter(Boolean)
-    : [];
+  const trustedEmailDomains = parseTrustedEmailDomains(
+    values["trusted-email-domains"],
+  );
 
   const provider: Partial<CustomOidcConfig> = {
     key: values.key,
