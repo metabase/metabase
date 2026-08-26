@@ -95,3 +95,10 @@ laptop, so read a number against the same runner's history and not against a
 number from anywhere else. Each row carries `Cold spread %`, the interquartile
 spread of its cold runs, which is what tells a real regression from a busy
 runner.
+
+`bundle-load-stats-backfill.yml` measures recent master commits on demand, so
+the chart reads as a trend before the per-merge job has built one. Uberjars are
+kept for 30 days, and a commit older than that is skipped. Every backfilled point
+comes from one machine in one run, while the live series takes one point a day
+from a different runner each time, so the backfilled stretch looks steadier than
+what follows it.
