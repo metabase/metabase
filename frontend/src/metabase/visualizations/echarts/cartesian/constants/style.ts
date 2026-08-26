@@ -21,7 +21,6 @@ export const TIMELINE_EVENTS_BAND = {
   bandPaddingY: 4,
   marginY: 8,
   chipGap: 2,
-  stackCollapsedOffset: 6,
 };
 
 export const TIMELINE_BAND_HEIGHT =

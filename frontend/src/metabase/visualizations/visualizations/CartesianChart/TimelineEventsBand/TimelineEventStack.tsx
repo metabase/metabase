@@ -17,8 +17,6 @@ import S from "./TimelineEventsBand.module.css";
 // an open popover) does not collapse the stack.
 const STACK_COLLAPSE_DELAY_MS = 150;
 
-const MAX_PEEKING_MEMBERS = 4;
-
 interface TimelineEventStackProps {
   cluster: TimelineEventCluster;
   memberXs: number[];
@@ -60,7 +58,7 @@ export const TimelineEventStack = ({
   onDeselectTimelineEvents,
   onSeeAllEvents,
 }: TimelineEventStackProps) => {
-  const { chipWidth, chipGap, stackCollapsedOffset } = TIMELINE_EVENTS_BAND;
+  const { chipWidth, chipGap } = TIMELINE_EVENTS_BAND;
   const { groups } = cluster;
   const count = groups.length;
 
@@ -149,17 +147,10 @@ export const TimelineEventStack = ({
     spreadWidth,
     plotBounds,
   );
-  const collapsedExtent =
-    Math.min(count - 1, MAX_PEEKING_MEMBERS) * stackCollapsedOffset;
-  const collapsedAnchorX = Math.min(
-    memberXs[0],
-    plotBounds.right - collapsedExtent,
-  );
   const getMemberX = (index: number) =>
     isExpanded
       ? spreadCenter + (index - (count - 1) / 2) * spreadStep
-      : collapsedAnchorX +
-        Math.min(index, MAX_PEEKING_MEMBERS) * stackCollapsedOffset;
+      : memberXs[index];
 
   return (
     <div
