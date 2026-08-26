@@ -8,6 +8,11 @@
 -- Dialect note: everything here must run unchanged on H2, MySQL, and
 -- Postgres. Optional filters use the null-guard pattern
 -- (:value:x IS NULL OR col = :value:x) so the query shape stays static.
+-- If a query ever genuinely diverges per dialect, override it in a
+-- models/<dialect>/task_history.sql file (h2 / mysql / postgres) carrying
+-- only the diverging :name(s); the loader merges base + dialect at first
+-- use (app-db type is a per-JVM constant). This file stays the complete
+-- portable baseline.
 
 -- :name cleanup-cutoff :? :1
 -- Find the ended_at cutoff for cleanup: skip the :keep newest rows
