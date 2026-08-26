@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { UpsellContentTranslation } from "metabase/admin/upsells";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { LocalizationUpsellPage } from "metabase/embedding-hub/upsells";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 /**
@@ -16,13 +16,13 @@ import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 export function EmbeddingHubLocalizationPage() {
   const hasContentTranslation = useHasTokenFeature("content_translation");
 
+  if (!hasContentTranslation) {
+    return <LocalizationUpsellPage />;
+  }
+
   return (
     <SettingsPageWrapper title={t`Localization`}>
-      {hasContentTranslation ? (
-        <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
-      ) : (
-        <UpsellContentTranslation source="embedding-hub-localization" />
-      )}
+      <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
     </SettingsPageWrapper>
   );
 }
