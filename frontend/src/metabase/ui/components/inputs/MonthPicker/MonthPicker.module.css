@@ -8,6 +8,7 @@
 
 .calendarHeader {
   width: 100%;
+  margin-bottom: var(--mantine-spacing-xxs);
 }
 
 /* mantine styles are inline for this icon, so we have to override it with important */
