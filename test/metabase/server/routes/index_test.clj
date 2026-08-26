@@ -100,10 +100,11 @@
         tags-for (fn tags-for
                    ([uri] (tags-for uri true))
                    ([uri signed-in?]
-                    (with-redefs-fn {#'index/load-route-preloads
-                                     (constantly (mapv (fn [[pattern markup signed-out?]]
-                                                         [(clout/route-compile pattern) markup signed-out?])
-                                                       manifest))}
+                    (with-redefs-fn {#'index/route-preloads
+                                     (constantly
+                                      (mapv (fn [[pattern markup signed-out?]]
+                                              [(clout/route-compile pattern) markup signed-out?])
+                                            manifest))}
                       (fn [] (#'index/route-preload-tags uri signed-in?)))))]
     (testing "a wildcard covers the section below it"
       (is (= (str (tag "app/dist/dashboard.js" "script")
@@ -123,5 +124,5 @@
     (testing "except on setup, which runs before any user exists"
       (is (= (tag "app/dist/setup.js" "script") (tags-for "/setup" false)))))
   (testing "no manifest, no hints"
-    (is (nil? (with-redefs-fn {#'index/load-route-preloads (constantly nil)}
+    (is (nil? (with-redefs-fn {#'index/route-preloads (constantly nil)}
                 (fn [] (#'index/route-preload-tags "/" true)))))))

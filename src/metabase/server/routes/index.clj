@@ -67,15 +67,22 @@
     [locale-override]
     (load-fn (or locale-override (i18n/user-locale-string)))))
 
-(def ^:private route-preloads-resource "frontend_client/app/dist/route-preloads.json")
+(defn- read-route-preloads []
+  (some->> (io/resource "frontend_client/app/dist/route-preloads.json")
+           slurp
+           json/decode
+           (mapv (fn [[pattern markup signed-out?]]
+                   [(clout/route-compile pattern) markup signed-out?]))))
 
-(def ^:private ^{:arglists '([])} load-route-preloads
-  "`[pattern markup signed-out?]` rows, in the order the patterns are to be tried."
-  (memoize/memo
-   (fn []
-     (some->> (io/resource route-preloads-resource) slurp json/decode
-              (mapv (fn [[pattern markup signed-out?]]
-                      [(clout/route-compile pattern) markup signed-out?]))))))
+(def ^:private ^{:arglists '([])} route-preloads
+  "`[pattern markup signed-out?]` rows, in the order the patterns are to be tried.
+
+  Nil until a build has written a manifest. Read afresh in development, where
+  every frontend build rewrites it with new file names, and cached everywhere
+  else, where it never changes."
+  (if config/is-dev?
+    read-route-preloads
+    (memoize/memo read-route-preloads)))
 
 (defn- strip-base-path
   "The request URI carries the path Metabase is mounted under; the manifest does not."
@@ -93,11 +100,11 @@
   `frontend/build/shared/rspack/route-preloads.js`."
   [uri signed-in?]
   (let [path (strip-base-path (or uri "/"))]
-    (->> (load-route-preloads)
-         (some (fn [[route markup signed-out?]]
-                 (when (and (or signed-in? signed-out?)
-                            (clout/route-matches route {:uri path}))
-                   markup))))))
+    (some (fn [[route markup signed-out?]]
+            (when (and (or signed-in? signed-out?)
+                       (clout/route-matches route {:uri path}))
+              markup))
+          (route-preloads))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
