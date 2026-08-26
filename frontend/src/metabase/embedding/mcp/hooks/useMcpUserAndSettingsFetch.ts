@@ -45,7 +45,6 @@ export function useMcpUserAndSettingsFetch({
         setFetchError(null);
 
         if (!uiCredential) {
-          setErrorByType("auth");
           return;
         }
 

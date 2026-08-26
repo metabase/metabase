@@ -8,8 +8,13 @@ import {
 } from "@modelcontextprotocol/ext-apps/react";
 import { useEffect, useState } from "react";
 
+import { getMcpUiAuth, installMcpUiCredential } from "../utils/mcpUiCredential";
+
 export interface McpAppState {
   query: string | null;
+
+  uiCredential: string;
+  mcpSessionId: string;
 
   /**
    * Original user prompt that triggered this visualization, retrieved
@@ -20,10 +25,6 @@ export interface McpAppState {
   hostContext: McpUiHostContext | null;
   app: App | null;
 }
-
-type VisualizeQueryToolInput = {
-  query?: string;
-};
 
 type VisualizeQueryToolResult = {
   query?: string;
@@ -47,6 +48,8 @@ function applyHostContext(ctx: McpUiHostContext) {
 export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
+  const [uiCredential, setUiCredential] = useState("");
+  const [mcpSessionId, setMcpSessionId] = useState("");
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
 
   const { app } = useApp({
@@ -60,27 +63,17 @@ export function useMcpApp(): McpAppState {
         }
       };
 
-      app.ontoolinput = (params) => {
-        const { query } =
-          // Unjustified type cast. FIXME
-          (params.arguments as VisualizeQueryToolInput | undefined) ?? {};
-
-        if (query) {
-          setQuery(query);
-          setPrompt(null);
-        }
-      };
-
-      // Fallback: ontoolinput may be missed if the tool returns instantly
-      // (notification sent before the app finishes connecting).
-      // Also the source of `prompt`, which visualize_query includes in structuredContent.
       app.ontoolresult = (params) => {
         const { query, prompt } =
           // Unjustified type cast. FIXME
           (params.structuredContent as VisualizeQueryToolResult | undefined) ??
           {};
+        const auth = getMcpUiAuth(params._meta);
 
-        if (query) {
+        if (query && auth) {
+          installMcpUiCredential(auth.credential);
+          setUiCredential(auth.credential);
+          setMcpSessionId(auth.sessionId);
           setQuery(query);
           setPrompt(prompt ?? null);
         }
@@ -100,5 +93,5 @@ export function useMcpApp(): McpAppState {
     }
   }, [app]);
 
-  return { query, prompt, hostContext, app };
+  return { query, prompt, uiCredential, mcpSessionId, hostContext, app };
 }

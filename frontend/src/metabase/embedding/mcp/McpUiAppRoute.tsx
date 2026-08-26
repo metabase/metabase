@@ -28,6 +28,7 @@ interface McpUiAppRouteContentProps {
   app: McpAppState["app"];
   hostContext: McpAppState["hostContext"];
   instanceUrl: string;
+  mcpSessionId: string;
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
   uiCredential: string;
@@ -35,8 +36,6 @@ interface McpUiAppRouteContentProps {
 
 interface McpMetabaseConfig {
   instanceUrl: string;
-  uiCredential: string;
-  mcpSessionId: string;
 }
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
@@ -47,9 +46,10 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { app, hostContext, prompt, query } = useMcpApp();
+  const { app, hostContext, mcpSessionId, prompt, query, uiCredential } =
+    useMcpApp();
 
-  const { instanceUrl = "", uiCredential = "" } =
+  const { instanceUrl = "" } =
     // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
@@ -82,6 +82,7 @@ export function McpUiAppRoute() {
         app={app}
         hostContext={hostContext}
         instanceUrl={instanceUrl}
+        mcpSessionId={mcpSessionId}
         prompt={prompt}
         query={query}
         uiCredential={uiCredential}
@@ -94,16 +95,17 @@ function McpUiAppRouteContent({
   app,
   hostContext,
   instanceUrl,
+  mcpSessionId,
   prompt,
   query,
   uiCredential,
 }: McpUiAppRouteContentProps) {
-  const handleDrillThrough = useHandleMcpDrillThrough(app);
+  const handleDrillThrough = useHandleMcpDrillThrough(
+    app,
+    uiCredential,
+    mcpSessionId,
+  );
   const isHosted = useSetting("is-hosted?");
-
-  const { mcpSessionId = "" } =
-    // Unjustified type cast. FIXME
-    (window.metabaseConfig as McpMetabaseConfig) ?? {};
 
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 

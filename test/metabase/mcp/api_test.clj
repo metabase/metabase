@@ -806,6 +806,41 @@
                :structuredContent {:query "card__1"}}
               result)))))
 
+(deftest ui-tools-return-fresh-ui-credentials-test
+  (testing "each successful UI tool call returns a credential outside model-visible content"
+    (let [[session-id _] (initialize!)
+          credentials     (atom ["credential-1" "credential-2"])]
+      (with-redefs [mcp.session/issue-ui-credential (fn [_session-id _user-id]
+                                                      (let [credential (first @credentials)]
+                                                        (swap! credentials rest)
+                                                        credential))]
+        (let [visualize-result (get-in (mcp-request (jsonrpc-request "tools/call"
+                                                                     {:name      "visualize_query"
+                                                                      :arguments {:query "card__1"}})
+                                                    {"mcp-session-id" session-id})
+                                       [:body :result])
+              handle           (mt/with-current-user (mt/user->id :crowberto)
+                                 (mcp.session/store-handle! session-id
+                                                            (mt/user->id :crowberto)
+                                                            "card__2"))
+              drill-result     (get-in (mcp-request (jsonrpc-request "tools/call"
+                                                                     {:name      "render_drill_through"
+                                                                      :arguments {:handle handle}})
+                                                    {"mcp-session-id" session-id})
+                                       [:body :result])]
+          (is (= "credential-1"
+                 (get-in visualize-result [:_meta :com.metabase/mcp-ui :credential])))
+          (is (= session-id
+                 (get-in visualize-result [:_meta :com.metabase/mcp-ui :sessionId])))
+          (is (= "credential-2"
+                 (get-in drill-result [:_meta :com.metabase/mcp-ui :credential])))
+          (is (= session-id
+                 (get-in drill-result [:_meta :com.metabase/mcp-ui :sessionId])))
+          (is (not (str/includes? (pr-str (select-keys visualize-result [:content :structuredContent]))
+                                  "credential-1")))
+          (is (not (str/includes? (pr-str (select-keys drill-result [:content :structuredContent]))
+                                  "credential-2"))))))))
+
 (deftest tools-call-rejects-ui-tools-without-ui-capability-test
   (testing "direct calls to UI-only tools are rejected for clients without MCP Apps UI support"
     (let [[session-id _] (initialize-without-ui!)
@@ -1562,13 +1597,13 @@
 
 (deftest check-resource-access-test
   (testing "returns :ok for a known URI with matching scope"
-    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:viz:mcp-ui:query"}))))
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query-v2.html" #{"agent:viz:mcp-ui:query"}))))
   (testing "returns :ok with wildcard scope"
-    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:*"}))))
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query-v2.html" #{"agent:*"}))))
   (testing "returns :scope-denied for a known URI with non-matching scope"
-    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:search"}))))
+    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query-v2.html" #{"agent:search"}))))
   (testing "returns :scope-denied for a known URI with empty scopes"
-    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{}))))
+    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query-v2.html" #{}))))
   (testing "returns :not-found for an unknown URI"
     (is (= :not-found (mcp.resources/check-resource-access "ui://metabase/nonexistent.html" #{"agent:*"})))))
 
@@ -1639,13 +1674,13 @@
 ;;; -------------------------------------------- Session Lifecycle -------------------------------------------------
 
 (deftest resources-read-renders-ui-configuration-test
-  (testing "multiple resources/read calls within one session render a usable UI configuration"
+  (testing "UI resources contain stable configuration without a short-lived credential"
     (let [[session-id _] (initialize!)
           read1 (mcp-request (jsonrpc-request "resources/read"
-                                              {:uri "ui://metabase/visualize-query.html"} 1)
+                                              {:uri "ui://metabase/visualize-query-v2.html"} 1)
                              {"mcp-session-id" session-id})
           read2 (mcp-request (jsonrpc-request "resources/read"
-                                              {:uri "ui://metabase/visualize-query.html"} 2)
+                                              {:uri "ui://metabase/visualize-query-v2.html"} 2)
                              {"mcp-session-id" session-id})]
       (is (= 200 (:status read1)))
       (is (= 200 (:status read2)))
@@ -1653,11 +1688,13 @@
       (let [html1 (-> (get-in read1 [:body :result :contents]) first :text)
             html2 (-> (get-in read2 [:body :result :contents]) first :text)]
         (is (some? html1))
-        (is (str/includes? html1 "uiCredential"))
-        (is (str/includes? html2 "uiCredential"))))))
+        (is (not (str/includes? html1 "uiCredential")))
+        (is (not (str/includes? html2 "uiCredential")))
+        (is (not (str/includes? html1 "mcpSessionId")))
+        (is (not (str/includes? html2 "mcpSessionId")))))))
 
 (deftest mcp-ui-credential-validation-test
-  (testing "a scoped MCP Apps resource provides the UI request surface, but not general API access"
+  (testing "a UI tool result provides the scoped UI request surface, but not general API access"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (oauth-server/reset-provider!)
@@ -1666,11 +1703,12 @@
                 _           (save-access-token! token (mt/user->id :crowberto) client-id #{"agent:viz:mcp-ui:query"})
                 initialize  (mcp-request-with-bearer token 200 (jsonrpc-request "initialize" {:capabilities mcp-app-ui-capabilities}) {})
                 session-id  (get-in initialize [:headers "Mcp-Session-Id"])
-                resource    (mcp-request-with-bearer token 200
-                                                     (jsonrpc-request "resources/read" {:uri "ui://metabase/visualize-query.html"})
+                tool-result (mcp-request-with-bearer token 200
+                                                     (jsonrpc-request "tools/call"
+                                                                      {:name      "visualize_query"
+                                                                       :arguments {:query "card__1"}})
                                                      {"mcp-session-id" session-id})
-                html        (-> resource :body :result :contents first :text)
-                credential  (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))
+                credential  (get-in tool-result [:body :result :_meta :com.metabase/mcp-ui :credential])
                 headers     {"x-metabase-mcp-ui-auth" credential}]
             (is (string? credential))
             (is (= 200 (:status (client/client-full-response :get 200 "user/current"
@@ -1684,7 +1722,7 @@
           session-id    (get-in response [:headers "Mcp-Session-Id"])
           batch-response (mcp-request [(jsonrpc-notification "notifications/initialized")
                                        (jsonrpc-request "resources/read"
-                                                        {:uri "ui://metabase/visualize-query.html"} 1)]
+                                                        {:uri "ui://metabase/visualize-query-v2.html"} 1)]
                                       {"mcp-session-id" session-id})]
       (is (=? {:status 200
                :body   [{:id     1
