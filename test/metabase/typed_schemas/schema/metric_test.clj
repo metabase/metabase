@@ -115,6 +115,33 @@
     (is (= [247]
            (vec (schema.metric/metric-schemas nil nil))))))
 
+(deftest metric-schemas-does-not-npe-when-a-metric-references-a-non-metric-card-test
+  ;; A metric that references a card which is *not* a metric (e.g. it joins a saved question) reaches
+  ;; `metric-dependency-ids`, whose `t2/select-pks-set` returns nil — not #{} — when none of the
+  ;; referenced cards are metrics (its real contract on an empty result). `metric-schemas` then hits
+  ;; `(not-any? nil #{card-id})`, which NPEs. Such a metric is not a metric-to-metric reference, so it
+  ;; must be kept, not throw. (The sibling test above masks this by stubbing select-pks-set non-nil.)
+  (with-redefs [schema.common/select-schema-cards
+                (constantly [{:id 247
+                              :dataset_query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages [{:lib/type :mbql.stage/mbql
+                                                        :source-table 10}]}}
+                             {:id 258
+                              :dataset_query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages [{:lib/type :mbql.stage/mbql
+                                                        :source-table 10
+                                                        :aggregation [[:metric
+                                                                       {:lib/uuid
+                                                                        "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
+                                                                       999]]}]}}])
+                schema.metric/metric-details identity
+                schema.metric/metric-schema (fn [details _card] (:id details))
+                t2/select-pks-set (constantly nil)]
+    (is (= [247 258]
+           (vec (schema.metric/metric-schemas nil nil))))))
+
 (deftest table-source-names-filters-unreadable-tables-test
   (with-redefs [t2/select (constantly [{:id 10 :name "orders" :display_name "Orders"}
                                        {:id 20 :name "franchises" :display_name "Franchises"}])
