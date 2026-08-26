@@ -91,7 +91,7 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
             size={ICON_BUTTON_SIZE}
             onClick={onRemove}
           >
-            <Icon name="close" size={16} />
+            <Icon name="close" />
           </ActionIcon>
         </Tooltip>
       </Group>

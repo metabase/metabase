@@ -279,7 +279,7 @@ export const GoalValueInput = ({
                       size={ICON_BUTTON_SIZE}
                       onClick={openMenuFromTrigger}
                     >
-                      <Icon name="hexagon" size={16} />
+                      <Icon name="hexagon" />
                     </ActionIcon>
                   </Tooltip>
                 }
