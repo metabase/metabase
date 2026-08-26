@@ -101,6 +101,8 @@ export interface SchemaListQuery {
   include_editable_data_model?: boolean;
 }
 
+// Trigger CI`
+
 export interface TableMetadataQuery {
   include_sensitive_fields?: boolean;
   include_hidden_fields?: boolean;

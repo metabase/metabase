@@ -100,6 +100,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           "not.exist",
         );
       });
+      // TRIGGER CI
 
       it("should allow changing the field description", () => {
         visit({
