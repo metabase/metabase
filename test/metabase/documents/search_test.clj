@@ -135,9 +135,11 @@
   (testing "Documents are searchable by their body content, not just their name (UXW-4199)"
     ;; Both engines search document bodies: the appdb engine indexes clean text (via ast->text),
     ;; the legacy in-place engine LIKE-matches the raw prose-mirror JSON.
-    (mt/with-temp [:model/Document {doc-id :id} {:name "Annual Summary"
-                                                 :document (documents.test-util/text->prose-mirror-ast "quarterly revenue projections and growth")}]
-      (search.tu/with-appdb-search-and-legacy-search
+    ;; The index scope must sit outside `with-temp`: it creates and drops the index table on the ambient
+    ;; connection, and on H2 and MySQL that DDL commits the transaction `with-temp` meant to roll back.
+    (search.tu/with-appdb-search-and-legacy-search
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Annual Summary"
+                                                   :document (documents.test-util/text->prose-mirror-ast "quarterly revenue projections and growth")}]
         (testing "found by a term that appears only in the body"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "projections" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))
@@ -150,14 +152,15 @@
 
 (deftest document-smart-link-label-search-test
   (testing "Documents are searchable by the visible label of an embedded smart link (UXW-4199)"
-    (mt/with-temp [:model/Document {doc-id :id}
-                   {:name "Reference Doc"
-                    :document {:type "doc"
-                               :content [{:type "paragraph"
-                                          :content [{:type "text" :text "see"}
-                                                    {:type "smartLink"
-                                                     :attrs {:model "card" :entityId "abc" :label "Customer Retention"}}]}]}}]
-      (search.tu/with-appdb-search-and-legacy-search
+    ;; The index scope must sit outside `with-temp`, as in `document-content-search-test` above.
+    (search.tu/with-appdb-search-and-legacy-search
+      (mt/with-temp [:model/Document {doc-id :id}
+                     {:name "Reference Doc"
+                      :document {:type "doc"
+                                 :content [{:type "paragraph"
+                                            :content [{:type "text" :text "see"}
+                                                      {:type "smartLink"
+                                                       :attrs {:model "card" :entityId "abc" :label "Customer Retention"}}]}]}}]
         (testing "found by a term that appears only in the smart-link label"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Retention" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))))))
