@@ -110,8 +110,8 @@ export const getVersionFromReleaseBranch = (branch: string) => {
 export const getMajorVersionFromRef = (ref: string) => {
   if (ref.startsWith("refs/tags/")) {
     const tagName = ref.replace("refs/tags/", "");
-    const versionParts = getVersionParts(tagName);
-    return versionParts.major;
+    if (!isValidVersionString(tagName)) return "";
+    return getMajorVersion(tagName);
   }
 
   return getMajorVersionNumberFromReleaseBranch(ref.replace("refs/heads/", ""));

@@ -45,6 +45,7 @@ jobs:
       - name: Install tsx
         run: npm i -g tsx
       - name: Get version number
+        id: get-version
         uses: actions/github-script@v9
         with:
           script: | # js
@@ -61,24 +62,28 @@ jobs:
               return;
             }
 
-            // otherwise, get the version from the release branch name
+            // otherwise, get the version from the ref (branch or tag)
             const ref = context.payload.ref;
             const majorVersion = getMajorVersionFromRef(ref);
 
             console.log({ ref, majorVersion });
             core.exportVariable('VERSION', majorVersion);
+            core.setOutput('version', majorVersion);
 
       - name: generate release Log
+        if: ${{ steps.get-version.outputs.version != "" }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd release && tsx ./src/release-log-run.ts "$VERSION" > "v$VERSION.html"
       - name: upload release log to the web
+        if: ${{ steps.get-version.outputs.version != "" }}
         run: |
           aws s3 cp \
           "release/v$VERSION.html" \
           "s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/v$VERSION.html"
 
       - name: Create cloudfront invalidation
+        if: ${{ steps.get-version.outputs.version != "" }}
         run: |
           aws cloudfront create-invalidation \
           --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
