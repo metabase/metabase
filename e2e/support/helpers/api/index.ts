@@ -2,6 +2,7 @@ export { addOrUpdateDashboardCard } from "./addOrUpdateDashboardCard";
 export { addQuestionToDashboard } from "./addQuestionToDashboard";
 export { archiveCollection } from "./archiveCollection";
 export { archiveDashboard } from "./archiveDashboard";
+export { archiveDocument } from "./archiveDocument";
 export { archiveQuestion } from "./archiveQuestion";
 export { createApiKey } from "./createApiKey";
 export { createCard } from "./createCard";
