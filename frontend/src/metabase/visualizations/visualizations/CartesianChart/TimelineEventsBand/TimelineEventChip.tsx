@@ -19,6 +19,8 @@ const POPOVER_OFFSET =
   TIMELINE_EVENTS_BAND.bandPaddingY +
   AXIS_CLEARANCE;
 
+export const POPOVER_CLOSE_DELAY_MS = 150;
+
 interface TimelineEventChipProps {
   group: TimelineEventGroup;
   x: number;
@@ -109,7 +111,7 @@ export const TimelineEventChip = ({
       position="top"
       offset={POPOVER_OFFSET}
       openDelay={50}
-      closeDelay={150}
+      closeDelay={POPOVER_CLOSE_DELAY_MS}
       shadow="md"
       classNames={{ dropdown: S.bridgeDropdown }}
     >
@@ -121,7 +123,12 @@ export const TimelineEventChip = ({
             isSelected && S.chipSelected,
             hidden && S.chipHidden,
           )}
-          style={{ left: x, top: centerY, zIndex }}
+          style={{
+            transform: `translate(${x}px, ${centerY}px) translate(-50%, -50%)`,
+            width: TIMELINE_EVENTS_BAND.chipWidth,
+            height: TIMELINE_EVENTS_BAND.chipHeight,
+            zIndex,
+          }}
           data-testid="timeline-event-chip"
           data-selected={isSelected}
           data-hidden={hidden}

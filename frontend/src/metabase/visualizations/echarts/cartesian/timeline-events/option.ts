@@ -8,6 +8,13 @@ import type { TimelineEventId } from "metabase-types/api";
 
 export const TIMELINE_EVENT_SELECTION_SERIES_ID = "timeline-event-selection";
 
+export const EMPTY_TIMELINE_SELECTION_SERIES: LineSeriesOption = {
+  id: TIMELINE_EVENT_SELECTION_SERIES_ID,
+  type: "line",
+  data: [],
+  markLine: { data: [] },
+};
+
 export interface SplitPanelYExtent {
   topY: number;
   bottomY: number;

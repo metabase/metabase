@@ -2,7 +2,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  will-change: transform;
+  isolation: isolate;
 }
 
 .track {
@@ -42,12 +42,12 @@
 
 .chip {
   position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 2rem;
-  height: 1.5rem;
   padding: 0;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.75rem;
@@ -55,7 +55,6 @@
   color: var(--mb-color-icon-primary);
   cursor: pointer;
   pointer-events: all;
-  transform: translate(-50%, -50%);
 }
 
 .chip:hover {
@@ -94,7 +93,7 @@
 
   .stackMember {
     transition:
-      left 200ms ease,
+      transform 200ms ease,
       opacity 150ms ease;
   }
 

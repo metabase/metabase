@@ -10,12 +10,8 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
-import { TimelineEventChip } from "./TimelineEventChip";
+import { POPOVER_CLOSE_DELAY_MS, TimelineEventChip } from "./TimelineEventChip";
 import S from "./TimelineEventsBand.module.css";
-
-// Matches the popover's closeDelay so moving between spread members (or into
-// an open popover) does not collapse the stack.
-const STACK_COLLAPSE_DELAY_MS = 150;
 
 interface TimelineEventStackProps {
   cluster: TimelineEventCluster;
@@ -78,7 +74,7 @@ export const TimelineEventStack = ({
       if (!isPointerInsideRef.current) {
         onExpandedChangeRef.current(false);
       }
-    }, STACK_COLLAPSE_DELAY_MS);
+    }, POPOVER_CLOSE_DELAY_MS);
   }, [cancelCollapse]);
 
   const handlePointerEnter = () => {
@@ -124,9 +120,19 @@ export const TimelineEventStack = ({
       }
     };
 
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        isPointerInsideRef.current = false;
+        cancelCollapse();
+        onExpandedChangeRef.current(false);
+      }
+    };
+
     document.addEventListener("mouseover", handleDocumentMouseOver);
+    document.addEventListener("keydown", handleDocumentKeyDown);
     return () => {
       document.removeEventListener("mouseover", handleDocumentMouseOver);
+      document.removeEventListener("keydown", handleDocumentKeyDown);
     };
   }, [isExpanded, cancelCollapse, scheduleCollapse]);
 

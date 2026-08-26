@@ -13,6 +13,11 @@ import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
 import { TimelineEventsBand } from "./TimelineEventsBand";
 
+const getChipCenterX = (chip: HTMLElement) => {
+  const match = chip.style.transform.match(/^translate\((-?[\d.]+)px/);
+  return match ? parseFloat(match[1]) : NaN;
+};
+
 const createChartInstance = (
   pixelByDate: Record<string, number>,
 ): EChartsType =>
@@ -155,8 +160,8 @@ describe("TimelineEventsBand", () => {
         }),
       });
 
-      expect(screen.getByLabelText("Stack A")).toHaveStyle({ left: "300px" });
-      expect(screen.getByLabelText("Stack B")).toHaveStyle({ left: "315px" });
+      expect(getChipCenterX(screen.getByLabelText("Stack A"))).toBe(300);
+      expect(getChipCenterX(screen.getByLabelText("Stack B"))).toBe(315);
     });
 
     it("expands on member hover, hides other chips, and reports the entered member", async () => {
@@ -189,6 +194,23 @@ describe("TimelineEventsBand", () => {
 
       expect(onGroupHover).toHaveBeenLastCalledWith(
         stackedTimelineEventsModel[1].groups[0],
+      );
+    });
+
+    it("collapses on Escape while expanded", async () => {
+      setup({ timelineEventsModel: stackedTimelineEventsModel });
+
+      await userEvent.hover(screen.getByLabelText("Stack B"));
+      expect(screen.getByTestId("timeline-event-stack")).toHaveAttribute(
+        "data-expanded",
+        "true",
+      );
+
+      fireEvent.keyDown(document, { key: "Escape" });
+
+      expect(screen.getByTestId("timeline-event-stack")).toHaveAttribute(
+        "data-expanded",
+        "false",
       );
     });
 
@@ -258,7 +280,7 @@ describe("TimelineEventsBand", () => {
 
       const memberCenters = screen
         .getAllByTestId("timeline-event-chip")
-        .map((chip) => parseFloat(chip.style.left));
+        .map(getChipCenterX);
       // plot spans padding.left (50) to chartSize.width - padding.right (490)
       const chipHalfWidth = 16;
       expect(Math.min(...memberCenters)).toBeGreaterThanOrEqual(

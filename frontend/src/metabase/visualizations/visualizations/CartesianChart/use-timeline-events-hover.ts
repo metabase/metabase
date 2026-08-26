@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
 import type { BaseCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getTimelineSelectionSeries } from "metabase/visualizations/echarts/cartesian/option";
-import { TIMELINE_EVENT_SELECTION_SERIES_ID } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
+import { EMPTY_TIMELINE_SELECTION_SERIES } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 import type {
   TimelineEventGroup,
   TimelineEventsModel,
@@ -81,26 +81,15 @@ export function useTimelineEventsHover({
 
     const showMarkerLine = display !== "bar" && timelineEventsModel != null;
     const applyMarkerLine = (eventIds: TimelineEventId[]) => {
-      const visibleSeriesCount = chartModel.seriesModels.filter(
-        (series) => series.visible,
-      ).length;
       const series = getTimelineSelectionSeries(
         timelineEventsModel,
         eventIds,
+        chartModel,
         chartLayout,
-        visibleSeriesCount,
-        chartLayout.panelHeight != null,
         renderingContext,
       );
       chart.setOption({
-        series: [
-          series ?? {
-            id: TIMELINE_EVENT_SELECTION_SERIES_ID,
-            type: "line",
-            data: [],
-            markLine: { data: [] },
-          },
-        ],
+        series: [series ?? EMPTY_TIMELINE_SELECTION_SERIES],
       });
     };
 
