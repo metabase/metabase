@@ -6,7 +6,7 @@ export const menuOverrides = {
   Menu: Menu.extend({
     defaultProps: {
       radius: "xs",
-      shadow: "sm",
+      shadow: "sm_outline",
       withinPortal: true,
       returnFocus: false,
     },

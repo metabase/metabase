@@ -12,7 +12,7 @@ const shadowOptions = Object.keys(theme.shadows ?? {});
 const args = {
   p: "lg",
   radius: "sm",
-  shadow: "sm",
+  shadow: "xs_outline",
   withBorder: false,
 };
 

@@ -19,6 +19,7 @@ export const comboboxOverrides: MantineThemeOverride["components"] = {
        * conditional formatting" in `pivot_tables.cy.spec.js`.
        */
       keepMounted: true,
+      shadow: "xs",
     },
     classNames: {
       options: S.options,

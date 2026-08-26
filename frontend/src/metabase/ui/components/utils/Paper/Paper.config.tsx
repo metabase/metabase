@@ -6,7 +6,7 @@ export const paperOverrides: MantineThemeOverride["components"] = {
   Paper: Paper.extend({
     defaultProps: {
       radius: "sm",
-      shadow: "sm",
+      shadow: "xs_outline",
     },
     classNames: {
       root: PaperStyles.root,

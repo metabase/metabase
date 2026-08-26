@@ -11,6 +11,7 @@ export * from "./Input";
 export * from "./MonthPicker";
 export * from "./MultiAutocomplete";
 export * from "./MultiSelect";
+export * from "./NativeSelect";
 export * from "./NumberInput";
 export * from "./PasswordInput";
 export * from "./Pill";

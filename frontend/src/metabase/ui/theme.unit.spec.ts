@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+
 import { rem } from "@mantine/core";
 
 import { getThemeOverrides } from "metabase/ui/theme";
@@ -83,6 +85,7 @@ const SCALE_PROPS_TO_SCALES = {
 } as const;
 
 type ExtendedComponentTheme = {
+  classNames?: Record<string, unknown>;
   defaultProps?: Record<string, unknown>;
   styles?: Record<string, Record<string, unknown>>;
 };
@@ -183,6 +186,139 @@ describe("theme scales (GDGT-2486)", () => {
       }
 
       expect(violations).toEqual([]);
+    });
+
+    it("assigns every component elevation from the Linear ticket", () => {
+      const components = getThemeOverrides().components ?? {};
+      const expectedShadowDefaults = {
+        Card: "xs",
+        Combobox: "xs",
+        Dialog: "sm_outline",
+        DrawerRoot: "xs_outline",
+        Menu: "sm_outline",
+        ModalRoot: "lg_outline",
+        Paper: "xs_outline",
+        Popover: "sm_outline",
+      };
+
+      for (const [componentName, shadow] of Object.entries(
+        expectedShadowDefaults,
+      )) {
+        expect(
+          getExtendedComponentTheme(components[componentName]).defaultProps,
+        ).toMatchObject({ shadow });
+      }
+
+      const expectedCssElevations = [
+        {
+          componentName: "ActionIcon",
+          slot: "root",
+          file: "frontend/src/metabase/ui/components/buttons/ActionIcon/ActionIcon.module.css",
+          selector: ".root",
+          shadow: "xs",
+        },
+        {
+          componentName: "Button",
+          slot: "root",
+          file: "frontend/src/metabase/ui/components/buttons/Button/Button.module.css",
+          selector: ".root",
+          shadow: "xs",
+        },
+        {
+          componentName: "Alert",
+          slot: "root",
+          file: "frontend/src/metabase/ui/components/feedback/Alert/Alert.module.css",
+          selector: ".root",
+          shadow: "xs",
+        },
+        {
+          componentName: "Notification",
+          slot: "root",
+          file: "frontend/src/metabase/ui/components/feedback/Notification/Notification.module.css",
+          selector: ".root",
+          shadow: "sm",
+        },
+        {
+          componentName: "CheckboxCard",
+          slot: "card",
+          file: "frontend/src/metabase/ui/components/inputs/Checkbox/Checkbox.module.css",
+          selector: ".card",
+          shadow: "xs",
+        },
+        {
+          componentName: "NativeSelect",
+          slot: "input",
+          file: "frontend/src/metabase/ui/components/inputs/NativeSelect/NativeSelect.module.css",
+          selector: ".input",
+          shadow: "xs",
+        },
+        {
+          componentName: "Pill",
+          slot: "root",
+          file: "frontend/src/metabase/ui/components/inputs/Pill/Pill.module.css",
+          selector: ".root",
+          shadow: "xs_outline",
+        },
+        {
+          componentName: "RadioCard",
+          slot: "card",
+          file: "frontend/src/metabase/ui/components/inputs/Radio/Radio.module.css",
+          selector: ".card",
+          shadow: "xs",
+        },
+        {
+          componentName: "SegmentedControl",
+          slot: "root",
+          file: "frontend/src/metabase/ui/components/inputs/SegmentedControl/SegmentedControl.module.css",
+          selector: ".SegmentedControl",
+          shadow: "xs_outline",
+        },
+        {
+          componentName: "Switch",
+          slot: "thumb",
+          file: "frontend/src/metabase/ui/components/inputs/Switch/Switch.module.css",
+          selector: ".thumb",
+          shadow: "sm_outline",
+        },
+        {
+          componentName: "Tooltip",
+          slot: "tooltip",
+          file: "frontend/src/metabase/ui/components/overlays/Tooltip/Tooltip.module.css",
+          selector: ".tooltip",
+          shadow: "sm",
+        },
+        {
+          file: "frontend/src/metabase/common/components/Toaster/Toaster.module.css",
+          selector: ".toast",
+          shadow: "sm",
+        },
+      ];
+
+      const expectedClassNameSlots = expectedCssElevations.flatMap(
+        ({ componentName, slot }) =>
+          componentName && slot ? [{ componentName, slot }] : [],
+      );
+
+      for (const { componentName, slot } of expectedClassNameSlots) {
+        expect(
+          getExtendedComponentTheme(components[componentName]).classNames,
+        ).toHaveProperty(slot);
+      }
+
+      for (const { file, selector, shadow } of expectedCssElevations) {
+        const css = readFileSync(file, "utf8");
+        const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const blockStart = css.search(
+          new RegExp(`^${escapedSelector} \\{`, "m"),
+        );
+        const blockEnd = css.indexOf("}", blockStart);
+        const declaration = `box-shadow: var(--mantine-shadow-${shadow})`;
+        const declarationIndex = css.indexOf(declaration, blockStart);
+
+        expect(blockStart).toBeGreaterThanOrEqual(0);
+        expect(declarationIndex).toBeGreaterThan(blockStart);
+        expect(declarationIndex).toBeLessThan(blockEnd);
+      }
     });
 
     it("preserves Mantine defaults affected by the spacing scale", () => {

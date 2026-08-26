@@ -30,7 +30,7 @@ export const modalOverrides = {
     defaultProps: {
       centered: true,
       size: "lg",
-      shadow: "sm",
+      shadow: "lg_outline",
       radius: "xs",
       withinPortal: true,
     },

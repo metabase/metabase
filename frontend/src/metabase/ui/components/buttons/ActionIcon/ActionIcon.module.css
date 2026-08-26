@@ -1,4 +1,6 @@
 .root {
+  box-shadow: var(--mantine-shadow-xs);
+
   &[data-disabled] {
     color: var(--mb-color-icon-disabled);
     pointer-events: all;

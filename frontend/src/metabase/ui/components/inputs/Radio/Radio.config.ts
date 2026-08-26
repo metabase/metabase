@@ -25,6 +25,11 @@ export const radioOverrides = {
       },
     }),
   }),
+  RadioCard: Radio.Card.extend({
+    classNames: {
+      card: RadioStyles.card,
+    },
+  }),
   RadioIndicator: Radio.Indicator.extend({
     classNames: {
       // indicator is visually same as Radio so it needs the same styles

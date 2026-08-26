@@ -8,7 +8,7 @@ export const popoverOverrides = {
   Popover: Popover.extend({
     defaultProps: {
       radius: "xs",
-      shadow: "sm",
+      shadow: "sm_outline",
       withinPortal: true,
       hideDetached: false,
       middlewares: {
