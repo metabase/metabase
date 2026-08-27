@@ -1,55 +1,22 @@
 // Appends the measured load times to the "Bundle Load Times" table in
 // eng-stats-importer. Reads ROWS (the JSON matrix.js prints) and API_KEY from
 // env, and stamps each row with the commit it came from.
-//
-// COMMIT_DATE dates the point. A backfill measures an old commit today, so
-// without it every backfilled row would claim today's date and the series would
-// collapse onto one day.
 
 import { readFileSync } from "node:fs";
 
+import { type Condition, buildRows } from "./bundle-load-stats-rows";
 import { importStats } from "./stats-import";
-
-/** One condition, as `frontend/build/bench/matrix.js` reports it. */
-interface Condition {
-  network: string;
-  networkMbps: number;
-  latencyMs: number;
-  cpu: string;
-  cpuThrottle: number;
-  coldMs: number;
-  warmMs: number;
-  steadyMs: number;
-  coldSpreadPercent: number;
-  scripts: number;
-  scriptKb: number;
-  runs: number;
-}
 
 async function main() {
   const path = process.env.ROWS || "artifacts/load-times.json";
+  // matrix.js wrote this file, and Condition is the shape it prints.
   const conditions = JSON.parse(readFileSync(path, "utf8")) as Condition[];
 
-  const rows = conditions.map((condition) => ({
-    Date: process.env.COMMIT_DATE || new Date().toISOString().slice(0, 10),
-    // Truncated the same way the bundle-size table does, so the two join.
-    Commit: (process.env.HEAD_SHA || "").slice(0, 12),
-    // The stats table carries a free-text Description column. Populate it with
-    // the commit subject so the chart's points are self-describing.
-    Description: (process.env.COMMIT_MESSAGE || "").split("\n")[0],
-    Network: condition.network,
-    "Network mbps": condition.networkMbps,
-    "Latency ms": condition.latencyMs,
-    CPU: condition.cpu,
-    "CPU throttle": condition.cpuThrottle,
-    "Cold ms": condition.coldMs,
-    "Warm ms": condition.warmMs,
-    "Steady ms": condition.steadyMs,
-    "Cold spread %": condition.coldSpreadPercent,
-    Scripts: condition.scripts,
-    "Script kb": condition.scriptKb,
-    Runs: condition.runs,
-  }));
+  const rows = buildRows(conditions, {
+    sha: process.env.HEAD_SHA || "",
+    date: process.env.COMMIT_DATE,
+    subject: process.env.COMMIT_MESSAGE || "",
+  });
 
   console.table(rows);
 
