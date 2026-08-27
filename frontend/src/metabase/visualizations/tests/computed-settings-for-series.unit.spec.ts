@@ -23,7 +23,7 @@ import {
 
 registerVisualizations();
 
-describe("visualization_settings", () => {
+describe("computed settings for series", () => {
   describe("getComputedSettingsForSeries", () => {
     describe("stackable.stack_type", () => {
       it("should default to unstacked stacked", () => {

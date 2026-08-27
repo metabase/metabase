@@ -39,7 +39,7 @@ function computeDefinedTimeseriesDataInterval(
   return interval;
 }
 
-describe("visualization.lib.timeseries", () => {
+describe("timeseries intervals", () => {
   describe("computeTimeseriesDataIntervalIndex", () => {
     type DataIntervalTestCase = [
       expectedUnit: CartesianChartDateTimeAbsoluteUnit,

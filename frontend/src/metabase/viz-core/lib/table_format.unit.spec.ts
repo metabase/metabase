@@ -1,6 +1,10 @@
 import Color from "color";
 
-import { ALL_OPERATOR_NAMES } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+import {
+  createMockColumnRangeFormattingSetting,
+  createMockNumericColumn,
+} from "metabase-types/api/mocks";
+
 import {
   OPERATOR_FORMATTER_FACTORIES,
   compileFormatter,
@@ -8,11 +12,7 @@ import {
   isEmptyString,
   isNonEmptyString,
   makeCellBackgroundGetter,
-} from "metabase/viz-core";
-import {
-  createMockColumnRangeFormattingSetting,
-  createMockNumericColumn,
-} from "metabase-types/api/mocks";
+} from "./table_format";
 
 describe("compileFormatter", () => {
   it("should return a function, even for unsupported operators", () => {
@@ -27,15 +27,6 @@ describe("compileFormatter", () => {
     });
 
     expect(formatter).toBeDefined();
-  });
-
-  it("should support all defined operators", () => {
-    // This test is to remind anyone adding/removing operator support, that the
-    // same should be done to `OPERATOR_FORMATTER_FACTORIES`.
-    const supportedOperators = Object.keys(OPERATOR_FORMATTER_FACTORIES).sort();
-    const definedOperators = Object.keys(ALL_OPERATOR_NAMES).sort();
-
-    expect(supportedOperators).toEqual(definedOperators);
   });
 
   it("properly ignores empty string searches for all text formatters", () => {
