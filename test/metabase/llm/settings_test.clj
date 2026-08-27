@@ -196,6 +196,68 @@
         (is (nil? (llm.settings/assert-llm-host-allowed! nil)))
         (is (nil? (llm.settings/assert-llm-host-allowed! "")))))))
 
+;;; ----------------------------------------- llm-allowed-networks Tests -----------------------------------------
+
+(deftest llm-allowed-networks-default-test
+  ;; the raw binding clears any stored value, so the default is what is under test
+  (mt/with-temporary-raw-setting-values [llm-allowed-networks nil]
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks nil]
+      (testing "self-hosted, with nothing configured, all networks are allowed"
+        ;; a vLLM or Ollama server on the same box or a private network is the normal case, not an attack
+        (mt/with-premium-features #{}
+          (is (= :allow-all (llm.settings/llm-allowed-networks)))))
+      (testing "hosted, with nothing configured, only public addresses are allowed"
+        (mt/with-premium-features #{:hosting}
+          (is (= :external-only (llm.settings/llm-allowed-networks))))))
+    (testing "an explicit setting is honored on Cloud too, in either direction"
+      (mt/with-premium-features #{:hosting}
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+          (is (= :allow-all (llm.settings/llm-allowed-networks))))
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
+          (is (= :allow-private (llm.settings/llm-allowed-networks))))))
+    (testing "the setter rejects anything but the three policies"
+      (is (thrown-with-msg?
+           AssertionError #"Invalid llm-allowed-networks"
+           (llm.settings/llm-allowed-networks! :allow-everything))))))
+
+(deftest llm-url-problem-test
+  ;; IP literals throughout: `host-allowed-for-network-policy?` resolves hostnames through real DNS
+  (testing "under :external-only, internal addresses are refused and public ones are not"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (doseq [url ["http://127.0.0.1:8000/v1"
+                   "http://[::1]:8000/v1"
+                   "http://169.254.169.254/latest/meta-data/"
+                   "http://10.0.0.1/v1"
+                   "http://192.168.1.1/v1"]]
+        (is (re-find #"not allowed to connect" (llm.settings/llm-url-problem url)) url))
+      (is (nil? (llm.settings/llm-url-problem "https://8.8.8.8/v1")))))
+  (testing "under :allow-private, private networks pass but loopback and link-local still do not"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
+      (is (nil? (llm.settings/llm-url-problem "http://10.0.0.1/v1")))
+      (is (some? (llm.settings/llm-url-problem "http://127.0.0.1:8000/v1")))
+      (is (some? (llm.settings/llm-url-problem "http://169.254.169.254/")))))
+  (testing "under :allow-all, anything reachable goes"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (is (nil? (llm.settings/llm-url-problem "http://127.0.0.1:8000/v1")))
+      (is (nil? (llm.settings/llm-url-problem "http://169.254.169.254/")))))
+  (testing "a URL that is not http(s), or has no host, is refused under any policy"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+      (doseq [url ["api.openai.com/v1" "ftp://8.8.8.8/v1" "file:///etc/passwd" "http://" "not a url"]]
+        (is (re-find #"must start with http" (llm.settings/llm-url-problem url)) url))))
+  (testing "a blank URL is not a problem here: the not-configured handling covers it"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (is (nil? (llm.settings/llm-url-problem nil)))
+      (is (nil? (llm.settings/llm-url-problem "  ")))))
+  (testing "assert-llm-url-allowed! throws the problem as a 400 tagged for the provider error path"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "external-only"]
+      (is (nil? (llm.settings/assert-llm-url-allowed! "https://8.8.8.8/v1")))
+      (is (=? {:status-code 400
+               :api-error   true
+               :error-code  :llm-host-not-allowed
+               :llm-url     "http://127.0.0.1:8000/v1"}
+              (try (llm.settings/assert-llm-url-allowed! "http://127.0.0.1:8000/v1")
+                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 
 (deftest llm-max-tokens-test
