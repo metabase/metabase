@@ -69,21 +69,14 @@
                read at all (no `setting` table) -- not a normal state either way
     :absent  - no sentinel: the database is not encrypted (or predates the sentinel)"
   []
-  (let [raw (try
-              (t2/select-one-fn :value :setting :key encryption-check-key)
-              (catch Exception e
-                (log/debugf "Could not read the encryption-check setting: %s" (ex-message e))
-                ::unreadable))]
-    (cond
-      (nil? raw)
-      :absent
-
-      (and (string? raw)
-           (try (string/valid-uuid? (encryption/maybe-decrypt raw))
-                (catch Throwable _ false)))
-      :valid
-
-      :else
+  (try
+    (let [raw (t2/select-one-fn :value :setting :key encryption-check-key)]
+      (cond
+        (nil? raw)                                          :absent
+        (string/valid-uuid? (encryption/maybe-decrypt raw)) :valid
+        :else                                               :invalid))
+    (catch Throwable e
+      (log/debugf "Could not determine encryption status, treating as invalid: %s" (ex-message e))
       :invalid)))
 
 (defn- column-has-values?
