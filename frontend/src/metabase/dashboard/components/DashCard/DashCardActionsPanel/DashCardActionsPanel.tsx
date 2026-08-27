@@ -4,16 +4,13 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { openEventsSidebar } from "metabase/dashboard/actions";
 import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
-import { isTimelineEventsDashCard } from "metabase/dashboard/timeline-events";
 import {
   isHeadingDashCard,
   isLinkDashCard,
   supportsInlineParameters,
 } from "metabase/dashboard/utils";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
-import { useDispatch } from "metabase/redux";
 import { Box, Icon } from "metabase/ui";
 import {
   isQuestionDashCard,
@@ -69,7 +66,6 @@ interface Props {
   className?: string;
   onAddParameter: (options: NewParameterOpts) => void;
   onEditVisualization?: () => void;
-  withTimelineEvents: boolean;
 }
 
 function DashCardActionsPanelInner({
@@ -92,12 +88,9 @@ function DashCardActionsPanelInner({
   className,
   onAddParameter,
   onEditVisualization,
-  withTimelineEvents,
 }: Props) {
   const { disableSettingsConfig, supportPreviewing, disableClickBehavior } =
     getVisualizationRaw(series) ?? {};
-
-  const dispatch = useDispatch();
 
   const buttons = [];
 
@@ -259,21 +252,6 @@ function DashCardActionsPanelInner({
           onClick={showClickBehaviorSidebar}
         >
           <Icon name="click" />
-        </DashCardActionButton>,
-      );
-    }
-
-    if (dashcard && withTimelineEvents && isTimelineEventsDashCard(dashcard)) {
-      buttons.push(
-        <DashCardActionButton
-          key="events"
-          aria-label={t`Events`}
-          tooltip={t`Events`}
-          onClick={() => {
-            dispatch(openEventsSidebar({ dashcardId: dashcard.id }));
-          }}
-        >
-          <Icon name="calendar" />
         </DashCardActionButton>,
       );
     }

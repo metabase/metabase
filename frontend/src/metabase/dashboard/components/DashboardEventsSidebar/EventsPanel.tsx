@@ -71,6 +71,7 @@ export function EventsPanel({
       <TimelineEventModals
         modal={modal}
         collectionId={collectionId}
+        onEventCreated={(event) => onShowTimelineEvents([event])}
         onClose={() => setModal(null)}
       />
     </>

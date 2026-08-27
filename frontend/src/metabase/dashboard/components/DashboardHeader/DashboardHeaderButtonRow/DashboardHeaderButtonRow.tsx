@@ -41,7 +41,6 @@ export const DashboardHeaderButtonRow = ({
     onFullscreenChange,
     downloadsEnabled,
     withSubscriptions,
-    withTimelineEvents,
     dashboardActions,
     refreshPeriod,
   } = useDashboardContext();
@@ -82,7 +81,6 @@ export const DashboardHeaderButtonRow = ({
               onFullscreenChange,
               downloadsEnabled,
               withSubscriptions,
-              withTimelineEvents,
               refreshPeriod,
               ...buttonComponentProps,
             })

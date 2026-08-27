@@ -15,7 +15,6 @@ import {
   DashboardInfoButton,
   DashboardSubscriptionsButton,
   EditDashboardButton,
-  EventsButton,
   ExportAsPdfButton,
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
@@ -56,11 +55,6 @@ export const dashboardActionButtons: Record<
     component: AddActionElementButton,
     enabled: ({ isEditing, canEdit, hasModelActionsEnabled }) =>
       isEditing && canEdit && hasModelActionsEnabled,
-  },
-  [DASHBOARD_ACTION.EVENTS]: {
-    component: EventsButton,
-    enabled: ({ isEditing, withTimelineEvents }) =>
-      isEditing && Boolean(withTimelineEvents),
   },
   [DASHBOARD_ACTION.EXTRA_EDIT_BUTTONS_MENU]: {
     component: ExtraEditButtonsMenu,

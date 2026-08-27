@@ -20,9 +20,9 @@ import {
 import {
   getDashCardSelectedTimelineEventIds,
   getDashCardVisibleTimelineEvents,
+  getIsTimelineEventsDashCard,
   getTimelineEventsDashCardIds,
 } from "./selectors";
-import { isTimelineEventsDashCard } from "./utils";
 
 export const useDashboardTimelines = () => {
   const { withTimelineEvents } = useDashboardContext();
@@ -49,10 +49,12 @@ export const useDashCardTimelineEvents = (
   dashcard: DashboardCard,
 ): { isEnabled: boolean } & DashCardTimelineEventsProps => {
   const dispatch = useDispatch();
-  const { withTimelineEvents } = useDashboardContext();
+  const { withTimelineEvents = false } = useDashboardContext();
   const dashcardId: DashCardId = dashcard.id;
-  const isEnabled =
-    Boolean(withTimelineEvents) && isTimelineEventsDashCard(dashcard);
+  const isEnabled = useSelector(
+    (state) =>
+      withTimelineEvents && getIsTimelineEventsDashCard(state, dashcardId),
+  );
 
   const timelineEvents = useSelector((state) =>
     isEnabled ? getDashCardVisibleTimelineEvents(state, dashcardId) : undefined,

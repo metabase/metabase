@@ -1,8 +1,13 @@
-import type { Timeline, TimelineEventId } from "metabase-types/api";
+import type {
+  Timeline,
+  TimelineEventId,
+  TimelineEventsVisibility,
+} from "metabase-types/api";
 
-export interface TimelineEventsVisibilityContext {
-  timelines: Timeline[];
-}
+export type TimelineEventsVisibilityUpdate = (
+  visibility: TimelineEventsVisibility,
+  timelines: Timeline[],
+) => TimelineEventsVisibility;
 
 export interface AggregatedEventsVisibility {
   visibleEventIds: TimelineEventId[];

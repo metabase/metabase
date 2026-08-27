@@ -56,10 +56,6 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "click",
     tooltip: "Add action button",
   },
-  [DASHBOARD_ACTION.EVENTS]: {
-    icon: "calendar",
-    tooltip: "Events",
-  },
   [DASHBOARD_ACTION.EXTRA_EDIT_BUTTONS_MENU]: {
     icon: "ellipsis",
     tooltip: "Toggle width",
@@ -184,7 +180,6 @@ const setup = ({
           onFullscreenChange={jest.fn()}
           downloadsEnabled={{ pdf: false }}
           dashboardActions={DASHBOARD_APP_ACTIONS}
-          withTimelineEvents
         >
           <DashboardHeaderButtonRow
             canResetFilters

@@ -17,19 +17,18 @@ import type {
   CreateTimelineEventRequest,
   CreateTimelineRequest,
   TimelineEvent,
-  TimelineEventSource,
 } from "metabase-types/api";
 
 interface NewEventModalContainerProps {
   cardId?: number;
   collectionId?: CollectionId | null;
-  source?: TimelineEventSource;
+  onEventCreated?: (event: TimelineEvent) => void;
   onClose?: () => void;
 }
 
 function NewEventModalContainer({
   collectionId,
-  source = "question",
+  onEventCreated,
   onClose,
 }: NewEventModalContainerProps) {
   const dispatch = useDispatch();
@@ -45,25 +44,29 @@ function NewEventModalContainer({
     collection?: Collection,
   ) => {
     if (values.timeline_id) {
-      // Unjustified type cast. FIXME
-      await createTimelineEvent(values as CreateTimelineEventRequest).unwrap();
+      const event = await createTimelineEvent(
+        // Unjustified type cast. FIXME
+        values as CreateTimelineEventRequest,
+      ).unwrap();
+      onEventCreated?.(event);
     } else if (collection) {
       const timeline = await createTimeline(
         // Unjustified type cast. FIXME
         getDefaultTimeline(collection) as CreateTimelineRequest,
       ).unwrap();
       // Unjustified type cast. FIXME
-      await createTimelineEvent({
+      const event = await createTimelineEvent({
         ...values,
         timeline_id: timeline.id,
       } as CreateTimelineEventRequest).unwrap();
+      onEventCreated?.(event);
     }
     dispatch(addUndo({ message: t`Created event` }));
   };
 
   return (
     <NewEventModal
-      source={source}
+      source="question"
       timelines={timelines}
       collection={collection}
       onSubmit={onSubmit}

@@ -74,8 +74,8 @@ const EventCard = ({
     >
       <CardCheckboxContainer>
         <Checkbox
-          checked={isVisible || isPartiallyVisible}
-          indeterminate={isPartiallyVisible}
+          checked={isVisible}
+          indeterminate={!isVisible && isPartiallyVisible}
           onChange={handleChangeVisibility}
           onClick={handleAsideClick}
         />

@@ -70,19 +70,6 @@ export const filterTimelinesByXAxis = (
   );
 };
 
-export const filterVisibleTimelineEvents = (
-  timelines: Timeline[],
-  visibleEventIds: TimelineEventId[],
-): TimelineEvent[] => {
-  const visibleIds = new Set(visibleEventIds);
-  return _.sortBy(
-    timelines
-      .flatMap((timeline) => timeline.events ?? [])
-      .filter((event) => visibleIds.has(event.id)),
-    (event) => event.timestamp,
-  );
-};
-
 export const getFocusedTimelines = (
   timelines: Timeline[],
   focusedTimelineEventIds: TimelineEventId[] | null,

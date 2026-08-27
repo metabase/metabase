@@ -104,7 +104,7 @@ const TimelineCardInner = ({
         aria-label={t`Timeline card header`}
       >
         <Checkbox
-          checked={anyEventVisible || anyEventPartiallyVisible}
+          checked={anyEventVisible}
           indeterminate={
             (anyEventVisible && !allEventsVisible) || anyEventPartiallyVisible
           }

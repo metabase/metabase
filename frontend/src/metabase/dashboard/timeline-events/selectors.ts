@@ -6,11 +6,14 @@ import {
 import { createCachedSelector } from "re-reselect";
 import { shallowEqual } from "react-redux";
 
-import { getCollectionTimelines } from "metabase/common/utils/timelines";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   getCurrentDashcards,
+  getDashCardById,
   getDashboard,
+  getDashcardData,
   getDashcards,
+  getSidebar,
 } from "metabase/dashboard/selectors";
 import type {
   DashboardState,
@@ -20,9 +23,9 @@ import type {
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import {
   aggregateVisibleEventIds,
+  getRecordedTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
-import type { TimelineEventsVisibilityContext } from "metabase/visualizations/types";
 import type {
   DashCardId,
   TimelineEvent,
@@ -30,31 +33,32 @@ import type {
   TimelineEventsVisibility,
 } from "metabase-types/api";
 
-import { isTimelineEventsDashCard } from "./utils";
+import {
+  canDashCardDisplayTimelineEvents,
+  computeDashCardTimeseriesXAxis,
+} from "./utils";
 
 const NO_EVENTS: TimelineEvent[] = [];
 const NO_EVENT_IDS: TimelineEventId[] = [];
 
+const areArraysEqual = (a: unknown, b: unknown) =>
+  Array.isArray(a) &&
+  Array.isArray(b) &&
+  a.length === b.length &&
+  a.every((item, index) => item === b[index]);
+
+// The per-dashcard selectors below are already cached, so the list only needs
+// its own identity to stay stable when the set of eligible cards is unchanged.
+const createArraySelector = createSelectorCreator({
+  memoize: lruMemoize,
+  memoizeOptions: { resultEqualityCheck: areArraysEqual },
+});
+
 export const getDashboardCollectionId = (state: State) =>
   getDashboard(state)?.collection_id ?? null;
 
-export const getTimelineEventsVisibilityContext = createSelector(
-  [getTransformedTimelines],
-  (timelines): TimelineEventsVisibilityContext => ({ timelines }),
-);
-
 const getTimelineEventsOverrides = (state: State) =>
   state.dashboard.timelineEvents.overrides;
-
-export const getCollectionTimelinesVisibility = createSelector(
-  [getTransformedTimelines, getDashboardCollectionId],
-  (timelines, collectionId): TimelineEventsVisibility => {
-    const timelineIds = getCollectionTimelines(timelines, collectionId).map(
-      (timeline) => timeline.id,
-    );
-    return timelineIds.length > 0 ? { shown_timeline_ids: timelineIds } : {};
-  },
-);
 
 const resolveDashCardVisibility = (
   overrides: DashboardTimelineEventsState["overrides"],
@@ -62,7 +66,9 @@ const resolveDashCardVisibility = (
   dashcardId: DashCardId,
 ): TimelineEventsVisibility | undefined =>
   overrides[dashcardId] ??
-  dashcards[dashcardId]?.visualization_settings?.["timeline_events.visibility"];
+  getRecordedTimelineEventsVisibility(
+    dashcards[dashcardId]?.card?.visualization_settings,
+  );
 
 export const getDashCardTimelineEventsVisibility = (
   state: State,
@@ -74,15 +80,31 @@ export const getDashCardTimelineEventsVisibility = (
     dashcardId,
   );
 
+export const getDashCardTimeseriesXAxis = createCachedSelector(
+  [getDashCardById, getDashcardData],
+  (dashcard, dashcardData) =>
+    dashcard ? computeDashCardTimeseriesXAxis(dashcard, dashcardData) : null,
+)((_state, dashcardId) => dashcardId);
+
+// Events only render on a time series axis, so a categorical cartesian chart
+// must not offer the events UI.
+export const getIsTimelineEventsDashCard = createCachedSelector(
+  [getDashCardById, getDashCardTimeseriesXAxis],
+  (dashcard, xAxis) =>
+    dashcard != null &&
+    canDashCardDisplayTimelineEvents(dashcard) &&
+    xAxis != null,
+)((_state, dashcardId) => dashcardId);
+
 const createStableEventsSelector = createSelectorCreator({
   memoize: lruMemoize,
   memoizeOptions: { resultEqualityCheck: shallowEqual },
 });
 
 export const getDashCardVisibleTimelineEvents = createCachedSelector(
-  [getTimelineEventsVisibilityContext, getDashCardTimelineEventsVisibility],
-  (context, visibility): TimelineEvent[] => {
-    const events = resolveVisibleTimelineEvents({ ...context, visibility });
+  [getTransformedTimelines, getDashCardTimelineEventsVisibility],
+  (timelines, visibility): TimelineEvent[] => {
+    const events = resolveVisibleTimelineEvents({ timelines, visibility });
     return events.length > 0 ? events : NO_EVENTS;
   },
 )({
@@ -90,10 +112,15 @@ export const getDashCardVisibleTimelineEvents = createCachedSelector(
   selectorCreator: createStableEventsSelector,
 });
 
+// Scoped to the events sidebar rather than cleared by every action that closes
+// it, so no code path can leave a highlight with no UI able to clear it.
 export const getDashCardSelectedTimelineEventIds = (
   state: State,
   dashcardId?: DashCardId,
 ): TimelineEventId[] => {
+  if (getSidebar(state).name !== SIDEBAR_NAME.events) {
+    return NO_EVENT_IDS;
+  }
   const selection = state.dashboard.timelineEvents.selection;
   return selection &&
     (selection.dashcardId == null || selection.dashcardId === dashcardId)
@@ -101,27 +128,26 @@ export const getDashCardSelectedTimelineEventIds = (
     : NO_EVENT_IDS;
 };
 
-export const getTimelineEventsDashCardIds = createSelector(
-  [(state: State) => getCurrentDashcards(state)],
-  (dashcards) => {
-    return dashcards
-      .filter(isTimelineEventsDashCard)
-      .map((dashcard) => dashcard.id);
-  },
+export const getTimelineEventsDashCardIds = createArraySelector(
+  [getCurrentDashcards, (state: State) => state],
+  (dashcards, state) =>
+    dashcards
+      .filter((dashcard) => getIsTimelineEventsDashCard(state, dashcard.id))
+      .map((dashcard) => dashcard.id),
 );
 
 export const getDashboardTimelineEventsAggregate = createSelector(
   [
     getTimelineEventsDashCardIds,
-    getTimelineEventsVisibilityContext,
+    getTransformedTimelines,
     getTimelineEventsOverrides,
-    (state: State) => getDashcards(state),
+    getDashcards,
   ],
-  (dashcardIds, context, overrides, dashcards) =>
+  (dashcardIds, timelines, overrides, dashcards) =>
     aggregateVisibleEventIds(
       dashcardIds.map((dashcardId) =>
         resolveVisibleTimelineEvents({
-          ...context,
+          timelines,
           visibility: resolveDashCardVisibility(
             overrides,
             dashcards,
