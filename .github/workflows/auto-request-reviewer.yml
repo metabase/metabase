@@ -121,14 +121,32 @@ jobs:
             const request = (params) =>
               github.rest.pulls.requestReviewers({ owner, repo, pull_number: pr.number, ...params });
 
-            if (!team.githubTeam) {
+            let teamRequested = false;
+            if (team.githubTeam) {
+              try {
+                await request({ reviewers: [pick], team_reviewers: [team.githubTeam] });
+                teamRequested = true;
+              } catch (e) {
+                core.warning(`could not request team ${team.githubTeam}: ${e.message}`);
+              }
+            }
+            if (!teamRequested) {
               await request({ reviewers: [pick] });
-              return;
             }
 
-            try {
-              await request({ reviewers: [pick], team_reviewers: [team.githubTeam] });
-            } catch (e) {
-              core.warning(`could not request team ${team.githubTeam}: ${e.message}`);
-              await request({ reviewers: [pick] });
-            }
+            const loadRows = ranked.map((r) => `| ${r.login} | ${r.load} |`).join('\n');
+            const body = [
+              '### Who\'s that reviewer?',
+              '',
+              '<details>',
+              '<summary>🔍 Reveal</summary>',
+              '',
+              `**It's ${pick}!**${teamRequested ? ` Requested together with \`${owner}/${team.githubTeam}\`.` : ''}`,
+              '',
+              `| Reviewer | PRs in last ${team.loadWindowDays}d |`,
+              '| --- | --- |',
+              loadRows,
+              '',
+              '</details>',
+            ].join('\n');
+            await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
