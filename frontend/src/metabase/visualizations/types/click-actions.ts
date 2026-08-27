@@ -18,9 +18,8 @@ export type ClickActionModeGetter = ((data: {
   question: Question;
 }) => ClickActionsMode) & {
   /**
-   * Getters wrapping a QueryClickActionsMode can advertise its legacy actions
-   * so hosts (TableInteractive's add-column shortcut) can probe them without
-   * resolving the mode.
+   * Getters wrapping a QueryClickActionsMode can advertise its legacy actions,
+   * so hosts (TableInteractive's add-column shortcut) can probe them without resolving the mode.
    */
   clickActions?: LegacyDrill[];
 };

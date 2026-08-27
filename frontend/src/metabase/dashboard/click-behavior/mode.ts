@@ -14,8 +14,8 @@ const DashboardDefaultMode: QueryClickActionsMode = {
   clickActions: [...(DefaultMode.clickActions ?? []), DashboardClickAction],
 };
 
-// Mirrors getMode from metabase/querying/click-actions/lib/modes, with
-// the dashboard-owned click-behavior action added for regular dashcards.
+// Mirrors getMode from metabase/querying/click-actions/lib/modes,
+// with the dashboard-owned click-behavior action added for regular dashcards.
 export const getDashboardClickActionMode: ClickActionModeGetter = ({
   question,
 }) => {

@@ -27,9 +27,9 @@ export const getDefaultClickActionMode: ClickActionModeGetter = ({
 }) => getMode(question);
 
 /**
- * Adapts a bare QueryClickActionsMode to Visualization's mode prop: the
- * getter wraps the clicked question per click, and advertises the query
- * mode's actions for hosts that probe them (see ClickActionModeGetter).
+ * Adapts a bare QueryClickActionsMode to Visualization's mode prop:
+ * the getter wraps the clicked question per click,
+ * and advertises the query mode's actions for hosts that probe them (see ClickActionModeGetter).
  */
 export function queryModeToClickActionMode(
   queryMode: QueryClickActionsMode,

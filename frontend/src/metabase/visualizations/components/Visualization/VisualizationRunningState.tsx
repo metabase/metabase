@@ -17,8 +17,7 @@ export function VisualizationRunningState({
 
   const getLoadingMessage = useSelector(getWhiteLabeledLoadingMessageFactory);
 
-  // show the slower loading message only when the loadingMessage is
-  // not customized
+  // Show the slower loading message only when the loading message is not customized.
   const message = getLoadingMessage(isSlow() ?? false);
 
   return (
