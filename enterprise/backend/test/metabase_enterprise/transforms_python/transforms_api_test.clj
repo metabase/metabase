@@ -201,8 +201,14 @@
       Closeable
       (close [_]
         (reset! stopped? true)
-        (future-cancel fut)
-        (assert (not= :timeout (try (deref fut 1000 :timeout) (catch Throwable _))) "Observation thread did not exit!")))))
+        ;; Join instead of cancelling: interrupting does not abort an in-flight HTTP request, and cancelling
+        ;; makes deref throw CancellationException immediately, so close would return while a poll is still
+        ;; running. That poll then lands after the transform is cleaned up and fails the enclosing test with
+        ;; an unrelated 404.
+        (let [exited? (not= :timeout (try (deref fut 5000 :timeout) (catch Throwable _ nil)))]
+          (when-not exited?
+            (future-cancel fut))
+          (assert exited? "Observation thread did not exit!"))))))
 
 (deftest python-transform-logging-test
   (mt/with-premium-features #{:transforms-basic :hosting}
@@ -537,11 +543,13 @@
                   (is (some? update-response) "Transform update should succeed"))
                 ;; Run updated transform and validate schema change
                 (transforms.tu/test-run transform-id)
-                (transforms.tu/wait-for-transform-completion transform-id 10000)
+                ;; test-run returns immediately for a rerun (:table is already set), so this wait
+                ;; covers the whole second execution. 10s was flaky on Redshift (GDGT-2818).
+                (transforms.tu/wait-for-transform-completion transform-id 30000)
                 ;; Sync runs after succeed-started-run! and activates new fields
                 ;; before retiring old ones (non-transactional). Waiting for "age"
                 ;; to be deactivated guarantees "friend" is already active too.
-                (transforms.tu/wait-for-field-inactive table-name "age" 10000)
+                (transforms.tu/wait-for-field-inactive table-name "age" 30000)
                 (let [updated-rows (transforms.tu/table-rows table-name)]
                   (is (= [["Alice" "Bob"] ["Bob" "Alice"]] updated-rows)
                       "Updated data should show Alice/Bob with friends instead of ages"))))))))))

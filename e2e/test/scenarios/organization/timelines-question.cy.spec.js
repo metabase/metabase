@@ -5,6 +5,9 @@ import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
+// brand (#509EE3) in getComputedStyle's normalized color format
+const HIGHLIGHTED_DOT_FILL = "rgb(80, 158, 227)";
+
 describe("scenarios > organization > timelines > question", () => {
   beforeEach(() => {
     H.restore();
@@ -362,12 +365,16 @@ describe("scenarios > organization > timelines > question", () => {
         H.timelineEventChip("RC2").should("not.exist");
 
         // its timeline, visible but having one hidden event
-        // should display its checkbox with a "dash" icon
+        // should display its checkbox in an indeterminate state
         cy.findByTestId("sidebar-content")
           .findByText("Releases")
           .closest("[aria-label='Timeline card header']")
           .within(() => {
-            cy.icon("dash").should("be.visible");
+            cy.findByRole("checkbox").should(
+              "have.prop",
+              "indeterminate",
+              true,
+            );
 
             // Hide the timeline then show it again
             cy.findByRole("checkbox").click();
@@ -456,6 +463,23 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByText("RC1").should("be.visible");
         cy.findByText("See all").should("not.exist");
       });
+
+      cy.log(
+        "hovering also shows a marker line and highlights the closest data point",
+      );
+      H.timelineEventMarkerLine().should("exist");
+      // the highlighted datum is drawn as a solid brand-filled dot (resting dots are hollow)
+      H.cartesianChartCircleWithFillColor(HIGHLIGHTED_DOT_FILL).should(
+        "have.length",
+        1,
+      );
+
+      cy.log("unhovering removes the marker line and the highlight");
+      cy.findByTestId("qb-header").realHover();
+      H.timelineEventMarkerLine().should("not.exist");
+      H.cartesianChartCircleWithFillColor(HIGHLIGHTED_DOT_FILL).should(
+        "not.exist",
+      );
     });
 
     it("should show the event popover when hovering on a stacked chart #74005", () => {
@@ -488,6 +512,78 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByTestId("timeline-event-popover")
         .findByText("RC1")
         .should("be.visible");
+    });
+
+    it("should stack close events from different data points and spread the stack on hover", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          {
+            name: "Jan release",
+            timestamp: "2027-01-30T00:00:00Z",
+            icon: "star",
+          },
+          {
+            name: "Feb fix",
+            timestamp: "2027-02-02T00:00:00Z",
+            icon: "warning",
+          },
+          {
+            name: "Summer party",
+            timestamp: "2028-07-04T00:00:00Z",
+            icon: "cake",
+          },
+        ],
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.log("adjacent-month events collapse into an overlapped stack");
+      cy.findByTestId("timeline-event-stack").should(
+        "have.attr",
+        "data-expanded",
+        "false",
+      );
+      H.timelineEventChip("Summer party").should("be.visible");
+
+      cy.log("hovering the stack spreads it and hides unrelated chips");
+      H.timelineEventChip("Feb fix").realHover({ position: "right" });
+      cy.findByTestId("timeline-event-stack").should(
+        "have.attr",
+        "data-expanded",
+        "true",
+      );
+      H.timelineEventChip("Summer party").should("not.be.visible");
+      H.timelineEventMarkerLine().should("exist");
+
+      cy.log("a spread member behaves like a regular chip");
+      H.timelineEventChip("Jan release").realHover();
+      cy.findByTestId("timeline-event-popover")
+        .findByText("Jan release")
+        .should("be.visible");
+      H.timelineEventMarkerLine().should("exist");
+
+      cy.log("moving away collapses the stack and restores other chips");
+      cy.findByTestId("qb-header").realHover();
+      cy.findByTestId("timeline-event-stack").should(
+        "have.attr",
+        "data-expanded",
+        "false",
+      );
+      H.timelineEventChip("Summer party").should("be.visible");
     });
 
     it("should collapse close events into a count chip and focus the sidebar on the group from 'See all'", () => {

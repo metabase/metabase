@@ -1,5 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
@@ -9,6 +10,7 @@ import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
+import { useSelector } from "metabase/redux";
 import {
   Card,
   Flex,
@@ -18,13 +20,18 @@ import {
   TreeTable,
   TreeTableSkeleton,
 } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+import type { CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
 
 import { CreateMenu } from "./components/CreateMenu";
+import { LibraryBulkActions } from "./components/LibraryBulkActions";
 import { PublishTableModal } from "./components/PublishTableModal";
 import { useLibraryCollections, useLibraryTreeTableInstance } from "./hooks";
-import { getTreeRowHref, getWritableCollection } from "./utils";
+import type { LibrarySection } from "./hooks/library-bulk-selection.utils";
+import { useLibraryBulkSelection } from "./hooks/useLibraryBulkSelection";
+import { getWritableCollection } from "./utils";
 
 export function LibraryPage() {
   const hasLibraryFeature = useHasTokenFeature("library");
@@ -37,6 +44,7 @@ export function LibraryPage() {
 }
 
 function LibraryPageContent() {
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
   const [searchQuery, setSearchQuery] = useState("");
   const [
     showPublishTableModal,
@@ -48,21 +56,62 @@ function LibraryPageContent() {
       "exclude-archived": true,
       "include-library": true,
     });
-  const { treeTableInstance, isChildrenLoading, isLoading, emptyMessage } =
-    useLibraryTreeTableInstance({
-      collections,
-      isLoadingCollections,
-      searchQuery,
-      onPublishTableClick: openPublishTableModal,
-    });
+  const {
+    treeTableInstance,
+    allRows,
+    isChildrenLoading,
+    isLoading,
+    emptyMessage,
+    refreshTableCollections,
+    refreshMetricCollections,
+  } = useLibraryTreeTableInstance({
+    collections,
+    isLoadingCollections,
+    searchQuery,
+    onPublishTableClick: openPublishTableModal,
+  });
 
-  const { libraryCollection, tableCollection } =
+  const { libraryCollection, tableCollection, metricCollection } =
     useLibraryCollections(collections);
   const writableMetricCollection = useMemo(
     () =>
       libraryCollection &&
       getWritableCollection(libraryCollection, "library-metrics"),
     [libraryCollection],
+  );
+
+  const {
+    selectedItems,
+    selectionSection,
+    isAllTables,
+    getSelectionState,
+    getRowCovered,
+    onCheckboxClick,
+    clear: clearSelection,
+  } = useLibraryBulkSelection(allRows);
+
+  // Clear selection when changing search query
+  const trimmedSearch = searchQuery.trim();
+  useEffect(() => {
+    clearSelection();
+  }, [trimmedSearch, clearSelection]);
+
+  const moveDefaultCollectionId = match(selectionSection)
+    .with("data", () => tableCollection?.id)
+    .with("metrics", () => metricCollection?.id)
+    .otherwise(() => undefined);
+
+  const handleActionComplete = useCallback(
+    (section: LibrarySection, affectedCollectionIds: CollectionId[]) => {
+      if (section === "data") {
+        refreshTableCollections(affectedCollectionIds);
+      } else if (section === "metrics") {
+        refreshMetricCollections(affectedCollectionIds);
+      }
+      // Snippet sections refetch via RTK tag invalidation.
+      clearSelection();
+    },
+    [refreshTableCollections, refreshMetricCollections, clearSelection],
   );
 
   return (
@@ -108,6 +157,10 @@ function LibraryPageContent() {
                 ) : (
                   <TreeTable
                     instance={treeTableInstance}
+                    showCheckboxes={!isRemoteSyncReadOnly}
+                    getSelectionState={getSelectionState}
+                    isRowDisabled={getRowCovered}
+                    onCheckboxClick={onCheckboxClick}
                     emptyState={
                       emptyMessage ? (
                         <ListEmptyState label={emptyMessage} />
@@ -120,9 +173,8 @@ function LibraryPageContent() {
                       if (row.getCanExpand()) {
                         row.toggleExpanded();
                       }
-                      // Navigation for leaf nodes is handled by the link
+                      // Leaf navigation is handled by the name link in the cell
                     }}
-                    getRowHref={getTreeRowHref}
                     isChildrenLoading={isChildrenLoading}
                   />
                 )}
@@ -136,6 +188,16 @@ function LibraryPageContent() {
         onClose={closePublishTableModal}
         onPublished={closePublishTableModal}
       />
+      {!isRemoteSyncReadOnly && (
+        <LibraryBulkActions
+          selectedItems={selectedItems}
+          selectionSection={selectionSection}
+          isAllTables={isAllTables}
+          defaultCollectionId={moveDefaultCollectionId}
+          onActionComplete={handleActionComplete}
+          onClear={clearSelection}
+        />
+      )}
     </>
   );
 }

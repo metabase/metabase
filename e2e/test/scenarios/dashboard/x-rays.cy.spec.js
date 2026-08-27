@@ -291,6 +291,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     // Bars
     H.chartPathWithFillColor("#509EE3").should("have.length", 5);
+    H.ensureChartIsActive();
     H.chartPathWithFillColor("#509EE3").eq(0).realHover();
 
     H.assertEChartsTooltip({

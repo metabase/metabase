@@ -22,7 +22,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -73,6 +72,7 @@
   (perms/check-has-application-permission :monitoring)
   (let [db-ids (t2/select-fn-set :database_id :model/PersistedInfo)
         writable-db-ids (when (seq db-ids)
+                          (perms/prime-database-perms-cache {:db-ids db-ids})
                           (->> (t2/select :model/Database :id [:in db-ids])
                                (filter mi/can-write?)
                                (map :id)
@@ -99,6 +99,7 @@
   [{:keys [persisted-info-id]} :- [:map
                                    [:persisted-info-id ms/PositiveInt]]]
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
+    (api/read-check :model/Card (:card_id persisted-info))
     (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
     persisted-info))
 
@@ -111,6 +112,7 @@
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
+    (api/read-check :model/Card card-id)
     (api/read-check (t2/select-one :model/Database :id (:database_id persisted-info)))
     persisted-info))
 
@@ -151,7 +153,6 @@
 (api.macros/defendpoint :post "/enable"
   "Enable global setting to allow databases to persist models."
   []
-  (workspaces/check-not-in-workspace-mode! "Model persistence")
   (perms/check-has-application-permission :setting)
   (log/info "Enabling model persistence")
   (model-persistence.settings/persisted-models-enabled! true)
@@ -205,6 +206,7 @@
                          [:card-id ms/PositiveInt]]]
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
   (api/let-404 [{:keys [database_id] :as card} (t2/select-one :model/Card :id card-id)]
+    (api/write-check card)
     (let [database (t2/select-one :model/Database :id database_id)]
       (api/write-check database)
       (when-not (driver.u/supports? (:engine database) :persist-models database)
@@ -235,6 +237,7 @@
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
+    (api/write-check card)
     (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
@@ -249,7 +252,8 @@
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [_card (t2/select-one :model/Card :id card-id)]
+  (api/let-404 [card (t2/select-one :model/Card :id card-id)]
+    (api/write-check card)
     (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
       (api/write-check (t2/select-one :model/Database :id (:database_id persisted-info)))
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off"))

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
@@ -16,9 +17,20 @@ import { useDimensionPickerSidebarSections } from "./useDimensionPickerSidebarSe
 export function useDimensionPickerSidebarCategories(): DimensionPickerSidebarCategory[] {
   const { metricSlots } = useMetricsViewerContext();
   const sections = useDimensionPickerSidebarSections();
+
+  return useMemo(
+    () => getDimensionPickerSidebarCategories(sections, metricSlots),
+    [metricSlots, sections],
+  );
+}
+
+function getDimensionPickerSidebarCategories(
+  sections: ReturnType<typeof useDimensionPickerSidebarSections>,
+  metricSlots: MetricSlot[],
+) {
   const items = sections
     .flatMap((section) => section.items)
-    .filter(shouldShowInDefaultSidebar);
+    .filter((item) => shouldShowInDefaultSidebar(item, metricSlots));
   const categories: DimensionPickerSidebarCategory[] = [];
   const groupedItems = new Map<string, DimensionPickerItem[]>();
 
@@ -76,7 +88,6 @@ function buildSidebarCategory(
   };
 }
 
-/** Type-keyed aggregate categories reselect their fixed breakout across related fields. */
 function isTypeKeyedAggregateCategory(
   key: string,
   config: DimensionBreakoutTypeDefinition,
@@ -84,10 +95,17 @@ function isTypeKeyedAggregateCategory(
   DimensionBreakoutTypeDefinition,
   { matchMode: "aggregate" }
 > {
-  return config.matchMode === "aggregate" && key.startsWith("type:");
+  return config.matchMode === "aggregate" && key === `type:${config.type}`;
 }
 
-function shouldShowInDefaultSidebar(item: DimensionPickerItem) {
+function shouldShowInDefaultSidebar(
+  item: DimensionPickerItem,
+  metricSlots: MetricSlot[],
+) {
+  if (metricSlots.length > 1 && hasMappingForEverySlot(item, metricSlots)) {
+    return true;
+  }
+
   if (item.dimensionBreakoutInfo.type === "numeric") {
     return false;
   }
@@ -108,19 +126,16 @@ const SIDEBAR_CATEGORY_ORDER: MetricsViewerDimensionBreakoutType[] = [
   "scalar",
 ];
 
+// Rank by breakout type only; the sort is stable, so categories of the same
+// type keep the metric's curated dimension order.
 function sortSidebarCategories(
   first: DimensionPickerSidebarCategory,
   second: DimensionPickerSidebarCategory,
 ) {
-  const typeDiff =
+  return (
     SIDEBAR_CATEGORY_ORDER.indexOf(first.dimensionBreakoutInfo.type) -
-    SIDEBAR_CATEGORY_ORDER.indexOf(second.dimensionBreakoutInfo.type);
-
-  if (typeDiff !== 0) {
-    return typeDiff;
-  }
-
-  return first.name.localeCompare(second.name);
+    SIDEBAR_CATEGORY_ORDER.indexOf(second.dimensionBreakoutInfo.type)
+  );
 }
 
 function getSidebarCategoryName(item: DimensionPickerItem) {
@@ -134,24 +149,26 @@ function getSidebarCategoryName(item: DimensionPickerItem) {
     return t`Country`;
   }
 
+  if (type === "geo" && item.geoSubtype === "state") {
+    return t`State`;
+  }
+
   return item.name;
 }
 
 function hasMappingForEverySlot(
-  category: DimensionPickerSidebarCategory,
+  item: DimensionPickerItem,
   metricSlots: MetricSlot[],
 ) {
   return metricSlots.every(
-    (slot) => category.dimensionBreakoutInfo.dimensionMapping[slot.slotIndex],
+    (slot) => item.dimensionBreakoutInfo.dimensionMapping[slot.slotIndex],
   );
 }
 
 function mergeDimensionMappings(items: DimensionPickerItem[]) {
   const mapping: Record<number, string> = {};
 
-  const preferredItems = [...items].sort(sortPreferredItemsFirst);
-
-  for (const item of preferredItems) {
+  for (const item of flattenNameGroupsByCoverage(items)) {
     for (const [slotIndex, dimensionId] of Object.entries(
       item.dimensionBreakoutInfo.dimensionMapping,
     )) {
@@ -164,11 +181,37 @@ function mergeDimensionMappings(items: DimensionPickerItem[]) {
   return mapping;
 }
 
-function sortPreferredItemsFirst(
-  first: DimensionPickerItem,
-  second: DimensionPickerItem,
-) {
-  return (
-    Number(second.isPreferred === true) - Number(first.isPreferred === true)
-  );
+interface DimensionNameGroup {
+  items: DimensionPickerItem[];
+  slotIndices: Set<number>;
+  hasPreferred: boolean;
+}
+
+function flattenNameGroupsByCoverage(items: DimensionPickerItem[]) {
+  const groups = new Map<string, DimensionNameGroup>();
+
+  for (const item of items) {
+    let group = groups.get(item.name);
+    if (!group) {
+      group = { items: [], slotIndices: new Set(), hasPreferred: false };
+      groups.set(item.name, group);
+    }
+    group.items.push(item);
+    group.hasPreferred ||= item.isPreferred === true;
+    for (const [slotIndex, dimensionId] of Object.entries(
+      item.dimensionBreakoutInfo.dimensionMapping,
+    )) {
+      if (dimensionId != null) {
+        group.slotIndices.add(Number(slotIndex));
+      }
+    }
+  }
+
+  return [...groups.values()]
+    .sort(
+      (first, second) =>
+        second.slotIndices.size - first.slotIndices.size ||
+        Number(second.hasPreferred) - Number(first.hasPreferred),
+    )
+    .flatMap((group) => group.items);
 }

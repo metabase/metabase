@@ -22,6 +22,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
+   [oidc-provider.store :as oidc.store]
    [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
@@ -71,6 +72,13 @@
                                {:request-options {:headers (merge {"authorization" (str "Bearer " bearer-token)}
                                                                   extra-headers)}}
                                body))
+
+(defn- save-access-token!
+  "Persist an OAuth access token into the provider backing the MCP endpoint."
+  [token user-id scopes]
+  (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                token (str user-id) "test-client" (vec scopes)
+                                (+ (inst-ms (java.util.Date.)) 3600000) nil))
 
 (defn- mcp-delete
   "Make a DELETE request to /api/mcp with optional headers.
@@ -1433,6 +1441,59 @@
       (is (empty? tools)
           "Empty scopes should not grant access to scoped tools"))))
 
+(deftest oauth-token-scope-validation-test
+  (testing "an OAuth token with a limited scope exposes only matching tools"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server/reset-provider!)
+        (let [token (str (random-uuid))]
+          (save-access-token! token (mt/user->id :crowberto) #{"agent:search"})
+          (let [sid        (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                               (get-in [:headers "Mcp-Session-Id"]))
+                response   (mcp-request-with-bearer token 200 (jsonrpc-request "tools/list")
+                                                    {"mcp-session-id" sid})
+                tool-names (set (map :name (get-in response [:body :result :tools])))]
+            (is (contains? tool-names "search"))
+            (is (not (contains? tool-names "update_question"))
+                "Only matching tools should be available")))))))
+
+(deftest full-access-token-scope-validation-test
+  (testing "an OAuth token with the full-access grant exposes all tools"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server/reset-provider!)
+        (let [token (str (random-uuid))]
+          (save-access-token! token (mt/user->id :crowberto) #{oauth-server/full-access-scope})
+          (let [sid        (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                               (get-in [:headers "Mcp-Session-Id"]))
+                response   (mcp-request-with-bearer token 200 (jsonrpc-request "tools/list")
+                                                    {"mcp-session-id" sid})
+                tool-names (set (map :name (get-in response [:body :result :tools])))]
+            (is (contains? tool-names "search"))
+            (is (contains? tool-names "update_question"))))))))
+
+(deftest tools-call-token-scope-validation-test
+  (testing "an OAuth token with a limited scope cannot call a tool outside that scope"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Scope Validation Card"
+                                              :dataset_query (orders-count-query)
+                                              :display       :table}]
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (oauth-server/reset-provider!)
+          (let [token (str (random-uuid))]
+            (save-access-token! token (mt/user->id :crowberto) #{"agent:search"})
+            (let [sid      (-> (mcp-request-with-bearer token 200 (jsonrpc-request "initialize") {})
+                               (get-in [:headers "Mcp-Session-Id"]))
+                  response (mcp-request-with-bearer token 200
+                                                    (jsonrpc-request "tools/call"
+                                                                     {:name      "update_question"
+                                                                      :arguments {:id card-id :name "Renamed by narrow token"}})
+                                                    {"mcp-session-id" sid})]
+              (is (=? {:isError true} (get-in response [:body :result]))
+                  "update_question is outside agent:search and must be refused")
+              (is (= "Scope Validation Card" (t2/select-one-fn :name :model/Card :id card-id))
+                  "the card must not have been renamed"))))))))
+
 (defn- insert-expired-oauth-token!
   "Insert an OAuth access token into the DB with an expiry in the past.
    Returns the token string."
@@ -1570,8 +1631,8 @@
 
 ;;; -------------------------------------------- Session Lifecycle -------------------------------------------------
 
-(deftest session-embedding-reuse-test
-  (testing "multiple resources/read calls within one session reuse the same embedding session"
+(deftest resources-read-renders-ui-configuration-test
+  (testing "multiple resources/read calls within one session render a usable UI configuration"
     (let [[session-id _] (initialize!)
           read1 (mcp-request (jsonrpc-request "resources/read"
                                               {:uri "ui://metabase/visualize-query.html"} 1)
@@ -1581,12 +1642,33 @@
                              {"mcp-session-id" session-id})]
       (is (= 200 (:status read1)))
       (is (= 200 (:status read2)))
-      ;; Both responses should contain the same session token in the rendered HTML
+      ;; Each resource response contains an independently short-lived UI credential.
       (let [html1 (-> (get-in read1 [:body :result :contents]) first :text)
             html2 (-> (get-in read2 [:body :result :contents]) first :text)]
         (is (some? html1))
-        (is (= html1 html2)
-            "Same embedding session should produce identical HTML output")))))
+        (is (str/includes? html1 "uiCredential"))
+        (is (str/includes? html2 "uiCredential"))))))
+
+(deftest mcp-ui-credential-validation-test
+  (testing "a scoped MCP Apps resource provides the UI request surface, but not general API access"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server/reset-provider!)
+        (let [token       (str (random-uuid))
+              _           (save-access-token! token (mt/user->id :crowberto) #{"agent:viz:mcp-ui:query"})
+              initialize  (mcp-request-with-bearer token 200 (jsonrpc-request "initialize" {:capabilities mcp-app-ui-capabilities}) {})
+              session-id  (get-in initialize [:headers "Mcp-Session-Id"])
+              resource    (mcp-request-with-bearer token 200
+                                                   (jsonrpc-request "resources/read" {:uri "ui://metabase/visualize-query.html"})
+                                                   {"mcp-session-id" session-id})
+              html        (-> resource :body :result :contents first :text)
+              credential  (second (re-find #"uiCredential:\s*\"([^\"]+)\"" html))
+              headers     {"x-metabase-mcp-ui-auth" credential}]
+          (is (string? credential))
+          (is (= 200 (:status (client/client-full-response :get 200 "user/current"
+                                                           {:request-options {:headers headers}}))))
+          (is (= 401 (:status (client/client-full-response :get 401 "collection"
+                                                           {:request-options {:headers headers}})))))))))
 
 (deftest batch-initialized-then-resources-read-test
   (testing "batch containing notifications/initialized + resources/read succeeds"

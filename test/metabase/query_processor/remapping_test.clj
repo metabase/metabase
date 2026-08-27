@@ -411,7 +411,7 @@
 
 (deftest ^:parallel pivot-with-remapped-breakout
   (testing "remapped columns should be accounted for in the result rows (#46919)"
-    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables :left-join) :h2)
       (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                                            (mt/id :products :title)))

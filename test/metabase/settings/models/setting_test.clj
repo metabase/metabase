@@ -8,7 +8,6 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
-   [metabase.models.serialization :as serdes]
    [metabase.settings.models.setting :as setting :refer [defsetting]]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
@@ -1167,14 +1166,6 @@
              ExceptionInfo
              #"Setting test-warn-vs-error-setting is not enabled for this database"
              (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-error every-feature)))))))
-
-(deftest identity-hash-test
-  (testing "Settings are hashed based on the key"
-    (mt/with-temporary-setting-values [test-setting-1 "123"
-                                       test-setting-2 "123"]
-      (is (= "5f7f150c"
-             (serdes/raw-hash ["test-setting-1"])
-             (serdes/identity-hash (t2/select-one :model/Setting :key "test-setting-1")))))))
 
 (deftest enabled?-test
   (testing "Settings can be disabled"

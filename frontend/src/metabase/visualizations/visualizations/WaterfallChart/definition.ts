@@ -9,6 +9,7 @@ import {
   GRAPH_DISPLAY_VALUES_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
+import { TIMELINE_EVENTS_SETTINGS } from "metabase/visualizations/lib/settings/timelineEvents";
 import {
   getDefaultSize,
   getMinSize,
@@ -80,6 +81,7 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   },
 };
 

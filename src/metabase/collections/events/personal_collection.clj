@@ -6,8 +6,8 @@
    [metabase.util :as u]
    [methodical.core :as methodical]))
 
-(derive ::event :metabase/event)
-(derive :event/user-create ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/user-create ::event)
 
 (methodical/defmethod events/publish-event! ::event
   [_topic {user :object}]

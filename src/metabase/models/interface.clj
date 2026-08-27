@@ -58,8 +58,8 @@
 
 (def ^:dynamic *deserializing?*
   "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
-  deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
-  on a future deserialization."
+  deserialization and are skipped based on this var. (Entity ids are not one of them: the insert hook generates an
+  `:entity_id` whenever it is missing, deserializing or not — ingested entities carry their own.)"
   false)
 
 (def ^{:arglists '([x & _args])} dispatch-on-model
@@ -157,7 +157,7 @@
     (try
       (json/decode s keywordize-keys?)
       (catch Throwable e
-        (log/error e "Error parsing JSON")
+        (log/errorf "Error parsing JSON: %s" (ex-message e))
         s))
     s))
 
@@ -206,7 +206,7 @@
     (try
       (doall (f x))
       (catch Throwable e
-        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red x))
+        (log/errorf "Unable to normalize: %s" (ex-message e))
         nil))))
 
 (def ^{:deprecated "0.57.0"} transform-legacy-field-ref
@@ -306,29 +306,32 @@
   (comp encryption/maybe-encrypt json-in))
 
 (defn encrypted-json-out
-  "Deserialize encrypted json."
+  "Deserialize encrypted json, requiring the value to be encrypted when `MB_ENCRYPTION_SECRET_KEY` is set (see
+  [[encryption/maybe-decrypt]]): a plaintext value at rest is rejected. A value that decrypts (or, with no key set,
+  passes through) but is not valid JSON is logged and returned as-is rather than crashing the read."
   [v]
   (let [decrypted (encryption/maybe-decrypt v)]
     (try
-      (json/decode+kw decrypted)
+      (some-> decrypted json/decode+kw)
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
-          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+          (log/error "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/errorf "Error parsing JSON: %s" (ex-message e)))
         v))))
 
-;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
-;; cache the decrypted JSON for one hour
-(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
+(def ^:private cached-encrypted-json-out
+  (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
 
 (def transform-encrypted-json
-  "Transform for encrypted json."
+  "Encrypted-json transform. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
 (def transform-encrypted-text
-  "Transform for encrypted plain-text columns."
+  "Whole-column encrypted text transform. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected
+  on read (see [[encryption/maybe-decrypt]]) — a value written outside the encrypting path cannot stand in for a
+  properly encrypted one."
   {:in  encryption/maybe-encrypt
    :out encryption/maybe-decrypt})
 
@@ -371,7 +374,7 @@
                          :else                 (try
                                                  (mbql.normalize/normalize x)
                                                  (catch Throwable e
-                                                   (log/debugf e "Error normalizing column settings key %s" (pr-str x))
+                                                   (log/debugf "Error normalizing column settings key %s: %s" (pr-str x) (ex-message e))
                                                    nil)))))
                     json/encode))
           (normalize-column-settings [column-settings]
@@ -398,7 +401,7 @@
                 (mbql.normalize/normalize form)
                 (catch Exception e
                   (log/warnf "Unable to normalize visualization-settings part %s: %s"
-                             (u/pprint-to-str 'red form)
+                             (pr-str form)
                              (ex-message e))
                   form))
 
@@ -484,9 +487,9 @@
     v))
 
 (def transform-secret-value
-  "Transform for secret value."
+  "Transform for secret value. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
+   :out (comp encryption/maybe-decrypt-bytes maybe-blob->bytes)})
 
 #_(defn decompress
     "Decompress `compressed-bytes`."
@@ -570,12 +573,8 @@
       add-updated-at-timestamp))
 
 (defn- add-entity-id [obj & _]
-  (if (or (contains? obj :entity_id)
-          *deserializing?*)
-    ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.
-    ;; Generating them at deserialization time can lead to duplicated entities if they're deserialized again.
-    obj
-    (assoc obj :entity_id (u/generate-nano-id))))
+  (cond-> obj
+    (nil? (:entity_id obj)) (assoc :entity_id (u/generate-nano-id))))
 
 (t2/define-before-insert :hook/entity-id
   [instance]

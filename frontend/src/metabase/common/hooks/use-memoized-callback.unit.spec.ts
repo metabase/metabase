@@ -1,4 +1,4 @@
-import { memoize } from "./use-memoized-callback";
+import { memoize } from "metabase/utils/memoize";
 
 describe("memoize", () => {
   it("should return same result for same arguments", () => {

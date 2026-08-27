@@ -10,13 +10,13 @@ import {
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
-import { useUserSetting } from "metabase/common/hooks";
 import {
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useUserSetting } from "metabase/settings";
 import type { Collection, CollectionType } from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {

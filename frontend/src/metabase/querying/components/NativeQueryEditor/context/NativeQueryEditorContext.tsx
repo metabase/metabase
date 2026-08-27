@@ -50,6 +50,8 @@ export interface NativeQueryEditorContextValue {
   snippets: NativeQuerySnippet[];
   snippetCollections: Collection[];
 
+  isPromptInputOpen?: boolean;
+  onTogglePromptInput?: () => void;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
   isShowingTemplateTagsEditor: boolean;

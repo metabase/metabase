@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useGetSettingsQuery } from "metabase/api";
 import { useTokenRefreshUntil } from "metabase/api/utils";
+import { useGetSettingsQuery } from "metabase/settings";
 import { Button, Flex, Icon, Loader, Stack, Text, Title } from "metabase/ui";
 
 import type { UpgradeFlow } from "./types";

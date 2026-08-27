@@ -1,6 +1,5 @@
 (ns metabase.driver.common
   "Shared definitions and helper functions for use across different drivers."
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]

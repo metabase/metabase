@@ -14,9 +14,7 @@ import { FunnelNormal } from "../../components/FunnelNormal";
 
 import { FUNNEL_CHART_DEFINITION } from "./definition";
 
-Object.assign(Funnel, FUNNEL_CHART_DEFINITION);
-
-export function Funnel(props: VisualizationProps) {
+function FunnelComponent(props: VisualizationProps) {
   const {
     headerIcon,
     settings,
@@ -82,3 +80,5 @@ export function Funnel(props: VisualizationProps) {
     </div>
   );
 }
+
+export const Funnel = Object.assign(FunnelComponent, FUNNEL_CHART_DEFINITION);

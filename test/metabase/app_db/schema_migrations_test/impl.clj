@@ -21,6 +21,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test.data.datasets :as datasets]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -77,7 +78,10 @@
      ;; open
      (with-open [conn (.getConnection data-source)]
        (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
-                 custom-migrations.util/*allow-temp-scheduling* false]
+                 custom-migrations.util/*allow-temp-scheduling* false
+                 ;; This app DB must remain empty, or contain only what the test loads. Prevent `with-temp` from
+                 ;; prewarming the test-data Database within it.
+                 data.impl/*skip-dataset-prewarm?* true]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db
@@ -198,7 +202,6 @@
       (datasets/test-drivers #{:h2 :mysql :postgres}
         (test-migrations-for-driver! driver/*driver* [start-id end-id] f)))))
 
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro test-migrations
   "Util macro for running tests for a set of Liquibase schema migration(s).
 

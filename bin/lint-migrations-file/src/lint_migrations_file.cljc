@@ -13,7 +13,7 @@
    (clojure.lang ExceptionInfo)
    (java.lang Integer)))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:unresolved-symbol]}
 (set! *warn-on-reflection* true)
 
 (comment change-set.strict/keep-me)
@@ -151,7 +151,7 @@
                                 (map #(get-in % [:changeSet :id]))
                                 seq)]
      (throw (validation-error
-             #_:clj-kondo/ignore
+             #_{:clj-kondo/ignore [:unresolved-symbol]}
              (format "Migration(s) [%s] uses invalid types (in %s)"
                      (str/join "," (map #(str "'" % "'") using-types?))
                      (str/join "," (map #(str "'" % "'") target-types)))
@@ -207,16 +207,42 @@
                         (str/join ", " bad-ids))
                 {:invalid-ids (vec bad-ids)}))))))
 
-(defn require-primary-key-exists-has-table-name
-  "Ensures that all primaryKeyExists preconditions specify a tableName."
+(def ^:private table-scoped-preconditions
+  "Existence preconditions mapped to the key that scopes them to a single table. Without that key,
+  Liquibase answers the check by snapshotting the whole schema — ~2 seconds per precondition on a
+  large postgres appdb, which is how 27 name-only preconditions once added ~50s to every full
+  migration."
+  {:primaryKeyExists           :tableName
+   :indexExists                :tableName
+   :uniqueConstraintExists     :tableName
+   :foreignKeyConstraintExists :foreignKeyTableName})
+
+(defn- unscoped-preconditions
+  "Walk a preConditions tree (maps nested under and/or/not, in either flat-map or list form) and
+  return [precondition-key required-key] pairs for every table-scoped existence check that is
+  missing its table key."
+  [form]
+  (cond
+    (map? form)        (concat
+                        (for [[precondition required] table-scoped-preconditions
+                              :let [check (get form precondition)]
+                              :when (and (map? check) (not (contains? check required)))]
+                          [precondition required])
+                        (mapcat unscoped-preconditions (vals form)))
+    (sequential? form) (mapcat unscoped-preconditions form)
+    :else              nil))
+
+(defn require-table-scoped-existence-preconditions
+  "Ensures that primaryKeyExists/indexExists/uniqueConstraintExists preconditions specify a
+  tableName, and foreignKeyConstraintExists a foreignKeyTableName."
   [change-log]
   (doseq [{:keys [changeSet]} change-log
           :when changeSet
-          :let [s (pr-str (:preConditions changeSet))]
-          :when (and (str/includes? s ":primaryKeyExists")
-                     (not (str/includes? s ":tableName")))]
+          :let [[precondition required] (first (unscoped-preconditions (:preConditions changeSet)))]
+          :when precondition]
     (throw (validation-error
-            (format "Migration '%s' has primaryKeyExists precondition without tableName" (:id changeSet))
+            (format "Migration '%s' has %s precondition without %s: without it Liquibase snapshots the entire schema to answer the check (~2s per precondition on a large postgres appdb)"
+                    (:id changeSet) (name precondition) (name required))
             {:id (:id changeSet)}))))
 
 (s/def ::changeSet
@@ -292,7 +318,7 @@
   (require-no-bare-blob-or-text-types change-log)
   (require-no-bare-boolean-types change-log file)
   (require-no-datetime-type change-log file)
-  (require-primary-key-exists-has-table-name change-log)
+  (require-table-scoped-existence-preconditions change-log)
   (let [{:keys [changeSet]
          :as all} (group-by only-key change-log)]
     (when-not (set/subset? (set (keys all)) #{:property :objectQuotingStrategy :changeSet :logicalFilePath})
@@ -332,7 +358,7 @@
                   (sequential? x) (mapv fix-vals x)
                   :else x))]
     (fix-vals (yaml/parse-string
-               #_:clj-kondo/ignore (slurp file)))))
+               #_{:clj-kondo/ignore [:unresolved-symbol]} (slurp file)))))
 
 (defn- display-name
   "Returns a human-readable name for a migration file.
@@ -360,25 +386,22 @@
   (try
     (validate-all)
     (println "Ok.")
-    #_:clj-kondo/ignore
+    #_{:clj-kondo/ignore [:unresolved-namespace]}
     (System/exit 0)
     (catch ExceptionInfo e
       (if (validation-error? e)
         (do
           (println)
-          #_:clj-kondo/ignore
+          #_{:clj-kondo/ignore [:unresolved-symbol]}
           (printf "Error in %s:\t%s\n" (:file (ex-data e)) (.getMessage e))
-          #_:clj-kondo/ignore
           (printf "Details:\n\n %s" (with-out-str (pprint/pprint (dissoc (ex-data e) ::validation-error))))
           (println))
         (do
           (pprint/pprint (Throwable->map e))
           (println (.getMessage e))))
-      #_:clj-kondo/ignore
       (System/exit 1))
-    (catch #_:clj-kondo/ignore
+    (catch #_{:clj-kondo/ignore [:unresolved-symbol]}
      Throwable e
            (pprint/pprint (Throwable->map e))
            (println (.getMessage e))
-           #_:clj-kondo/ignore
            (System/exit 1))))

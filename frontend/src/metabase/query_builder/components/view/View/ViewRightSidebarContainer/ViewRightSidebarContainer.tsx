@@ -25,10 +25,8 @@ export const ViewRightSidebarContainer = (
     hideTimelineEvents,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
-    isShowingAIQuestionAnalysisSidebar,
     isShowingSummarySidebar,
     isShowingTimelineSidebar,
-    onCloseAIQuestionAnalysisSidebar,
     onCloseSummary,
     onCloseTimelines,
     onOpenModal,
@@ -52,10 +50,8 @@ export const ViewRightSidebarContainer = (
       hideTimelineEvents={hideTimelineEvents}
       isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
       isShowingQuestionSettingsSidebar={isShowingQuestionSettingsSidebar}
-      isShowingAIQuestionAnalysisSidebar={isShowingAIQuestionAnalysisSidebar}
       isShowingSummarySidebar={isShowingSummarySidebar}
       isShowingTimelineSidebar={isShowingTimelineSidebar}
-      onCloseAIQuestionAnalysisSidebar={onCloseAIQuestionAnalysisSidebar}
       onCloseSummary={onCloseSummary}
       onCloseTimelines={onCloseTimelines}
       onOpenModal={onOpenModal}

@@ -12,6 +12,7 @@ export const toolInputAvailableSchema = Yup.object({
   toolCallId: Yup.string().required(),
   toolName: Yup.string().required(),
   input: Yup.mixed().defined(),
+  title: Yup.string(),
 });
 
 export const toolOutputAvailableSchema = Yup.object({
@@ -40,9 +41,32 @@ export const knownDataPartTypes = [
   "data-code_edit",
   "data-transform_suggestion",
   "data-generated_entity",
+  "data-entity_saved",
   "data-adhoc_viz",
   "data-static_viz",
+  "data-search_results",
+  "data-tool_title",
+  "data-conversation-title",
 ] as const satisfies readonly KnownDataPart["type"][];
+
+export type SearchResultItem = {
+  id: number;
+  type: string;
+  name: string;
+  display_name?: string;
+  display?: CardDisplayType;
+  moderated_status?: string;
+  database_id?: number;
+  database_schema?: string;
+  database_name?: string;
+  collection?: { id?: number; name: string };
+};
+
+export type SearchResultsData = {
+  tool_call_id: string;
+  total_count: number;
+  results: SearchResultItem[];
+};
 
 export type AdhocVizValue = {
   query: unknown;
@@ -64,11 +88,37 @@ export type GeneratedCard = {
   type: "card";
   id: string;
   title: string;
+  description?: string;
   query: GeneratedQuery;
   display?: CardDisplayType;
 };
 
-export type GeneratedEntity = GeneratedCard;
+export type GeneratedDashboard = {
+  type: "dashboard";
+  id?: number;
+  title: string;
+  url: string;
+};
+
+export type GeneratedEntity = GeneratedCard | GeneratedDashboard;
+
+export type SavedEntityDestination =
+  | { type: "collection"; id: number | null }
+  | { type: "dashboard"; id: number }
+  | { type: "document"; id: number };
+
+export type EntitySavedValue = {
+  chart_id: string;
+  card_id: number;
+  destination: SavedEntityDestination;
+  tool_call_id?: string;
+  title?: string;
+};
+
+export type ToolTitleData = {
+  tool_call_id: string;
+  title: string;
+};
 
 export type KnownDataPart =
   | { type: "data-navigate_to"; data: string }
@@ -77,8 +127,12 @@ export type KnownDataPart =
   | { type: "data-transform_suggestion"; data: SuggestedTransform }
   | { type: "data-code_edit"; data: MetabotCodeEdit }
   | { type: "data-generated_entity"; data: GeneratedEntity }
+  | { type: "data-entity_saved"; data: EntitySavedValue }
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
-  | { type: "data-static_viz"; data: StaticVizValue };
+  | { type: "data-static_viz"; data: StaticVizValue }
+  | { type: "data-search_results"; data: SearchResultsData }
+  | { type: "data-tool_title"; data: ToolTitleData }
+  | { type: "data-conversation-title"; data: string };
 
 export const isKnownDataPart = (part: {
   type: string;

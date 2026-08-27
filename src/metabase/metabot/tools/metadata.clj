@@ -36,7 +36,7 @@
         {:value structured}
         {:error (or output (str "No metadata returned for ID " id))}))
     (catch Exception e
-      (log/error e "Failed to fetch metadata" {:id id})
+      (log/error "Failed to fetch metadata" {:id id, :error (ex-message e)})
       {:error (or (ex-message e) (str "Failed to fetch metadata for ID " id))})))
 
 (defn get-metadata
@@ -98,7 +98,7 @@
                            :metrics metrics
                            :errors errors}})
     (catch Exception e
-      (log/error e "Failed to fetch metadata")
+      (log/errorf "Failed to fetch metadata: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to fetch metadata: " (or (ex-message e) "Unknown error"))}))))

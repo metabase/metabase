@@ -5,9 +5,9 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
@@ -100,13 +100,12 @@
                              nil))))))))
 
 (defn parts->storable-content
-  "Drop transient/lifecycle parts and convert what remains to the v2 at-rest
-  format. Stream metadata (`:usage`/`:finish`/`:error`) and `state` data parts
-  (the turn's state is persisted separately into the row's `state` column) carry
-  no history value."
+  "Drop transient/lifecycle parts and convert what remains to the v2 at-rest format.
+  Stream metadata (`:usage`/`:finish`/`:error`), `:reasoning`, and `state` data parts
+  (persisted separately into the row's `state` column) carry no history value."
   [parts]
   (->> parts
-       (remove #(#{:usage :finish :error} (:type %)))
+       (remove #(#{:usage :finish :error :reasoning} (:type %)))
        (filter streaming/persistable-data-part?)
        internal-parts->storable
        (schema.v2/check-message-data "metabot_message.data")))
@@ -184,6 +183,17 @@
              :conversation_id conversation-id
              :deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
+
+(def ^:private opening-message-limit 10)
+
+(defn opening-messages
+  "A conversation's first few non-deleted messages in reader order."
+  [conversation-id]
+  (t2/select :model/MetabotMessage
+             :conversation_id conversation-id
+             :deleted_at nil
+             {:order-by [[:created_at :asc] [:id :asc]]
+              :limit    opening-message-limit}))
 
 (defmacro with-conversation-lock
   "Run `body` in a transaction holding a `FOR UPDATE` lock on the conversation row."
@@ -264,7 +274,7 @@
         originator-id          (or user-id api/*current-user-id*)
         ai-proxy?              (if (some? ai-proxy?)
                                  ai-proxy?
-                                 (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
+                                 (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider)))
         user-external-id       (or user-external-id (str (random-uuid)))
         assistant-external-id  (or assistant-external-id (str (random-uuid)))]
     (analytics/inc! :metabase-metabot/turn-started
@@ -329,7 +339,7 @@
 
   Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`."
   [conversation-id profile-id retry-message-external-id & {:keys [assistant-external-id delete-message-ids]}]
-  (let [ai-proxy?             (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
+  (let [ai-proxy?             (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
         assistant-external-id (or assistant-external-id (str (random-uuid)))]
     (analytics/inc! :metabase-metabot/turn-started
                     {:profile-id (or profile-id "unknown")})
@@ -343,7 +353,8 @@
 
 ;;; ---------------------------------------- Conversation state ----------------------------------------
 
-(defn- replayable-assistant-row?
+(defn replayable-assistant-row?
+  "Is `row` an assistant message a later turn may replay?"
   [{:keys [error finished] :as row}]
   (and (assistant-row? row)
        (nil? error)
@@ -454,13 +465,17 @@
            :tool_call_id toolCallId
            :content      content}])))))
 
-(defn- user-row->llm-message
+(defn- message-text
   [{:keys [data]}]
+  (->> data
+       (filter schema.v2/text-part?)
+       (map :text)
+       str/join))
+
+(defn- user-row->llm-message
+  [message]
   {:role    :user
-   :content (->> data
-                 (filter schema.v2/text-part?)
-                 (map :text)
-                 str/join)})
+   :content (message-text message)})
 
 (defn- assistant-row->llm-messages
   [{:keys [data]}]
@@ -484,13 +499,37 @@
           []
           rows))
 
+(defn- replayable-turn
+  [turn-rows]
+  (let [rows  (remove :deleted_at turn-rows)
+        reply (last (filter assistant-row? rows))]
+    (when (replayable-assistant-row? reply)
+      {:rows rows :reply reply})))
+
+(defn first-non-forked-user-message
+  "Return the first non-blank user message from a live replayable turn.
+
+  `messages` must be in reader order. Soft-deleted rows are ignored, as are
+  messages cloned from a source conversation when this one was forked
+  (`forked_from_message_id` set), so a fork's title is generated from the first
+  message the user actually sends after forking rather than the inherited prefix.
+  Returns `{:content <text> :profile-id <profile-id>}`, or nil when no turn
+  qualifies."
+  [messages]
+  (some (fn [turn-rows]
+          (when-let [{:keys [rows]} (replayable-turn turn-rows)]
+            (when-let [user-row (first (filter user-row? rows))]
+              (let [content (message-text user-row)]
+                (when-not (str/blank? content)
+                  {:content content :profile-id (:profile_id user-row)})))))
+        (rows->turns (remove :forked_from_message_id messages))))
+
 (defn- turn->llm-messages
   [turn-rows]
-  (let [user-row (first (filter user-row? turn-rows))
-        reply    (last (filter assistant-row? turn-rows))]
-    (when (and reply (replayable-assistant-row? reply))
+  (when-let [{:keys [rows reply]} (replayable-turn turn-rows)]
+    (let [user-row (first (filter user-row? rows))]
       (concat (when user-row [(user-row->llm-message user-row)])
-              (when reply (assistant-row->llm-messages reply))))))
+              (assistant-row->llm-messages reply)))))
 
 (mu/defn history :- ::metabot.schema/messages
   "Reconstruct a conversation's LLM message history from its live
@@ -507,6 +546,20 @@
   [msg-id slack-msg-id]
   (when (and msg-id slack-msg-id)
     (t2/update! :model/MetabotMessage msg-id {:slack_msg_id slack-msg-id})))
+
+(defn set-conversation-title-if-missing!
+  "Set a conversation title only when it has not already been generated."
+  [conversation-id title]
+  (when (and conversation-id (not (str/blank? title)))
+    (t2/update! :model/MetabotConversation
+                {:id conversation-id :title nil}
+                {:title title})))
+
+(defn conversation-title
+  "Return the current persisted title for a conversation."
+  [conversation-id]
+  (when conversation-id
+    (t2/select-one-fn :title :model/MetabotConversation :id conversation-id)))
 
 ;;; ---------------------------------------- Chat message conversion ----------------------------------------
 
@@ -676,23 +729,32 @@
          (< (.toMillis (java.time.Duration/between then (Instant/now)))
             placeholder-grace-period-ms))))
 
+(defn- turn-in-progress-message
+  "Synthetic chat message emitted for an assistant row that is still streaming
+  (an active placeholder). The FE renders it as a 'Response in progress…' row."
+  [row]
+  (cond-> {:id   (or (:external_id row) (str (:id row)))
+           :role "agent"
+           :type "turn_in_progress"}
+    (:external_id row) (assoc :externalId (:external_id row))))
+
 (defn messages->chat-messages
   "Convert a seq of `MetabotMessage` model instances into a flat vector of `MetabotChatMessage` maps.
-  In-flight placeholder rows (assistant rows still streaming) are always
-  skipped. Errored pairs are dropped unless `:include-errored? true`."
+  In-flight placeholder rows (assistant rows still streaming) become a trailing
+  `turn_in_progress` message. Errored pairs are dropped unless `:include-errored? true`."
   ([messages] (messages->chat-messages messages nil))
   ([messages {:keys [include-errored?]}]
-   (let [active (remove placeholder-still-active? messages)]
-     (->> (if include-errored? active (drop-errored-pairs active))
-          (into [] (mapcat message->chat-messages))))))
+   (into []
+         (mapcat (fn [message]
+                   (if (placeholder-still-active? message)
+                     [(turn-in-progress-message message)]
+                     (message->chat-messages message))))
+         (if include-errored? messages (drop-errored-pairs messages)))))
 
 (defn- row->flat-messages
   [row parent-id]
   (let [messages (if (placeholder-still-active? row)
-                   [(cond-> {:id   (or (:external_id row) (str (:id row)))
-                             :role "agent"
-                             :type "turn_in_progress"}
-                      (:external_id row) (assoc :externalId (:external_id row)))]
+                   [(turn-in-progress-message row)]
                    (message->chat-messages row))]
     (reduce (fn [[messages parent-id] message]
               (let [message (assoc message :parent_message_id parent-id)]
@@ -728,13 +790,83 @@
        flat-messages))))
 
 (defn conversation-detail
-  "Conversation-with-chat-messages snapshot. Nil if not found."
+  "Conversation-with-chat-messages snapshot. Nil if not found.
+
+  `:saved_entities` lists the live (non-archived) cards saved out of this
+  conversation (origin columns on `report_card`), keyed by the generated chart id
+  so a reloaded conversation can mark its inline charts as saved. Deliberately ids
+  only — including display fields like the card name would leak content that other
+  conversation participants may not be able to read; readers resolve names through
+  the permission-checked card API."
   [conversation-id]
   (when-let [conv (t2/select-one :model/MetabotConversation :id conversation-id)]
     (let [messages (live-messages conversation-id)]
-      {:conversation_id (:id conv)
-       :created_at      (:created_at conv)
-       :summary         (:summary conv)
-       :user_id         (:user_id conv)
-       :state           (conversation-state messages)
-       :chat_messages   (messages->chat-messages messages)})))
+      {:conversation_id             (:id conv)
+       :created_at                  (:created_at conv)
+       :title                       (:title conv)
+       :user_id                     (:user_id conv)
+       :forked_from_conversation_id (:forked_from_conversation_id conv)
+       :state                       (conversation-state messages)
+       :saved_entities              (mapv (fn [{:keys [id metabot_chart_id]}]
+                                            {:card_id  id
+                                             :chart_id metabot_chart_id})
+                                          (t2/select [:model/Card :id :metabot_chart_id]
+                                                     :metabot_conversation_id conversation-id
+                                                     :archived false
+                                                     {:order-by [[:id :asc]]}))
+       :messages                    (messages->chat-messages messages)})))
+
+;;; ---------------------------------------- Forking ----------------------------------------
+
+(defn- forked-message-row
+  "Build the insert map for a cloned message: a fresh `external_id`, `user-id`
+  attribution, and no timestamps so `created_at` is stamped anew by the DB
+  default. Token usage is zeroed (`total_tokens` 0, `usage` nil) so a fork never
+  double-counts tokens in the analytics views. `forked_from_message_id` records
+  the source row so the copied prefix can be told apart from messages added after
+  the fork."
+  [new-conversation-id user-id {:keys [id data data_version role profile_id ai_proxied finished error state]}]
+  (cond-> {:conversation_id        new-conversation-id
+           :data                   data
+           :data_version           data_version
+           :role                   role
+           :profile_id             profile_id
+           :external_id            (str (random-uuid))
+           :total_tokens           0
+           :usage                  nil
+           :ai_proxied             (boolean ai_proxied)
+           :user_id                user-id
+           :forked_from_message_id id}
+    (some? finished) (assoc :finished finished)
+    (some? error)    (assoc :error error)
+    (some? state)    (assoc :state state)))
+
+(mu/defn fork-conversation!
+  "Fork `conversation-id` at the assistant message identified by `fork-external-id`,
+  cloning the live messages from the thread start up through that message into a
+  brand-new conversation owned by `user-id`.
+
+  The fork target must be a live, finished, non-errored assistant message —
+  returns nil otherwise, creating nothing. Cloned rows share the conversation and
+  message insert shapes used by [[start-turn!]] but with fresh `id`/`external_id`s,
+  `user-id` attribution, DB-stamped `created_at`, and zeroed token usage. Returns
+  the new conversation id."
+  [conversation-id  :- :string
+   fork-external-id :- :string
+   user-id          :- pos-int?]
+  (let [messages          (live-messages conversation-id)
+        [before [target]] (split-with #(not= fork-external-id (:external_id %)) messages)]
+    (when (and target
+               (assistant-row? target)
+               (nil? (:error target))
+               (true? (:finished target)))
+      (let [to-clone            (conj (vec before) target)
+            new-conversation-id (str (random-uuid))]
+        (t2/with-transaction [_conn]
+          (t2/insert! :model/MetabotConversation
+                      {:id                          new-conversation-id
+                       :user_id                     user-id
+                       :forked_from_conversation_id conversation-id})
+          (t2/insert! :model/MetabotMessage
+                      (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
+        new-conversation-id))))

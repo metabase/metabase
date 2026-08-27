@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import type {
   Engine,
   EngineField,
@@ -154,7 +153,6 @@ export const createMockTokenFeatures = (
   writable_connection: false,
   admin_security_center: false,
   ai_controls: false,
-  workspaces: false,
   ...opts,
 });
 
@@ -367,13 +365,15 @@ export const createMockSettings = (
   "saml-attribute-group": null,
   "saml-group-sync": null,
   "saml-group-mappings": null,
+  "jwt-group-mappings": null,
+  "oidc-group-mappings": null,
   "scim-enabled": false,
   "scim-base-url": "http://localhost:3000/api/ee/scim/v2/",
   "snowplow-url": "",
   "search-engine": "appdb",
   "search-typeahead-enabled": true,
   "setup-token": null,
-  "session-cookies": null,
+  "session-cookies": false,
   "session-cookie-samesite": "lax",
   "session-timeout": null,
   "slack-bug-report-channel": null,

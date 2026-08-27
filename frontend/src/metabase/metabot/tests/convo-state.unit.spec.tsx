@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
-import { waitFor } from "__support__/ui";
+import { act, waitFor } from "__support__/ui";
 import {
+  attachAgentToConversation,
   getMetabotConversation,
   getMetabotRequestState,
 } from "metabase/metabot/state";
@@ -16,10 +17,11 @@ import {
   hideMetabot,
   lastReqBody,
   mockAgentEndpoint,
-  resetChatButton,
+  newConversationButton,
   setup,
   showMetabot,
   stopResponseButton,
+  testConversationId,
   whoIsYourFavoriteResponse,
 } from "./utils";
 
@@ -27,7 +29,7 @@ describe("metabot > convo state", () => {
   it("should update the convo state on a successful request", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       stream: createMockSSEStream(
@@ -47,7 +49,7 @@ describe("metabot > convo state", () => {
   it("should not update the convo state on a failed request", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       events: [
@@ -64,7 +66,7 @@ describe("metabot > convo state", () => {
   it("should preserve conversation state if aborted response didn't contain a state data object", async () => {
     const { store } = setup();
     const getConvoReqState = () =>
-      getMetabotRequestState(store.getState(), "omnibot");
+      getMetabotRequestState(store.getState(), testConversationId("omnibot"));
 
     mockAgentEndpoint({
       events: [
@@ -120,8 +122,63 @@ describe("metabot > convo state", () => {
     });
     await enterChatMessage("hi");
     await userEvent.click(await stopResponseButton());
-    const reqState = getMetabotRequestState(store.getState(), "omnibot");
+    const reqState = getMetabotRequestState(
+      store.getState(),
+      testConversationId("omnibot"),
+    );
     expect(reqState).toEqual({ testing: 123 });
+  });
+
+  it("should keep streaming into a conversation the surface has navigated away from", async () => {
+    const { store } = setup();
+    const { conversationId } = getMetabotConversation(
+      store.getState(),
+      "omnibot",
+    );
+
+    const [pause1] = createPauses(1);
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield { type: "text-start", id: "t1" };
+          yield { type: "text-delta", id: "t1", delta: "first half" };
+          await pause1.promise;
+          yield { type: "text-delta", id: "t1", delta: " second half" };
+          yield { type: "finish", finishReason: "stop" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("stream me");
+    await assertConversation([
+      ["user", "stream me"],
+      ["agent", "first half"],
+    ]);
+
+    act(() => {
+      store.dispatch(
+        attachAgentToConversation({
+          agentId: "omnibot",
+          conversationId: "some-other-conversation",
+        }),
+      );
+    });
+    await assertConversation([]);
+
+    await act(async () => {
+      pause1.resolve();
+    });
+
+    act(() => {
+      store.dispatch(
+        attachAgentToConversation({ agentId: "omnibot", conversationId }),
+      );
+    });
+
+    await assertConversation([
+      ["user", "stream me"],
+      ["agent", "first half second half"],
+    ]);
   });
 
   it("should keep the conversation thread when metabot is hidden or opened", async () => {
@@ -141,7 +198,7 @@ describe("metabot > convo state", () => {
     expect(reqBody.parent_message_id).toBe("msg_test_favorite");
   });
 
-  it("should reset the conversation when the reset button is clicked", async () => {
+  it("should start a new conversation when the new conversation button is clicked", async () => {
     const { store } = setup();
     const getState = () => getMetabotConversation(store.getState(), "omnibot");
     mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
@@ -166,7 +223,7 @@ describe("metabot > convo state", () => {
       message: "You, but don't tell anyone.",
     });
 
-    await userEvent.click(await resetChatButton());
+    await userEvent.click(await newConversationButton());
 
     const afterResetState = getState();
     expect(afterResetState.conversationId).not.toBe(

@@ -157,6 +157,7 @@
 
 ;;; These are only for convenience for drivers that used to use stuff in annotate directly -- we can remove it once we
 ;;; convert drivers to MBQL 5.
+#_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [metabase.query-processor.middleware.annotate.legacy-helper-fns
   aggregation-name

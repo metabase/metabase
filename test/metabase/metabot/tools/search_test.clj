@@ -5,6 +5,8 @@
    [metabase.api.common :as api]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
@@ -14,6 +16,42 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(deftest ^:parallel search-display-test
+  (testing "joins keyword and semantic queries into the search object (client owns the verb/tense)"
+    (is (= "revenue, orders"
+           (#'search/search-display {:keyword_queries ["revenue"] :semantic_queries ["orders"]}))))
+  (testing "dedupes overlapping queries"
+    (is (= "revenue"
+           (#'search/search-display {:keyword_queries ["revenue"] :semantic_queries ["revenue"]}))))
+  (testing "no queries -> nil"
+    (is (nil? (#'search/search-display {}))))
+  (testing "a malformed query argument is left untitled rather than rendered character by character"
+    (is (nil? (#'search/search-display {:keyword_queries "metabot byok"})))
+    (is (nil? (#'search/search-display {:semantic_queries "monthly revenue"})))
+    (is (= "orders"
+           (#'search/search-display {:keyword_queries ["orders"] :semantic_queries nil})))))
+
+(deftest ^:parallel search-result->item-test
+  (testing "trims a result to the fields the results card renders, nesting collection id+name"
+    (is (= {:id 1 :type "table" :name "orders" :display_name "Orders"
+            :database_id 2 :database_schema "PUBLIC" :database_name "Sample"
+            :collection {:id 3 :name "Finance"}}
+           (#'search/search-result->item
+            {:id 1 :type "table" :name "orders" :display_name "Orders"
+             :database_id 2 :database_schema "PUBLIC" :database_name "Sample"
+             :collection {:id 3 :name "Finance" :authority_level nil}
+             :score 0.99 :description "wide table"}))))
+  (testing "no collection -> no collection key"
+    (is (= {:id 5 :type "dashboard" :name "Revenue"}
+           (#'search/search-result->item
+            {:id 5 :type "dashboard" :name "Revenue" :collection nil}))))
+  (testing "carries a question's display (as a string) + moderated_status for the exact icon"
+    (is (= {:id 7 :type "question" :name "Revenue" :display "line"
+            :moderated_status "verified"}
+           (#'search/search-result->item
+            {:id 7 :type "question" :name "Revenue" :display :line
+             :moderated_status "verified"})))))
 
 (deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
@@ -230,6 +268,7 @@
                   :name "Main Dashboard"
                   :description "Dashboard desc"
                   :verified false
+                  :can_write false
                   :collection {:id 10 :name "Finance" :authority_level "official"}
                   :updated_at "2024-01-03"
                   :created_at "2024-01-03"}
@@ -238,10 +277,31 @@
                     :name "Main Dashboard"
                     :description "Dashboard desc"
                     :verified false
+                    :can_write false
                     :official true
                     :collection {:id 10 :name "Finance" :authority_level "official"}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
+      (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-document-search-result-test
+  (testing "document result postprocessing"
+    (let [result   {:model      "document"
+                    :id         8
+                    :name       "Quarterly plan"
+                    :can_write  false
+                    :collection {:id 10 :name "Finance" :authority_level "official"}
+                    :updated_at "2024-01-03"
+                    :created_at "2024-01-02"}
+          expected {:id          8
+                    :type        "document"
+                    :name        "Quarterly plan"
+                    :description nil
+                    :can_write   false
+                    :official    true
+                    :collection  {:id 10 :name "Finance" :authority_level "official"}
+                    :updated_at  "2024-01-03"
+                    :created_at  "2024-01-02"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
 (deftest ^:parallel postprocess-search-result-test-5
@@ -261,6 +321,7 @@
                     :database_id nil
                     :verified true
                     :official false
+                    :moderated_status "verified"
                     :collection {:id 11 :name "Analytics" :authority_level nil}
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
@@ -349,13 +410,28 @@
                                                              {:data []})]
               (search/sql-search-tool {:keyword_queries ["x"] :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
+        (testing "general search includes documents in its default entity types"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/search-tool {:keyword_queries ["x"]}))
+            (is (contains? @captured "document"))))
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
               (search/nlq-search-tool {:keyword_queries ["x"] :entity_types ["metric"]}))
-            (is (= #{"metric"} @captured))))))))
+            (is (= #{"metric"} @captured))))
+        (testing "NLQ search accepts document and dashboard destination types"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                             (reset! captured (:models context))
+                                                             {:data []})]
+              (search/nlq-search-tool {:keyword_queries ["plan"]
+                                       :entity_types    ["document" "dashboard"]}))
+            (is (= #{"document" "dashboard"} @captured))))))))
 
 (deftest tool-limit-test
   (testing "tool variants apply the :limit arg with default 10 and cap 50"
@@ -384,6 +460,30 @@
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
 
+(deftest ^:parallel scalar-search-args-test
+  (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
+    (doseq [[field value message]
+            [[:keyword_queries  "metabot byok"
+              "Invalid tool arguments: `keyword_queries` must be an array of strings; received a string."]
+             [:semantic_queries "monthly revenue"
+              "Invalid tool arguments: `semantic_queries` must be an array of strings; received a string."]
+             [:entity_types     "table"
+              "Invalid tool arguments: `entity_types` must be an array of supported entity type strings; received a string."]]]
+      (testing (str "a scalar " field)
+        (is (= message
+               (test-util/tool-boundary-error "search" #'metabot.tools/search-tool {field value})))))))
+
+(deftest ^:parallel scalar-search-args-every-variant-test
+  (testing "every search tool variant rejects a scalar the same way"
+    (doseq [[tool-var extra-args] [[#'metabot.tools/search-tool {}]
+                                   [#'metabot.tools/sql-search-tool {:database_id 1}]
+                                   [#'metabot.tools/nlq-search-tool {}]
+                                   [#'metabot.tools/transform-search-tool {}]]]
+      (testing (str tool-var)
+        (is (= "Invalid tool arguments: `keyword_queries` must be an array of strings; received a string."
+               (test-util/tool-boundary-error "search" tool-var
+                                              (assoc extra-args :keyword_queries "metabot byok"))))))))
+
 (deftest other-user-collection-test
   (testing "excludes entities from other users' collections"
     (mt/with-test-user :crowberto
@@ -400,6 +500,30 @@
                           (filter (fn [{:keys [id type]}] (and (= "dashboard" type) (contains? test-dashboard-ids id))))
                           (map :name)
                           (set)))))))))))
+
+(deftest document-search-test
+  (testing "search can discover documents by name"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Document {document-id :id}
+                       {:name "Quarterly planning sh1b0le#doc"}]
+          (let [result (->> (search/search {:term-queries ["sh1b0le#doc"]
+                                            :entity-types ["document"]})
+                            (filter #(= document-id (:id %)))
+                            first)]
+            (is (= "document" (:type result)))
+            (is (= "Quarterly planning sh1b0le#doc" (:name result)))))))))
+
+(deftest validate-and-enrich-documents-test
+  (testing "stale document search hits are removed using the live model"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Document {document-id :id} {:name "Existing document"}]
+        (let [results [{:id document-id :type "document" :name "Existing document"}
+                       {:id Integer/MAX_VALUE :type "document" :name "Deleted document"}
+                       {:id 1 :type "dashboard" :name "Unrelated dashboard"}]]
+          (is (= [{:id document-id :type "document" :name "Existing document" :can_write true}
+                  {:id 1 :type "dashboard" :name "Unrelated dashboard"}]
+                 (#'search/validate-and-enrich-documents results))))))))
 
 (deftest enrich-with-collection-descriptions-test
   (mt/with-premium-features #{:content-verification}
@@ -559,6 +683,28 @@
             (testing "base_table_portable_fk is `[database_name, schema, table_name]`"
               (is (= [db-name (:schema orders-t) (:name orders-t)]
                      (:base_table_portable_fk metric-res))))))))))
+
+(deftest enrich-with-metric-base-tables-respects-table-permissions-test
+  (testing "a readable metric does not reveal metadata for an unreadable base table"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-test-user :rasta
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card {metric-id :id} {:name          "Restricted Base Table Metric"
+                                                      :type          :metric
+                                                      :database_id   (mt/id)
+                                                      :table_id      (mt/id :orders)
+                                                      :dataset_query {:database (mt/id)
+                                                                      :type     :query
+                                                                      :query    {:source-table (mt/id :orders)
+                                                                                 :aggregation  [[:count]]}}}]
+            (let [results    (search/search {:term-queries ["Restricted Base Table Metric"]})
+                  metric-res (some #(when (= [metric-id "metric"] [(:id %) (:type %)]) %) results)]
+              (is (some? metric-res) "collection access still makes the metric searchable")
+              (is (not-any? #(contains? metric-res %)
+                            [:base_table_id
+                             :base_table_name
+                             :base_table_schema
+                             :base_table_portable_fk])))))))))
 
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"

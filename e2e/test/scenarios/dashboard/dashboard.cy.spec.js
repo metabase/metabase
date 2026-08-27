@@ -1098,7 +1098,7 @@ describe("scenarios > dashboard", () => {
         );
 
         cy.log("should not be visible (below the fold)");
-        cy.visit(`/dashboard/${dashboard.id}}`);
+        cy.visit(`/dashboard/${dashboard.id}`);
         cy.findByText(TARGET_TEXT).should("not.be.visible");
 
         cy.log("should scroll into view w/ scrollTo hash param");
@@ -1534,70 +1534,6 @@ function assertScrollBarExists() {
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
 }
-
-describe("LOCAL TESTING ONLY > dashboard", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  /**
-   * WARNING:
-   *    https://github.com/metabase/metabase/issues/15656
-   *    - We are currently not able to test translations in CI
-   *    - DO NOT unskip this test even after the issue is fixed
-   *    - To be used for local testing only
-   *    - Make sure you have translation resources built first.
-   *        - Run `./bin/i18n/build-translation-resources`
-   *        - Then start the server and Cypress tests
-   */
-
-  it(
-    "dashboard filter should not show placeholder for translated languages (metabase#15694)",
-    { tags: "@skip" },
-    () => {
-      cy.request("GET", "/api/user/current").then(
-        ({ body: { id: USER_ID } }) => {
-          cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
-        },
-      );
-      H.createQuestionAndDashboard({
-        questionDetails: {
-          name: "15694",
-          query: { "source-table": PEOPLE_ID },
-        },
-        dashboardDetails: {
-          parameters: [
-            {
-              name: "Location",
-              slug: "location",
-              id: "5aefc725",
-              type: "string/=",
-              sectionId: "location",
-            },
-          ],
-        },
-      }).then(({ body: { card_id, dashboard_id } }) => {
-        H.addOrUpdateDashboardCard({
-          card_id,
-          dashboard_id,
-          card: {
-            parameter_mappings: [
-              {
-                parameter_id: "5aefc725",
-                card_id,
-                target: ["dimension", ["field", PEOPLE.STATE, null]],
-              },
-            ],
-          },
-        });
-
-        cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
-        H.filterWidget().contains(/\{0\}/).should("not.exist");
-      });
-    },
-  );
-});
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;

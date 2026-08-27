@@ -26,7 +26,7 @@ export function isTemporalBucketable(
 
 export function withTemporalBucket(
   column: ColumnMetadata,
-  bucket: Bucket | null,
+  bucket: Bucket | "default" | null,
 ): ColumnMetadata {
   return ML.with_temporal_bucket(column, bucket);
 }

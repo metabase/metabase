@@ -2,7 +2,6 @@ import { type ReactNode, useMemo, useState } from "react";
 import { useMount } from "react-use";
 
 import { useSearchQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
 import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
@@ -12,6 +11,7 @@ import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   type SdkIframeEmbedSetupModalInitialState,
 } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 
 import {
   SdkIframeEmbedSetupContext,
@@ -27,6 +27,7 @@ import {
 import { useSdkIframeEmbedSettings } from "../hooks/use-sdk-iframe-embed-settings";
 import type { SdkIframeEmbedSetupStep } from "../types";
 import { getExperienceFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
+import { getResourceCustomVisualizations } from "../utils/get-resource-custom-visualizations";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
@@ -113,6 +114,15 @@ export const SdkIframeEmbedSetupProvider = ({
     questionId: settings.questionId,
   });
 
+  const embedSettings = useMemo(() => {
+    const allowedCustomVisualizations =
+      getResourceCustomVisualizations(resource);
+
+    return allowedCustomVisualizations.length > 0
+      ? { ...settings, allowedCustomVisualizations }
+      : settings;
+  }, [resource, settings]);
+
   const { availableParameters, initialAvailableParameters } =
     useAvailableParameters({
       experience,
@@ -196,7 +206,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isLoading,
     isFetching,
     isRecentsLoading,
-    settings,
+    settings: embedSettings,
     defaultSettings,
     replaceSettings,
     updateSettings,

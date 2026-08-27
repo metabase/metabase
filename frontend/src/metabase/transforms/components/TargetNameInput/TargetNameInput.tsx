@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import { FormTextInput } from "metabase/forms";
-import { slugify } from "metabase/visualizations/lib/formatting/url";
+import { slugify } from "metabase/utils/formatting";
 
 type TargetNameInputProps = {
   description?: string;

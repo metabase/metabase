@@ -1,6 +1,6 @@
 import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
 
-import { browserHistory } from "metabase/router";
+import { getRawBrowserHistory } from "metabase/router";
 
 import { getBasename } from "./DataAppRouter";
 
@@ -15,10 +15,8 @@ export interface DataAppLinkProps extends Omit<
 /**
  * Internal-only navigation link inside a data app.
  *
- * Deliberately does NOT delegate to react-router 3's `<Link>` —
- * v3 components use deprecated React APIs (`getDefaultProps`,
- * `childContextTypes`) that emit dev-mode warnings and will be removed
- * in React 19.
+ * Renders a plain anchor rather than the router's `<Link>`: a data app is
+ * mounted outside the app's route tree, so it has no router context to read.
  */
 export const DataAppLink = ({
   to,
@@ -58,7 +56,7 @@ export const DataAppLink = ({
     }
 
     event.preventDefault();
-    browserHistory.push(href);
+    getRawBrowserHistory().push(href);
   };
 
   return (

@@ -1,3 +1,4 @@
+import { BLOCKED_TAGS } from "metabase/utils/scripts-sandbox";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 // DOM scoping is custom-viz-specific: each custom-viz plugin renders inside
@@ -90,7 +91,9 @@ export function isDomNode(obj: unknown): obj is Node {
 function createDecoyForNode(node: Node): Node {
   switch (node.nodeType) {
     case Node.ELEMENT_NODE: {
-      const decoy = document.createElement(node.nodeName.toLowerCase());
+      const tagName = node.nodeName.toLowerCase();
+      const decoyTag = BLOCKED_TAGS.has(tagName) ? "div" : tagName;
+      const decoy = document.createElement(decoyTag);
       decoy.setAttribute("data-plugin-sandbox-decoy", "true");
       decoy.setAttribute("id", "sandbox-decoy");
       return decoy;

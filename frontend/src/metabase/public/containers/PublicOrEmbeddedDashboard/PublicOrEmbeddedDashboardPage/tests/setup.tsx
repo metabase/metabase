@@ -7,7 +7,7 @@ import { setupEmbedDashboardEndpoints } from "__support__/server-mocks/embed";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type {
   DashboardCard,
@@ -24,10 +24,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { PublicOrEmbeddedDashboardPage } from "../PublicOrEmbeddedDashboardPage";
-
-const RoutedPublicOrEmbeddedDashboardPage = withRouteProps(
-  PublicOrEmbeddedDashboardPage,
-);
 
 const MOCK_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjExfSwicGFyYW1zIjp7fSwiaWF0IjoxNzEyNjg0NTA1LCJfZW1iZWRkaW5nX3BhcmFtcyI6e319.WbZTB-cQYh4gjh61ZzoLOcFbJ6j6RlOY3GS4fwzv3W4";
@@ -117,7 +113,7 @@ export async function setup(
   const view = renderWithProviders(
     <Route
       path="embed/dashboard/:token"
-      element={<RoutedPublicOrEmbeddedDashboardPage />}
+      element={<PublicOrEmbeddedDashboardPage />}
     />,
     {
       storeInitialState: createMockState(),

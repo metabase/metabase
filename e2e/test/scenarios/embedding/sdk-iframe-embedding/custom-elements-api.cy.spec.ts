@@ -10,6 +10,21 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
+const LIMITED_ORDERS_ROW_COUNT = 5;
+
+const clickEmbeddedTableCell = (value: string, rowsCount: number) => {
+  // Scoped to the table on purpose: column auto-sizing renders a hidden copy of
+  // the cells on the iframe's body and drops it once measured, so a body-wide
+  // query can latch onto a copy that is about to detach.
+  const tableRoot = () =>
+    H.getSimpleEmbedIframeContent().findByTestId("table-root");
+
+  // Anchor on the fully rendered table before interacting with it.
+  tableRoot().should("have.attr", "data-rows-count", String(rowsCount));
+
+  tableRoot().findByText(value).should("be.visible").click({ force: true });
+};
+
 describe("scenarios > embedding > sdk iframe embedding > custom elements api", () => {
   beforeEach(() => {
     cy.signInAsAdmin();
@@ -160,7 +175,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       H.createQuestionAndDashboard({
         questionDetails: {
           name: "Limited Orders",
-          query: { "source-table": ORDERS_ID, limit: 5 },
+          query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
         },
       }).then(({ body: { dashboard_id } }) => {
         H.visitCustomHtmlPage(`
@@ -169,11 +184,10 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         <metabase-dashboard dashboard-id="${dashboard_id}" drills />
         `);
 
-        H.getSimpleEmbedIframeContent()
-          .findAllByText("37.65")
-          .first()
-          .should("be.visible")
-          .click();
+        cy.wait("@getDashCardQuery");
+
+        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
+
         H.getSimpleEmbedIframeContent()
           .findByText(/Filter by this value/)
           .should("be.visible");
@@ -184,7 +198,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       H.createQuestionAndDashboard({
         questionDetails: {
           name: "Limited Orders",
-          query: { "source-table": ORDERS_ID, limit: 5 },
+          query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
         },
       }).then(({ body: { dashboard_id } }) => {
         H.visitCustomHtmlPage(`
@@ -195,11 +209,8 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
         cy.wait("@getDashCardQuery");
 
-        H.getSimpleEmbedIframeContent()
-          .findAllByText("37.65")
-          .first()
-          .should("be.visible")
-          .click({ force: true });
+        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
+
         H.getSimpleEmbedIframeContent()
           .findByText(/Filter by this value/)
           .should("not.exist");
@@ -294,7 +305,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     it("should enable drill-through when drills is true", () => {
       H.createQuestion({
         name: "Limited Orders",
-        query: { "source-table": ORDERS_ID, limit: 5 },
+        query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
       }).then(({ body: { id: questionId } }) => {
         H.visitCustomHtmlPage(`
         ${H.getNewEmbedScriptTag()}
@@ -304,17 +315,8 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
         cy.wait("@getCardQuery");
 
-        // Wait for the table to finish rendering before interacting,
-        // as column auto-sizing can cause re-renders that detach elements.
-        H.getSimpleEmbedIframeContent()
-          .findByTestId("table-root")
-          .should("have.attr", "data-rows-count", "5");
+        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
 
-        H.getSimpleEmbedIframeContent()
-          .findAllByText("37.65")
-          .first()
-          .should("be.visible")
-          .click({ force: true });
         H.getSimpleEmbedIframeContent()
           .findByText(/Filter by this value/)
           .should("be.visible");
@@ -324,7 +326,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     it("should disable drill-through when drills is false", () => {
       H.createQuestion({
         name: "Limited Orders",
-        query: { "source-table": ORDERS_ID, limit: 5 },
+        query: { "source-table": ORDERS_ID, limit: LIMITED_ORDERS_ROW_COUNT },
       }).then(({ body: { id: questionId } }) => {
         H.visitCustomHtmlPage(`
         ${H.getNewEmbedScriptTag()}
@@ -334,16 +336,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
         cy.wait("@getCardQuery");
 
-        // Wait for the table to finish rendering before interacting,
-        // as column auto-sizing can cause re-renders that detach elements.
-        H.getSimpleEmbedIframeContent()
-          .findByTestId("table-root")
-          .should("have.attr", "data-rows-count", "5");
-
-        H.getSimpleEmbedIframeContent()
-          .findByText("37.65")
-          .should("be.visible")
-          .click({ force: true });
+        clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
 
         H.getSimpleEmbedIframeContent()
           .findByText(/Filter by this value/)
@@ -433,7 +426,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
 
   describe("<metabase-metabot>", () => {
     beforeEach(() => {
-      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+      H.setupAnthropicLlmProvider();
     });
 
     it("should handle scrolling gracefully (metabase#67399)", () => {
@@ -528,15 +521,14 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         }),
       )}`;
 
-      const metabotResponseWithNavigateTo = H.createMetabotSSEBody(
+      const metabotResponse = H.createMetabotSSEBody(
         H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
-        H.metabotDataPart("navigate_to", adHocQuestionPath),
       );
 
       it("should allow to save a new question", () => {
         H.mockMetabotResponse({
           statusCode: 200,
-          body: metabotResponseWithNavigateTo,
+          body: metabotResponse,
         });
 
         cy.intercept("POST", "http://localhost:4000/api/card").as("postCard");

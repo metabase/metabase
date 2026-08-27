@@ -66,17 +66,17 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
-  description: AI-generated summary of the conversation, when available.
-  display_name: Summary
+  description: AI-generated title of the conversation, when available.
+  display_name: Title
   effective_type: type/Text
   field_ref:
   - field
-  - [Internal Metabase Database, public, v_metabot_conversations, summary]
+  - [Internal Metabase Database, public, v_metabot_conversations, title]
   - null
   fk_target_field_id: null
-  id: [Internal Metabase Database, public, v_metabot_conversations, summary]
-  name: summary
-  semantic_type: type/Description
+  id: [Internal Metabase Database, public, v_metabot_conversations, title]
+  name: title
+  semantic_type: type/Title
   settings: null
   visibility_type: normal
 - base_type: type/Text

@@ -12,7 +12,6 @@ import {
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { useListModelIndexesQuery } from "metabase/api";
 import {
   ActionButton,
   type ActionButtonHandle,
@@ -74,6 +73,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
+
+import { useListModelIndexesQuery } from "../../api/model-index";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {
@@ -259,7 +260,13 @@ function getSidebar(
     );
   }
   if (isShowingDataReference) {
-    return <DataReference {...props} onClose={toggleDataReference} />;
+    return (
+      <DataReference
+        {...props}
+        databaseId={question.databaseId() ?? undefined}
+        onClose={toggleDataReference}
+      />
+    );
   }
   if (isShowingSnippetSidebar) {
     return <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />;

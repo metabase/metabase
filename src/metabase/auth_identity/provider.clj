@@ -58,6 +58,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -291,21 +292,37 @@
   [_provider login-result]
   login-result)
 
+(def ^:private authenticate-owned-keys
+  [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
+   :error :message :mfa/pending? :mfa/methods :mfa/first-factor
+   :jwt-data :claims
+   :tenant-slug :tenant-attributes :user-provisioning-enabled?])
+
 (methodical/defmethod login! :around ::provider
   [provider request]
-  (as-> (merge request (authenticate provider request)) $
-    (assoc $ :user
-           (or (when-let [user-id (:user-id $)]
-                 (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
-               (when-let [email (get-in $ [:user-data :email])]
-                 (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email)))))
+  (as-> (merge (apply dissoc request authenticate-owned-keys)
+               (authenticate provider request)) $
+    (cond-> $
+      (true? (:success? $))
+      (assoc :user
+             (or (when-let [user-id (:user-id $)]
+                   (if (pos-int? user-id)
+                     (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id)
+                     (log/errorf "Provider %s returned a non-positive-int :user-id (type %s); refusing to resolve a user."
+                                 provider (some-> user-id class .getName))))
+                 (when-let [email (get-in $ [:user-data :email])]
+                   (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email))))))
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
-    (next-method provider $)
+    ;; run the whole provisioning chain (tenant creation, user create/update, group sync) in one
+    ;; transaction: a failure partway through (e.g. a tenant-group assignment rejected because the
+    ;; user's tenant assignment was lost) must not leave a half-provisioned account behind (UXW-4898)
+    (t2/with-transaction [_]
+      (next-method provider $))
     (apply-mfa-gate provider $)
     (cond-> $
-      (and (:user $) (not (:mfa/pending? $))) (create-session! provider))
+      (and (true? (:success? $)) (:user $) (not (:mfa/pending? $))) (create-session! provider))
     (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims :oidc-provider-key
                     :mfa/pending? :mfa/methods :mfa/first-factor])))
 
@@ -330,7 +347,11 @@
                  [:provider-id {:optional true} [:maybe :string]]]
    provider :- :keyword]
   (t2/with-transaction [_]
-    (t2/update! :model/User user-id (select-keys user-data (conj (sso-user-fields) :is_active)))
+    (let [reactivating? (and (:is_active user-data)
+                             (not (t2/select-one-fn :is_active :model/User :id user-id)))]
+      (t2/update! :model/User user-id
+                  (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
+                    reactivating? (assoc :is_superuser false))))
     (when-not (t2/exists? :model/AuthIdentity :user_id user-id :provider (name provider))
       (t2/insert! :model/AuthIdentity (cond-> {:user_id user-id :provider (name provider)}
                                         (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
@@ -348,15 +369,24 @@
                  [:provider-id {:optional true} [:maybe :string]]
                  [:tenant_id {:optional true} [:maybe ms/PositiveInt]]]
    provider :- :keyword]
-  (t2/with-transaction [_]
-    (u/prog1
-      (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id]
-                                     (select-keys user-data (sso-user-fields)))
-      (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
-                                        (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
-      (notification/with-skip-sending-notification true
-        (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
-                                                                   :sso_source (name provider))})))))
+  (let [insert-fields (sso-user-fields)]
+    ;; The tenant flow upstream validated the tenant claim and stamped :tenant_id into user-data. If
+    ;; the field list would strip it here (e.g. a premium-feature check flapped mid-request, or the
+    ;; enterprise implementation isn't registered yet), inserting anyway would create a non-tenant
+    ;; user that can never log in with its tenant claim again (UXW-4898) — refuse instead
+    (when (and (:tenant_id user-data)
+               (not (some #{:tenant_id} insert-fields)))
+      (throw (ex-info "Unable to provision SSO user: tenant assignment could not be applied"
+                      {:status-code 500})))
+    (t2/with-transaction [_]
+      (u/prog1
+        (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id]
+                                       (select-keys user-data insert-fields))
+        (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
+                                          (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
+        (notification/with-skip-sending-notification true
+          (events/publish-event! :event/user-invited {:object (assoc (t2/select-one :model/User (:id <>))
+                                                                     :sso_source (name provider))}))))))
 
 (methodical/defmethod login! ::create-user-if-not-exists
   [provider request]

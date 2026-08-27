@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.sync :as data-app.sync]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -16,16 +17,17 @@
 
 (defn- snapshot
   [path->content & {:keys [sha] :or {sha fake-sha}}]
-  {:sha        sha
-   :list-files (fn [] (vec (keys path->content)))
-   :read-file  (fn [p] (get path->content p))})
+  {:sha       sha
+   :list-dir  (fn [dir] (source/paths->children (keys path->content) dir))
+   :read-file (fn [p] (get path->content p))})
 
 (defn- app-files
   "The repo files for one app in `data_apps/<dir>`. `dir` is the app's slug — the
    config declares no slug, it is the directory's name."
-  [dir {:keys [name path bundle]}]
+  [dir {:keys [name path bundle description]}]
   {(format "data_apps/%s/data_app.yaml" dir)
-   (format "name: %s\npath: %s\n" name path)
+   (str (format "name: %s\npath: %s\n" name path)
+        (when description (format "description: %s\n" description)))
    (format "data_apps/%s/%s" dir path) bundle})
 
 (deftest changed-count-tracks-content-not-sha-bumps-test
@@ -46,6 +48,41 @@
         (is (=? {:changed 1}
                 (data-app.sync/import-from-snapshot!
                  (snapshot (app-files "a" {:name "A renamed" :path "index.js" :bundle "V2"})))))))))
+
+(deftest description-is-optional-and-tracked-like-other-metadata-test
+  (mt/with-model-cleanup [:model/DataApp]
+    (let [sync-app (fn [& {:as app}]
+                     (data-app.sync/import-from-snapshot!
+                      (snapshot (app-files "a" (merge {:name "A" :path "index.js" :bundle "V1"} app)))))]
+      (testing "an app that declares no description syncs with a nil one"
+        (sync-app)
+        (is (nil? (t2/select-one-fn :description :model/DataApp :name "a"))))
+      (testing "adding one counts as a change and is materialized"
+        (is (=? {:changed 1} (sync-app :description "What this app does")))
+        (is (= "What this app does" (t2/select-one-fn :description :model/DataApp :name "a"))))
+      (testing "re-syncing the same description is not a change"
+        (is (=? {:changed 0} (sync-app :description "What this app does"))))
+      (testing "dropping it from the config clears the column"
+        (is (=? {:changed 1} (sync-app)))
+        (is (nil? (t2/select-one-fn :description :model/DataApp :name "a")))))))
+
+(deftest metadata-edits-count-while-an-app-keeps-failing-test
+  (testing "an app whose bundle is missing still stores metadata edits, so they count as changes"
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [sync-app (fn [& {:as app}]
+                       (data-app.sync/import-from-snapshot!
+                        (snapshot {"data_apps/a/data_app.yaml"
+                                   (str "name: A\npath: index.js\n"
+                                        (when-let [d (:description app)]
+                                          (format "description: %s\n" d)))})))]
+        (is (=? {:changed 1} (sync-app :description "First")) "the first failure is a change")
+        (is (some? (t2/select-one-fn :sync_error :model/DataApp :name "a")))
+        (testing "re-syncing the same failing app unchanged is not a change"
+          (is (=? {:changed 0} (sync-app :description "First"))))
+        (testing "editing the description is a change even though the bundle still fails"
+          (is (=? {:changed 1} (sync-app :description "Second")))
+          (is (= "Second" (t2/select-one-fn :description :model/DataApp :name "a"))
+              "the edit is stored, which is why the pull cannot report it as a no-op"))))))
 
 (deftest switching-repos-prunes-old-apps-overrides-shared-adds-new-test
   (testing "syncing a different repo: drop apps only the old repo had, override shared slugs, add new ones"
@@ -149,10 +186,9 @@
 (deftest an-unreadable-config-is-a-config-error-test
   (testing "a data_app.yaml the snapshot lists but can't read is isolated as a config-error, not a crash"
     (mt/with-model-cleanup [:model/DataApp]
+      ;; the config is listed in the tree, but reading its blob yields nothing
       (let [result (data-app.sync/import-from-snapshot!
-                    {:sha        fake-sha
-                     :list-files (fn [] ["data_apps/ghost/data_app.yaml"])
-                     :read-file  (fn [_] nil)})]
+                    (snapshot {"data_apps/ghost/data_app.yaml" nil}))]
         (is (= 1 (count (:config-errors result))))
         (is (str/includes? (first (:config-errors result)) "data_apps/ghost/data_app.yaml"))
         (is (empty? (t2/select-fn-set :name :model/DataApp)))))))

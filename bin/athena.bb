@@ -107,11 +107,11 @@
   [artifact-id version]
   (let [pom-name (pom-file-name artifact-id version)
         xml      (x/element :project {}
-                             (x/element :modelVersion {} "4.0.0")
-                             (x/element :groupId {} "com.metabase")
-                             (x/element :artifactId {} artifact-id)
-                             (x/element :version {} version)
-                             (x/element :packaging {} "jar"))]
+                            (x/element :modelVersion {} "4.0.0")
+                            (x/element :groupId {} "com.metabase")
+                            (x/element :artifactId {} artifact-id)
+                            (x/element :version {} version)
+                            (x/element :packaging {} "jar"))]
     (println "pom =>" pom-name)
     (with-open [w (io/writer pom-name)]
       (x/emit xml w))

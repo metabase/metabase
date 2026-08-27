@@ -93,7 +93,6 @@
               (lib.metadata.calculation/returned-columns mbql5-query))))))
 
 (deftest ^:synchronized with-temp-source-question-metadata-test
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (mt/with-temp [:model/Card card {:dataset_query
                                    (mt/mbql-query venues
                                      {:joins
@@ -184,7 +183,6 @@
              (mt/id :venues :id))))))
 
 (deftest ^:synchronized persisted-info-metadata-test
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (mt/with-temp [:model/Card          {card-id :id} {:dataset_query {:database (mt/id)
                                                                      :type     :query
                                                                      :query    {:source-table (mt/id :venues)}}}

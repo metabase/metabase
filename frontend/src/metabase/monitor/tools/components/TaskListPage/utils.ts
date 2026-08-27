@@ -2,15 +2,34 @@ import {
   type QueryParam,
   type UrlStateConfig,
   getFirstParamValue,
+  parsePage,
+  parseSortColumn,
+  parseSortDirection,
 } from "metabase/common/hooks/use-url-state";
 import type {
   ListTasksSortColumn,
   SortDirection,
+  SortingOptions,
   TaskStatus,
 } from "metabase-types/api";
 
+export const TASK_SORT_COLUMNS = [
+  "started_at",
+  "ended_at",
+  "duration",
+  "task",
+  "status",
+  "db_name",
+  "db_engine",
+] satisfies readonly ListTasksSortColumn[];
+
 const DEFAULT_SORT_COLUMN: ListTasksSortColumn = "started_at";
 const DEFAULT_SORT_DIRECTION = "desc";
+
+export const DEFAULT_SORTING: SortingOptions<ListTasksSortColumn> = {
+  sort_column: DEFAULT_SORT_COLUMN,
+  sort_direction: DEFAULT_SORT_DIRECTION,
+};
 
 type UrlState = {
   page: number;
@@ -23,8 +42,15 @@ type UrlState = {
 export const urlStateConfig: UrlStateConfig<UrlState> = {
   parse: (query) => ({
     page: parsePage(query.page),
-    sort_column: parseSortColumn(query.sort_column),
-    sort_direction: parseSortDirection(query.sort_direction),
+    sort_column: parseSortColumn(
+      query.sort_column,
+      TASK_SORT_COLUMNS,
+      DEFAULT_SORT_COLUMN,
+    ),
+    sort_direction: parseSortDirection(
+      query.sort_direction,
+      DEFAULT_SORT_DIRECTION,
+    ),
     status: parseStatus(query.status),
     task: parseTask(query.task),
   }),
@@ -37,26 +63,6 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     task: task === null ? undefined : task,
   }),
 };
-
-function parsePage(param: QueryParam): UrlState["page"] {
-  const value = getFirstParamValue(param);
-  const parsed = parseInt(value || "0", 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-}
-
-function parseSortColumn(param: QueryParam): UrlState["sort_column"] {
-  const value = getFirstParamValue(param);
-  return value && isSortColumn(value) ? value : DEFAULT_SORT_COLUMN;
-}
-
-function isSortColumn(value: string): value is ListTasksSortColumn {
-  return ["started_at", "ended_at", "duration"].includes(value);
-}
-
-function parseSortDirection(param: QueryParam): UrlState["sort_direction"] {
-  const value = getFirstParamValue(param);
-  return value === "asc" ? "asc" : DEFAULT_SORT_DIRECTION;
-}
 
 function parseStatus(param: QueryParam): UrlState["status"] {
   const value = getFirstParamValue(param);

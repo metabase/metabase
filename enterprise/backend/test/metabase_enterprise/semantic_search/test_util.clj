@@ -17,9 +17,11 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.search.config :as search.config]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
+   [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -35,8 +37,12 @@
 
 ;; Purpose of this fixure is to block running tests if db-url is not set. That's true for enterprise app-db tests in CI.
 (defn once-fixture
+  "Shared `:once` fixture for semantic-search tests. Skips the namespace when no pgvector URL is configured, and
+  initializes the application DB so tests that read Metabase content (e.g. `collection`) while indexing are
+  self-sufficient rather than depending on a CI partition-mate to have set the app DB up."
   [f]
   (when semantic.db.datasource/db-url
+    (initialize/initialize-if-needed! :db)
     (f)))
 
 (def default-test-db "my_test_db")
@@ -278,10 +284,18 @@
 
 ;;;; mock provider
 
+(defn resolved-mock-embedding-model
+  "Build a self-consistent resolved descriptor for a mock model variant."
+  [& {:as overrides}]
+  (-> (merge {:provider          "mock"
+              :model-name        "model"
+              :vector-dimensions 4}
+             overrides)
+      embeddings.provider/legacy-resolved-model
+      (assoc :embedding-spi-version embeddings.provider/embedding-spi-version)))
+
 (def mock-embedding-model
-  {:provider          "mock"
-   :model-name        "model"
-   :vector-dimensions 4})
+  (resolved-mock-embedding-model))
 
 (def mock-index-metadata
   "An index metadata to qualify and isolate mock indexes"
@@ -306,15 +320,16 @@
 (def mock-index
   "A mock index for testing low level indexing functions.
   Coincides with what the index-metadata system would create for the mock-embedding-model."
-  (with-redefs [semantic.index/model-table-suffix mock-table-suffix]
+  (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix mock-table-suffix]
     (-> (semantic.index/default-index mock-embedding-model)
         (semantic.index-metadata/qualify-index mock-index-metadata))))
 
-;; NOTE: opts are currently unused in following mock implementations
-(defmethod semantic.embedding/get-embedding        "mock" [_ text & {:as _opts}] (get-mock-embedding text))
-(defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts & {:as _opts}] (get-mock-embeddings-batch texts))
-(defmethod semantic.embedding/pull-model           "mock" [_])
-(defmethod semantic.embedding/embedding-supported? "mock" [_] true)
+(embeddings.provider/register-provider!
+ "mock"
+ {:embedding-spi-version embeddings.provider/embedding-spi-version
+  :readiness             (constantly {:ready? true})
+  :resolve-model         embeddings.provider/legacy-resolved-model
+  :embed-texts           (fn [_ texts _opts] (get-mock-embeddings-batch texts))})
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn query-index [search-context]
@@ -619,7 +634,7 @@
                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     (or (:count result) 0)))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn full-index
   "Query the full index table and return all documents with decoded embeddings.
   Not used in tests, but useful for debugging."

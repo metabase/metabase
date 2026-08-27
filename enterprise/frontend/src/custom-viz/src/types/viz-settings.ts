@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 
-import type { Column, Series } from "./data";
+import type { Column, ColumnVisualizationSettings, Series } from "./data";
 import type { BaseWidgetProps, ClickBehavior } from "./viz";
 
 export type WidgetName = keyof Widgets;
@@ -130,13 +130,40 @@ type CommonVisualizationSettings = {
   "card.description"?: string | undefined | null;
   "card.hide_empty"?: boolean | undefined | null;
   click_behavior?: ClickBehavior | undefined;
+
+  /**
+   * Resolves a column's effective formatting settings: instance-wide
+   * defaults, the column's metadata settings, and the card-level settings
+   * from the column formatting popover, merged in that order. Pass the
+   * result to `formatValue`.
+   */
+  column?: (column: Column) => ColumnVisualizationSettings;
+
+  /**
+   * It's there, but it's intentionally excluded in types, since we don't expose
+   * the API to compute keys in this object (see getColumnSettings).
+   * If we wanted to actually strip it out, there would be a performance penalty.
+   * Consumers should use column() instead.
+   */
+  // column_settings?: Record<string, ColumnVisualizationSettings>;
+};
+
+/**
+ * Setting ids contributed to every custom visualization by the host (they
+ * power the built-in per-column formatting popover).
+ */
+export type ReservedVisualizationSettingId = "column" | "column_settings";
+
+export type BaseVisualizationSettings = Record<string, unknown> & {
+  [K in ReservedVisualizationSettingId]?: `${K} is a reserved setting id added by Metabase; remove it
+  from your Settings type`;
 };
 
 export type CustomVisualizationSettings<
-  TSettings extends Record<string, unknown>,
+  TSettings extends BaseVisualizationSettings,
 > = TSettings & CommonVisualizationSettings;
 
-export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
+export type CreateDefineSetting<TSettings extends BaseVisualizationSettings> =
   () => <
     W extends WidgetName | ComponentType<any>,
     Key extends keyof TSettings,

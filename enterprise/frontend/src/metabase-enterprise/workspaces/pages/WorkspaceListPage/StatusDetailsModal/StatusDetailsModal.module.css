@@ -1,5 +1,0 @@
-.codeContainer {
-  border: var(--border-size) var(--border-style) var(--mb-color-border-neutral);
-  border-radius: var(--default-border-radius);
-  overflow: hidden;
-}

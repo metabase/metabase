@@ -15,12 +15,12 @@ import {
   useListUserAttributesQuery,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
+import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSetting } from "metabase/settings";
 import {
   Alert,
   Box,
@@ -167,8 +167,8 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
           <Alert
+            size="compact"
             variant="light"
-            color="info"
             icon={<Icon name="info" />}
             mb="md"
           >
@@ -183,8 +183,8 @@ export const DatabaseRoutingSection = ({
 
           {hasDbRoutingEnabled(database) && (
             <Alert
+              size="compact"
               variant="light"
-              color="info"
               icon={<Icon name="info" />}
               mb="md"
             >

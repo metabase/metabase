@@ -1,6 +1,5 @@
 import type { Tag } from "./types";
 import {
-  filterOutNonSupportedPrereleaseIdentifier,
   findNextMinorVersion,
   findNextPatchVersion,
   getBuildRequirements,
@@ -14,11 +13,9 @@ import {
   getMajorVersionNumberFromReleaseBranch,
   getMilestoneName,
   getMinorVersion,
-  getNextSdkVersion,
   getNextVersions,
   getOSSVersion,
   getReleaseBranch,
-  getSdkVersionFromReleaseTagName,
   getVersionFromReleaseBranch,
   getVersionType,
   isEnterpriseVersion,
@@ -26,6 +23,14 @@ import {
   isValidVersionString,
   versionSort,
 } from "./version-helpers";
+import { isLtsVersion } from "./version-info";
+
+jest.mock("./version-info", () => ({
+  __esModule: true,
+  isLtsVersion: jest.fn().mockResolvedValue(false),
+}));
+
+const mockIsLtsVersion = jest.mocked(isLtsVersion);
 
 describe("version-helpers", () => {
   describe("isValidVersionString", () => {
@@ -729,19 +734,6 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("getSdkVersionFromReleaseTagName", () => {
-    it("should resolve sdk package version from assigned release tag", () => {
-      expect(getSdkVersionFromReleaseTagName("embedding-sdk-0.51.9")).toEqual(
-        "0.51.9",
-      );
-      expect(
-        getSdkVersionFromReleaseTagName("embedding-sdk-0.52.2-nightly"),
-      ).toEqual("0.52.2-nightly");
-
-      expect(() => getSdkVersionFromReleaseTagName("v0.51.5.1")).toThrow();
-    });
-  });
-
   describe("getDotXs", () => {
     it("should return the correct major dot Xs", () => {
       expect(getDotXs("v1.75.0", 1)).toEqual("v1.75.x");
@@ -766,43 +758,32 @@ describe("version-helpers", () => {
   });
 
   describe("getExtraTagsForVersion", () => {
-    it("should return the correct extra tags for a major version", () => {
-      expect(getExtraTagsForVersion({ version: "v1.75.0" })).toEqual([
+    beforeEach(() => {
+      mockIsLtsVersion.mockReset();
+      mockIsLtsVersion.mockResolvedValue(false);
+    });
+
+    it("should return the correct extra tags for a major version", async () => {
+      expect(await getExtraTagsForVersion({ version: "v1.75.0" })).toEqual([
         "v0.75.x",
         "v1.75.x",
       ]);
 
-      expect(getExtraTagsForVersion({ version: "v0.75.0" })).toEqual([
+      expect(await getExtraTagsForVersion({ version: "v0.75.0" })).toEqual([
         "v0.75.x",
         "v1.75.x",
       ]);
     });
 
-    it("should return the correct extra tags for a minor version", () => {
-      expect(getExtraTagsForVersion({ version: "v1.75.1" })).toEqual([
+    it("should return the correct extra tags for a minor version", async () => {
+      expect(await getExtraTagsForVersion({ version: "v1.75.1" })).toEqual([
         "v0.75.x",
         "v1.75.x",
         "v0.75.1.x",
         "v1.75.1.x",
       ]);
 
-      expect(getExtraTagsForVersion({ version: "v0.75.1" })).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-        "v0.75.1.x",
-        "v1.75.1.x",
-      ]);
-    });
-
-    it("should return the correct extra tags for a patch version", () => {
-      expect(getExtraTagsForVersion({ version: "v1.75.1.3" })).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-        "v0.75.1.x",
-        "v1.75.1.x",
-      ]);
-
-      expect(getExtraTagsForVersion({ version: "v0.75.1.3" })).toEqual([
+      expect(await getExtraTagsForVersion({ version: "v0.75.1" })).toEqual([
         "v0.75.x",
         "v1.75.x",
         "v0.75.1.x",
@@ -810,20 +791,15 @@ describe("version-helpers", () => {
       ]);
     });
 
-    it("should return the correct extra tags for a beta version", () => {
-      expect(getExtraTagsForVersion({ version: "v1.75.0-beta" })).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-      ]);
-
-      expect(getExtraTagsForVersion({ version: "v1.75.1-beta" })).toEqual([
+    it("should return the correct extra tags for a patch version", async () => {
+      expect(await getExtraTagsForVersion({ version: "v1.75.1.3" })).toEqual([
         "v0.75.x",
         "v1.75.x",
         "v0.75.1.x",
         "v1.75.1.x",
       ]);
 
-      expect(getExtraTagsForVersion({ version: "v0.75.1.2-beta" })).toEqual([
+      expect(await getExtraTagsForVersion({ version: "v0.75.1.3" })).toEqual([
         "v0.75.x",
         "v1.75.x",
         "v0.75.1.x",
@@ -831,59 +807,92 @@ describe("version-helpers", () => {
       ]);
     });
 
-    it("should add latest tag when version major matches latestMajorVersion", () => {
+    it("should return the correct extra tags for a beta version", async () => {
+      expect(await getExtraTagsForVersion({ version: "v1.75.0-beta" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+      ]);
+
+      expect(await getExtraTagsForVersion({ version: "v1.75.1-beta" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75.1.x",
+        "v1.75.1.x",
+      ]);
+
       expect(
-        getExtraTagsForVersion({ version: "v0.58.1", latestMajorVersion: "58" }),
+        await getExtraTagsForVersion({ version: "v0.75.1.2-beta" }),
+      ).toEqual(["v0.75.x", "v1.75.x", "v0.75.1.x", "v1.75.1.x"]);
+    });
+
+    it("should add latest tag when version major matches latestMajorVersion", async () => {
+      expect(
+        await getExtraTagsForVersion({
+          version: "v0.58.1",
+          latestMajorVersion: "58",
+        }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
 
       expect(
-        getExtraTagsForVersion({ version: "v1.58.2", latestMajorVersion: "58" }),
+        await getExtraTagsForVersion({
+          version: "v1.58.2",
+          latestMajorVersion: "58",
+        }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.2.x", "v1.58.2.x", "latest"]);
     });
 
-    it("should add latest tag for major versions when major matches latestMajorVersion", () => {
+    it("should add latest tag for major versions when major matches latestMajorVersion", async () => {
       expect(
-        getExtraTagsForVersion({ version: "v0.58.0", latestMajorVersion: "58" }),
+        await getExtraTagsForVersion({
+          version: "v0.58.0",
+          latestMajorVersion: "58",
+        }),
       ).toEqual(["v0.58.x", "v1.58.x", "latest"]);
     });
 
-    it("should add latest tag for patch versions when major matches latestMajorVersion", () => {
+    it("should add latest tag for patch versions when major matches latestMajorVersion", async () => {
       expect(
-        getExtraTagsForVersion({
+        await getExtraTagsForVersion({
           version: "v0.58.1.3",
           latestMajorVersion: "58",
         }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
     });
 
-    it("should NOT add latest tag when version major does not match latestMajorVersion", () => {
+    it("should NOT add latest tag when version major does not match latestMajorVersion", async () => {
       expect(
-        getExtraTagsForVersion({ version: "v0.57.5", latestMajorVersion: "58" }),
+        await getExtraTagsForVersion({
+          version: "v0.57.5",
+          latestMajorVersion: "58",
+        }),
       ).toEqual(["v0.57.x", "v1.57.x", "v0.57.5.x", "v1.57.5.x"]);
 
       expect(
-        getExtraTagsForVersion({ version: "v0.59.0", latestMajorVersion: "58" }),
+        await getExtraTagsForVersion({
+          version: "v0.59.0",
+          latestMajorVersion: "58",
+        }),
       ).toEqual(["v0.59.x", "v1.59.x"]);
     });
 
-    it("should add latest tag for pre-release versions when major matches", () => {
+    it("should add latest tag for pre-release versions when major matches", async () => {
       expect(
-        getExtraTagsForVersion({
+        await getExtraTagsForVersion({
           version: "v0.58.1-rc1",
           latestMajorVersion: "58",
         }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
 
       expect(
-        getExtraTagsForVersion({
+        await getExtraTagsForVersion({
           version: "v0.58.0-beta",
           latestMajorVersion: "58",
         }),
       ).toEqual(["v0.58.x", "v1.58.x", "latest"]);
     });
 
-    it("should NOT add latest tag when latestMajorVersion is not provided", () => {
-      expect(getExtraTagsForVersion({ version: "v0.58.1" })).toEqual([
+    it("should NOT add latest tag when latestMajorVersion is not provided", async () => {
+      expect(await getExtraTagsForVersion({ version: "v0.58.1" })).toEqual([
         "v0.58.x",
         "v1.58.x",
         "v0.58.1.x",
@@ -891,30 +900,22 @@ describe("version-helpers", () => {
       ]);
 
       expect(
-        getExtraTagsForVersion({ version: "v0.58.1", latestMajorVersion: "" }),
+        await getExtraTagsForVersion({
+          version: "v0.58.1",
+          latestMajorVersion: "",
+        }),
       ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x"]);
     });
-  });
 
-  describe("filterOutNonSupportedPrereleaseIdentifier", () => {
-    function createTags(versions: string[]): Tag[] {
-      return versions.map(
-        (tag) => ({ ref: `refs/tags/embedding-sdk-${tag}` }) as Tag,
-      );
-    }
+    it("should append a <major>-lts tag when isLtsVersion is true", async () => {
+      mockIsLtsVersion.mockResolvedValue(true);
 
-    it("should ignore prerelease labels that are not `nightly` when passing refs", () => {
-      const filteredTags = createTags([
-        "0.55.0",
-        "0.55.0-nightly",
-        "0.55.0-rc1",
-        "0.55.0-rc2",
-        "0.55.0-beta",
-        "0.55.0-alpha",
-        "0.55.5-metabot",
-      ]).filter(filterOutNonSupportedPrereleaseIdentifier);
-
-      expect(filteredTags).toEqual(createTags(["0.55.0", "0.55.0-nightly"]));
+      expect(await getExtraTagsForVersion({ version: "v0.75.0" })).toEqual([
+        "v0.75.x",
+        "v1.75.x",
+        "v0.75-lts",
+        "v1.75-lts",
+      ]);
     });
   });
 
@@ -938,78 +939,4 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("getNextSdkVersion", () => {
-    describe("master branch (pre-release versions)", () => {
-      it("should increment pre-release version if suffix exists", () => {
-        const result = getNextSdkVersion("master", "0.57.0-alpha.1");
-        expect(result).toEqual({
-          version: "0.57.0-alpha.2",
-          preReleaseLabel: "alpha",
-          majorVersion: "57",
-        });
-      });
-
-      it("should set next pre-release version to .1 if no numeric part in suffix", () => {
-        const result = getNextSdkVersion("master", "0.57.0-alpha");
-        expect(result).toEqual({
-          version: "0.57.0-alpha.0",
-          preReleaseLabel: "alpha",
-          majorVersion: "57",
-        });
-      });
-
-      it("should throw an error if no suffix is provided on master branch", () => {
-        expect(() => getNextSdkVersion("master", "0.57.0")).toThrow(
-          "Expected pre-release suffix on master branch, got: 0.57.0",
-        );
-      });
-    });
-
-    describe("release/stable branches (non-master)", () => {
-      it("should increment patch version when no suffix", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.0");
-        expect(result).toEqual({
-          version: "0.57.1",
-          preReleaseLabel: "",
-          majorVersion: "57",
-        });
-      });
-
-      it("should set proper initial patch version for a next major release", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.x");
-        expect(result).toEqual({
-          version: "0.57.0",
-          preReleaseLabel: "",
-          majorVersion: "57",
-        });
-      });
-
-      it("should set initial pre-release version when suffix is preset, but pre-release version is not", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.0-beta");
-        expect(result).toEqual({
-          version: "0.57.0-beta.0",
-          preReleaseLabel: "",
-          majorVersion: "57",
-        });
-      });
-
-      it("should set proper initial patch version when pre-release suffix is preset", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.x-beta");
-        expect(result).toEqual({
-          version: "0.57.0-beta.0",
-          preReleaseLabel: "",
-          majorVersion: "57",
-        });
-      });
-
-      it("should increment pre-release version", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.0-beta.0");
-        expect(result).toEqual({
-          version: "0.57.0-beta.1",
-          preReleaseLabel: "",
-          majorVersion: "57",
-        });
-      });
-    });
-  });
 });

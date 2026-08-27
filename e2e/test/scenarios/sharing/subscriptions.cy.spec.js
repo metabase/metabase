@@ -51,7 +51,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       openDashboardSubscriptions();
 
       // The sidebar starts open after the method there, so test that clicking the icon closes it
-      H.openDashboardMenu("Subscriptions");
+      H.toggleDashboardSubscriptionsSidebar();
       H.sidebar().should("not.exist");
     });
   });
@@ -129,6 +129,19 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByText("Emailed hourly");
       });
 
+      it("should still send a one-off email after the frequency change clears the time", () => {
+        assignRecipient();
+
+        cy.findByTestId("select-frequency").click();
+        H.popover().findByText("weekly").click();
+
+        H.sidebar().button("Done").should("be.disabled");
+        H.sidebar().button("Send email now").should("be.enabled");
+
+        H.clickSend();
+        H.getInbox(1).its("body").should("have.length", 1);
+      });
+
       it("should not add a recipient when Escape is pressed (metabase#24629)", () => {
         openDashboardSubscriptions(ORDERS_DASHBOARD_ID);
 
@@ -154,20 +167,6 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         H.popover().isRenderedWithinViewport();
       });
-
-      it(
-        "should not send attachments by default if not explicitly selected (metabase#28673)",
-        { tags: "@skip" },
-        () => {
-          openDashboardSubscriptions();
-          assignRecipient();
-
-          cy.findByLabelText("Attach results").should("not.be.checked");
-          H.sendEmailAndAssert(
-            ({ attachments }) => expect(attachments).to.be.empty,
-          );
-        },
-      );
     });
 
     describe("with existing subscriptions", () => {
@@ -358,10 +357,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
       cy.reload();
 
-      H.dashboardHeader()
-        .findByLabelText("[zz] Move, trash, and more…")
-        .click();
-      H.popover().findByText("[zz] Subscriptions").click();
+      H.toggleDashboardSubscriptionsSidebar();
       H.sidebar()
         .findByText(/\[zz\] hourly/)
         .click();
@@ -412,6 +408,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByTestId("select-frame").click();
       H.popover().findByText("first").click();
 
+      H.selectScheduleTime();
       clickButton("Done");
       // Implicit assertion (word mustn't contain string "null")
       H.sidebar().findByText(/^Emailed monthly on the first (?!null)/);
@@ -597,8 +594,8 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should allow non-admin users to create subscriptions", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openDashboardMenu();
-      H.popover().findByText("Subscriptions").should("be.visible");
+      H.toggleDashboardSubscriptionsSidebar();
+      H.sidebar().should("be.visible");
     });
 
     it("should persist the immutable Slack channel_id alongside the channel name", () => {
@@ -775,7 +772,11 @@ describe("scenarios > dashboard > subscriptions", () => {
 
       cy.get(".container").within(() => {
         cy.findByText("Total Orders");
-        cy.findAllByText("18,760").should("have.length", 2);
+        // the scalar counts all orders, but the body-only Orders table is
+        // capped at the 2,000-row display limit so its truncation note no
+        // longer says 18,760 (GDGT-2773)
+        cy.findAllByText("18,760").should("have.length", 1);
+        cy.findByText("2,000");
       });
     });
 
@@ -905,7 +906,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
         H.openSharingMenu();
-        H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
+        H.sharingMenu().findByRole("button", { name: "Embed" }).click();
         cy.findByLabelText("Metabase account (SSO)").click();
         embedModalEnableEmbedding();
         cy.findByLabelText("Allow subscriptions").check().should("be.checked");
@@ -931,7 +932,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = ORDERS_DASHBOARD_ID) {
   // Orders in a dashboard
   H.visitDashboard(dashboard_id);
-  H.openDashboardMenu("Subscriptions");
+  H.toggleDashboardSubscriptionsSidebar();
 }
 
 function assignRecipient({

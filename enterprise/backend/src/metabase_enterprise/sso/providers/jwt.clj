@@ -122,12 +122,12 @@
          :jwt-data jwt-data
          :provider-id email})
       (catch clojure.lang.ExceptionInfo e
-        (log/errorf e "JWT authentication failed: %s" (.getMessage e))
+        (log/errorf "JWT authentication failed: %s" (.getMessage e))
         {:success? false
          :error (or (:error (ex-data e)) :authentication-failed)
          :message (.getMessage e)})
       (catch Exception e
-        (log/errorf e "Unexpected error during JWT authentication: %s" (.getMessage e))
+        (log/errorf "Unexpected error during JWT authentication: %s" (.getMessage e))
         {:success? false
          :error :server-error
          :message "An unexpected error occurred during authentication"}))))
@@ -161,7 +161,9 @@
   [group-names]
   (if-let [name-mappings (not-empty (sso-settings/jwt-group-mappings))]
     (sso-utils/group-names->ids group-names name-mappings)
-    (t2/select-pks-set :model/PermissionsGroup :name [:in group-names])))
+    (let [names (into #{} (sso-utils/group-names->strings group-names))]
+      (when (seq names)
+        (t2/select-pks-set :model/PermissionsGroup :name [:in names])))))
 
 (methodical/defmethod auth-identity/login! :after :provider/jwt
   "Sync JWT group memberships after successful login.

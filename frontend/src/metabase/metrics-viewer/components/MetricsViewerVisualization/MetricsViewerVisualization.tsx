@@ -15,6 +15,7 @@ import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/Met
 import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
 import { Center, Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { OnBrush } from "metabase/visualizations/types";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type { CardId } from "metabase-types/api";
 
@@ -23,7 +24,7 @@ import { useMetricsViewerContext } from "../../context";
 import S from "./MetricsViewerVisualization.module.css";
 
 type MetricsViewerVisualizationProps = {
-  onBrush?: (range: { start: number; end: number }) => void;
+  onBrush?: OnBrush;
   chartColumnLabelsByEntityIndex?: Map<number, DimensionPillBarItem>;
 };
 

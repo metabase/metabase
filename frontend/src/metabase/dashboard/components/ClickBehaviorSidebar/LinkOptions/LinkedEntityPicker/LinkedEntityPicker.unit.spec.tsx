@@ -68,7 +68,7 @@ const collectionInRootCollectionItem = createMockCollectionItem({
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
-  id: CURRENT_USER.personal_collection_id,
+  id: CURRENT_USER.personal_collection_id ?? undefined,
   name: "Personal collection",
   can_write: true,
   is_personal: true,

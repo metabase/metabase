@@ -4,16 +4,16 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import {
-  useDeleteSuggestedMetabotPromptMutation,
-  useGetSuggestedMetabotPromptsQuery,
-  useRegenerateSuggestedMetabotPromptsMutation,
-} from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { Table } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import {
+  useDeleteSuggestedMetabotPromptMutation,
+  useGetSuggestedMetabotPromptsQuery,
+  useRegenerateSuggestedMetabotPromptsMutation,
+} from "metabase/metabot";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
   ActionIcon,

@@ -60,13 +60,20 @@
         (if (= 200 (:status response))
           (oidc.common/parse-token-response (:body response))
           (do
-            (log/errorf "Token exchange failed: %s" (:body response))
+            (log/errorf "Token exchange failed with status %s" (:status response))
             nil)))
       (catch Exception e
-        (log/error e "Token exchange failed")
+        (log/errorf "Token exchange failed: %s" (ex-message e))
         nil))))
 
 ;;; -------------------------------------------------- User Data Extraction --------------------------------------------------
+
+(defn- verified-email-claim?
+  "Check the id-token `email_verified` claim (OIDC Core §5.1). A token that explicitly marks the email as
+   unverified is rejected; a missing claim is accepted since the claim is optional."
+  [claims]
+  (let [verified (:email_verified claims)]
+    (or (nil? verified) (true? verified) (= verified "true"))))
 
 (defn- extract-user-data
   "Extract user data from ID token claims.
@@ -137,16 +144,20 @@
                    :error :invalid-token
                    :message (:error validation-result)}
                   ;; Extract user data from claims
-                  (let [claims (:claims validation-result)
-                        user-data (extract-user-data claims config)]
-                    (if-not user-data
+                  (let [claims (:claims validation-result)]
+                    (if-not (verified-email-claim? claims)
                       {:success? false
-                       :error :user-data-extraction-failed
-                       :message "Failed to extract user email from token"}
-                      {:success? true
-                       :claims claims
-                       :user-data user-data
-                       :provider-id (:provider-id user-data)}))))))))
+                       :error :email-not-verified
+                       :message "Email address is not verified by the identity provider"}
+                      (let [user-data (extract-user-data claims config)]
+                        (if-not user-data
+                          {:success? false
+                           :error :user-data-extraction-failed
+                           :message "Failed to extract user email from token"}
+                          {:success? true
+                           :claims claims
+                           :user-data user-data
+                           :provider-id (:provider-id user-data)}))))))))))
 
       ;; Initiate authorization flow
       :else

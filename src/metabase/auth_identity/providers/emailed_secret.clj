@@ -2,6 +2,7 @@
   "Provider for emailed secret tokens (password reset, email verification, magic links)."
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
@@ -172,7 +173,7 @@
          :error :invalid-token
          :message "Invalid token format"})
       (catch Exception e
-        (log/error e "Unexpected error during reset token verification")
+        (log/errorf "Unexpected error during reset token verification: %s" (ex-message e))
         {:success? false
          :error :server-error
          :message "An unexpected error occurred during token verification"}))))
@@ -182,16 +183,12 @@
 
   After a successful password reset authentication, this method:
   - Publishes a password reset event or sends admin notification (for new users)
-  - Marks the reset token as consumed in the [[AuthIdentity]]
-  - Updates the user's password
-
-  All operations are performed within a transaction to ensure consistency."
-  [_provider {:keys [user password auth-identity] :as result}]
+  - Updates the user's password, which also removes the now-used reset token (see
+    [[metabase.auth-identity.core/set-password!]])."
+  [_provider {:keys [user password] :as result}]
   (when (:success? result)
     (if (:last_login user)
-      (events/publish-event! :event/password-reset-successful {:object (assoc user :token (t2/select-one-fn :reset_token :model/User (:id user)))})
+      (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})
       (messages/send-user-joined-admin-notification-email! (t2/select-one :model/User (:id user))))
-    (t2/with-transaction [_]
-      (t2/update! :model/AuthIdentity (:id auth-identity) (mark-token-consumed auth-identity))
-      (t2/update! :model/User (:id user) {:password password})))
+    (auth-identity/set-password! (:id user) password))
   result)

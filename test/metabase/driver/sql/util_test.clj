@@ -7,7 +7,7 @@
    [metabase.util.honey-sql-2 :as h2x]))
 
 ;;; Ok to hardcode driver names here because it's for a general util function and not something that needs to be run
-;;; against all supported drivers
+;;; against all supported drivers [kondo-keep]
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel quote-name-test
   (are [driver expected] (= expected
@@ -88,9 +88,20 @@
         (is (= expected
                (sql.u/escape-sql s escape-strategy)))))))
 
+(deftest ^:parallel quote-literal-test
+  (testing "wraps in single quotes and escapes, defaulting to :ansi"
+    (is (= "'Tito''s Tacos'"
+           (sql.u/quote-literal "Tito's Tacos" :ansi))))
+  (testing ":backslashes escape style"
+    (is (= "'Tito\\'s Tacos'"
+           (sql.u/quote-literal "Tito's Tacos" :backslashes))))
+  (testing "empty string"
+    (is (= "''" (sql.u/quote-literal "" :ansi)))))
+
 ;;; Ok to hardcode driver names in the tests below because they're for general util functions and not something that
 ;;; needs to be run against all supported drivers
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel format-sql-with-params-test
   (testing "Baseline: format-sql expands metabase params, which is not desired."
@@ -99,6 +110,7 @@
     (is (= "SELECT\n  *\nFROM\n  { { #1234}}"
            (sql.u/format-sql :mysql "SELECT * FROM {{#1234}}")))))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel format-sql-with-params-test-2
   (testing "A compact representation should remain compact (and inner spaces removed, if any)."
@@ -107,6 +119,7 @@
     (is (= "SELECT\n  *\nFROM\n  {{#1234}}"
            (sql.u/format-sql-and-fix-params :postgres "SELECT * FROM {{#1234}}")))))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel format-sql-with-params-test-3
   (testing "Symbolic params should also have spaces removed."
@@ -115,6 +128,7 @@
     (is (= "SELECT\n  *\nFROM\n  {{FOO_BAR}}"
            (sql.u/format-sql-and-fix-params :postgres "SELECT * FROM {{ FOO_BAR }}")))))
 
+;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel format-sql-with-params-test-4
   (testing "Dialect-specific versions should work"

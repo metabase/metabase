@@ -73,8 +73,8 @@
             {:keys [state error]} (try
                                     (refresh! refresher database definition card)
                                     (catch Exception e
-                                      (log/infof e "Error refreshing persisting model with card-id %s"
-                                                 (:card_id persisted-info))
+                                      (log/infof "Error refreshing persisting model with card-id %s: %s"
+                                                 (:card_id persisted-info) (ex-message e))
                                       {:state :error :error (ex-message e)}))]
         (t2/update! :model/PersistedInfo (u/the-id persisted-info)
                     {:active          (= state :success),
@@ -108,7 +108,7 @@
                               :persisted-infos persisted-infos
                               :trigger         (:trigger task-details)}))
     (catch Exception e
-      (log/error e "Error sending persist refresh email"))))
+      (log/errorf "Error sending persist refresh email: %s" (ex-message e)))))
 
 (defn- save-task-history!
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,
@@ -148,7 +148,7 @@
                                                (t2/delete! :model/PersistedInfo :id (:id persisted-info)))
                                              (update stats :success inc)
                                              (catch Exception e
-                                               (log/infof e "Error unpersisting model with card-id %s" (:card_id persisted-info))
+                                               (log/infof "Error unpersisting model with card-id %s: %s" (:card_id persisted-info) (ex-message e))
                                                (update stats :error inc)))))
                                        (update stats :skipped inc))))
                                  {:success 0, :error 0, :skipped 0}

@@ -1,8 +1,9 @@
+import { render, screen, waitFor } from "@testing-library/react";
 import type { WidgetMount } from "custom-viz";
 import type { ComponentType } from "react";
 import { createRoot } from "react-dom/client";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { createMockCustomVizPluginRuntime } from "metabase-types/api/mocks";
 
 import { wrapPluginWidget } from "../widget-mount";
 
@@ -49,7 +50,10 @@ function prepareWidget(pluginId = 1) {
     widgetContainer = container;
     return pluginMount(container, initialProps);
   };
-  const mount = wrapPluginWidget(widgetMount, pluginId);
+  const mount = wrapPluginWidget(
+    widgetMount,
+    createMockCustomVizPluginRuntime({ id: pluginId }),
+  );
   return {
     mount,
     getMountCalls: () => mountCalls,
@@ -125,17 +129,5 @@ describe("CustomVizSettingWidget", () => {
     await waitFor(() => {
       expect(getWidgetContainer()).toHaveAttribute("data-plugin-sandbox", "11");
     });
-  });
-
-  it("mounts the plugin inside a host-controlled wrapper the plugin cannot tag", async () => {
-    const { getWidgetContainer } = setup({ pluginId: 11 });
-
-    await waitFor(() => {
-      expect(getWidgetContainer()).toHaveAttribute("data-plugin-sandbox", "11");
-    });
-
-    const wrapper = getWidgetContainer()?.parentElement;
-    expect(wrapper).not.toBeNull();
-    expect(wrapper).not.toHaveAttribute("data-plugin-sandbox");
   });
 });

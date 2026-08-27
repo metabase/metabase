@@ -2,13 +2,14 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
-(derive ::event :metabase/event)
-(derive :event/report-timezone-updated ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/report-timezone-updated ::event)
 
 (defn- notify-all-databases-updated
   "Send notification that all Databases should immediately release cached resources (i.e., connection pools).
@@ -22,7 +23,7 @@
     (try
       (driver/notify-database-updated driver database)
       (catch Throwable e
-        (log/errorf e "Failed to notify %s Database %s updated" driver id)))))
+        (log/errorf "Failed to notify %s Database %s updated: %s" driver id (ex-message e))))))
 
 (methodical/defmethod driver-api/publish-event! ::event
   "When the report-timezone Setting is updated, call [[metabase.driver/notify-database-updated]] for all Databases."

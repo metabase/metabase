@@ -57,6 +57,37 @@
 (defn- spilled-part? [part]
   (temp-storage/streaming-temp-file? (-> part :result :data :rows)))
 
+(deftest body-only-cards-use-display-limit-test
+  (testing "cards not selected for attachment get the interactive display limit; attached cards keep the attachment limit (GDGT-2773)"
+    (mt/with-temp [:model/Card          {card-id :id} {:dataset_query (mt/mbql-query orders)}
+                   :model/Dashboard     {dash-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+      (let [row-count (fn [opts]
+                        (let [part (first (card-parts (notification.payload.execute/execute-dashboard
+                                                       dash-id (mt/user->id :rasta) [] opts)))]
+                          (temp-storage/cleanup! (-> part :result :data :rows))
+                          (-> part :result :row_count)))]
+        (is (= 2000 (row-count nil)))
+        (is (< 2000 (row-count {:attached-card-ids #{card-id}})))))))
+
+(deftest attached-card-series-uses-display-limit-test
+  (testing "additional series are display-only even when the primary card is attached"
+    (mt/with-temp [:model/Card                {card-id :id}        {:dataset_query (mt/mbql-query orders)}
+                   :model/Card                {series-card-id :id} {:dataset_query (mt/mbql-query orders)}
+                   :model/Dashboard           {dash-id :id}        {}
+                   :model/DashboardCard       {dashcard-id :id}    {:dashboard_id dash-id :card_id card-id}
+                   :model/DashboardCardSeries _                    {:dashboardcard_id dashcard-id
+                                                                    :card_id          series-card-id
+                                                                    :position         0}]
+      (let [part          (first (card-parts (notification.payload.execute/execute-dashboard
+                                              dash-id (mt/user->id :rasta) []
+                                              {:attached-card-ids #{card-id}})))
+            series-result (-> part :dashcard :series-results first)]
+        (is (< 2000 (-> part :result :row_count)) "attached primary card keeps the attachment limit")
+        (is (= 2000 (-> series-result :result :row_count)) "display-only series gets the interactive limit")
+        (temp-storage/cleanup! (-> part :result :data :rows))
+        (temp-storage/cleanup! (-> series-result :result :data :rows))))))
+
 (deftest tabbed-dashboard-shares-one-spill-budget-test
   (testing "the resident-memory budget is shared across a multi-tab dashboard, so cards in different tabs collectively
             count toward the spill cap (otherwise many small cards across tabs could exhaust memory)"
@@ -76,7 +107,7 @@
                    :model/DashboardCard _ {:dashboard_id dash-id :dashboard_tab_id tab2 :card_id card-id}]
       (let [budget (temp-storage/make-resident-budget {:per-card 100000 :resident-cap 1000 :floor 100})
             parts  (card-parts (notification.payload.execute/execute-dashboard
-                                dash-id (mt/user->id :rasta) [] budget))]
+                                dash-id (mt/user->id :rasta) [] {:spill-budget budget}))]
         (is (= 4 (count parts)) "all four cards render")
         (is (some spilled-part? parts)
             "with a shared budget the cumulative cells across tabs cross the cap, so a later card spills to disk")

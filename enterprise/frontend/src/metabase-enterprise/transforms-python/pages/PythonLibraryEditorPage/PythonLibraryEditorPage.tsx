@@ -6,7 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Alert, Box, Card, Stack } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
@@ -21,11 +21,6 @@ import { PythonEditor } from "../../components/PythonEditor";
 import { PythonLibraryEditorHeader } from "./PythonLibraryEditorHeader";
 import S from "./PythonLibraryEditorPage.module.css";
 
-type PythonLibraryEditorPageProps = {
-  params: Urls.TransformPythonLibraryParams;
-  route: Route;
-};
-
 const EMPTY_LIBRARY_SOURCE = `
 # This is your Python library.
 # You can add functions and classes here that can be reused in Python transforms.
@@ -33,11 +28,16 @@ const EMPTY_LIBRARY_SOURCE = `
   .trim()
   .concat("\n");
 
-export function PythonLibraryEditorPage({
-  params,
-  route,
-}: PythonLibraryEditorPageProps) {
-  const { path } = params;
+export function PythonLibraryEditorPage() {
+  const { path } = useParams<Urls.TransformPythonLibraryParams>();
+  return path == null ? null : <PythonLibraryEditor path={path} />;
+}
+
+type PythonLibraryEditorProps = {
+  path: string;
+};
+
+function PythonLibraryEditor({ path }: PythonLibraryEditorProps) {
   const [source, setSource] = useState(EMPTY_LIBRARY_SOURCE);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
@@ -106,11 +106,10 @@ export function PythonLibraryEditorPage({
 
           {isRemoteSyncReadOnly && (
             <Alert
+              size="compact"
               className={S.flexStart}
               color="warning"
-              p="0.75rem"
               title={t`The Python library is not editable because Remote Sync is in read-only mode.`}
-              variant="outline"
               w="auto"
             />
           )}
@@ -127,7 +126,7 @@ export function PythonLibraryEditorPage({
           />
         </Card>
       </PageContainer>
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty} />
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
     </>
   );
 }

@@ -195,7 +195,7 @@ describe("metabase-lib/metric/core", () => {
       const dimensions = LibMetric.filterableDimensions(definition);
 
       // The metric has 2 dimensions defined
-      expect(dimensions.length).toBe(SAMPLE_METRIC.dimensions.length);
+      expect(dimensions.length).toBe(SAMPLE_METRIC.dimensions?.length);
     });
 
     it("should include filter-positions in dimension display info", () => {
@@ -2082,6 +2082,33 @@ describe("metabase-lib/metric/core", () => {
       const info = LibMetric.displayInfo(updatedDef, updatedDateDim);
       // The date dimension should have no filters
       expect(info.filterPositions).toEqual([]);
+    });
+  });
+
+  describe("fromMetricDimension and toMetricDimension", () => {
+    it("should round-trip a MetricDimension through DimensionMetadata", () => {
+      const original = createMockMetricDimension({
+        id: "dim-round-trip",
+        name: "created_at",
+        display_name: "Created At",
+        effective_type: "type/DateTime",
+        semantic_type: "type/CreationTimestamp",
+        has_field_values: "list",
+        sources: [{ type: "field", "field-id": 42 }],
+        group: { id: "g1", type: "main", display_name: "Orders" },
+      });
+
+      const opaque = LibMetric.fromMetricDimension(original);
+      const result = LibMetric.toMetricDimension(opaque);
+
+      expect(result.id).toBe(original.id);
+      expect(result.name).toBe(original.name);
+      expect(result.display_name).toBe(original.display_name);
+      expect(result.effective_type).toBe(original.effective_type);
+      expect(result.semantic_type).toBe(original.semantic_type);
+      expect(result.has_field_values).toBe(original.has_field_values);
+      expect(result.sources).toEqual(original.sources);
+      expect(result.group).toEqual(original.group);
     });
   });
 });

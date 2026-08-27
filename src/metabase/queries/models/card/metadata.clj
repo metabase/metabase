@@ -30,7 +30,7 @@
       #_{:clj-kondo/ignore [:deprecated-var]}
       (qp.metadata/legacy-result-metadata query api/*current-user-id*)
       (catch Throwable e
-        (log/errorf e "Error calculating result metadata for Card: %s" (ex-message e))
+        (log/errorf "Error calculating result metadata for Card: %s" (ex-message e))
         []))))
 
 (def ^:private metadata-sync-wait-ms
@@ -66,7 +66,7 @@ saved later when it is ready."
                             (combiner @futur)
                             (catch Throwable e
                               (future-cancel futur)
-                              (log/errorf e "Error blending model metadata: %s" (ex-message e))
+                              (log/errorf "Error blending model metadata: %s" (ex-message e))
                               metadata')))}
       {:metadata (combiner result)})))
 
@@ -167,7 +167,7 @@ saved later when it is ready."
                   (log/infof "Metadata updated asynchronously for card %s" id))
                 (log/infof "Not updating metadata asynchronously for card %s because query has changed" id)))))
         (catch Throwable e
-          (log/errorf e "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
+          (log/errorf "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
 (defn infer-metadata
   "Infer the default result_metadata to store for MBQL cards.

@@ -43,12 +43,6 @@ describe("scenarios > data studio > library > metrics", () => {
     H.miniPickerBrowseAll().click();
     H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
 
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-
-    H.popover().findByText("Created At").click();
-
     H.DataStudio.Metrics.saveButton().should("be.enabled").click();
 
     H.modal().within(() => {
@@ -92,8 +86,10 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.findByText("No charts use this metric").should("be.visible");
     });
 
-    cy.log("Ensure chart is visible");
-    H.echartsContainer().findByText("Count").should("be.visible");
+    cy.log("Without a default dimension the preview is a scalar");
+    H.DataStudio.Metrics.aboutPage()
+      .findByTestId("scalar-value")
+      .should("have.text", "18,760");
 
     cy.log("Verify metric definition page");
     H.DataStudio.Metrics.definitionTab().click();
@@ -101,13 +97,11 @@ describe("scenarios > data studio > library > metrics", () => {
     cy.log("Verify notebook state");
     H.DataStudio.Metrics.queryEditor().should("be.visible");
     H.getNotebookStep("data").findByText("Orders").should("be.visible");
-    H.getNotebookStep("summarize")
-      .findByText("Created At: Month")
-      .should("be.visible");
+    H.getNotebookStep("summarize").findByText("Count").should("be.visible");
 
     H.runButtonInOverlay().click();
-    cy.log("Ensure chart is visible");
-    H.echartsContainer().findByText("Count").should("be.visible");
+    cy.log("Ensure the result is visible");
+    cy.findByTestId("scalar-value").should("have.text", "18,760");
 
     cy.log("Verify metric dependencies page");
     H.waitForBackfillComplete();
@@ -413,6 +407,7 @@ describe("scenarios > data studio > library > metrics", () => {
       H.selectDropdown()
         .findByRole("option", { name: /Duration/ })
         .click();
+      H.fillCacheDuration(24);
       H.modal().findByTestId("strategy-form-submit-button").click();
 
       cy.wait("@updateCacheConfig");

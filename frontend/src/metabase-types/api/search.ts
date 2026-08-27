@@ -9,6 +9,7 @@ import type {
 } from "./collection";
 import type { Dashboard, DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { ExplorationId } from "./exploration";
 import type { Field } from "./field";
 import type { MeasureId } from "./measure";
 import type { ModerationReviewStatus } from "./moderation";
@@ -29,6 +30,7 @@ const ENABLED_SEARCH_MODELS = [
   "action",
   "indexed-entity",
   "document",
+  "exploration",
   "transform",
 ] as const;
 
@@ -71,7 +73,8 @@ export type SearchResultId =
   | DatabaseId
   | TableId
   | DashboardId
-  | MeasureId;
+  | MeasureId
+  | ExplorationId;
 
 export interface SearchResult<
   Id extends SearchResultId = SearchResultId,
@@ -150,7 +153,12 @@ export type SearchRequest = {
   table_db_id?: DatabaseId;
   models?: SearchModel[];
   ids?: SearchResultId[];
-  filter_items_in_personal_collection?: "only" | "exclude";
+  filter_items_in_personal_collection?:
+    | "all"
+    | "only"
+    | "only-mine"
+    | "exclude"
+    | "exclude-others";
   context: SearchContext;
   created_at?: string | null;
   created_by?: UserId[] | null;

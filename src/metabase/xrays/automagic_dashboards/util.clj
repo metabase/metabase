@@ -98,7 +98,7 @@
              (assoc :xrays/database-id (:database root))
              (analyze/run-classifiers {}))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
-     (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))
+     (log/warnf "Cannot resolve Field %s in automagic analysis context" field-id-or-name-or-clause))))
 
 (defn filter-id-for-field
   "Generate a parameter ID for the given field. In X-ray dashboards a parameter is mapped to a single field only."

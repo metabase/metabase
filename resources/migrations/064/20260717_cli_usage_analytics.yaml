@@ -1,0 +1,113 @@
+## CLI (Agent API) usage analytics storage layer.
+##
+## One table, agent_api_call_log — one row per direct Agent API HTTP call. Modeled on
+## mcp_tool_call_log but leaner: the Agent API is stateless (no session table — the CLI opens
+## no session), and each caller is classified into `client_name` from its self-reported
+## User-Agent (metabase-cli/<version> -> "metabase-cli", anything else -> "other"). Client
+## identity + PII are captured on the row so v_agent_api_calls needs no join beyond core_user
+## and tenant. Row insertion is handled by the instrumentation in metabase.agent-api.api.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/064_update_migrations.yaml
+
+  - changeSet:
+      id: v64.2026-07-17T00:00:00
+      author: sfragnaud
+      comment: Create agent_api_call_log table
+      changes:
+        - createTable:
+            tableName: agent_api_call_log
+            remarks: One row per direct Agent API HTTP call; client identity + PII captured on the row so the view needs no session join (modeled on mcp_tool_call_log)
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  remarks: Autoincrement primary key
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the Agent API call was made
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: Metabase user behind the call; NULL for unauthenticated calls. Non-PII, always recorded.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: tenant_id
+                  type: int
+                  remarks: Snapshot of the calling user's tenant at call time; NULL for non-tenant users. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: client_name
+                  type: varchar(255)
+                  remarks: Canonical client key classified from the User-Agent (metabase-cli/other). Self-reported, analytics-only, never gated on. Non-PII.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: operation
+                  type: varchar(255)
+                  remarks: HTTP method + request URI of the Agent API call, e.g. "POST /api/agent/v1/query".
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(20)
+                  remarks: Outcome of the call, success or error (derived from the HTTP status code).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: duration_ms
+                  type: int
+                  remarks: Wall-clock duration of the call in milliseconds
+                  constraints:
+                    nullable: true
+              - column:
+                  name: ip_address
+                  type: varchar(45)
+                  remarks: Client IP captured at call time, PII (gated by analytics-pii-retention-enabled).
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: Error message for a failed call, PII (gated by analytics-pii-retention-enabled, truncated); NULL on success or when gating is off.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropTable:
+            tableName: agent_api_call_log
+
+  - changeSet:
+      id: v64.2026-07-17T00:00:01
+      author: sfragnaud
+      comment: Index on agent_api_call_log.user_id
+      changes:
+        - createIndex:
+            indexName: idx_agent_api_call_log_user_id
+            tableName: agent_api_call_log
+            columns:
+              - column:
+                  name: user_id
+      rollback: # dropped with table
+
+  - changeSet:
+      id: v64.2026-07-17T00:00:02
+      author: sfragnaud
+      comment: Index on agent_api_call_log.created_at
+      changes:
+        - createIndex:
+            indexName: idx_agent_api_call_log_created_at
+            tableName: agent_api_call_log
+            columns:
+              - column:
+                  name: created_at
+      rollback: # dropped with table

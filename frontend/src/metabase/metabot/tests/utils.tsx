@@ -1,9 +1,13 @@
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
+import {
+  setupDatabaseListEndpoint,
+  setupGetMetabotConversationTitleEndpoint,
+  setupListMetabotConversationsEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   type RenderWithProvidersOptions,
@@ -24,7 +28,13 @@ import {
 } from "metabase/api/ai-streaming/test-utils";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { MetabotInfo, User } from "metabase-types/api";
+import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
+import type {
+  MetabotConversation,
+  MetabotInfo,
+  User,
+} from "metabase-types/api";
 import {
   createMockMetabotInfo,
   createMockUser,
@@ -32,28 +42,119 @@ import {
 } from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
+import "../components/MetabotChat/MetabotChat";
 import { FIXED_METABOT_ENTITY_IDS, FIXED_METABOT_IDS } from "../constants";
 import { MetabotProvider } from "../context";
 import {
   type MetabotAgentId,
   type MetabotState,
+  fixedMetabotAgentIds,
   metabotReducer,
   setVisible,
 } from "../state";
-import { getMetabotInitialState } from "../state/reducer-utils";
+import {
+  createAgentState,
+  createConversationForAgent,
+  getMetabotInitialState,
+} from "../state/reducer-utils";
 
 export { createMockReadableStream, createMockSSEStream, createPauses };
+
+type MetabotStoreLike = { getState: () => { metabot: MetabotState } };
+
+const agentIn = (state: MetabotState, agentId: MetabotAgentId) =>
+  checkNotNull(state.agents[agentId]);
+
+const convoIn = (state: MetabotState, conversationId: string) =>
+  checkNotNull(state.conversations[conversationId]);
+
+export const conversationIdForAgent = (
+  store: MetabotStoreLike,
+  agentId: MetabotAgentId = "omnibot",
+) => agentIn(store.getState().metabot, agentId).conversationId;
+
+export const convoForAgent = (
+  store: MetabotStoreLike,
+  agentId: MetabotAgentId = "omnibot",
+) => convoIn(store.getState().metabot, conversationIdForAgent(store, agentId));
+
+// make ids easer to address than production's random uuids
+export const testConversationId = (agentId: MetabotAgentId) =>
+  `convo-${agentId}`;
+
+export const createTestMetabotState = ({
+  visibleAgentIds = [],
+  conversationTitle,
+}: {
+  visibleAgentIds?: MetabotAgentId[];
+  conversationTitle?: string;
+} = {}): MetabotState => {
+  const agentConversations = fixedMetabotAgentIds.map((agentId) => ({
+    agentId,
+    conversationId: testConversationId(agentId),
+  }));
+
+  return {
+    ...getMetabotInitialState(),
+    conversations: Object.fromEntries(
+      agentConversations.map(({ agentId, conversationId }) => [
+        conversationId,
+        createConversationForAgent(agentId, {
+          conversationId,
+          title: conversationTitle,
+        }),
+      ]),
+    ),
+    agents: Object.fromEntries(
+      agentConversations.map(({ agentId, conversationId }) => [
+        agentId,
+        createAgentState(conversationId, {
+          visible: visibleAgentIds.includes(agentId),
+        }),
+      ]),
+    ),
+  };
+};
+
+const mockReducedMotion = () => {
+  window.matchMedia = (query: string) =>
+    // jsdom has no matchMedia; this stub only needs the fields our code reads.
+    ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
+};
 
 export const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", params);
 
 export const chat = () => screen.findByTestId("metabot-chat");
-export const chatMessages = () =>
-  screen.findAllByTestId("metabot-chat-message");
-export const lastChatMessage = async () => (await chatMessages()).at(-1);
+export const conversationTitle = () =>
+  screen.findByTestId("metabot-conversation-title");
+export const queryConversationTitle = () =>
+  screen.queryByTestId("metabot-conversation-title");
+export const chatMessages = async ({
+  includeChainOfThought = false,
+}: { includeChainOfThought?: boolean } = {}) => {
+  const messages = await screen.findAllByTestId("metabot-chat-message");
+  return includeChainOfThought
+    ? messages
+    : messages.filter(
+        (el) => !within(el).queryByTestId("metabot-chain-of-thought"),
+      );
+};
+export const lastChatMessage = async (options?: {
+  includeChainOfThought?: boolean;
+}) => (await chatMessages(options)).at(-1);
 export const input = async () => {
   const chatInput = await screen.findByTestId("metabot-chat-input");
-  return chatInput.querySelector('[contenteditable="true"]')!;
+  return chatInput.querySelector<HTMLElement>("[contenteditable]")!;
 };
 export const enterChatMessage = async (message: string, send = true) => {
   // using userEvent.type works locally but in CI characters are sometimes dropped
@@ -71,10 +172,17 @@ export const sendMessageButton = () =>
   screen.findByTestId("metabot-send-message");
 export const stopResponseButton = () =>
   screen.findByTestId("metabot-stop-response");
+export const continueResponseButton = () =>
+  screen.findByTestId("metabot-chat-message-continue");
+export const queryContinueResponseButton = () =>
+  screen.queryByTestId("metabot-chat-message-continue");
+export const queryTurnAlert = () =>
+  screen.queryByTestId("metabot-chat-message-turn-alert");
 export const closeChatButton = () => screen.findByTestId("metabot-close-chat");
 export const responseLoader = () =>
   screen.findByTestId("metabot-response-loader");
-export const resetChatButton = () => screen.findByTestId("metabot-reset-chat");
+export const newConversationButton = () =>
+  screen.findByTestId("metabot-new-conversation");
 
 // Feedback helpers
 export const feedbackModal = () =>
@@ -91,6 +199,24 @@ export const mockFeedbackEndpoint = () => {
   };
 };
 
+// Fork helpers
+export const forkButton = (message: HTMLElement) =>
+  within(message).findByTestId("metabot-chat-message-fork");
+export const mockForkEndpoint = (
+  response: Record<string, unknown> = {},
+  status = 200,
+) => {
+  fetchMock.post(
+    "express:/api/metabot/conversations/:id/fork",
+    status === 200 ? { status, body: response } : status,
+    { name: "metabot-fork" },
+  );
+  return {
+    calls: (matcher?: Parameters<typeof fetchMock.callHistory.calls>[1]) =>
+      fetchMock.callHistory.calls("metabot-fork", matcher),
+  };
+};
+
 export const assertVisible = async () =>
   expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
 export const assertNotVisible = async () =>
@@ -98,7 +224,6 @@ export const assertNotVisible = async () =>
     expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
   });
 
-// NOTE: for some reason the keyboard shortcuts won't work with tinykeys while testing, using redux for now...
 export const hideMetabot = (
   dispatch: any,
   agentId: MetabotAgentId = "omnibot",
@@ -117,7 +242,10 @@ export const assertConversation = async (
         screen.queryByTestId("metabot-chat-message"),
       ).not.toBeInTheDocument();
     });
-  } else {
+    return;
+  }
+
+  await waitFor(async () => {
     const realMessages = await chatMessages();
     expect(realMessages.length).toBe(expectedMessages.length);
     expectedMessages.forEach(([expectedRole, expectedMessage], index) => {
@@ -125,7 +253,7 @@ export const assertConversation = async (
       expect(realMessage).toHaveAttribute("data-message-role", expectedRole);
       expect(realMessage).toHaveTextContent(expectedMessage);
     });
-  }
+  });
 };
 
 export const lastReqBody = async (
@@ -134,7 +262,12 @@ export const lastReqBody = async (
   await waitFor(() => expect(agentSpy).toHaveBeenCalled());
   // The client calls `fetch(new Request(url, init))`, so the body lives on the
   // Request object rather than a separate init arg.
-  const [request] = agentSpy.mock.lastCall ?? [];
+  const [request] =
+    agentSpy.mock.calls.findLast(
+      ([req]) =>
+        req instanceof Request &&
+        req.url.includes("/api/metabot/agent-streaming"),
+    ) ?? [];
   // Unjustified type cast. FIXME
   return JSON.parse(await (request as Request).clone().text());
 };
@@ -149,6 +282,11 @@ export const whoIsYourFavoriteResponse: SSEEvent[] = [
 ];
 
 export const erroredResponse: SSEEvent[] = [
+  { type: "error", errorText: "Anthropic API key expired or invalid" },
+];
+
+export const startedThenErroredResponse: SSEEvent[] = [
+  { type: "start", messageId: "msg_errored" },
   { type: "error", errorText: "Anthropic API key expired or invalid" },
 ];
 
@@ -200,29 +338,39 @@ export function setup(
     storeInitialState?: RenderWithProvidersOptions["storeInitialState"];
     customReducers?: RenderWithProvidersOptions["customReducers"];
     isConfigured?: boolean;
+    conversations?: MetabotConversation[];
+    conversationTitle?: string | null;
+    withRouter?: boolean;
+    initialRoute?: string;
   } | void,
 ) {
+  mockReducedMotion(); // induce reduced motion to avoid waiting for streaming to finish
+
   const settings = mockSettings({
     "llm-metabot-configured?": options?.isConfigured ?? true,
   });
 
   setupEnterprisePlugins();
 
-  const _metabotState = getMetabotInitialState();
-  const metabotState = assocIn(
-    _metabotState,
-    ["conversations", "omnibot", "visible"],
-    true,
-  );
-
   const {
     ui = <Metabot />,
     currentUser = createMockUser(),
-    metabotInitialState = metabotState,
+    metabotInitialState,
     promptSuggestions = [],
     storeInitialState = {},
     customReducers,
+    conversations = [],
+    conversationTitle = "Test Conversation Title",
+    withRouter = false,
+    initialRoute,
   } = options || {};
+
+  const metabotState =
+    metabotInitialState ??
+    createTestMetabotState({
+      visibleAgentIds: ["omnibot"],
+      conversationTitle: conversationTitle || undefined,
+    });
 
   fetchMock.get(
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
@@ -233,32 +381,50 @@ export function setup(
     createMockUserMetabotPermissions(),
   );
   setupDatabaseListEndpoint([]);
-
-  const { store, rerender } = renderWithProviders(
-    <MetabotProvider>{ui}</MetabotProvider>,
-    {
-      storeInitialState: createMockState({
-        ...storeInitialState,
-        settings: {
-          ...settings,
-          ...(storeInitialState.settings ?? {}),
-        },
-        currentUser: currentUser ? currentUser : undefined,
-        metabot: metabotInitialState,
-      }),
-      customReducers: {
-        ...customReducers,
-        metabot: metabotReducer,
-      },
-    },
+  setupListMetabotConversationsEndpoint(conversations);
+  setupGetMetabotConversationTitleEndpoint(
+    conversationTitle
+      ? { status: "ready", title: conversationTitle }
+      : { status: "pending", title: null },
   );
+
+  const content =
+    withRouter && initialRoute ? (
+      <Route
+        path={initialRoute}
+        element={<MetabotProvider>{ui}</MetabotProvider>}
+      />
+    ) : (
+      <MetabotProvider>{ui}</MetabotProvider>
+    );
+
+  const { store, rerender, router } = renderWithProviders(content, {
+    storeInitialState: createMockState({
+      ...storeInitialState,
+      settings: {
+        ...settings,
+        ...(storeInitialState.settings ?? {}),
+      },
+      currentUser: currentUser ? currentUser : undefined,
+      metabot: metabotState,
+    }),
+    customReducers: {
+      ...customReducers,
+      metabot: metabotReducer,
+    },
+    withRouter,
+    withUndos: true,
+    ...(initialRoute ? { initialRoute } : {}),
+  });
 
   return {
     rerender,
-    conversationIds: Object.keys(metabotInitialState.conversations),
+    router,
+    conversationIds: Object.keys(metabotState.conversations),
     // Unjustified type cast. FIXME
-    store: store as Omit<typeof store, "getState"> & {
+    store: store as Omit<typeof store, "getState" | "dispatch"> & {
       getState: () => State;
+      dispatch: ThunkDispatch<State, unknown, UnknownAction>;
     },
   };
 }

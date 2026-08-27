@@ -6,3 +6,4 @@
 - Run targeted tests, and lint continuously during development
 - Prioritize understanding existing patterns before implementing
 - Don't commit changes, leave it for the user to review and make commits
+- Minimize comments. Document only non-obvious intent, trade-offs, or constraints that the code itself cannot convey. Do not narrate what the code does — keep code self-descriptive through naming and structure.

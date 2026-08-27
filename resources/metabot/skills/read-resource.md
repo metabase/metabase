@@ -62,7 +62,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 ## Collection resources
 
 - `metabase://collection/{id}` — basic collection info
-- `metabase://collection/{id}/items` — direct children (mix of subcollections, cards, models, metrics, dashboards)
+- `metabase://collection/{id}/items` — direct children (mix of subcollections, cards, models, metrics, dashboards, documents)
 - `metabase://collection/{id}/subcollections` — only the subcollections (useful for orientation in deep trees)
 
 **Examples:**

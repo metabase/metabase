@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
-import { DelayedLoadingSpinner } from "metabase/common/components/Pickers/EntityPicker/components/LoadingSpinner";
+import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -36,7 +36,6 @@ type NotebookNativePreviewProps = {
   buttonTitle?: string;
   onConvertClick: (newQuestion: Question) => void;
   readOnly?: boolean;
-  disableDefaultLimit?: boolean;
   disableConvert?: boolean;
 };
 
@@ -46,7 +45,6 @@ export const NotebookNativePreview = ({
   buttonTitle,
   onConvertClick,
   readOnly,
-  disableDefaultLimit,
   disableConvert,
 }: NotebookNativePreviewProps) => {
   const database = question.database();
@@ -55,10 +53,7 @@ export const NotebookNativePreview = ({
 
   const sourceQuery = question.query();
   const canRun = Lib.canRun(sourceQuery, question.type());
-  const queryForPayload = disableDefaultLimit
-    ? Lib.disableDefaultLimit(sourceQuery)
-    : sourceQuery;
-  const payload = Lib.toJsQuery(queryForPayload);
+  const payload = Lib.toJsQuery(sourceQuery);
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;

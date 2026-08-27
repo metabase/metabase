@@ -71,7 +71,9 @@ export const updateQuestionSdk =
       shouldRunQueryOnQuestionChange = false;
     }
 
-    nextQuestion = nextQuestion.applyTemplateTagParameters();
+    if (!isGuestEmbed) {
+      nextQuestion = nextQuestion.applyTemplateTagParameters();
+    }
 
     const rawSeries = createRawSeries({
       card: nextQuestion.card(),
@@ -82,7 +84,7 @@ export const updateQuestionSdk =
     const computedPivotQuestion = computeQuestionPivotTable({
       question: nextQuestion,
       currentQuestion: previousQuestion,
-      rawSeries,
+      rawSeries: rawSeries ?? undefined,
     });
 
     nextQuestion = computedPivotQuestion.question;

@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupBugReportEndpoints } from "__support__/server-mocks/bug-report";
 import { mockSettings } from "__support__/settings";
@@ -27,7 +28,7 @@ const defaultErrorPayload: ErrorPayload = {
       process_uuid: "123",
       fqns: "metabase.query-processor.middleware.catch-exceptions",
       msg: "Backend error 1",
-      exception: "Backend error 1 stacktrace",
+      exception: ["Backend error 1 stacktrace"],
     },
   ],
   userLogs: [
@@ -37,7 +38,7 @@ const defaultErrorPayload: ErrorPayload = {
       process_uuid: "123",
       fqns: "metabase.query-processor.middleware.catch-exceptions",
       msg: "Backend error 1",
-      exception: "Backend error 1 stacktrace",
+      exception: ["Backend error 1 stacktrace"],
     },
   ],
   logs: [
@@ -47,7 +48,7 @@ const defaultErrorPayload: ErrorPayload = {
       process_uuid: "123",
       fqns: "metabase.query-processor.middleware.catch-exceptions",
       msg: "Backend error 1",
-      exception: "Backend error 1 stacktrace",
+      exception: ["Backend error 1 stacktrace"],
     },
   ],
   entityName: "question",
@@ -243,6 +244,36 @@ describe("ErrorDiagnosticsModal", () => {
       expect(
         await screen.findByText(/bug report submitted successfully/i),
       ).toBeInTheDocument();
+    });
+
+    it("should ask to attribute the report to the current user by default", async () => {
+      await userEvent.click(
+        screen.getByRole("button", { name: /submit report/i }),
+      );
+      await screen.findByText(/bug report submitted successfully/i);
+
+      const lastCall = fetchMock.callHistory.lastCall(
+        "path:/api/slack/bug-report",
+      );
+      const body = await lastCall?.request?.json();
+      expect(body.diagnosticInfo.reporter).toBe(true);
+    });
+
+    it("should ask for an anonymous report when name and email are unchecked", async () => {
+      await userEvent.click(screen.getByRole("button", { name: /edit/i }));
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: /your name and email/i }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: /submit report/i }),
+      );
+      await screen.findByText(/bug report submitted successfully/i);
+
+      const lastCall = fetchMock.callHistory.lastCall(
+        "path:/api/slack/bug-report",
+      );
+      const body = await lastCall?.request?.json();
+      expect(body.diagnosticInfo.reporter).toBe(false);
     });
   });
 });

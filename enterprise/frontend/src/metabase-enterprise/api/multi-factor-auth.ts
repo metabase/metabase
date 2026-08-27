@@ -1,11 +1,23 @@
+import { provideUserListTags } from "metabase/api/tags";
 import type {
   MfaAdminOverview,
+  MfaAdminUser,
   MfaEnrollResponse,
+  MfaEnrolledUser,
   MfaStatus,
+  MfaUserListRequest,
+  MfaUserListResponse,
+  UserId,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, provideMfaStatusTags, tag } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideMfaStatusTags,
+  tag,
+} from "./tags";
 
 export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -15,6 +27,43 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/mfa/admin/overview",
       }),
       providesTags: () => provideMfaStatusTags(),
+    }),
+    listEnrolledMfaUsers: builder.query<
+      MfaUserListResponse<MfaEnrolledUser>,
+      MfaUserListRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/mfa/admin/enrolled-users",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideUserListTags(response.data) : [],
+    }),
+    listUnenrolledMfaUsers: builder.query<
+      MfaUserListResponse<MfaAdminUser>,
+      MfaUserListRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/mfa/admin/unenrolled-users",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideUserListTags(response.data) : [],
+    }),
+    removeUserMfa: builder.mutation<void, { user_id: UserId }>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/mfa/admin/remove",
+        body,
+      }),
+      invalidatesTags: (_, error, { user_id }) =>
+        invalidateTags(error, [
+          tag("mfa-status"),
+          listTag("user"),
+          idTag("user", user_id),
+        ]),
     }),
     verifyMfa: builder.mutation<
       { id: string },
@@ -85,6 +134,9 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetMfaAdminOverviewQuery,
+  useListEnrolledMfaUsersQuery,
+  useListUnenrolledMfaUsersQuery,
+  useRemoveUserMfaMutation,
   useVerifyMfaMutation,
   useGetMfaStatusQuery,
   useEnrollMfaMutation,

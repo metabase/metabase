@@ -269,7 +269,7 @@ function setup({
 }
 
 async function enterCustomExpression(expression: string) {
-  const input = screen.getByTestId("custom-expression-query-editor");
+  const input = await screen.findByTestId("custom-expression-query-editor");
   await waitFor(() => expect(input).toHaveProperty("readOnly", false));
   await userEvent.clear(input);
   await userEvent.type(input, expression);

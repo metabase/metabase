@@ -6,13 +6,22 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.resources :as read-resource]
+   [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
+
+(deftest ^:parallel scalar-uris-arg-test
+  (testing "a scalar `uris` is rejected with guidance on how to repair the call"
+    (is (= "Invalid tool arguments: `uris` must be an array of URI strings; received a string."
+           (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
+                                          {:uris "metabase://table/1"})))))
 
 (deftest parse-uri-test
   (testing "parses single-segment URIs (top-level lists)"
@@ -129,7 +138,10 @@
    ;; ----- Dashboard -----
    ["metabase://dashboard/8"                               :dashboard                  ["8"]]
    ["metabase://dashboard/8/items"                         :dashboard-items            ["8" nil]]
-   ["metabase://dashboard/8/items?page=2"                  :dashboard-items            ["8" {:page "2"}]]])
+   ["metabase://dashboard/8/items?page=2"                  :dashboard-items            ["8" {:page "2"}]]
+   ;; ----- Conversation state -----
+   ["metabase://chart/7f018c82-4381-4264"                  :conversation-chart         ["7f018c82-4381-4264"]]
+   ["metabase://query/NXRVLzEMoMpfNJpqPshQR"               :conversation-query         ["NXRVLzEMoMpfNJpqPshQR"]]])
 
 (deftest dispatch-routing-test
   (testing "every supported URI pattern routes to the expected handler with the expected args"
@@ -163,7 +175,9 @@
                                   read-resource/fetch-transform-sources          (spy :transform-sources)
                                   read-resource/fetch-transform-target           (spy :transform-target)
                                   read-resource/fetch-dashboard                  (spy :dashboard)
-                                  read-resource/fetch-dashboard-items            (spy :dashboard-items)]
+                                  read-resource/fetch-dashboard-items            (spy :dashboard-items)
+                                  read-resource/fetch-conversation-chart         (spy :conversation-chart)
+                                  read-resource/fetch-conversation-query         (spy :conversation-query)]
         (doseq [[uri expected-handler expected-args] dispatch-cases]
           (testing uri
             (reset! calls nil)
@@ -262,6 +276,61 @@
         (is (=? {:resources [{:error string?}]}
                 (read-resource/read-resource {:uris ["metabase://dashboard/99999"]})))))))
 
+(deftest read-document-resource-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card {card-id :id} {:name "Embedded chart"}
+                   :model/Document {document-id :id}
+                   {:name     "Q3 report"
+                    :document {:type "doc"
+                               :content [{:type "heading"
+                                          :content [{:type "text" :text "Revenue"}]}
+                                         {:type "resizeNode"
+                                          :content [{:type "cardEmbed" :attrs {:id card-id}}]}
+                                         {:type "paragraph"
+                                          :content [{:type "text" :text "Detailed analysis"}]}]}}]
+      (testing "fetches an indexed outline of the document's top-level blocks"
+        (let [{:keys [output] :as result} (read-resource/read-resource
+                                           {:uris [(str "metabase://document/" document-id)]})]
+          (is (=? {:resources [{:content {:structured-output map?}}]}
+                  result))
+          (is (str/includes? output "Q3 report"))
+          (is (str/includes? output "[0] heading: Revenue"))
+          (is (str/includes? output (str "[1] resizeNode (embeds card " card-id ")")))
+          (is (str/includes? output "[2] paragraph: Detailed analysis"))))
+      (testing "returns error for unknown document"
+        (is (=? {:resources [{:error string?}]}
+                (read-resource/read-resource {:uris ["metabase://document/99999"]})))))))
+
+(deftest read-conversation-chart-resource-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [query {:database (mt/id)
+                 :type     "query"
+                 :query    {:source-table (mt/id :orders)
+                            :aggregation  [["count"]]}}]
+      (binding [tools.shared/*memory-atom*
+                (atom {:state {:queries {"q-1" query}
+                               :charts  {"chart-1" {:chart_id "chart-1"
+                                                    :query_id "q-1"
+                                                    :queries  [query]
+                                                    :visualization_settings {:chart_type "line"}}}}})]
+        (testing "resolves a conversation chart to its chart type and exported query"
+          (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-1"]})]
+            (is (=? {:resources [{:content {:structured-output map?}}]}
+                    result))
+            (is (str/includes? (:output result) "conversation-chart"))
+            (is (str/includes? (:output result) "Chart type: line"))
+            (is (str/includes? (:output result) "ORDERS"))))
+        (testing "falls back to the queries state when the id is a query id"
+          (let [result (read-resource/read-resource {:uris ["metabase://chart/q-1"]})]
+            (is (str/includes? (:output result) "conversation-query"))))
+        (testing "resolves a conversation query"
+          (let [result (read-resource/read-resource {:uris ["metabase://query/q-1"]})]
+            (is (str/includes? (:output result) "conversation-query"))
+            (is (str/includes? (:output result) "ORDERS"))))
+        (testing "errors clearly for ids that are in neither charts nor queries state"
+          (is (=? {:resources [{:error #"No chart or query with id 'nope'.*"}]}
+                  (read-resource/read-resource {:uris ["metabase://chart/nope"]}))))))))
+
 (deftest read-transform-resource-test
   (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/with-current-user (mt/user->id :crowberto)
@@ -281,6 +350,65 @@
         (testing "returns error for unknown transform"
           (is (=? {:resources [{:error string?}]}
                   (read-resource/read-resource {:uris ["metabase://transform/99999"]}))))))))
+
+(defn- read-title
+  "The chain-of-thought title `read-resource` derives from what it read."
+  [& uris]
+  (-> (read-resource/read-resource {:uris (vec uris)})
+      :data-parts first :data :title))
+
+(deftest read-resource-title-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales Overview"}
+                   :model/Table     {table-id :id} {:name "orders" :display_name "Orders" :active true}]
+      (testing "a single entity becomes a markdown link"
+        (is (= (str "[Sales Overview](metabase://dashboard/" dash-id ")")
+               (read-title (str "metabase://dashboard/" dash-id)))))
+      (testing "square brackets in a name are stripped — they'd break the client's link parsing"
+        (mt/with-temp [:model/Dashboard {bracket-id :id} {:name "Sales [2024]"}]
+          (is (= (str "[Sales 2024](metabase://dashboard/" bracket-id ")")
+                 (read-title (str "metabase://dashboard/" bracket-id))))))
+      (testing "a table uses its friendly display_name"
+        (is (= (str "[Orders](metabase://table/" table-id ")")
+               (read-title (str "metabase://table/" table-id)))))
+      (testing "a sub-resource appends its aspect, so fields reads differently than the entity"
+        (is (= (str "[Orders](metabase://table/" table-id ") fields")
+               (read-title (str "metabase://table/" table-id "/fields")))))
+      (testing "a list read that carries no entity name falls back to the aspect noun"
+        (is (= "cards"
+               (read-title (str "metabase://dashboard/" dash-id "/items")))))
+      (testing "multiple URIs join as a comma-delimited list; failed reads are skipped"
+        (is (= (str "[Sales Overview](metabase://dashboard/" dash-id "), "
+                    "[Orders](metabase://table/" table-id "), databases")
+               (read-title (str "metabase://dashboard/" dash-id)
+                           (str "metabase://table/" table-id)
+                           "metabase://dashboard/99999"
+                           "metabase://databases"))))
+      (testing "no URIs -> no title data part"
+        (is (nil? (read-title))))
+      (testing "a named but non-linkable entity surfaces as plain text, not a link"
+        (mt/with-temp [:model/Card {metric-id :id} {:name          "Revenue"
+                                                    :type          :metric
+                                                    :database_id   (mt/id)
+                                                    :table_id      (mt/id :orders)
+                                                    :dataset_query {:database (mt/id)
+                                                                    :type     :query
+                                                                    :query    {:source-table (mt/id :orders)
+                                                                               :aggregation  [[:count]]}}}]
+          (is (= "Revenue"
+                 (read-title (str "metabase://metric/" metric-id))))))
+      (testing "a document becomes a markdown link"
+        (mt/with-temp [:model/Document {doc-id :id} {:name "Campaign plan"}]
+          (is (= (str "[Campaign plan](metabase://document/" doc-id ")")
+                 (read-title (str "metabase://document/" doc-id))))))
+      (testing "a navigation list names what's being browsed"
+        (is (= "databases" (read-title "metabase://databases")))
+        (is (= "recent items" (read-title "metabase://user/recent-items"))))
+      (testing "a missing entity -> no title"
+        (is (nil? (read-title "metabase://dashboard/99999"))))
+      (testing "an unreadable entity never leaks its name"
+        (with-redefs [mi/can-read? (constantly false)]
+          (is (nil? (read-title (str "metabase://dashboard/" dash-id)))))))))
 
 ;; ===== Permission coverage — every branch =====
 ;;
@@ -528,14 +656,18 @@
 (deftest read-collections-and-collection-items-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Marketing" :location "/"}
-                   :model/Card {card-id :id} {:name "Sales report" :collection_id coll-id}]
+                   :model/Card {card-id :id} {:name "Sales report" :collection_id coll-id}
+                   :model/Document {doc-id :id} {:name "Campaign plan" :collection_id coll-id}]
       (testing "metabase://collections lists root collections (excluding trash)"
         (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://collections"]})]
           (is (str/includes? output "Marketing"))))
       (testing "metabase://collection/{id}/items lists members with drill-in URIs"
         (let [{:keys [output]} (read-resource/read-resource {:uris [(str "metabase://collection/" coll-id "/items")]})]
           (is (str/includes? output "Sales report"))
-          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\""))))))))
+          (is (str/includes? output (str "uri=\"metabase://question/" card-id "\"")))
+          (is (str/includes? output "Campaign plan"))
+          (is (str/includes? output (str "uri=\"metabase://document/" doc-id "\"")))
+          (is (str/includes? output "can_write=\"true\"")))))))
 
 (deftest read-table-derived-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -1156,3 +1288,18 @@
               (is (some? a-root-idx))
               (is (some? a-child-idx))
               (is (= (inc a-root-idx) a-child-idx) "child should immediately follow its parent"))))))))
+
+(deftest list-collection-items-excludes-exploration-summary-documents-test
+  (testing "metabase://collection/{id}/items hides exploration Summary documents"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Collection  {coll-id :id} {:name "Mixed Coll" :location "/"}
+                     :model/Document    _             {:name "VISIBLE-DOC" :collection_id coll-id}
+                     :model/Exploration {expl-id :id} {:name "An exploration"}
+                     :model/Document    _             {:name           "SUMMARY-DOC"
+                                                       :collection_id  coll-id
+                                                       :exploration_id expl-id}]
+        (let [{:keys [output]} (read-resource/read-resource
+                                {:uris [(str "metabase://collection/" coll-id "/items")]})]
+          (is (str/includes? output "VISIBLE-DOC"))
+          (is (not (str/includes? output "SUMMARY-DOC"))
+              "a Summary document is reachable only through its exploration, so it must not be listed"))))))

@@ -34,10 +34,10 @@
 (defn ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
-  (let [schema      (try #_:clj-kondo/ignore
+  (let [schema      (try #_{:clj-kondo/ignore [:discouraged-var]}
                      (eval schema)
-                         (catch Exception _ #_:clj-kondo/ignore
-                                (requiring-resolve-form schema)))
+                         (catch Exception _
+                           (requiring-resolve-form schema)))
         schema-type (mc/type schema)
         {regex :api/regex} (mc/properties schema)]
     [schema-type

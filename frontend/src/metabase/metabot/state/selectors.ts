@@ -4,22 +4,26 @@ import _ from "underscore";
 
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
-import { getLocation } from "metabase/selectors/routing";
 import * as Urls from "metabase/urls";
 import type { TransformId } from "metabase-types/api";
 
 import {
+  CONTEXT_WINDOW_WARNING_PERCENT,
   FIXED_METABOT_IDS,
-  LONG_CONVO_MSG_LENGTH_THRESHOLD,
   METABOT_REQUEST_IDS,
   type MetabotProfileId,
 } from "../constants";
+import {
+  getContextWindowPercentUsage,
+  isContextWindowFull,
+} from "../utils/context-usage";
 
 import type {
   MetabotAgentId,
   MetabotChatMessage,
   MetabotUserChatMessage,
 } from "./types";
+import { hasInProgressMessage } from "./utils";
 
 /*
  * Top Level Selectors
@@ -32,7 +36,7 @@ export const getMetabotState = (state: State) => {
 export const getActiveMetabotAgentIds = createSelector(
   getMetabotState,
   // Unjustified type cast. FIXME
-  (state) => Object.keys(state.conversations) as MetabotAgentId[],
+  (state) => Object.keys(state.agents) as MetabotAgentId[],
 );
 
 export const getMetabotId = () =>
@@ -41,6 +45,12 @@ export const getMetabotId = () =>
 export const getDebugMode = createSelector(
   getMetabotState,
   (state) => state.debugMode,
+);
+
+export const getSavedChartCardId = createSelector(
+  [getMetabotState, (_state: State, entityId: string) => entityId],
+  (metabotState, entityId): number | undefined =>
+    metabotState.savedChartCardIds[entityId],
 );
 
 export const getMetabotReactionsState = createSelector(
@@ -86,34 +96,87 @@ export const getIsSuggestedTransformActive = createSelector(
 
 const getAgentId = (_: State, agentId: MetabotAgentId) => agentId;
 
-export const getMetabotConversation = createSelector(
+export const getMetabotAgent = createSelector(
   [getMetabotState, getAgentId],
   (state, agentId) => {
-    const convo = state.conversations[agentId];
+    const agent = state.agents[agentId];
+    if (!agent) {
+      throw new Error(`No metabot agent exists: ${agentId}`);
+    }
+    return agent;
+  },
+);
+
+export const getMetabotConversationId = createSelector(
+  getMetabotAgent,
+  (agent) => agent.conversationId,
+);
+
+export const getMetabotConversation = createSelector(
+  [getMetabotState, getMetabotConversationId],
+  (state, conversationId) => {
+    const convo = state.conversations[conversationId];
     if (!convo) {
-      throw new Error(`No conversation exists for agent: ${agentId}`);
+      throw new Error(`No conversation exists: ${conversationId}`);
     }
     return convo;
   },
 );
 
+export const getHasConversation = (state: State, conversationId: string) =>
+  Boolean(getMetabotState(state).conversations[conversationId]);
+
 export const getMetabotVisible = createSelector(
-  getMetabotConversation,
-  (convo) => convo.visible,
+  getMetabotAgent,
+  (agent) => agent.visible,
+);
+
+export const getConversation = createSelector(
+  [getMetabotState, (_state: State, conversationId: string) => conversationId],
+  (state, conversationId) => {
+    const convo = state.conversations[conversationId];
+    if (!convo) {
+      throw new Error(`No conversation exists: ${conversationId}`);
+    }
+    return convo;
+  },
+);
+
+export const getConversationTitle = createSelector(
+  getConversation,
+  (convo) => convo.title,
 );
 
 export const getMessages = createSelector(
-  getMetabotConversation,
+  getConversation,
   (convo) => convo.messages,
 );
 
+export const getIsConversationEmpty = createSelector(
+  getMessages,
+  (messages) => messages.length === 0,
+);
+
+export const getConversationForkedFrom = createSelector(
+  getConversation,
+  (convo) => convo.forkedFromConversationId,
+);
+
+export const getIsPollingForTitle = createSelector(
+  [
+    (state: State) => getMetabotState(state).titlePollingConversationIds,
+    (_state: State, conversationId: string) => conversationId,
+  ],
+  (conversationIds, conversationId) => conversationIds.includes(conversationId),
+);
+
 export const getDeveloperMessage = createSelector(
-  getMetabotConversation,
+  getConversation,
   (convo) => convo.experimental.developerMessage,
 );
 
 export const getActiveToolCalls = createSelector(
-  getMetabotConversation,
+  getConversation,
   (convo) => convo.activeToolCalls,
 );
 
@@ -143,15 +206,18 @@ const splitByTurn = (messages: MetabotChatMessage[]): MetabotChatMessage[][] =>
     return turns;
   }, []);
 
-export const getFinalNavigateToMessageIdsPerTurn = createSelector(
+export const getFinalChartMessageIdsPerTurn = createSelector(
   getMessages,
   (messages) =>
     new Set(
       splitByTurn(messages).flatMap((turn) => {
-        const lastNav = turn.findLast(
-          (m) => m.type === "data_part" && m.part.type === "data-navigate_to",
+        const lastChart = turn.findLast(
+          (m) =>
+            m.type === "data_part" &&
+            m.part.type === "data-generated_entity" &&
+            m.part.data.type === "card",
         );
-        return lastNav ? [lastNav.id] : [];
+        return lastChart ? [lastChart.id] : [];
       }),
     ),
 );
@@ -189,69 +255,96 @@ export const getMessageIdToRewind = createSelector(
   },
 );
 
-export const getIsProcessing = createSelector(
-  getMetabotConversation,
+export const getIsConversationProcessing = createSelector(
+  getConversation,
   (convo) => convo.isProcessing,
 );
 
+export const getIsConversationInProgress = createSelector(
+  getMessages,
+  hasInProgressMessage,
+);
+
 export const getMetabotRequestState = createSelector(
-  getMetabotConversation,
+  getConversation,
   (convo) => convo.state,
 );
 
-export const getIsLongMetabotConversation = createSelector(
-  getMessages,
-  (messages) => {
-    const totalMessageLength = messages.reduce((sum, msg) => {
-      return sum + ("message" in msg ? msg.message.length : 0);
-    }, 0);
-    return totalMessageLength >= LONG_CONVO_MSG_LENGTH_THRESHOLD;
+export const getConversationChart = createSelector(
+  [getMetabotState, (_state: State, chartId: string) => chartId],
+  (metabotState, chartId): Urls.ConversationChart | undefined => {
+    const charts = Object.values(metabotState.conversations)
+      .map((convo) => convo?.state?.charts?.[chartId])
+      .filter((chart) => chart != null);
+    return charts.find(Urls.hasLinkableChartQuery) ?? charts[0];
+  },
+);
+
+export type MetabotLongChatNoticeVariant = "warning" | "full";
+
+export const getContextUsagePercent = createSelector(
+  [getConversation],
+  (convo): number => getContextWindowPercentUsage(convo.lastTokenUsage),
+);
+
+export const getLongChatNotice = createSelector(
+  [getConversation, getContextUsagePercent],
+  (convo, percentUsage): MetabotLongChatNoticeVariant | undefined => {
+    if (isContextWindowFull(convo.lastTokenUsage)) {
+      return "full";
+    }
+    return percentUsage >= CONTEXT_WINDOW_WARNING_PERCENT
+      ? "warning"
+      : undefined;
   },
 );
 
 export const getMetabotReqIdOverride = createSelector(
-  getMetabotConversation,
+  getConversation,
   (convo) => convo.experimental.metabotReqIdOverride,
 );
 
-export const getMetabotRequestId = (state: State, agentId: MetabotAgentId) => {
-  const metabotReqIdOverride = getMetabotReqIdOverride(state, agentId);
-  return (
-    metabotReqIdOverride ??
-    (isEmbedding() ? METABOT_REQUEST_IDS.EMBEDDED : undefined)
-  );
-};
+export const getMetabotRequestId = (state: State, conversationId: string) =>
+  getMetabotReqIdOverride(state, conversationId) ??
+  (isEmbedding() ? METABOT_REQUEST_IDS.EMBEDDED : undefined);
 
 export const getProfileOverride = createSelector(
-  getMetabotConversation,
+  getConversation,
   (convo) => convo.profileOverride,
 );
 
-export const getProfile = createSelector(
-  [getProfileOverride, getDebugMode, getLocation],
-  (profileOverride, debugMode, location): MetabotProfileId | undefined => {
-    const isTransformsPage = location.pathname.startsWith(Urls.transformList());
-    return match({ debugMode, isTransformsPage })
-      .returnType<MetabotProfileId | undefined>()
-      .with(
-        { debugMode: false, isTransformsPage: true },
-        () => "transforms_codegen",
-      )
-      .with(
-        { debugMode: true, isTransformsPage: true },
-        () => profileOverride ?? "transforms_codegen",
-      )
-      .otherwise(() => profileOverride);
-  },
-);
+export const getProfile = (
+  state: State,
+  conversationId: string,
+  isTransformsPage: boolean,
+): MetabotProfileId | undefined => {
+  const profileOverride = getProfileOverride(state, conversationId);
+  const debugMode = getDebugMode(state);
+  return match({ debugMode, isTransformsPage })
+    .returnType<MetabotProfileId | undefined>()
+    .with(
+      { debugMode: false, isTransformsPage: true },
+      () => "transforms_codegen",
+    )
+    .with(
+      { debugMode: true, isTransformsPage: true },
+      () => profileOverride ?? "transforms_codegen",
+    )
+    .otherwise(() => profileOverride);
+};
 
 export const getAgentRequestMetadata = createSelector(
   [
-    getProfile,
+    (
+      state: State,
+      conversationId: string,
+      _retryMessageId: string | undefined,
+      isTransformsPage: boolean,
+    ) => getProfile(state, conversationId, isTransformsPage),
     getLastAgentMessageExternalId,
     (
       _state: State,
-      _agentId: MetabotAgentId,
+      _conversationId: string,
       retryMessageId: string | undefined,
     ) => retryMessageId,
   ],

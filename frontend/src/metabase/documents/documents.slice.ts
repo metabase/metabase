@@ -14,6 +14,8 @@ import type {
 import type {
   Card,
   Document,
+  TimelineEvent,
+  TimelineEventId,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -31,27 +33,85 @@ export const loadMetadataForDocumentCard = createAsyncThunk(
 );
 
 export const initialState: DocumentsState = {
-  selectedEmbedIndex: null,
+  sidebar: null,
   cardEmbeds: [],
   currentDocument: null,
   draftCards: {},
+  draftCardOriginalIds: {},
   mentionsCache: {},
-  isCommentSidebarOpen: false,
   childTargetId: undefined,
   hoveredChildTargetId: undefined,
   hasUnsavedChanges: false,
-  isHistorySidebarOpen: false,
 };
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - possibly infinite type error
 const documentsSlice = createSlice({
   name: "documents",
   initialState,
   reducers: {
+    setSidebarEmbedIndex: (state, action: PayloadAction<number>) => {
+      if (
+        state.sidebar?.mode === "viz-settings" ||
+        state.sidebar?.mode === "timeline-events"
+      ) {
+        if (state.sidebar.embedIndex === action.payload) {
+          // avoid clearing selectedEventIds/focusedEventIds if the embedIndex didn't change
+          return;
+        }
+        state.sidebar.embedIndex = action.payload;
+        if (state.sidebar.mode === "timeline-events") {
+          state.sidebar.selectedEventIds = [];
+          state.sidebar.focusedEventIds = null;
+        }
+      }
+    },
     openVizSettingsSidebar: (
       state,
       action: PayloadAction<{ embedIndex: number }>,
     ) => {
-      state.selectedEmbedIndex = action.payload.embedIndex;
+      state.sidebar = {
+        mode: "viz-settings",
+        embedIndex: action.payload.embedIndex,
+      };
+    },
+    openTimelineEventsSidebar: (
+      state,
+      action: PayloadAction<{
+        embedIndex: number;
+        focusedEventIds?: TimelineEventId[];
+      }>,
+    ) => {
+      const { embedIndex, focusedEventIds } = action.payload;
+      state.sidebar = {
+        mode: "timeline-events",
+        embedIndex,
+        focusedEventIds: focusedEventIds ?? null,
+        selectedEventIds: focusedEventIds ?? [],
+      };
+    },
+    openCommentsSidebar: (state) => {
+      state.sidebar = { mode: "comments" };
+    },
+    openHistorySidebar: (state) => {
+      state.sidebar = { mode: "history" };
+    },
+    selectTimelineEvents: (state, action: PayloadAction<TimelineEvent[]>) => {
+      if (state.sidebar?.mode === "timeline-events") {
+        state.sidebar.selectedEventIds = action.payload.map(
+          (event) => event.id,
+        );
+      }
+    },
+    deselectTimelineEvents: (state) => {
+      if (state.sidebar?.mode === "timeline-events") {
+        state.sidebar.selectedEventIds = [];
+      }
+    },
+    clearFocusedTimelineEvents: (state) => {
+      if (state.sidebar?.mode === "timeline-events") {
+        state.sidebar.focusedEventIds = null;
+      }
     },
     updateVizSettings: (
       state,
@@ -78,7 +138,7 @@ const documentsSlice = createSlice({
       }
     },
     closeSidebar: (state) => {
-      state.selectedEmbedIndex = null;
+      state.sidebar = null;
     },
     setCardEmbeds: (state, action: PayloadAction<CardEmbedRef[]>) => {
       state.cardEmbeds = action.payload;
@@ -106,18 +166,21 @@ const documentsSlice = createSlice({
         ...modifiedData,
         id: draftId,
       } as Card;
+
+      const originalCardId = originalCard?.id;
+      if (originalCardId != null && originalCardId > 0) {
+        state.draftCardOriginalIds[draftId] = originalCardId;
+      }
     },
     clearDraftCards: (state) => {
       state.draftCards = {};
+      state.draftCardOriginalIds = {};
     },
     updateMentionsCache: (
       state,
       { payload }: PayloadAction<MentionCacheItem>,
     ) => {
       state.mentionsCache[getMentionsCacheKey(payload)] = payload;
-    },
-    setIsCommentSidebarOpen: (state, action: PayloadAction<boolean>) => {
-      state.isCommentSidebarOpen = action.payload;
     },
     setChildTargetId: (state, action: PayloadAction<string | undefined>) => {
       state.childTargetId = action.payload;
@@ -131,14 +194,18 @@ const documentsSlice = createSlice({
     setHasUnsavedChanges: (state, action: PayloadAction<boolean>) => {
       state.hasUnsavedChanges = action.payload;
     },
-    setIsHistorySidebarOpen: (state, action: PayloadAction<boolean>) => {
-      state.isHistorySidebarOpen = action.payload;
-    },
   },
 });
 
 export const {
+  setSidebarEmbedIndex,
   openVizSettingsSidebar,
+  openTimelineEventsSidebar,
+  openCommentsSidebar,
+  openHistorySidebar,
+  selectTimelineEvents,
+  deselectTimelineEvents,
+  clearFocusedTimelineEvents,
   updateVizSettings,
   updateVisualizationType,
   closeSidebar,
@@ -148,11 +215,9 @@ export const {
   createDraftCard,
   clearDraftCards,
   updateMentionsCache,
-  setIsCommentSidebarOpen,
   setChildTargetId,
   setHoveredChildTargetId,
   setHasUnsavedChanges,
-  setIsHistorySidebarOpen,
 } = documentsSlice.actions;
 
 export const generateDraftCardId = (): number => {

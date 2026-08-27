@@ -14,7 +14,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.test-spec :as lib.schema.test-spec]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -59,7 +58,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/snapshot/:name"
   "Snapshot the database for testing purposes."
   [{snapshot-name :name} :- [:map
@@ -135,7 +133,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/restore/:name"
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
@@ -150,13 +147,12 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/echo"
   "Simple echo handler. Fails when you POST with `?fail=true`."
   [_route-params
    {:keys [fail]} :- [:map
                       [:fail {:default false} ms/BooleanValue]]
-   body]
+   body :- ms/Map]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
@@ -166,7 +162,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/set-time"
   "Make java-time see world at exact time."
   [_route-params
@@ -187,7 +182,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/echo"
   "Simple echo handler. Fails when you GET with `?fail=true`."
   [_route-params
@@ -203,7 +197,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/mark-stale"
   "Mark the card or dashboard as stale"
   [_route-params
@@ -227,7 +220,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/stats"
   "Triggers a send of instance usage stats"
   []
@@ -264,7 +256,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/refresh-caches"
   "Manually triggers the cache refresh task, if Enterprise code is available."
   []
@@ -274,10 +265,13 @@
   "Creates a query from a test query spec."
   [_route-params
    _query-params
-   {:keys [database], :as query-spec} :- [:merge
-                                          [:map
-                                           [:database ::lib.schema.id/database]]
-                                          [:ref ::lib.schema.test-spec/test-query-spec]]]
+   {:keys [database], :as query-spec} :- [:map
+                                          ;; open: clients send the spec in camelCase and `lib/test-query` re-parses
+                                          ;; it with its own coercer, which kebab-cases the keys and validates the
+                                          ;; result. Declaring `::lib.schema.test-spec/test-query-spec` here would
+                                          ;; strip every camelCase key before that coercer ever saw it.
+                                          {:closed false}
+                                          [:database ::lib.schema.id/database]]]
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-query query-spec)))
 
@@ -297,7 +291,6 @@
    [:published_at      :any]
    [:updated_at        :any]])
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/security-advisories"
   "Nuke all existing security advisories and insert the provided ones."
   [_route-params
@@ -311,10 +304,13 @@
   "Creates a native query from a test query spec."
   [_route-params
    _query-params
-   {:keys [database], :as native-query-spec} :- [:merge
-                                                 [:map
-                                                  [:database ::lib.schema.id/database]]
-                                                 [:ref ::lib.schema.test-spec/test-native-query-spec]]]
+   {:keys [database], :as native-query-spec} :- [:map
+                                                 ;; open, for the same reason as `POST /query` above:
+                                                 ;; `lib/test-native-query` re-parses and validates the spec itself,
+                                                 ;; and it is the only thing that understands the camelCase keys
+                                                 ;; (`templateTags`, ...) clients send.
+                                                 {:closed false}
+                                                 [:database ::lib.schema.id/database]]]
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-native-query native-query-spec)))
 
@@ -358,7 +354,7 @@
   (t2/insert! :model/MetabotConversation
               {:id         id
                :user_id    user-id
-               :summary    "E2E usage auditing conversation"
+               :title      "E2E usage auditing conversation"
                :created_at created-at
                :ip_address ip-address})
   (doseq [role roles]

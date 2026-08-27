@@ -91,13 +91,10 @@ export function AddMemberRow({
                 onCancel={onCancel}
                 ariaLabel={t`Search for a user to add`}
               >
-                {Array.from(selectedUsersById.values()).map((user, index) => (
+                {Array.from(selectedUsersById.values()).map((user) => (
                   <Pill
                     key={user.id}
-                    size="xl"
-                    bg="background_page-tertiary"
-                    c="text-primary"
-                    ms={index > 0 ? "sm" : ""}
+                    size="md"
                     withRemoveButton
                     onRemove={() => handleRemoveUser(user)}
                   >

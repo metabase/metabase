@@ -1,13 +1,5 @@
-import dayjs from "dayjs";
-import timezone from "dayjs/plugin/timezone";
-import utc from "dayjs/plugin/utc";
-
-// Enable timezone and UTC plugins
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-import { getVisualizationTransformed } from "metabase/visualizations";
-import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
+import { createMockChartLayout } from "__support__/echarts";
+import { dayjs } from "metabase/dayjs";
 import type {
   CartesianChartDateTimeAbsoluteUnit,
   TimeSeriesInterval,
@@ -15,6 +7,7 @@ import type {
 import {
   computeTimeseriesDataInterval,
   computeTimeseriesTicksInterval,
+  ensureResultsTimezone,
   expectedTickCount,
   getTimezoneOrOffset,
   normalizeDate,
@@ -32,29 +25,7 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
-function createMockChartMeasurements(
-  outerWidth: number,
-  xTickWidth: number,
-): ChartLayout {
-  return {
-    boundaryWidth: 0,
-    ticksDimensions: {
-      getXTickWidth: () => xTickWidth,
-      yTicksWidthLeft: 0,
-      yTicksWidthRight: 0,
-      xTicksHeight: 0,
-      xTickWidthCap: 0,
-      firstXTickWidth: 0,
-      lastXTickWidth: 0,
-    },
-    padding: { top: 0, bottom: 0, left: 0, right: 0 },
-    bounds: { top: 0, bottom: 0, left: 0, right: 0 },
-    outerHeight: 0,
-    outerWidth,
-    axisEnabledSetting: true,
-    panelGap: 0,
-  };
-}
+import { getVisualizationTransformed } from "../../../lib/registry";
 
 registerVisualizations();
 
@@ -436,7 +407,10 @@ describe("visualization.lib.timeseries", () => {
           const { unit, count } = computeTimeseriesTicksInterval(
             xDomain,
             xInterval,
-            createMockChartMeasurements(outerWidth, xTickWidth),
+            createMockChartLayout({
+              outerWidth,
+              ticksDimensions: { getXTickWidth: () => xTickWidth },
+            }),
             mockFormatter,
           );
           expect(unit).toBe(expectedUnit);
@@ -444,6 +418,56 @@ describe("visualization.lib.timeseries", () => {
         });
       },
     );
+  });
+
+  describe("ensureResultsTimezone", () => {
+    it("should leave timezone-aware strings unchanged", () => {
+      expect(ensureResultsTimezone("2025-03-30T00:00:00Z", "US/Samoa")).toBe(
+        "2025-03-30T00:00:00Z",
+      );
+      expect(
+        ensureResultsTimezone("2025-03-30T00:00:00+08:00", "US/Samoa"),
+      ).toBe("2025-03-30T00:00:00+08:00");
+    });
+
+    it("should leave week and ordinal dates unchanged", () => {
+      expect(ensureResultsTimezone("2019-W33", "US/Samoa")).toBe("2019-W33");
+      expect(ensureResultsTimezone("2024-365", "US/Samoa")).toBe("2024-365");
+    });
+
+    it("should leave non-strings unchanged", () => {
+      expect(ensureResultsTimezone(null, "US/Samoa")).toBe(null);
+      expect(ensureResultsTimezone(1711843200000, "US/Samoa")).toBe(
+        1711843200000,
+      );
+    });
+
+    it("should attach a named results_timezone while preserving wall clock", () => {
+      expect(ensureResultsTimezone("2025-04-01", "US/Samoa")).toBe(
+        "2025-04-01T00:00:00-11:00",
+      );
+      expect(ensureResultsTimezone("2025-03-30 00:00:00", "US/Samoa")).toBe(
+        "2025-03-30T00:00:00-11:00",
+      );
+      expect(ensureResultsTimezone("2025-03-30T00:00:00", "US/Samoa")).toBe(
+        "2025-03-30T00:00:00-11:00",
+      );
+      expect(ensureResultsTimezone("20250401", "US/Samoa")).toBe(
+        "2025-04-01T00:00:00-11:00",
+      );
+    });
+
+    it("should attach an offset results_timezone while preserving wall clock", () => {
+      expect(ensureResultsTimezone("2025-03-30 00:00:00", undefined, 480)).toBe(
+        "2025-03-30T00:00:00+08:00",
+      );
+    });
+
+    it("should fall back to UTC when neither timezone nor offset is provided", () => {
+      expect(ensureResultsTimezone("2025-03-30 00:00:00")).toBe(
+        "2025-03-30T00:00:00Z",
+      );
+    });
   });
 
   describe("getTimezoneOrOffset", () => {

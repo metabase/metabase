@@ -67,6 +67,16 @@
     (is (not (contains? scopes "agent:notebook:*")))
     (is (contains? scopes "agent:search"))))
 
+(deftest ^:parallel granted-scopes-cover-a-registered-scope-test
+  (testing "every scope we grant covers at least one registered scope — a grant that matches
+            nothing is dead config (its tool was removed, or was never landed)"
+    (let [registered (map :scope (api-scope/all-scopes))
+          granted    (into scope/always-granted-scopes cat (vals @#'scope/perm-type->scopes))
+          dead       (remove (fn [grant]
+                               (some (partial api-scope/scope-matches? #{grant}) registered))
+                             granted)]
+      (is (= [] (vec dead))))))
+
 (deftest ^:parallel perms->scopes-all-yes-test
   (let [scopes (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
     (is (contains? scopes "agent:sql:*"))

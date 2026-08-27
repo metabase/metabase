@@ -29,19 +29,23 @@ import {
   createAction,
   createThunkAction,
 } from "metabase/redux";
-import { push } from "metabase/router";
-import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { navigate } from "metabase/router";
 import type {
   Collection,
   CollectionPermissions,
   CollectionPermissionsGraph,
+  DatabaseId,
   GroupId,
   GroupsPermissions,
   PermissionEntityId,
+  PermissionsDatabase,
   PermissionsGraph,
 } from "metabase-types/api";
 
+import {
+  DATABASE_TABLES_QUERY,
+  getPermissionsDatabase,
+} from "./selectors/data-permissions/databases";
 import { selectGroupList } from "./selectors/data-permissions/groups";
 import {
   DataPermission,
@@ -49,11 +53,7 @@ import {
   type DataPermissionValue,
   type PermissionSectionConfig,
 } from "./types";
-import {
-  isDatabaseEntityId,
-  isSchemaEntityId,
-  isTableEntityId,
-} from "./utils/data-entity-id";
+import { isSchemaEntityId, isTableEntityId } from "./utils/data-entity-id";
 import {
   getModifiedCollectionPermissionsGraphParts,
   getModifiedGroupsPermissionsGraphParts,
@@ -186,18 +186,14 @@ export const limitDatabasePermission = createThunkAction(
       );
     }
 
-    dispatch(navigateToGranularPermissions(groupId, entityId));
+    navigateToGranularPermissions(groupId, entityId);
   },
 );
 
-export const NAVIGATE_TO_GRANULAR_PERMISSIONS =
-  "metabase/admin/permissions/NAVIGATE_TO_GRANULAR_PERMISSIONS";
-export const navigateToGranularPermissions = createThunkAction(
-  NAVIGATE_TO_GRANULAR_PERMISSIONS,
-  (groupId, entityId) => (dispatch) => {
-    dispatch(push(getGroupFocusPermissionsUrl(groupId, entityId)));
-  },
-);
+export const navigateToGranularPermissions = (
+  groupId: GroupId,
+  entityId: PermissionEntityId,
+) => navigate(getGroupFocusPermissionsUrl(groupId, entityId));
 
 export interface UpdateDataPermissionParams {
   groupId: GroupId;
@@ -216,7 +212,7 @@ export interface UpdateDataPermissionPayload {
     "type" | "permission" | "postActions"
   >;
   value: DataPermissionValue;
-  metadata: Metadata;
+  database: PermissionsDatabase | undefined;
   entityId: PermissionEntityId;
 }
 export const UPDATE_DATA_PERMISSION =
@@ -230,40 +226,34 @@ export const updateDataPermission = createThunkAction(
     entityId,
     view,
   }: UpdateDataPermissionParams) => {
-    return (dispatch, getState): UpdateDataPermissionPayload | undefined => {
-      if (isDatabaseEntityId(entityId)) {
-        // Fire-and-forget background refresh of the database's table metadata;
-        // the reducer below reads the current snapshot synchronously. Swallow
-        // rejections so a failed fetch doesn't surface as an unhandled
-        // promise rejection.
-        void runRtkEndpoint(
-          {
-            id: entityId.databaseId,
-            include_hidden: true,
-            remove_inactive: true,
-            skip_fields: true,
-          },
+    return async (
+      dispatch,
+      getState,
+    ): Promise<UpdateDataPermissionPayload | undefined> => {
+      // The reducer writes one entry per schema, so it needs the database's
+      // tables. Drilling into a database loads them, but the database list can
+      // be edited without ever opening one, so fetch when they are missing.
+      // Swallow rejections; the reducer treats a missing database as a no-op.
+      const database =
+        getPermissionsDatabase(getState(), entityId.databaseId) ??
+        (await runRtkEndpoint(
+          { id: entityId.databaseId, ...DATABASE_TABLES_QUERY },
           dispatch,
           databaseApi.endpoints.getDatabaseMetadata,
-        ).catch(() => undefined);
-      }
-
-      const metadata = getMetadataWithHiddenTables(getState());
-      if (permissionInfo.postActions) {
-        const action = permissionInfo.postActions?.[value]?.(
-          entityId,
-          groupId,
-          view,
-          value,
-          getState,
-        );
+          { forceRefetch: false },
+        ).catch(() => undefined));
+      const postAction = permissionInfo.postActions?.[value];
+      if (postAction) {
+        // A post action takes the change over: it sends the admin to where this
+        // value is configured, so the permission is not applied here.
+        const action = postAction(entityId, groupId, view, value, getState);
         if (action) {
           dispatch(action);
-          return;
         }
+        return;
       }
 
-      return { groupId, permissionInfo, value, metadata, entityId };
+      return { groupId, permissionInfo, value, database, entityId };
     };
   },
 );
@@ -647,9 +637,7 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
 
       state = current(state); // some of the update functions use icepick which is incompatible with immer
 
-      const { value, groupId, entityId, metadata, permissionInfo } = payload;
-
-      const database = metadata.database(entityId.databaseId);
+      const { value, groupId, entityId, database, permissionInfo } = payload;
 
       if (database == null) {
         return state;
@@ -771,6 +759,35 @@ const originalDataPermissions = createReducer<GroupsPermissions | null>(
     );
   },
 );
+
+/**
+ * Databases whose tables the tree has seen, kept for as long as the page is
+ * open. The tables come from `getDatabaseMetadata`, whose cache entry is
+ * unsubscribed as soon as the admin navigates away from that database, but the
+ * save confirmation still has to name the tables an edit granted or revoked,
+ * and a parent's confirmation still has to look at its children.
+ */
+type DatabasesWithTables = Record<DatabaseId, PermissionsDatabase>;
+
+function databasesWithTables(
+  state: DatabasesWithTables = {},
+  action: UnknownAction,
+): DatabasesWithTables {
+  if (databaseApi.endpoints.getDatabaseMetadata.matchFulfilled(action)) {
+    const database = action.payload;
+    return { ...state, [database.id]: database };
+  }
+  if (isUpdateDataPermissionAction(action)) {
+    const database = action.payload?.database;
+    return database == null ? state : { ...state, [database.id]: database };
+  }
+  // Loading the graph covers both a fresh load and the reset after a save or a
+  // discard, so the edits it clears are gone from the diff too.
+  if (isLoadDataPermissionsAction(action)) {
+    return {};
+  }
+  return state;
+}
 
 const dataPermissionsRevision = createReducer<number | null>(
   null,
@@ -1041,6 +1058,7 @@ const hasRevisionChanged = createReducer<RevisionChangedState>(
 export const permissions = combineReducers({
   saveError,
   dataPermissions,
+  databasesWithTables,
   originalDataPermissions,
   dataPermissionsRevision,
   collectionPermissions,

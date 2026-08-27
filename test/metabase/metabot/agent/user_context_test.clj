@@ -64,12 +64,13 @@
 (deftest ^:parallel format-viewing-context-test
   (let [mp meta/metadata-provider]
     (testing "formats adhoc notebook (MBQL) query context"
-      (is (=? (re-pattern
-               (format "(?s).*notebook editor.*Database ID: %d.*"
-                       (meta/id)))
-              (user-context/format-viewing-context
-               {:user_is_viewing [{:type  "adhoc"
-                                   :query (lib/query mp (lib.metadata/table mp (meta/id :venues)))}]}))))
+      (mt/with-test-user :crowberto
+        (is (=? (re-pattern
+                 (format "(?s).*notebook editor.*Database ID: %d.*"
+                         (meta/id)))
+                (user-context/format-viewing-context
+                 {:user_is_viewing [{:type  "adhoc"
+                                     :query (lib/query mp (lib.metadata/table mp (meta/id :venues)))}]})))))
     (testing "formats adhoc native SQL query from frontend (type: adhoc, query.type: native)"
       (let [result (user-context/format-viewing-context
                     {:user_is_viewing [{:type       "adhoc"
@@ -210,7 +211,7 @@
 
 (deftest ^:parallel format-viewing-context-test-2h
   (testing "handles multiple viewing items"
-    (let [context {:user_is_viewing [{:type "table" :id 1 :name "users"}
+    (let [context {:user_is_viewing [{:type "table" :id 321 :name "users"}
                                      {:type "question" :id 2 :name "Top Users"}]}
           result (user-context/format-viewing-context context)]
       (is (some? result))
@@ -442,7 +443,7 @@
         "Formatting result should contain database id")))
 
 (deftest ^:parallel format-transform-source-mbql-renders-repr-json-test
-  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd pMBQL"
+  (testing "transform sources with a structured MBQL `:query` are rendered as a portable repr JSON code block, not pprint'd MBQL 5"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mp     (mt/metadata-provider)
@@ -453,7 +454,7 @@
                       (assoc source :transform-source-type :query))]
           (is (string? text))
           (is (re-find #"```json" text)
-              "output is a JSON code block (the portable representations form), not pprint'd pMBQL")
+              "output is a JSON code block (the portable representations form), not pprint'd MBQL 5")
           (is (re-find #"\"lib/type\"\s*:\s*\"mbql/query\"" text))
           (is (re-find #"\"source-table\"" text))
           (is (not (re-find #"lib/metadata" text))
@@ -472,3 +473,40 @@
           (is (string? text))
           (is (re-find #"\"mbql.stage/native\"" text))
           (is (re-find #"SELECT \* FROM VENUES" text)))))))
+
+(deftest ^:parallel adhoc-viewing-context-includes-query-test
+  (testing "adhoc viewing context renders the query so the model can see the chart"
+    (let [out (user-context/format-viewing-context
+               {:user_is_viewing
+                [{:type  "adhoc"
+                  :query {:type "query" :query {:source-table 1}}}]})]
+      (is (str/includes? out "notebook editor"))
+      (is (str/includes? out "source-table")))))
+
+(deftest adhoc-viewing-context-read-checks-database-test
+  (let [viewing (fn [db-id]
+                  {:user_is_viewing [{:type  "adhoc"
+                                      :query {:database db-id
+                                              :type     "query"
+                                              :query    {:source-table (mt/id :venues)}}}]})]
+    (testing "renders the query when the user can read its database"
+      (mt/with-test-user :crowberto
+        (let [out (user-context/format-viewing-context (viewing (mt/id)))]
+          (is (str/includes? out "notebook editor"))
+          (is (str/includes? out "source-table")))))
+    (testing "omits the query when the user cannot read its database"
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-test-user :rasta
+            (let [out (user-context/format-viewing-context (viewing db-id))]
+              (is (str/includes? out "notebook editor"))
+              (is (not (str/includes? out "source-table"))))))))))
+
+(deftest ^:parallel enrich-context-omits-research-plan-test
+  (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not
+            leak into the generic user-message injection context. message_injection.selmer has no
+            {{research_plan}} placeholder; the plan is rendered into the system prompt instead (see
+            metabase.metabot.tools.explorations/research-plan-system-context)."
+    (let [plan {:name "Why was revenue down?" :groups [] :timelines []}
+          enriched (user-context/enrich-context-for-template {:research_plan plan})]
+      (is (not (contains? enriched :research_plan))))))

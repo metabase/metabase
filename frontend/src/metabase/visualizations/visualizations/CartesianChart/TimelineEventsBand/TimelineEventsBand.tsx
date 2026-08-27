@@ -6,15 +6,19 @@ import {
   TIMELINE_EVENTS_BAND,
 } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type { ChartLayout } from "metabase/visualizations/echarts/cartesian/layout/types";
-import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type {
+  TimelineEventGroup,
+  TimelineEventsModel,
+} from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { TimelineEvent, TimelineEventId } from "metabase-types/api";
 
 import { TimelineEventChip } from "./TimelineEventChip";
+import { TimelineEventStack } from "./TimelineEventStack";
 import S from "./TimelineEventsBand.module.css";
 import {
-  type PositionedTimelineEventGroup,
-  arePositionedGroupsEqual,
-  getPositionedTimelineEventGroups,
+  type PositionedTimelineEventCluster,
+  arePositionedClustersEqual,
+  getPositionedTimelineEventClusters,
 } from "./utils";
 
 interface TimelineEventsBandProps {
@@ -24,9 +28,11 @@ interface TimelineEventsBandProps {
   chartLayout: ChartLayout;
   xAxisIndex: number;
   selectedTimelineEventIds?: TimelineEventId[];
+  onGroupHover?: (group: TimelineEventGroup | null) => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
+  onSeeAllEvents?: (events: TimelineEvent[]) => void;
 }
 
 export const TimelineEventsBand = ({
@@ -36,9 +42,11 @@ export const TimelineEventsBand = ({
   chartLayout,
   xAxisIndex,
   selectedTimelineEventIds,
+  onGroupHover,
   onOpenTimelines,
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
+  onSeeAllEvents,
 }: TimelineEventsBandProps) => {
   const gridBottom = chartSize.height - chartLayout.padding.bottom;
   const trackTop = gridBottom + TIMELINE_EVENTS_BAND.marginY;
@@ -47,11 +55,15 @@ export const TimelineEventsBand = ({
   const plotLeft = chartLayout.padding.left;
   const plotRight = chartSize.width - chartLayout.padding.right;
 
-  const [positionedGroups, setPositionedGroups] = useState<
-    PositionedTimelineEventGroup[]
+  const [positionedClusters, setPositionedClusters] = useState<
+    PositionedTimelineEventCluster[]
   >([]);
 
-  const updatePositionedGroups = useCallback(() => {
+  const [expandedClusterDate, setExpandedClusterDate] = useState<string | null>(
+    null,
+  );
+
+  const updatePositionedClusters = useCallback(() => {
     const canPosition =
       chartInstance != null &&
       timelineEventsModel != null &&
@@ -59,7 +71,7 @@ export const TimelineEventsBand = ({
       chartSize.width > 0;
 
     const next = canPosition
-      ? getPositionedTimelineEventGroups({
+      ? getPositionedTimelineEventClusters({
           timelineEventsModel,
           chartInstance,
           plotBounds: { left: plotLeft, right: plotRight },
@@ -67,8 +79,8 @@ export const TimelineEventsBand = ({
         })
       : [];
 
-    setPositionedGroups((previous) =>
-      arePositionedGroupsEqual(previous, next) ? previous : next,
+    setPositionedClusters((previous) =>
+      arePositionedClustersEqual(previous, next) ? previous : next,
     );
   }, [
     chartInstance,
@@ -80,25 +92,31 @@ export const TimelineEventsBand = ({
   ]);
 
   useEffect(() => {
-    updatePositionedGroups();
-  }, [updatePositionedGroups]);
+    updatePositionedClusters();
+  }, [updatePositionedClusters]);
 
   useEffect(() => {
     if (!chartInstance) {
       return;
     }
-    chartInstance.on("finished", updatePositionedGroups);
+    chartInstance.on("finished", updatePositionedClusters);
     return () => {
-      chartInstance.off("finished", updatePositionedGroups);
+      chartInstance.off("finished", updatePositionedClusters);
     };
-  }, [chartInstance, updatePositionedGroups]);
+  }, [chartInstance, updatePositionedClusters]);
 
-  if (positionedGroups.length === 0) {
+  // Collapse any spread stack when the chart genuinely re-lays-out; the
+  // equality bail-out above keeps ECharts "finished" events from firing this.
+  useEffect(() => {
+    setExpandedClusterDate(null);
+  }, [positionedClusters]);
+
+  if (positionedClusters.length === 0) {
     return null;
   }
 
   return (
-    <div data-testid="timeline-events-band">
+    <div className={S.band} data-testid="timeline-events-band">
       <div
         className={S.track}
         style={{
@@ -108,17 +126,49 @@ export const TimelineEventsBand = ({
           height: TIMELINE_BAND_HEIGHT,
         }}
       />
-      {positionedGroups.map((eventsGroup) => (
-        <TimelineEventChip
-          key={eventsGroup.group.date}
-          eventsGroup={eventsGroup}
-          centerY={centerY}
-          selectedEventIds={selectedTimelineEventIds ?? []}
-          onOpenTimelines={onOpenTimelines}
-          onSelectTimelineEvents={onSelectTimelineEvents}
-          onDeselectTimelineEvents={onDeselectTimelineEvents}
-        />
-      ))}
+      {positionedClusters.map(({ cluster, memberXs }) => {
+        const isHidden =
+          expandedClusterDate != null && expandedClusterDate !== cluster.date;
+
+        if (cluster.groups.length === 1) {
+          return (
+            <TimelineEventChip
+              key={cluster.date}
+              group={cluster.groups[0]}
+              x={memberXs[0]}
+              centerY={centerY}
+              hidden={isHidden}
+              selectedEventIds={selectedTimelineEventIds ?? []}
+              onGroupHover={onGroupHover}
+              onOpenTimelines={onOpenTimelines}
+              onSelectTimelineEvents={onSelectTimelineEvents}
+              onDeselectTimelineEvents={onDeselectTimelineEvents}
+              onSeeAllEvents={onSeeAllEvents}
+            />
+          );
+        }
+
+        return (
+          <TimelineEventStack
+            key={cluster.date}
+            cluster={cluster}
+            memberXs={memberXs}
+            centerY={centerY}
+            plotBounds={{ left: plotLeft, right: plotRight }}
+            hidden={isHidden}
+            isExpanded={expandedClusterDate === cluster.date}
+            onExpandedChange={(isExpanded) =>
+              setExpandedClusterDate(isExpanded ? cluster.date : null)
+            }
+            selectedEventIds={selectedTimelineEventIds ?? []}
+            onGroupHover={onGroupHover}
+            onOpenTimelines={onOpenTimelines}
+            onSelectTimelineEvents={onSelectTimelineEvents}
+            onDeselectTimelineEvents={onDeselectTimelineEvents}
+            onSeeAllEvents={onSeeAllEvents}
+          />
+        );
+      })}
     </div>
   );
 };
