@@ -120,12 +120,18 @@ export type MetabotMessagePart =
   | MetabotDebugToolCallMessage
   | MetabotAgentChainOfThoughtMessage;
 
+export type MetabotContextUsage = {
+  contextTokens: number;
+  contextWindowTokens: number;
+};
+
 export type MetabotMessage = {
   id: string;
   externalId?: string;
   role: "user" | "agent";
   parts: MetabotMessagePart[];
   status: MetabotMessageStatus;
+  contextTokens?: number;
 };
 
 export type MetabotToolCall = {
@@ -155,11 +161,6 @@ export type MetabotReactionsState = {
   suggestedTransforms: MetabotSuggestedTransform[];
 };
 
-export type MetabotContextUsage = {
-  contextTokens: number;
-  contextWindowTokens: number;
-};
-
 export interface MetabotConversationState {
   conversationId: string;
   title: string | undefined;
@@ -170,7 +171,7 @@ export interface MetabotConversationState {
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;
   activeToolCalls: MetabotToolCall[];
-  lastTokenUsage?: MetabotContextUsage;
+  contextWindowTokens?: number;
   profileOverride: MetabotProfileId | undefined;
   experimental: {
     developerMessage: string;

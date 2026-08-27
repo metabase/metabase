@@ -35,6 +35,7 @@ import {
   createPauses,
   createTestMetabotState,
   enterChatMessage,
+  expectContextUsage,
   hideMetabot,
   input,
   lastReqBody,
@@ -376,10 +377,10 @@ describe("metabot > ui", () => {
     expect(
       within(notice).queryByTestId("metabot-long-chat-dismiss"),
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId("metabot-chat-input")).toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-chat-input")).not.toBeInTheDocument();
     expect(
-      screen.getByTestId("metabot-context-usage-ring"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("metabot-context-usage-ring"),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(
       within(notice).getByTestId("metabot-long-chat-new-chat"),
@@ -665,14 +666,14 @@ describe("metabot > ui", () => {
       });
     };
 
-    const selectPastConversation = async () => {
+    const selectPastConversation = async (title = "Orders by month") => {
       await userEvent.click(
         await screen.findByTestId("metabot-conversation-history"),
       );
       const list = await screen.findByTestId(
         "metabot-conversation-history-list",
       );
-      await userEvent.click(await within(list).findByText("Orders by month"));
+      await userEvent.click(await within(list).findByText(title));
     };
 
     it("loads a past conversation into the chat when a history item is clicked", async () => {
@@ -693,6 +694,57 @@ describe("metabot > ui", () => {
           ),
         ).toHaveLength(1);
       });
+    });
+
+    it("renders the context usage of a loaded conversation", async () => {
+      const CONTEXT_WINDOW = 1000;
+      const used = [
+        {
+          id: "22222222-2222-2222-2222-222222222222",
+          title: "Half full",
+          contextTokens: 520,
+        },
+        {
+          id: "33333333-3333-3333-3333-333333333333",
+          title: "Brimming",
+          contextTokens: CONTEXT_WINDOW,
+        },
+      ];
+
+      used.forEach(({ id, title, contextTokens }) =>
+        setupGetMetabotConversationEndpoint(
+          createMockMetabotConversationDetail({
+            conversation_id: id,
+            title,
+            context_window_tokens: CONTEXT_WINDOW,
+            messages: [
+              createMockMetabotTextMessage("user", "How many orders?"),
+              createMockMetabotTextMessage("agent", "There are 42 orders.", {
+                contextTokens,
+              }),
+            ],
+          }),
+        ),
+      );
+      setup({
+        conversations: used.map(({ id, title }) =>
+          createMockMetabotConversation({ conversation_id: id, title }),
+        ),
+      });
+
+      await selectPastConversation("Half full");
+      await expectContextUsage(52);
+      expect(
+        screen.queryByTestId("metabot-long-chat-notice"),
+      ).not.toBeInTheDocument();
+
+      await selectPastConversation("Brimming");
+      expect(
+        await screen.findByTestId("metabot-long-chat-notice"),
+      ).toHaveTextContent(/This chat has reached the/);
+      expect(
+        screen.queryByTestId("metabot-context-usage-ring"),
+      ).not.toBeInTheDocument();
     });
 
     it("positions a loaded conversation before the next frame", async () => {

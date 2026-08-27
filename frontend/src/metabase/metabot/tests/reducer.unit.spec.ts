@@ -759,14 +759,11 @@ describe("metabot reducer", () => {
       ]);
     });
 
-    it("releases the active chain id and context usage when a snapshot replaces the conversation", () => {
+    it("drops the streamed messages when a snapshot replaces the conversation", () => {
       const store = createTestStore({
         conversations: {
           ...createTestMetabotState().conversations,
-          [conversationId]: createConversation({
-            conversationId,
-            lastTokenUsage: { contextTokens: 950, contextWindowTokens: 1000 },
-          }),
+          [conversationId]: createConversation({ conversationId }),
         },
       });
       startRequestlessAgentTurn(store, conversationId);
@@ -779,7 +776,6 @@ describe("metabot reducer", () => {
       );
 
       expect(getConvo(store)?.messages).toEqual([]);
-      expect(getConvo(store)?.lastTokenUsage).toBeUndefined();
     });
   });
 });

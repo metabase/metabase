@@ -273,6 +273,14 @@ export const assertConversation = async (
   });
 };
 
+export const expectContextUsage = (percent: number) =>
+  waitFor(() =>
+    expect(screen.getByTestId("metabot-context-usage-ring")).toHaveAttribute(
+      "aria-label",
+      `${percent}% of the context window used`,
+    ),
+  );
+
 export const lastReqBody = async (
   agentSpy: ReturnType<typeof mockAgentEndpoint>,
 ) => {

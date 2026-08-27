@@ -1,0 +1,21 @@
+# Add context_tokens to metabot_message to help calculate remaining space in the context window
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-08-26T00:00:00
+      author: sloansparger
+      comment: Add context_tokens to metabot_message
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: context_tokens
+                  remarks: Prompt + completion tokens of the turn's final LLM call
+                  type: integer
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_message
+            columnName: context_tokens

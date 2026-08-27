@@ -17,7 +17,11 @@ import {
   isContextWindowFull,
 } from "../utils/context-usage";
 
-import type { MetabotAgentId, MetabotMessage } from "./types";
+import type {
+  MetabotAgentId,
+  MetabotContextUsage,
+  MetabotMessage,
+} from "./types";
 import { hasInProgressMessage, isGeneratedCardPart, isTextPart } from "./utils";
 
 /*
@@ -253,15 +257,28 @@ export const getConversationChart = createSelector(
 
 export type MetabotLongChatNoticeVariant = "warning" | "full";
 
+export const getContextUsage = createSelector(
+  [getMessages, getConversation],
+  (messages, convo): MetabotContextUsage | undefined => {
+    const contextTokens = messages.findLast(
+      (m) => m.role === "agent" && m.contextTokens,
+    )?.contextTokens;
+    const { contextWindowTokens } = convo;
+    return contextTokens && contextWindowTokens
+      ? { contextTokens, contextWindowTokens }
+      : undefined;
+  },
+);
+
 export const getContextUsagePercent = createSelector(
-  [getConversation],
-  (convo): number => getContextWindowPercentUsage(convo.lastTokenUsage),
+  getContextUsage,
+  getContextWindowPercentUsage,
 );
 
 export const getLongChatNotice = createSelector(
-  [getConversation, getContextUsagePercent],
-  (convo, percentUsage): MetabotLongChatNoticeVariant | undefined => {
-    if (isContextWindowFull(convo.lastTokenUsage)) {
+  [getContextUsage, getContextUsagePercent],
+  (contextUsage, percentUsage): MetabotLongChatNoticeVariant | undefined => {
+    if (isContextWindowFull(contextUsage)) {
       return "full";
     }
     return percentUsage >= CONTEXT_WINDOW_WARNING_PERCENT
