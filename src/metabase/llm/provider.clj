@@ -21,7 +21,8 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -795,18 +796,23 @@
         stored           (stored-connections)
         idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))]
     ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
-    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings
-    (when-not (setting/obfuscated-value? value)
-      (when value
-        (validate-config-field! group-type field {field value}))
-      (cond
-        idx   (set-connections! (update-in stored [idx :config]
-                                           (fn [config]
-                                             (if value (assoc config field value) (dissoc config field)))))
-        value (set-connections! (conj stored {:key    conn-key
-                                              :type   group-type
-                                              :name   (str (:label (provider-type group-type)))
-                                              :config {field value}}))))))
+    ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings. Both forms are checked: the
+    ;; mask of a newline-terminated secret (a JSON key file) matches only untrimmed, while a mask that picked up
+    ;; padding in transit matches only trimmed
+    (if (or (setting/obfuscated-value? new-value)
+            (setting/obfuscated-value? value))
+      (log/infof "Attempted to set %s to an obfuscated value. Ignoring change." (name setting-kw))
+      (do
+        (when value
+          (validate-config-field! group-type field {field value}))
+        (cond
+          idx   (set-connections! (update-in stored [idx :config]
+                                             (fn [config]
+                                               (if value (assoc config field value) (dissoc config field)))))
+          value (set-connections! (conj stored {:key    conn-key
+                                                :type   group-type
+                                                :name   (str (:label (provider-type group-type)))
+                                                :config {field value}})))))))
 
 ;;; -------------------------------------------------- Redaction ----------------------------------------------------
 
