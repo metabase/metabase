@@ -195,12 +195,12 @@ function getFulfilledQueryArg(action: unknown): FulfilledQueryArg | undefined {
 }
 
 /**
- * The single writer into `state.entities`.
+ * The single writer into `state.entities`. Runs after the RTK cache has taken
+ * the response.
  *
- * Each hydrating endpoint used to mirror its own response from
- * `onQueryStarted`, which put an upward `metabase/api` to `metabase/redux`
- * import in ten files. The write now happens once, here, after the RTK cache
- * has taken the response.
+ * It lives here rather than in each endpoint's `onQueryStarted` so that
+ * `metabase/api` needs no import from `metabase/redux`, which is an upward
+ * edge: `shared/api` is U1 and `shared/redux` is U2.
  */
 export const metadataHydrationMiddleware: Middleware =
   ({ dispatch }) =>
@@ -222,20 +222,16 @@ export const metadataHydrationMiddleware: Middleware =
     // `normalize` throws on anything that is not an object, and two responses
     // reach here that are not one: a redirect resolves the request with a
     // string body, and a list response that omits its rows selects `undefined`.
-    // Both used to land inside the `try` in `handleQueryFulfilled`, so the
-    // throw was swallowed and nothing was written. Skip them explicitly rather
-    // than keep a catch that would also hide real faults.
+    // Skipped explicitly, so that a genuine fault still throws.
     const entities = rule.toEntities(payload, arg.originalArgs);
     if (entities == null || typeof entities !== "object") {
       return result;
     }
 
-    // Deferred, not written here. Each endpoint used to write from
-    // `onQueryStarted`, which runs on `await queryFulfilled`, so the write
-    // always landed after RTK Query had finished with the action. Writing
-    // synchronously re-enters the middleware chain while the fulfilled action
-    // is still unwinding, and reorders that work against the render it
-    // triggers. `AddCardSidebar.unit.spec.tsx` catches it.
+    // Deferred so the write cannot re-enter the action that triggered it.
+    // Writing synchronously lands while the fulfilled action is still
+    // unwinding through RTK Query's middleware, and reorders that work against
+    // the render it triggers. `AddCardSidebar.unit.spec.tsx` catches it.
     //
     // A promise and not `queueMicrotask`: Jest's fake timers replace
     // `queueMicrotask`, so a spec that drives polling by hand would never

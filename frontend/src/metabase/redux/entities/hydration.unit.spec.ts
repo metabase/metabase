@@ -8,15 +8,14 @@ import {
 } from "./hydration";
 
 /**
- * The endpoints that mirrored their response into `state.entities` from their
- * own `onQueryStarted`, before one listener replaced all 33 hookups.
+ * Every endpoint whose response reaches `state.entities`.
  *
  * Keep this list literal. Dropping an endpoint stops its data reaching
  * `getMetadata` and throws nothing, and adding one starts hydrating every
- * caller of an endpoint that never hydrated before. Both are behaviour changes
- * that have to be argued in review, not absorbed by a snapshot.
+ * caller of an endpoint that does not hydrate today. Both are behaviour
+ * changes that have to be argued in review, not absorbed by a snapshot.
  */
-const ENDPOINTS_THAT_HYDRATED = [
+const HYDRATING_ENDPOINTS = [
   "createCard",
   "createSnippet",
   "getAdhocQueryMetadata",
@@ -93,9 +92,9 @@ function fulfilled(
 }
 
 describe("metadataHydrationMiddleware", () => {
-  it("hydrates exactly the endpoints that hydrated before the listener", () => {
+  it("hydrates exactly the endpoints in the list, and no others", () => {
     expect([...HYDRATED_ENDPOINT_NAMES].sort()).toEqual(
-      [...ENDPOINTS_THAT_HYDRATED].sort(),
+      [...HYDRATING_ENDPOINTS].sort(),
     );
   });
 
@@ -147,15 +146,13 @@ describe("metadataHydrationMiddleware", () => {
   });
 
   it("ignores a list response that omits its rows", async () => {
-    // `normalize(undefined)` throws. The old `handleQueryFulfilled` ran the
-    // normalize inside its `try`, so this threw and was swallowed on every
-    // such response.
+    // `normalize(undefined)` throws, so the rule's selection is guarded.
     expect(
       await runMiddleware(fulfilled("listDatabases", { total: 0 })),
     ).toEqual([]);
   });
 
-  it("ignores an endpoint that never hydrated", async () => {
+  it("ignores an endpoint that does not hydrate", async () => {
     expect(
       await runMiddleware(fulfilled("getTableData", { rows: [] })),
     ).toEqual([]);
