@@ -204,10 +204,7 @@
   restart."
   [content-before-migrations? :- :boolean]
   (log/debug "Checking encryption configuration")
-  (when-let [status (try (mdb.encryption/encryption-check-status)
-                         (catch Throwable e
-                           (log/warnf "Error checking encryption status, skipping the check: %s" (ex-message e))
-                           nil))]
+  (let [status (mdb.encryption/encryption-check-status)]
     (cond
       (not (encryption/default-encryption-enabled?))
       (if (= status :absent)

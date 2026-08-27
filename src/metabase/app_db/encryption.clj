@@ -65,16 +65,21 @@
   `encryption-check` sentinel setting -- a random UUID encrypted under the key, present iff the database is encrypted:
 
     :valid   - the sentinel decrypts to a UUID, so the key is correct
-    :invalid - the sentinel exists but does not decrypt, so the key is wrong (or unset) for this database
+    :invalid - the sentinel exists but does not decrypt (wrong or unset key, tampering), or the database cannot be
+               read at all (no `setting` table) -- not a normal state either way
     :absent  - no sentinel: the database is not encrypted (or predates the sentinel)"
   []
-  (let [raw (t2/select-one-fn :value :setting :key encryption-check-key)]
+  (let [raw (try
+              (t2/select-one-fn :value :setting :key encryption-check-key)
+              (catch Exception e
+                (log/debugf "Could not read the encryption-check setting: %s" (ex-message e))
+                ::unreadable))]
     (cond
       (nil? raw)
       :absent
 
-      (and (encryption/possibly-encrypted-string? raw)
-           (try (string/valid-uuid? (encryption/maybe-decrypt-accepting-plaintext raw))
+      (and (string? raw)
+           (try (string/valid-uuid? (encryption/maybe-decrypt raw))
                 (catch Throwable _ false)))
       :valid
 
