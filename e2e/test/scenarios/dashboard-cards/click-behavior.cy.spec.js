@@ -2105,45 +2105,45 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       // 1st stage - Orders
       getClickMapping("ID").click();
-      H.popover().findByText("ID").click();
+      selectClickMappingSource("ID");
 
       // 1st stage - Custom columns
       getClickMapping("Net").click();
-      H.popover().findByText("User → Longitude: 10°").click();
+      selectClickMappingSource("User → Longitude: 10°");
 
       // 1st stage - Reviews #1 (explicit join)
       getClickMapping("Reviews - Product → Reviewer").click();
-      H.popover().findByText("Product → Category").click();
+      selectClickMappingSource("Product → Category");
 
       // 1st stage - Products (implicit join with Orders)
       getClickMapping("Product → Title").first().click();
-      H.popover().findByText("Product → Category").click();
+      selectClickMappingSource("Product → Category");
 
       // 1st stage - People (implicit join with Orders)
       getClickMapping("User → Longitude").click();
-      H.popover().findByText("User → Longitude: 10°").click();
+      selectClickMappingSource("User → Longitude: 10°");
 
       // 1st stage - Products (implicit join with Reviews)
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getClickMapping("Product → Vendor").last().click();
-      H.popover().findByText("Product → Category").click();
+      selectClickMappingSource("Product → Category");
 
       // 1st stage - Aggregations & breakouts
       getClickMapping("Product → Category").eq(2).click();
-      H.popover().findByText("Product → Category").click();
+      selectClickMappingSource("Product → Category");
 
       // 2nd stage - Custom columns
       getClickMapping("5 * Count").click();
-      H.popover().findByText("Count").click();
+      selectClickMappingSource("Count");
 
       // 2nd stage - Reviews #2 (explicit join)
       getClickMapping("Reviews - Created At: Month → Rating").click();
-      H.popover().findByText("ID").click();
+      selectClickMappingSource("ID");
 
       // 2nd stage - Aggregations & breakouts
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getClickMapping("Count").last().click();
-      H.popover().findByText("User → Longitude: 10°").click();
+      selectClickMappingSource("User → Longitude: 10°");
 
       customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`);
 
@@ -2188,12 +2188,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           ],
           expressions: ["Net"],
           filters: [
+            "Product → Title is Doohickey",
             "Reviews - Product → Reviewer is Doohickey",
             "Product → Vendor is Doohickey",
-            "User → Longitude is equal to -80",
             "ID is 7021",
+            "User → Longitude is equal to -80",
             "Net is equal to -80",
-            "Product → Title is Doohickey",
           ],
           aggregations: ["Count", "Sum of Total"],
           breakouts: [
@@ -2996,6 +2996,13 @@ function getClickMapping(columnName) {
     .get("aside")
     .findByTestId("unset-click-mappings")
     .findAllByText(columnName);
+}
+
+// Picks a source from the click-mapping popover and waits for it to unmount, so
+// the next index-based lookup does not resolve mid-re-render of the mappings list.
+function selectClickMappingSource(sourceName) {
+  H.popover().findByText(sourceName).click();
+  cy.get(H.POPOVER_ELEMENT).should("not.exist");
 }
 
 function verifyAvailableClickTargetColumns(columns) {
