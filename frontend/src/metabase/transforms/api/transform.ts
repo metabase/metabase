@@ -37,7 +37,6 @@ import type {
 } from "metabase-types/api";
 import { PENDING_RUN_ID } from "metabase-types/api";
 
-
 export const transformApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listTransforms: builder.query<Transform[], ListTransformsRequest>({

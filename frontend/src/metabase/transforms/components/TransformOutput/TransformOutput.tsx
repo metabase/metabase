@@ -1,7 +1,4 @@
-import {
-  skipToken,
-  useListDatabaseSchemasQuery,
-} from "metabase/api";
+import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { Box, Breadcrumbs, FixedSizeIcon, Group, Loader } from "metabase/ui";
