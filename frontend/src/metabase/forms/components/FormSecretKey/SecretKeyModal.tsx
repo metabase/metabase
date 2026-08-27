@@ -56,7 +56,14 @@ export const SecretKeyModal = ({
   const copyFieldProps = getCopyTextFieldProps({ value: secretKey });
 
   return (
-    <Modal opened onClose={onClose} title={title}>
+    <Modal
+      opened
+      onClose={onClose}
+      title={title}
+      withCloseButton={false}
+      closeOnClickOutside={false}
+      closeOnEscape={false}
+    >
       <Stack gap="lg" mt="md">
         <Text>
           {t`Store this key somewhere safe. For security reasons, we can't show it to you again.`}
