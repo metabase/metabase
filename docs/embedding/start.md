@@ -66,9 +66,9 @@ Embed an AI chat with web components or the React SDK, so people can ask questio
 
 Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.
 
-### [Customize loading and error states](./sdk/loading-and-errors.md)
+### [Customize loading, error, and empty states](./sdk/loading-and-errors.md)
 
-Replace the React SDK's default loading and error screens with your own components.
+Replace the React SDK's default loading screen, error screen, and no-results image with your own.
 
 ### [Custom visualizations in embeds](./custom-visualizations.md)
 

@@ -37,7 +37,7 @@ Embed a browsable collection, so people can find and open dashboards and questio
 
 {% include plans-blockquote.html feature="AI chat component" convert_pro_link_to_embedding=true%}
 
-Embed Metabot, so people can ask questions of their data in natural language.
+Embed an AI chat, so people can ask questions of their data in natural language.
 
 - [Embed an AI chat](./ai-chat.md), for the `<metabase-metabot>` attributes, the `MetabotQuestion` props, and the `useMetabot` hook
 
@@ -47,7 +47,8 @@ Web components cover the components above. A few features are React-only, becaus
 
 - [Plugins](./sdk/plugins.md), to customize component menus and click actions
 - [Actions](./sdk/actions.md), to run Metabase actions from your app with the `useAction` hook
-- [Customize loading and error states](./sdk/loading-and-errors.md), to swap in your own loading and error components
+- [Custom question layouts](./question-reference.md#customize-the-layout-of-an-interactive-chart), to lay out a question yourself with namespaced `InteractiveQuestion` components
+- [Customize loading, error, and empty states](./sdk/loading-and-errors.md), to swap in your own loading and error components, and your own no-results image
 
 ## Further reading
 

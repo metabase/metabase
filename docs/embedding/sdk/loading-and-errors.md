@@ -1,15 +1,15 @@
 ---
-title: Customize loading and error states
-summary: "Replace the modular embedding SDK's default loading and error components with your own React components."
+title: Customize loading, error, and empty states
+summary: "Replace the modular embedding SDK's default loading screen, error screen, and no-results image with your own."
 ---
 
-# Customize loading and error states
+# Customize loading, error, and empty states
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
-While an embedded component is loading, or when it fails, the [modular embedding SDK](./introduction.md) renders its own loading and error screens. You can swap in your own React components instead, so both states match the rest of your app.
+While an embedded component is loading, when it fails, or when a query comes back with no rows, the [modular embedding SDK](./introduction.md) renders a screen of its own. You can swap in your own React components and images instead, so all three states match the rest of your app.
 
-Loading and error components are SDK only. `loaderComponent` and `errorComponent` are props on `MetabaseProvider`, and there's no web component equivalent.
+These customizations are SDK only. `loaderComponent` and `errorComponent` are props on `MetabaseProvider`, the no-results image comes from a [plugin](./plugins.md), and there's no web component equivalent for any of them.
 
 ## Replace the loading and error components
 
@@ -29,8 +29,21 @@ These are the props Metabase passes to your `errorComponent`. The `type` prop te
 
 {% include_file "{{ dirname }}/api/snippets/SdkErrorComponentProps.md" snippet="properties" %}
 
+## Replace the no-results illustration
+
+By default, Metabase displays a sailboat image when a query returns no results. To use a different image, set the `getNoDataIllustration` and `getNoObjectIllustration` plugins.
+
+Unlike `loaderComponent` and `errorComponent`, these are [plugins](./plugins.md), so they go in `pluginsConfig` rather than being props of their own. And instead of a React component, each one returns a base64-encoded image:
+
+```typescript
+{% include_file "{{ dirname }}/snippets/plugins/custom-images.tsx" snippet="example" %}
+```
+
+`getNoDataIllustration` covers a query that came back with no rows. `getNoObjectIllustration` covers an empty list of things, like a collection with no dashboards in it. Both can only be set [globally](./plugins.md#plugin-scope), on the provider.
+
 ## Further reading
 
+- [Modular embedding SDK plugins](./plugins.md)
 - [Appearance](../appearance.md)
 - [Modular embedding SDK config](./config.md)
 - [Modular embedding components](../components.md)

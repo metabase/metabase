@@ -11,31 +11,34 @@ redirect_from:
 
 {% include plans-blockquote.html feature="AI chat component" convert_pro_link_to_embedding=true%}
 
-You can embed an AI chat in your app, so people can ask questions of their data in natural language. Embedded chat is a more focused version of [Metabot](../ai/metabot.md), built to work well in an embedded context: it can only display ad-hoc questions and metrics, and it doesn't know about dashboards.
+You can embed an AI chat in your app, so people can ask questions of their data in natural language. Embedded chat is a focused version of [Metabot](../ai/metabot.md): it builds a question in the query builder and charts the answer.
+
+To build that question, embedded chat first searches your Metabase for the best thing to build on: a [metric](../data-modeling/metrics.md), a [model](../data-modeling/models.md), a saved question, or a table. Then it writes a query against whatever it picked. So embedded chat does look through your saved content, but as raw material for a new question, not as results to hand back. What people get back is always a new question they can drill into, and save if you [turn saving on](#let-people-save-questions-metabot-creates).
+
+Embedded chat won't write SQL, build or edit dashboards, or work as a search box for finding existing content. For those, it'll point people to Metabase.
 
 AI chat requires the embed to use SSO authentication that signs people into your Metabase.
 
 ## Try the AI chat demo
 
-For what AI chat looks like in action, check out the [AI chat component](https://embedded-analytics-sdk-demo.metabase.com/admin/analytics/new/ask-metabot) running on the Shoppy demo site. The demo's chat uses the [dedicated chart component](#ai-chat-with-dedicated-chart-panel).
+For what AI chat looks like in action, check out the [AI chat component](https://embedded-analytics-sdk-demo.metabase.com/admin/analytics/new/ask-metabot) running on Shoppy, our modular embedding demo app. The demo's chat uses the [dedicated chart component](#ai-chat-with-dedicated-chart-panel).
 
 ## Set up AI chat in Metabase
 
-First, an admin needs to [connect an AI provider](../ai/settings.md#enable-ai-features). If you're self-hosting, that means [bringing your own API key](../ai/settings.md#bring-your-own-api-key).
-
-Then turn on embedded Metabot and tell Metabase which collection it should search:
+An admin sets up embedded Metabot in your Metabase:
 
 1. Click the **grid** icon in the upper right.
 2. Select **Admin**.
 3. Click the **AI** tab.
 4. In the left sidebar, click **AI Settings**.
-5. In the **Metabot settings** card, click the **Embedded** tab.
-6. Turn on **Enable Embedded Metabot**.
-7. Under **Collection Embedded Metabot can use**, click **Pick a different collection** and choose the collection that holds the models and metrics embedded Metabot should query.
+5. Under **AI providers**, check that a provider is connected. If not, [connect one](../ai/settings.md#enable-ai-features). If you're self-hosting, that means [bringing your own API key](../ai/settings.md#bring-your-own-api-key).
+6. In the **Metabot settings** card, click the **Embedded** tab.
+7. Turn on **Enable Embedded Metabot**.
+8. Under **Collection Embedded Metabot can use**, click **Pick a different collection** and choose the collection that holds the metrics, models, and saved questions embedded Metabot should build on.
 
-The collection you pick here just narrows the chat's search scope. The AI can still query anything the person using the chat has [permissions to query](../permissions/embedding.md).
+The collection you pick narrows what embedded chat finds when it searches for something to build on: that collection and everything under it. It doesn't limit what embedded chat can query, since people can still get to any data they have [permissions](../permissions/embedding.md) for. And once you set a collection, tables drop out of the chat's search results, so pick a collection with the metrics and models you want people building on.
 
-The **Embedded** tab configures Metabot in embedded context, which is separate from the [Metabot](../ai/settings.md) in your own Metabase (which lives on the **Internal** tab).
+The **Embedded** tab configures Metabot in an embedded context, which is separate from the [Metabot](../ai/settings.md) in your own Metabase (which lives on the **Internal** tab). Both tabs control what each Metabot can see, not what it runs on: the AI provider, API key, and model are set once for the whole instance, above the **Metabot settings** card, and both Metabots use them.
 
 With embedded Metabot set up, there are two ways to add the chat to your app:
 
@@ -48,12 +51,12 @@ Both the web component and `MetabotQuestion` let you [set where the chart appear
 
 You can use the in-app wizard to generate the code:
 
-1. Go to **Admin > Embedding > Setup guide > Get embed snippet**.
+1. Open the command palette with Ctrl/Cmd+K and type **New embed**.
 2. For the experience, select **Metabot**.
 3. Pick a [layout](#set-where-the-chart-appears) and decide whether people can [save questions](#let-people-save-questions-metabot-creates).
 4. Click **Get code** and paste the snippet into your app.
 
-The **Metabot** option only shows up once an admin has turned on embedded Metabot, and only for SSO authentication. For what the rest of the generated snippet does, see [modular embedding](./modular-embedding.md) 
+The **Metabot** option only shows up once an admin has turned on embedded Metabot, and only for SSO authentication. For what the rest of the generated snippet does, see [modular embedding](./modular-embedding.md).
 
 To render the AI chat interface:
 

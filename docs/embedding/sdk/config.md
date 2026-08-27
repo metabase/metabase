@@ -38,7 +38,7 @@ The SDK can render [custom visualizations](../../questions/visualizations/custom
 
 ## Loading and error components
 
-The `loaderComponent` and `errorComponent` props swap the SDK's default loading and error screens for your own React components. See [Customize loading and error states](./loading-and-errors.md).
+The `loaderComponent` and `errorComponent` props swap the SDK's default loading and error screens for your own React components. See [Customize loading, error, and empty states](./loading-and-errors.md).
 
 ## Global event handlers
 

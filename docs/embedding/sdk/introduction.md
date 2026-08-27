@@ -113,7 +113,7 @@ Start with one of the quickstarts, then see these pages for more info on compone
 - [Custom visualizations](../custom-visualizations.md)
 - [Plugins](./plugins.md)
 - [Config](./config.md)
-- [Customize loading and error states](./loading-and-errors.md)
+- [Customize loading, error, and empty states](./loading-and-errors.md)
 - [Versioning](./version.md)
 - [Notes on Next.js](./next-js.md)
 
