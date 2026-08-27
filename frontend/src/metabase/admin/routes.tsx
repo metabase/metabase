@@ -310,7 +310,7 @@ export const getRoutes = (
         />
         <Route
           path="/admin/embedding/themes/:themeId"
-          element={redirect("/embedding/appearance/:themeId")}
+          element={redirect("/embedding/appearance/theme/:themeId")}
         />
 
         {/* Backwards compatibility for embedding settings */}
