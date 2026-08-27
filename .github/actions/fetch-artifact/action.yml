@@ -20,6 +20,14 @@ inputs:
     description: Directory path where the jar should be extracted (defaults to current directory)
     required: false
     default: "."
+  fail-on-fetch-miss:
+    description: Default is true, if set to false the action will not fail if no artifact is found.
+    required: false
+    default: "true"
+
+outputs:
+  fetch-hit:
+    description: Boolean indicating if an artifact was successfully found and downloaded.
 
 runs:
   using: "composite"
