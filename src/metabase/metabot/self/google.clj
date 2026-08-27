@@ -258,6 +258,10 @@
   {"google"    :google
    "anthropic" :anthropic})
 
+(def model-publishers
+  "The publishers whose models this adapter serves."
+  (set (keys model-families)))
+
 (defn- unqualified-model-ex
   "The error for a `model` that does not name both a publisher and a model."
   [model]
