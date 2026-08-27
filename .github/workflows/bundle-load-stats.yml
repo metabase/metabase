@@ -57,8 +57,12 @@ jobs:
       - name: Start Metabase
         run: |
           mkdir -p artifacts
+          # --add-opens matches how the jar is launched everywhere else
+          # (uberjar.yml, pre-release.yml, bin/docker/run_metabase.sh), so the
+          # benchmark runs the app under the JVM configuration we ship.
           MB_DB_FILE="${RUNNER_TEMP}/bench.db" \
-            nohup java -jar temp/uberjar/metabase.jar > artifacts/metabase.log 2>&1 &
+            nohup java --add-opens java.base/java.nio=ALL-UNNAMED \
+            -jar temp/uberjar/metabase.jar > artifacts/metabase.log 2>&1 &
       - name: Sign in
         run: |
           # Waits for the instance to migrate and come up, then creates the

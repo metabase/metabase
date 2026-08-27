@@ -46,7 +46,8 @@ export function pickCommitsToMeasure(
 ): CommitToMeasure[] {
   return commits.map((commit) => {
     const live = (artifactsBySha[commit.sha] ?? []).find(
-      (artifact) => artifact.name === uberjarName(commit.sha) && !artifact.expired,
+      (artifact) =>
+        artifact.name === uberjarName(commit.sha) && !artifact.expired,
     );
     return { ...commit, artifactId: live?.id ?? null };
   });
@@ -97,7 +98,9 @@ function github(path: string, init: RequestInit = {}) {
 async function githubJson<T>(path: string): Promise<T> {
   const response = await github(path);
   if (!response.ok) {
-    throw new Error(`GET ${path} failed: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `GET ${path} failed: ${response.status} ${await response.text()}`,
+    );
   }
   // The caller names the shape the endpoint documents. Nothing here validates it.
   return (await response.json()) as T;
@@ -126,10 +129,16 @@ async function listArtifacts(repo: string, sha: string): Promise<Artifact[]> {
   return artifacts;
 }
 
-async function downloadArtifact(repo: string, artifactId: number, zipPath: string) {
+async function downloadArtifact(
+  repo: string,
+  artifactId: number,
+  zipPath: string,
+) {
   for (let attempt = 1; ; attempt++) {
     try {
-      const response = await github(`/repos/${repo}/actions/artifacts/${artifactId}/zip`);
+      const response = await github(
+        `/repos/${repo}/actions/artifacts/${artifactId}/zip`,
+      );
       if (!response.ok) {
         throw new Error(`${response.status} ${response.statusText}`);
       }
@@ -147,7 +156,9 @@ async function downloadArtifact(repo: string, artifactId: number, zipPath: strin
 
 async function isUp(site: string) {
   try {
-    const response = await fetch(`${site}/api/health`, { signal: AbortSignal.timeout(2000) });
+    const response = await fetch(`${site}/api/health`, {
+      signal: AbortSignal.timeout(2000),
+    });
     return response.ok && (await response.json()).status === "ok";
   } catch {
     return false;
@@ -190,14 +201,24 @@ async function withBackend<T>(
   fn: () => Promise<T>,
 ): Promise<T> {
   await waitUntilDown(site);
-  const backend = spawn("java", ["-jar", jar], {
-    env: {
-      ...process.env,
-      // A fresh app db each time, so one version's migrations never meet another's.
-      MB_DB_FILE: join(process.env.RUNNER_TEMP || tmpdir(), `backfill-${sha}`),
+  // --add-opens matches how the jar is launched everywhere else
+  // (uberjar.yml, pre-release.yml, bin/docker/run_metabase.sh), so the
+  // benchmark runs the app under the JVM configuration we ship.
+  const backend = spawn(
+    "java",
+    ["--add-opens", "java.base/java.nio=ALL-UNNAMED", "-jar", jar],
+    {
+      env: {
+        ...process.env,
+        // A fresh app db each time, so one version's migrations never meet another's.
+        MB_DB_FILE: join(
+          process.env.RUNNER_TEMP || tmpdir(),
+          `backfill-${sha}`,
+        ),
+      },
+      stdio: ["ignore", "pipe", "pipe"],
     },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  );
   const log = `artifacts/metabase-${sha.slice(0, 12)}.log`;
   writeFileSync(log, "");
   backend.stdout.on("data", (chunk) => appendFileSync(log, chunk));
@@ -279,7 +300,10 @@ async function main() {
     );
   }
 
-  for (const { sha, date, subject, artifactId } of picked.slice(0, plan.measure)) {
+  for (const { sha, date, subject, artifactId } of picked.slice(
+    0,
+    plan.measure,
+  )) {
     const short = sha.slice(0, 12);
     console.log(`::group::${date} ${short} ${subject}`);
     try {
@@ -291,14 +315,19 @@ async function main() {
       rmSync("temp/unzip", { recursive: true, force: true });
       await downloadArtifact(repo, artifactId, "temp/mb.zip");
       execFileSync("unzip", ["-q", "-o", "temp/mb.zip", "-d", "temp/unzip"]);
-      const jar = run("find", ["temp/unzip", "-name", "metabase.jar"]).split("\n")[0];
+      const jar = run("find", ["temp/unzip", "-name", "metabase.jar"]).split(
+        "\n",
+      )[0];
 
       const conditions = await withBackend({ jar, sha, site }, async () => {
         const session = signIn(site);
         await warm(site);
         return measure(site, runs, session);
       });
-      writeFileSync(`artifacts/load-times-${short}.json`, JSON.stringify(conditions, null, 2));
+      writeFileSync(
+        `artifacts/load-times-${short}.json`,
+        JSON.stringify(conditions, null, 2),
+      );
       rmSync("temp/unzip", { recursive: true, force: true });
       rmSync("temp/mb.zip", { force: true });
 
@@ -313,7 +342,9 @@ async function main() {
 // functions (from the spec) has no side effects.
 if ((import.meta as ImportMeta & { main?: boolean }).main) {
   main().catch((error) => {
-    console.log(`::error::${error instanceof Error ? error.message : String(error)}`);
+    console.log(
+      `::error::${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exit(1);
   });
 }
