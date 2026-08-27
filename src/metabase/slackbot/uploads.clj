@@ -36,8 +36,7 @@
    whose message was written for the user, pass through; raw driver and JDBC errors
    can name hosts or accounts, so they get a generic line and stay in the logs. A 4xx
    whose message contains its cause's text is a relabeled raw error, not an authored
-   one. A relabel that drops its cause entirely reads as authored; nothing reachable
-   from here throws that shape today."
+   one. A relabel that drops its cause entirely reads as authored and passes through."
   [e]
   (let [{:keys [status-code]} (ex-data e)
         cause-message         (some-> (ex-cause e) ex-message)]
