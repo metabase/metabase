@@ -566,6 +566,8 @@ describe("GoalValueInput", () => {
       checkNotNull(fetchMock.callHistory.lastCall("path:/api/search")).url,
     );
     expect(url.searchParams.getAll("models")).toEqual(["card", "metric"]);
+    expect(url.searchParams.get("limit")).toBe("5");
+    expect(url.searchParams.has("ids")).toBe(false);
   });
 
   it("commits a single-column pick without opening the column list", async () => {
