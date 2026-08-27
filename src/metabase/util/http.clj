@@ -176,7 +176,7 @@
                             {:blocked-address true :policy policy :host host}))))))))
 
 (def default-network-policy-fn
-  "Returns the policy [[request]] applies when a caller names none: the `outbound-http-allowed-networks` setting.
+  "Returns the policy [[request]] applies when a caller names none: the `outbound-allowed-networks` setting.
   Dependency-injected by `metabase.premium-features.settings`, because `util` sits below `premium-features` in the
   module graph and cannot ask whether we are hosted. Until that injection runs the answer is `:external-only`, which
   fails closed."

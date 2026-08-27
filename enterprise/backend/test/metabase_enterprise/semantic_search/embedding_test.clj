@@ -520,3 +520,34 @@
     (is (re-matches #"emb:v1:sha256:[0-9a-f]{64}" (:embedding-space-id resolved)))
     (testing "transport credentials are not part of vector-space identity"
       (is (= resolved (embedding/resolve-model (assoc requested :api-key "do-not-persist")))))))
+
+(deftest ai-service-network-policy-test
+  (let [embedding-vec [1.0 2.0 3.0 4.0]
+        response      {:usage {:total_tokens 1 :prompt_tokens 1}
+                       :data  [{:index 0 :embedding (encode-floats-to-base64 embedding-vec)}]}
+        capture-post  (fn [captured]
+                        (fn [_url opts]
+                          (reset! captured opts)
+                          {:status  200
+                           :headers {"Content-Type" "application/json"}
+                           :body    (json/encode response)}))
+        embed!        #(embedding/get-embedding {:provider          "ai-service"
+                                                :model-name        "test-model"
+                                                :vector-dimensions 4}
+                                               "test text"
+                                               {:record-tokens? false})]
+    (testing "the managed AI service is reached with :allow-private -- on Cloud it answers on a private address"
+      (mt/with-dynamic-fn-redefs [semantic.settings/ee-embedding-service-base-url (constantly nil)
+                                  llm.settings/ai-service-base-url                (constantly "http://mock-ai-service")
+                                  premium-features/premium-embedding-token        (constantly "mock-token")]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [u.http/post (capture-post captured)]
+            (is (= embedding-vec (vec (embed!))))
+            (is (= :allow-private (:network-policy @captured)))))))
+    (testing "a customer-configured embedding service carries no override, so its admin-settable URL stays strict"
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
+                                         ee-embedding-service-api-key  "embedding-api-key"]
+        (let [captured (atom nil)]
+          (mt/with-dynamic-fn-redefs [u.http/post (capture-post captured)]
+            (is (= embedding-vec (vec (embed!))))
+            (is (nil? (:network-policy @captured)))))))))
