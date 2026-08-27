@@ -62,7 +62,8 @@
   :visibility :admin
   :encryption :no
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting metabot-nlq-system-prompt
   (deferred-tru "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience.")
@@ -71,7 +72,8 @@
   :visibility :admin
   :encryption :no
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting metabot-sql-system-prompt
   (deferred-tru "Custom instructions appended to Metabot''s system prompt for the SQL generation experience.")
@@ -80,7 +82,8 @@
   :visibility :admin
   :encryption :no
   :export?    true
-  :feature    :ai-controls)
+  :feature    :ai-controls
+  :can-read-from-env? false)
 
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
