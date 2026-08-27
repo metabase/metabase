@@ -207,7 +207,10 @@ const getScaleKeys = (): Record<ScaleName, ReadonlySet<string>> => {
   return {
     spacing: new Set(Object.keys(theme.spacing ?? {})),
     radius: new Set(Object.keys(theme.radius ?? {})),
-    shadow: new Set(Object.keys(theme.shadows ?? {})),
+    // Mantine merges theme.shadows with its defaults at runtime, so the
+    // stock `md`, `lg`, and `xl` elevations stay usable alongside the new
+    // scale. `xs` and `sm` are overridden by the new values.
+    shadow: new Set([...Object.keys(theme.shadows ?? {}), "md", "lg", "xl"]),
   };
 };
 
@@ -220,13 +223,6 @@ describe("theme scale token audit", () => {
     );
 
     expect(violations).toEqual([
-      {
-        file: "fixture.tsx",
-        line: 1,
-        prop: "shadow",
-        scale: "shadow",
-        value: "lg",
-      },
       {
         file: "fixture.tsx",
         line: 1,
@@ -252,17 +248,7 @@ describe("theme scale token audit", () => {
     const violations = files.flatMap((file) =>
       findScaleViolationsInSource(file, readFileSync(file, "utf8"), scaleKeys),
     );
-    const allowedStockShadow = violations.filter(
-      ({ file, prop, value }) =>
-        file === "frontend/src/metabase/search/containers/SearchApp.tsx" &&
-        prop === "shadow" &&
-        value === "lg",
-    );
-    const unexpectedViolations = violations.filter(
-      (violation) => !allowedStockShadow.includes(violation),
-    );
 
-    expect(allowedStockShadow).toHaveLength(1);
-    expect(unexpectedViolations).toEqual([]);
+    expect(violations).toEqual([]);
   });
 });
