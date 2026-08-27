@@ -72,12 +72,15 @@ export {
   buildBrushMirrorGraphics,
   buildClearBrushMirrorGraphics,
   getCartesianChartOption,
+  getTimelineSelectionSeries,
 } from "./echarts/cartesian/option";
 export { TREND_LINE_DASH } from "./echarts/cartesian/option/trend-line";
 export { getScatterPlotModel } from "./echarts/cartesian/scatter/model";
 export { getScatterPlotOption } from "./echarts/cartesian/scatter/option";
 export { getTimelineEventsModel } from "./echarts/cartesian/timeline-events/model";
+export { EMPTY_TIMELINE_SELECTION_SERIES } from "./echarts/cartesian/timeline-events/option";
 export type {
+  TimelineEventCluster,
   TimelineEventGroup,
   TimelineEventsModel,
 } from "./echarts/cartesian/timeline-events/types";
