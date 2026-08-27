@@ -1094,7 +1094,8 @@
   - metabase://chart/{chart_id} - the chart's type and its query
   - metabase://query/{query_id} - the query definition"
   [{:keys [uris]} :- [:map {:closed true}
-                      [:uris [:sequential [:string {:description "Metabase resource URIs to fetch"}]]]]]
+                      [:uris [:sequential {:error/message "must be an array of URI strings"}
+                              [:string {:description "Metabase resource URIs to fetch"}]]]]]
   (try
     (read-resource {:uris uris})
     (catch Exception e

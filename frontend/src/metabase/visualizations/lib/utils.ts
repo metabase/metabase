@@ -1,6 +1,7 @@
 import * as d3 from "d3";
 import _ from "underscore";
 
+import { data_image_uri_pattern } from "cljs/metabase.util.markdown.image";
 import { isNotNull } from "metabase/utils/types";
 import {
   isCoordinate,
@@ -177,15 +178,16 @@ export function isSameSeries(
   );
 }
 
+interface CardinalityCacheEntry {
+  rowCount: number;
+  columnCardinalityMap: Map<string, number>;
+}
+
 // cache computed cardinalities since they are computationally expensive
-const cardinalityCache = new WeakMap<JsonQuery, Map<string, number>>();
+const cardinalityCache = new WeakMap<JsonQuery, CardinalityCacheEntry>();
 
 function computeColumnCardinality(rows: RowValues[], colIndex: number): number {
-  const uniqueValues = new Set();
-  for (const row of rows) {
-    uniqueValues.add(row[colIndex]);
-  }
-  return uniqueValues.size;
+  return new Set(rows.map((row) => row[colIndex])).size;
 }
 
 export function getColumnCardinality(
@@ -198,19 +200,29 @@ export function getColumnCardinality(
     return computeColumnCardinality(rows, colIndex);
   }
 
-  let cache = cardinalityCache.get(jsonQuery);
-  if (!cache) {
-    cache = new Map<string, number>();
-    cardinalityCache.set(jsonQuery, cache);
+  let cardinalityCacheEntry = cardinalityCache.get(jsonQuery);
+
+  if (
+    !cardinalityCacheEntry ||
+    // check the row count to guard against jsonQuery being copied onto a series with changed data
+    cardinalityCacheEntry.rowCount !== rows.length
+  ) {
+    cardinalityCacheEntry = {
+      rowCount: rows.length,
+      columnCardinalityMap: new Map<string, number>(),
+    };
+    cardinalityCache.set(jsonQuery, cardinalityCacheEntry);
   }
 
-  const cachedCardinality = cache.get(colName);
+  const { columnCardinalityMap } = cardinalityCacheEntry;
+
+  const cachedCardinality = columnCardinalityMap.get(colName);
   if (cachedCardinality !== undefined) {
     return cachedCardinality;
   }
 
   const computedCardinality = computeColumnCardinality(rows, colIndex);
-  cache.set(colName, computedCardinality);
+  columnCardinalityMap.set(colName, computedCardinality);
   return computedCardinality;
 }
 
@@ -602,5 +614,4 @@ export const segmentIsValid = (
   return allowOpenEnded ? hasMin || hasMax : hasMin && hasMax;
 };
 
-export const DATA_IMAGE_URI_PATTERN =
-  /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i;
+export const DATA_IMAGE_URI_PATTERN: RegExp = data_image_uri_pattern;

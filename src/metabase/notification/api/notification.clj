@@ -48,6 +48,14 @@
                       ::models.notification/CreateNotificationRecipientParams)
    {:with-id? false}))
 
+(mr/def ::NotificationApiUpdateInput
+  "::NotificationApiInput restricted to what `notification-update-spec` writes. On PUT the URL,
+  not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped."
+  (models.notification/hydrated-notification-schema
+   (handler-api-input ::models.notification/NotificationHandler
+                      ::models.notification/NotificationRecipient)
+   {:with-id? true :update-input? true}))
+
 (defn- check-no-resource-templates!
   "Validate that no handler uses handlebars-resource templates. That type is internal only."
   [handlers]
@@ -56,6 +64,29 @@
           :let [template-type (some-> template :details :type keyword)]]
     (when (= :email/handlebars-resource template-type)
       (throw (ex-info "invalid template" {:status-code 400})))))
+
+(defn- check-inline-channels!
+  "Validate that an inline `:channel` handler requires the same permission as creating one."
+  [handlers]
+  (when (some :channel handlers)
+    (api/check-403 (mi/can-write? :model/Channel))))
+
+(defn- handler-touches-template?
+  [{:keys [template template_id]}]
+  (or (map? template) (some? template_id)))
+
+(defn- check-handler-templates!
+  "Validate the templates carried by a notification request's `handlers`: reject internal-only
+  handlebars-resource templates (400), and require the same permission as writing a `ChannelTemplate`
+  directly (403) for any template the request creates, overwrites, or deletes. `existing-handlers`
+  (nil on create) hold templates an update may overwrite or delete, so a template on either side
+  gates the write."
+  ([handlers] (check-handler-templates! handlers nil))
+  ([handlers existing-handlers]
+   (check-no-resource-templates! handlers)
+   (when (or (some handler-touches-template? handlers)
+             (some handler-touches-template? existing-handlers))
+     (api/check-403 (mi/can-write? :model/ChannelTemplate)))))
 
 (defn get-notification
   "Get a notification by id."
@@ -200,7 +231,7 @@
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification
   "Create a new notification, return the created notification."
   [_route _query body :- ::CreateNotificationParams request]
-  (check-no-resource-templates! (:handlers body))
+  (check-handler-templates! (:handlers body))
   (create-notification!
    (-> body
        (update :payload_type keyword)
@@ -247,6 +278,15 @@
                           :previous-object existing-notification
                           :user-id         api/*current-user-id*}))
 
+(defn- body-with-authoritative-ids
+  "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a
+  payload."
+  [body {:keys [id payload_id]}]
+  ;; without the ids the spec-update below would treat the body as a different row and delete +
+  ;; recreate it, changing primary keys out from under the caller
+  (cond-> (assoc body :id id)
+    (and (:payload body) payload_id) (assoc-in [:payload :id] payload_id)))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -260,13 +300,14 @@
   the model's `before-update` hook is the backstop. Echoing back the unchanged value is fine."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
-   body :- ::NotificationApiInput]
-  (check-no-resource-templates! (:handlers body))
+   body :- ::NotificationApiUpdateInput]
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
-    (models.notification/update-notification! existing-notification body)
-    (u/prog1 (get-notification id)
-      (publish-notification-update! <> existing-notification))))
+    (check-handler-templates! (:handlers body) (:handlers existing-notification))
+    (let [body (body-with-authoritative-ids body existing-notification)]
+      (models.notification/update-notification! existing-notification body)
+      (u/prog1 (get-notification id)
+        (publish-notification-update! <> existing-notification)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -280,7 +321,8 @@
   (let [notification (cond-> (get-notification id)
                        (seq handler_ids)
                        (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]
-    (api/read-check notification)
+    ;; sending runs the notification's payload as its creator, so gate on write access rather than read access
+    (api/write-check notification)
     (notification/send-notification! notification :notification/sync? true)))
 
 (defn- promote-to-t2-instance
@@ -302,6 +344,7 @@
   "Send an unsaved notification."
   [_route _query body :- ::NotificationApiInput request]
   (check-no-resource-templates! (:handlers body))
+  (check-inline-channels! (:handlers body))
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
   (let [notification (-> body

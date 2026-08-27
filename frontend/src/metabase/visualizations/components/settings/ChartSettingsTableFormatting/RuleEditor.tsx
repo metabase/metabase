@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import {
@@ -30,6 +29,7 @@ import type {
 import { ChartSettingInputNumeric } from "../ChartSettingInputNumeric";
 import { ChartSettingRadio } from "../ChartSettingRadio";
 import { ChartSettingToggle } from "../ChartSettingToggle";
+import { ColorRangeSelector } from "../ColorRangeSelector";
 
 import { COLORS, COLOR_RANGES, DEFAULTS_BY_TYPE } from "./constants";
 import { getOperatorsForColumns } from "./get-operators-for-columns";

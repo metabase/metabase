@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -6,21 +7,18 @@ import {
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
+import { EditableDescription } from "metabase/common/components/EditableDescription";
+import { EditableText } from "metabase/common/components/EditableText";
 import { getIsTenantUser, getUser } from "metabase/current-user";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Icon } from "metabase/ui";
+import { Box, Flex, Icon, rem } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
-import {
-  CaptionDescription,
-  CaptionRoot,
-  CaptionTitle,
-  CaptionTitleContainer,
-} from "./CollectionCaption.styled";
+import S from "./CollectionCaption.module.css";
 
 interface CollectionCaptionProps {
   collection: Collection;
@@ -50,10 +48,10 @@ export const CollectionCaption = ({
   );
 
   return (
-    <CaptionRoot data-testid="collection-caption">
-      <CaptionTitleContainer>
+    <Box className={S.root} data-testid="collection-caption">
+      <Flex align="center" gap="sm">
         <CollectionCaptionIcon collection={collection} />
-        <CaptionTitle
+        <EditableText
           key={collection.id}
           initialValue={collection.name}
           placeholder={t`Add title`}
@@ -61,27 +59,32 @@ export const CollectionCaption = ({
           data-testid="collection-name-heading"
           onChange={handleChangeName}
           maxLength={100}
+          fz={rem(28)}
+          fw={900}
         />
-      </CaptionTitleContainer>
+      </Flex>
       {(isEditable || hasDescription) && (
-        <CaptionDescription
+        <EditableDescription
           key={
             // Including the description in the key prevents a stale value from
             // being stored in the state of EditableText if the collection's
             // description is modified in another component
             `${collection.id}-${collection.description}`
           }
+          className={cx(S.description, {
+            [S.visible]: Boolean(collection.description),
+          })}
           description={collection.description}
           placeholder={t`Add description`}
-          isVisible={Boolean(collection.description)}
           canWrite={isEditable}
           onChange={handleChangeDescription}
           data-testid="collection-description-in-caption"
           left={0}
+          maw={rem(400)}
           maxLength={255}
         />
       )}
-    </CaptionRoot>
+    </Box>
   );
 };
 

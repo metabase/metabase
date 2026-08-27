@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-query-result
   (:require
    [clojure.edn :as edn]
+   [metabase.models.interface :as mi]
    [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -37,13 +38,8 @@
         (log/warn e "Failed to parse an exploration_query_result EDN column; returning nil")
         nil))))
 
-(def ^:private transform-encrypted-text
-  {:in  encryption/maybe-encrypt
-   :out encryption/maybe-decrypt})
-
 (def ^:private transform-encrypted-edn
-  "[[transform-encrypted-text]] over a value serialized as EDN. `maybe-decrypt` passes plaintext
-  through unchanged, so rows written before a column was encrypted keep reading with no migration."
+  "[[metabase.models.interface/transform-encrypted-text]] over a value serialized as EDN."
   {:in  (comp encryption/maybe-encrypt edn-in)
    :out (comp edn-out encryption/maybe-decrypt)})
 
@@ -54,8 +50,8 @@
 ;; result rows (see [[metabase.interestingness.chart.categorical]]).
 (t2/deftransforms :model/ExplorationQueryResult
   {:chart_stats        transform-encrypted-edn
-   :metric_description transform-encrypted-text
-   :chart_description  transform-encrypted-text})
+   :metric_description mi/transform-encrypted-text
+   :chart_description  mi/transform-encrypted-text})
 
 (defn stored-results
   "Resolve the cached stored_result for an exploration_query_id via the EQR FK. Returns the

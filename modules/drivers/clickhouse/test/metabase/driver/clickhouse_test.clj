@@ -11,6 +11,7 @@
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
@@ -25,7 +26,10 @@
    [metabase.test.data.clickhouse :as ctd]
    [metabase.upload.impl-test :as upload-test]
    [taoensso.nippy :as nippy]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import
+   (com.clickhouse.jdbc ConnectionImpl)
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -125,6 +129,40 @@
            (let [details (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
                  spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
              (driver/db-default-timezone :clickhouse spec))))))
+
+(deftest clickhouse-report-timezone-reaches-server-test
+  ;; Regression for #79671.
+  (mt/test-driver :clickhouse
+    (mt/with-report-timezone-id! "America/Santiago"
+      (is (= [["America/Santiago" "America/Santiago"]]
+             (->> "SELECT timezone() AS tz, getSetting('session_timezone') AS s"
+                  (lib/native-query (mt/metadata-provider))
+                  qp/process-query
+                  mt/rows))))))
+
+(deftest ^:synchronized clickhouse-session-timezone-does-not-leak-across-borrows-test
+  (mt/test-driver :clickhouse
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+    (let [underlying-conn-ids (atom [])
+          observe (fn [opts]
+                    (sql-jdbc.execute/do-with-connection-with-options
+                     :clickhouse (mt/id) opts
+                     (fn [^Connection conn]
+                       (swap! underlying-conn-ids conj
+                              (System/identityHashCode (.unwrap conn ConnectionImpl)))
+                       (with-open [stmt (.createStatement conn)
+                                   rs   (.executeQuery stmt "SELECT getSetting('session_timezone')")]
+                         (.next rs)
+                         (.getString rs 1)))))]
+      (is (= "America/Santiago" (observe {:session-timezone "America/Santiago"})))
+      (let [result (observe nil)]
+        ;; Guard: the leak is only observable when the pool hands us the same underlying
+        ;; ConnectionImpl. With a freshly invalidated pool and back-to-back borrows this holds;
+        ;; if it stops holding, the test has to be fixed.
+        (is (apply = @underlying-conn-ids)
+            (str "expected both borrows to reuse the same underlying connection: " @underlying-conn-ids))
+        (is (= "" result)
+            "a borrow without :session-timezone must not inherit the previous borrow's timezone")))))
 
 (deftest ^:parallel clickhouse-connection-string
   (testing "connection with no additional options"
@@ -626,16 +664,21 @@
               (is (thrown-with-msg? Exception #"SQL parsing failed."
                                     (driver/validate-native-query-fields :clickhouse broken-query)))))))))
 
-(deftest ^:parallel set-role-statement-escape-quotes-test
+(deftest ^:parallel set-role-statement-quotes-role-test
   (are [role sql] (= sql
                      (sql-jdbc/set-role-statement :clickhouse nil role))
+    ;; the whole role is quoted as a single identifier
     "x"                             "SET ROLE \"x\""
-    ;; don't re-quote something that already has quotes
+    ;; a comma is part of the role name, not a separator between roles
+    "x,y"                           "SET ROLE \"x,y\""
+    "a,b"                           "SET ROLE \"a,b\""
+    ;; an already-quoted value is left as-is
     "\"x\""                         "SET ROLE \"x\""
-    ;; split on commas and quote separately
-    "x,y"                           "SET ROLE \"x\",\"y\""
-    ;; default database role, don't quote
+    ;; default database role is emitted verbatim, not quoted
     "NONE"                          "SET ROLE NONE"
-    ;; escape double-quotes in the role
+    ;; interior double-quotes are doubled
     "x\"; SELECT sleep(10); --"     "SET ROLE \"x\"\"; SELECT sleep(10); --\""
-    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""))
+    "\"x\"; SELECT sleep(10); --\"" "SET ROLE \"x\"\"; SELECT sleep(10); --\""
+    ;; a trailing backslash is escaped so it cannot close the quoted identifier
+    "foo\\"                         "SET ROLE \"foo\\\\\""
+    "a\\\"b"                        "SET ROLE \"a\\\\\"\"b\""))

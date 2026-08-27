@@ -2,8 +2,7 @@ import { t } from "ttag";
 
 import { isEmpty } from "metabase/utils/validate";
 import { computeChange } from "metabase/visualizations/lib/numeric";
-import { formatPreviousPeriodOptionName } from "metabase/visualizations/visualizations/SmartScalar/utils";
-import type { RowValues } from "metabase-types/api";
+import type { DateTimeAbsoluteUnit, RowValues } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 export function findPreviousNonEmptyRowIndex(
@@ -66,4 +65,24 @@ export function computePreviousPeriodChange(
       : t`compared to previous value`;
 
   return { percent, description };
+}
+
+export function formatPreviousPeriodOptionName(dateUnit: DateTimeAbsoluteUnit) {
+  switch (dateUnit) {
+    case "minute":
+      return t`Previous minute`;
+    case "hour":
+      return t`Previous hour`;
+    case "day":
+      return t`Previous day`;
+    case "week":
+      return t`Previous week`;
+    case "month":
+      return t`Previous month`;
+    case "quarter":
+      return t`Previous quarter`;
+    case "year":
+      return t`Previous year`;
+  }
+  return "";
 }

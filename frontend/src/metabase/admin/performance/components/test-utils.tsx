@@ -11,7 +11,13 @@ import {
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  act,
+  fireEvent,
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { CacheConfig, TokenFeatures } from "metabase-types/api";
@@ -32,6 +38,7 @@ export interface SetupOpts {
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   tokenFeatures?: Partial<TokenFeatures>;
   cacheConfigs?: CacheConfig[];
+  databaseCount?: number;
 }
 
 const getDefaultCacheConfigs = (): CacheConfig[] => [
@@ -54,7 +61,11 @@ export const setupStrategyEditorForDatabases = ({
   enterprisePlugins,
   tokenFeatures = {},
   cacheConfigs = getDefaultCacheConfigs(),
+  databaseCount = 4,
 }: SetupOpts = {}) => {
+  // TreeTable is virtualized; without measured sizes jsdom would render no rows
+  mockGetBoundingClientRect({ height: 800, width: 1000 });
+
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({}),
     settings: mockSettings(
@@ -75,7 +86,7 @@ export const setupStrategyEditorForDatabases = ({
 
   setupPerformanceEndpoints(cacheConfigs);
 
-  const databases = Array.from({ length: 4 }, (_, i) =>
+  const databases = Array.from({ length: databaseCount }, (_, i) =>
     createSampleDatabase({ id: i + 1, name: `Database ${i + 1}`, tables: [] }),
   );
   setupDatabasesEndpoints(databases);

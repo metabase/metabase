@@ -1,12 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import {
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
 
@@ -32,10 +25,9 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 import { TimelineEventsBand } from "./TimelineEventsBand";
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
+import { useTimelineEventsHover } from "./use-timeline-events-hover";
 import {
-  getClosestDatumIndex,
   getDashboardAdjustedSettings,
-  getDataSeriesEChartsIndices,
   getHoveredFromHighlighted,
 } from "./utils";
 
@@ -92,11 +84,6 @@ function CartesianChartInner(props: VisualizationProps) {
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);
 
-  const hoveredTimelineEventIds = useMemo(
-    () => hoveredTimelineEventGroup?.events.map((event) => event.id),
-    [hoveredTimelineEventGroup],
-  );
-
   const {
     chartModel,
     chartLayout,
@@ -112,7 +99,6 @@ function CartesianChartInner(props: VisualizationProps) {
       settings,
     },
     containerRef,
-    hoveredTimelineEventIds,
   );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
@@ -195,42 +181,17 @@ function CartesianChartInner(props: VisualizationProps) {
       ? chartModel.seriesModels.filter((series) => series.visible).length - 1
       : 0;
 
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (chart == null || hoveredTimelineEventGroup == null) {
-      return;
-    }
-
-    const dataIndex = getClosestDatumIndex(
-      chartModel.transformedDataset,
-      hoveredTimelineEventGroup.date,
-    );
-    const seriesIndices = getDataSeriesEChartsIndices(
-      chartModel.seriesModels,
-      option,
-    );
-    if (dataIndex < 0 || seriesIndices.length === 0) {
-      return;
-    }
-
-    seriesIndices.forEach((seriesIndex) => {
-      chart.dispatchAction({
-        type: "highlight",
-        seriesIndex,
-        dataIndex: [dataIndex],
-      });
-    });
-
-    return () => {
-      seriesIndices.forEach((seriesIndex) => {
-        chart.dispatchAction({
-          type: "downplay",
-          seriesIndex,
-          dataIndex: [dataIndex],
-        });
-      });
-    };
-  }, [hoveredTimelineEventGroup, chartModel, option]);
+  useTimelineEventsHover({
+    chartRef,
+    hoveredTimelineEventGroup,
+    chartModel,
+    chartLayout,
+    option,
+    timelineEventsModel,
+    renderingContext,
+    display: card.display,
+    selectedTimelineEventIds,
+  });
 
   // We can't navigate a user to a particular card from a visualizer viz,
   // so title selection is disabled in this case

@@ -32,7 +32,7 @@ export function UpdatesSettingsPage() {
         />
         {checkForUpdates && (
           <div
-            className={cx(CS.pt3, CS.px2, {
+            className={cx(CS.pt3, {
               [CS.borderTop]: !isHosted,
             })}
           >

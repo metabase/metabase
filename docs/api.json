@@ -460,9 +460,9 @@
             "$ref" : "#/components/schemas/metabase.lib.schema.ref..field.options"
           }, {
             "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            }, {
               "type" : "string"
+            }, {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
             } ]
           } ]
         }, {
@@ -13378,6 +13378,215 @@
           "required" : [ "payload_type" ]
         } ]
       },
+      "metabase.notification.api.notification.NotificationApiUpdateInput" : {
+        "description" : "::NotificationApiInput restricted to what `notification-update-spec` writes. On PUT the URL,\n  not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "active" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "creator_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "handlers" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "template_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "recipients" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                    }
+                  },
+                  "template" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_type" : { },
+                  "channel" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "notification_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "active" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "channel_type" ]
+              }
+            },
+            "payload" : {
+              "$ref" : "#/components/schemas/metabase.notification.models.NotificationCardUpdate"
+            },
+            "payload_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "payload_type" : {
+              "type" : "string",
+              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+            },
+            "subscriptions" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+              }
+            }
+          },
+          "required" : [ "payload_type", "payload" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "active" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "creator_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "handlers" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "template_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "recipients" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                    }
+                  },
+                  "template" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "channel_type" : { },
+                  "channel" : {
+                    "oneOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "notification_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "active" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "channel_type" ]
+              }
+            },
+            "payload_id" : {
+              "oneOf" : [ {
+                "type" : "integer"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "payload_type" : {
+              "type" : "string",
+              "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+            },
+            "subscriptions" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+              }
+            }
+          },
+          "required" : [ "payload_type" ]
+        } ]
+      },
       "metabase.notification.models.CreateNotificationCardParams" : {
         "description" : "Schema for :model/NotificationCard on a create request.",
         "type" : "object",
@@ -13887,6 +14096,25 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "send_condition" : {
+            "type" : "string",
+            "enum" : [ "goal_below", "has_result", "goal_above" ]
+          },
+          "send_once" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "card_id" ]
+      },
+      "metabase.notification.models.NotificationCardUpdate" : {
+        "description" : "::NotificationCard restricted to what the update spec writes - `:id` comes from the URL's notification.",
+        "type" : "object",
+        "properties" : {
+          "card_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
           },
           "send_condition" : {
             "type" : "string",
@@ -15397,10 +15625,24 @@
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
       },
+      "metabase.xrays.api.automagic-dashboards.cell-query" : {
+        "description" : "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step\n  base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler\n  receives the ready-to-use filter clause and doesn't decode it a second time. Bad base64/JSON is left as-is\n  and fails validation, surfacing as a clean 400.",
+        "$ref" : "#/components/schemas/metabase.xrays.automagic-dashboards.schema..root.cell-query"
+      },
       "metabase.xrays.api.automagic-dashboards.entity-id-or-query" : {
         "description" : "One of these:\n\n  * A non-empty string with an Entity ID (including `card__<id>`-encoded Card IDs)\n\n  * a form-encoded base-64-encoded JSON-encoded MBQL query\n\n  * The name of a transform\n\n  (Effectively since the names of transforms are unconstrained this parameter is allowed to be any form-encoded\n  string.)",
         "type" : "string",
         "minLength" : 1
+      },
+      "metabase.xrays.automagic-dashboards.schema..root.cell-query" : {
+        "$ref" : "#/components/schemas/metabase.xrays.automagic-dashboards.schema.filter-clause"
+      },
+      "metabase.xrays.automagic-dashboards.schema.filter-clause" : {
+        "allOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.boolean"
+        } ]
       }
     },
     "securitySchemes" : {
@@ -16381,6 +16623,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/agent" ]
       }
     },
@@ -16560,81 +16812,6 @@
           }
         },
         "tags" : [ "/api/agent" ]
-      }
-    },
-    "/api/ai-entity-analysis/analyze-chart" : {
-      "post" : {
-        "operationId" : "post-api-ai-entity-analysis-analyze-chart",
-        "summary" : "POST /api/ai-entity-analysis/analyze-chart",
-        "description" : "Analyze a chart image using an AI vision model. This function sends the image data to a separate external AI service\n  for analysis.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "description" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "image_base64" : {
-                    "type" : "string"
-                  },
-                  "name" : {
-                    "oneOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "timeline_events" : {
-                    "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "description" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "name" : {
-                            "type" : "string"
-                          },
-                          "timestamp" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "name", "timestamp" ]
-                      }
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "image_base64" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ai-entity-analysis" ]
       }
     },
     "/api/alert" : {
@@ -17163,12 +17340,19 @@
                             "type" : "string"
                           }
                         },
+                        "description" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
                         "bundle_path" : {
                           "type" : "string",
                           "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                      "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                     }, {
                       "type" : "object",
                       "properties" : {
@@ -17336,12 +17520,19 @@
                         "type" : "string"
                       }
                     },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "bundle_path" : {
                       "type" : "string",
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                 }
               }
             }
@@ -17475,12 +17666,19 @@
                           "type" : "string"
                         }
                       },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "bundle_path" : {
                         "type" : "string",
                         "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
+                    "required" : [ "id", "name", "display_name", "description", "bundle_path", "enabled", "allowed_hosts", "bundle_hash", "last_synced_sha", "last_synced_at", "sync_error", "created_at", "updated_at" ]
                   }, {
                     "type" : "object",
                     "properties" : {
@@ -17538,6 +17736,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/apps" ]
@@ -17682,7 +17890,7 @@
           "name" : "cell-query",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.cell-query"
           }
         }, {
           "in" : "query",
@@ -17829,7 +18037,7 @@
           "name" : "cell-query",
           "required" : true,
           "schema" : {
-            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.cell-query"
           }
         }, {
           "in" : "query",
@@ -21702,6 +21910,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/comment" ]
       },
       "post" : {
@@ -21785,6 +22003,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/comment" ]
@@ -23195,6 +23423,18 @@
               "pattern" : "^[A-Za-z0-9_\\-]{21}$"
             } ]
           }
+        }, {
+          "in" : "query",
+          "name" : "dashboard_load_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -23942,6 +24182,18 @@
               "description" : "String must be a valid 21-character NanoID string.",
               "type" : "string",
               "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "dashboard_load_id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
             } ]
           }
         } ],
@@ -25016,6 +25268,18 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "include_editable_data_model",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -25567,7 +25831,14 @@
         "operationId" : "get-api-database-virtual-db-datasets-schema",
         "summary" : "GET /api/database/{virtual-db}/datasets/{schema}",
         "description" : "Returns a list of Tables for the datasets virtual database.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "schema",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -25607,7 +25878,14 @@
         "operationId" : "get-api-database-virtual-db-schema-schema",
         "summary" : "GET /api/database/{virtual-db}/schema/{schema}",
         "description" : "Returns a list of Tables for the saved questions virtual database.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "schema",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -27087,7 +27365,7 @@
       "post" : {
         "operationId" : "post-api-ee-ai-controls-permissions-advanced",
         "summary" : "POST /api/ee/ai-controls/permissions/advanced",
-        "description" : "Switch to advanced group-level permissions. Removes any custom permissions from the All Users group.",
+        "description" : "Switch to group-level permissions. Removes the permissions of All Users and All tenant users, so nobody has\n   access until they are in a group that grants it.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -27139,7 +27417,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-ai-controls-permissions-advanced",
         "summary" : "DELETE /api/ee/ai-controls/permissions/advanced",
-        "description" : "Switch back to simple permissions. Removes any custom permissions from all specific groups, keeping only Admins and All Users.",
+        "description" : "Switch back to simple permissions. Removes the permissions of every group other than Administrators, All Users\n   and All tenant users.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -27978,6 +28256,17 @@
             "type" : "string",
             "minLength" : 1
           }
+        }, {
+          "in" : "query",
+          "name" : "locale",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -28521,6 +28810,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
       }
     },
@@ -28731,6 +29030,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
       }
     },
@@ -28904,6 +29213,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/custom-viz-plugin" ]
@@ -29200,6 +29519,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/data-complexity-score" ]
@@ -30382,6 +30711,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/library" ]
       },
       "get" : {
@@ -30415,6 +30754,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/library" ]
@@ -31741,6 +32090,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/ee/permission_debug" ]
       }
     },
@@ -32374,6 +32733,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/remote-sync" ]
@@ -33209,7 +33578,15 @@
         "operationId" : "put-api-ee-scim-v2-Groups-id",
         "summary" : "PUT /api/ee/scim/v2/Groups/{id}",
         "description" : "Update a group.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -33492,7 +33869,15 @@
         "operationId" : "put-api-ee-scim-v2-Users-id",
         "summary" : "PUT /api/ee/scim/v2/Users/{id}",
         "description" : "Update a user.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -34664,6 +35049,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/tenant" ]
@@ -36427,14 +36822,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -36517,14 +36912,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -37974,6 +38369,16 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
         "tags" : [ "/api/geojson" ]
       }
     },
@@ -38000,6 +38405,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/geojson" ]
@@ -38196,7 +38611,16 @@
         "operationId" : "get-api-health-inspector",
         "summary" : "GET /api/health-inspector",
         "description" : "Get a list of recent health check runs.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response",
@@ -40837,9 +41261,7 @@
                         } ]
                       },
                       "dataset_query" : {
-                        "description" : "Value must be a map.",
-                        "type" : "object",
-                        "properties" : { }
+                        "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-query"
                       },
                       "description" : {
                         "oneOf" : [ {
@@ -43800,7 +44222,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiUpdateInput"
               }
             }
           }
@@ -45620,6 +46042,13 @@
             "type" : "string",
             "minLength" : 1
           }
+        }, {
+          "in" : "query",
+          "name" : "value",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -45833,14 +46262,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -45923,14 +46352,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -47191,14 +47620,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -47283,14 +47712,14 @@
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -49026,6 +49455,16 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
           }
         },
         "tags" : [ "/api/session" ]

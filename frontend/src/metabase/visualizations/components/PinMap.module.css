@@ -3,3 +3,9 @@
   margin-bottom: 0.5rem;
   pointer-events: all;
 }
+
+/* the default variant's translucent hover would let the map bleed through */
+.pinMapButton[data-variant="default"]:hover {
+  opacity: 1;
+  background-color: var(--mb-color-background_page-secondary);
+}

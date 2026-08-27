@@ -592,6 +592,30 @@
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
 
+(deftest ^:parallel filter-value-compilation-test
+  (testing "literal filter values compile as plain values"
+    (let [mp    meta/metadata-provider
+          email (lib/ref (lib.metadata/field mp (meta/id :people :email)))]
+      (testing "simple comparisons use the direct match form"
+        (is (= {"EMAIL" "$abc"}
+               (compile-filter (lib/= email (lib/value "$abc")))))
+        (is (= {"EMAIL" {"$ne" "$abc"}}
+               (compile-filter (lib/!= email (lib/value "$abc")))))
+        (is (= {"EMAIL" {"$gte" "$$abc"}}
+               (compile-filter (lib/>= email (lib/value "$$abc")))))
+        (is (= {"EMAIL" "$$abc"}
+               (compile-filter (lib/= email (lib/value "$$abc"))))))
+      (testing "literals not wrapped in a :value clause are treated the same way"
+        (is (= {"EMAIL" "$abc"}
+               (compile-filter (lib/= email "$abc")))))
+      (testing "when the comparison needs `$expr`, the value is wrapped with `$literal`"
+        (is (= {"$expr" {"$eq" [{"$concat" ["$EMAIL" "!"]}
+                                {"$literal" "$abc"}]}}
+               (compile-filter (lib/= (lib/concat email "!") (lib/value "$abc"))))))
+      (testing "comparisons against fields compile to field paths"
+        (is (= {"$expr" {"$eq" ["$EMAIL" "$EMAIL"]}}
+               (compile-filter (lib/= email email))))))))
+
 (deftest ^:parallel unique-alias-index-test
   (mt/test-driver
     :mongo

@@ -1,15 +1,15 @@
 import { useMemo } from "react";
 
 import { color } from "metabase/ui/colors";
-import {
-  ChartSettingSeriesOrder,
-  type SortableChartSettingOrderedItem,
-} from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
+import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import {
   createHexToAccentNumberMap,
   getPickerColorAlias,
 } from "metabase/visualizations/echarts/pie/util/colors";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  ChartSettingOrderedItem,
+  ComputedVisualizationSettings,
+} from "metabase/visualizations/types";
 import type { PieRow, RawSeries } from "metabase-types/api";
 
 export function PieRowsPicker({
@@ -36,7 +36,7 @@ export function PieRowsPicker({
 
   const handleGetColorForPicker = ({
     color: hexColor,
-  }: SortableChartSettingOrderedItem) => {
+  }: ChartSettingOrderedItem) => {
     if (!hasMultipleRings || hexColor == null) {
       return hexColor;
     }
@@ -57,7 +57,7 @@ export function PieRowsPicker({
       }),
     });
 
-  const onSortEnd = (newPieRows: SortableChartSettingOrderedItem[]) =>
+  const onSortEnd = (newPieRows: ChartSettingOrderedItem[]) =>
     onChangeSettings({
       "pie.sort_rows": false,
       // Unjustified type cast. FIXME

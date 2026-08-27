@@ -831,7 +831,7 @@
                           ;; See [[metabase.driver.snowflake/describe-database-default-schema-test]] and
                           ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
                           ;; for more info.
-                          (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
+                          (vec (sql-jdbc.sync.interface/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
 
 (defn- fallback-fields-metadata
   "When JDBC DatabaseMetaData.getColumns() fails (e.g. due to unsupported column types like UUID),
