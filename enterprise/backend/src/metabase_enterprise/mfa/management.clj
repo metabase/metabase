@@ -24,8 +24,8 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
-   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -254,7 +254,7 @@
   query joins."
   [query]
   (when-not (str/blank? query)
-    (let [pattern (str "%" (u/lower-case-en query) "%")]
+    (let [pattern (h2x/like-substring query)]
       [:or
        [:like :%lower.first_name pattern]
        [:like :%lower.last_name  pattern]

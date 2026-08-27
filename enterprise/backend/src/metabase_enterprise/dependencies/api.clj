@@ -22,11 +22,11 @@
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.util :as t2.util]))
+   [toucan2.core :as t2]))
 
 (def ^:private entity-keys
   {:table     [:name :description :display_name :db_id :db :schema :fields :transform
@@ -712,10 +712,11 @@
                            {:filter [:in :entity.type (mapv name card-types)]
                             :filter-joins #{}})
         query-filter (when (and query (not= entity-type :sandbox))
-                       {:filter [:or
-                                 [:like [:lower name-column] (str "%" (t2.util/lower-case-en query) "%")]
-                                 [:like [:lower location-column] (str "%" (t2.util/lower-case-en query) "%")]]
-                        :filter-joins (location-joins-for-entity entity-type)})
+                       (let [pattern (h2x/like-substring query)]
+                         {:filter [:or
+                                   [:like [:lower name-column] pattern]
+                                   [:like [:lower location-column] pattern]]
+                          :filter-joins (location-joins-for-entity entity-type)}))
         database-filter (when (= entity-type :table)
                           {:filter [:and [:not :database.is_sample] [:not :database.is_audit]]
                            :filter-joins #{:database}})

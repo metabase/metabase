@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -16,9 +17,10 @@
   [_route-params
    {:keys [search]} :- [:maybe [:map [:search {:optional true} [:maybe ms/NonBlankString]]]]]
   (let [where (when search
-                [:or
-                 [:like [:lower :term] [:lower (str "%" search "%")]]
-                 [:like [:lower :definition] [:lower (str "%" search "%")]]])]
+                (let [pattern (h2x/like-substring search)]
+                  [:or
+                   [:like [:lower :term] pattern]
+                   [:like [:lower :definition] pattern]]))]
     {:data (t2/hydrate (t2/select :model/Glossary (cond-> {:order-by [[:term :asc]]}
                                                     where (assoc :where where)))
                        :creator)}))
