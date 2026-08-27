@@ -170,10 +170,15 @@
 
 (def ^:private stop-reasons
   "Gemini `finishReason` → AI SDK v5 `FinishReason`.
-  https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/GenerateContentResponse#FinishReason"
+  Covers both Gemini surfaces: every reason Vertex documents, plus four exclusive to the Gemini Developer API.  We
+  only ever call Vertex today, so those four are here in case we ever add Gemini API support or in case these ever
+  wind up making their way into Vertex.
+  https://docs.cloud.google.com/gemini-enterprise-agent-platform/reference/rest/v1/GenerateContentResponse#FinishReason
+  https://ai.google.dev/api/generate-content#FinishReason"
   {finish-reason-completed     "stop"
    finish-reason-truncated     "length"
    "BLOCKLIST"                 "content-filter"
+   "ESCALATION"                "content-filter" ; Gemini API only
    "IMAGE_PROHIBITED_CONTENT"  "content-filter"
    "IMAGE_RECITATION"          "content-filter"
    "IMAGE_SAFETY"              "content-filter"
@@ -188,6 +193,9 @@
    "OTHER"                     "other"
    "FINISH_REASON_UNSPECIFIED" "other"
    "MALFORMED_FUNCTION_CALL"   "error"
+   "MALFORMED_RESPONSE"        "error"          ; Gemini API only
+   "MISSING_THOUGHT_SIGNATURE" "error"          ; Gemini API only
+   "TOO_MANY_TOOL_CALLS"       "error"          ; Gemini API only
    "UNEXPECTED_TOOL_CALL"      "error"})
 
 (def ^:private finish-reasons-without-error
