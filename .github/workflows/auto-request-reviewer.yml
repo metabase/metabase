@@ -6,6 +6,10 @@ on:
       - labeled
       - ready_for_review
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   request_reviewer:
     if: >-
@@ -39,6 +43,23 @@ jobs:
             const pr = context.payload.pull_request;
             const author = pr.user.login;
             const registry = JSON.parse(fs.readFileSync('.github/reviewer-rotation.json', 'utf-8'));
+
+            const missing = (obj, keys) => keys.filter((key) => obj[key] === undefined);
+            for (const t of registry.teams ?? []) {
+              const teamMissing = missing(t, ['name', 'loadWindowDays', 'pools']);
+              if (teamMissing.length > 0) {
+                core.setFailed(`reviewer-rotation.json: team ${JSON.stringify(t.name ?? t)} is missing ${teamMissing.join(', ')}`);
+                return;
+              }
+              for (const pool of t.pools) {
+                const poolMissing = missing(pool, ['name', 'extensions', 'members']);
+                if (poolMissing.length > 0) {
+                  core.setFailed(`reviewer-rotation.json: pool ${JSON.stringify(pool.name ?? pool)} of team ${t.name} is missing ${poolMissing.join(', ')}`);
+                  return;
+                }
+              }
+            }
+
             const team = registry.teams.find((t) => t.pools.some((pool) => pool.members.includes(author)));
 
             if (!team) {
@@ -66,7 +87,7 @@ jobs:
               }
               const requested = new Set(fresh.requested_reviewers.map((u) => u.login));
               return matchedPools.filter((pool) => {
-                const handledBy = pool.members.find((login) => requested.has(login) || reviewedBy.has(login));
+                const handledBy = pool.members.find((login) => login !== author && (requested.has(login) || reviewedBy.has(login)));
                 if (handledBy) {
                   core.info(`${pool.name}: ${handledBy} already requested or reviewed, skipping`);
                   return false;
@@ -86,9 +107,13 @@ jobs:
             const windowStart = Date.now() - team.loadWindowDays * 24 * 60 * 60 * 1000;
 
             const search = async (q) => {
-              const res = await github.graphql(
-                `query ($q: String!) {
-                  search(query: $q, type: ISSUE, first: 100) {
+              const nodes = [];
+              let after = null;
+              for (let page = 0; page < 10; page += 1) {
+                const res = await github.graphql(
+                  `query ($q: String!, $after: String) {
+                  search(query: $q, type: ISSUE, first: 100, after: $after) {
+                    pageInfo { hasNextPage endCursor }
                     nodes {
                       ... on PullRequest {
                         number
@@ -105,13 +130,20 @@ jobs:
                     }
                   }
                 }`,
-                { q },
-              );
-              return res.search.nodes;
+                  { q, after },
+                );
+                nodes.push(...res.search.nodes);
+                const oldest = res.search.nodes.at(-1);
+                if (!res.search.pageInfo.hasNextPage || !oldest || Date.parse(oldest.createdAt) < windowStart) {
+                  break;
+                }
+                after = res.search.pageInfo.endCursor;
+              }
+              return nodes;
             };
 
             const stats = async (login) => {
-              const base = `repo:${owner}/${repo} is:pr -author:${login} -author:github-automation-metabase sort:created-desc`;
+              const base = `repo:${owner}/${repo} is:pr -author:${login} sort:created-desc`;
               const requested = (await search(`${base} review-requested:${login}`)).filter((p) =>
                 p.reviewRequests.nodes.some(
                   (r) => r.requestedReviewer?.__typename === 'User' && r.requestedReviewer.login === login,
