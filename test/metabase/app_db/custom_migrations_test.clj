@@ -2756,9 +2756,9 @@
             (is (= "another-bcrypt-hash" (raw-key enc-id)))))))))
 
 (deftest encrypt-settings-test
-  (testing "v58.2026-08-25T00:00:02 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
+  (testing "v58.2026-08-25T00:00:19 : plaintext values of newly-encrypted settings are encrypted at rest, others untouched"
     (encryption-test/with-secret-key "encrypt-settings-test-key-1234"
-      (impl/test-migrations ["v58.2026-08-25T00:00:02"] [migrate!]
+      (impl/test-migrations ["v58.2026-08-25T00:00:19"] [migrate!]
         (let [ins!    (fn [k v] (t2/query {:insert-into :setting :values [{:key k :value v}]}))
               raw     (fn [k] (t2/select-one-fn :value :setting :key k))
               enc-str (encryption/maybe-encrypt "https://already.example")]
@@ -2777,6 +2777,12 @@
           (testing "an already-encrypted value is left unchanged"
             (is (= enc-str (raw "map-tile-server-url"))))
           (testing "a setting not in the list is left plaintext"
+            (is (= "Metabase" (raw "site-name"))))
+          (testing "rollback decrypts the listed settings back to plaintext, others untouched"
+            (migrate! :down 57)
+            (is (= "https://plain.example" (raw "snowplow-url")))
+            (is (= "   " (raw "ldap-user-filter")))
+            (is (= "https://already.example" (raw "map-tile-server-url")))
             (is (= "Metabase" (raw "site-name")))))))))
 
 (deftest backfill-transform-target-db-id-test

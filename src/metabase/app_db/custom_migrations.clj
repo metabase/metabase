@@ -2277,44 +2277,76 @@
           (t2/reducible-query {:select [:id :key]
                                :from   [:api_key]}))))
 
-(define-migration EncryptSettings
+(defn encrypt-settings
+  "Encrypt at rest the plaintext value of every setting in `setting-keys`, so the strict decrypting read of an
+  `:encryption :when-encryption-key-set` setting accepts it. Already-encrypted values are left untouched. A blank value
+  is encrypted too, since a strict read would reject it as plaintext. No-op without an encryption key. Use it as the
+  forward body of a migration that marks existing settings as encrypted, paired with [[decrypt-settings]]."
+  [setting-keys]
   (when (encryption/default-encryption-enabled?)
-    (let [setting-keys ["ai-service-base-url" "allowed-iframe-hosts" "application-colors"
-                        "application-favicon-url" "application-font-files" "application-logo-url"
-                        "csp-img-allowed-hosts" "custom-formatting" "custom-geojson"
-                        "ee-embedding-provider" "ee-embedding-service-base-url" "email-from-address"
-                        "email-from-address-override" "email-from-name" "email-reply-to"
-                        "embedding-app-origins-interactive" "embedding-app-origins-sdk" "help-link-custom-destination"
-                        "landing-page" "landing-page-illustration-custom" "ldap-attribute-email"
-                        "ldap-attribute-firstname" "ldap-attribute-lastname" "ldap-group-base"
-                        "ldap-group-mappings" "ldap-group-membership-filter" "ldap-sync-user-attributes-blacklist"
-                        "ldap-user-base" "ldap-user-filter" "llm-anthropic-api-base-url"
-                        "llm-azure-api-base-url" "llm-deepseek-api-base-url" "llm-google-api-base-url"
-                        "llm-mistral-api-base-url" "llm-moonshot-api-base-url" "llm-openai-api-base-url"
-                        "llm-openrouter-api-base-url" "llm-proxy-base-url" "llm-vllm-api-base-url"
-                        "llm-zai-api-base-url" "locked-meters" "login-page-illustration-custom"
-                        "map-tile-server-url" "mcp-apps-cors-custom-origins" "mcp-apps-cors-enabled-clients"
-                        "metabot-chat-system-prompt" "metabot-nlq-system-prompt" "metabot-quota-reached-message"
-                        "metabot-sql-system-prompt" "metaplow-url" "migration-dump-file"
-                        "no-data-illustration-custom" "no-object-illustration-custom" "notification-link-base-url"
-                        "python-runner-url" "python-storage-s-3-access-key" "python-storage-s-3-container-endpoint"
-                        "python-storage-s-3-endpoint" "remote-sync-allow" "remote-sync-branch"
-                        "remote-sync-url" "saml-identity-provider-certificate" "search-language"
-                        "security-center-email-recipients" "security-center-slack-channel" "session-timeout"
-                        "slack-bug-report-channel" "slack-connect-authentication-mode" "slack-files-channel"
-                        "snowplow-url" "source-address-header" "store-api-url"
-                        "store-url" "subscription-allowed-domains"]]
-      (run! (fn [{:keys [key value]}]
-              ;; skip only nil (a strict read tolerates nil); a blank/whitespace value must be encrypted too, or the
-              ;; strict read would reject it as an unencrypted value
-              (when (and (string? value)
-                         (not (encryption/possibly-encrypted-string? value)))
-                (t2/query {:update :setting
-                           :set    {:value (encryption/maybe-encrypt value)}
-                           :where  [:= :key key]})))
-            (t2/reducible-query {:select [:key :value]
-                                 :from   [:setting]
-                                 :where  [:in :key setting-keys]})))))
+    (run! (fn [{:keys [key value]}]
+            (when (and (string? value)
+                       (not (encryption/possibly-encrypted-string? value)))
+              (t2/query {:update :setting
+                         :set    {:value (encryption/maybe-encrypt value)}
+                         :where  [:= :key key]})))
+          (t2/reducible-query {:select [:key :value]
+                               :from   [:setting]
+                               :where  [:in :key setting-keys]}))))
+
+(defn decrypt-settings
+  "Reverse of [[encrypt-settings]]: store the plaintext value of every encrypted setting in `setting-keys`, so a
+  downgraded version that reads them as `:encryption :no` still sees them. Plaintext values are left untouched."
+  [setting-keys]
+  (when (encryption/default-encryption-enabled?)
+    (run! (fn [{:keys [key value]}]
+            (when (and (string? value)
+                       (encryption/possibly-encrypted-string? value))
+              (t2/query {:update :setting
+                         :set    {:value (encryption/maybe-decrypt value)}
+                         :where  [:= :key key]})))
+          (t2/reducible-query {:select [:key :value]
+                               :from   [:setting]
+                               :where  [:in :key setting-keys]}))))
+
+(def ^:private v58-encrypted-settings
+  "Settings marked `:encryption :when-encryption-key-set` in v58 that were previously stored plaintext."
+  ["ai-service-base-url" "allowed-iframe-hosts" "application-colors"
+   "application-favicon-url" "application-font-files" "application-logo-url"
+   "csp-img-allowed-hosts" "custom-formatting" "custom-geojson"
+   "ee-embedding-provider" "ee-embedding-service-base-url" "email-from-address"
+   "email-from-address-override" "email-from-name" "email-reply-to"
+   "embedding-app-origins-interactive" "embedding-app-origins-sdk" "help-link-custom-destination"
+   "landing-page" "landing-page-illustration-custom" "ldap-attribute-email"
+   "ldap-attribute-firstname" "ldap-attribute-lastname" "ldap-group-base"
+   "ldap-group-mappings" "ldap-group-membership-filter" "ldap-sync-user-attributes-blacklist"
+   "ldap-user-base" "ldap-user-filter" "llm-anthropic-api-base-url"
+   "llm-azure-api-base-url" "llm-deepseek-api-base-url" "llm-google-api-base-url"
+   "llm-mistral-api-base-url" "llm-moonshot-api-base-url" "llm-openai-api-base-url"
+   "llm-openrouter-api-base-url" "llm-proxy-base-url" "llm-vllm-api-base-url"
+   "llm-zai-api-base-url" "locked-meters" "login-page-illustration-custom"
+   "map-tile-server-url" "mcp-apps-cors-custom-origins" "mcp-apps-cors-enabled-clients"
+   "metabot-chat-system-prompt" "metabot-nlq-system-prompt" "metabot-quota-reached-message"
+   "metabot-sql-system-prompt" "metaplow-url" "migration-dump-file"
+   "no-data-illustration-custom" "no-object-illustration-custom" "notification-link-base-url"
+   "python-runner-url" "python-storage-s-3-access-key" "python-storage-s-3-container-endpoint"
+   "python-storage-s-3-endpoint" "remote-sync-allow" "remote-sync-branch"
+   "remote-sync-url" "saml-identity-provider-certificate" "search-language"
+   "security-center-email-recipients" "security-center-slack-channel" "session-timeout"
+   "slack-bug-report-channel" "slack-connect-authentication-mode" "slack-files-channel"
+   "snowplow-url" "source-address-header" "store-api-url"
+   "store-url" "subscription-allowed-domains"])
+
+(define-reversible-migration EncryptSettings
+  (encrypt-settings v58-encrypted-settings)
+  (decrypt-settings v58-encrypted-settings))
+
+(def encrypt-settings-migrations
+  "Migration id => the settings it moves from plaintext to encrypted at rest. `./bin/mage settings-encryption-check`
+  (run by CI on every PR) fails when a setting flips to `:encryption :when-encryption-key-set` without an entry here,
+  since the strict read would reject the plaintext values a released version stored. Add every [[encrypt-settings]]
+  migration to this map."
+  {"v58.2026-08-25T00:00:19" v58-encrypted-settings})
 
 (define-reversible-migration EncryptPublicUuids
   (when (encryption/default-encryption-enabled?)

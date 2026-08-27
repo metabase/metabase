@@ -354,6 +354,23 @@ jobs:
       - name: Check namespaces
         run: clojure -M:ee:drivers:load-namespaces
 
+  # A setting whose :encryption flips from :no to :when-encryption-key-set needs a migration that encrypts the values a
+  # released version already stored plaintext; compares the PR against the base it was merged onto.
+  be-settings-encryption:
+    if: ${{ !inputs.skip && github.event_name == 'pull_request' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    name: "Settings encryption migrations"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # refs/pull/<n>/merge: HEAD^1 is the base branch tip the PR was merged onto
+          fetch-depth: 2
+      - name: Prepare backend
+        uses: ./.github/actions/prepare-backend
+      - name: Compare settings encryption against the base branch
+        run: ./bin/mage settings-encryption-check --base HEAD^1
+
   be-cljfmt:
     if: ${{ !inputs.skip }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -374,6 +391,7 @@ jobs:
       - be-linter-clj-kondo
       - be-cljfmt
       - be-check
+      - be-settings-encryption
       - be-tests
     if: always() && !cancelled()
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
