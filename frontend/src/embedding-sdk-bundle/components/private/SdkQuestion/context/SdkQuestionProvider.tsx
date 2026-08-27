@@ -120,9 +120,11 @@ export const SdkQuestionProvider = ({
   } = useExtractResourceIdFromJwtToken({
     isGuestEmbed,
     resourceId: rawQuestionId,
-    // Skip stale Redux token on first render (e.g. wizard re-issuing a token when toggling parameters); rawToken prop takes precedence.
-    // From the next render onward, tokenFromStore is used and the value is from a refreshed token.
-    token: (!isFirstRender ? tokenFromStore : null) ?? rawToken ?? undefined,
+    // Prefer the per-question prop token so concurrent guest StaticQuestions don't
+    // all collapse onto the shared Redux guest token (last write wins). Fall back
+    // to the store after first render only when no prop token is provided (e.g.
+    // refreshed token after expiry).
+    token: rawToken ?? (!isFirstRender ? tokenFromStore : null) ?? undefined,
   });
 
   useSetupContentTranslations({ token });
