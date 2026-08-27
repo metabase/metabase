@@ -31,6 +31,7 @@ export type MetabotConversationDetail = {
   forked_from_conversation_id: string | null;
   state?: MetabotStateContext;
   messages: MetabotMessage[];
+  context_window_tokens?: number;
 };
 
 export const metabotApi = Api.injectEndpoints({
