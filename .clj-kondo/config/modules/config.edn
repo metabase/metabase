@@ -1341,8 +1341,10 @@
            ai-tracing
            api
            app-db
+           bookmarks
            config
            dashboards
+           eid-translation
            llm
            metabot
            models
@@ -1356,7 +1358,11 @@
            session
            settings
            system
-           util}}
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document}}
 
   measures
   {:team "Graphy"
