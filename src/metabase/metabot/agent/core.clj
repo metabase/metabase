@@ -363,11 +363,14 @@
       [(str id) (:query source)])))
 
 (defn- seed-state
-  "Seed state with queries from viewing context."
+  "Seed state with queries from viewing context, recording their ids under `:client-ids`
+  so presentation paths can tell them from queries the agent's own tools wrote."
   [state context]
   (reduce (fn [s item]
             (if-let [[qid q] (extract-query-from-context-item item)]
-              (assoc-in s [:queries qid] q)
+              (-> s
+                  (assoc-in [:queries qid] q)
+                  (update :client-ids (fnil conj #{}) qid))
               s))
           state
           (:user_is_viewing context)))
@@ -422,12 +425,14 @@
      ;; TODO (lbrdnk 2026-03-24): This is developed against adhoc queries. Ensure other cases work too!
      (if-not (seq chart_configs)
        acc
-       (update acc :charts merge
-               (into {}
-                     (map (comp
-                           (juxt :chart_id identity)
-                           (partial chart-config->chart id)))
-                     chart_configs))))
+       (let [charts (into {}
+                          (map (comp
+                                (juxt :chart_id identity)
+                                (partial chart-config->chart id)))
+                          chart_configs)]
+         (-> acc
+             (update :charts merge charts)
+             (update :client-ids (fnil into #{}) (map str (keys charts)))))))
    state
    (:user_is_viewing context)))
 

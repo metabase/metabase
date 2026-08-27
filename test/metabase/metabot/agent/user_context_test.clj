@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -501,6 +502,68 @@
             (let [out (user-context/format-viewing-context (viewing db-id))]
               (is (str/includes? out "notebook editor"))
               (is (not (str/includes? out "source-table"))))))))))
+
+(deftest adhoc-viewing-context-virtual-database-id-gates-real-database-test
+  (let [viewing (fn [card-id]
+                  {:user_is_viewing [{:type  "adhoc"
+                                      :query {:database -1337
+                                              :type     "query"
+                                              :query    {:source-table (str "card__" card-id)}}}]})]
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Card     {card-id :id} {:database_id   db-id
+                                                  :dataset_query {:database db-id
+                                                                  :type     :query
+                                                                  :query    {:source-table table-id}}}]
+      (testing "the -1337 virtual database id is gated on the source card's real database"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-test-user :rasta
+            (let [out (user-context/format-viewing-context (viewing card-id))]
+              (is (str/includes? out "notebook editor"))
+              (is (not (str/includes? out (str "card__" card-id))))))))
+      (testing "and still renders for a user who can read that database"
+        (mt/with-test-user :crowberto
+          (let [out (user-context/format-viewing-context (viewing card-id))]
+            (is (str/includes? out "notebook editor"))
+            (is (re-find #"source-card|card__" out))))))))
+
+(deftest format-transform-source-denied-database-withholds-query-test
+  (testing "a transform source over a database the user cannot read renders no query body"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-test-user :rasta
+          (let [source {:type  "query"
+                        :query {:database db-id
+                                :type     :native
+                                :native   {:query "SELECT secret FROM t"}}}
+                text   (user-context/format-transform-source
+                        (assoc source :transform-source-type :native))]
+            (is (not (str/includes? (str text) "SELECT secret")))))))))
+
+(deftest adhoc-viewing-context-denied-source-card-is-audited-test
+  (testing "a denied client-supplied :source-card goes through the audited read-check, and the query is left out"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:database_id   (mt/id)
+                    :dataset_query (lib/query (mt/metadata-provider)
+                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
+      ;; Let the database gate through and refuse only the Card, or the gate alone satisfies the
+      ;; counter and the test passes even if this path regresses to the unaudited store.
+      (let [calls (atom 0)]
+        (mt/with-dynamic-fn-redefs [api/read-check (fn [model-or-row & _]
+                                                     (if (= model-or-row :model/Database)
+                                                       model-or-row
+                                                       (do (swap! calls inc)
+                                                           (throw (ex-info "Forbidden" {:status-code 403})))))]
+          (mt/with-test-user :rasta
+            (let [out (user-context/format-viewing-context
+                       {:user_is_viewing [{:type  "adhoc"
+                                           :query {:lib/type :mbql/query
+                                                   :database (mt/id)
+                                                   :stages   [{:lib/type    :mbql.stage/mbql
+                                                               :source-card card-id}]}}]})]
+              (is (pos? @calls))
+              (is (str/includes? out "notebook editor"))
+              (is (not (str/includes? out "Query"))))))))))
 
 (deftest ^:parallel enrich-context-omits-research-plan-test
   (testing "the draft Research plan is an explorations-only, system-prompt concern, so it must not

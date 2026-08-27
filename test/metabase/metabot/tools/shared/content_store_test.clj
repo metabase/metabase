@@ -1,27 +1,41 @@
 (ns metabase.metabot.tools.shared.content-store-test
-  "Unit tests for the read-checked ContentStore wrapper.
+  "Unit tests for the read-checked ContentStore wrapper and the query database/table gates.
 
-  These tests pin two properties:
+  These tests pin four properties:
 
-  1. **Pass-through when no user is bound** — serdes import / background tasks / REPL runs
-     must keep working without an authenticated user. The wrapper short-circuits
-     `api/read-check` and returns the inner store's row unchanged.
+  1. **Pass-through when no user is bound**: serdes import / background tasks / REPL runs
+     must keep working without an authenticated user. The wrapper short-circuits the
+     permission check and returns the inner store's row unchanged.
 
-  2. **Read-checked when a user is bound** — all six methods (symmetric across import- and
-     export-direction lookups) route through `api/read-check`. A user without read
-     perms gets a 403; the underlying store is consulted for the existence check, and
-     unknown / `nil` returns pass through cleanly so the per-model resolver can emit its
-     `:unknown-…` agent error."
+  2. **Every method is checked when a user is bound**: a row the user cannot read never
+     reaches the caller, whichever direction it was looked up by. Unknown / `nil` returns pass
+     through cleanly either way, so the per-model resolver can emit its `:unknown-…` agent
+     error.
+
+  3. **Only the audit trail varies**: the `-by-entity-id` methods use the audited
+     [[api/read-check]], the `-by-id` methods an unaudited [[mi/can-read?]] +
+     [[api/check-403]] unless `audited-by-id?` is set, and binding
+     [[resolve.mp/*audit-refusals?*]] to false suppresses auditing on all six.
+
+  4. **`repair` binds that suppression on**: the `source-card` refusals its mini-resolve passes
+     catch and discard stay out of the audit trail."
   (:require
    [clojure.test :refer :all]
+   [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.test :as mt]))
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [toucan2.protocols :as t2.protocols]))
 
 (defn- record-store
   "A fake ContentStore that returns the configured row for each of its six methods."
@@ -33,6 +47,31 @@
     (card-by-id           [_ _id]  card-id)
     (measure-by-id        [_ _id]  measure-id)
     (segment-by-id        [_ _id]  segment-id)))
+
+(def ^:dynamic ^:private *stub-can-read?*
+  "Controls the [[mi/can-read?]] answer for [[stub-row]]s below."
+  true)
+
+(defmethod mi/can-read? ::stub-model
+  ([_row] *stub-can-read?*)
+  ([_model _pk] *stub-can-read?*))
+
+(defn- stub-row
+  "Tag `row` so it dispatches to the [[::stub-model]] `can-read?` method above, instead of the
+  real per-model permission logic; `can-read?` is a multimethod, so it can't be redefined with
+  `mt/with-dynamic-fn-redefs`."
+  [row]
+  (with-meta row {`t2.protocols/model         (fn [_] ::stub-model)
+                  `t2.protocols/dispatch-value (fn [_] ::stub-model)}))
+
+(def ^:private all-lookups
+  "Every `ContentStore` method, paired with an argument of the right shape."
+  [[resolve.mp/card-by-entity-id    "x"]
+   [resolve.mp/measure-by-entity-id "x"]
+   [resolve.mp/segment-by-entity-id "x"]
+   [resolve.mp/card-by-id           1]
+   [resolve.mp/measure-by-id        1]
+   [resolve.mp/segment-by-id        1]])
 
 ;;; ============================================================
 ;;; Pass-through: no user bound
@@ -55,14 +94,12 @@
       (is (= row (resolve.mp/segment-by-id        gated 1))))))
 
 (deftest nil-from-inner-store-passes-through-unchanged-test
-  (testing "when the inner store returns nil (unknown id), the wrapper returns nil — never throws"
+  (testing "when the inner store returns nil (unknown id), the wrapper returns nil, never throws"
     (let [empty-store (record-store {})
           gated       (shared.content-store/read-checked empty-store)]
-      ;; nil result short-circuits the read-check branch in maybe-read-check, regardless of
-      ;; whether a user is bound. This is critical: the per-model resolver functions
-      ;; (`import-card-by-entity-id` etc.) translate `nil` into a clean `:unknown-card` /
-      ;; `:unknown-measure` / `:unknown-segment` agent error, and a stray throw here would
-      ;; turn that friendly diagnostic into a 500.
+      ;; The per-model resolver functions turn `nil` into a clean `:unknown-card` /
+      ;; `:unknown-measure` / `:unknown-segment` agent error, so a throw here would turn that
+      ;; diagnostic into a 500.
       (binding [api/*current-user-id* 1]
         (is (nil? (resolve.mp/card-by-entity-id    gated "x")))
         (is (nil? (resolve.mp/measure-by-entity-id gated "x")))
@@ -76,14 +113,10 @@
 ;;; ============================================================
 
 (deftest applies-read-check-when-user-bound-test
-  (testing (str "with api/*current-user-id* bound, all six methods route the inner row through "
-                "`api/read-check`. Using a row that doesn't satisfy `can-read?` proves the "
-                "check fires on each branch — we stub `api/read-check` to a recording fn so "
-                "we don't need a real auth setup, and assert it was called with the row.")
+  (testing "with a user bound, the `-by-entity-id` methods route the row through `api/read-check`"
     (let [calls (atom [])
           row   {:opaque :marker}
-          store (record-store {:card row :measure-eid row :segment-eid row
-                               :card-id row :measure-id row :segment-id row})
+          store (record-store {:card row :measure-eid row :segment-eid row})
           gated (shared.content-store/read-checked store)]
       (mt/with-dynamic-fn-redefs [api/read-check (fn [obj] (swap! calls conj obj) obj)]
         (binding [api/*current-user-id* 1]
@@ -96,39 +129,163 @@
           (testing "segment-by-entity-id"
             (is (= row (resolve.mp/segment-by-entity-id gated "x")))
             (is (= row (last @calls))))
+          (testing "all three entity-id methods invoke read-check exactly once"
+            (is (= 3 (count @calls)))))))))
+
+(deftest applies-check-403-when-user-bound-test
+  (testing (str "with a user bound, the `-by-id` methods route the row through the unaudited "
+                "`mi/can-read?` + `api/check-403` pair instead, never `api/read-check`")
+    (let [row   (stub-row {:opaque :marker})
+          store (record-store {:card-id row :measure-id row :segment-id row})
+          gated (shared.content-store/read-checked store)]
+      (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
+                                                   (is false "api/read-check ran on a -by-id lookup"))]
+        (binding [api/*current-user-id* 1
+                  *stub-can-read?*      true]
           (testing "card-by-id"
-            (is (= row (resolve.mp/card-by-id gated 1)))
-            (is (= row (last @calls))))
+            (is (= row (resolve.mp/card-by-id gated 1))))
           (testing "measure-by-id"
-            (is (= row (resolve.mp/measure-by-id gated 1)))
-            (is (= row (last @calls))))
+            (is (= row (resolve.mp/measure-by-id gated 1))))
           (testing "segment-by-id"
-            (is (= row (resolve.mp/segment-by-id gated 1)))
-            (is (= row (last @calls))))
-          (testing "all six methods invoke read-check exactly once"
-            (is (= 6 (count @calls)))))))))
+            (is (= row (resolve.mp/segment-by-id gated 1)))))))))
+
+(deftest audited-by-id-applies-read-check-test
+  (testing (str "an `audited-by-id?` wrapper routes the `-by-id` methods through "
+                "`api/read-check` too, for lookups driven by client-supplied queries")
+    (let [calls (atom [])
+          row   {:opaque :marker}
+          store (record-store {:card-id row :measure-id row :segment-id row})
+          gated (shared.content-store/read-checked store true)]
+      (mt/with-dynamic-fn-redefs [api/read-check (fn [obj] (swap! calls conj obj) obj)]
+        (binding [api/*current-user-id* 1]
+          (is (= row (resolve.mp/card-by-id    gated 1)))
+          (is (= row (resolve.mp/measure-by-id gated 1)))
+          (is (= row (resolve.mp/segment-by-id gated 1)))
+          (is (= 3 (count @calls))))))))
+
+(deftest suppressing-the-audit-trail-still-checks-every-method-test
+  (testing (str "with `*audit-refusals?*` bound off, every method (including the audited "
+                "`-by-entity-id` ones and an `audited-by-id?` store) still admits a readable "
+                "row and still 403s an unreadable one, without going through `api/read-check`")
+    (let [row (stub-row {:opaque :marker})]
+      (doseq [audited-by-id? [false true]]
+        (let [store (record-store {:card row :measure-eid row :segment-eid row
+                                   :card-id row :measure-id row :segment-id row})
+              gated (shared.content-store/read-checked store audited-by-id?)]
+          (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
+                                                       (is false "api/read-check ran with auditing suppressed"))]
+            (binding [api/*current-user-id*            1
+                      resolve.mp/*audit-refusals?*     false]
+              (doseq [[lookup arg] all-lookups]
+                (binding [*stub-can-read?* true]
+                  (is (= row (lookup gated arg))))
+                (binding [*stub-can-read?* false]
+                  (try
+                    (lookup gated arg)
+                    (is false "expected throw")
+                    (catch clojure.lang.ExceptionInfo e
+                      (is (= 403 (:status-code (ex-data e)))))))))))))))
 
 (deftest propagates-read-check-403-test
-  (testing "if read-check throws (403), the wrapper propagates the exception unchanged"
+  (testing "if read-check throws (403), the entity-id (import-direction) branch propagates the exception unchanged"
     (let [row   {:opaque :marker}
-          store (record-store {:card row :card-id row :measure-id row})
+          store (record-store {:card row})
           gated (shared.content-store/read-checked store)]
       (mt/with-dynamic-fn-redefs [api/read-check (fn [_]
                                                    (throw (ex-info "Forbidden" {:status-code 403})))]
         (binding [api/*current-user-id* 1]
-          (testing "import-direction branch"
+          (try
+            (resolve.mp/card-by-entity-id gated "x")
+            (is false "expected throw")
+            (catch clojure.lang.ExceptionInfo e
+              (is (= 403 (:status-code (ex-data e))))))))))
+  (testing "if can-read? is false, the by-id (export-direction) branch throws a 403 via check-403"
+    (let [row   (stub-row {:opaque :marker})
+          store (record-store {:card-id row :measure-id row :segment-id row})
+          gated (shared.content-store/read-checked store)]
+      (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
+                                                   (is false "api/read-check ran on a -by-id lookup"))]
+        (binding [api/*current-user-id* 1
+                  *stub-can-read?*      false]
+          (doseq [lookup [resolve.mp/card-by-id resolve.mp/measure-by-id resolve.mp/segment-by-id]]
             (try
-              (resolve.mp/card-by-entity-id gated "x")
+              (lookup gated 1)
               (is false "expected throw")
               (catch clojure.lang.ExceptionInfo e
-                (is (= 403 (:status-code (ex-data e)))))))
-          (testing "export-direction lookups"
-            (doseq [lookup [resolve.mp/card-by-id resolve.mp/measure-by-id]]
-              (try
-                (lookup gated 1)
-                (is false "expected throw")
-                (catch clojure.lang.ExceptionInfo e
-                  (is (= 403 (:status-code (ex-data e)))))))))))))
+                (is (= 403 (:status-code (ex-data e))))))))))))
+
+;;; ============================================================
+;;; Suppression at the repair call site
+;;; ============================================================
+
+(def ^:private source-card-entity-id
+  "A syntactically valid entity_id, so the resolver reaches the store instead of short-circuiting."
+  "GRLHTBIcE5nGFVJoxGr5D")
+
+(deftest repair-does-not-audit-the-refusals-it-swallows-test
+  (testing "repair resolves a source-card ref through the store, and 403s there leave no audit trail"
+    (let [lookups (atom 0)
+          row     (stub-row {:id 1 :database_id 1 :entity_id source-card-entity-id})
+          store   (reify resolve.mp/ContentStore
+                    (card-by-entity-id    [_ _eid] (swap! lookups inc) row)
+                    (measure-by-entity-id [_ _eid] nil)
+                    (segment-by-entity-id [_ _eid] nil)
+                    (card-by-id           [_ _id]  nil)
+                    (measure-by-id        [_ _id]  nil)
+                    (segment-by-id        [_ _id]  nil))
+          mp      (lib.tu/mock-metadata-provider {:database {:id 1 :name "Sample"}})
+          query   {"lib/type" "mbql/query"
+                   "database" "Sample"
+                   "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                "source-card" source-card-entity-id}]}]
+      (mt/with-dynamic-fn-redefs [api/read-check (fn [& _]
+                                                   (is false "api/read-check ran on a refusal repair discards"))]
+        (binding [api/*current-user-id* 1
+                  *stub-can-read?*      false]
+          (let [repaired (repr.repair/repair mp query (shared.content-store/read-checked store))]
+            (is (pos? @lookups) "precondition: repair looked the source card up")
+            (is (= source-card-entity-id (get-in repaired ["stages" 0 "source-card"]))
+                "the refused lookup is skipped, not fatal")))))))
+
+;;; ============================================================
+;;; Database / table gates
+;;; ============================================================
+
+(deftest query-gates-are-table-granular-test
+  (testing "a query whose database is readable is still withheld when it references a table the user cannot query"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (let [query-on (fn [table-id]
+                         {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table table-id}})]
+          (is (mi/can-read? :model/Database (mt/id))
+              "precondition: query access to one table makes the whole database readable")
+          (is (shared.content-store/query-database-readable? (query-on (mt/id :orders))))
+          (is (some? (shared.content-store/query-if-database-readable (query-on (mt/id :orders)))))
+          (is (not (shared.content-store/query-database-readable? (query-on (mt/id :venues)))))
+          (is (nil? (shared.content-store/query-if-database-readable (query-on (mt/id :venues))))))))))
+
+(deftest native-analysis-failure-fails-closed-test
+  (testing "a native query is withheld when its SQL cannot be analyzed, not waved through"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (let [native-query {:database (mt/id)
+                            :type     :native
+                            :native   {:query "SELECT * FROM venues"}}]
+          (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
+                                      (fn [& _] (throw (ex-info "boom" {})))]
+            (is (not (shared.content-store/query-database-readable? native-query)))
+            (is (nil? (shared.content-store/query-if-database-readable native-query))))
+          (testing "while a native query the analyzer finds no tables in still passes"
+            (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
+                                        (fn [& _] {:tables []})]
+              (is (shared.content-store/query-database-readable? native-query))
+              (is (some? (shared.content-store/query-if-database-readable native-query))))))))))
 
 ;;; ============================================================
 ;;; default-store integration shape

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.test-util :as test-util]
@@ -312,7 +313,10 @@
                                :charts  {"chart-1" {:chart_id "chart-1"
                                                     :query_id "q-1"
                                                     :queries  [query]
-                                                    :visualization_settings {:chart_type "line"}}}}})]
+                                                    :visualization_settings {:chart_type "line"}}
+                                         "chart-2" {:chart_id "chart-2"
+                                                    :queries  [nil]
+                                                    :visualization_settings {:chart_type "bar"}}}}})]
         (testing "resolves a conversation chart to its chart type and exported query"
           (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-1"]})]
             (is (=? {:resources [{:content {:structured-output map?}}]}
@@ -320,6 +324,11 @@
             (is (str/includes? (:output result) "conversation-chart"))
             (is (str/includes? (:output result) "Chart type: line"))
             (is (str/includes? (:output result) "ORDERS"))))
+        (testing "a chart with no query says so instead of claiming a permission denial"
+          (let [result (read-resource/read-resource {:uris ["metabase://chart/chart-2"]})]
+            (is (str/includes? (:output result) "Chart type: bar"))
+            (is (str/includes? (:output result) "No query is attached to this chart."))
+            (is (not (str/includes? (:output result) "cannot read")))))
         (testing "falls back to the queries state when the id is a query id"
           (let [result (read-resource/read-resource {:uris ["metabase://chart/q-1"]})]
             (is (str/includes? (:output result) "conversation-query"))))
@@ -330,6 +339,48 @@
         (testing "errors clearly for ids that are in neither charts nor queries state"
           (is (=? {:resources [{:error #"No chart or query with id 'nope'.*"}]}
                   (read-resource/read-resource {:uris ["metabase://chart/nope"]}))))))))
+
+(deftest read-conversation-chart-provenance-picks-audit-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (mt/with-no-data-perms-for-all-users!
+      (let [query (fn [] {:database db-id
+                          :type     "query"
+                          :query    {:source-table 1}})
+            chart (fn [id] {:chart_id id
+                            :queries  [(query)]
+                            :visualization_settings {:chart_type "line"}})
+            denial-calls (fn [uri]
+                           (let [calls (atom 0)]
+                             (mt/with-dynamic-fn-redefs
+                               [api/read-check (fn [& _]
+                                                 (swap! calls inc)
+                                                 (throw (ex-info "Forbidden" {:status-code 403})))]
+                               (let [result (read-resource/read-resource {:uris [uri]})]
+                                 (is (str/includes? (:output result)
+                                                    "references content the user cannot read"))
+                                 @calls))))]
+        (binding [tools.shared/*memory-atom*
+                  (atom {:state {:queries    {"seeded-q" (query)}
+                                 :charts     {"seeded-chart" (chart "seeded-chart")
+                                              "tool-chart"   (chart "tool-chart")}
+                                 :client-ids #{"seeded-chart" "seeded-q"}}})]
+          (mt/with-test-user :rasta
+            (testing "a denial on a client-seeded chart or query is audited"
+              (is (pos? (denial-calls "metabase://chart/seeded-chart")))
+              (is (pos? (denial-calls "metabase://query/seeded-q"))))
+            (testing "a denial on a tool-written chart stays quiet"
+              (is (zero? (denial-calls "metabase://chart/tool-chart"))))))))))
+
+(deftest read-conversation-query-deleted-database-still-renders-test
+  (testing "a state query whose database no longer exists renders its fallback instead of claiming a permission problem"
+    (binding [tools.shared/*memory-atom*
+              (atom {:state {:queries {"q-gone" {:database 999999999
+                                                 :type     "query"
+                                                 :query    {:source-table 1}}}}})]
+      (mt/with-test-user :rasta
+        (let [result (read-resource/read-resource {:uris ["metabase://query/q-gone"]})]
+          (is (not (str/includes? (:output result) "cannot read")))
+          (is (str/includes? (:output result) "source-table")))))))
 
 (deftest read-transform-resource-test
   (mt/with-premium-features #{:transforms-basic :hosting}

@@ -278,6 +278,16 @@
 ;;; Content store - Metabase asset lookups by portable entity id or numeric id
 ;;; ============================================================
 
+(def ^:dynamic *audit-refusals?*
+  "Whether a permission-aware [[ContentStore]] audits a refusal, i.e. leaves the ERROR log line
+  and `:event/read-permission-failure` that `api/read-check` does, rather than throwing a bare
+  403. Bind to false around a lookup whose refusal you catch and discard.
+
+  The permission check itself is unaffected; an unreadable row never reaches the caller either
+  way. The stores defined below are permission-agnostic and ignore this var. It is honoured by
+  `metabase.metabot.tools.shared.content-store/read-checked`."
+  true)
+
 (p.types/defprotocol+ ContentStore
   "Lookup of Metabase content (\"assets\") by portable entity id or numeric id.
 
