@@ -3,7 +3,7 @@ import { c } from "ttag";
 import * as Yup from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
-import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
+import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
 import { getScheduleStrings } from "metabase/common/components/Schedule/strings";
 import {
   PLUGIN_CACHING,
@@ -48,7 +48,7 @@ export const resolveSmoothly = async (
 };
 
 export const getFrequencyFromCron = (cron: string) => {
-  const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
+  const scheduleType = cronToBuilderValue(cron)?.schedule_type;
   const { scheduleOptionNames } = getScheduleStrings();
   return isNullOrUndefined(scheduleType)
     ? ""

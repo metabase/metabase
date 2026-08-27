@@ -535,7 +535,7 @@
     ;; `:coercion-strategy`, along with `:qp/native-sandbox-column.propagate-coercion? true` (see below). Lib will
     ;; propagate the coercion strategy through *exactly one* stage boundary, so it can get from the SQL first stage to
     ;; the earliest MBQL stage, where the coercion will get applied correctly. See QUE2-376 or #69867 for more details.
-    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} :keyword]
+    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} [:ref ::lib.schema.common/coercion-strategy]]
     ;;
     ;; See above about `:qp/native-sandbox-column.force-coercion-strategy`.
     [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]]

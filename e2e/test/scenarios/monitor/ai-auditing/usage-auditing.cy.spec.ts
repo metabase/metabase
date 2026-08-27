@@ -77,7 +77,7 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
     H.activateToken("pro-self-hosted");
     // MetabotAnalyticsAvailabilityLayout (usage stats + conversations) shows an empty
     // state with a "Go to AI Settings" CTA unless llm-metabot-configured? is true.
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
     seedUsageAuditingData();
   });
 

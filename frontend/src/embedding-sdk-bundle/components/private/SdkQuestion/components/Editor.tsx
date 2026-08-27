@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import { useDatabaseListQuery } from "metabase/common/hooks";
+import { useListDatabasesQuery } from "metabase/api";
 import {
   isQuestionDirty,
   isQuestionRunnable,
@@ -42,7 +42,7 @@ export const Editor = ({
   hasVisualizeButton = true,
 }: EditorProps) => {
   // Loads databases and metadata so we can show notebook steps for the selected data source
-  useDatabaseListQuery();
+  useListDatabasesQuery();
 
   const {
     question: rawQuestion,

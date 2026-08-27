@@ -1,7 +1,8 @@
 import type { ColumnTypes, CreateCustomVisualization } from "custom-viz";
 
 import { formatValue } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
-import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
+
+import { customVizColumnTypes } from "./custom-viz-column-types";
 
 declare global {
   interface Window {

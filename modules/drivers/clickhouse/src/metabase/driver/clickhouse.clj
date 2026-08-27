@@ -83,7 +83,7 @@
                               :transforms/table                 true
                               :upload-with-auto-pk              false
                               :window-functions/cumulative      (not driver-api/is-test?)
-                              :window-functions/offset          false}]
+                              :window-functions/offset          true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :clickhouse
@@ -115,11 +115,11 @@
                      :else nil)]
        (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
-       (when session-timezone
-         (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
-               query-settings  (new QuerySettings)]
-           (.setOption query-settings "session_timezone" session-timezone)
-           (.setDefaultQuerySettings clickhouse-conn query-settings)))
+       (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+             query-settings (new QuerySettings)]
+         (when session-timezone
+           (.serverSetting query-settings "session_timezone" session-timezone))
+         (.setDefaultQuerySettings clickhouse-conn query-settings))
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
@@ -472,20 +472,20 @@
 (defmethod sql-jdbc/set-role-statement :clickhouse
   [_driver _conn role]
   ;; Since Clickhouse does not truly support prepared statements with protocol-level safety and has no
-  ;; `quote_ident()` function or similar, escape/quote the identifier client-side.
-  (let [default-role         (driver.sql/default-database-role :clickhouse nil)
-        quote-if-needed      (fn [role]
-                               (if (or (and (str/starts-with? role "\"")
-                                            (str/ends-with? role "\""))
-                                       (= role default-role))
-                                 role
-                                 (str \" role \")))
-        escape-double-quotes #(str/replace % #"(?!^)\"(?<!$)" "\"\"")
-        quoted-role          (->> (str/split role #",")
-                                  (map quote-if-needed)
-                                  (map escape-double-quotes)
-                                  (str/join ","))]
-    (format "SET ROLE %s" quoted-role)))
+  ;; `quote_ident()` function or similar, escape/quote the identifier client-side. The whole value is quoted
+  ;; as one identifier, so a role name containing a comma stays a single role. Backslashes are escaped so a
+  ;; trailing backslash cannot close the quoted identifier, and interior double-quotes are doubled.
+  (let [default-role    (driver.sql/default-database-role :clickhouse nil)
+        quote-if-needed (fn [role]
+                          (if (or (and (str/starts-with? role "\"")
+                                       (str/ends-with? role "\""))
+                                  (= role default-role))
+                            role
+                            (str \" role \")))
+        escape-ident    #(-> %
+                             (str/replace "\\" "\\\\")
+                             (str/replace #"(?!^)\"(?<!$)" "\"\""))]
+    (format "SET ROLE %s" (-> role quote-if-needed escape-ident))))
 
 (defmethod driver/set-role! :clickhouse
   [driver ^Connection conn role]

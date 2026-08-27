@@ -9,6 +9,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.resolution :as models.resolution]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -25,6 +26,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -47,6 +49,10 @@
   query string, plus the optional `:parameters` JSON blob (see [[parse-query-params]]). Keys that don't read cleanly
   as keywords (e.g. slugs starting with a digit) arrive as strings (see [[normalize-query-params]])."
   [:map-of [:or :keyword :string] [:maybe [:or :string [:sequential :string]]]])
+
+(def ParsedQueryParams
+  "Schema for [[QueryParams]] after the `:parameters` JSON blob has been decoded into real JSON scalars."
+  [:map-of [:or :keyword :string] [:maybe [:ref ::lib.schema.parameter/parameter.value]]])
 
 (comment
   ;; load dynamic model resolution code... should already be loaded by [[metabase.core.init]] so this is mostly here for
@@ -156,13 +162,15 @@
   contains serialized JSON with parameter values. If this object cannot be found or parsed, we fallback to plain query
   string parameters."
   [query-params]
-  (or (try
-        (when-let [parameters (:parameters query-params)]
-          (json/decode+kw parameters))
-        (catch Throwable _
-          nil))
-      query-params
-      {}))
+  (let [parsed (when-let [parameters (:parameters query-params)]
+                 (try
+                   (json/decode+kw parameters)
+                   (catch Throwable _
+                     nil)))]
+    (when (and (some? parsed)
+               (not (mr/validate ParsedQueryParams parsed)))
+      (throw (ex-info (tru "Invalid parameter values") {:status-code 400})))
+    (or parsed query-params {})))
 
 (mu/defn normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
@@ -318,7 +326,7 @@
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         resolved-embedding-params (or embedding-params
                                       (t2/select-one-fn :embedding_params :model/Card :id card-id))]
-    (-> (apply api.public/public-card :id card-id, constraints)
+    (-> (apply api.public/public-card card-id constraints)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
         (remove-locked-and-disabled-params resolved-embedding-params)
@@ -356,6 +364,35 @@
                 :constraints constraints
                 :qp          qp
                 options))))
+
+(defn- tile-slug->value
+  [object-parameters parameter-values]
+  (let [id->slug (into {} (map (juxt :id :slug)) object-parameters)]
+    (into {}
+          (map (fn [{:keys [id value]}]
+                 [(keyword (or (get id->slug id)
+                               (throw (ex-info (tru "Invalid query params: could not determine slug for parameter with ID {0}"
+                                                    (pr-str id))
+                                               {:status-code 400}))))
+                  value]))
+          parameter-values)))
+
+(defn tile-parameters-for-card
+  "The parameters an embedded Card's map tile should run with."
+  [card token-params parameter-values]
+  (let [parameters (resolve-card-parameters card)]
+    (apply-slug->value parameters
+                       (validate-and-merge-params (:embedding_params card)
+                                                  token-params
+                                                  (tile-slug->value parameters parameter-values)))))
+
+(defn tile-parameters-for-dashboard
+  "The parameters an embedded Dashboard's map tile should run with."
+  [dashboard token-params parameter-values]
+  (resolve-dashboard-parameters dashboard
+                                (validate-and-merge-params (:embedding_params dashboard)
+                                                           token-params
+                                                           (tile-slug->value (:parameters dashboard) parameter-values))))
 
 (defn process-tiles-query-for-card
   "Like [[metabase.tiles.api/process-tiles-query-for-card]], but takes a pre-loaded Card entity and runs with database
@@ -410,7 +447,7 @@
         embedding-params (or embedding-params
                              (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (-> (apply api.public/public-dashboard :id dashboard-id constraints)
+    (-> (apply api.public/public-dashboard dashboard-id constraints)
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)

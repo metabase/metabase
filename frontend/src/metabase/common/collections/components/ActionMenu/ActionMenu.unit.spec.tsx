@@ -4,11 +4,11 @@ import fetchMock from "fetch-mock";
 
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
   createMockCollection,
@@ -24,6 +24,8 @@ interface SetupOpts {
   databases?: Database[];
   isXrayEnabled?: boolean;
   withBookmarks?: boolean;
+  isSelected?: boolean;
+  onToggleSelected?: jest.Mock;
 }
 
 const setup = ({
@@ -32,6 +34,8 @@ const setup = ({
   databases = [],
   isXrayEnabled = false,
   withBookmarks = false,
+  isSelected,
+  onToggleSelected,
 }: SetupOpts) => {
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
@@ -42,7 +46,6 @@ const setup = ({
     }),
   });
 
-  const metadata = getMetadata(storeInitialState);
   const onCopy = jest.fn();
   const onMove = jest.fn();
   const createBookmark = withBookmarks ? jest.fn() : undefined;
@@ -52,11 +55,13 @@ const setup = ({
     <ActionMenu
       item={item}
       collection={collection}
-      databases={metadata.databasesList()}
+      databases={databases}
       onCopy={onCopy}
       onMove={onMove}
       createBookmark={createBookmark}
       deleteBookmark={deleteBookmark}
+      isSelected={isSelected}
+      onToggleSelected={onToggleSelected}
     />,
     { storeInitialState },
   );
@@ -65,6 +70,14 @@ const setup = ({
 };
 
 describe("ActionMenu", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe("bookmarks", () => {
     it("should bookmark an item with its id and model", async () => {
       const item = createMockCollectionItem({
@@ -80,6 +93,136 @@ describe("ActionMenu", () => {
       await userEvent.click(await screen.findByText("Bookmark"));
 
       expect(createBookmark).toHaveBeenCalledWith({ id: 1, type: "dashboard" });
+    });
+  });
+
+  describe("pinning", () => {
+    it("tracks a successful pin", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      const item = createMockCollectionItem({
+        id: 1,
+        name: "Dashboard",
+        model: "dashboard",
+        collection_position: null,
+      });
+      fetchMock.put("path:/api/dashboard/1", {});
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Pin this"));
+
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "collection_item_pinned",
+          event_detail: "dashboard",
+          target_id: item.id,
+          triggered_from: "item_menu",
+          result: "success",
+        });
+      });
+    });
+
+    it("tracks a successful unpin and normalizes questions", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      const item = createMockCollectionItem({
+        id: 2,
+        name: "Question",
+        model: "card",
+        collection_position: 1,
+      });
+      fetchMock.put("path:/api/card/2", {});
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Unpin"));
+
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "collection_item_unpinned",
+          event_detail: "question",
+          target_id: item.id,
+          triggered_from: "item_menu",
+          result: "success",
+        });
+      });
+    });
+
+    it("tracks a failed pin", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      const item = createMockCollectionItem({
+        id: 3,
+        name: "Dashboard",
+        model: "dashboard",
+        collection_position: null,
+      });
+      fetchMock.put("path:/api/dashboard/3", {
+        status: 500,
+        body: { message: "Something went wrong" },
+      });
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Pin this"));
+
+      await waitFor(() => {
+        expect(trackSimpleEvent).toHaveBeenCalledWith({
+          event: "collection_item_pinned",
+          event_detail: "dashboard",
+          target_id: item.id,
+          triggered_from: "item_menu",
+          result: "failure",
+        });
+      });
+    });
+  });
+
+  describe("selection", () => {
+    const item = createMockCollectionItem({
+      id: 1,
+      name: "Dashboard",
+      model: "dashboard",
+      can_write: true,
+    });
+
+    it("should select an item in a writable collection", async () => {
+      const onToggleSelected = jest.fn();
+      setup({ item, onToggleSelected });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Select"));
+
+      expect(onToggleSelected).toHaveBeenCalledTimes(1);
+      expect(onToggleSelected).toHaveBeenCalledWith();
+    });
+
+    it("should show Deselect for a selected item", async () => {
+      setup({ item, isSelected: true, onToggleSelected: jest.fn() });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Deselect")).toBeInTheDocument();
+    });
+
+    it("should not show selection in a read-only collection", async () => {
+      setup({
+        item,
+        collection: createMockCollection({ can_write: false }),
+        onToggleSelected: jest.fn(),
+      });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(screen.queryByText("Select")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deselect")).not.toBeInTheDocument();
+    });
+
+    it("should not show selection without a toggle callback", async () => {
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+
+      expect(screen.queryByText("Select")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deselect")).not.toBeInTheDocument();
     });
   });
 

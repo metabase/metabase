@@ -457,7 +457,8 @@ jobs:
             });
 
   draft-release-notes:
-    if: ${{ needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major' }}
+    # Only create release notes if this release happens in https://github.com/metabase/metabase.
+    if: ${{ github.repository == 'metabase/metabase' && (needs.check-version.outputs.kind == 'minor' || needs.check-version.outputs.kind == 'major') }}
     needs: [add-extra-tags, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15

@@ -13,6 +13,7 @@ import {
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
+import { TIMELINE_EVENTS_SETTINGS } from "metabase/visualizations/lib/settings/timelineEvents";
 import {
   validateBreakoutSeriesCount,
   validateChartDataSettings,
@@ -50,7 +51,6 @@ type CartesianChartAdditions = Pick<
 
 const cartesianChartAdditions: CartesianChartAdditions = {
   noHeader: true,
-  usesEChartsRenderer: true,
   supportsVisualizer: true,
 
   isSensible: ({ cols, rows }) => {
@@ -128,4 +128,5 @@ export const COMBO_CHARTS_SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions
     ...GRAPH_DATA_SETTINGS,
     ...TOOLTIP_SETTINGS,
     ...LEGEND_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   };

@@ -1,5 +1,5 @@
-import { memoize } from "metabase/common/hooks/use-memoized-callback";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,

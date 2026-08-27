@@ -34,12 +34,15 @@ export function humanize(str: string, lowFirstLetter?: boolean) {
   return inflection.humanize(str, lowFirstLetter);
 }
 
-export function conjunct(list: string[], conjunction: string) {
+export function conjunct(
+  list: (string | number | boolean)[],
+  conjunction: string,
+) {
   return (
     list.slice(0, -1).join(`, `) +
     (list.length > 2 ? `,` : ``) +
     (list.length > 1 ? ` ${conjunction} ` : ``) +
-    (list[list.length - 1] || ``)
+    (list[list.length - 1] ?? ``)
   );
 }
 

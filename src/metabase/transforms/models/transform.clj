@@ -48,6 +48,13 @@
            (= :query-builder-and-native
               (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries source-db-id)))))
 
+(defn- transform-database-permissions?
+  [instance]
+  (let [source-db-id (or (transforms-base.i/source-db-id instance) (:source_database_id instance))
+        target-db-id (transforms-base.i/target-db-id instance)]
+    (every? #(perms/has-db-transforms-permission? api/*current-user-id* %)
+            (distinct (keep identity [source-db-id target-db-id])))))
+
 (defn- transform-writable?
   "Whether the current user can write `instance`. Any extra `args` (an optional `models-cache`) are
   passed through to the source-readability check, as in `transform-readable?`."
@@ -56,7 +63,7 @@
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (and (apply transform-readable? instance args)
-                (perms/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance))
+                (transform-database-permissions? instance)
                 (native-transform-write-allowed? instance (:source_database_id instance))))))
 
 (defmethod mi/can-read? :model/Transform
@@ -91,7 +98,7 @@
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
              (and api/*is-data-analyst?*
                   (transforms.u/source-tables-readable? instance)
-                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
+                  (transform-database-permissions? instance)
                   (native-transform-write-allowed? instance source-db-id))))))
 
 (defn- orphan-query?

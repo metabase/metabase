@@ -1,37 +1,32 @@
 (ns metabase.metabot.util-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.metabot.util :as metabot.u]))
 
-(deftest ^:parallel transform-query->text-test
-  (testing "native query renders as its SQL"
-    (is (= "SELECT 1"
-           (metabot.u/transform-query->text {:stages [{:lib/type :mbql.stage/native
-                                                       :native   "SELECT 1"}]}))))
-  (testing "legacy format renders as its SQL"
-    (is (= "SELECT 2"
-           (metabot.u/transform-query->text {:native {:query "SELECT 2"}}))))
-  (testing "notebook-built query renders as EDN without the metadata provider"
-    (let [text (metabot.u/transform-query->text {:lib/type     :mbql/query
-                                                 :lib/metadata :fake-provider
-                                                 :stages       [{:lib/type :mbql.stage/mbql}]})]
-      (is (str/includes? text ":mbql.stage/mbql"))
-      (is (not (str/includes? text ":lib/metadata")))))
-  (testing "raw string query passes through verbatim"
-    (is (= "SELECT * FROM legacy" (metabot.u/transform-query->text "SELECT * FROM legacy"))))
-  (testing "orphaned source (string keys, skipped normalization) renders as its SQL"
-    (is (= "SELECT 3"
-           (metabot.u/transform-query->text {"database" nil
-                                             "native"   {"query" "SELECT 3"}})))
-    (is (= "SELECT 4"
-           (metabot.u/transform-query->text {"database" nil
-                                             "stages"   [{"native" "SELECT 4"}]}))))
-  (testing "multi-stage query falls through to EDN rather than dropping stages"
-    (let [text (metabot.u/transform-query->text {:stages [{:lib/type :mbql.stage/native
-                                                           :native   "SELECT 5"}
-                                                          {:lib/type :mbql.stage/mbql}]})]
-      (is (not= "SELECT 5" text))
-      (is (str/includes? text ":mbql.stage/mbql"))))
-  (testing "nil stays nil"
-    (is (nil? (metabot.u/transform-query->text nil)))))
+(deftest ^:parallel extract-sql-content-native-test
+  (testing "extracts SQL from normalized MBQL 5 and legacy query shapes"
+    (are [expected query] (= expected (metabot.u/extract-sql-content query))
+      "SELECT 1" {:stages [{:lib/type :mbql.stage/native
+                            :native   "SELECT 1"}]}
+      "SELECT 2" {:native {:query "SELECT 2"}})))
+
+(deftest ^:parallel extract-sql-content-orphaned-query-test
+  (testing "extracts SQL from orphaned string-keyed query shapes"
+    (are [expected query] (= expected (metabot.u/extract-sql-content query))
+      "SELECT 3" {"database" nil
+                  "native"   {"query" "SELECT 3"}}
+      "SELECT 4" {"database" nil
+                  "stages"   [{"native" "SELECT 4"}]})))
+
+(deftest ^:parallel extract-sql-content-multi-stage-test
+  (testing "does not mistake the first stage of a multi-stage query for the whole query"
+    (are [query] (nil? (metabot.u/extract-sql-content query))
+      {:stages [{:lib/type :mbql.stage/native :native "SELECT 5"}
+                {:lib/type :mbql.stage/mbql}]}
+      {"stages" [{"native" "SELECT 6"}
+                 {"lib/type" "mbql.stage/mbql"}]})))
+
+(deftest ^:parallel extract-sql-content-non-native-test
+  (testing "a non-native MBQL query has no SQL content"
+    (is (nil? (metabot.u/extract-sql-content
+               {:stages [{:lib/type :mbql.stage/mbql :source-table 1}]})))))

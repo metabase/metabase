@@ -133,7 +133,7 @@ export function Cell({
 }
 
 type CellClickHandler = (
-  clicked: PivotTableClicked | null,
+  clicked: PivotTableClicked | null | undefined,
 ) => ((e: React.MouseEvent) => void) | undefined;
 
 interface TopHeaderCellProps {
@@ -243,7 +243,7 @@ export const BodyCell = ({
               showTooltip={showTooltip}
               isBody
               onClick={getCellClickHandler(clicked)}
-              backgroundColor={backgroundColor}
+              backgroundColor={backgroundColor ?? undefined}
             />
           );
         },

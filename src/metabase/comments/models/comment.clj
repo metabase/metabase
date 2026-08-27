@@ -48,15 +48,50 @@
 
 ;;;
 
+(defonce ^{:private true
+           :doc "Filter applied to comments' `:context` before they are returned, installed at init.
+
+                 A comment's context describes what was commented on, and for an exploration that
+                 includes the identity of a chart data point — values read out of the creator's
+                 result set. The target's own read check cannot adjudicate that: an Exploration is
+                 read-checked on collection permissions alone, because its data-access gate is
+                 applied by its read endpoints rather than by `can-read?`. So the owning module
+                 registers the verdict here.
+
+                 `comments` cannot call that module directly — the module graph runs one way — so
+                 the consumer registers a callback."}
+  context-gate
+  (atom (fn [_target-type _target-id comments] comments)))
+
+(defn register-context-gate!
+  "Install the comment-context gate. Called once at the consuming module's
+  init. `f` takes `[target-type target-id comments]` and returns the comments to serve."
+  [f]
+  (reset! context-gate f))
+
+(defn apply-context-gate
+  "Run the registered gate over `comments` for one target."
+  [target-type target-id comments]
+  (@context-gate target-type target-id comments))
+
+(defn- page-id-child-target?
+  "Whether `child_target_id` identifies an exploration page (decimal integer string) rather than
+  a Summary prose-mirror node `_id` (uuid)."
+  [child]
+  (boolean (and child (re-matches #"\d+" (str child)))))
+
 (defn- exploration-comment-url
-  "Build URL for an exploration comment using child_target_id (page ID) and context (JSON map with timeline etc.)."
+  "Build URL for an exploration comment. Integer `child_target_id` values deep-link to the
+  page; anything else (Summary block uuids) deep-links to the Summary view."
   [exploration-id comment]
   (let [base    (channel.urls/exploration-path exploration-id)
         child   (:child_target_id comment)
         context (:context comment)]
     (if child
-      (let [path      (str base "/page/" (codec/url-encode (str child)))
-            params    (cond-> {:comments "true"}
+      (let [path      (if (page-id-child-target? child)
+                        (str base "/page/" (codec/url-encode (str child)))
+                        (str base "/summary"))
+            params    (cond-> {:comments (str child)}
                         (:timeline_id context) (assoc :timeline (:timeline_id context)))
             query-str (->> params
                            (map (fn [[k v]] (str (codec/url-encode (name k))
@@ -86,7 +121,10 @@
 (defn mentions
   "Find mentioned users inside of a comment content"
   [content]
-  (->> (tree-seq :content :content content)
-       (filter #(and (= "smartLink" (-> % :type))
-                     (= "user" (-> % :attrs :model))))
-       (mapv #(-> % :attrs :entityId))))
+  (into []
+        (comp (filter #(and (= "smartLink" (:type %))
+                            (= "user" (-> % :attrs :model))))
+              (keep #(let [entity-id (-> % :attrs :entityId)]
+                       (when (pos-int? entity-id)
+                         entity-id))))
+        (tree-seq :content :content content)))

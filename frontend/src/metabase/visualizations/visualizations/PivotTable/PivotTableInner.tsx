@@ -53,6 +53,7 @@ import type { HeaderWidthType, PivotTableClicked } from "./types";
 import {
   getCellWidthsForSection,
   getLeftHeaderWidths,
+  getTopHeaderRowsCount,
   leftHeaderCellSizeAndPositionGetter,
   topHeaderCellSizeAndPositionGetter,
 } from "./utils";
@@ -333,8 +334,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       columnsWithoutPivotGroup,
     } = pivoted;
 
-    const topHeaderRows =
-      columnIndexes.length + (valueIndexes.length > 1 ? 1 : 0) || 1;
+    const topHeaderRows = getTopHeaderRowsCount(columnIndexes, valueIndexes);
 
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
     const bodyHeight = height - topHeaderHeight;
@@ -343,7 +343,9 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     const topHeaderWidth =
       viewPortWidth - leftHeaderWidth - verticalScrollBarSize;
 
-    function getCellClickHandler(clicked: PivotTableClicked | null) {
+    function getCellClickHandler(
+      clicked: PivotTableClicked | null | undefined,
+    ) {
       if (!clicked) {
         return undefined;
       }
@@ -366,10 +368,10 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
               },
             ]
           : undefined;
-      const updatedDimensions = dimensions?.map(({ colIdx, ...item }) => ({
-        ...item,
-        column: columnsWithoutPivotGroup[colIdx],
-      }));
+      const updatedDimensions = dimensions?.flatMap(({ colIdx, ...item }) => {
+        const column = columnsWithoutPivotGroup[colIdx];
+        return column ? [{ ...item, column }] : [];
+      });
       const updatedClicked: ClickObject = {
         ...clickedWithoutIndexes,
         ...(typeof colIdx === "number" && {

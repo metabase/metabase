@@ -371,7 +371,7 @@
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
   [driver [_ _opts arg pattern]]
-  [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
+  [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
@@ -519,7 +519,7 @@
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:aliased-namespace-symbol :discouraged-var :unresolved-namespace]}
 (comment
   ;; Script on following lines was used to get available table types, used in the `get-tables` implementation.
   (with-open [conn (clojure.java.jdbc/get-connection

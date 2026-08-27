@@ -77,6 +77,47 @@
          (seq data))
     (str "```json\n" (json/encode data {:pretty true}) "\n```")))
 
+(defn- query-edn-fallback
+  "Pretty-printed EDN of `query`, minus the `:lib/metadata` provider `normalize-query` attaches."
+  [query]
+  (u/pprint-to-str (cond-> query (map? query) (dissoc :lib/metadata))))
+
+(defn export-query-for-llm
+  "Render a `query` (legacy or MBQL 5 map, or a pre-resolved string) for the LLM. A query
+  map with a `:database` is normalized and exported to the portable representations form
+  the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
+  sources pass through; a `pprint`'d map is the last-resort fallback. A permission-refused
+  export renders nothing at all rather than the fallback."
+  [query]
+  (cond
+    (string? query) query
+    (string? (:query-content query)) (:query-content query)
+    (and (map? query) (:database query))
+    (try
+      (let [normalized (lib-be/normalize-query query)
+            mp         (lib-be/application-database-metadata-provider (:database normalized))
+            exported   (repr.resolve/export-query mp normalized shared.content-store/default-store)]
+        (or (repr-data->llm-block exported)
+            (query-edn-fallback normalized)))
+      (catch Exception e
+        (when-not (= 403 (:status-code (ex-data e)))
+          (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
+          (query-edn-fallback query))))
+    (string? (get-in query [:native :query])) (get-in query [:native :query])
+    (map? query) (query-edn-fallback query)
+    :else (some-> query str)))
+
+(defn transform-query->text
+  "Render a transform source query for model context: native SQL verbatim, anything else
+  through [[export-query-for-llm]]. Portable JSON gets boundary newlines so its Markdown
+  fence remains valid when the result is interpolated inside an XML `<query>` element."
+  [query]
+  (or (when (map? query) (metabot.u/extract-sql-content query))
+      (when-let [text (export-query-for-llm query)]
+        (if (str/starts-with? text "```json\n")
+          (format "\n%s\n" text)
+          text))))
+
 (defn escape-xml
   "Escape XML special characters in a string.
    Only needed for content that bypasses Selmer's auto-escaping (marked with |safe) or is interpolated
@@ -889,7 +930,7 @@
     :transform_description     description
     :transform_source_type     (some-> (:type source) clojure.core/name)
     :transform_source_database (when-let [db (:source-database source)] (str db))
-    :transform_source_query    (metabot.u/transform-query->text (:query source))
+    :transform_source_query    (transform-query->text (:query source))
     :transform_target          (when target (pr-str target))}))
 
 (def formatters
@@ -992,28 +1033,3 @@
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) ">"
            (escape-xml description) "</" tag ">")
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) "/>"))))
-
-(defn export-query-for-llm
-  "Render a `query` (legacy or pMBQL map, or a pre-resolved string) for the LLM. A query
-  map with a `:database` is normalized and exported to the portable representations form
-  the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
-  sources pass through; a `pprint`'d map is the last-resort fallback."
-  [query]
-  (cond
-    (string? query) query
-    (string? (:query-content query)) (:query-content query)
-    (and (map? query) (:database query))
-    (try
-      (let [normalized (lib-be/normalize-query query)
-            database-id (:database normalized)
-            mp (when database-id
-                 (lib-be/application-database-metadata-provider database-id))
-            exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
-        (if exported
-          (str "```json\n" (json/encode exported {:pretty true}) "\n```")
-          (u/pprint-to-str normalized)))
-      (catch Exception _
-        (u/pprint-to-str query)))
-    (string? (get-in query [:native :query])) (get-in query [:native :query])
-    (map? query) (u/pprint-to-str query)
-    :else (some-> query str)))

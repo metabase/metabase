@@ -142,7 +142,15 @@ describe("document comments", () => {
       H.documentContent().click();
       cy.realType("{leftarrow}".repeat("lor sit amet.".length));
       cy.realType("{enter}");
+      cy.intercept("PUT", "/api/document/*").as("updateDocument");
       cy.findByRole("button", { name: "Save" }).click();
+      // Wait for the save to fully persist. On success the page schedules a
+      // navigation back to /document/:id; if that navigation resolves late
+      // (e.g. under network throttling) it clobbers the comments route opened
+      // below and the sidebar never mounts. Waiting for the request + the
+      // "Document saved" toast forces that navigation to settle first.
+      cy.wait("@updateDocument");
+      H.undoToast().findByText("Document saved").should("be.visible");
       cy.findByRole("button", { name: "Save" }).should("not.exist");
 
       Comments.getDocumentNodeButton({
@@ -160,7 +168,7 @@ describe("document comments", () => {
         .should("have.length", 2)
         .last()
         .should("not.contain.text", "1")
-        .click();
+        .realClick();
 
       Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
@@ -1381,23 +1389,30 @@ describe("document comments", () => {
 
       cy.realType("> blockquote");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 1);
 
       Comments.getNewThreadInput().type("1. ol");
       cy.realPress("Enter");
       cy.realType("two");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 2);
 
       Comments.getNewThreadInput().type("- ul");
       cy.realPress("Enter");
       cy.realType("b");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 3);
 
       Comments.getNewThreadInput().type("```");
       cy.realPress("Enter");
       cy.realType("code");
       cy.realPress([META_KEY, "Enter"]);
+      Comments.getAllComments().should("have.length", 4);
 
+      cy.intercept("GET", "/api/document/*").as("reloadedDocument");
+      cy.intercept("GET", "/api/comment?*").as("reloadedComments");
       cy.reload();
+      cy.wait(["@reloadedDocument", "@reloadedComments"]);
 
       H.getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
       H.getOrderedList("ol", Comments.getSidebar()).should("be.visible");

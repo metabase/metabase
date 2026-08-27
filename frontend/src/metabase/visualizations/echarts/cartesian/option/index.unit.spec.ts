@@ -1,6 +1,13 @@
+import { BarChart } from "echarts/charts";
+import {
+  BrushComponent,
+  GridComponent,
+  ToolboxComponent,
+} from "echarts/components";
+import * as echarts from "echarts/core";
+import { SVGRenderer } from "echarts/renderers";
 import type { XAXisOption, YAXisOption } from "echarts/types/dist/shared";
 
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 import {
@@ -10,13 +17,22 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
+import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import { getChartLayout } from "../layout";
 import { getCartesianChartModel } from "../model";
 
 import { buildAxes } from "./axis";
 import { buildEChartsSeries } from "./series";
 
-import { ensureRoomForLabels } from "./index";
+import { ensureRoomForLabels, getSharedEChartsOptions } from "./index";
+
+echarts.use([
+  BarChart,
+  GridComponent,
+  BrushComponent,
+  ToolboxComponent,
+  SVGRenderer,
+]);
 
 const chartWidth = 480;
 const chartHeight = 274;
@@ -139,5 +155,57 @@ describe("ensureRoomForLabels", () => {
     const axes = ensureRoomForLabels(...args);
     expect(axes.xAxis).toBe(originalAxes.xAxis);
     expect(axes.yAxis.map(getBoundaryGap)).toEqual([[0.026, 0]]);
+  });
+});
+
+describe("brushSelected / brushEnd ordering", () => {
+  it("does not throttle brushSelected in getSharedEChartsOptions", () => {
+    const renderingContext: RenderingContext = {
+      ...mockRenderingContext,
+      getColor: () => "#509EE3",
+    };
+    const { brush } = getSharedEChartsOptions(false, renderingContext);
+
+    expect(brush).not.toHaveProperty("throttleType");
+    expect(brush).not.toHaveProperty("throttleDelay");
+  });
+
+  it("delivers brushSelected synchronously before brushEnd when throttle is unset", () => {
+    const dom = document.createElement("div");
+    document.body.appendChild(dom);
+    const chart = echarts.init(dom, undefined, {
+      renderer: "svg",
+      width: 600,
+      height: 400,
+    });
+    chart.setOption({
+      animation: false,
+      // Unthrottled, matching getSharedEChartsOptions. xAxisIndex is omitted
+      // because jsdom never finishes cartesian layout.
+      brush: { toolbox: ["lineX"] },
+      xAxis: { type: "category", data: ["a", "b", "c", "d", "e"] },
+      yAxis: { type: "value" },
+      series: [{ type: "bar", data: [1, 2, 3, 4, 5] }],
+    });
+
+    const order: string[] = [];
+    chart.on("brushSelected", () => {
+      order.push("brushSelected");
+    });
+    chart.on("brushEnd", () => {
+      order.push("brushEnd");
+    });
+
+    const area = {
+      brushType: "lineX" as const,
+      range: [100, 300],
+      xAxisIndex: 0,
+      panelId: "grid--\u0000_ec_\u00000",
+    };
+    chart.dispatchAction({ type: "brush", areas: [area] });
+    chart.dispatchAction({ type: "brushEnd", areas: [area] });
+
+    expect(order).toEqual(["brushSelected", "brushEnd"]);
+    chart.dispose();
   });
 });

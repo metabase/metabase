@@ -3,16 +3,21 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
-import { toCronString } from "metabase/common/components/Schedule/cron";
-import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
+import type {
+  ScheduleChangeProp,
+  ScheduleValue,
+} from "metabase/common/components/Schedule/types";
+import {
+  getScheduleDefaultsWithoutHour,
+  toScheduleSettings,
+} from "metabase/common/components/Schedule/utils";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { dashboardPulseIsValid } from "metabase/pulse";
+import { channelTargetIsValid, dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getSetting } from "metabase/settings";
 import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
@@ -23,6 +28,7 @@ import {
   type ChannelSpec,
   type Dashboard,
   DataPermissionValue,
+  type DraftDashboardSubscription,
   type ScheduleSettings,
 } from "metabase-types/api";
 
@@ -72,14 +78,15 @@ export const AddEditSlackSidebar = ({
   setPulseParameters,
 }: AddEditSlackSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const hasValidTarget = channelTargetIsValid(channel, channelSpec);
   const applicationName = useSelector(getApplicationName);
   const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
   );
 
-  const renderScheduleDescription = (schedule: ScheduleSettings) => {
+  const renderScheduleDescription = (value: ScheduleValue) => {
     const description = getSubscriptionScheduleDescription({
-      schedule,
+      schedule: toScheduleSettings(value),
       channelSpec,
       applicationName,
       timezone,
@@ -125,22 +132,21 @@ export const AddEditSlackSidebar = ({
         )}
         <Schedule
           mt="md"
-          cronString={toCronString(
-            _.pick(
-              channel,
-              "schedule_day",
-              "schedule_frame",
-              "schedule_hour",
-              "schedule_type",
-            ),
+          value={_.pick(
+            channel,
+            "schedule_day",
+            "schedule_frame",
+            "schedule_hour",
+            "schedule_type",
           )}
           scheduleOptions={channelSpec.schedules}
           verb={t`Send`}
+          getDefaults={getScheduleDefaultsWithoutHour}
           renderScheduleDescription={renderScheduleDescription}
-          onScheduleChange={(_cronString, newSchedule) =>
-            onChannelScheduleChange(newSchedule, {
+          onScheduleChange={({ value }) =>
+            onChannelScheduleChange(toScheduleSettings(value), {
               name: "schedule_type",
-              value: newSchedule.schedule_type,
+              value: value.schedule_type,
             })
           }
         />
@@ -152,7 +158,7 @@ export const AddEditSlackSidebar = ({
             testPulse={testPulse}
             normalText={t`Send to Slack now`}
             successText={t`Slack sent`}
-            disabled={!isValid}
+            disabled={!hasValidTarget}
           />
         </div>
 

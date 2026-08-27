@@ -6,7 +6,8 @@ on:
 jobs:
   check-source-branch:
     if: github.head_ref == 'master'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     steps:
       - name: Block master branch PRs
         run: |

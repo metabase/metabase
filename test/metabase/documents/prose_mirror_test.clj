@@ -350,24 +350,43 @@
                         :content [{:type "paragraph" :content [{:type "text" :text "one"}]}
                                   {:type "paragraph" :content [{:type "text" :text "two"}]}]}
              :content_type prose-mirror/prose-mirror-content-type}
-        embed {:type "resizeNode"
-               :content [{:type prose-mirror/card-embed-type :attrs {:id 42}}]}]
+        embed-attrs (fn [node] (-> node :content first :attrs))]
     (testing "a nil index appends the embed at the end"
       (let [result (prose-mirror/insert-card-embed doc 42 nil)]
         (is (= 3 (count (get-in result [:document :content]))))
-        (is (= embed (get-in result [:document :content 2])))))
+        (is (= "resizeNode" (get-in result [:document :content 2 :type])))
+        (is (= 42 (:id (embed-attrs (get-in result [:document :content 2])))))
+        (is (uuid? (:_id (embed-attrs (get-in result [:document :content 2])))))))
     (testing "an index inserts before the block currently at that index"
       (let [result (prose-mirror/insert-card-embed doc 42 1)]
-        (is (= embed (get-in result [:document :content 1])))
+        (is (= 42 (:id (embed-attrs (get-in result [:document :content 1])))))
         (is (= "two" (get-in result [:document :content 2 :content 0 :text])))))
     (testing "index 0 inserts at the very top"
-      (is (= embed (-> (prose-mirror/insert-card-embed doc 42 0)
-                       (get-in [:document :content 0])))))
+      (is (= 42 (-> (prose-mirror/insert-card-embed doc 42 0)
+                    (get-in [:document :content 0])
+                    embed-attrs
+                    :id))))
     (testing "out-of-range indexes are clamped"
-      (is (= embed (-> (prose-mirror/insert-card-embed doc 42 99)
-                       (get-in [:document :content 2]))))
-      (is (= embed (-> (prose-mirror/insert-card-embed doc 42 -5)
-                       (get-in [:document :content 0])))))))
+      (is (= 42 (-> (prose-mirror/insert-card-embed doc 42 99)
+                    (get-in [:document :content 2])
+                    embed-attrs
+                    :id)))
+      (is (= 42 (-> (prose-mirror/insert-card-embed doc 42 -5)
+                    (get-in [:document :content 0])
+                    embed-attrs
+                    :id))))
+    (testing "extra-attrs are merged onto the cardEmbed"
+      (let [result (prose-mirror/insert-card-embed doc 42 nil {:stored_result_id 9
+                                                               :chart_href "/x"
+                                                               :child_target_id "3"
+                                                               :host_data {:query_ids [101 102]}})
+            attrs  (embed-attrs (get-in result [:document :content 2]))]
+        (is (= 42 (:id attrs)))
+        (is (= 9 (:stored_result_id attrs)))
+        (is (= "/x" (:chart_href attrs)))
+        (is (= "3" (:child_target_id attrs)))
+        (is (= {:query_ids [101 102]} (:host_data attrs)))
+        (is (uuid? (:_id attrs)))))))
 
 (deftest ^:parallel insert-card-embed-empty-document-test
   (testing "inserting into an empty or nil ast produces a doc with just the embed"
@@ -375,11 +394,13 @@
       (let [result (prose-mirror/insert-card-embed
                     {:document document
                      :content_type prose-mirror/prose-mirror-content-type}
-                    7 nil)]
-        (is (= {:type "doc"
-                :content [{:type "resizeNode"
-                           :content [{:type prose-mirror/card-embed-type :attrs {:id 7}}]}]}
-               (:document result)))))))
+                    7 nil)
+            attrs  (-> result :document :content first :content first :attrs)]
+        (is (= "doc" (get-in result [:document :type])))
+        (is (= 1 (count (get-in result [:document :content]))))
+        (is (= "resizeNode" (get-in result [:document :content 0 :type])))
+        (is (= 7 (:id attrs)))
+        (is (uuid? (:_id attrs)))))))
 
 (deftest ^:parallel insert-card-embed-invalid-content-type-test
   (testing "throws for non-prose-mirror documents"
@@ -388,3 +409,14 @@
          (prose-mirror/insert-card-embed {:document {:type "doc" :content []}
                                           :content_type "text/plain"}
                                          7 nil)))))
+
+(deftest ^:parallel node-entity-id-test
+  (testing "returns the id for a well-formed positive-integer reference"
+    (is (= 7 (prose-mirror/node-entity-id {:type prose-mirror/smart-link-type :attrs {:entityId 7}})))
+    (is (= 7 (prose-mirror/node-entity-id {:type prose-mirror/card-embed-type :attrs {:id 7}}))))
+  (testing "returns nil for any id that is not a positive integer"
+    (doseq [id [{:a 1} {:b [1]} [{:c "x"}] "7" 0 -1 nil]]
+      (is (nil? (prose-mirror/node-entity-id {:type prose-mirror/smart-link-type :attrs {:entityId id}}))
+          (str "smartLink entityId=" (pr-str id)))
+      (is (nil? (prose-mirror/node-entity-id {:type prose-mirror/card-embed-type :attrs {:id id}}))
+          (str "cardEmbed id=" (pr-str id))))))

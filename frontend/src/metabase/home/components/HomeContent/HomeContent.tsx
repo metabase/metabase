@@ -1,14 +1,21 @@
 import { useMemo } from "react";
 
-import { useListPopularItemsQuery, useListRecentsQuery } from "metabase/api";
+import {
+  useListDatabasesQuery,
+  useListPopularItemsQuery,
+  useListRecentsQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDatabaseListQuery } from "metabase/common/hooks";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { isSyncCompleted } from "metabase/utils/syncing";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { PopularItem, RecentItem, User } from "metabase-types/api";
+import type {
+  Database,
+  PopularItem,
+  RecentItem,
+  User,
+} from "metabase-types/api";
 
 import { isWithinWeeks } from "../../utils";
 import { EmbedHomepage } from "../EmbedHomepage";
@@ -21,7 +28,9 @@ export const HomeContent = (): JSX.Element | null => {
   const embeddingHomepage = useSetting("embedding-homepage");
   const isXrayEnabled = useSetting("enable-xrays");
 
-  const { data: databases, error: databasesError } = useDatabaseListQuery();
+  const { data: databasesResponse, error: databasesError } =
+    useListDatabasesQuery();
+  const databases = databasesResponse?.data;
   const { data: recentItemsRaw, error: recentItemsError } = useListRecentsQuery(
     undefined,
     { refetchOnMountOrArgChange: true },

@@ -59,7 +59,19 @@
                                                                                               [:path [:maybe [:sequential [:any {:typescript "string | number | boolean | null | object"}]]]]
                                                                                               [:rawValue [:any {:typescript "string | number | boolean | null | object"}]]
                                                                                               [:value :string]]]]
-                                                               [:getRowSection :any]]}]
+                                                               [:getRowSection
+                                                                [:=>
+                                                                 [:cat :int :int]
+                                                                 [:sequential
+                                                                  [:map
+                                                                   [:value [:maybe :string]]
+                                                                   [:isSubtotal {:optional true} :boolean]
+                                                                   [:isGrandTotal {:optional true} :boolean]
+                                                                   [:clicked {:optional true}
+                                                                    [:maybe
+                                                                     [:any
+                                                                      {:typescript "{ value: string | number | boolean | null | object; colIdx: number; data?: Array<{ value: string | number | boolean | null | object; colIdx: number }>; dimensions?: Array<{ value: string | number | boolean | null | object; colIdx: number }> }"}]]]
+                                                                   [:backgroundColor {:optional true} [:maybe :string]]]]]]]}]
   "Formats rows, columns, and measure values in a pivot table according to
   provided formatters."
   [data row-indexes col-indexes val-indexes cols top-formatters left-formatters value-formatters settings col-settings make-color-getter]

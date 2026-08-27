@@ -19,6 +19,7 @@ import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tool
 import {
   type EChartsSeriesBrushEndEvent,
   type EChartsSeriesBrushEvent,
+  type EChartsSeriesBrushSelectedEvent,
   type EChartsSeriesMouseEvent,
   isLineXBrushRange,
 } from "metabase/visualizations/echarts/types";
@@ -30,14 +31,16 @@ import type {
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import {
   canBrush,
+  getAdjustedBrushEndEvent,
   getBrushClickObject,
   getBrushData,
   getGoalLineHoverData,
   getSeriesClickData,
   getSeriesHovered,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
-import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
+
+import { getVisualizerSeriesCardIndex } from "../../lib/series";
 
 import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";
@@ -96,7 +99,8 @@ export const useChartEvents = (
   }: VisualizationProps,
   // The ECharts instance, mirrored into state by the caller. Used as a signal
   // to re-run chart-instance-dependent effects (e.g. brush) once it is ready,
-  // which matters because the lazily loaded renderer calls `onInit` late.
+  // which matters because the renderer calls `onInit` only after ExplicitSize
+  // has measured it.
   chartInstance?: EChartsType,
 ) => {
   const isBrushing = useRef<boolean>();
@@ -138,6 +142,9 @@ export const useChartEvents = (
 
   const optionRef = useLatest(option);
 
+  const brushSelectedEventRef = useRef<EChartsSeriesBrushSelectedEvent | null>(
+    null,
+  );
   const keepBrushForClickActionsRef = useRef(false);
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
@@ -212,8 +219,24 @@ export const useChartEvents = (
         },
       },
       {
+        eventName: "brushSelected",
+        handler: (event: EChartsSeriesBrushSelectedEvent) => {
+          brushSelectedEventRef.current = event;
+        },
+      },
+      {
         eventName: "brushEnd",
-        handler: (event: EChartsSeriesBrushEndEvent) => {
+        handler: (brushEndEvent: EChartsSeriesBrushEndEvent) => {
+          const adjustedBrushEndEvent = getAdjustedBrushEndEvent(
+            brushEndEvent,
+            brushSelectedEventRef.current,
+            chartModel,
+          );
+          brushSelectedEventRef.current = null;
+          if (!adjustedBrushEndEvent) {
+            return;
+          }
+
           let openedClickActions = false;
 
           if (onBrush) {
@@ -221,7 +244,7 @@ export const useChartEvents = (
             if (chartElement) {
               const clickObject = getBrushClickObject(
                 chartModel,
-                event,
+                adjustedBrushEndEvent,
                 chartElement,
                 settings,
               );
@@ -244,7 +267,7 @@ export const useChartEvents = (
               isVisualizerCard ? visualizerRawSeries : rawSeries,
               metadata,
               chartModel,
-              event,
+              adjustedBrushEndEvent,
             );
             if (eventData) {
               onChangeCardAndRun?.(eventData);

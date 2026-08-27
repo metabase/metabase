@@ -16,6 +16,7 @@ import {
   SPLIT_PANELS_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "../../lib/settings/graph";
+import { TIMELINE_EVENTS_SETTINGS } from "../../lib/settings/timelineEvents";
 import type { VisualizationDefinition } from "../../types";
 
 const ScatterViz: Omit<
@@ -38,6 +39,7 @@ const ScatterViz: Omit<
     ...GRAPH_DATA_SETTINGS,
     ...SPLIT_PANELS_SETTINGS,
     ...TOOLTIP_SETTINGS,
+    ...TIMELINE_EVENTS_SETTINGS,
   },
 };
 

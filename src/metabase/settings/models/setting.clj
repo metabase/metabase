@@ -5,6 +5,7 @@
    [clojure.data :as data]
    [clojure.data.csv :as csv]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [environ.core :as env]
    [malli.core :as mc]
    [medley.core :as m]
@@ -408,7 +409,7 @@
        ;; Non-admin setting managers can only access settings that are not marked as admin-only
        (not api/*is-superuser?*)
        (has-advanced-setting-access?)
-       (not= (:visibility setting) :admin))
+       (contains? #{:public :authenticated :settings-manager} (:visibility setting)))
       (and
        ;; Non-admins can only access user-local settings not marked as admin-only
        (allows-user-local-values? setting)
@@ -787,7 +788,10 @@
                     (ex-message e))
          (update-setting! setting-name new-value))))
 
-(defn- obfuscated-value? [v]
+(defn obfuscated-value?
+  "Whether `v` looks like a value already obfuscated by [[obfuscate-value]], i.e. the client echoed back a masked
+  value rather than entering a new one."
+  [v]
   (when (seq v)
     (boolean (re-matches #"^\*{10}.{2}$" v))))
 
@@ -1037,7 +1041,10 @@
 
   This method will throw an exception if trying to update a read-only setting, unless `:bypass-read-only?` is set."
   [setting-definition-or-name new-value & {:keys [bypass-read-only?]}]
-  (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)]
+  (let [{:keys [cache?] :as setting} (resolve-setting setting-definition-or-name)
+        new-value                    (cond-> new-value
+                                       (and (= (:type setting) :json) (coll? new-value))
+                                       walk/keywordize-keys)]
     (validate-settable! setting bypass-read-only?)
     (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
@@ -1732,7 +1739,7 @@
                                                           [:in :key (map setting-name settings)]
                                                           ;; these are *definitely* decrypted already, let's not bother looking
                                                           [:not [:in :value ["true" "false"]]]]})
-                :let [decrypted-v (encryption/maybe-decrypt v)]
+                :let [decrypted-v (encryption/maybe-decrypt-accepting-plaintext v)]
                 :when (not= decrypted-v v)]
           (t2/update! :setting :key k {:value decrypted-v}))))))
 
@@ -1759,9 +1766,19 @@
   [setting]
   (maybe-encrypt setting))
 
+(defn- decrypt-setting-value-on-read
+  "Decrypt a Setting `value` on read, tolerating an undecryptable value by returning it unchanged so a stale row (e.g.
+  left by a botched key change) degrades gracefully at the reader instead of throwing on every read. The strict throw
+  from [[encryption/maybe-decrypt-accepting-plaintext]] still applies where it matters — the key-rotation path, which
+  does not swallow it."
+  [value]
+  (try
+    (encryption/maybe-decrypt-accepting-plaintext value)
+    (catch Throwable _ value)))
+
 (t2/define-after-select :model/Setting
   [setting]
   ;; Don't do any automatic handling of the "encryption-check" special setting used by mdb.encryption
   (if (= "encryption-check" (:key setting))
     setting
-    (update setting :value encryption/maybe-decrypt)))
+    (update setting :value decrypt-setting-value-on-read)))

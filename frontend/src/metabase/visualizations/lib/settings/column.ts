@@ -55,7 +55,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { getVisualization, getVisualizationRaw } from "../..";
+import { getVisualization, getVisualizationRaw } from "../registry";
 
 import { nestedSettings } from "./nested";
 

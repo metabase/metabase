@@ -30,6 +30,7 @@ import type {
   DatetimeUnit,
   FieldId,
   FieldValuesType,
+  JoinConditionOperator,
   RowValue,
   SchemaId,
   TableId,
@@ -103,7 +104,7 @@ export type JoinStrategy =
 
 export type JoinCondition = Metabase_Lib_Schema_Expression_Boolean;
 
-export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
+export type { JoinConditionOperator } from "metabase-types/api/query";
 
 export type Clause =
   | AggregationClause

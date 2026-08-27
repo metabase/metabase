@@ -1,6 +1,14 @@
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   AccordionList,
   type Section as BaseSection,
@@ -14,17 +22,17 @@ import {
 import { Popover } from "metabase/common/components/MetadataInfo/Popover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import { hasFeature } from "metabase/databases";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
 } from "metabase/querying/components/expressions";
+import { prefetchExpressionWidget } from "metabase/querying/components/expressions/ExpressionWidget";
 import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -96,7 +104,10 @@ export function AggregationPicker({
   readOnly,
 }: AggregationPickerProps) {
   const tc = useTranslateContent();
-  const metadata = useSelector(getMetadata);
+  const databaseId = Lib.databaseID(query);
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
   const displayInfo = clause
     ? Lib.displayInfo(query, stageIndex, clause)
     : undefined;
@@ -163,11 +174,8 @@ export function AggregationPicker({
     const sections: Section[] = [];
 
     const measures = Lib.availableMeasures(query, stageIndex);
-    const databaseId = Lib.databaseID(query);
-    const database = metadata.database(databaseId);
-    const supportsCustomExpressions = database?.hasFeature(
-      "expression-aggregations",
-    );
+    const supportsCustomExpressions =
+      database != null && hasFeature(database, "expression-aggregations");
 
     if (operators.length > 0) {
       const operatorItems = operators.map((operator) =>
@@ -226,7 +234,7 @@ export function AggregationPicker({
 
     return sections;
   }, [
-    metadata,
+    database,
     query,
     stageIndex,
     clauseIndex,
@@ -254,12 +262,21 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
+  // The widget is a separate chunk. Fetching it while the user reads the list,
+  // and switching in a transition, keeps this list on screen until the whole
+  // widget is ready, so it appears complete rather than as a shell that fills in.
+  useEffect(() => {
+    prefetchExpressionWidget();
+  }, []);
+
   const handleExpressionSelect = useCallback(
     (clause?: Lib.DefinedClauseName) => {
       if (clause) {
         setInitialExpressionClause(clause);
       }
-      openExpressionEditor();
+      startTransition(() => {
+        openExpressionEditor();
+      });
     },
     [openExpressionEditor],
   );
@@ -335,7 +352,9 @@ export function AggregationPicker({
   const handleSectionChange = useCallback(
     (section: Section) => {
       if (section.key === "custom-expression") {
-        openExpressionEditor();
+        startTransition(() => {
+          openExpressionEditor();
+        });
       }
     },
     [openExpressionEditor],

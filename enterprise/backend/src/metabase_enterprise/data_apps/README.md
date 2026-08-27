@@ -21,9 +21,9 @@ data_apps/
     dist/app.js
 ```
 
-`data_app.yaml` declares the display name, the bundle path relative to the app's own directory, and
-optionally the origins the sandboxed bundle may `fetch`/XHR. See `config.clj` for the format and its
-validation.
+`data_app.yaml` declares the display name and the bundle path relative to the app's own directory,
+plus two optional fields: a one-line `description` shown beside the name in the admin UI, and the
+origins the sandboxed bundle may `fetch`/XHR. See `config.clj` for the format and its validation.
 
 **The directory name is the slug.** Nothing in the config declares it. This is what makes slug
 collisions structurally impossible — a repo can't hold two `data_apps/sales` directories, and

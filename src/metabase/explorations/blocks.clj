@@ -3,15 +3,21 @@
    persisted `ExplorationBlock` + `ExplorationPage` rows and its hydrated query rows.
 
    Each block becomes one sidebar heading; within it, each persisted page becomes a child
-   bundling that page's query ids (sorted by interestingness). The block heading (with
-   ambiguity disambiguation) and each page's display name are computed here — they're not
-   persisted."
+   bundling that page's query ids (sorted by interestingness). The block heading and each
+   page's display name are computed here — they're not persisted."
   (:require
    [clojure.string :as str]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.variants :as variants]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
+
+(defn page-url
+  "Relative URL of a page in the exploration detail view. Used by the summary-append
+  endpoint to deep-link a static `cardEmbed`'s title back to its page."
+  [exploration-id page-id]
+  (str "/question/research/" exploration-id "/page/" page-id))
 
 ;;; ------------------------------------------- names -------------------------------------------
 
@@ -30,40 +36,20 @@
   [block]
   (first (:dimensions block)))
 
-(defn- dimension-base-name
-  [dim]
-  (or (:display-name dim) (:dimension-id dim) ""))
-
-(defn- dimension-long-name
-  "Disambiguated dimension label `<source> - <name>` when the dim carries a source (`:group`)
-   label, else the plain base name."
-  [dim]
-  (let [base   (dimension-base-name dim)
-        source (some-> dim :group :display-name)]
-    (if (str/blank? source)
-      base
-      (tru "{0} - {1}" source base))))
-
 (defn- by-dimension
   "Render a `By <dimension>` label."
   [label]
   (tru "By {0}" label))
 
 (defn block-display-name
-  "Sidebar heading for a block: `By <dimension>` for a dimension-anchored block, otherwise the
-   metric's name. `card-name-by-id` maps a metric Card id to its name. When `ambiguous?` (the
-   base dimension name is shared by another block), the dimension is qualified by its source —
-   `By <source> - <dimension>` — so same-named blocks stay identifiable. Public so the LLM
-   planner context can label a block the same way the read tree does."
-  ([block card-name-by-id]
-   (block-display-name block card-name-by-id false))
-  ([block card-name-by-id ambiguous?]
-   (if (dimension-anchored? block)
-     (let [dim (anchor-dimension block)]
-       (by-dimension (if ambiguous?
-                       (dimension-long-name dim)
-                       (dimension-base-name dim))))
-     (or (get card-name-by-id (:card_id (first (:metrics block)))) ""))))
+  "Sidebar heading for a block: `By <dimension>` for a dimension-anchored block (using the
+   dim's curated [[block/dimension-label]]), otherwise the metric's name. `card-name-by-id`
+   maps a metric Card id to its name. Public so the LLM planner context can label a block
+   the same way the read tree does."
+  [block card-name-by-id]
+  (if (dimension-anchored? block)
+    (by-dimension (or (block/dimension-label (anchor-dimension block)) ""))
+    (or (get card-name-by-id (:card_id (first (:metrics block)))) "")))
 
 (defn- page-metric-name
   "The metric (Card) name for `page` — present even on an empty (comment-retained) page."
@@ -165,16 +151,7 @@
    Pages are sorted by interestingness desc within their block. Pages whose block isn't in
    `blocks` are dropped; queries are matched to their page via `page_id`."
   [blocks pages card-name-by-id queries]
-  (let [base-name-counts (->> blocks
-                              (filter dimension-anchored?)
-                              (map #(dimension-base-name (anchor-dimension %)))
-                              frequencies)
-        ambiguous?       (fn [block]
-                           (and (dimension-anchored? block)
-                                (> (get base-name-counts
-                                        (dimension-base-name (anchor-dimension block)) 0)
-                                   1)))
-        queries-by-page  (group-by :page_id queries)
+  (let [queries-by-page  (group-by :page_id queries)
         pages-by-block   (group-by :exploration_block_id pages)]
     (into []
           (map-indexed
@@ -192,7 +169,7 @@
                                     vec)]
                {:id              (:id block)
                 :type            (if (dimension-anchored? block) "dimension" "metric")
-                :name            (block-display-name block card-name-by-id (ambiguous? block))
+                :name            (block-display-name block card-name-by-id)
                 :position        block-pos
                 :explore_filters (:explore_filters (first (:metrics block)))
                 :pages           block-pages})))

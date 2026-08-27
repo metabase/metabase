@@ -165,6 +165,42 @@ describe("Embed flow > custom visualizations", () => {
   });
 });
 
+describe("Embed flow > Get Code Snippet", () => {
+  beforeEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);
+  });
+
+  afterEach(() => {
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
+  });
+
+  it("copies the SSO code snippet with only instanceUrl in the config", async () => {
+    jest.mocked(navigator.clipboard.writeText).mockClear();
+
+    setup({
+      simpleEmbeddingEnabled: true,
+      jwtReady: true,
+      initialState: { useExistingUserSession: false },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+    await userEvent.click(screen.getByRole("button", { name: /Copy code/ }));
+
+    const [copiedSnippet] = jest.mocked(navigator.clipboard.writeText).mock
+      .calls[0];
+
+    // defineMetabaseConfig accepts a config object
+    const metabaseConfigObjectRegex = /defineMetabaseConfig\((\{.*?\})\);/s;
+    const [, config] = copiedSnippet.match(metabaseConfigObjectRegex) ?? [];
+
+    // fields like `useExistingUserSession` should not exist
+    expect(JSON.parse(config)).toStrictEqual({
+      instanceUrl: window.location.origin,
+    });
+  });
+});
+
 describe("Embed flow > forward and backward navigation", () => {
   beforeEach(() => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = jest.fn(() => true);

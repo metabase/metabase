@@ -5,6 +5,15 @@
 .card {
   cursor: pointer;
   box-shadow: none;
+
+  &.selectable:hover {
+    border-color: var(--mb-color-core-brand);
+  }
+
+  &.selected {
+    border-color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_surface-brand-subtle);
+  }
 }
 
 .skeletonCard {
@@ -60,4 +69,9 @@
 
 .card:hover .actions {
   visibility: visible;
+}
+
+.selectCheckbox {
+  flex: 0 0 auto;
+  padding-inline: 2px;
 }
