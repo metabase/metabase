@@ -17,6 +17,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   DatasetData,
   GoalValue,
@@ -157,7 +158,7 @@ describe("GoalValueInput", () => {
     expect(onChange).toHaveBeenCalledWith("count");
   });
 
-  it("renders a self reference as a pill with the resolved value", async () => {
+  it("renders a self reference as a pill with the resolved value", () => {
     setup({ value: "sum" });
 
     const pill = screen.getByRole("button", { name: "Change value source" });
@@ -352,7 +353,7 @@ describe("GoalValueInput", () => {
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
-  it("clears the reference with backspace", async () => {
+  it("clears the reference with backspace", () => {
     const { onChange } = setup({ value: "sum" });
 
     const pill = screen.getByRole("group", { name: "Min" });
@@ -547,6 +548,26 @@ describe("GoalValueInput", () => {
     );
     expect(await screen.findByText("Orders → total")).toBeInTheDocument();
     expect(screen.queryByText(/Other question/)).not.toBeInTheDocument();
+  });
+
+  it("searches questions and metrics, but not models, when the instance has no measures", async () => {
+    setupEntityPicker([
+      createMockSearchResult({ id: 15, model: "card", name: "Other question" }),
+    ]);
+    setup();
+
+    await openMenu();
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Value from another question/ }),
+    );
+    expect(await screen.findByText("Other question")).toBeInTheDocument();
+
+    const url = new URL(
+      checkNotNull(fetchMock.callHistory.lastCall("path:/api/search")).url,
+    );
+    expect(url.searchParams.getAll("models")).toEqual(["card", "metric"]);
+    expect(url.searchParams.get("limit")).toBe("5");
+    expect(url.searchParams.has("ids")).toBe(false);
   });
 
   it("commits a single-column pick without opening the column list", async () => {

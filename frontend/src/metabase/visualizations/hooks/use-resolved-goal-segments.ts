@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { useReferencedEntitiesQuery } from "metabase/visualizations/hooks/use-referenced-entities-query";
 import {
   type ResolvedGoalSegment,
-  getGoalSegmentErrors,
   getUnansweredGoalEntities,
+  hasFailedGoalReferences,
   resolveGoalSegments,
 } from "metabase/visualizations/lib/dynamic-goals";
 import type {
@@ -53,10 +53,7 @@ export function useResolvedGoalSegments(
   }, [data, freshDataset]);
 
   if (unansweredEntities.length === 0) {
-    return {
-      status: "resolved",
-      segments: resolveGoalSegments(data, segments),
-    };
+    return getGoalSegmentsState(data, segments);
   }
 
   if (isError || freshDataset?.error != null) {
@@ -72,17 +69,23 @@ export function useResolvedGoalSegments(
     return { status: "failed" };
   }
 
-  const stillUnanswered = getUnansweredGoalEntities(answeredData, segments);
+  return getGoalSegmentsState(answeredData, segments);
+}
 
+// No further fetch happens past this point, so an unanswered reference counts as failed.
+function getGoalSegmentsState(
+  data: DatasetData,
+  segments: GoalSegment[] | undefined,
+): GoalSegmentsState {
   if (
-    stillUnanswered.length > 0 ||
-    getGoalSegmentErrors(answeredData, segments).length > 0
+    getUnansweredGoalEntities(data, segments).length > 0 ||
+    hasFailedGoalReferences(data, segments)
   ) {
     return { status: "failed" };
   }
 
   return {
     status: "resolved",
-    segments: resolveGoalSegments(answeredData, segments),
+    segments: resolveGoalSegments(data, segments),
   };
 }

@@ -1,11 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
-import {
-  type KeyboardEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type KeyboardEvent, useCallback, useRef, useState } from "react";
+import { useUnmount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -24,7 +19,6 @@ import {
   type GoalRefError,
   resolveGoalValue,
 } from "metabase/visualizations/lib/dynamic-goals";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardId,
   DatasetData,
@@ -127,35 +121,37 @@ export const GoalValueInput = ({
     selfColumnLabel,
   });
 
-  const pickTokenRef = useRef(0); // useAsyncFn-like counting semaphore
+  /**
+   * Counting semaphore similar to the one in react-use's useAsyncFn.
+   * After picking an entity in the entity picker, the next menu level will
+   * only appear if the entity's query results have more than 1 column. This
+   * can only be determined asynchronously - semaphore exists to make sure
+   * the app reacts only to the most recently sent API request (should there be many).
+   */
+  const pickTokenRef = useRef(0);
   const abandonPendingPick = useCallback(() => {
     pickTokenRef.current += 1;
   }, []);
-  useEffect(() => abandonPendingPick, [abandonPendingPick]);
 
-  const closeMenu = useCallback(() => {
+  useUnmount(abandonPendingPick);
+
+  const closeMenu = () => {
     abandonPendingPick();
     menu.close();
     setMenuLevel("root");
     setPickedEntity(null);
-  }, [abandonPendingPick, menu]);
+  };
 
-  const commitValue = useCallback(
-    (newValue: GoalValue | null) => {
-      onChange(newValue);
-      closeMenu();
-    },
-    [onChange, closeMenu],
-  );
+  const commitValue = (newValue: GoalValue | null) => {
+    onChange(newValue);
+    closeMenu();
+  };
 
-  const selectEntityColumn = useCallback(
-    (columnName: string) => {
-      if (entity != null) {
-        commitValue({ type: entity.type, id: entity.id, column: columnName });
-      }
-    },
-    [entity, commitValue],
-  );
+  const selectEntityColumn = (columnName: string) => {
+    if (entity != null) {
+      commitValue({ type: entity.type, id: entity.id, column: columnName });
+    }
+  };
 
   const openMenuFromTrigger = () => {
     setMenuLevel("root");
@@ -201,7 +197,9 @@ export const GoalValueInput = ({
       }
 
       const card = await fetchCard({ id: entityId }, true).unwrap();
-      const numericColumns = (card.result_metadata ?? []).filter(isNumeric);
+      const numericColumns = getNumericColumnOptions(
+        card.result_metadata ?? [],
+      );
       return numericColumns.length === 1 ? numericColumns[0].name : null;
     } catch {
       return null;
@@ -279,7 +277,7 @@ export const GoalValueInput = ({
                       size={ICON_BUTTON_SIZE}
                       onClick={openMenuFromTrigger}
                     >
-                      <Icon name="hexagon" size={16} />
+                      <Icon name="hexagon" />
                     </ActionIcon>
                   </Tooltip>
                 }

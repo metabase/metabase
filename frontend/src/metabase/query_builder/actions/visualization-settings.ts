@@ -1,5 +1,5 @@
 import type { Dispatch, GetState } from "metabase/redux/store";
-import { cardHasUnresolvedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
+import { hasUnresolvedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -80,5 +80,5 @@ function shouldRunForGoalReferences(
   getState: GetState,
 ): boolean {
   const result = getFirstQueryResult(getState());
-  return cardHasUnresolvedGoalReferences(question.card(), result?.data);
+  return hasUnresolvedGoalReferences(question.card(), result?.data);
 }

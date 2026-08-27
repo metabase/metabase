@@ -47,10 +47,7 @@ import {
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
 import { uuid } from "metabase/utils/uuid";
-import {
-  hasUnansweredGoalReferences,
-  supportsDynamicGoals,
-} from "metabase/visualizations/lib/dynamic-goals";
+import { hasUnansweredGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -276,11 +273,13 @@ export const fetchCardDataAction = createAsyncThunk<
           : dashcard;
       const isMissingGoalReferences =
         savedDashcard != null &&
-        supportsDynamicGoals(card.display) &&
         hasUnansweredGoalReferences(
           {
-            ...card.visualization_settings,
-            ...savedDashcard.visualization_settings,
+            display: card.display,
+            visualization_settings: {
+              ...card.visualization_settings,
+              ...savedDashcard.visualization_settings,
+            },
           },
           lastResult?.data,
         );

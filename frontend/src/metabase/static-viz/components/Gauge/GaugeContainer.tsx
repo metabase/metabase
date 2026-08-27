@@ -4,8 +4,8 @@ import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import {
   type GoalData,
-  getGoalSegmentErrors,
   getUnansweredGoalEntities,
+  hasFailedGoalReferences,
   resolveGoalSegments,
 } from "metabase/visualizations/lib/dynamic-goals";
 import { truncateText } from "metabase/visualizations/lib/text";
@@ -59,7 +59,7 @@ export default function GaugeContainer({
   const goalSegments = settings["gauge.segments"];
   const isUnresolvable =
     getUnansweredGoalEntities(data, goalSegments).length > 0 ||
-    getGoalSegmentErrors(data, goalSegments).length > 0;
+    hasFailedGoalReferences(data, goalSegments);
 
   if (isUnresolvable) {
     throw new Error("Couldn't resolve one of this gauge's ranges");
