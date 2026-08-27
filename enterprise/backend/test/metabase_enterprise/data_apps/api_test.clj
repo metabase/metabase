@@ -201,15 +201,13 @@
         (let [{group-id :permission_group_id}
               (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
                                     {:table_ids [first-table-id]})]
-          ;; The group is a database-level :blocked baseline with a table-level :unrestricted override
-          ;; for the manifest's table; a non-manifest table has no row and inherits the :blocked baseline.
-          (is (= :blocked (view-data-permission group-id database-id nil)))
+          (is (nil? (view-data-permission group-id database-id nil)))
           (is (= :unrestricted (view-data-permission group-id database-id first-table-id)))
-          (is (nil? (view-data-permission group-id database-id second-table-id)))
+          (is (= :blocked (view-data-permission group-id database-id second-table-id)))
           (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
                                 {:table_ids [second-table-id]})
-          (is (= :blocked (view-data-permission group-id database-id nil)))
-          (is (nil? (view-data-permission group-id database-id first-table-id)))
+          (is (nil? (view-data-permission group-id database-id nil)))
+          (is (= :blocked (view-data-permission group-id database-id first-table-id)))
           (is (= :unrestricted (view-data-permission group-id database-id second-table-id))))))))
 
 (deftest query-table-permission-reconciliation-skips-unchanged-databases-test
@@ -246,19 +244,20 @@
         (let [{group-id :permission_group_id}
               (mt/user-http-request :crowberto :put 200 "apps/demo/resources/permissions"
                                     {:table_ids [first-table-id]})
-              original! perms/set-database-view-data-blocked-with-unrestricted-tables!
-              calls     (atom 0)]
-          (with-redefs [perms/set-database-view-data-blocked-with-unrestricted-tables!
+              original-set-table-permissions! perms/set-table-permissions!
+              view-data-calls                  (atom 0)]
+          (with-redefs [perms/set-table-permissions!
                         (fn [& args]
-                          (when (= 1 (swap! calls inc))
-                            (throw (ex-info "permission update failed" {})))
-                          (apply original! args))]
+                          (let [permission-type (nth args 1)]
+                            (when (and (= permission-type :perms/view-data)
+                                       (= 1 (swap! view-data-calls inc)))
+                              (throw (ex-info "permission update failed" {})))
+                            (apply original-set-table-permissions! args)))]
             (mt/user-http-request :crowberto :put 500 "apps/demo/resources/permissions"
                                   {:table_ids [second-table-id]}))
-          ;; rolled back to the first grant: db-level :blocked baseline + a first-table override.
-          (is (= :blocked (view-data-permission group-id database-id nil)))
+          (is (nil? (view-data-permission group-id database-id nil)))
           (is (= :unrestricted (view-data-permission group-id database-id first-table-id)))
-          (is (nil? (view-data-permission group-id database-id second-table-id))))))))
+          (is (= :blocked (view-data-permission group-id database-id second-table-id))))))))
 
 (deftest query-definition-must-use-a-table-source-test
   (mt/with-premium-features #{:data-apps-preview}

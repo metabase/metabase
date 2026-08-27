@@ -96,11 +96,17 @@
   [permissions group-id database-id tables table-ids]
   (let [current-permissions (get permissions [group-id database-id :perms/view-data])
         selected-table-ids  (into #{} (comp (map :id) (filter table-ids)) tables)]
-    ;; The reconciled state is a database-level `:blocked` baseline plus a table-level `:unrestricted`
-    ;; row for each of the manifest's tables — so a table synced later inherits `:blocked`.
-    (= (conj (into #{} (map (fn [id] [id :unrestricted])) selected-table-ids)
-             [nil :blocked])
-       (into #{} (map (juxt :table_id :perm_value)) current-permissions))))
+    (if (empty? selected-table-ids)
+      (database-level-permission? current-permissions :blocked)
+      (= (into {}
+               (map (fn [{:keys [id]}]
+                      [id (if (contains? selected-table-ids id)
+                            :unrestricted
+                            :blocked)]))
+               tables)
+         (into {}
+               (map (juxt :table_id :perm_value))
+               current-permissions)))))
 
 (defn reconcile-view-data!
   "Make `table-ids` the authoritative view-data permission set for `app`."
@@ -124,8 +130,9 @@
                                                            database-id
                                                            tables
                                                            table-ids))]
-            (perms/set-database-view-data-blocked-with-unrestricted-tables!
-             group database-id (keys table-permissions))))))))
+            (perms/set-database-permission! permissions group database-id :perms/view-data :blocked)
+            (when (seq table-permissions)
+              (perms/set-table-permissions! group :perms/view-data table-permissions))))))))
 
 (defn delete-resources!
   "Delete the generated collection and permission group referenced by `app`."

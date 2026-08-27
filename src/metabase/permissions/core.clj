@@ -59,7 +59,6 @@
   sandboxes-for-user
   schema-permission-for-user
   set-database-permission!
-  set-database-view-data-blocked-with-unrestricted-tables!
   set-table-permission!
   set-table-permissions!
   table-permission-for-user

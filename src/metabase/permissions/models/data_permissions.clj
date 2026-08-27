@@ -1357,29 +1357,6 @@
                         :db-id db-id}
       (set-table-permissions-internal! group-or-id perm-type table-perms))))
 
-(mu/defn set-database-view-data-blocked-with-unrestricted-tables!
-  "Set `group-or-id`'s `:perms/view-data` for `db-or-id` to a database-level `:blocked` baseline with
-  table-level `:unrestricted` overrides for `table-ids`. Unlike [[set-table-permissions!]], the
-  database-level `:blocked` row is kept even when the overrides cover every current table — so a table
-  synced later inherits `:blocked` rather than defaulting to `:unrestricted`."
-  [group-or-id :- TheIdable
-   db-or-id    :- TheIdable
-   table-ids   :- [:maybe [:sequential TheIdable]]]
-  (let [group-id (u/the-id group-or-id)
-        db-id    (u/the-id db-or-id)]
-    (with-cluster-lock {:perm-type (u/qualified-name :perms/view-data)
-                        :db-id     db-id}
-      ;; A database-level set removes any existing view-data rows, then writes the `:blocked` row (and
-      ;; its create-queries/download implications).
-      (set-database-permission! (index-database-permissions [group-id] [db-id])
-                                group-id db-id :perms/view-data :blocked)
-      ;; Then add the table-level `:unrestricted` overrides directly, so the `:blocked` baseline is not
-      ;; collapsed away as it would be by [[set-table-permissions!]].
-      (when (seq table-ids)
-        (batch-insert-permissions!
-         (build-new-table-perms group-id :perms/view-data
-                                (zipmap (map u/the-id table-ids) (repeat :unrestricted))))))))
-
 (mu/defn set-table-permission!
   "Sets permissions for a single table to the specified value for a given group."
   [group-or-id :- TheIdable
