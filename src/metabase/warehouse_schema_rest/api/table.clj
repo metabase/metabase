@@ -316,7 +316,6 @@
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
@@ -478,14 +477,14 @@
   file cannot be smuggled past the upload: `::mc/default` keeps the extra parts, and the check below refuses them."
   [:and
    [:map
-    ["file"
+    [:file
      [:map
       [:filename :string]
       [:tempfile (ms/InstanceOfClass java.io.File)]]]
-    ["collection_id" {:optional true} :string]
-    [::mc/default [:map-of :string :any]]]
+    [:collection_id {:optional true} :string]
+    [::mc/default [:map-of :keyword :any]]]
    (mu/with-api-error-message
-    [:fn (fn [parts] (every? #{"file" "collection_id"} (keys parts)))]
+    [:fn (fn [parts] (every? #{:file :collection_id} (keys parts)))]
     (deferred-tru "unexpected multipart part"))])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -502,12 +501,10 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
-   {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params CsvUploadParts]]]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
-                :filename (get-in multipart-params ["file" :filename])
-                :file     (get-in multipart-params ["file" :tempfile])
+                :filename (:filename file)
+                :file     (:tempfile file)
                 :action   :metabase.upload/append}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -524,12 +521,10 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
-   {:keys [multipart-params], :as _request} :- [:map
-                                                [:multipart-params CsvUploadParts]]]
+   {:keys [file]} :- CsvUploadParts]
   (update-csv! {:table-id id
-                :filename (get-in multipart-params ["file" :filename])
-                :file     (get-in multipart-params ["file" :tempfile])
+                :filename (:filename file)
+                :file     (:tempfile file)
                 :action   :metabase.upload/replace}))
 
 (defn- sync-schema-async!

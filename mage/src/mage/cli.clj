@@ -72,7 +72,7 @@
           (println "\n" cmd "\n -" (c/magenta effect))))
       (when usage-fn
         (println "\n"
-                 #_:clj-kondo/ignore
+                 #_{:clj-kondo/ignore [:discouraged-var]}
                  ((eval usage-fn) current-task)))
       #_{:clj-kondo/ignore [:discouraged-java-method]}
       (System/exit 0))))
@@ -82,7 +82,7 @@
     arguments
     (let [decoded-args (try (mc/decode arg-schema arguments mtx/string-transformer)
                             (catch Exception _e arguments))]
-      #_:clj-kondo/ignore ;; TODO: don't run all linters on these files
+      #_{:clj-kondo/ignore [:discouraged-java-method :discouraged-var]} ;; TODO: don't run all linters on these files
       (if (mc/validate arg-schema decoded-args)
         decoded-args
         (do (doseq [{:keys [path schema value]} (:errors
@@ -124,7 +124,7 @@
     (check-print-help current-task)
     (let [;; options are defined in bb.edn, as data,
           ;; so we need to eval them to get any functions to work
-          options #_:clj-kondo/ignore (eval options)
+          options #_{:clj-kondo/ignore [:discouraged-var]} (eval options)
           *error-hit? (atom false)
           {:keys [summary]
            option-errors :errors

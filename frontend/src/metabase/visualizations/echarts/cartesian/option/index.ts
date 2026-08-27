@@ -65,8 +65,6 @@ export const getSharedEChartsOptions = (
   brush: {
     toolbox: ["lineX" as const],
     xAxisIndex: 0,
-    throttleType: "debounce" as const,
-    throttleDelay: 200,
     brushStyle: {
       color: getBrushStyle(renderingContext).fill,
       borderWidth: 0,
@@ -188,9 +186,8 @@ export function buildGridAndSeriesOption(
   const timelineEventsSeries = getTimelineSelectionSeries(
     timelineEventsModel,
     selectedTimelineEventIds,
+    chartModel,
     chartLayout,
-    panelCount,
-    isSplitPanels,
     renderingContext,
   );
 
@@ -317,17 +314,21 @@ export const getCartesianChartOption = (
   };
 };
 
-function getTimelineSelectionSeries(
+export function getTimelineSelectionSeries(
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventIds: TimelineEventId[],
+  chartModel: BaseCartesianChartModel,
   chartLayout: ChartLayout,
-  panelCount: number,
-  isSplitPanels: boolean,
   renderingContext: RenderingContext,
 ): EChartsSeriesOption | null {
   if (timelineEventsModel == null) {
     return null;
   }
+
+  const panelCount = chartModel.seriesModels.filter(
+    (series) => series.visible,
+  ).length;
+  const isSplitPanels = chartLayout.panelHeight != null;
 
   const splitPanelYExtent = isSplitPanels
     ? getSplitPanelTimelineEventsYExtent(chartLayout, panelCount)
@@ -387,8 +388,6 @@ export function buildSplitPanelOverrides(
     brush: {
       toolbox: ["lineX" as const],
       xAxisIndex: Array.from({ length: panelCount }, (_, index) => index),
-      throttleType: "debounce" as const,
-      throttleDelay: 200,
       brushStyle: {
         color: "transparent",
         borderColor: "transparent",

@@ -17,6 +17,7 @@
    [metabase.api.common :as api]
    [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.core :as documents]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -653,8 +654,11 @@
                    :sort-info                 {:sort-column                 (keyword (str/replace (or sort_column "name") "_" "-"))
                                                :sort-direction              (keyword (or sort_direction "asc"))
                                                :official-collections-first? (not trash?)}}
+        ;; scope the document content-gate cache over the listing: each document row's hydration
+        ;; adjudicates the gate, and the cache keeps that to once per document
         res       (request/with-limit-and-offset limit offset
-                    (collections.children/collection-children collection options))
+                    (documents/with-content-gate-cache
+                      (collections.children/collection-children collection options)))
         total     (or (:total res) 0)
         ;; the snippets-namespace root path ignores the limit/offset binding (no :limit key on
         ;; the result) and returns every row, so the page is sliced here

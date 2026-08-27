@@ -10,6 +10,7 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.query-processor.api :as api.dataset]
@@ -59,13 +60,20 @@
   document with `document-id` and persist it. `position` is a 0-based index among the document's
   top-level blocks; `nil` appends the embed at the end and out-of-range indexes are clamped.
 
-  The caller is responsible for write-checking the document first. The document is re-read inside
-  the transaction so a concurrent edit cannot be overwritten. Returns the updated document."
-  [document-id card-id position]
+  Optional kwargs:
+  - `:extra-attrs` — map merged onto the `cardEmbed` attrs (e.g. `:stored_result_id`,
+    `:chart_href`, `:child_target_id`, `:host_data`).
+
+  Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
+  write-checking the document first. The document is re-read inside the transaction so a
+  concurrent edit cannot be overwritten. Returns the updated document."
+  [document-id card-id position & {:keys [extra-attrs]}]
   (t2/with-transaction [_conn]
-    (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
-      (t2/update! :model/Document document-id
-                  (select-keys (prose-mirror/insert-card-embed document card-id position) [:document]))
+    (let [document (api/check-404 (t2/select-one :model/Document :id document-id))
+          updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
+          updates  (cond-> (select-keys updated [:document])
+                     (:is_placeholder document) (assoc :is_placeholder false))]
+      (t2/update! :model/Document document-id updates)
       (collections/check-for-remote-sync-update document)))
   (m.document/get-document document-id :log-view? false))
 
@@ -77,10 +85,16 @@
   "Gets existing `Documents`."
   [_route-params
    _query-params]
-  {:items (t2/hydrate (t2/select :model/Document {:where [:and
-                                                          (collection/visible-collection-filter-clause)
-                                                          [:= :archived false]]})
-                      :creator :can_write :is_remote_synced)})
+  {:items (as-> (t2/select :model/Document {:where [:and
+                                                    (collection/visible-collection-filter-clause)
+                                                    [:= :archived false]
+                                                    ;; Documents attached to an exploration are
+                                                    ;; internal to that exploration — every other listing
+                                                    ;; surface (search, recents, collection items)
+                                                    ;; excludes them too.
+                                                    [:= :exploration_id nil]]}) docs
+            (filter mi/can-read? docs)
+            (t2/hydrate docs :creator :can_write :is_remote_synced))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

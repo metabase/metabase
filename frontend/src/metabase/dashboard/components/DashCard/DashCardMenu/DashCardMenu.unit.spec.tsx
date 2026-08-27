@@ -121,7 +121,6 @@ const setup = ({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
-      dashboards: [mockDashboard],
     }),
     dashboard: createMockDashboardState({
       dashboardId: mockDashboard.id,
@@ -308,5 +307,64 @@ describe("DashCardMenu", () => {
     // Esc should close the popover
     await userEvent.keyboard("{Esc}");
     expect(screen.queryByText("Download results")).not.toBeInTheDocument();
+  });
+});
+
+describe("DashCardMenu.shouldRender", () => {
+  const dashboard = createMockDashboard();
+  const metadata = getMetadata(
+    createMockState({
+      entities: createMockEntitiesState({
+        databases: [createSampleDatabase()],
+        questions: [TEST_CARD],
+      }),
+    }),
+  );
+  const question = checkNotNull(metadata.question(TEST_CARD.id));
+
+  it("should render when the question is editable", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("should not render when editing is disabled and results cannot be downloaded (#64333)", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("should render when editing is disabled but underlying questions can be opened", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: false,
+        openUnderlyingQuestionItems: [<div key="question" />],
+      }),
+    ).toBe(true);
+  });
+
+  it("should not render when there are no underlying questions to open", () => {
+    expect(
+      DashCardMenu.shouldRender({
+        question,
+        dashboard,
+        result: TEST_RESULT_ERROR,
+        canEdit: false,
+        openUnderlyingQuestionItems: [],
+      }),
+    ).toBe(false);
   });
 });

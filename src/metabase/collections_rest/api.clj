@@ -13,6 +13,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.documents.core :as documents]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -350,20 +351,21 @@
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
-           include_library collection_type
-           show_dashboard_questions q include_available_models]} :- [:map
-                                                                     [:models                      {:optional true} [:maybe collections.children/Models]]
-                                                                     [:collection_type             {:optional true} collections.children/CollectionType]
-                                                                     [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                                                     [:include_library             {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:pinned_state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
-                                                                     [:sort_column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
-                                                                     [:sort_direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
-                                                                     [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                     [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                     [:q                           {:optional true} [:maybe :string]]
-                                                                     [:include_available_models    {:default false} [:maybe ms/BooleanValue]]]]
+           include_library collection_type show_dashboard_questions
+           q include_available_models show_exploration_documents]} :- [:map
+                                                                       [:models                      {:optional true} [:maybe collections.children/Models]]
+                                                                       [:collection_type             {:optional true} collections.children/CollectionType]
+                                                                       [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                                                       [:include_library             {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:pinned_state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
+                                                                       [:sort_column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
+                                                                       [:sort_direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
+                                                                       [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                       [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                       [:q                           {:optional true} [:maybe :string]]
+                                                                       [:include_available_models    {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:show_exploration_documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -374,6 +376,7 @@
                           #{:collection})
         options         {:archived?                   (boolean archived)
                          :show-dashboard-questions?   (boolean show_dashboard_questions)
+                         :show-exploration-documents? (boolean show_exploration_documents)
                          :collection-type             collection_type
                          :include-library?            include_library
                          :models                      (if-not (contains? collections.children/namespaces-holding-non-collection-types namespace)
@@ -386,9 +389,13 @@
                                                        ;; default to sorting official collections first, but provide the option not to
                                                        :official-collections-first? (or (nil? official_collections_first)
                                                                                         (boolean official_collections_first))}}]
-    (cond-> (collections.children/collection-children root-collection options)
-      include_available_models
-      (merge (collections.children/collection-filter-metadata root-collection restrict-models options)))))
+    ;; scope the document content-gate cache over the listing: each document row's hydration
+    ;; adjudicates the gate, and the cache keeps that to once per document (see
+    ;; `post-process-collection-children :document` in `metabase.collections.children`)
+    (documents/with-content-gate-cache
+      (cond-> (collections.children/collection-children root-collection options)
+        include_available_models
+        (merge (collections.children/collection-filter-metadata root-collection restrict-models options))))))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
@@ -580,20 +587,23 @@
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
-           show_dashboard_questions q include_available_models]} :- [:map
-                                                                     [:models                      {:optional true} [:maybe collections.children/Models]]
-                                                                     [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:pinned_state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
-                                                                     [:sort_column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
-                                                                     [:sort_direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
-                                                                     [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                                                     [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]
-                                                                     [:q                           {:optional true} [:maybe :string]]
-                                                                     [:include_available_models    {:default false} [:maybe ms/BooleanValue]]]]
+           show_dashboard_questions q include_available_models
+           show_exploration_documents]} :- [:map
+                                            [:models                      {:optional true} [:maybe collections.children/Models]]
+                                            [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                            [:pinned_state                {:optional true} [:maybe (into [:enum] collections.children/valid-pinned-state-values)]]
+                                            [:sort_column                 {:optional true} [:maybe (into [:enum] collections.children/valid-sort-columns)]]
+                                            [:sort_direction              {:optional true} [:maybe (into [:enum] collections.children/valid-sort-directions)]]
+                                            [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                            [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]
+                                            [:show_exploration_documents  {:default false} [:maybe ms/BooleanValue]]
+                                            [:q                           {:optional true} [:maybe :string]]
+                                            [:include_available_models    {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
         model-kwds  (set (map keyword (u/one-or-many models)))
         collection  (api/read-check :model/Collection resolved-id)
         options     {:show-dashboard-questions?   show_dashboard_questions
+                     :show-exploration-documents? show_exploration_documents
                      :models                      model-kwds
                      :include-library?            true
                      :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
@@ -606,8 +616,9 @@
                                                                                          (not (collection/is-trash? collection)))
                                                                                   true
                                                                                   (boolean official_collections_first))}}
-        children    (cond-> (collections.children/collection-children collection options)
-                      include_available_models
-                      (merge (collections.children/collection-filter-metadata collection nil options)))]
+        children    (documents/with-content-gate-cache
+                      (cond-> (collections.children/collection-children collection options)
+                        include_available_models
+                        (merge (collections.children/collection-filter-metadata collection nil options))))]
     (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*})
     children))

@@ -20,7 +20,7 @@ import {
   getLegendTitles,
 } from "metabase/visualizations/lib/choropleth";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import { getCanonicalRowKey } from "metabase/visualizations/lib/mapping";
+import { getCanonicalRowKey } from "metabase/visualizations/lib/region-codes";
 import { unaggregatedDataWarningMap } from "metabase/visualizations/lib/warnings";
 import {
   getDefaultSize,
@@ -409,7 +409,9 @@ function ChoroplethMapInner(props: ChoroplethMapProps) {
     return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
   };
 
-  const isSeriesHighlighted = card.id === highlighted?.cardId;
+  const isSeriesHighlighted =
+    highlighted != null &&
+    (highlighted.cardId == null || highlighted.cardId === card.id);
   const highlightedDimension = highlighted?.dimensions?.find(
     (d) => d.columnName === dimensionColumn?.name,
   );

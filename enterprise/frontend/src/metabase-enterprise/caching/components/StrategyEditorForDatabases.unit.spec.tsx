@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { act, screen, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
   setupStrategyEditorForDatabases as baseSetup,
@@ -56,7 +56,7 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show strategy form launchers", async () => {
+  it("should show the default policy and database rows", async () => {
     const rootStrategyHeading = await screen.findByText("Default policy");
     expect(rootStrategyHeading).toBeInTheDocument();
     expect(
@@ -215,8 +215,8 @@ describe("StrategyEditorForDatabases", () => {
   // Schedule.unit.spec.tsx. This case is the integration: picking a
   // frequency/day/time in the Schedule fields must flow through Formik's
   // `setFieldValue("schedule", ...)` and end up in the saved strategy, which
-  // the launcher label then reads back.
-  it("saves a weekly Monday 8 AM schedule and round-trips it through the launcher label", async () => {
+  // the row label then reads back.
+  it("saves a weekly Monday 8 AM schedule and round-trips it through the row label", async () => {
     await userEvent.click(
       await screen.findByLabelText(
         `Edit policy for database 'Database 1' (currently: Adaptive)`,
@@ -271,6 +271,32 @@ describe("StrategyEditorForDatabases", () => {
       refresh_automatically: false,
     };
     expect(getShortStrategyLabel(strategy)).toBe(expected);
+  });
+
+  it("does not silently save default values when saving right after switching strategies", async () => {
+    // Database 4 inherits the default policy
+    await userEvent.click(
+      await screen.findByLabelText(/Edit policy for database 'Database 4'/),
+    );
+
+    await selectCacheStrategy(/^Duration/i);
+    const saveButton = await screen.findByTestId("strategy-form-submit-button");
+    await waitFor(() => expect(saveButton).toBeDisabled());
+    await userEvent.click(saveButton);
+    expect(
+      fetchMock.callHistory.calls("path:/api/cache", { method: "PUT" }),
+    ).toHaveLength(0);
+
+    await selectCacheStrategy(/Adaptive/i);
+    await waitFor(() =>
+      expect(screen.getByTestId("strategy-form-submit-button")).toBeDisabled(),
+    );
+
+    await changeInput(/minimum query duration/i, 1, 5);
+    await changeInput(/multiplier/i, 10, 3);
+    await waitFor(() =>
+      expect(screen.getByTestId("strategy-form-submit-button")).toBeEnabled(),
+    );
   });
 
   it("does not allow saving an empty cache duration", async () => {
@@ -335,6 +361,193 @@ describe("StrategyEditorForDatabases", () => {
         "Edit default policy (currently: Duration: 1m)",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("StrategyEditorForDatabases (table behaviors)", () => {
+  it("keeps the default policy row pinned at the top", async () => {
+    setup();
+    const rows = await screen.findAllByTestId(/^policy-row-/);
+    expect(rows[0]).toHaveAccessibleName(/Edit default policy/);
+  });
+
+  it("shows the policy in a lighter color for databases using the default policy", async () => {
+    setup();
+    // Database 4 has no config of its own, so it inherits the default policy
+    const inheritingRow = await screen.findByTestId("policy-row-4");
+    expect(within(inheritingRow).getByText("Duration: 1h")).toHaveAttribute(
+      "data-uses-default-policy",
+      "true",
+    );
+    const overriddenRow = await screen.findByTestId("policy-row-1");
+    expect(within(overriddenRow).getByText("Adaptive")).toHaveAttribute(
+      "data-uses-default-policy",
+      "false",
+    );
+  });
+
+  it("does not ask to discard again after changes were already discarded", async () => {
+    setup();
+    await userEvent.click(await screen.findByLabelText(/Edit default policy/));
+    await changeInput(/Cache duration/, 0, 48);
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Discard your changes?",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Discard" }),
+    );
+
+    await userEvent.click(
+      await screen.findByLabelText(/Edit policy for database 'Database 1'/),
+    );
+    expect(
+      await screen.findByTestId("cache-strategy-select"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Discard your changes?")).not.toBeInTheDocument();
+  });
+
+  it("navigates between rows with the sidesheet chevrons", async () => {
+    setup();
+    await userEvent.click(await screen.findByLabelText(/Edit default policy/));
+
+    const previousButton = await screen.findByLabelText("Previous item");
+    expect(previousButton).toBeDisabled();
+
+    await userEvent.click(screen.getByLabelText("Next item"));
+
+    const sidesheet = await screen.findByTestId("cache-policy-panel");
+    expect(
+      await within(sidesheet).findByText("Database 1"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the row highlight while a discard confirmation is open", async () => {
+    setup();
+    await userEvent.click(await screen.findByLabelText(/Edit default policy/));
+    await changeInput(/Cache duration/, 0, 48);
+
+    await userEvent.click(
+      await screen.findByLabelText(/Edit policy for database 'Database 1'/),
+    );
+    await screen.findByText("Discard your changes?");
+
+    expect(screen.getByTestId("policy-row-0")).toHaveAttribute(
+      "data-keyboard-active",
+      "true",
+    );
+    expect(screen.getByTestId("policy-row-1")).not.toHaveAttribute(
+      "data-keyboard-active",
+    );
+  });
+
+  it("moves the row highlight when navigating with the chevrons", async () => {
+    setup();
+    await userEvent.click(await screen.findByLabelText(/Edit default policy/));
+    await userEvent.click(await screen.findByLabelText("Next item"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("policy-row-1")).toHaveAttribute(
+        "data-keyboard-active",
+        "true",
+      );
+    });
+    expect(screen.getByTestId("policy-row-0")).not.toHaveAttribute(
+      "data-keyboard-active",
+    );
+  });
+});
+
+describe("StrategyEditorForDatabases (search)", () => {
+  it("does not show search with 10 or fewer items", async () => {
+    setup();
+    await screen.findByLabelText(/Edit default policy/);
+    expect(
+      screen.queryByPlaceholderText("Search by name or policy…"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows search with more than 10 items and filters rows, including the default policy row", async () => {
+    setup({ databaseCount: 12 });
+    const searchInput = await screen.findByPlaceholderText(
+      "Search by name or policy…",
+    );
+    expect(
+      await screen.findByLabelText(/Edit default policy/),
+    ).toBeInTheDocument();
+
+    await userEvent.type(searchInput, "Database 10");
+
+    await waitFor(() => {
+      expect(
+        screen.queryByLabelText(/Edit default policy/),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByLabelText(/Edit policy for database 'Database 10'/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/Edit policy for database 'Database 11'/),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("StrategyEditorForDatabases (reset all to default)", () => {
+  it("hides the reset-all button when no database has its own policy", async () => {
+    setup({
+      cacheConfigs: [
+        createMockCacheConfig({
+          model: "root",
+          model_id: 0,
+          strategy: {
+            type: "duration",
+            duration: 1,
+            unit: CacheDurationUnit.Hours,
+            refresh_automatically: false,
+          },
+        }),
+      ],
+    });
+    await screen.findByLabelText(/Edit default policy/);
+    expect(
+      screen.queryByLabelText("Reset all to default"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("resets all database policies after confirmation", async () => {
+    setup();
+    await userEvent.click(await screen.findByLabelText("Reset all to default"));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Reset all to default?",
+    });
+    expect(
+      within(dialog).getByText(
+        "This will reset all database caching policies to their default values.",
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Reset all to default" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.calls("path:/api/cache", { method: "DELETE" }),
+      ).toHaveLength(1);
+    });
+
+    expect(
+      await screen.findByLabelText(
+        /Edit policy for database 'Database 1' \(currently inheriting the default policy/,
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByLabelText("Reset all to default"),
+      ).not.toBeInTheDocument();
+    });
   });
 });
 
