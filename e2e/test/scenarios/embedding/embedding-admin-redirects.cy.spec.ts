@@ -20,7 +20,7 @@ describe("scenarios > embedding > admin route redirects (EMB-1526)", () => {
     ["/admin/embedding/themes", "/embedding/appearance"],
     [
       "/admin/embedding/themes/some-theme-id",
-      "/embedding/appearance/some-theme-id",
+      "/embedding/appearance/theme/some-theme-id",
     ],
   ];
 
