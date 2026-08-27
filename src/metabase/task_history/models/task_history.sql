@@ -1,20 +1,14 @@
--- Queries for :model/TaskHistory (HugSQL app-db POC).
+-- Queries for :model/TaskHistory. Loaded as private sqlvec builders and wrapped into executors
+-- in metabase.task-history.models.task-history-queries; see metabase.app-db.hugsql for the model.
 --
--- Structure is literal SQL text; user input only ever flows through value
--- params (:value:x -> ?). No raw-splice (:sql:/:snip:) params anywhere -- even
--- the dynamic sort in list-tasks is expressed as value params via CASE
--- no-op sort keys (a CI test enforces the no-splice rule tree-wide).
+-- Literal SQL only; user input flows through :value:x / :value*:xs params exclusively (raw
+-- splices are banned and disarmed -- see mage/resources/raw-splice-allowlist.edn for the policy).
+-- Everything here must run unchanged on H2, MySQL, and Postgres.
 --
--- Dialect note: everything here must run unchanged on H2, MySQL, and
--- Postgres. Optional filters use the null-guard pattern
--- (:value:x IS NULL OR col = :value:x) so the query shape stays static.
--- If a query ever genuinely diverges per dialect, override it in a
--- models/<dialect>/task_history.sql file (h2 / mysql / postgres) carrying
--- only the diverging :name(s); the loader merges base + dialect at first
--- use (app-db type is a per-JVM constant). This file stays the complete
--- portable baseline.
+-- Param naming: params that mirror a column use the column name (snake_case), so row maps flow
+-- straight in; synthetic inputs are kebab-case (:sort-col, :run-id, :keep).
 
--- :name cleanup-cutoff :? :1
+-- :name- cleanup-cutoff :? :1
 -- Find the ended_at cutoff for cleanup: skip the :keep newest rows
 -- (by ended_at) and return the next row's ended_at.
 SELECT ended_at
@@ -22,11 +16,11 @@ FROM task_history
 ORDER BY ended_at DESC
 LIMIT 1 OFFSET :value:keep
 
--- :name delete-ended-before :! :n
+-- :name- delete-ended-before :! :n
 DELETE FROM task_history
 WHERE ended_at <= :value:cutoff
 
--- :name list-tasks :? :*
+-- :name- list-tasks :? :*
 -- Paged task listing. Dynamic sort with fully static SQL: sort column and
 -- direction arrive as *values*; each CASE line activates for exactly one
 -- (column, direction) pair and is NULL for every row otherwise, so inactive
@@ -56,23 +50,23 @@ ORDER BY
   task_history.id DESC
 LIMIT :value:limit OFFSET :value:offset
 
--- :name count-tasks :? :1
+-- :name- count-tasks :? :1
 SELECT COUNT(*) AS cnt
 FROM task_history
 WHERE (:value:task IS NULL OR task_history.task = :value:task)
   AND (:value:status IS NULL OR task_history.status = :value:status)
 
--- :name unique-tasks :? :*
+-- :name- unique-tasks :? :*
 SELECT task
 FROM task_history
 GROUP BY task
 ORDER BY task
 
--- :name insert-task-history :! :n
+-- :name- insert-task-history :! :n
 INSERT INTO task_history (task, db_id, started_at, status, task_details, run_id)
 VALUES (:value:task, :value:db_id, :value:started_at, :value:status, :value:task_details, :value:run_id)
 
--- :name update-task-history :! :n
+-- :name- update-task-history :! :n
 UPDATE task_history
 SET status = :value:status,
     ended_at = :value:ended_at,
@@ -81,21 +75,25 @@ SET status = :value:status,
     logs = :value:logs
 WHERE id = :value:id
 
--- :name statuses-for-run :? :*
+-- :name- task-history-by-id :? :*
+SELECT * FROM task_history WHERE id = :value:id
+
+-- :name- statuses-for-run :? :*
 SELECT status
 FROM task_history
 WHERE run_id = :value:run-id
 
--- :name tasks-for-run :? :*
+-- :name- tasks-for-run :? :*
 SELECT *
 FROM task_history
 WHERE run_id = :value:run-id
 ORDER BY started_at ASC
 
--- :name mark-orphaned-tasks :! :n
--- 'started' / 'unknown' are the wire values of the :status keyword
--- transform, written literally since they are fixed. CURRENT_TIMESTAMP
--- replaces HoneySQL's :%now (db-side clock, portable across H2/MySQL/PG).
+-- :name- mark-orphaned-tasks :! :n
+-- 'started' / 'unknown' are the wire values of the :status keyword transform, written literally
+-- since they are fixed. :now is bound from Clojure (mi/now) to keep full timestamp precision --
+-- bare CURRENT_TIMESTAMP is second-resolution on MySQL. :run-ids must be non-empty (empty ->
+-- "IN ()" is a syntax error); the executor guards it.
 UPDATE task_history
-SET status = 'unknown', ended_at = CURRENT_TIMESTAMP
+SET status = 'unknown', ended_at = :value:now
 WHERE status = 'started' AND run_id IN (:value*:run-ids)

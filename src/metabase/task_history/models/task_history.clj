@@ -1,4 +1,7 @@
 (ns metabase.task-history.models.task-history
+  "Model + domain logic for `:model/TaskHistory`. Queries are authored in task_history.sql and run
+  through [[metabase.task-history.models.task-history-queries]] executors; this ns owns the model
+  definition (transforms, hooks, perms) and the `with-task-history` macro."
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
@@ -8,7 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.task-history.models.task-history-queries :as queries]
+   [metabase.task-history.models.task-history-queries :as th.queries]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -39,19 +42,17 @@
       (perms/application-perms-path :monitoring)
       "/")})
 
-;;; HugSQL app-db POC: queries for this model live in task_history.sql as literal SQL text,
-;;; accessed via [[metabase.task-history.models.task-history-queries/sqlvec]].
 (defn cleanup-task-history!
   "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
-  This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
+  This is intended for a quick cleanup of old rows. Returns the number of rows deleted."
   [num-rows-to-keep]
   ;; Ideally this would be one query, but MySQL does not allow nested queries with a limit. The query below orders the
   ;; tasks by the time they finished, newest first. Then finds the first row after skipping `num-rows-to-keep`. Using
   ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
   ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
   ;; disk.
-  (when-let [clean-before-date (:ended_at (t2/query-one (queries/sqlvec :cleanup-cutoff {:keep num-rows-to-keep})))]
-    (t2/query-one (queries/sqlvec :delete-ended-before {:cutoff clean-before-date}))))
+  (when-let [clean-before-date (th.queries/cleanup-cutoff-ended-at num-rows-to-keep)]
+    (th.queries/delete-ended-before! clean-before-date)))
 
 (def ^:private task-history-status #{:started :success :failed :unknown})
 
@@ -59,6 +60,9 @@
   [status]
   (assert (task-history-status (keyword status)) "Invalid task history status"))
 
+;; These hooks guard the Toucan write path (with-temp, tests, other modules). The raw-SQL write
+;; path in this ns (do-with-task-history / update-task-history!) does not run them, so it calls
+;; `assert-task-history-status` directly -- keep the two in sync.
 (t2/define-after-insert :model/TaskHistory
   [task-history]
   (assert-task-history-status (:status task-history))
@@ -89,10 +93,11 @@
    [:sort_column    {:default :started_at} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :desc}       [:enum :asc :desc]]])
 
-(defn- list-tasks-params
-  "Shared params for `list-tasks` / `count-tasks`: filter values in wire format (via [[in-xform]])."
+(defn- filter-params
+  "The `:task`/`:status` filter values, passed as-is; the query executor applies the model's `:in`
+  transforms (so a `:status` keyword becomes its wire string)."
   [{:keys [status task]}]
-  (queries/in-xform :model/TaskHistory {:task task, :status status}))
+  {:task task, :status status})
 
 (mu/defn all
   "Return all TaskHistory entries, filtered if `filter` is provided, applying `limit` and `offset` if not nil."
@@ -101,23 +106,22 @@
    params :- [:maybe [:merge FilterParams SortParams]]]
   ;; sort column/direction are plain *value* params: the query's CASE no-op sort keys pick the
   ;; active ORDER BY line, so no SQL text is ever built or spliced for sorting.
-  (t2/select :model/TaskHistory
-             (queries/sqlvec :list-tasks
-                             (assoc (list-tasks-params params)
-                                    :sort-col (name (or (:sort_column params) :started_at))
-                                    :sort-dir (name (or (:sort_direction params) :desc))
-                                    :limit    (or limit Long/MAX_VALUE)
-                                    :offset   (or offset 0)))))
+  (th.queries/list-tasks
+   (assoc (filter-params params)
+          :sort-col (name (or (:sort_column params) :started_at))
+          :sort-dir (name (or (:sort_direction params) :desc))
+          :limit    (or limit Long/MAX_VALUE)
+          :offset   (or offset 0))))
 
 (mu/defn total
   "Return count of all, or filtered if `filter` is provided, task history entries."
   [params :- FilterParams]
-  (:cnt (t2/query-one (queries/sqlvec :count-tasks (list-tasks-params params)))))
+  (th.queries/count-tasks (filter-params params)))
 
 (defn unique-tasks
   "Return _vector_ of all unique tasks' names in alphabetical order."
   []
-  (mapv :task (t2/query (queries/sqlvec :unique-tasks {}))))
+  (mapv :task (th.queries/unique-tasks {})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            with-task-history macro                                             |
@@ -142,17 +146,18 @@
 
 (defn- update-task-history!
   [th-id startime-ns info]
-  ;; Raw-SQL write: the before-update assertion and the :in transforms fire here explicitly
-  ;; instead of via the t2 pipeline. The SET list is static -- every caller owns the full row,
-  ;; so always writing all five columns is equivalent to the old partial update.
+  ;; The UPDATE writes a fixed column set, so keys an (external) callback omits from `info` would
+  ;; otherwise be nulled. Merge over the row's *current* task_details/logs so omission preserves,
+  ;; matching the old partial `t2/update!`. The status assertion runs here (raw-SQL write bypasses
+  ;; the `define-before-update` hook -- see the hook's note).
   (assert-task-history-status (:status info))
-  (let [updated-info (queries/in-xform :model/TaskHistory
-                                       (merge {:ended_at (t/instant)
-                                               :duration (ns->ms (- (System/nanoTime) startime-ns))}
-                                              info))]
-    (t2/query-one (queries/sqlvec :update-task-history (merge {:task_details nil, :logs nil}
-                                                              updated-info
-                                                              {:id th-id})))))
+  (let [current (th.queries/task-history th-id)
+        row     (merge (select-keys current [:task_details :logs])
+                       {:ended_at (t/instant)
+                        :duration (ns->ms (- (System/nanoTime) startime-ns))}
+                       info
+                       {:id th-id})]
+    (th.queries/update-task-history! row)))
 
 (def ^:dynamic ^Clock *log-capture-clock*
   "The java.time.Clock used for captured log message `:timestamp` values. Can be overridden for tests."
@@ -229,18 +234,14 @@
         info            (dissoc info :on-success-info :on-fail-info)
         start-time-ns   (System/nanoTime)
         run-id          (task-run/current-run-id)
-        ;; Raw-SQL insert executed through the t2 pipeline (query-type insert.pks), so
-        ;; generated-key handling stays cross-db. The after-insert status assertion and the
-        ;; :in transforms fire here explicitly.
-        row             (queries/in-xform :model/TaskHistory
-                                          (cond-> (assoc info
-                                                         :status     :started
-                                                         :started_at (t/instant))
-                                            run-id (assoc :run_id run-id)))
+        row             (cond-> (assoc info
+                                       :status     :started
+                                       :started_at (t/instant))
+                          run-id (assoc :run_id run-id))
+        ;; Raw-SQL write bypasses the `define-after-insert` hook, so assert here (see the hook's
+        ;; note); the executor applies the model's :in transforms and returns the generated id.
         _               (assert-task-history-status (:status row))
-        th-id           (first (t2/query nil :toucan.query-type/insert.pks :model/TaskHistory
-                                         (queries/sqlvec :insert-task-history (merge {:db_id nil, :task_details nil, :run_id nil}
-                                                                                     row))))
+        th-id           (th.queries/insert-task-history! row)
         logs-atom       (log-capture-atom)]
     (binding [clojure.tools.logging/*logger-factory*
               (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]

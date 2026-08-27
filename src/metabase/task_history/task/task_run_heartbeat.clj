@@ -4,10 +4,11 @@
    2. Mark orphaned task runs (no heartbeat for threshold hours) as :abandoned
    3. Mark orphaned tasks (in :started status with no heartbeat) as :unknown"
   (:require
+   [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.run-tracking.core :as rt]
-   [metabase.task-history.models.task-history-queries :as queries]
+   [metabase.task-history.models.task-history-queries :as th.queries]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
@@ -55,8 +56,7 @@
   [orphaned-run-ids]
   (when (seq orphaned-run-ids)
     (tracing/with-span :tasks "task.heartbeat.mark-orphaned-tasks" {:heartbeat/orphaned-run-count (count orphaned-run-ids)}
-      (let [orphaned (t2/query-one (queries/sqlvec :mark-orphaned-tasks
-                                                   {:run-ids orphaned-run-ids}))]
+      (let [orphaned (th.queries/mark-orphaned-tasks! (t/instant) orphaned-run-ids)]
         (when (pos? orphaned)
           (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
         orphaned))))

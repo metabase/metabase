@@ -20,9 +20,9 @@
   (log/debug "Cleaning up task history")
   (tracing/with-span :tasks "task.history-cleanup.delete" {:task-history/rows-to-keep history-rows-to-keep}
     (task-history/with-task-history {:task "task-history-cleanup"}
-      (let [deleted-rows? (task-history/cleanup-task-history! history-rows-to-keep)]
+      (let [deleted (task-history/cleanup-task-history! history-rows-to-keep)]
         (log/debug
-         (if deleted-rows?
+         (if (and deleted (pos? deleted))
            "Task history cleanup successful, rows were deleted"
            "Task history cleanup successful, no rows were deleted"))))))
 

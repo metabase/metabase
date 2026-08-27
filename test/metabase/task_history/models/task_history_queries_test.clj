@@ -1,48 +1,32 @@
 (ns metabase.task-history.models.task-history-queries-test
   "Checks for the HugSQL app-db POC.
 
-  1. [[raw-splice-lint-test]] -- the lint rule: no raw-splice params (`:sql:`/`:snip:`) in any
-     `.sql` file under `src/`, except allowlisted params that are fed exclusively from a closed
-     map of dev-authored literals. [[order-by-fragments-shape-test]] verifies those literals look
-     like column/direction lists, not arbitrary SQL.
+  1. Injection surface -- the raw-splice lint (shared with `./bin/mage lint-raw-splices`), the
+     process-wide disarm, and a hostile-input test proving request values stay bound params.
 
-  2. [[honeysql-equivalence-test]] -- golden test: the HugSQL queries return exactly what the
+  2. [[honeysql-equivalence-test]] -- golden test: the HugSQL executors return exactly what the
      previous HoneySQL implementations returned, across the full sort/filter/paging matrix. CI
      runs this against every app-db (H2, MySQL, Postgres); per-dialect equality to the same
      golden implementation implies the dialects also agree with each other."
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [dev.raw-splice :as raw-splice]
    [hugsql.core :as hugsql]
    [java-time.api :as t]
    [metabase.task-history.models.task-history :as task-history]
-   [metabase.task-history.models.task-history-queries :as queries]
+   [metabase.task-history.models.task-history-queries :as th.queries]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-;;;; 1. Lint: the raw-splice surface of SQL-in-files
-;;;;
-;;;; Logic + allowlist are shared with the fast pre-CI check `./bin/mage lint-raw-splices`;
-;;;; see [[dev.raw-splice]] and mage/resources/raw-splice-allowlist.edn.
+;;;; 1. Injection surface
 
-(deftest raw-splice-lint-test
+(deftest ^:parallel raw-splice-lint-test
   (is (= [] (vec (raw-splice/violations)))
       "Raw-splice params (:sql:/:snip:) in .sql files must match the allowlist exactly."))
 
-(deftest hostile-sort-params-test
-  (testing "hostile sort values are inert: they ride as bound params, match no CASE line, and
-            ordering falls through to the id DESC tie-break"
-    (let [sqlvec (queries/sqlvec :list-tasks {:task nil, :status nil
-                                              :sort-col "1); insert into x values (1); --"
-                                              :sort-dir "asc"
-                                              :limit 10, :offset 0})]
-      (is (not (str/includes? (first sqlvec) "insert into x")))
-      (is (some #{"1); insert into x values (1); --"} (rest sqlvec))))))
-
-(deftest raw-splice-params-disarmed-test
+(deftest ^:parallel raw-splice-params-disarmed-test
   (testing "raw-splice param types are disarmed process-wide: building a query with one throws"
     (doseq [sql ["SELECT * FROM x ORDER BY :sql:o"
                  "SELECT * FROM x WHERE :snip:cond"
@@ -51,6 +35,15 @@
       (testing sql
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not allowed"
                               (hugsql/sqlvec sql {:o "id", :cond ["1=1"], :col "id", :cols ["id"]})))))))
+
+(deftest ^:parallel hostile-sort-input-test
+  (testing "a hostile sort_column value stays a bound param and never enters the SQL string"
+    (let [[sql & params] (#'th.queries/list-tasks-sqlvec
+                          {:task nil :status nil
+                           :sort-col "1); DROP TABLE task_history; --" :sort-dir "asc"
+                           :limit 10 :offset 0})]
+      (is (not (re-find #"DROP TABLE" sql)))
+      (is (some #{"1); DROP TABLE task_history; --"} params)))))
 
 ;;;; 2. Golden equivalence with the previous HoneySQL implementation
 
@@ -115,29 +108,34 @@
                                          :started_at (at 6), :ended_at nil, :duration nil}
                    :model/TaskHistory _ {:task task-b, :status :unknown, :db_id (:id db-2)
                                          :started_at (at 7), :ended_at (at 8), :duration 1000}]
+      ;; Every comparison is filtered to these temp tasks so concurrent `with-task-history` writers
+      ;; from other (parallel) tests can't diverge old-vs-new. `{}` still exercises the no-filter
+      ;; code path; equality holds because both sides see the same extra rows and we compare ids.
       (testing "sort x direction x filter matrix returns identical rows in identical order"
         (doseq [col    (sort @#'task-history/available-sort-columns)
                 dir    [:asc :desc]
                 filters [{} {:task task-a} {:status :success} {:task task-b, :status :started}]]
-          (let [params (merge filters {:sort_column col, :sort_direction dir})]
+          (let [params (merge filters {:sort_column col, :sort_direction dir})
+                ours    (set [task-a task-b])
+                keep-ours (fn [rows] (mapv :id (filter #(ours (:task %)) rows)))]
             (testing (pr-str params)
-              (is (= (mapv :id (old-all nil nil params))
-                     (mapv :id (task-history/all nil nil params))))))))
-      (testing "paging"
-        (let [params {:sort_column :started_at, :sort_direction :desc}]
-          (doseq [[limit offset] [[2 0] [2 2] [1000 0] [3 nil] [nil nil]]]
+              (is (= (keep-ours (old-all nil nil params))
+                     (keep-ours (task-history/all nil nil params))))))))
+      (testing "paging (scoped to task-a, whose rows are deterministic and isolated)"
+        (let [params {:task task-a, :sort_column :started_at, :sort_direction :desc}]
+          (doseq [[limit offset] [[2 0] [1 1] [1000 0] [3 nil] [nil nil] [nil 1]]]
             (testing (pr-str [limit offset])
               (is (= (mapv :id (old-all limit offset params))
                      (mapv :id (task-history/all limit offset params))))))))
       (testing "full row equality, including out-transforms (status keyword, task_details map)"
         (is (= (old-all nil nil {:task task-a, :sort_column :started_at, :sort_direction :asc})
                (task-history/all nil nil {:task task-a, :sort_column :started_at, :sort_direction :asc}))))
-      (testing "total"
-        (doseq [filters [{} {:task task-a} {:status :success} {:task task-b, :status :started}]]
+      (testing "total (task-scoped filters; {} omitted -- whole-table count races parallel writers)"
+        (doseq [filters [{:task task-a} {:task task-b, :status :started}]]
           (testing (pr-str filters)
             (is (= (old-total filters)
                    (task-history/total filters))))))
-      (testing "unique-tasks"
+      (testing "unique-tasks matches the old impl (both see the same table)"
         (is (= (old-unique-tasks)
                (task-history/unique-tasks)))))))
 
