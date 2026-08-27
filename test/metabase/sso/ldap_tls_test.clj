@@ -11,7 +11,7 @@
                                 InMemoryListenerConfig
                                 SelfSignedCertificateGenerator)
    (com.unboundid.util ObjectPair)
-   (com.unboundid.util.ssl KeyStoreKeyManager SSLUtil TrustAllTrustManager)
+   (com.unboundid.util.ssl HostNameSSLSocketVerifier KeyStoreKeyManager SSLUtil TrustAllTrustManager)
    (java.io File)
    (java.security KeyStore Security)))
 
@@ -67,6 +67,12 @@
         (Security/setProperty "keystore.pkcs12.certProtectionAlgorithm" (or cert-alg "PBEWithHmacSHA256AndAES_256"))
         (Security/setProperty "keystore.pkcs12.macAlgorithm" (or mac-alg "HmacPBESHA256"))))
     (.getPath out)))
+
+(deftest ldaps-verifies-server-hostname-test
+  (testing "TLS connections are configured to verify the server certificate matches the connected host"
+    (let [opt (#'ldap/ldap-connection-options)]
+      (is (instance? HostNameSSLSocketVerifier (.getSSLSocketVerifier opt))
+          "a hostname verifier must be installed so a certificate issued for another host is rejected"))))
 
 (deftest ldaps-validates-server-certificate-test
   (let [pair (self-signed-keystore)

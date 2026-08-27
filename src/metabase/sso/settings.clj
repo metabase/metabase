@@ -36,7 +36,7 @@
              (setting/set-value-of-type! :keyword :ldap-security new-value)))
 
 (defsetting ldap-trust-store
-  (deferred-tru "Path to a Java trust store (JKS or PKCS12) of CA certificates used to validate the LDAP server''s TLS certificate. Leave blank to use the JVM default trust store.")
+  (deferred-tru "Path to a JKS trust store of CA certificates used to validate the LDAP server''s TLS certificate. Leave blank to use the JVM default trust store.")
   :encryption :when-encryption-key-set
   :export?    false
   :audit      :getter)
