@@ -154,7 +154,7 @@
        (ex-data e#))))
 
 (deftest can-connect-no-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [get-favicon get-200 get-302-redirect-200 get-400 get-302-redirect-400 get-500]]
       (let [can-connect?* (fn [route]
                             (can-connect? {:url         (str url (:path route))
@@ -177,7 +177,7 @@
                 (exception-data (can-connect?* get-500))))))))
 
 (deftest can-connect-header-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [(make-route :get "/user"
                                    (fn [x]
                                      (if (= "SECRET" (get-in x [:headers "x-api-key"]))
@@ -199,7 +199,7 @@
                                               :auth-info   {:x-api-key "WRONG"}}))))))))
 
 (deftest can-connect-query-param-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [(make-route :get "/user"
                                    (fn [x]
                                      (if (= ["qnkhuat" "secretpassword"]
@@ -224,7 +224,7 @@
                                                             :password "wrongpassword"}}))))))))
 
 (deftest can-connect-request-body-auth-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (with-server [url [(make-route :post "/user"
                                    (fn [x]
                                      (if (= "SECRET_TOKEN" (get-in x [:body :token]))
@@ -257,7 +257,7 @@
     (testing "include undefined key"
       (is (=? {:errors {:xyz ["disallowed key"]}}
               (exception-data (can-connect? {:xyz "hello world"})))))
-    (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+    (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
       (with-server [url [get-400]]
         (is (= {:request-body   "Bad request"
                 :request-status 400}
@@ -276,7 +276,7 @@
                                                 :auth-method "none"})))))))))
 
 (deftest send!-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (testing "basic send"
       (with-captured-http-requests [requests]
         (channel/send! {:type        :channel/http
@@ -337,7 +337,7 @@
                               #"No URL is configured for this webhook"
                               (channel/send! channel nil)))))
     (testing "an unparseable webhook URL throws a human-readable error (#76802)"
-      (mt/with-temporary-setting-values [http-channel-host-strategy :external-only]
+      (mt/with-temporary-setting-values [http-channel-allowed-networks :external-only]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Invalid webhook URL"
                               (channel/send! {:type    :channel/http
@@ -345,7 +345,7 @@
                                              nil)))))))
 
 (deftest alert-http-channel-e2e-test
-  (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+  (mt/with-temporary-setting-values [http-channel-allowed-networks :allow-all]
     (let [received-message (atom nil)
           receive-route    (make-route :post "/test_http_channel"
                                        (fn [res]

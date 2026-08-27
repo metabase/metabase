@@ -871,7 +871,7 @@ Custom URL for the help link.
 
 Prevent the exception middleware from including stacktraces in responses.
 
-### `MB_HTTP_CHANNEL_HOST_STRATEGY`
+### `MB_HTTP_CHANNEL_ALLOWED_NETWORKS`
 
 - Type: keyword
 - Default: `external-only`

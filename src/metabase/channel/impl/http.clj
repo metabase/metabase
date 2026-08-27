@@ -40,7 +40,7 @@
   (when (str/blank? url)
     (throw (ex-info (tru "No URL is configured for this webhook.") {:status-code 400})))
   (when-not (try
-              (u/valid-host? (channel.settings/http-channel-host-strategy) url)
+              (u/valid-host? (channel.settings/http-channel-allowed-networks) url)
               (catch Exception e
                 (throw (ex-info (tru "Invalid webhook URL: {0}" (ex-message e))
                                 {:status-code 400

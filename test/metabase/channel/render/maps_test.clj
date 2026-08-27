@@ -73,3 +73,26 @@
           ^Color high (grid-color 10.0 0.0 10.0)]
       (is (> (.getGreen low) (.getRed low)) "low end is greenish")
       (is (> (.getRed high) (.getGreen high)) "high end is reddish"))))
+
+(deftest fetch-tile-refuses-internal-hosts-test
+  (testing "an internal tile URL is never requested — map-tile-server-url is admin-settable, so a raw GET here
+           would be a blind SSRF sink reachable from any subscription render"
+    (let [requested (atom [])]
+      (fake/with-fake-routes {#".*" (fn [req]
+                                      (swap! requested conj (:url req))
+                                      {:status 200 :headers {} :body (render.tu/blank-tile-png)})}
+        (doseq [template ["http://127.0.0.1:8899/{z}/{x}/{y}.png"
+                          "http://localhost:8899/{z}/{x}/{y}.png"
+                          "http://169.254.169.254/{z}/{x}/{y}.png"
+                          "http://10.0.0.1/{z}/{x}/{y}.png"
+                          ;; http is not fetched server-side either: the hardened client is https-only
+                          "http://tile.example.com/{z}/{x}/{y}.png"]]
+          (testing template
+            (is (nil? (#'maps/fetch-tile template 3 4 2)))))
+        (is (empty? @requested)
+            "the JVM issued no outbound request at all")))))
+
+(deftest fetch-tile-fetches-public-tiles-test
+  (testing "a public https tile server is still fetched"
+    (fake/with-fake-routes (render.tu/fake-tile-routes #"https://.*\.tile\.example\.com/.*")
+      (is (some? (#'maps/fetch-tile "https://{s}.tile.example.com/{z}/{x}/{y}.png" 5 4 2))))))
