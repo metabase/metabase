@@ -1,4 +1,5 @@
 (ns metabase-enterprise.semantic-search.test-util
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.semantic-search.test-util]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -14,10 +15,13 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.search.config :as search.config]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
+   [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -33,8 +37,12 @@
 
 ;; Purpose of this fixure is to block running tests if db-url is not set. That's true for enterprise app-db tests in CI.
 (defn once-fixture
+  "Shared `:once` fixture for semantic-search tests. Skips the namespace when no pgvector URL is configured, and
+  initializes the application DB so tests that read Metabase content (e.g. `collection`) while indexing are
+  self-sufficient rather than depending on a CI partition-mate to have set the app DB up."
   [f]
   (when semantic.db.datasource/db-url
+    (initialize/initialize-if-needed! :db)
     (f)))
 
 (def default-test-db "my_test_db")
@@ -50,6 +58,11 @@
 (defn do-with-temp-datasource!
   "Impl [[with-temp-datasource]]."
   [db-name thunk]
+  ;; with no URL the redef'd nil db-url could resolve to :app-db mode and hand back the application
+  ;; pool — the dedicated harness (which DROPs/CREATEs databases) must never point at the app db.
+  ;; unconditional (not assert): this guards destructive setup, and asserts can be elided
+  (when (str/blank? (:mb-pgvector-db-url env))
+    (throw (ex-info "with-temp-datasource! requires the dedicated-harness MB_PGVECTOR_DB_URL" {})))
   (with-redefs [semantic.db.datasource/db-url (alt-db-name-url (:mb-pgvector-db-url env) db-name)
                 semantic.db.datasource/data-source (atom nil)]
     (try
@@ -84,8 +97,11 @@
                 semantic.index/model-table-suffix              mock-table-suffix]
     (let [pgvector (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.env/get-index-metadata)
-          embedding-model (semantic.env/get-configured-embedding-model)]
-      (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)
+          embedding-model (semantic.env/get-configured-embedding-model)
+          index (semantic.pgvector-api/init-semantic-search! pgvector index-metadata embedding-model)]
+      ;; The HNSW index is only built when configured for the :hnsw strategy; tests exercise both strategies
+      ;; via per-query overrides, so build it unconditionally here.
+      (semantic.index/create-hnsw-index-if-not-exists! pgvector index)
       (thunk))))
 
 ;; TODO: declare with macro (the do- less version) throws weird errors -- investigate!
@@ -268,10 +284,18 @@
 
 ;;;; mock provider
 
+(defn resolved-mock-embedding-model
+  "Build a self-consistent resolved descriptor for a mock model variant."
+  [& {:as overrides}]
+  (-> (merge {:provider          "mock"
+              :model-name        "model"
+              :vector-dimensions 4}
+             overrides)
+      embeddings.provider/legacy-resolved-model
+      (assoc :embedding-spi-version embeddings.provider/embedding-spi-version)))
+
 (def mock-embedding-model
-  {:provider          "mock"
-   :model-name        "model"
-   :vector-dimensions 4})
+  (resolved-mock-embedding-model))
 
 (def mock-index-metadata
   "An index metadata to qualify and isolate mock indexes"
@@ -296,14 +320,16 @@
 (def mock-index
   "A mock index for testing low level indexing functions.
   Coincides with what the index-metadata system would create for the mock-embedding-model."
-  (with-redefs [semantic.index/model-table-suffix mock-table-suffix]
+  (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix mock-table-suffix]
     (-> (semantic.index/default-index mock-embedding-model)
         (semantic.index-metadata/qualify-index mock-index-metadata))))
 
-;; NOTE: opts are currently unused in following mock implementations
-(defmethod semantic.embedding/get-embedding        "mock" [_ text & {:as _opts}] (get-mock-embedding text))
-(defmethod semantic.embedding/get-embeddings-batch "mock" [_ texts & {:as _opts}] (get-mock-embeddings-batch texts))
-(defmethod semantic.embedding/pull-model           "mock" [_])
+(embeddings.provider/register-provider!
+ "mock"
+ {:embedding-spi-version embeddings.provider/embedding-spi-version
+  :readiness             (constantly {:ready? true})
+  :resolve-model         embeddings.provider/legacy-resolved-model
+  :embed-texts           (fn [_ texts _opts] (get-mock-embeddings-batch texts))})
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn query-index [search-context]
@@ -360,9 +386,14 @@
     Closeable
     (close [_] (close-fn o))))
 
-(defn open-temp-index! ^Closeable [& {:keys [index] :or {index mock-index}}]
+(defn open-temp-index! ^Closeable [& {:keys [index hnsw?] :or {index mock-index hnsw? true}}]
   (closeable
-   (do (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) index {:force-reset? true})
+   ;; The HNSW index is only built when configured for the :hnsw strategy. Pin the strategy during creation
+   ;; so the table deterministically has (`:hnsw? true`, the default) or lacks (`:hnsw? false`) the index,
+   ;; regardless of the ambient setting.
+   (do (mt/with-dynamic-fn-redefs [semantic.settings/semantic-search-vector-strategy
+                                   (constantly (if hnsw? :hnsw :brute-force))]
+         (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) index {:force-reset? true}))
        index)
    (fn cleanup-temp-index-table! [{:keys [table-name] :as index}]
      (try
@@ -504,6 +535,27 @@
         (-> result first vals first))
       (catch Exception _ false))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn table-indexes
+  "Map of index name -> pg_indexes indexdef for `table-name`; empty when the table does not exist."
+  [table-name]
+  (into {}
+        (map (juxt :indexname :indexdef))
+        (jdbc/execute! (semantic.env/get-pgvector-datasource!)
+                       ["SELECT indexname, indexdef FROM pg_indexes WHERE tablename = ?" (name table-name)]
+                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn index-relfilenode
+  "Return the on-disk relfilenode for the index named `index-name`, or nil if it doesn't exist. A stable
+  relfilenode across two `CREATE INDEX IF NOT EXISTS` calls proves the second did no work: had it dropped,
+  rebuilt, or reindexed, the relfilenode would change."
+  [index-name]
+  (-> (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
+                         ["SELECT relfilenode FROM pg_class WHERE relname = ?" (name index-name)]
+                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+      :relfilenode))
+
 (defn get-metadata-rows [pgvector index-metadata]
   (jdbc/execute! pgvector
                  (-> {:select [:*]
@@ -527,7 +579,7 @@
     (semantic.index/drop-index-table! pgvector {:table-name table_name})
     (semantic.dlq/drop-dlq-table-if-exists! pgvector index-metadata index-id))
   (semantic.index-metadata/drop-tables-if-exists! pgvector index-metadata)
-  (semantic.db.migration/drop-migration-table! pgvector))
+  (semantic.db.migration/drop-migration-table! index-metadata pgvector))
 
 (defn get-table-names [pgvector]
   (->> ["select table_name from information_schema.tables"]
@@ -545,7 +597,10 @@
   "Create an index table and return a closeable that will drop it when closed."
   ^Closeable [pgvector index]
   (closeable
-   (semantic.index/create-index-table-if-not-exists! pgvector index)
+   (do (semantic.index/create-index-table-if-not-exists! pgvector index)
+       ;; Build the HNSW index for tests; it is otherwise only created when configured for the :hnsw strategy.
+       (semantic.index/create-hnsw-index-if-not-exists! pgvector index)
+       index)
    (fn [_] (semantic.index/drop-index-table! pgvector index))))
 
 (defn- decode-column
@@ -579,7 +634,7 @@
                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     (or (:count result) 0)))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn full-index
   "Query the full index table and return all documents with decoded embeddings.
   Not used in tests, but useful for debugging."

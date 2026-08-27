@@ -1,5 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,13 +9,12 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer/PageContainer";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
-import * as Urls from "metabase/lib/urls";
 import {
   FieldSection,
   FieldValuesModal,
@@ -26,6 +25,7 @@ import {
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { useParams } from "metabase/router";
 import {
   Box,
   Button,
@@ -36,13 +36,11 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { trackMetadataChange } from "../../analytics";
-import {
-  RouterTablePicker,
-  SyncOptionsModal,
-  TableSection,
-} from "../../components";
+import { RouterTablePicker, TableSection } from "../../components";
+import type { TreePath } from "../../components/TablePicker/types";
 import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
@@ -51,20 +49,16 @@ import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
 import { parseRouteParams } from "./utils";
 
-interface Props {
-  children?: ReactNode;
-  params: RouteParams;
-}
-
-export const DataModel = ({ children, params }: Props) => {
+export const DataModel = () => {
   return (
     <SelectionProvider>
-      <DataModelContent params={params}>{children}</DataModelContent>
+      <DataModelContent />
     </SelectionProvider>
   );
 };
 
-function DataModelContent({ params }: Props) {
+function DataModelContent() {
+  const params = useParams<RouteParams>();
   const {
     hasSelectedItems,
     hasOnlyOneTableSelected,
@@ -90,8 +84,6 @@ function DataModelContent({ params }: Props) {
   );
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
-  const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
-    useDisclosure();
   const [
     isFieldValuesModalOpen,
     { close: closeFieldValuesModal, open: openFieldValuesModal },
@@ -113,7 +105,7 @@ function DataModelContent({ params }: Props) {
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
 
-  const hasLibraryFeature = useHasTokenFeature("data_studio");
+  const hasLibraryFeature = useHasTokenFeature("library");
   const { data: libraryCollection, isLoading: isLoadingLibrary } =
     PLUGIN_LIBRARY.useGetLibraryCollectionQuery(undefined, {
       skip: !hasLibraryFeature,
@@ -126,9 +118,9 @@ function DataModelContent({ params }: Props) {
   const hasLibrary = hasLibraryCollection(libraryCollection);
   const canPublish = hasLibraryFeature;
 
-  const [onUpdateCallback, setOnUpdateCallback] = useState<(() => void) | null>(
-    null,
-  );
+  const [onUpdateCallback, setOnUpdateCallback] = useState<
+    ((path?: TreePath) => void) | null
+  >(null);
 
   useWindowEvent(
     "keydown",
@@ -138,7 +130,7 @@ function DataModelContent({ params }: Props) {
         activeElement instanceof HTMLElement &&
         (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
           activeElement.isContentEditable);
-      const isModalOpen = isSyncModalOpen || isFieldValuesModalOpen;
+      const isModalOpen = isFieldValuesModalOpen;
 
       if (event.key === "Escape" && !isInputFocused && !isModalOpen) {
         event.stopPropagation();
@@ -177,7 +169,7 @@ function DataModelContent({ params }: Props) {
 
   return (
     <Flex
-      bg="background-secondary"
+      bg="background_page-secondary"
       data-testid="data-model"
       h="100%"
       style={{ overflow: "auto" }}
@@ -191,7 +183,7 @@ function DataModelContent({ params }: Props) {
       >
         <PaneHeader
           breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Data structure`}</DataStudioBreadcrumbs>
+            <DataStudioBreadcrumbs>{t`Tables`}</DataStudioBreadcrumbs>
           }
         />
         <RouterTablePicker
@@ -251,7 +243,7 @@ function DataModelContent({ params }: Props) {
               w="100%"
               data-testid="table-section-header"
               py="lg"
-              bg="background-secondary"
+              bg="background_page-secondary"
               className={S.header}
               px="lg"
             >
@@ -286,7 +278,13 @@ function DataModelContent({ params }: Props) {
                     activeTab={activeTab}
                     canPublish={canPublish}
                     hasLibrary={hasLibrary}
-                    onSyncOptionsClick={openSyncModal}
+                    onUpdate={() =>
+                      onUpdateCallback?.({
+                        databaseId: table.db_id,
+                        schemaName: table.schema,
+                        tableId: table.id,
+                      })
+                    }
                   />
                 )}
               </LoadingAndErrorWrapper>
@@ -312,7 +310,7 @@ function DataModelContent({ params }: Props) {
               w="100%"
               data-testid="field-section-header"
               p="lg"
-              bg="background-secondary"
+              bg="background_page-secondary"
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
@@ -380,14 +378,6 @@ function DataModelContent({ params }: Props) {
           </Box>
         )}
       </>
-
-      {table && (
-        <SyncOptionsModal
-          isOpen={isSyncModalOpen}
-          tableIds={[table.id]}
-          onClose={closeSyncModal}
-        />
-      )}
 
       {fieldId && (
         <FieldValuesModal

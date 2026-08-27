@@ -1,22 +1,15 @@
 import type { ChangeEvent, MouseEvent } from "react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { getTimelineName } from "metabase/lib/timelines";
+import { getTimelineName } from "metabase/common/utils/timelines";
+import { Box, Checkbox, Ellipsified, Flex, Icon } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import EventCard from "../EventCard";
 
-import {
-  CardCheckbox,
-  CardContent,
-  CardHeader,
-  CardIcon,
-  CardLabel,
-  CardRoot,
-} from "./TimelineCard.styled";
+import S from "./TimelineCard.module.css";
 
 export interface TimelineCardProps {
   timeline: Timeline;
@@ -31,7 +24,7 @@ export interface TimelineCardProps {
   onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
 }
 
-const TimelineCard = ({
+const TimelineCardInner = ({
   timeline,
   isDefault,
   visibleEventIds = [],
@@ -45,7 +38,11 @@ const TimelineCard = ({
 }: TimelineCardProps): JSX.Element => {
   const events = getEvents(timeline.events);
   const isEventSelected = events.some((e) => selectedEventIds.includes(e.id));
-  const [isExpanded, setIsExpanded] = useState(isDefault || isEventSelected);
+  const hasSelection = selectedEventIds.length > 0;
+  const prevHasSelectionRef = useRef(hasSelection);
+  const [isExpanded, setIsExpanded] = useState(
+    hasSelection ? isEventSelected : Boolean(isDefault),
+  );
 
   const anyEventVisible = useMemo(
     () => events.some((event) => visibleEventIds.includes(event.id)),
@@ -79,32 +76,52 @@ const TimelineCard = ({
   );
 
   useEffect(() => {
-    if (isEventSelected) {
+    const prevHasSelection = prevHasSelectionRef.current;
+    prevHasSelectionRef.current = hasSelection;
+
+    if (hasSelection) {
       setIsExpanded(isEventSelected);
+    } else if (prevHasSelection) {
+      setIsExpanded(Boolean(isDefault));
     }
-  }, [isEventSelected, selectedEventIds]);
+  }, [hasSelection, isEventSelected, isDefault, selectedEventIds]);
 
   return (
-    <CardRoot>
-      <CardHeader
+    <Box className={S.root}>
+      <Flex
+        className={S.header}
+        align="center"
         onClick={handleHeaderClick}
         aria-label={t`Timeline card header`}
       >
-        <CardCheckbox
+        <Checkbox
           checked={anyEventVisible}
           indeterminate={anyEventVisible && !allEventsVisible}
           onClick={handleCheckboxClick}
           onChange={handleChangeVisibility}
         />
-        <CardLabel>
-          <Ellipsified tooltipProps={{ w: "auto" }}>
-            {getTimelineName(timeline)}
-          </Ellipsified>
-        </CardLabel>
-        <CardIcon name={isExpanded ? "chevronup" : "chevrondown"} />
-      </CardHeader>
+
+        <Ellipsified
+          flex="1 1 auto"
+          miw={0}
+          mx="sm"
+          c="text-primary"
+          fz="md"
+          fw="bold"
+          lh="1.5rem"
+          tooltipProps={{ w: "auto" }}
+        >
+          {getTimelineName(timeline)}
+        </Ellipsified>
+        <Icon
+          name={isExpanded ? "chevronup" : "chevrondown"}
+          c="text-secondary"
+          flex="0 0 auto"
+          size={18}
+        />
+      </Flex>
       {isExpanded && (
-        <CardContent>
+        <Box my="md" mx="-lg">
           {events.map((event) => (
             <EventCard
               key={event.id}
@@ -120,9 +137,9 @@ const TimelineCard = ({
               onHideTimelineEvents={onHideTimelineEvents}
             />
           ))}
-        </CardContent>
+        </Box>
       )}
-    </CardRoot>
+    </Box>
   );
 };
 
@@ -133,5 +150,4 @@ const getEvents = (events: TimelineEvent[] = []) => {
     .value();
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default memo(TimelineCard);
+export const TimelineCard = memo(TimelineCardInner);

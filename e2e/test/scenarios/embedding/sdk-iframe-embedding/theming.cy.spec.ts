@@ -1,4 +1,7 @@
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 const { H } = cy;
@@ -66,6 +69,65 @@ describe("scenarios > embedding > sdk iframe embedding > theming", () => {
         "color",
         DARK_THEME.colors.brand,
       );
+    });
+  });
+
+  it("should measure table column widths based on themed font size", () => {
+    const SMALL_FONT_THEME = {
+      components: {
+        table: { cell: { fontSize: "10px" } },
+      },
+    } as const satisfies MetabaseTheme;
+
+    let defaultColumnWidth: number;
+
+    cy.log("1. load with default theme and measure column width");
+
+    const defaultFrame = H.loadSdkIframeEmbedTestPage({
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: { questionId: ORDERS_QUESTION_ID },
+        },
+      ],
+    });
+
+    cy.wait("@getCardQuery");
+
+    defaultFrame.within(() => {
+      cy.findAllByTestId("header-cell")
+        .filter(":contains('Product ID')")
+        .first()
+        .then(($el) => {
+          defaultColumnWidth = $el[0].getBoundingClientRect().width;
+          expect(defaultColumnWidth).to.be.greaterThan(0);
+        });
+    });
+
+    cy.log("2. load with smaller font theme and verify column is narrower");
+
+    const themedFrame = H.loadSdkIframeEmbedTestPage({
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: { questionId: ORDERS_QUESTION_ID },
+        },
+      ],
+      metabaseConfig: {
+        theme: SMALL_FONT_THEME,
+      },
+    });
+
+    cy.wait("@getCardQuery");
+
+    themedFrame.within(() => {
+      cy.findAllByTestId("header-cell")
+        .filter(":contains('Product ID')")
+        .first()
+        .then(($el) => {
+          const themedColumnWidth = $el[0].getBoundingClientRect().width;
+          expect(themedColumnWidth).to.be.lessThan(defaultColumnWidth);
+        });
     });
   });
 

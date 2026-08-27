@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils";
+import { useTokenRefreshUntil } from "metabase/api/utils/use-token-refresh";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import {
   Box,
@@ -15,12 +15,22 @@ import {
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-export const MetabotSettingUpModal = ({
+import { METABASE_MANAGED_AI_FEATURE } from "../../constants";
+
+export function MetabotSettingUpModal({
+  isSavingConfiguration = false,
   onClose,
   opened,
-}: Pick<ModalProps, "opened" | "onClose">) => {
-  useTokenRefreshUntil("metabot-v3", { intervalMs: 1000, skip: !opened });
-  const isSettingUp = !hasPremiumFeature("metabot_v3");
+}: Pick<ModalProps, "opened" | "onClose"> & {
+  isSavingConfiguration?: boolean;
+}) {
+  const isSettingUp =
+    isSavingConfiguration || !hasPremiumFeature(METABASE_MANAGED_AI_FEATURE);
+
+  useTokenRefreshUntil(METABASE_MANAGED_AI_FEATURE, {
+    intervalMs: 1000,
+    skip: !opened || !isSettingUp,
+  });
 
   return (
     <Modal
@@ -47,13 +57,13 @@ export const MetabotSettingUpModal = ({
               pos="absolute"
               right={0}
               wrap="nowrap"
-              bg="white"
+              bg="core-white"
               fz={0}
               p="sm"
               ta="center"
               style={{
                 borderRadius: "100%",
-                boxShadow: `0 1px 6px 0 var(--mb-color-shadow)`,
+                boxShadow: `0 1px 6px 0 var(--mb-color-shadow-default)`,
               }}
             >
               <Loader size="xs" ml={1} mt={1} />
@@ -89,4 +99,4 @@ export const MetabotSettingUpModal = ({
       </Stack>
     </Modal>
   );
-};
+}

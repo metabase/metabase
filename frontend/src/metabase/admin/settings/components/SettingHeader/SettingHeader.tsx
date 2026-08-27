@@ -10,7 +10,7 @@ export const SettingHeader = ({
   titleProps,
   ...boxProps
 }: {
-  id: string;
+  id?: string;
   description?: string | React.ReactNode;
   title?: string;
   titleProps?: TextProps;

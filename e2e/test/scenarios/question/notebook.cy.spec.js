@@ -1,7 +1,10 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_USER_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -10,6 +13,34 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+  });
+
+  it("keeps the notebook editor mounted when opening the question info sidebar (UXW-224)", () => {
+    H.activateToken("pro-self-hosted");
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    H.openNotebook();
+
+    // The Visualize button only renders while the notebook editor is mounted.
+    cy.location("pathname").should("include", "/notebook");
+    cy.button("Visualize").should("be.visible");
+
+    // Open the question info sidesheet — the notebook should stay mounted behind it.
+    H.questionInfoButton().click();
+    H.sidesheet().should("be.visible");
+    cy.button("Visualize").should("be.visible");
+
+    // Closing the sidesheet should leave us in notebook mode with the editor intact.
+    H.sidesheet().findByLabelText("Close").click();
+    cy.location("pathname").should("include", "/notebook");
+    cy.button("Visualize").should("be.visible");
+
+    // Open Edit settings from the actions menu — same expectation.
+    // ("Edit settings" only appears with granular caching enabled, so this
+    // step requires EE.)
+    H.openQuestionActions("Edit settings");
+    H.sidesheet().should("be.visible");
+    cy.location("pathname").should("include", "/notebook");
+    cy.button("Visualize").should("be.visible");
   });
 
   it("shouldn't offer to save the question when there were no changes (metabase#13470)", () => {
@@ -269,97 +300,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  describe("arithmetic (metabase#13175, metabase#18094)", () => {
-    beforeEach(() => {
-      // This is required because TableInteractive won't render columns
-      // that don't fit into the viewport
-      cy.viewport(1400, 1000);
-      H.openOrdersTable({ mode: "notebook" });
-    });
-
-    it("should work on custom column with `case`", () => {
-      cy.findByLabelText("Custom column").click();
-
-      H.enterCustomColumnDetails({
-        formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
-      });
-
-      H.CustomExpressionEditor.nameInput()
-        .focus()
-        .type("Example", { delay: 100 });
-
-      cy.button("Done").should("not.be.disabled").click();
-
-      H.getNotebookStep("expression").contains("Example").should("exist");
-
-      H.visualize();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Example");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Big");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Small");
-    });
-
-    it("should work on custom filter", () => {
-      H.filter({ mode: "notebook" });
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Custom Expression").click();
-
-      H.enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains(/^redundant input/i).should("not.exist");
-
-      cy.button("Done").should("not.be.disabled").click();
-
-      H.visualize();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Showing 97 rows");
-    });
-
-    const CASES = {
-      CountIf: ["CountIf(([Subtotal] + [Tax]) > 10)", "18,760"],
-      SumIf: ["SumIf([Subtotal], ([Subtotal] + [Tax] > 20))", "1,447,850.28"],
-      SumIf2: [
-        'SumIf([Total], [Created At] > "2016-01-01") + SumIf([Subtotal], [Created At] > "2016-01-01")',
-        "2,958,809.85",
-      ],
-      CountIf2: [
-        'CountIf([Created At] > "2016-01-01") + CountIf([Created At] > "2016-01-01")',
-        "37,520",
-      ],
-    };
-
-    Object.entries(CASES).forEach(([filter, formula]) => {
-      const [expression, result] = formula;
-
-      it(`should work on custom aggregation with ${filter}`, () => {
-        H.summarize({ mode: "notebook" });
-        H.popover().contains("Custom Expression").click();
-
-        H.enterCustomColumnDetails({ formula: expression });
-
-        H.CustomExpressionEditor.nameInput().click().type(filter);
-
-        H.popover().within(() => {
-          cy.contains(/^expected closing parenthesis/i).should("not.exist");
-          cy.contains(/^redundant input/i).should("not.exist");
-        });
-        cy.button("Done").should("not.be.disabled").click();
-
-        cy.findByTestId("aggregate-step").contains(filter).should("exist");
-
-        H.visualize();
-
-        cy.findByTestId("qb-header").contains(filter);
-        cy.findByTestId("query-builder-main").contains(result);
-      });
-    });
-  });
-
   // intentional simplification of "Select none" to quickly
   // fix users' pain caused by the inability to unselect all columns
   it("select no columns select the first one", () => {
@@ -570,29 +510,15 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should properly render previews (metabase#28726, metabase#29959, metabase#40608)", () => {
+  it("should properly render previews (metabase#28726, metabase#29959)", () => {
     H.startNewQuestion();
-
-    cy.log(
-      "Preview should not be possible without the source data (metabase#40608)",
-    );
-    H.getNotebookStep("data")
-      .as("dataStep")
-      .within(() => {
-        cy.findByPlaceholderText("Search for tables and more...").should(
-          "exist",
-        );
-        cy.icon("play").should("not.be.visible");
-      });
 
     H.miniPicker().within(() => {
       cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
-    cy.get("@dataStep").icon("play").should("be.visible");
-    H.getNotebookStep("filter").icon("play").should("not.be.visible");
-    H.getNotebookStep("summarize").icon("play").should("not.be.visible");
+    H.getNotebookStep("data").as("dataStep");
 
     cy.get("@dataStep").within(() => {
       cy.icon("play").click();
@@ -622,6 +548,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       H.moveDnDKitElementByAlias("@dragElement", {
         horizontal,
         vertical,
+        useMouseEvents: true,
       });
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("notebook-cell-item")
@@ -662,6 +589,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         H.moveDnDKitElementByAlias("@dragElement", {
           horizontal,
           vertical,
+          useMouseEvents: true,
         });
       });
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -771,80 +699,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       H.CustomExpressionEditor.value().should("equal", "[Revenue]");
     });
   });
-
-  it(
-    "should be possible to sort by metric (metabase#8283,metabase#42392)",
-    { tags: "@skip" },
-    () => {
-      H.createQuestion(
-        {
-          name: "Revenue",
-          description: "Sum of orders subtotal",
-          type: "metric",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-          },
-        },
-        {
-          wrapId: true,
-          idAlias: "metricId",
-        },
-      );
-
-      cy.get("@metricId").then((metricId) => {
-        const questionDetails = {
-          query: {
-            "source-table": `card__${metricId}`,
-            aggregation: ["metric", metricId],
-          },
-        };
-
-        H.createQuestion(questionDetails, { visitQuestion: true });
-
-        H.openNotebook();
-
-        cy.findByText("Pick a column to group by").click();
-        cy.findByText("Created At").click();
-        cy.findByText("Sort").click();
-
-        // Sorts ascending by default
-        // Revenue appears twice, but it's the only integer column to order by
-        H.popover().icon("int").click();
-
-        // Let's make sure it's possible to sort descending as well
-        cy.icon("arrow_up").click();
-
-        cy.icon("arrow_down").parent().contains("Revenue");
-
-        H.visualize();
-        // Visualization will render line chart by default. Switch to the table.
-        cy.icon("table2").click();
-
-        cy.findAllByRole("grid").as("table");
-        cy.get("@table")
-          .first()
-          .as("tableHeader")
-          .within(() => {
-            cy.get("[data-testid=cell-data]")
-              .eq(1)
-              .invoke("text")
-              .should("eq", "Revenue");
-          });
-
-        // eslint-disable-next-line metabase/no-unsafe-element-filtering
-        cy.get("@table")
-          .last()
-          .as("tableBody")
-          .within(() => {
-            cy.get("[data-testid=cell-data]")
-              .eq(1)
-              .invoke("text")
-              .should("eq", "50,072.98");
-          });
-      });
-    },
-  );
 
   it("should open only one bucketing popover at a time (metabase#45036)", () => {
     H.visitQuestionAdhoc(
@@ -1067,7 +921,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   it("Correctly translates aggregations", () => {
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
-      locale: "de",
+      locale: "en-ZZ",
     });
 
     H.openTable({
@@ -1075,13 +929,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       mode: "notebook",
     });
 
-    cy.findByRole("button", { name: "Zusammenfassen" }).click();
+    cy.findByRole("button", { name: "[zz] Summarize" }).click();
     H.popover().within(() => {
-      cy.findByText("Durchschnitt von...").click();
+      cy.findByText("[zz] Average of ...").click();
       cy.findByText("Subtotal").click();
     });
 
-    cy.findAllByText("Durchschnitt von Subtotal").should("exist");
+    cy.findAllByText("[zz] Average of Subtotal").should("exist");
     cy.findAllByText("Average of Subtotal").should("not.exist");
 
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
@@ -1098,7 +952,16 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.get("@questionId").then((PRODUCT_QUESTION_ID) => {
       cy.findByRole("button", { name: /Editor/ }).click();
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
       cy.findByRole("button", { name: /Visualization/ }).click();
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products`,
+      );
 
       cy.go("back");
       cy.location("pathname").should(
@@ -1118,8 +981,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         `/question/${PRODUCT_QUESTION_ID}-products/notebook`,
       );
 
+      cy.log("Turn this question into a model");
       H.openQuestionActions("Turn into a model");
-
       H.modal()
         .findByRole("button", { name: "Turn this into a model" })
         .click();
@@ -1131,8 +994,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.openQuestionActions("Edit metadata");
       H.waitForLoaderToBeRemoved();
-      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/columns`,
+      );
 
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+      H.datasetEditBar().should("not.exist");
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products`,
@@ -1140,6 +1008,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       H.openQuestionActions("Edit metadata");
       H.waitForLoaderToBeRemoved();
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/columns`,
+      );
 
       cy.go("back");
       cy.location("pathname").should(
@@ -1148,66 +1020,81 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
 
       cy.go("back");
-
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       );
 
       H.datasetEditBar().findByText("Query").click();
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/query`,
+      );
 
       cy.go("back");
-
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       );
 
       cy.go("forward");
-
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products/query`,
       );
 
       H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+      H.datasetEditBar().should("not.exist");
 
       cy.go("back");
-
       cy.location("pathname").should(
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products/query`,
       );
 
-      cy.go("back");
-
       // This should work, but doesn't (metabase#55486)
+      // cy.go("back");
       // cy.location("pathname").should(
       //   "equal",
       //   `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       // );
 
-      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+      H.datasetEditBar()
+        .findByRole("button", { name: "Cancel" })
+        .should("be.visible")
+        .click();
+      H.datasetEditBar().should("not.exist");
 
-      cy.findAllByTestId("row-id-cell")
+      const PRODUCT_ROW_ID = "1";
+      cy.findByTestId("table-body")
+        .find("[data-column-id='ID']")
         .first()
-        .findByRole("button", { hidden: true })
-        .click({ force: true });
+        .should("be.visible")
+        .and("have.text", PRODUCT_ROW_ID)
+        .click();
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/${PRODUCT_ROW_ID}`,
+      );
 
-      // Cannot navigate back and forth to details modal (metabase#55487)
-      // cy.go("back");
+      cy.log("Navigate back and forth to details modal (metabase#55487)");
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
 
-      // cy.location("pathname").should(
-      //   "equal",
-      //   `/model/${PRODUCT_QUESTION_ID}-products`,
-      // );
+      cy.go("forward");
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/${PRODUCT_ROW_ID}`,
+      );
 
-      // cy.go("forward");
-
-      // cy.location("pathname").should(
-      //   "equal",
-      //   `/model/${PRODUCT_QUESTION_ID}-products/1`,
-      // );
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
 
       /**
        * foreign key relation orders should work, but it consistently fails in CI
@@ -1218,13 +1105,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       // cy.location("pathname").should("contain", "/question");
       // cy.findByTestId("filter-pill").should("contain.text", "Product ID is 1");
-
-      cy.go("back");
-
-      cy.location("pathname").should(
-        "equal",
-        `/model/${PRODUCT_QUESTION_ID}-products`,
-      );
 
       H.openQuestionActions("Turn back to saved question");
 

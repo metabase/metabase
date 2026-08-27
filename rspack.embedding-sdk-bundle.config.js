@@ -8,6 +8,9 @@ const BundleAnalyzerPlugin =
 const prefixwrap = require("postcss-prefixwrap");
 
 const mainConfig = require("./rspack.main.config");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
 const { resolve } = require("path");
 const path = require("path");
 
@@ -23,18 +26,22 @@ const {
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
+const {
   EXTERNAL_DEPENDENCIES,
 } = require("./frontend/build/embedding-sdk/constants/external-dependencies");
-const {
-  CopyJsFromTmpDirectoryPlugin,
-} = require("./frontend/build/shared/rspack/copy-js-from-tmp-directory-plugin");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
+const {
   SDK_BUNDLE_PATH,
   SDK_BUNDLE_FILENAME,
+  SDK_BUNDLE_BOOTSTRAP_FILENAME,
 } = require("./frontend/build/embedding-sdk/constants/sdk-bundle");
 const {
   getBuildInfoValues,
@@ -43,16 +50,24 @@ const {
   getSdkBundleVersionFromVersionProperties,
 } = require("./frontend/build/embedding-sdk/lib/get-sdk-bundle-version-from-version-properties");
 
-const SDK_BUNDLE_SRC_PATH =
-  __dirname + "/frontend/src/embedding-sdk-bundle";
+const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
-const TMP_BUILD_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
+const SDK_OUTPUT_PATH = path.join(BUILD_PATH, SDK_BUNDLE_PATH);
 
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 
 const shouldAnalyzeBundles = process.env.SHOULD_ANALYZE_BUNDLES === "true";
+
+// Name prefix for all chunked-entry output files (runtime, split chunks, entry)
+const CHUNKED_PREFIX = "embedding-sdk-chunk";
+
+// The chunked entry's own chunks: the entry, its runtime and the pieces
+// splitChunks carves out of them. Excludes the legacy monolithic entry, the
+// bootstrap, and every on-demand chunk.
+const isChunkedEntryChunk = (chunk) =>
+  (chunk.name || "").startsWith(CHUNKED_PREFIX);
 
 const config = {
   ...mainConfig,
@@ -61,14 +76,41 @@ const config = {
 
   context: SDK_BUNDLE_SRC_PATH,
 
-  entry: "./index.ts",
+  entry: {
+    // Legacy monolithic bundle — backward compatible for old NPM packages.
+    // Must remain a single file (splitChunks excludes it).
+    "embedding-sdk": "./index.ts",
+    // Bootstrap — tiny script that starts auth early and loads chunks
+    "embedding-sdk-bootstrap": "./embedding-sdk-bootstrap.ts",
+    // Chunked entry — same code as monolithic, but splitChunks splits it into
+    // multiple smaller files for faster V8 parse+eval via parallel streaming.
+    "embedding-sdk-chunked": {
+      import: "./index.ts",
+      runtime: "embedding-sdk-chunk-runtime",
+    },
+  },
 
   output: {
-    // we must use a different directory than the main rspack config,
-    // otherwise the path conflicts and the output bundle will not appear.
-    path: TMP_BUILD_PATH,
+    path: SDK_OUTPUT_PATH,
     publicPath: "",
-    filename: SDK_BUNDLE_FILENAME,
+    // Unique name prevents self["webpackChunk"] collisions when the SDK
+    // is loaded on a page that already has another webpack/rspack runtime
+    // (e.g. the main Metabase app, Cypress test runner, customer's own app).
+    uniqueName: "embedding_sdk_bundle",
+    // Split chunks and bootstrap go into chunks/ subfolder.
+    // The legacy monolithic bundle goes into legacy/.
+    // The backend serves chunks/ with far-future immutable cache headers.
+    chunkFilename: "chunks/[id].[contenthash:8].js",
+    filename: (pathData) => {
+      switch (pathData.chunk?.name) {
+        case "embedding-sdk-bootstrap":
+          return `chunks/${SDK_BUNDLE_BOOTSTRAP_FILENAME}`;
+        case "embedding-sdk":
+          return `legacy/${SDK_BUNDLE_FILENAME}`;
+        default:
+          return "chunks/[name].[contenthash:8].js";
+      }
+    },
   },
 
   devtool: IS_DEV_MODE ? mainConfig.devtool : false,
@@ -78,6 +120,7 @@ const config = {
 
   module: {
     rules: [
+      SIDE_EFFECT_FREE_RULE,
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
@@ -162,12 +205,78 @@ const config = {
 
   externals: EXTERNAL_DEPENDENCIES,
 
-  optimization: OPTIMIZATION_CONFIG,
+  optimization: {
+    ...OPTIMIZATION_CONFIG,
+
+    // Scope hoisting: merges ES modules into fewer closures, reducing parse overhead
+    concatenateModules: true,
+
+    // Avoid wrapping entry points in an IIFE — removes unnecessary function wrapper
+    avoidEntryIife: true,
+
+    // Override splitChunks: split the chunked entry into multiple pieces,
+    // but leave the legacy monolithic entry as a single file.
+    splitChunks: {
+      chunks: (chunk) => {
+        // Split chunks that belong to the chunked entry (the entry itself +
+        // its runtime), plus the on-demand (async) chunks, so modules shared
+        // by several async chunks are deduplicated instead of copied into
+        // each one. Never split the legacy monolithic "embedding-sdk" or the
+        // bootstrap.
+        return isChunkedEntryChunk(chunk) || !chunk.canBeInitial();
+      },
+      // Keep chunk count low (~10-12) so HTTP/1.1 clients (no reverse proxy)
+      // can load them in 1-2 waves (6 connections per domain).
+      // maxSize is the primary lever — larger maxSize = fewer chunks.
+      maxInitialRequests: 10,
+      // Same ceiling for an on-demand load. Not binding today (a chart needs
+      // its own chunk plus a shared one); it caps how far the split can go if
+      // more lazy entry points are added, at the cost of duplicating again.
+      maxAsyncRequests: 10,
+      maxSize: 5_000_000,
+      minSize: 100_000,
+      // The groups below are told apart by their `chunks` filter, not by size
+      // or test, so the priorities are what keep a module out of the wrong one.
+      cacheGroups: {
+        vendors: {
+          test: /[\\/]node_modules[\\/]/,
+          // Only the chunked entry's own (initial) chunks: giving async
+          // modules the "vendor" name would merge them into the eagerly
+          // loaded vendor chunks and grow the initial payload.
+          chunks: isChunkedEntryChunk,
+          // Use a fixed name prefix so rspack merges vendors into a few chunks
+          // (governed by maxSize) rather than one-per-package.
+          name: "vendor",
+          priority: 10,
+          reuseExistingChunk: true,
+        },
+        // Modules shared by two or more async chunks (e.g. echarts, pulled in
+        // by every lazily loaded chart) move into a shared async chunk that
+        // loads alongside whichever chart chunk needs it first.
+        asyncCommons: {
+          chunks: "async",
+          minChunks: 2,
+          // Deliberately below the 100 kb the other groups inherit. echarts
+          // clears that bar on its own, but the viz code the chart chunks
+          // share does not, and would stay duplicated across all of them.
+          minSize: 20_000,
+          // No fixed name: rspack derives one per set of sharing chunks, so a
+          // table or scalar chart does not end up loading echarts.
+          priority: 5,
+          reuseExistingChunk: true,
+        },
+        default: {
+          minChunks: 1,
+          chunks: isChunkedEntryChunk,
+          priority: 0,
+          reuseExistingChunk: true,
+        },
+      },
+    },
+  },
 
   plugins: [
-    new rspack.optimize.LimitChunkCountPlugin({
-      maxChunks: 1,
-    }),
+    ...bundleStatsPlugins("stats-embedding-sdk.json"),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others
     // https://github.com/remarkjs/remark/discussions/903
@@ -180,18 +289,140 @@ const config = {
         version: getSdkBundleVersionFromVersionProperties(),
       }),
     }),
+    // Inject chunk manifest and hashes into the bootstrap so it can load
+    // all the right files with cache-busting URLs.
+    {
+      name: "inject-bundle-manifest",
+      apply(compiler) {
+        compiler.hooks.compilation.tap(
+          "inject-bundle-manifest",
+          (compilation) => {
+            compilation.hooks.processAssets.tap(
+              {
+                name: "inject-bundle-manifest",
+                // Must run BEFORE minification (OPTIMIZE_SIZE = 8000).
+                // The placeholder "__SDK_CHUNK_MANIFEST__" is a string literal
+                // that the minifier constant-folds ("str".chunks → void 0)
+                // if we don't replace it first.
+                stage: rspack.Compilation.PROCESS_ASSETS_STAGE_OPTIMIZE,
+              },
+              (assets) => {
+                const bootstrapKey = `chunks/${SDK_BUNDLE_BOOTSTRAP_FILENAME}`;
+                const bootstrapAsset = assets[bootstrapKey];
+                if (!bootstrapAsset) {
+                  return;
+                }
+
+                // Collect ALL chunk files for the chunked entry using the
+                // compilation's entrypoint API. This includes split chunks
+                // with any name (e.g. default-vendors-*), not just those
+                // matching CHUNKED_PREFIX.
+                const entrypoint = compilation.entrypoints.get(
+                  "embedding-sdk-chunked",
+                );
+                const chunkFiles = [];
+                if (entrypoint) {
+                  for (const chunk of entrypoint.chunks) {
+                    for (const file of chunk.files) {
+                      // In hot mode rspack may attach HMR payload files
+                      // (*.hot-update.js) to chunk.files. Those are not
+                      // executable bundle chunks and must never be loaded
+                      // by the bootstrap manifest.
+                      if (
+                        file.endsWith(".js") &&
+                        !file.includes(".hot-update.")
+                      ) {
+                        chunkFiles.push(file);
+                      }
+                    }
+                  }
+                }
+                chunkFiles.sort();
+
+                // Separate the runtime from the rest — runtime gets inlined
+                // into the bootstrap so we avoid an extra sequential request.
+                const runtimeFile =
+                  chunkFiles.find((f) =>
+                    /^chunks\/embedding-sdk-chunk-runtime\.[^/]+\.js$/.test(f),
+                  ) || chunkFiles.find((f) => f.includes("chunk-runtime"));
+                const otherFiles = chunkFiles.filter((f) => f !== runtimeFile);
+
+                // Paths are relative to /app/ (the bootstrap's baseUrl).
+                // Chunk asset keys already include "chunks/" prefix, so
+                // prepend "embedding-sdk/" to get the full route path.
+                const manifest = {
+                  chunks: otherFiles.map((f) => `embedding-sdk/${f}`),
+                };
+
+                // Read the runtime chunk source to inline it in the bootstrap
+                const runtimeSource =
+                  runtimeFile && assets[runtimeFile]
+                    ? assets[runtimeFile].source()
+                    : "";
+
+                if (!runtimeSource) {
+                  console.warn(
+                    "inject-bundle-manifest: runtime chunk not found, bootstrap will not work",
+                  );
+                }
+
+                let newSource = bootstrapAsset.source();
+
+                // Inject the chunk manifest as JSON
+                newSource = newSource.replace(
+                  /"__SDK_CHUNK_MANIFEST__"/g,
+                  JSON.stringify(manifest),
+                );
+
+                // Inline the runtime chunk source at the end of the bootstrap.
+                // The runtime sets up __webpack_require__ and the chunk registry
+                // that other chunks register into when they load.
+                if (runtimeSource) {
+                  newSource +=
+                    "\n// --- Inlined runtime chunk ---\n" + runtimeSource;
+                }
+
+                compilation.updateAsset(
+                  bootstrapKey,
+                  new rspack.sources.RawSource(newSource),
+                );
+              },
+            );
+          },
+        );
+      },
+    },
+    // Stop `.hot-update` files for the sdk being written to the disk. HMR doesn't work for the SDK bundle anyway
+    {
+      name: "drop-sdk-hot-update-assets",
+      apply(compiler) {
+        compiler.hooks.compilation.tap(
+          "drop-sdk-hot-update-assets",
+          (compilation) => {
+            compilation.hooks.processAssets.tap(
+              {
+                name: "drop-sdk-hot-update-assets",
+                // Run last, after the HMR plugin has emitted the deltas.
+                stage: rspack.Compilation.PROCESS_ASSETS_STAGE_REPORT,
+              },
+              (assets) => {
+                for (const name of Object.keys(assets)) {
+                  if (name.includes(".hot-update.")) {
+                    compilation.deleteAsset(name);
+                  }
+                }
+              },
+            );
+          },
+        );
+      },
+    },
     shouldAnalyzeBundles &&
       new BundleAnalyzerPlugin({
         analyzerMode: "static",
         reportFilename: BUILD_PATH + "/dist/report.html",
       }),
-    CopyJsFromTmpDirectoryPlugin({
-      fileName: SDK_BUNDLE_FILENAME,
-      tmpPath: TMP_BUILD_PATH,
-      outputPath: path.join(BUILD_PATH, SDK_BUNDLE_PATH),
-      copySourceMap: true,
-      cleanupInDevMode: false,
-    }),
+    ...COMPRESSION_CONFIG,
   ].filter(Boolean),
 };
 
@@ -201,9 +432,6 @@ config.resolve.alias = {
   "sdk-iframe-embedding-ee-plugins":
     ENTERPRISE_SRC_PATH + "/sdk-iframe-embedding-plugins",
   "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
-
-  // Allows importing side effects that applies only to the SDK.
-  "sdk-specific-imports": SDK_BUNDLE_SRC_PATH + "/lib/sdk-specific-imports.ts",
 };
 
 if (config.cache) {

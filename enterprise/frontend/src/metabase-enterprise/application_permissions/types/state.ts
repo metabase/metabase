@@ -1,4 +1,4 @@
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 
 import type { ApplicationPermissions } from "./permissions";
 
@@ -7,6 +7,7 @@ export interface ApplicationPermissionsState extends State {
     applicationPermissionsPlugin: {
       applicationPermissions: ApplicationPermissions;
       originalApplicationPermissions: ApplicationPermissions;
+      applicationPermissionsRevision: number | null;
     };
   };
 }

@@ -6,6 +6,7 @@ const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 describe("scenarios > admin > datamodel > segments", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     cy.viewport(1400, 860);
   });
@@ -42,6 +43,60 @@ describe("scenarios > admin > datamodel > segments", () => {
         .should("be.visible");
       cy.button("Learn how to create segments").should("be.visible");
     });
+
+    it("should track segment_created event when saving a new segment", () => {
+      cy.intercept("POST", "/api/segment").as("createSegment");
+      cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
+        "getTable",
+      );
+      cy.visit("/admin/datamodel/segments");
+
+      cy.button("New segment").click();
+
+      cy.log("verify segment_create_started event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "segment_create_started",
+        triggered_from: "admin_datamodel_segments",
+      });
+
+      cy.findByTestId("segment-editor").findByText("Select a table").click();
+      H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
+      cy.wait("@getTable");
+
+      cy.log("add filter");
+      // The "Add filters" button stays disabled until the segment query is built
+      // from the fully-loaded table + foreign-key metadata (after `getTable`).
+      // Gate the click on it being enabled so we don't click the dead button.
+      cy.findByTestId("segment-editor")
+        .findByRole("button", { name: /Add filters to narrow your answer/ })
+        .should("be.enabled")
+        .click();
+      H.popover().findByText("Total").click();
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("100");
+        cy.button("Add filter").click();
+      });
+
+      cy.log("fill in segment name");
+      cy.findByLabelText(/Name your segment/i).type("High Value Orders");
+
+      cy.log("fill in description");
+      cy.findByLabelText(/Describe your segment/i).type(
+        "Orders with high values",
+      );
+
+      cy.log("save segment");
+      cy.button(/Save/).click();
+      cy.wait("@createSegment");
+
+      cy.log("verify segment_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "segment_created",
+        triggered_from: "admin_datamodel_segments",
+        result: "success",
+      });
+    });
   });
 
   describe("with segment", () => {
@@ -52,7 +107,6 @@ describe("scenarios > admin > datamodel > segments", () => {
       H.createSegment({
         name: SEGMENT_NAME,
         description: "All orders with a total under $100.",
-        table_id: ORDERS_ID,
         definition: {
           type: "query",
           database: 1,
@@ -297,7 +351,6 @@ describe("scenarios > admin > datamodel > segments", () => {
       H.createSegment({
         name: "Foo",
         description: "All orders with a total under $100.",
-        table_id: ORDERS_ID,
         definition: {
           type: "query",
           database: 1,
@@ -342,7 +395,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     const SEGMENT_IN_PEOPLE = "Segment in People table (Unpublished)";
 
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       cy.log("set up remote sync");
       H.setupGitSync();
       H.configureGit("read-only");
@@ -354,7 +407,6 @@ describe("scenarios > admin > datamodel > segments", () => {
       H.createSegment({
         name: SEGMENT_IN_ORDERS,
         description: "Hey oh",
-        table_id: ORDERS_ID,
         definition: {
           type: "query",
           database: 1,
@@ -368,7 +420,6 @@ describe("scenarios > admin > datamodel > segments", () => {
       H.createSegment({
         name: SEGMENT_IN_PEOPLE,
         description: "This is a segment in the PEOPLE table",
-        table_id: PEOPLE_ID,
         definition: {
           type: "query",
           database: 1,

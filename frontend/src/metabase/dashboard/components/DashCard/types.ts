@@ -1,7 +1,5 @@
 import type { Card, DashboardCard } from "metabase-types/api";
 
-export type CardSlownessStatus = "usually-fast" | "usually-slow" | boolean;
-
 export type NavigateToNewCardFromDashboardOpts = {
   nextCard: Card;
   previousCard: Card;

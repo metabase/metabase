@@ -13,9 +13,10 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
-   [metabase.collections-rest.settings :as collections-rest.settings]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.documents.core :as documents]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -26,13 +27,13 @@
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -172,9 +173,21 @@
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal/tenant collections we translate the name to user's locale
     (->> (for [collection collections]
-           (dissoc collection ::collection.root/is-root?))
+           (-> collection
+               (dissoc ::collection.root/is-root?)
+               collection/maybe-mark-collection-as-library-root))
          collection/personal-collections-with-ui-details
          collection/maybe-localize-tenant-collection-names)))
+
+(defn- prep-collection-for-export
+  "Given a collection, tweaks it to be ready for returning to the FE.
+
+  These same functions were called in several places in this namespace, so they're combined here to keep it DRY."
+  [coll]
+  (-> coll
+      collection/personal-collection-with-ui-details
+      collection/maybe-localize-tenant-collection-name
+      collection/maybe-mark-collection-as-library-root))
 
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
@@ -192,8 +205,7 @@
   ```"
   [colls]
   (->> colls
-       (map (comp collection/maybe-localize-tenant-collection-name
-                  collection/personal-collection-with-ui-details))
+       (map prep-collection-for-export)
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
@@ -271,8 +283,8 @@
                                                (t2/reducible-query {:select-distinct [:collection_id :type]
                                                                     :from            [:report_card]
                                                                     :where           [:= :archived false]}))
-                                       ;; Tables in collections are an EE feature (data-studio)
-                                       (when (premium-features/has-feature? :data-studio)
+                                       ;; Tables in collections are an EE feature (library)
+                                       (when (premium-features/has-feature? :library)
                                          {:table (->> (t2/query {:select-distinct [:collection_id]
                                                                  :from :metabase_table
                                                                  :where [:and
@@ -280,9 +292,7 @@
                                                                          [:= :archived_at nil]]})
                                                       (map :collection_id)
                                                       (into #{}))}))
-            collections-with-details (map (comp collection/maybe-localize-tenant-collection-name
-                                                collection/personal-collection-with-ui-details)
-                                          collections)]
+            collections-with-details (map prep-collection-for-export collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -293,6 +303,7 @@
   #{"card"                              ; SavedQuestion
     "dataset"                           ; Model. TODO : update this
     "document"
+    "exploration"
     "metric"
     "collection"
     "dashboard"
@@ -301,7 +312,8 @@
     "no_models"
     "timeline"
     "table"
-    "transform"})
+    "transform"
+    "measure"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -325,12 +337,14 @@
 (def ^:private CollectionChildrenOptions
   [:map
    [:show-dashboard-questions?     :boolean]
+   [:show-exploration-documents?   :boolean]
    [:collection-type {:optional true} [:maybe CollectionType]]
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
+   [:search-text  {:optional true} [:maybe :string]]
    [:sort-info    {:optional true} [:maybe [:map
                                             [:sort-column (into [:enum {:error/message "sort-columns"}]
                                                                 (map normalize-sort-choice)
@@ -369,6 +383,26 @@
     1 = 2"
   [:= [:inline 1] [:inline 2]])
 
+(defn- escape-like-pattern
+  "Escape characters that have special meaning in a SQL LIKE pattern so they match literally."
+  ^String [^String s]
+  (str/replace s #"([\\%_])" "\\\\$1"))
+
+(defn- search-text-clause
+  "Match every token in `search-text` against an item's name or last editor's first or last name."
+  [search-text]
+  (when-not (str/blank? search-text)
+    (when-let [tokens (->> (str/split (u/lower-case-en (str/trim search-text)) #"\s+")
+                           (filter seq)
+                           not-empty)]
+      (into [:and]
+            (for [token tokens
+                  :let  [pattern (str "%" (escape-like-pattern token) "%")]]
+              [:or
+               [:like [:lower :name] pattern]
+               [:like [:lower :last_edit_first_name] pattern]
+               [:like [:lower :last_edit_last_name] pattern]])))))
+
 (defn- pinned-state->clause
   ([pinned-state]
    (pinned-state->clause pinned-state :collection_position))
@@ -398,24 +432,27 @@
 
 (defmethod ^:private post-process-collection-children :document
   [_ _ collection rows]
-  (t2/hydrate (for [document rows]
-                (-> (t2/instance :model/Document document)
-                    (assoc :location (or (when collection
-                                           (collection/children-location collection))
-                                         "/"))
-                    (dissoc :namespace)
-                    (update :archived api/bit->boolean)
-                    (update :archived_directly api/bit->boolean)))
-              :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))
+  (documents/with-content-gate-cache
+    (map #(dissoc % :exploration_id)
+         (t2/hydrate (for [document rows]
+                       (-> (t2/instance :model/Document document)
+                           (assoc :location (or (when collection
+                                                  (collection/children-location collection))
+                                                "/"))
+                           (dissoc :namespace)
+                           (update :archived api/bit->boolean)
+                           (update :archived_directly api/bit->boolean)))
+                     :can_write :can_restore :can_delete :is_remote_synced :collection_namespace))))
 
 (defmethod collection-children-query :document
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [archived? pinned-state show-exploration-documents?]}]
   (-> {:select [:document.id
                 :document.name
                 :document.collection_id
                 :document.collection_position
                 :document.archived
                 :document.archived_directly
+                :document.exploration_id
                 [:u.id :last_edit_user]
                 [:u.email :last_edit_email]
                 [:u.first_name :last_edit_first_name]
@@ -429,13 +466,94 @@
                                    [:= :r.model (h2x/literal "Document")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where [:and
+               (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
                   [:= :document.collection_id (:id collection)]
                   [:= :document.archived_directly false]])
-               [:= :document.archived (boolean archived?)]]}
+               [:= :document.archived (boolean archived?)]
+               ;; Hide exploration-attached documents - similar to Dashboard Questions, they're not visible in the
+               ;; collection, but only through the Exploration they're in. Callers that want them (e.g. the
+               ;; Trash view, embedding SDK) pass show-exploration-documents? to opt in.
+               (when-not show-exploration-documents?
+                 [:= :document.exploration_id nil])]}
       (sql.helpers/where (pinned-state->clause pinned-state :document.collection_position))))
+
+(defmethod ^:private post-process-collection-children :exploration
+  [_ _ collection rows]
+  (t2/hydrate (for [exploration rows]
+                (-> (t2/instance :model/Exploration exploration)
+                    (assoc :location (or (when collection
+                                           (collection/children-location collection))
+                                         "/"))
+                    (update :archived api/bit->boolean)
+                    (update :archived_directly api/bit->boolean)))
+              :can_write :can_restore :can_delete))
+
+(def ^:private exploration-recent-edits-subquery
+  ;; Per-exploration latest edit, unioning the Exploration's own metadata revisions with
+  ;; revisions of its Summary Document. `rn = 1` picks the winner.
+  ;; The Exploration row is mostly inert post-creation; the meat of editing happens in
+  ;; the attached Document, so "Last edited" must reflect both sources.
+  ^:allow-subquery
+  {:select [:exploration_id
+            :timestamp
+            :user_id
+            [[:over [[:row_number] ^:allow-subquery {:partition-by [:exploration_id]
+                                                     :order-by     [[:timestamp :desc]]}]] :rn]]
+   :from   [[^:allow-subquery {:union-all
+                               [^:allow-subquery
+                                {:select [[:r.model_id :exploration_id]
+                                          [:r.timestamp :timestamp]
+                                          [:r.user_id   :user_id]]
+                                 :from   [[:revision :r]]
+                                 :where  [:and
+                                          [:= :r.model (h2x/literal "Exploration")]
+                                          [:= :r.most_recent true]]}
+                                ^:allow-subquery
+                                {:select [[:d.exploration_id :exploration_id]
+                                          [:r.timestamp      :timestamp]
+                                          [:r.user_id        :user_id]]
+                                 :from   [[:revision :r]]
+                                 :join   [[:document :d] [:= :d.id :r.model_id]]
+                                 :where  [:and
+                                          [:= :r.model (h2x/literal "Document")]
+                                          [:= :r.most_recent true]
+                                          [:not= :d.exploration_id nil]]}]}
+             :all_edits]]})
+
+(defmethod collection-children-query :exploration
+  [_ collection {:keys [archived? pinned-state]}]
+  (-> {:select [:exploration.id
+                :exploration.name
+                :exploration.description
+                :exploration.entity_id
+                :exploration.collection_id
+                :exploration.collection_position
+                :exploration.archived
+                :exploration.archived_directly
+                [:u.id         :last_edit_user]
+                [:u.email      :last_edit_email]
+                [:u.first_name :last_edit_first_name]
+                [:u.last_name  :last_edit_last_name]
+                [:ere.timestamp :last_edit_timestamp]
+                [(h2x/literal "exploration") :model]]
+       :from [[:exploration :exploration]]
+       :left-join [[exploration-recent-edits-subquery :ere]
+                   [:and
+                    [:= :ere.exploration_id :exploration.id]
+                    [:= :ere.rn [:inline 1]]]
+                   [:core_user :u] [:= :u.id :ere.user_id]]
+       :where [:and
+               (collection/visible-collection-filter-clause :exploration.collection_id {:cte-name :visible_collection_ids})
+               (if (collection/is-trash? collection)
+                 [:= :exploration.archived_directly true]
+                 [:and
+                  [:= :exploration.collection_id (:id collection)]
+                  [:= :exploration.archived_directly false]])
+               [:= :exploration.archived (boolean archived?)]]}
+      (sql.helpers/where (pinned-state->clause pinned-state :exploration.collection_position))))
 
 (defmethod collection-children-query :pulse
   [_ collection {:keys [archived? pinned-state]}]
@@ -487,7 +605,7 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  (let [enabled-types (transforms.util/enabled-source-types-for-user)]
+  (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
      :from   [[:transform :transform]]
      :where  [:and
@@ -585,40 +703,39 @@
 
 (defn- post-process-card-row [row]
   (-> (t2/instance :model/Card row)
+      ;; `card-query` filters `[:= :c.document_id nil]` unconditionally, so every row here is known
+      ;; not to belong to a Document. Say so on the instance: `mi/can-write?` consults `document_id`
+      ;; (a Document-scoped Card is gated by its Document), and an instance that merely *omits* the
+      ;; column makes it resolve one from the primary key instead — one extra query per row, on a
+      ;; listing that renders a full page of them. Stamping it rather than selecting it keeps the
+      ;; column out of `all-select-columns`, which every model's union arm would otherwise have to
+      ;; pad, and out of the response body.
+      (assoc :document_id nil)
       (update :dataset_query (:out lib-be/transform-query))
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
 
 (defn- post-process-card-row-after-hydrate [row]
-  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload :namespace)
+  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload :namespace
+              ;; internal-only: stamped in `post-process-card-row` for the permission check
+              :document_id)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (queries/fully-parameterized? row))))
 
 (defn- post-process-card-like
-  [{:keys [include-can-run-adhoc-query hydrate-based-on-upload]} rows]
-  (let [threshold              (collections-rest.settings/can-run-adhoc-query-check-threshold)
-        card-count             (count rows)
-        skip-adhoc-hydration?  (u/prog1 (and include-can-run-adhoc-query
-                                             (pos? threshold)
-                                             (> card-count threshold))
-                                 (when <>
-                                   (log/warnf "Skipping can_run_adhoc_query hydration for %d cards (threshold: %d)"
-                                              card-count threshold)))
-        hydration              (cond-> [:can_write
-                                        :can_restore
-                                        :can_delete
-                                        :dashboard_count
-                                        :is_remote_synced
-                                        :collection_namespace
-                                        [:dashboard :moderation_status]]
-                                 (and include-can-run-adhoc-query
-                                      (not skip-adhoc-hydration?)) (conj :can_run_adhoc_query))]
+  [{:keys [hydrate-based-on-upload]} rows]
+  (let [hydration [:can_write
+                   :can_restore
+                   :can_delete
+                   :dashboard_count
+                   :is_remote_synced
+                   :collection_namespace
+                   [:dashboard :moderation_status]]]
     (as-> (map post-process-card-row rows) $
       (apply t2/hydrate $ hydration)
       (cond-> $
-        hydrate-based-on-upload upload/model-hydrate-based-on-upload
-        skip-adhoc-hydration?   (->> (map #(assoc % :can_run_adhoc_query true))))
+        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
       (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
@@ -682,32 +799,10 @@
       (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
-(defn annotate-dashboards
-  "Populates 'here' on dashboards (`below` is impossible since they can't contain collections)"
-  [dashboards]
-  (let [dashboard-ids (into #{} (map :id dashboards))
-        dashboards-containing-cards (->> (when (seq dashboard-ids)
-                                           (t2/query {:select-distinct [:dashboard_id]
-                                                      :from :report_card
-                                                      :where [:and
-                                                              [:= :archived false]
-                                                              [:in :dashboard_id dashboard-ids]
-                                                              [:exists {:select 1
-                                                                        :from :report_dashboardcard
-                                                                        :where [:and
-                                                                                [:= :report_dashboardcard.card_id :report_card.id]
-                                                                                [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
-                                         (map :dashboard_id)
-                                         (into #{}))]
-    (for [dashboard dashboards]
-      (cond-> dashboard
-        (contains? dashboards-containing-cards (:id dashboard))
-        (assoc :here #{:card})))))
-
 (defmethod post-process-collection-children :dashboard
   [_ _options parent-collection rows]
   (->> rows
-       (annotate-dashboards)
+       collections/annotate-dashboards
        (map (partial post-process-dashboard parent-collection))))
 
 (defenterprise snippets-collection-filter-clause
@@ -741,6 +836,10 @@
             [:= :id (collection/trash-collection-id)]]
            [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
         (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
+        ;; never show tenant-specific root collections as children of another collection
+        [:or
+         [:= :type nil]
+         [:not= :type collection/tenant-specific-root-collection-type]]
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work
@@ -770,23 +869,39 @@
 
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:t.id
-            [:t.id :table_id]
-            [:t.display_name :name]
-            :t.description
-            :t.collection_id
-            [:t.db_id :database_id]
-            [[:!= :t.archived_at nil] :archived]
-            [(h2x/literal "table") :model]]
-   :from   [[:metabase_table :t]]
-   :where  [:and
-            [:= :t.is_published true]
-            (poison-when-pinned-clause pinned-state)
-            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-            [:= :t.collection_id (:id collection)]
-            (if archived?
-              [:!= :t.archived_at nil]
-              [:= :t.archived_at nil])]})
+  (let [user-info {:user-id       api/*current-user-id*
+                   :is-superuser? api/*is-superuser?*}
+        published-clause (perms/published-table-visible-clause :t.id user-info)
+        queryable-clause (cond-> [:or
+                                  [:in :t.id (perms/visible-table-filter-select
+                                              :id
+                                              user-info
+                                              {:perms/view-data      :unrestricted
+                                               :perms/create-queries :query-builder})]]
+                           published-clause (conj [:and
+                                                   [:in :t.id (perms/visible-table-filter-select
+                                                               :id
+                                                               user-info
+                                                               {:perms/view-data :unrestricted})]
+                                                   published-clause]))]
+    {:select [:t.id
+              [:t.id :table_id]
+              [:t.display_name :name]
+              :t.description
+              :t.collection_id
+              [:t.db_id :database_id]
+              [[:!= :t.archived_at nil] :archived]
+              [(h2x/literal "table") :model]]
+     :from   [[:metabase_table :t]]
+     :where  [:and
+              [:= :t.is_published true]
+              (poison-when-pinned-clause pinned-state)
+              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+              queryable-clause
+              [:= :t.collection_id (:id collection)]
+              (if archived?
+                [:!= :t.archived_at nil]
+                [:= :t.archived_at nil])]}))
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
@@ -814,9 +929,9 @@
                                                          [:= :archived false]
                                                          [:in :collection_id descendant-collection-ids]]})))
 
-        ;; Tables in collections are an EE feature (data-studio)
+        ;; Tables in collections are an EE feature (library)
         collections-containing-tables
-        (if (premium-features/has-feature? :data-studio)
+        (if (premium-features/has-feature? :library)
           (->> (when (seq descendant-collection-ids)
                  (t2/query {:select-distinct [:collection_id]
                             :from :metabase_table
@@ -886,6 +1001,7 @@
         (-> (t2/instance :model/Collection row)
             collection/maybe-localize-system-collection-name
             collection/maybe-localize-tenant-collection-name
+            collection/maybe-mark-collection-as-library-root
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
@@ -895,8 +1011,12 @@
             update-personal-collection)))))
 
 (defmethod post-process-collection-children :table
-  [_ _ _collection rows]
-  (map #(update % :archived api/bit->boolean) rows))
+  [_ {:keys [models]} _collection rows]
+  (let [tables (map #(-> (t2/instance :model/Table %)
+                         (update :archived api/bit->boolean)) rows)]
+    (if (contains? models :measure)
+      (t2/hydrate tables :measures)
+      tables)))
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
 (mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
@@ -922,17 +1042,18 @@
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
-    :collection :model/Collection
-    :card       :model/Card
-    :dataset    :model/Card
-    :metric     :model/Card
-    :dashboard  :model/Dashboard
-    :document   :model/Document
-    :pulse      :model/Pulse
-    :snippet    :model/NativeQuerySnippet
-    :table      :model/Table
-    :timeline   :model/Timeline
-    :transform  :model/Transform))
+    :collection  :model/Collection
+    :card        :model/Card
+    :dataset     :model/Card
+    :metric      :model/Card
+    :dashboard   :model/Dashboard
+    :document    :model/Document
+    :exploration :model/Exploration
+    :pulse       :model/Pulse
+    :snippet     :model/NativeQuerySnippet
+    :table       :model/Table
+    :timeline    :model/Timeline
+    :transform   :model/Transform))
 
 (defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -1067,69 +1188,89 @@
          ;; whatever
          [[:id :asc]]]))
 
+(defn- total-count
+  "The size of the whole result set `rows` is a page of, read off the `total_count` window column.
+
+  A page past the end of the result set comes back empty and so carries no window column; in that case read the count
+  off the first row of the same query without its pagination."
+  [rows rows-query offset]
+  (or (some-> rows first :total_count)
+      (when (pos? (or offset 0))
+        (some-> (mdb/query (assoc rows-query :limit 1)) first :total_count))
+      0))
+
 (defn- collection-children*
-  [collection models {:keys [sort-info archived?] :as options}]
-  (let [sql-order   (children-sort-clause sort-info (mdb/db-type))
-        models      (sort (map keyword models))
-        queries     (for [model models
-                          :let  [query              (collection-children-query model collection options)
-                                 select-clause-type (some
-                                                     (fn [k]
-                                                       (when (get query k)
-                                                         k))
-                                                     [:select :select-distinct])]]
-                      (-> query
-                          (update select-clause-type add-missing-columns all-select-columns)
-                          (update select-clause-type add-model-ranking model)))
-        viz-config  {:include-archived-items :all
-                     :archive-operation-id nil
-                     :permission-level (if archived? :write :read)
-                     :include-trash-collection? archived?}
-        rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                     :select   [:* [[:over [[:count :*] {} :total_count]]]]
-                     :from     [[{:union-all queries} :dummy_alias]]
-                     :order-by sql-order}
-        limit       (request/limit)
-        offset      (request/offset)
+  [collection models {:keys [sort-info archived? search-text] :as options}]
+  (let [sql-order     (children-sort-clause sort-info (mdb/db-type))
+        models        (sort (map keyword models))
+        queries       (for [model models
+                            :let  [query              (collection-children-query model collection options)
+                                   select-clause-type (some
+                                                       (fn [k]
+                                                         (when (get query k)
+                                                           k))
+                                                       [:select :select-distinct])]]
+                        (-> query
+                            (update select-clause-type add-missing-columns all-select-columns)
+                            (update select-clause-type add-model-ranking model)))
+        viz-config    {:include-archived-items    :all
+                       :archive-operation-id      nil
+                       :permission-level          (if archived? :write :read)
+                       :include-trash-collection? archived?}
+        search-clause (search-text-clause search-text)
+        rows-query    (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
+                               :select   [:* [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
+                               :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
+                               :order-by sql-order}
+                        search-clause
+                        (sql.helpers/where search-clause))
+        limit         (request/limit)
+        offset        (request/offset)
         ;; We didn't implement collection pagination for snippets namespace for root/items
         ;; Rip out the limit for now and put it back in when we want it
-        limit-query (if (or
-                         (nil? limit)
-                         (nil? offset)
-                         (= (:collection-namespace options) "snippets"))
-                      rows-query
-                      (assoc rows-query
-                             ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
-                             ;; :total_count
-                             :limit  (if (zero? limit) 1 limit)
-                             :offset offset))
-        rows        (mdb/query limit-query)
-        res         {:total  (->> rows first :total_count)
-                     :data   (if (= limit 0)
-                               []
-                               (post-process-rows options collection rows))
-                     :models models}
-        limit-res   (assoc res
-                           :limit  (request/limit)
-                           :offset (request/offset))]
+        limit-query   (if (or
+                           (nil? limit)
+                           (nil? offset)
+                           (= (:collection-namespace options) "snippets"))
+                        rows-query
+                        (assoc rows-query
+                               ;; If limit is 0, we still execute the query with a limit of 1 so that we fetch a
+                               ;; :total_count
+                               :limit  (if (zero? limit) 1 limit)
+                               :offset offset))
+        rows          (tracing/with-span :db-app "db-app.collection-items-query" {:collection/id (:id collection)}
+                        (mdb/query limit-query))
+        res           {:total  (total-count rows rows-query offset)
+                       :data   (if (= limit 0)
+                                 []
+                                 (tracing/with-span :db-app "db-app.collection-items-post-process" {:collection/id (:id collection)}
+                                   (post-process-rows options collection rows)))
+                       :models models}
+        limit-res     (assoc res
+                             :limit  (request/limit)
+                             :offset (request/offset))]
     (if (= (:collection-namespace options) "snippets")
       res
       limit-res)))
+
+(defn- valid-collection-models
+  "Return every item model that can appear in `collection-namespace`."
+  [collection-namespace]
+  (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
+                   ;; Tables in collections are an EE feature (library)
+                   (premium-features/has-feature? :library) (conj :table))
+        :let     [toucan-model       (model-name->toucan-model model-kw)
+                  allowed-namespaces (collection/allowed-namespaces toucan-model)]
+        :when    (or (= model-kw :collection)
+                     (contains? allowed-namespaces (keyword collection-namespace)))]
+    model-kw))
 
 (mu/defn collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
-                                      ;; Tables in collections are an EE feature (data-studio)
-                                      (premium-features/has-feature? :data-studio) (conj :table))
-                           ;; only fetch models that are specified by the `model` param; or everything if it's empty
-                           :when    (or (empty? models) (contains? models model-kw))
-                           :let     [toucan-model       (model-name->toucan-model model-kw)
-                                     allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                           :when    (or (= model-kw :collection)
-                                        (contains? allowed-namespaces (keyword collection-namespace)))]
-                       model-kw)]
+  (let [valid-models (cond->> (valid-collection-models collection-namespace)
+                       (seq models) (filter models))]
     (if (seq valid-models)
       (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))
       {:total  0
@@ -1138,13 +1279,47 @@
        :offset (request/offset)
        :models valid-models})))
 
+(mu/defn- collection-filter-metadata :- [:map
+                                         [:available_models [:sequential :string]]]
+  "Return the models that have at least one visible item in `collection`. Respect the requested scope and visibility,
+  but ignore model and search filters. When present, `restrict-models` limits the candidate models. Snippets are never
+  reported: they are not a filterable type."
+  [collection                      :- collection/CollectionWithLocationAndIDOrRoot
+   restrict-models                 :- [:maybe [:set :keyword]]
+   {:keys [archived?] :as options} :- CollectionChildrenOptions]
+  (let [candidates (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
+                     (seq restrict-models) (filter restrict-models))
+        options    (-> options
+                       (dissoc :models :search-text)
+                       (assoc :collection-namespace (:namespace collection)))]
+    ;; This result is independent of search and model filters. Requesting it with every filter update
+    ;; repeats the same EXISTS probes; a separately cached request could avoid that work.
+    (if (empty? candidates)
+      {:available_models []}
+      (let [viz-config {:include-archived-items    :all
+                        :archive-operation-id      nil
+                        :permission-level          (if archived? :write :read)
+                        :include-trash-collection? archived?}
+            row        (first
+                        (mdb/query
+                         {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
+                          :select (vec
+                                   (for [model candidates]
+                                     [[:exists (collection-children-query model collection options)] model]))}))]
+        {:available_models
+         (->> candidates
+              (keep (fn [model]
+                      (when (api/bit->boolean (get row model))
+                        (name model))))
+              sort
+              vec)}))))
+
 (mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      collection/personal-collection-with-ui-details
-      collection/maybe-localize-tenant-collection-name
+      prep-collection-for-export
       (t2/hydrate :parent_id
                   :effective_location
                   [:effective_ancestors :can_write]
@@ -1333,120 +1508,62 @@
 
   By default, library collections are excluded from the results; to include them, pass `?include_library=true`.
 
+  Pass `?q=` to filter items by name or last editor. Pass `?include_available_models=true` to include the models that
+  have at least one visible item in the requested scope.
+
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [_route-params
    {:keys [models archived namespace pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query include_library collection_type
-           show_dashboard_questions]} :- [:map
-                                          [:models                      {:optional true} [:maybe Models]]
-                                          [:collection_type             {:optional true} CollectionType]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
-                                          [:include_library             {:default false} [:maybe ms/BooleanValue]]
-                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+           include_library collection_type show_dashboard_questions
+           q include_available_models show_exploration_documents]} :- [:map
+                                                                       [:models                      {:optional true} [:maybe Models]]
+                                                                       [:collection_type             {:optional true} CollectionType]
+                                                                       [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:namespace                   {:optional true} [:maybe ms/NonBlankString]]
+                                                                       [:include_library             {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                                                       [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                                                       [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                                                       [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                       [:show_dashboard_questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                                                       [:q                           {:optional true} [:maybe :string]]
+                                                                       [:include_available_models    {:default false} [:maybe ms/BooleanValue]]
+                                                                       [:show_exploration_documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
-        model-kwds      (visible-model-kwds root-collection model-set)]
-    (collection-children
-     root-collection
-     {:archived?                   (boolean archived)
-      :include-can-run-adhoc-query include_can_run_adhoc_query
-      :show-dashboard-questions?   (boolean show_dashboard_questions)
-      :collection-type             collection_type
-      :include-library?            include_library
-      :models                      (if-not (contains? namespaces-holding-non-collection-types namespace)
-                                     #{:collection}
-                                     model-kwds)
-      :pinned-state                (keyword pinned_state)
-      :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
-                                    :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
-                                    ;; default to sorting official collections first, but provide the option not to
-                                    :official-collections-first? (or (nil? official_collections_first)
-                                                                     (boolean official_collections_first))}})))
+        model-kwds      (visible-model-kwds root-collection model-set)
+        restrict-models (when (or (not (contains? namespaces-holding-non-collection-types namespace))
+                                  (not (mi/can-read? root-collection)))
+                          #{:collection})
+        options         {:archived?                   (boolean archived)
+                         :show-dashboard-questions?   (boolean show_dashboard_questions)
+                         :show-exploration-documents? (boolean show_exploration_documents)
+                         :collection-type             collection_type
+                         :include-library?            include_library
+                         :models                      (if-not (contains? namespaces-holding-non-collection-types namespace)
+                                                        #{:collection}
+                                                        model-kwds)
+                         :pinned-state                (keyword pinned_state)
+                         :search-text                 q
+                         :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
+                                                       :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
+                                                       ;; default to sorting official collections first, but provide the option not to
+                                                       :official-collections-first? (or (nil? official_collections_first)
+                                                                                        (boolean official_collections_first))}}]
+    (cond-> (collection-children root-collection options)
+      include_available_models
+      (merge (collection-filter-metadata root-collection restrict-models options)))))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
-(defn- parent-or-root
-  "From a create request return either the parent collection or the root collection"
-  [{collection-id :parent_id collection-namespace :namespace}]
-  (if collection-id
-    (t2/select-one :model/Collection :id collection-id)
-    (collection/root-collection-with-ui-details collection-namespace)))
-
-(defn- write-check-collection-or-root-collection
-  "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
-  Root Collection perms."
-  [parent-coll]
-  (api/write-check parent-coll))
-
-(defn- write-check-authority-level
-  "Check that a superuser is creating this collection if they are setting the authority level."
-  [{authority-level :authority_level :as coll}]
-  (when (some? authority-level)
-    ;; make sure only admin and an EE token is present to be able to create an Official token
-    (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
-    (api/check-superuser))
-  coll)
-
-(defenterprise validate-new-tenant-collection!
-  "OSS version. Throws API exceptions if the passed collection is an invalid tenant collection, which in OSS
-  means 'any tenant collection.'"
-  metabase-enterprise.tenants.core
-  [collection]
-  (when (collection/shared-tenant-collection? collection)
-    (throw (ex-info "Cannot create tenant collection on OSS." {:status-code 400})))
-  collection)
-
-(def ^:private CreateCollectionArguments
-  "The arguments to the `POST /api/collection` endpoint, i.e. what the API needs to create a collection."
-  [:map
-   [:name            ms/NonBlankString]
-   [:description     {:optional true} [:maybe ms/NonBlankString]]
-   [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]])
-
-(def ^:private NewCollectionArguments
-  "What we use internally to actually create a collection, i.e. what `t2/insert!` needs to create a collection."
-  (-> CreateCollectionArguments
-      (malli.util/dissoc :parent_id)
-      (malli.util/assoc :location [:maybe ms/NonBlankString])
-      (malli.util/assoc :namespace [:maybe [:or :keyword ms/NonBlankString]])
-      (malli.util/assoc :is_remote_synced [:maybe :boolean])
-      (malli.util/optional-keys [:location])
-      (malli.util/closed-schema)))
-
-(mu/defn- apply-defaults-to-collection :- NewCollectionArguments
-  "Converts `CreateCollectionArguments` into `NewCollectionArguments` - i.e. translates what the API gets into what
-  toucan needs to create a collection."
-  [coll-data :- CreateCollectionArguments]
-  (let [parent-coll (parent-or-root coll-data)]
-    (write-check-collection-or-root-collection parent-coll)
-    (-> (cond-> coll-data
-          (and (:namespace parent-coll)
-               (nil? (:namespace coll-data))) (assoc :namespace (:namespace parent-coll))
-          parent-coll (assoc :location (collection/children-location parent-coll)))
-        (assoc :is_remote_synced (boolean (:is_remote_synced parent-coll)))
-        (select-keys (malli.util/keys NewCollectionArguments)))))
-
-(mu/defn create-collection!
-  "Create a new collection."
-  [coll-data]
-  (u/prog1 (t2/insert-returning-instance!
-            :model/Collection
-            (-> (apply-defaults-to-collection coll-data)
-                write-check-authority-level
-                validate-new-tenant-collection!))
-    (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
-    (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*})))
+;; Create-collection business logic lives in `metabase.collections.create` so that non-REST
+;; callers (notably the agent API's MCP `create_collection` tool) can use the same entry point
+;; without crossing the module-linter's non-rest -> rest barrier. Re-exported through
+;; `metabase.collections.core` as `create-collection!`, `apply-defaults-to-collection`,
+;; `validate-new-tenant-collection!`, etc.
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1462,7 +1579,7 @@
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
-  (create-collection! body))
+  (collections/create-collection! body))
 
 (defn- maybe-send-archived-notifications!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
@@ -1493,10 +1610,8 @@
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
                                                   (collection/perms-for-moving collection-before-update new-parent)))
-
         (api/check
          (not (collection/shared-tenant-collection? new-parent)))
-
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location
                                      (collection/moving-into-remote-synced? (collection/location-path->parent-id orig-location)
@@ -1511,7 +1626,6 @@
     (collection/archive-or-unarchive-collection!
      collection-before-update
      (select-keys collection-updates [:parent_id :archived]))
-
     (maybe-send-archived-notifications! {:collection-before-update collection-before-update
                                          :collection-updates       collection-updates
                                          :actor                    @api/*current-user*})))
@@ -1603,7 +1717,7 @@
    {:keys [namespace revision groups]} :- [:map
                                            [:namespace {:optional true} [:maybe ms/NonBlankString]]
                                            [:revision  {:optional true} [:maybe ms/Int]]
-                                           [:groups    :map]]]
+                                           [:groups    ms/Map]]]
   (api/check-superuser)
   (update-graph! namespace
                  (decode-graph {:revision revision :groups groups})
@@ -1637,13 +1751,12 @@
                                                                   [:description      {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:archived         {:default false} [:maybe ms/BooleanValue]]
                                                                   [:parent_id        {:optional true} [:maybe ms/PositiveInt]]
-                                                                  [:type             {:optional true} [:maybe CollectionType]]
                                                                   [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
-     (not= (:type collection-before-update) "tenant-specific-root-collection"))
+     (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority-level) (:authority_level collection-before-update)))
@@ -1651,7 +1764,7 @@
       (api/check-403 api/*is-superuser?*))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
       (when (seq updates)
         (t2/update! :model/Collection id updates)))
     ;; if we're trying to move or archive the Collection, go ahead and do that
@@ -1676,8 +1789,8 @@
         new-children-location (:location collection)]
     (api/check-400 (:archived collection)
                    "Collection must be trashed before deletion.")
-    (api/check-400 (contains? #{:tenant-specific :shared-tenant-collections nil} (:namespace collection))
-                   "Collections in non-nil namespaces cannot be deleted.")
+    (api/check-400 (contains? #{:tenant-specific collection/shared-tenant-ns nil} (:namespace collection))
+                   "Only collections in the default or tenant namespaces can be deleted.")
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
                    "Personal collections cannot be deleted.")
@@ -1706,38 +1819,45 @@
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
-  *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models
+  *  `q` - filter items by name or last editor. Blank or whitespace-only values are ignored.
+  *  `include_available_models` - include the models that have at least one visible item in the requested scope.
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
-           include_can_run_adhoc_query
-           show_dashboard_questions]} :- [:map
-                                          [:models                      {:optional true} [:maybe Models]]
-                                          [:archived                    {:default false} [:maybe ms/BooleanValue]]
-                                          [:include_can_run_adhoc_query {:default false} [:maybe ms/BooleanValue]]
-                                          [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
-                                          [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
-                                          [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
-                                          [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
-                                          [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
+           show_dashboard_questions q include_available_models
+           show_exploration_documents]} :- [:map
+                                            [:models                      {:optional true} [:maybe Models]]
+                                            [:archived                    {:default false} [:maybe ms/BooleanValue]]
+                                            [:pinned_state                {:optional true} [:maybe (into [:enum] valid-pinned-state-values)]]
+                                            [:sort_column                 {:optional true} [:maybe (into [:enum] valid-sort-columns)]]
+                                            [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
+                                            [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
+                                            [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]
+                                            [:show_exploration_documents  {:default false} [:maybe ms/BooleanValue]]
+                                            [:q                           {:optional true} [:maybe :string]]
+                                            [:include_available_models    {:default false} [:maybe ms/BooleanValue]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
-        model-kwds (set (map keyword (u/one-or-many models)))
-        collection (api/read-check :model/Collection resolved-id)]
-    (u/prog1 (collection-children collection
-                                  {:show-dashboard-questions?   show_dashboard_questions
-                                   :models                      model-kwds
-                                   :include-library?             true
-                                   :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
-                                   :pinned-state                (keyword pinned_state)
-                                   :include-can-run-adhoc-query include_can_run_adhoc_query
-                                   :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
-                                                                 :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
-                                                                 ;; default to sorting official collections first, except for the trash.
-                                                                 :official-collections-first? (if (and (nil? official_collections_first)
-                                                                                                       (not (collection/is-trash? collection)))
-                                                                                                true
-                                                                                                (boolean official_collections_first))}})
-      (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
+        model-kwds  (set (map keyword (u/one-or-many models)))
+        collection  (api/read-check :model/Collection resolved-id)
+        options     {:show-dashboard-questions?   show_dashboard_questions
+                     :show-exploration-documents? show_exploration_documents
+                     :models                      model-kwds
+                     :include-library?            true
+                     :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
+                     :pinned-state                (keyword pinned_state)
+                     :search-text                 q
+                     :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
+                                                   :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
+                                                   ;; default to sorting official collections first, except for the trash.
+                                                   :official-collections-first? (if (and (nil? official_collections_first)
+                                                                                         (not (collection/is-trash? collection)))
+                                                                                  true
+                                                                                  (boolean official_collections_first))}}
+        children    (cond-> (collection-children collection options)
+                      include_available_models
+                      (merge (collection-filter-metadata collection nil options)))]
+    (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*})
+    children))

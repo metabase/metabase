@@ -6,10 +6,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -284,7 +284,7 @@
             (lib.walk/walk-clauses
              query
              (fn [query _path-type _stage-or-join-path clause]
-               (lib.util.match/match-lite clause
+               (match/match-one clause
                  [:field opts id]
                  (let [col (lib.metadata/field query id)]
                    [:field (merge (select-keys col [:base-type]) opts) (:name col)])

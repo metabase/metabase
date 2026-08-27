@@ -5,17 +5,29 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [metabase.config.core :as config]
-   [metabase.embedding.settings :as embed.settings]
+   [metabase.server.instance :as server.instance]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [stencil.core :as stencil]))
 
+(defn- header->directive
+  [csp-header directive]
+  (-> csp-header
+      (str/split #"; *")
+      (as-> xs (filter #(str/starts-with? % (str directive " ")) xs))
+      first))
+
 (defn- csp-directive
   [directive]
   (-> (mw.security/security-headers)
       (get "Content-Security-Policy")
+      (header->directive directive)))
+
+(defn- csp-directive-from-response
+  [response directive]
+  (-> (get-in response [:headers "Content-Security-Policy"])
       (str/split #"; *")
       (as-> xs (filter #(str/starts-with? % (str directive " ")) xs))
       first))
@@ -79,10 +91,171 @@
           (is (= (str "ALLOW-FROM " (first embedding-app-origins))
                  (x-frame-options-header))))))))
 
+(defn- headers-for-uri
+  "Run the security-headers middleware for a request to `uri` and return its headers."
+  [uri]
+  (let [handler (mw.security/add-security-headers
+                 (fn [_request respond _raise] (respond {:status 200 :headers {} :body "ok"})))]
+    (:headers (handler {:uri uri :headers {}} identity identity))))
+
+(defn- frame-ancestors-for [uri]
+  (->> (str/split (get (headers-for-uri uri) "Content-Security-Policy") #"; *")
+       (filter #(str/starts-with? % "frame-ancestors "))
+       first))
+
+(deftest data-app-frame-ancestors-test
+  (testing "the internal data-app iframe is framable only by the same-origin host"
+    (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/apps/sales")))
+    (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/apps/sales/sub/route")))
+    (is (= "SAMEORIGIN" (get (headers-for-uri "/embed/apps/sales") "X-Frame-Options"))))
+  (testing "other /embed and /public pages keep open framing (unchanged)"
+    (doseq [uri ["/embed/dashboard/abc" "/public/question/abc"]]
+      (is (= "frame-ancestors *" (frame-ancestors-for uri)))
+      (is (nil? (get (headers-for-uri uri) "X-Frame-Options")))))
+  (testing "the top-level /apps page itself is not framable"
+    (mt/with-temporary-setting-values [enable-embedding-interactive false]
+      (is (= "frame-ancestors 'none'" (frame-ancestors-for "/apps/sales")))
+      (is (= "DENY" (get (headers-for-uri "/apps/sales") "X-Frame-Options"))))))
+
+(defn- csp-directive-for [uri directive]
+  (->> (str/split (get (headers-for-uri uri) "Content-Security-Policy") #"; *")
+       (filter #(str/starts-with? % (str directive " ")))
+       first))
+
+;; `form-action` is the SOLE barrier (no JS backstop) against a hostile bundle
+;; native-submitting a HOST `<form action="/api/user">` to provision an admin — the
+;; backend takes `:form-params` before the JSON body and a normal-cookie session
+;; needs no anti-CSRF token. So on a data-app iframe document it must ALWAYS be set,
+;; and must never resolve to a value that reaches the instance origin.
+(deftest data-app-form-action-test
+  (testing "form-action is ALWAYS set on a data-app iframe document (its absence = admin provisioning)"
+    (doseq [hosts [[] ["https://api.example.com"]]]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly hosts)]
+        (is (some? (csp-directive-for "/embed/apps/sales" "form-action"))))))
+  (testing "with no allowed_hosts, native <form action> submits are blocked (client-side onSubmit still works)"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= "form-action 'none'" (csp-directive-for "/embed/apps/sales" "form-action")))
+      (is (= "form-action 'none'"
+             (csp-directive-for "/embed/apps/sales/sub/route" "form-action")))))
+  (testing "form-action mirrors the app's allowed_hosts (like connect-src)"
+    (with-redefs [mw.security/data-app-connect-src-hosts
+                  (constantly ["https://api.example.com" "https://*.trusted.test"])]
+      (is (= "form-action https://api.example.com https://*.trusted.test"
+             (csp-directive-for "/embed/apps/sales" "form-action")))))
+  (testing "other documents leave form-action unset (falls through to no restriction)"
+    (doseq [uri ["/embed/dashboard/abc" "/public/question/abc" "/apps/sales"]]
+      (is (nil? (csp-directive-for uri "form-action"))))))
+
+(deftest data-app-unsafe-eval-test
+  ;; Near-Membrane needs `eval` to run the app bundle, but it runs it inside a realm
+  ;; iframe served from `/api/apps/sandbox-host`, which carries the grant in its own
+  ;; CSP. Granting it on the data-app document too would hand `eval`/`Function` to
+  ;; anything running there — including guest code that escaped the membrane.
+  (testing "the data-app document does not get 'unsafe-eval'"
+    (with-redefs [config/is-dev? false]
+      (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/sub/route" "/apps/sales"]]
+        (is (not (str/includes? (csp-directive-for uri "script-src") "'unsafe-eval'"))
+            (str uri " should not grant 'unsafe-eval'")))))
+  (testing "and neither does any other document"
+    (with-redefs [config/is-dev? false]
+      (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "script-src")
+                              "'unsafe-eval'"))))))
+
+(deftest data-app-frame-src-test
+  (testing "a data app's frame-src is a per-app allowlist: only 'self' + its allowed_hosts"
+    ;; A global iframe host (wikipedia) is configured but must NOT leak into a data
+    ;; app's frame-src — the app can only frame what it declares.
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+        ;; Both the top page and the iframe doc: the top page's `frame-src` gates
+        ;; what the iframe below it may navigate to.
+        (doseq [uri ["/apps/sales" "/embed/apps/sales"]]
+          (let [frame-src (csp-directive-for uri "frame-src")]
+            (is (str/includes? frame-src "'self'") uri)
+            (is (str/includes? frame-src "https://example.com") uri)
+            (is (not (str/includes? frame-src "wikipedia"))
+                (str uri " must not include the instance-wide iframe hosts")))))))
+  (testing "with no allowed_hosts, a data app can only frame 'self'"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= "frame-src 'self'" (csp-directive-for "/embed/apps/sales" "frame-src")))))
+  (testing "non-data-app documents keep the instance-wide iframe hosts, not app hosts"
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+        (let [frame-src (csp-directive-for "/embed/dashboard/abc" "frame-src")]
+          (is (str/includes? frame-src "wikipedia"))
+          (is (not (str/includes? frame-src "https://example.com"))))))))
+
+(deftest data-app-instance-origin-excluded-test
+  (testing "the Metabase instance origin is dropped from a data app's allowlist even if listed"
+    (mt/with-temporary-setting-values [site-url "https://mymetabase.example"]
+      (with-redefs [mw.security/data-app-connect-src-hosts
+                    (constantly ["https://mymetabase.example" "https://api.allowed.test"])]
+        (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
+              frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
+              connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
+          (testing "the genuinely-external host survives"
+            (is (str/includes? form-action "https://api.allowed.test"))
+            (is (str/includes? frame-src "https://api.allowed.test"))
+            (is (str/includes? connect-src "https://api.allowed.test")))
+          (testing "the instance origin is filtered out (no native form/frame/fetch to Metabase)"
+            (is (not (str/includes? form-action "mymetabase.example")))
+            (is (not (str/includes? frame-src "https://mymetabase.example")))
+            (is (not (str/includes? connect-src "https://mymetabase.example")))))))))
+
+(deftest data-app-instance-origin-wildcard-excluded-test
+  (testing "a wildcard allowed_hosts entry covering the instance origin is dropped from the app allowlist"
+    ;; The instance is hosted on a subdomain that a broad wildcard would cover. Left in
+    ;; place, `form-action https://*.company.com` matches `mb.company.com`, letting a
+    ;; hostile bundle native-submit a `<form action="…/api/user">` and provision an admin.
+    (mt/with-temporary-setting-values [site-url "https://mb.company.com"]
+      (with-redefs [mw.security/data-app-connect-src-hosts
+                    (constantly ["https://*.company.com"    ; covers mb.company.com -> must be dropped
+                                 "https://*.othercdn.com"   ; unrelated wildcard  -> must survive
+                                 "https://api.allowed.test"])]
+        (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
+              frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
+              connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
+          (testing "the wildcard covering the instance origin is stripped from every directive"
+            (doseq [[directive value] {"form-action" form-action
+                                       "frame-src"   frame-src
+                                       "connect-src" connect-src}]
+              (is (not (str/includes? value "*.company.com"))
+                  (str directive " must not admit a wildcard covering the instance origin"))))
+          (testing "an unrelated wildcard and a genuinely-external host are preserved"
+            (doseq [[directive value] {"form-action" form-action
+                                       "frame-src"   frame-src
+                                       "connect-src" connect-src}]
+              (is (str/includes? value "https://*.othercdn.com")
+                  (str directive " must keep an unrelated wildcard"))
+              (is (str/includes? value "https://api.allowed.test")
+                  (str directive " must keep an external host")))))))))
+
+(deftest data-app-connect-src-test
+  (testing "a data app's allowed_hosts are added to the iframe document's connect-src"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+      (is (str/includes? (csp-directive-for "/embed/apps/sales" "connect-src")
+                         "https://api.example.com"))))
+  (testing "with no allowed_hosts, the iframe connect-src has no app hosts (same as any doc)"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+      (is (= (csp-directive-for "/embed/apps/sales" "connect-src")
+             (csp-directive-for "/embed/dashboard/abc" "connect-src")))))
+  (testing "the top-level /data-app page keeps a tight connect-src — hosts go to the iframe doc, not here"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+      (is (not (str/includes? (csp-directive-for "/apps/sales" "connect-src")
+                              "https://api.example.com")))
+      ;; ...but the top page still gets them in frame-src (it gates the iframe's nav).
+      (is (str/includes? (csp-directive-for "/apps/sales" "frame-src")
+                         "https://api.example.com"))))
+  (testing "non-data-app documents don't get app hosts in connect-src"
+    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+      (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "connect-src")
+                              "https://api.example.com"))))))
+
 (deftest nonce-test
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
     (let [nonceJSON (atom nil)
-          render-file stencil/render-file]
+          render-file (mt/original-fn #'stencil/render-file)]
+      ;; http/get hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
       (with-redefs [stencil/render-file (fn [path variables]
                                           (reset! nonceJSON (:nonceJSON variables))
                                           ;; Use index_template.html instead of index.html so the frontend doesn't
@@ -90,7 +263,7 @@
                                           ;; should be the script tags for the webpack bundles
                                           (assert (= path "frontend_client/index.html"))
                                           (render-file "frontend_client/index_template.html" variables))]
-        (let [response  (http/get (str "http://localhost:" (config/config-str :mb-jetty-port)))
+        (let [response  (http/get (str "http://localhost:" (server.instance/server-port)))
               nonce     (json/decode @nonceJSON)
               csp       (get-in response [:headers "Content-Security-Policy"])
               style-src (->> (str/split csp #"; *")
@@ -103,6 +276,73 @@
           (testing "The same nonce is in the body of the rendered page"
             (is (str/includes? (:body response) nonce))))))))
 
+(deftest data-app-inline-style-csp-test
+  (testing "Only data-app iframe responses allow inline styles"
+    (with-redefs [config/is-dev? false]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            app-response    (wrapped-handler {:uri "/"
+                                              :headers {}}
+                                             identity
+                                             identity)
+            data-response   (wrapped-handler {:uri "/embed/apps/boba"
+                                              :headers {}}
+                                             identity
+                                             identity)
+            app-style-src   (csp-directive-from-response app-response "style-src")
+            data-style-src  (csp-directive-from-response data-response "style-src")
+            data-script-src (csp-directive-from-response data-response "script-src")]
+        (is (str/includes? app-style-src "'nonce-"))
+        (is (not (str/includes? app-style-src "'unsafe-inline'")))
+        (is (str/includes? data-style-src "'unsafe-inline'"))
+        (is (not (str/includes? data-style-src "'nonce-")))
+        (is (str/includes? data-script-src "'nonce-"))
+        (is (not (str/includes? data-script-src "'unsafe-inline'")))))))
+
+;; NOTE: `unsafe-eval` was removed from the data-app iframe document (it now lives
+;; only in the sandbox-host realm's own CSP). `data-app-unsafe-eval-test` above
+;; asserts the data-app document does NOT get it; the old contradicting test that
+;; expected it here was removed.
+
+(deftest data-app-blob-img-csp-test
+  (testing "Only data-app iframe responses allow the blob: scheme in img-src"
+    (with-redefs [config/is-dev? false]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            img-src-for     (fn [uri]
+                              (-> (wrapped-handler {:uri uri :headers {}} identity identity)
+                                  (csp-directive-from-response "img-src")))]
+        (is (not (str/includes? (img-src-for "/") "blob:")))
+        (is (str/includes? (img-src-for "/embed/apps/boba") "blob:"))
+        (is (str/includes? (img-src-for "/embed/apps/boba/sub/route") "blob:"))))))
+
+;; A sandboxed data-app document must never get `img-src *`: the `img` tag can't be
+;; blocked (the SDK renders images), and `new Image()`/`<img>` under `*` would beacon
+;; the viewing user's data off-origin. It uses the restricted allowlist regardless of
+;; `csp-img-enabled`, still respecting the admin's "Allowed domains for images".
+(deftest data-app-img-src-no-wildcard-test
+  (mt/with-temporary-setting-values [csp-img-enabled false]
+    ;; Check the standalone `*` token, not the substring — a map-tile host like
+    ;; `*.tile.openstreetmap.org` legitimately contains `*`.
+    (let [wildcard? (fn [uri] (contains? (set (str/split (csp-directive-for uri "img-src") #" +")) "*"))]
+      (testing "with csp-img-enabled off, a data-app img-src drops the `*` the rest of the app gets"
+        (is (wildcard? "/embed/dashboard/abc"))
+        (is (not (wildcard? "/embed/apps/sales")) "data-app img-src must not contain the bare wildcard")
+        (let [img-src (csp-directive-for "/embed/apps/sales" "img-src")]
+          (is (str/includes? img-src "'self'"))
+          (is (str/includes? img-src "blob:")))))
+    (testing "and it still honors the admin's Allowed domains for images (csp-img-allowed-hosts)"
+      (mt/with-temporary-setting-values [csp-img-allowed-hosts "https://cdn.example.com"]
+        (is (str/includes? (csp-directive-for "/embed/apps/sales" "img-src")
+                           "https://cdn.example.com"))))
+    (testing "and the app's own allowed_hosts (mirroring connect-src/frame-src), plus 'self'"
+      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.myapp.com"])]
+        (let [img-src (csp-directive-for "/embed/apps/sales" "img-src")]
+          (is (str/includes? img-src "https://api.myapp.com"))
+          (is (str/includes? img-src "'self'")))))))
+
 (deftest ^:parallel test-parse-url
   (testing "Should parse valid urls"
     (are [url expected] (= expected
@@ -114,11 +354,22 @@
       "example.com:*"           {:protocol nil :domain "example.com" :port "*"}
       "app://localhost"         {:protocol "app" :domain "localhost" :port nil}
       "capacitor://localhost"   {:protocol "capacitor" :domain "localhost" :port nil}))
+  (testing "Should parse arbitrary schemes, not just a closed allowlist (MCP clients use e.g. vscode-webview, electron, chrome-extension)"
+    (are [url expected] (= expected
+                           (mw.security/parse-url url))
+      "electron://example.com"         {:protocol "electron" :domain "example.com" :port nil}
+      "vscode-webview://abc123"        {:protocol "vscode-webview" :domain "abc123" :port nil}
+      "chrome-extension://abc123"      {:protocol "chrome-extension" :domain "abc123" :port nil}
+      "ftp://example.com"              {:protocol "ftp" :domain "example.com" :port nil}))
   (testing "Should return nil for invalid urls"
     (are [url] (nil? (mw.security/parse-url url))
-      "ftp://example.com"
       "://example.com"
-      "example:com")))
+      "example:com"
+      ;; scheme must start with a letter (RFC 3986)
+      "1abc://example.com"
+      ;; domain may not contain characters outside hostname/IPv4/wildcard syntax
+      "http://exa mple.com"
+      "http://exa@mple.com")))
 
 (deftest ^:parallel test-parse-approved-origins
   (testing "Should not break on multiple spaces in a row"
@@ -126,7 +377,13 @@
     (is (= 2 (count (mw.security/parse-approved-origins "   example.com      example.org   ")))))
   (testing "Should filter out invalid origins without throwing"
     (is (= 1 (count (mw.security/parse-approved-origins "example.org ://example.com"))))
-    (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com"))))))
+    (is (= 1 (count (mw.security/parse-approved-origins "example.org http:/example.com")))))
+  (testing "A trailing slash or path should have no effect (#75839)"
+    (is (= [{:protocol "http" :domain "localhost" :port "6274"}]
+           (mw.security/parse-approved-origins "http://localhost:6274/")))
+    (is (= (mw.security/parse-approved-origins "http://localhost:6274")
+           (mw.security/parse-approved-origins "http://localhost:6274/")
+           (mw.security/parse-approved-origins "http://localhost:6274/some/path")))))
 
 (deftest ^:parallel test-approved-domain?
   (testing "Exact match"
@@ -189,6 +446,12 @@
       (is (mw.security/approved-origin? "https://example3.com" approved))))
   (testing "Different protocol should fail"
     (is (not (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
+  (testing "Should allow custom schemes used by MCP clients, not just a closed allowlist"
+    (is (mw.security/approved-origin? "electron://example.com" "electron://example.com"))
+    (is (mw.security/approved-origin? "chrome-extension://abc123" "chrome-extension://abc123"))
+    (is (not (mw.security/approved-origin? "electron://example.com" "app://example.com"))))
+  (testing "A trailing slash on an approved origin should have no effect (#75839)"
+    (is (mw.security/approved-origin? "http://localhost:6274" "http://localhost:6274/")))
   (testing "Origins without protocol should accept only http and https"
     (let [approved "example.com"]
       (is (mw.security/approved-origin? "http://example.com" approved))
@@ -227,90 +490,67 @@
 
 (deftest test-disable-cors-on-localhost-access-control-headers
   (testing "Should allow CORS headers for localhost when disable-cors-on-localhost is false"
-    (mt/with-temporary-setting-values [disable-cors-on-localhost false
-                                       enable-embedding-sdk false]
+    (mt/with-temporary-setting-values [disable-cors-on-localhost false]
       (is (= "http://localhost:8080" (get (mw.security/access-control-headers
                                            "http://localhost:8080"
-                                           false
                                            "")
                                           "Access-Control-Allow-Origin")))))
-  (testing "Should block CORS headers for localhost when disable-cors-on-localhost is true and embedding disabled"
-    (mt/with-temporary-setting-values [disable-cors-on-localhost true
-                                       enable-embedding-sdk false]
+  (testing "Should block CORS headers for localhost when disable-cors-on-localhost is true and no origins configured"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost true]
       (is (= nil (get (mw.security/access-control-headers
                        "http://localhost:8080"
-                       false
                        "")
                       "Access-Control-Allow-Origin"))))))
 
 (deftest test-access-control-headers
-  (mt/with-premium-features #{:embedding-sdk}
-    (testing "Should allow localhost even when enable-embedding-sdk is disabled"
-      (mt/with-temporary-setting-values [enable-embedding-sdk false
-                                         enable-embedding-simple false]
-        (is (= "http://localhost:8080" (get (mw.security/access-control-headers
-                                             "http://localhost:8080"
-                                             (embed.settings/enable-embedding-sdk)
-                                             (embed.settings/embedding-app-origins-sdk))
-                                            "Access-Control-Allow-Origin"))
-            "Localhost should always be permitted even when `enable-embedding-sdk` is `false`."))
-      (testing "Non-localhost origins should still be blocked when embedding is disabled"
-        (is (= nil (get (mw.security/access-control-headers
-                         "http://1.2.3.4:5555"
-                         false
-                         "localhost:*")
-                        "Access-Control-Allow-Origin")))))
-    (testing "Should work with embedding-app-origin"
-      (mt/with-premium-features #{:embedding-sdk}
-        (mt/with-temporary-setting-values [enable-embedding-sdk      true
-                                           embedding-app-origins-sdk "https://example.com"]
-          (is (= "https://example.com"
-                 (get (mw.security/access-control-headers "https://example.com"
-                                                          (embed.settings/enable-embedding-sdk)
-                                                          (embed.settings/embedding-app-origins-sdk))
-                      "Access-Control-Allow-Origin"))))))
-    (testing "Should set Access-Control-Max-Age to 60"
-      (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                         embedding-app-origins-sdk "https://example.com"]
-        (let [headers (mw.security/access-control-headers
-                       "https://example.com"
-                       (embed.settings/enable-embedding-sdk)
-                       (embed.settings/embedding-app-origins-sdk))]
-          (is (= "60" (get headers "Access-Control-Max-Age"))
-              "Expected Access-Control-Max-Age header to be set to 60")))))
-  (testing "CORS should be enabled when enable-embedding-simple is true"
-    (mt/with-temporary-setting-values [enable-embedding-simple true
+  (testing "Should allow localhost even when no origins are configured"
+    (is (= "http://localhost:8080" (get (mw.security/access-control-headers
+                                         "http://localhost:8080"
+                                         "")
+                                        "Access-Control-Allow-Origin"))
+        "Localhost should always be permitted even with no configured origins."))
+  (testing "Non-localhost origins should be blocked when not in approved origins"
+    (is (= nil (get (mw.security/access-control-headers
+                     "http://1.2.3.4:5555"
+                     "localhost:*")
+                    "Access-Control-Allow-Origin"))))
+  (testing "Should work with configured origins"
+    (is (= "https://example.com"
+           (get (mw.security/access-control-headers "https://example.com"
+                                                    "https://example.com")
+                "Access-Control-Allow-Origin"))))
+  (testing "Should set Access-Control-Max-Age to 60"
+    (let [headers (mw.security/access-control-headers "https://example.com"
+                                                      "https://example.com")]
+      (is (= "60" (get headers "Access-Control-Max-Age"))
+          "Expected Access-Control-Max-Age header to be set to 60")))
+  (testing "CORS should be enabled when origins are configured regardless of embedding flags"
+    (mt/with-temporary-setting-values [enable-embedding-simple false
                                        enable-embedding-sdk false]
       (let [headers (mw.security/access-control-headers "https://example.com"
-                                                        (or (embed.settings/enable-embedding-sdk)
-                                                            (embed.settings/enable-embedding-simple))
                                                         "https://example.com")]
         (is (= "https://example.com"
                (get headers "Access-Control-Allow-Origin"))
-            "CORS should work when enable-embedding-simple is true even if enable-embedding-sdk is false"))))
-  (testing "CORS should be enabled when both enable-embedding-simple and enable-embedding-sdk are true"
-    (mt/with-premium-features #{:embedding-sdk}
-      (mt/with-temporary-setting-values [enable-embedding-simple true
-                                         enable-embedding-sdk true
-                                         embedding-app-origins-sdk "https://example.com"]
-        (let [headers (mw.security/access-control-headers "https://example.com"
-                                                          (or (embed.settings/enable-embedding-sdk)
-                                                              (embed.settings/enable-embedding-simple))
-                                                          (embed.settings/embedding-app-origins-sdk))]
-          (is (= "https://example.com"
-                 (get headers "Access-Control-Allow-Origin"))
-              "CORS should work when both embedding options are enabled")))))
-  (testing "CORS should be disabled when both enable-embedding-simple and enable-embedding-sdk are false"
-    (mt/with-temporary-setting-values [enable-embedding-simple false
-                                       enable-embedding-sdk false
+            "CORS is driven by configured origins, not embedding flags"))))
+  (testing "CORS should return nil when no origins configured and origin is not localhost"
+    (let [headers (mw.security/access-control-headers "https://example.com"
+                                                      "")]
+      (is (= nil (get headers "Access-Control-Allow-Origin"))))))
+
+(deftest test-cors-enabled-when-origins-configured-without-embedding-features
+  (testing "CORS headers should be sent when origins are configured even if embedding features are disabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk    false
+                                       enable-embedding-simple false
                                        embedding-app-origins-sdk "https://example.com"]
-      (let [headers (mw.security/access-control-headers "https://example.com"
-                                                        (or (embed.settings/enable-embedding-sdk)
-                                                            (embed.settings/enable-embedding-simple))
-                                                        (embed.settings/embedding-app-origins-sdk))]
-        (is (= nil
-               (get headers "Access-Control-Allow-Origin"))
-            "CORS should be disabled when both embedding options are disabled")))))
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            response        (wrapped-handler {:headers {"origin" "https://example.com"}
+                                              :uri     "/api/dashboard/1"}
+                                             identity identity)]
+        (is (= "https://example.com"
+               (get-in response [:headers "Access-Control-Allow-Origin"]))
+            "CORS should be enabled when origins are configured, even without embedding features")))))
 
 (deftest ^:parallel allowed-iframe-hosts-test
   (testing "The allowed iframe hosts parse in the expected way."
@@ -375,13 +615,11 @@
         (is (= @#'mw.security/always-allowed-iframe-hosts
                (mw.security/parse-allowed-iframe-hosts "asdf/wasd/:8000 */localhost:*")))))))
 
-(defn- run-add-security-headers-mw-test! [enable-embedding-sdk-value
-                                          embedding-app-origins-sdk-value
+(defn- run-add-security-headers-mw-test! [embedding-app-origins-sdk-value
                                           request-origin-header
                                           request-uri
                                           access-control-allow-origin-header-value]
-  (mt/with-temporary-setting-values [embedding-app-origins-sdk embedding-app-origins-sdk-value
-                                     enable-embedding-sdk enable-embedding-sdk-value]
+  (mt/with-temporary-setting-values [embedding-app-origins-sdk embedding-app-origins-sdk-value]
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
                              (respond {:status 200 :headers {"response" "ok"} :body "ok"})))
@@ -392,50 +630,31 @@
              (-> response :headers (get "Access-Control-Allow-Origin")))))))
 
 (deftest add-security-headers-mw-test
-  (doseq [[idx [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri access-control-allow-origin-header-value]]
-          [[1 [true "" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [2 [true "" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [3 [true "" "http://my-site.com" "http://public.metabase.com" nil]]
-           [4 [true "" "http://my-site.com" "http://www.a-site.com" nil]]
-           [5 [true "localhost:1234" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [6 [true "localhost:1234" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [7 [true "localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]]
-           [8 [true "localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]]
-           [9 [true "http://my-site.com" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [10 [true "http://my-site.com" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [11 [true "http://my-site.com" "http://my-site.com" "http://public.metabase.com" nil]]
-           [12 [true "http://my-site.com" "http://my-site.com" "http://www.a-site.com" nil]]
-           [13 [true "http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [14 [true "http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [15 [true "http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]]
-           [16 [true "http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]]
-           [17 [true "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [18 [true "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [19 [true "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]]
-           [20 [true "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]]
-           [21 [false "" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [22 [false "" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [23 [false "" "http://my-site.com" "http://public.metabase.com" nil]]
-           [24 [false "" "http://my-site.com" "http://www.a-site.com" nil]]
-           [25 [false "localhost:1234" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [26 [false "localhost:1234" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [27 [false "localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]]
-           [28 [false "localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]]
-           [29 [false "http://my-site.com" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [30 [false "http://my-site.com" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [31 [false "http://my-site.com" "http://my-site.com" "http://public.metabase.com" nil]]
-           [32 [false "http://my-site.com" "http://my-site.com" "http://www.a-site.com" nil]]
-           [33 [false "http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [34 [false "http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [35 [false "http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]]
-           [36 [false "http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]]
-           [37 [false "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [38 [false "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [39 [false "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]]
-           [40 [false "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]]]]
+  (doseq [[idx [embedding-app-origins-sdk request-origin request-uri access-control-allow-origin-header-value]]
+          [;; No CORS origins configured = only localhost passthrough
+           [1 ["" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [2 ["" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [3 ["" "http://my-site.com" "http://public.metabase.com" nil]]
+           [4 ["" "http://my-site.com" "http://www.a-site.com" nil]]
+           ;; CORS origins configured = CORS enabled via origins
+           [5  ["localhost:1234" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [6  ["localhost:1234" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [7  ["localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]]
+           [8  ["localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]]
+           [9  ["http://my-site.com" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [10 ["http://my-site.com" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [11 ["http://my-site.com" "http://my-site.com" "http://public.metabase.com" "http://my-site.com"]]
+           [12 ["http://my-site.com" "http://my-site.com" "http://www.a-site.com" "http://my-site.com"]]
+           [13 ["http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [14 ["http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [15 ["http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]]
+           [16 ["http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]]
+           [17 ["https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [18 ["https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [19 ["https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]]
+           [20 ["https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]]]]
     (testing (str "add security headers mw test, index: " idx)
       (run-add-security-headers-mw-test!
-       enable-embedding-sdk
        embedding-app-origins-sdk
        request-origin
        request-uri
@@ -465,7 +684,7 @@
                   response (wrapped-handler {:headers {"origin" request-origin} :uri request-uri} identity identity)]
               [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri (-> response :headers (get "Access-Control-Allow-Origin"))])))))
 
-(deftest add-cors-headers-for-auth-sso-test
+(deftest ^:parallel add-cors-headers-for-auth-sso-test
   (testing "Should add CORS headers for /auth/sso endpoint with 402 status (embedding disabled errors)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -480,8 +699,9 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
           "Should set Access-Control-Allow-Headers to * for /auth/sso with 402 status")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
-          "Should set Access-Control-Allow-Methods to * for /auth/sso with 402 status")))
+          "Should set Access-Control-Allow-Methods to * for /auth/sso with 402 status"))))
 
+(deftest ^:parallel add-cors-headers-for-auth-sso-test-2
   (testing "Should add CORS headers for /auth/sso endpoint with 400 status (client errors)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -496,8 +716,9 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
           "Should set Access-Control-Allow-Headers to * for /auth/sso with 400 status")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
-          "Should set Access-Control-Allow-Methods to * for /auth/sso with 400 status")))
+          "Should set Access-Control-Allow-Methods to * for /auth/sso with 400 status"))))
 
+(deftest ^:parallel add-cors-headers-for-auth-sso-test-3
   (testing "Should add CORS headers for /auth/sso OPTIONS requests (preflight)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -514,8 +735,9 @@
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Headers"]))
           "Should set Access-Control-Allow-Headers to * for OPTIONS /auth/sso")
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Methods"]))
-          "Should set Access-Control-Allow-Methods to * for OPTIONS /auth/sso")))
+          "Should set Access-Control-Allow-Methods to * for OPTIONS /auth/sso"))))
 
+(deftest ^:parallel add-cors-headers-for-auth-sso-test-4
   (testing "Should not add CORS headers for /auth/sso endpoint with other status codes"
     (doseq [status [200 201 500 503]]
       (let [wrapped-handler (mw.security/add-security-headers
@@ -536,46 +758,39 @@
         (let [headers (mw.security/security-headers)]
           (is (= "cross-origin" (get headers "Cross-Origin-Resource-Policy"))
               "Should include Cross-Origin-Resource-Policy header when env var is set"))))
-
     (testing "Should not add header when MB_CROSS_ORIGIN_RESOURCE_POLICY is not set"
       (with-redefs [env/env {}]
         (let [headers (mw.security/security-headers)]
           (is (nil? (get headers "Cross-Origin-Resource-Policy"))
               "Should not include Cross-Origin-Resource-Policy header when env var is not set")))))
-
   (testing "Cross-Origin-Embedder-Policy header from environment variable"
     (testing "Should add header when MB_CROSS_ORIGIN_EMBEDDER_POLICY is set"
       (with-redefs [env/env {:mb-cross-origin-embedder-policy "require-corp"}]
         (let [headers (mw.security/security-headers)]
           (is (= "require-corp" (get headers "Cross-Origin-Embedder-Policy"))
               "Should include Cross-Origin-Embedder-Policy header when env var is set"))))
-
     (testing "Should not add header when MB_CROSS_ORIGIN_EMBEDDER_POLICY is not set"
       (with-redefs [env/env {}]
         (let [headers (mw.security/security-headers)]
           (is (nil? (get headers "Cross-Origin-Embedder-Policy"))
               "Should not include Cross-Origin-Embedder-Policy header when env var is not set")))))
-
   (testing "Both Cross-Origin headers can be set independently"
     (testing "Only CORP set"
       (with-redefs [env/env {:mb-cross-origin-resource-policy "same-origin"}]
         (let [headers (mw.security/security-headers)]
           (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
           (is (nil? (get headers "Cross-Origin-Embedder-Policy"))))))
-
     (testing "Only COEP set"
       (with-redefs [env/env {:mb-cross-origin-embedder-policy "credentialless"}]
         (let [headers (mw.security/security-headers)]
           (is (nil? (get headers "Cross-Origin-Resource-Policy")))
           (is (= "credentialless" (get headers "Cross-Origin-Embedder-Policy"))))))
-
     (testing "Both set"
       (with-redefs [env/env {:mb-cross-origin-resource-policy "same-site"
                              :mb-cross-origin-embedder-policy "require-corp"}]
         (let [headers (mw.security/security-headers)]
           (is (= "same-site" (get headers "Cross-Origin-Resource-Policy")))
           (is (= "require-corp" (get headers "Cross-Origin-Embedder-Policy")))))))
-
   (testing "Cross-Origin headers are included in middleware response"
     (testing "Headers are present in actual HTTP response"
       (with-redefs [env/env {:mb-cross-origin-resource-policy "cross-origin"
@@ -590,3 +805,123 @@
               "Cross-Origin-Resource-Policy should be in the response")
           (is (= "require-corp" (get-in response [:headers "Cross-Origin-Embedder-Policy"]))
               "Cross-Origin-Embedder-Policy should be in the response"))))))
+
+(deftest csp-header-img-src-tests
+  (testing "img-src defaults to permissive wildcard, data, self when csp-img-enabled is false"
+    (mt/with-temporary-setting-values [csp-img-enabled false
+                                       csp-img-allowed-hosts "example.com"]
+      (is (= "img-src * 'self' data:" (csp-directive "img-src")))))
+  (testing "with csp-img-enabled, img-src is restricted to 'self', data: and the tile server by default"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts ""
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))))
+  (testing "nil csp-img-allowed-hosts behaves like empty input"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts nil
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))))
+  (testing "csp-img-allowed-hosts widens img-src (with wildcard expansion)"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts "example.com, https://cdn.foo.com/"
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (is (= "img-src 'self' data: example.com *.example.com https://cdn.foo.com https://*.tile.openstreetmap.org"
+             (csp-directive "img-src"))))))
+
+(deftest csp-header-img-src-tile-server-tests
+  (testing "img-src always allows the configured map tile server"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       csp-img-allowed-hosts ""]
+      (testing "{s} subdomain placeholder is replaced with wildcard"
+        (mt/with-temporary-setting-values [map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+          (is (= "img-src 'self' data: https://*.tile.openstreetmap.org"
+                 (csp-directive "img-src")))))
+      (testing "custom tile server host and port are allowed; path and query (e.g. api keys) are dropped"
+        (mt/with-temporary-setting-values [map-tile-server-url "https://tiles.example.com:8443/{z}/{x}/{y}.png?apikey=SECRET"]
+          (is (= "img-src 'self' data: https://tiles.example.com:8443"
+                 (csp-directive "img-src")))))
+      (testing "a relative tile template contributes no host"
+        (mt/with-temporary-setting-values [map-tile-server-url "/local/{z}/{x}/{y}.png"]
+          (is (= "img-src 'self' data:" (csp-directive "img-src"))))))))
+
+(defn- csp-directive-for-uri
+  "Runs the full security middleware for a request to `uri` and returns its CSP `directive`."
+  [uri directive]
+  (let [wrapped-handler (mw.security/add-security-headers
+                         (fn [_request respond _raise]
+                           (respond {:status 200 :headers {} :body "ok"})))
+        response        (wrapped-handler {:headers {} :uri uri} identity identity)]
+    (header->directive (get-in response [:headers "Content-Security-Policy"]) directive)))
+
+(deftest csp-header-img-src-blob-eajs-embed-tests
+  (testing "the EAJS embed page (/embed/sdk/v1) allows blob: in img-src for custom viz icons"
+    (is (str/includes? (csp-directive-for-uri "/embed/sdk/v1" "img-src") "blob:")))
+  (testing "a future versioned entrypoint is covered on purpose"
+    (is (str/includes? (csp-directive-for-uri "/embed/sdk/v2" "img-src") "blob:")))
+  (testing "a normal app request does not allow blob: in img-src"
+    (is (not (str/includes? (csp-directive-for-uri "/" "img-src") "blob:"))))
+  (testing "other /embed/sdk/* URIs are served the static embed page and do not allow blob:"
+    (is (not (str/includes? (csp-directive-for-uri "/embed/sdk/foo" "img-src") "blob:"))))
+  (testing "a static/public embed request does not allow blob: in img-src"
+    (is (not (str/includes? (csp-directive-for-uri "/embed/question/abc" "img-src") "blob:")))))
+
+(deftest csp-header-font-src-tests
+  (testing "font-src is restricted to 'self' and data: when no custom fonts are configured"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files nil]
+        (is (= "font-src 'self' data:" (csp-directive "font-src"))))))
+  (testing "font-src dynamically includes the origin of each custom font file"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files [{:src "https://fonts.example.com/a.woff2" :fontFormat "woff2" :fontWeight 400}
+                                                                 {:src "https://fonts.example.com/b.woff2" :fontFormat "woff2" :fontWeight 700}
+                                                                 {:src "https://cdn.other.com:8443/c.ttf" :fontFormat "ttf" :fontWeight 400}]]
+        (is (= "font-src 'self' data: https://fonts.example.com https://cdn.other.com:8443"
+               (csp-directive "font-src"))
+            "duplicate origins are de-duplicated and ports preserved"))))
+  (testing "font-src keeps IPv6 hosts bracketed"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files [{:src "https://[2001:db8::1]:8443/c.ttf" :fontFormat "ttf" :fontWeight 400}]]
+        (is (= "font-src 'self' data: https://[2001:db8::1]:8443"
+               (csp-directive "font-src"))))))
+  (testing "malformed / relative / missing font srcs are skipped without error"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-font-files [{:src "/relative/font.woff"}
+                                                                 {:src nil}
+                                                                 {:fontWeight 400}
+                                                                 {:src "https://ok.example.com/d.woff2"}]]
+        (is (= "font-src 'self' data: https://ok.example.com"
+               (csp-directive "font-src")))))))
+
+(deftest csp-header-dev-asset-host-tests
+  (testing "in dev, the webpack dev server origin is allowed for img-src and font-src (assets like logos load from there)"
+    (mt/with-temporary-setting-values [csp-img-enabled true]
+      (with-redefs [config/is-dev? true]
+        (is (str/includes? (csp-directive "img-src") @#'mw.security/frontend-address))
+        (is (str/includes? (csp-directive "font-src") @#'mw.security/frontend-address)))))
+  (testing "in prod the dev server origin is not added"
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       map-tile-server-url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"]
+      (with-redefs [config/is-dev? false]
+        (is (= "img-src 'self' data: https://*.tile.openstreetmap.org" (csp-directive "img-src")))
+        (is (= "font-src 'self' data:" (csp-directive "font-src")))))))
+
+(deftest ^:parallel parse-allowed-resource-hosts-test
+  (testing "parses like the iframe parser, seeded with the always-allowed resource hosts"
+    (is (= (concat @#'mw.security/always-allowed-resource-hosts
+                   ["mysite.com" "*.mysite.com" "http://localhost:8000" "cdn.deep.example.com"])
+           (mw.security/parse-allowed-resource-hosts "mysite.com, http://localhost:8000, cdn.deep.example.com"))))
+  (testing "empty / blank input yields just the seed hosts"
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts nil)))
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts "")))
+    (is (= @#'mw.security/always-allowed-resource-hosts (mw.security/parse-allowed-resource-hosts "   "))))
+  (testing "invalid hosts are dropped"
+    (is (= @#'mw.security/always-allowed-resource-hosts
+           (mw.security/parse-allowed-resource-hosts "asdf/wasd/:8000 */localhost:*")))))
+
+(deftest csp-img-enabled-setter-oss-test
+  (testing "csp-img-enabled can be turned on/off freely when no enterprise custom-viz setter is loaded"
+    (mt/with-temporary-setting-values [csp-img-enabled false]
+      (server.settings/csp-img-enabled! true)
+      (is (true? (server.settings/csp-img-enabled)))
+      (server.settings/csp-img-enabled! false)
+      (is (false? (server.settings/csp-img-enabled))))))

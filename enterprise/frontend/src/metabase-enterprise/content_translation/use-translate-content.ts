@@ -2,7 +2,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 import { skipToken } from "metabase/api";
 import { useLocale } from "metabase/common/hooks";
-import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { useListContentTranslationsQuery } from "metabase-enterprise/api";
 
 import { dictionaryEndpointStore } from "./constants";
@@ -23,12 +23,13 @@ export const useTranslateContent = (): ContentTranslationFunction => {
   const dictionary = useListContentTranslations();
 
   const tc = useCallback<ContentTranslationFunction>(
-    <T = string | null | undefined>(msgid: T) =>
-      dictionary?.length
-        ? translateContentString<T>(dictionary || [], locale, msgid)
-        : leaveUntranslated(msgid),
+    (msgid) => translateContentString(dictionary || [], locale, msgid),
     [locale, dictionary],
   );
+
+  if (!dictionary?.length) {
+    return leaveUntranslated;
+  }
 
   return tc;
 };

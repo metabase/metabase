@@ -59,7 +59,7 @@
       :drill-type     :drill-thru/column-extract
       :expected       {:type         :drill-thru/column-extract
                        :extractions  datetime-extraction-units
-                        ;; Query unchanged
+                       ;; Query unchanged
                        :query        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                        :stage-number -1}
       :drill-args     ["month-of-year"]
@@ -167,11 +167,11 @@
         :expected-query  {:stages [{:expressions [;; The original
                                                   [:get-day {:lib/expression-name "Day of month"}
                                                    exp-created-at]
-                                                   ;; The newly added one
+                                                  ;; The newly added one
                                                   [:get-day {:lib/expression-name "Day of month_2"}
                                                    exp-created-at]]}]}
-         ;; With a native base, the name gets disambiguated, but there's only one expression rather than 2,
-         ;; because the original is part of the native query.
+        ;; With a native base, the name gets disambiguated, but there's only one expression rather than 2,
+        ;; because the original is part of the native query.
         :expected-native {:stages [{:expressions [;; The newly added one
                                                   [:get-day {:lib/expression-name "Day of month_2"}
                                                    exp-created-at]]}]}}))))
@@ -196,10 +196,10 @@
                              :stage-number -1}
         :drill-query-native native
         :drill-args         ["day-of-month"]
-         ;; Aggregated MBQL queries need a new stage appended.
+        ;; Aggregated MBQL queries need a new stage appended.
         :expected-query     {:stages [(get-in query [:stages 0])
                                       exprs]}
-         ;; Wrapped native queries have the expression on their only stage.
+        ;; Wrapped native queries have the expression on their only stage.
         :expected-native    {:stages [(merge (get-in native [:stages 0])
                                              exprs)]}}))))
 

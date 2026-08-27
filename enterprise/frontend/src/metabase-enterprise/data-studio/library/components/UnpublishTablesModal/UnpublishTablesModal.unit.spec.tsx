@@ -5,7 +5,8 @@ import {
   setupUnpublishTablesEndpoint,
   setupUnpublishTablesEndpointError,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type {
   BulkTableSelectionInfo,
   DatabaseId,
@@ -45,14 +46,17 @@ function setup({
   }
 
   renderWithProviders(
-    <UnpublishTablesModal
-      databaseIds={databaseIds}
-      schemaIds={schemaIds}
-      tableIds={tableIds}
-      isOpened
-      onUnpublish={onUnpublish}
-      onClose={onClose}
-    />,
+    <>
+      <UnpublishTablesModal
+        databaseIds={databaseIds}
+        schemaIds={schemaIds}
+        tableIds={tableIds}
+        isOpened
+        onUnpublish={onUnpublish}
+        onClose={onClose}
+      />
+      <UndoListing />
+    </>,
   );
 
   return { onUnpublish, onClose };
@@ -145,7 +149,8 @@ describe("UnpublishTablesModal", () => {
     });
     expect(await screen.findByText("Unpublish Orders?")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Unpublish this table"));
-    expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+    const toast = await screen.findByRole("status");
+    expect(within(toast).getByText("Failed to unpublish")).toBeInTheDocument();
     expect(onUnpublish).not.toHaveBeenCalled();
   });
 });

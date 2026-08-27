@@ -1,11 +1,10 @@
 import { jt, t } from "ttag";
 
-import { UpsellCard } from "metabase/common/components/UpsellCard";
+import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
+import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { Box } from "metabase/ui";
-
-import { UPGRADE_URL } from "./constants";
 
 export const UpsellCacheConfig = ({ location }: { location: string }) => {
   const campaign = "cache-granular-controls";

@@ -21,12 +21,14 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2])
   (:import
    (org.quartz
@@ -81,19 +83,24 @@
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [driver.settings/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true
+                            driver.settings/*allow-testing-sqlite-connections* true]
                     (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
                   nil
                   (catch Throwable e
                     e))]
-      (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
+      (log/warnf "Cannot sync Database %d: %s" database-id (ex-message ex))
       (database-routing/with-database-routing-off
-        (let [metadata-results (sync-metadata/sync-db-metadata! database)
-              analyze-results (when (:is_full_sync database)
-                                (analyze/analyze-db! database))
+        (let [db-id            (:id database)
+              metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
+                                 (sync-metadata/sync-db-metadata! database))
+              analyze-results  (when (:is_full_sync database)
+                                 (tracing/with-span :sync "sync.analyze" {:db/id db-id}
+                                   (analyze/analyze-db! database)))
               refingerprint-results (when (and (:refingerprint database)
                                                (should-refingerprint-fields? analyze-results))
-                                      (analyze/refingerprint-db! database))]
+                                      (tracing/with-span :sync "sync.refingerprint" {:db/id db-id}
+                                        (analyze/refingerprint-db! database)))]
           (cond-> {:metadata-results metadata-results}
             analyze-results (assoc :analyze-results analyze-results)
             refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))
@@ -102,7 +109,11 @@
   "The sync and analyze database job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (if (= audit/audit-db-id database-id)
+    (cond
+      (warehouses/disable-auto-sync)
+      (log/debugf "Skipping scheduled sync for Database %d: disable-auto-sync is on." database-id)
+
+      (= audit/audit-db-id database-id)
       (do
         (log/warn "Cannot sync Database: It is the audit db.")
         (when-not config/is-prod?
@@ -110,6 +121,11 @@
                           {:database-id database-id
                            :raw-job-context job-context
                            :job-context (pr-str job-context)}))))
+
+      (t2/select-one-fn :is_stub :model/Database :id database-id)
+      (log/warnf "Skipping scheduled sync for Database %d: it is a stub." database-id)
+
+      :else
       (sync-and-analyze-database*! database-id))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
@@ -121,14 +137,17 @@
   "The update field values job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (log/infof "Update Field values task triggered for Database %d." database-id)
-    (when-let [database (or (t2/select-one :model/Database :id database-id)
-                            (do
-                              (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
-                              (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
-      (if (:is_full_sync database)
-        (sync.field-values/update-field-values! database)
-        (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))
+    (if (warehouses/disable-auto-sync)
+      (log/debugf "Skipping scheduled field-values update for Database %d: disable-auto-sync is on." database-id)
+      (do
+        (log/infof "Update Field values task triggered for Database %d." database-id)
+        (when-let [database (or (t2/select-one :model/Database :id database-id)
+                                (do
+                                  (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
+                                  (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
+          (if (:is_full_sync database)
+            (sync.field-values/update-field-values! database)
+            (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Update field values"}
@@ -255,10 +274,10 @@
      (triggers/with-schedule
       (cron/schedule
        (cron/cron-schedule task-schedule)
-        ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
-        ;; Just wait until the next sync cycle.
-        ;;
-        ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
+       ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
+       ;; Just wait until the next sync cycle.
+       ;;
+       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
        (cron/with-misfire-handling-instruction-do-nothing))))))
 
 (defn- update-db-trigger-if-needed!
@@ -275,31 +294,31 @@
                                                          %)
                                                       (:triggers job))))]
     (cond
-     ;; no new schedule
-     ;; delete the existing trigger
+      ;; no new schedule
+      ;; delete the existing trigger
       (nil? new-trigger)
       (do
-        (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. It will no longer run on a schedule."
+        (log/infof "Trigger for \"%s\" of Database %d has been removed. It will no longer run on a schedule."
                    (:name task-info)
-                   (:name database))
+                   (u/the-id database))
         (delete-trigger! database task-info))
 
-     ;; need to recreate the new trigger
+      ;; need to recreate the new trigger
       (and (some? new-trigger)
            (nil? existing-trigger-with-same-schedule))
       (do
         (if (delete-trigger! database task-info)
-          (log/infof "Trigger for \"%s\" of Database \"%s\" has been updated. The new schedule is: \"%s\""
+          (log/infof "Trigger for \"%s\" of Database %d has been updated. The new schedule is: \"%s\""
                      (:name task-info)
-                     (:name database)
+                     (u/the-id database)
                      (cron-schedule database task-info))
-          (log/infof "A trigger for \"%s\" of Database \"%s\" has been enabled with schedule: \"%s\""
+          (log/infof "A trigger for \"%s\" of Database %d has been enabled with schedule: \"%s\""
                      (:name task-info)
-                     (:name database)
+                     (u/the-id database)
                      (cron-schedule database task-info)))
         (task/add-trigger! new-trigger))
 
-     ;; don't need to do anything as the existing trigger matches the new schedule
+      ;; don't need to do anything as the existing trigger matches the new schedule
       :else
       nil)))
 
@@ -308,9 +327,15 @@
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf :model/Database)]
   (doseq [task all-tasks]
-    (if (and (= audit/audit-db-id (:id database))
-             (= task sync-analyze-task-info))
+    (cond
+      (:is_stub database)
+      (log/info (u/format-color :red "Not scheduling sync task for stub database"))
+
+      (and (= audit/audit-db-id (:id database))
+           (= task sync-analyze-task-info))
       (log/info (u/format-color :red "Not scheduling sync task for audit database"))
+
+      :else
       (update-db-trigger-if-needed! database task))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -350,7 +375,7 @@
                                  (sync.schedules/default-randomized-schedule))))
                   (inc counter)
                   (catch Exception e
-                    (log/warnf e "Error updating database %d for randomized schedules" (u/the-id db))
+                    (log/warnf "Error updating database %d for randomized schedules: %s" (u/the-id db) (ex-message e))
                     counter))))
              (t2/reducible-query
               {:select [:*]

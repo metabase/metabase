@@ -24,7 +24,11 @@
   (case (keyword (:channel_type pulse-channel))
     :slack
     [{:type    :notification-recipient/raw-value
-      :details {:value (get-in pulse-channel [:details :channel])}}]
+      :details (let [details    {:value (get-in pulse-channel [:details :channel])}
+                     channel-id (get-in pulse-channel [:details :channel_id])]
+                 (if channel-id
+                   (assoc details :channel_id channel-id)
+                   details))}]
     :email
     (for [recipient (:recipients pulse-channel)]
       (if-not (:id recipient)
@@ -54,7 +58,8 @@
     {:channel_type    channel-type
      :channel         channel
      :recipients      (channel-recipients pulse-channel)
-     :attachment_only (boolean (get-in pulse-channel [:details :attachment_only]))}))
+     :attachment_only (boolean (get-in pulse-channel [:details :attachment_only]))
+     :include_pdf     (boolean (get-in pulse-channel [:details :include_pdf]))}))
 
 (defn- maybe-name [x] (some-> x name))
 
@@ -105,7 +110,7 @@
       (try
         (send-notification! (notification-info pulse dashboard pulse-channel) :notification/sync? (not async?))
         (catch Exception e
-          (log/errorf e "[Pulse %d] Error sending to %s channel" (:id pulse) (:channel_type pulse-channel)))))
+          (log/errorf "[Pulse %d] Error sending to %s channel: %s" (:id pulse) (:channel_type pulse-channel) (ex-message e)))))
     nil))
 
 (defn pulse->task-run-info

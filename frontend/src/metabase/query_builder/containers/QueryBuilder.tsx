@@ -1,49 +1,127 @@
 import { useHotkeys } from "@mantine/hooks";
-import type { Location } from "history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectedProps } from "react-redux";
-import type { Route, WithRouterProps } from "react-router";
-import { push } from "react-router-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  useCreateBookmarkMutation,
+  useDeleteBookmarkMutation,
+  useListBookmarksQuery,
+  useListTimelinesQuery,
+} from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
-import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
-import { Bookmarks } from "metabase/entities/bookmarks";
-import { Timelines } from "metabase/entities/timelines";
-import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
-import { connect, useSelector } from "metabase/lib/redux";
-import { closeNavbar } from "metabase/redux/app";
-import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import {
   canManageSubscriptions,
   getUser,
   getUserIsAdmin,
-} from "metabase/selectors/user";
-import type {
-  BookmarkId,
-  Bookmark as BookmarkType,
-  Series,
-  Timeline,
-} from "metabase-types/api";
-import type { QueryBuilderUIControls, State } from "metabase-types/store";
+} from "metabase/current-user";
+import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
+import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
+import { connect, useSelector } from "metabase/redux";
+import { closeNavbar } from "metabase/redux/app";
+import {
+  closeQB,
+  closeQbNewbModal,
+  editSummary,
+  navigateBackToDashboard,
+  onCloseChartSettings,
+  onCloseChartType,
+  onCloseQuestionInfo,
+  onCloseQuestionSettings,
+  onCloseSidebars,
+  onCloseSummary,
+  onCloseTimelines,
+  onOpenChartSettings,
+  onOpenChartType,
+  onOpenQuestionInfo,
+  onOpenQuestionSettings,
+  onOpenTimelines,
+  setIsNativeEditorOpen,
+  setParameterValue,
+  setUIControls,
+} from "metabase/redux/query-builder";
+import type { QueryBuilderUIControls, State } from "metabase/redux/store";
+import {
+  type Location,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useParams,
+} from "metabase/router";
+import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/settings";
+import { useForceUpdate } from "metabase/utils/use-force-update";
+import type { Series } from "metabase-types/api";
 
-import * as actions from "../actions";
+import {
+  cancelQuery,
+  cancelQuestionChanges,
+  closeObjectDetail,
+  closeSnippetModal,
+  deselectTimelineEvents,
+  followForeignKey,
+  hideTimelineEvents,
+  initializeQB,
+  insertSnippet,
+  loadObjectDetailFKReferences,
+  locationChanged,
+  navigateToNewCardInsideQB,
+  onCancelCreateNewModel,
+  onModelPersistenceChange,
+  onReplaceAllVisualizationSettings,
+  onUpdateVisualizationSettings,
+  openDataReferenceAtQuestion,
+  openSnippetModalWithSelectedText,
+  popDataReferenceStack,
+  pushDataReferenceStack,
+  queryCompleted,
+  queryErrored,
+  resetRowZoom,
+  runDirtyQuestionQuery,
+  runOrCancelQuestionOrSelectedQuery,
+  runQuestionQuery,
+  selectTimelineEvents,
+  setCurrentState,
+  setDatasetEditorTab,
+  setDatasetQuery,
+  setDidFirstNonTableChartRender,
+  setIsShowingSnippetSidebar,
+  setLimit,
+  setMetadataDiff,
+  setModalSnippet,
+  setNativeEditorSelectedRange,
+  setNotebookNativePreviewSidebarWidth,
+  setParameterValueToDefault,
+  setQueryBuilderMode,
+  setSnippetCollectionId,
+  setTemplateTag,
+  setTemplateTagConfig,
+  showTimelineEvents,
+  showTimelinesForCollection,
+  softReloadCard,
+  toggleDataReference,
+  toggleSnippetSidebar,
+  toggleTemplateTagsEditor,
+  turnModelIntoQuestion,
+  turnQuestionIntoModel,
+  updateQuestion,
+  viewNextObjectDetail,
+  viewPreviousObjectDetail,
+  zoomInRow,
+} from "../actions";
 import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
-import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   getCard,
   getDataReferenceStack,
-  getDatabasesList,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
   getFilteredTimelines,
@@ -51,7 +129,6 @@ import {
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
   getIsAnySidebarOpen,
-  getIsBookmarked,
   getIsDirty,
   getIsHeaderVisible,
   getIsLiveResizable,
@@ -73,7 +150,6 @@ import {
   getQueryStartTime,
   getQuestion,
   getRawSeries,
-  getSampleDatabaseId,
   getSelectedTimelineEventIds,
   getShouldShowUnsavedChangesWarning,
   getSnippetCollectionId,
@@ -94,31 +170,7 @@ import { useCreateQuestion } from "./use-create-question";
 import { useRegisterQueryBuilderMetabotContext } from "./use-register-query-builder-metabot-context";
 import { useSaveQuestion } from "./use-save-question";
 
-const timelineProps = {
-  query: { include: "events" },
-  loadingAndErrorWrapper: false,
-};
-
-type BookmarkListLoaderOutput = {
-  bookmarks: BookmarkType[];
-  reloadBookmarks: () => void;
-};
-
-type TimelineListLoaderOutput = {
-  timelines: Timeline[];
-  reloadTimelines: () => void;
-};
-
-type EntityListLoaderMergedProps = {
-  allLoading: boolean;
-  allLoaded: boolean;
-  allFetched: boolean;
-  allError: boolean;
-  reload: () => void;
-} & BookmarkListLoaderOutput &
-  TimelineListLoaderOutput;
-
-const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
+const mapStateToProps = (state: State) => {
   return {
     user: getUser(state),
     canManageSubscriptions: canManageSubscriptions(state),
@@ -137,7 +189,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
 
     card: getCard(state),
     originalCard: getOriginalCard(state),
-    databases: getDatabasesList(state),
 
     metadata: getMetadata(state),
 
@@ -156,7 +207,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     dataReferenceStack: getDataReferenceStack(state),
     isAnySidebarOpen: getIsAnySidebarOpen(state),
 
-    isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
@@ -168,7 +218,6 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
-    sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
@@ -199,32 +248,110 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
 };
 
 const mapDispatchToProps = {
-  ...actions,
+  // from metabase/redux/query-builder (shared tier)
+  closeQB,
+  closeQbNewbModal,
+  navigateBackToDashboard,
+  onCloseChartSettings,
+  onCloseChartType,
+  onCloseQuestionInfo,
+  onCloseQuestionSettings,
+  onCloseSidebars,
+  onCloseSummary,
+  onCloseTimelines,
+  editSummary,
+  onOpenChartSettings,
+  onOpenChartType,
+  onOpenQuestionInfo,
+  onOpenQuestionSettings,
+  onOpenTimelines,
+  setIsNativeEditorOpen,
+  setParameterValue,
+  setUIControls,
+
+  // from query_builder/actions
+  cancelQuery,
+  cancelQuestionChanges,
+  closeObjectDetail,
+  closeSnippetModal,
+  deselectTimelineEvents,
+  followForeignKey,
+  hideTimelineEvents,
+  initializeQB,
+  insertSnippet,
+  loadObjectDetailFKReferences,
+  locationChanged,
+  navigateToNewCardInsideQB,
+  onCancelCreateNewModel,
+  onModelPersistenceChange,
+  onReplaceAllVisualizationSettings,
+  onUpdateVisualizationSettings,
+  openDataReferenceAtQuestion,
+  openSnippetModalWithSelectedText,
+  popDataReferenceStack,
+  pushDataReferenceStack,
+  queryCompleted,
+  queryErrored,
+  resetRowZoom,
+  runDirtyQuestionQuery,
+  runOrCancelQuestionOrSelectedQuery,
+  runQuestionQuery,
+  selectTimelineEvents,
+  setCurrentState,
+  setDatasetEditorTab,
+  setDatasetQuery,
+  setDidFirstNonTableChartRender,
+  setIsShowingSnippetSidebar,
+  setLimit,
+  setMetadataDiff,
+  setModalSnippet,
+  setNativeEditorSelectedRange,
+  setNotebookNativePreviewSidebarWidth,
+  setParameterValueToDefault,
+  setQueryBuilderMode,
+  setSnippetCollectionId,
+  setTemplateTag,
+  setTemplateTagConfig,
+  showTimelineEvents,
+  showTimelinesForCollection,
+  softReloadCard,
+  toggleDataReference,
+  toggleSnippetSidebar,
+  toggleTemplateTagsEditor,
+  turnModelIntoQuestion,
+  turnQuestionIntoModel,
+  updateQuestion,
+  viewNextObjectDetail,
+  viewPreviousObjectDetail,
+  zoomInRow,
+
+  // other
   closeNavbar,
-  onChangeLocation: push,
-  createBookmark: (id: BookmarkId) =>
-    Bookmarks.actions.create({ id, type: "card" }),
-  deleteBookmark: (id: BookmarkId) =>
-    Bookmarks.actions.delete({ id, type: "card" }),
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type QueryBuilderInnerProps = ReduxProps &
-  WithRouterProps &
-  EntityListLoaderMergedProps & {
-    route: Route;
-  };
+type QueryBuilderInnerProps = ReduxProps;
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = useParams();
   useFavicon({ favicon: props.pageFavicon ?? null });
+  const navigationType = useNavigationType();
+  const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
+    useListTimelinesQuery({
+      include: "events",
+    });
+  const { data: bookmarks = [], isSuccess: areBookmarksLoaded } =
+    useListBookmarksQuery();
+  const [createBookmarkMutation] = useCreateBookmarkMutation();
+  const [deleteBookmarkMutation] = useDeleteBookmarkMutation();
 
   const {
     question,
     originalQuestion,
-    location,
-    params,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
@@ -234,22 +361,21 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     setUIControls,
     runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
-    isBookmarked,
-    createBookmark,
-    deleteBookmark,
-    allLoaded,
     showTimelinesForCollection,
     card,
     isAdmin,
     isLoadingComplete,
     closeQB,
-    route,
     queryBuilderMode,
     didFirstNonTableChartGenerated,
     setDidFirstNonTableChartRender,
     documentTitle,
     queryStartTime,
   } = props;
+
+  const isBookmarked = bookmarks.some(
+    (bookmark) => bookmark.type === "card" && bookmark.item_id === card?.id,
+  );
 
   usePageTitleWithLoadingTime(documentTitle || card?.name || t`Question`, {
     titleIndex: 1,
@@ -269,13 +395,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
       ) {
-        setDidFirstNonTableChartRender(card);
+        if (card?.display) {
+          setDidFirstNonTableChartRender(card.display);
+        }
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },
     [
       isAdmin,
-      card,
+      card?.display,
       didFirstNonTableChartGenerated,
       setDidFirstNonTableChartRender,
     ],
@@ -310,14 +438,16 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const onClickBookmark = () => {
     const { card } = props;
-
-    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+    if (!card) {
+      return;
+    }
 
     if (!isBookmarked) {
       trackCardBookmarkAdded(card);
+      createBookmarkMutation({ id: card.id, type: "card" });
+    } else {
+      deleteBookmarkMutation({ id: card.id, type: "card" });
     }
-
-    toggleBookmark(card.id);
   };
 
   /**
@@ -374,10 +504,23 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   ]);
 
   useEffect(() => {
-    if (allLoaded && hasQuestion) {
+    // Gate on the timelines actually being loaded (not just bookmarks), and
+    // re-run when they arrive: showTimelinesForCollection reads the fetched
+    // timelines from the store at dispatch time, so running it before the
+    // `/api/timeline` request resolves dispatches an empty set and the chart
+    // never receives its events. This restores the pre-#73674 `allLoaded`
+    // guarantee that was lost when the Timelines.loadList HOC was removed.
+    if (areBookmarksLoaded && areTimelinesLoaded && hasQuestion) {
       showTimelinesForCollection(collectionId);
     }
-  }, [allLoaded, hasQuestion, collectionId, showTimelinesForCollection]);
+  }, [
+    areBookmarksLoaded,
+    areTimelinesLoaded,
+    hasQuestion,
+    collectionId,
+    showTimelinesForCollection,
+    fetchedTimelines,
+  ]);
 
   useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
@@ -398,9 +541,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   useEffect(() => {
     if (previousLocation && location !== previousLocation) {
-      locationChanged(previousLocation, location, params);
+      locationChanged(previousLocation, location, params, navigationType);
     }
-  }, [location, params, previousLocation, locationChanged]);
+  }, [location, params, previousLocation, navigationType, locationChanged]);
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
@@ -430,7 +573,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       ) {
         showNotification(
           t`All Set! Your question is ready.`,
-          t`${card.name} is loaded.`,
+          t`${card?.name} is loaded.`,
         );
       }
     }
@@ -468,6 +611,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     <>
       <View
         {...props}
+        onChangeLocation={navigate}
         modal={uiControls.modal}
         recentlySaved={uiControls.recentlySaved}
         onOpenModal={openModal}
@@ -475,6 +619,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         onSave={handleSave}
         onCreate={handleCreate}
         handleResize={forceUpdateDebounced}
+        isBookmarked={isBookmarked}
         toggleBookmark={onClickBookmark}
         onDismissToast={onDismissToast}
         onConfirmToast={onConfirmToast}
@@ -485,14 +630,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
         isLocationAllowed={isLocationAllowed}
-        route={route}
       />
     </>
   );
 }
 
-export const QueryBuilder = _.compose(
-  Bookmarks.loadList(),
-  Timelines.loadList(timelineProps),
-  connector,
-)(QueryBuilderInner);
+export const QueryBuilder = connector(QueryBuilderInner);

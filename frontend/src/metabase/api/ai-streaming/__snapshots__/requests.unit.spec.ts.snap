@@ -1,0 +1,16 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`ai requests aiStreamingQuery should return full result of a successful request 1`] = `
+{
+  "aborted": false,
+  "data": [
+    {
+      "data": {
+        "queries": {},
+      },
+      "type": "data-state",
+    },
+  ],
+  "toolCalls": [],
+}
+`;

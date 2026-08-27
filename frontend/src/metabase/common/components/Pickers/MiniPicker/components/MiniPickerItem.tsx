@@ -1,18 +1,19 @@
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { getIcon } from "metabase/lib/icon";
-import { Box, Icon, Menu, type MenuItemProps } from "metabase/ui";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { useGetIcon } from "metabase/hooks/use-icon";
+import { Box, Ellipsified, Icon, Menu, type MenuItemProps } from "metabase/ui";
 
 import type {
   MiniPickerCollectionItem,
   MiniPickerItem as MiniPickerItemType,
 } from "../types";
 
+import styles from "./MiniPickerItem.module.css";
+
 export const MiniPickerItem = ({
   model,
   name,
   onClick,
   isFolder,
-  isHidden,
   display,
   ...menuItemProps
 }: {
@@ -21,22 +22,23 @@ export const MiniPickerItem = ({
   display?: MiniPickerCollectionItem["display"];
   onClick?: () => void;
   isFolder?: boolean;
-  isHidden?: boolean;
 } & MenuItemProps) => {
-  if (isHidden) {
-    return null;
-  }
+  const getIcon = useGetIcon();
   return (
     <Box px="sm" py="2px">
       <Menu.Item
         leftSection={
-          model ? <Icon {...getIcon({ model, display })} /> : undefined
+          model ? <EntityIcon {...getIcon({ model, display })} /> : undefined
         }
         rightSection={isFolder ? <Icon name="chevronright" /> : undefined}
         onClick={onClick}
+        classNames={{
+          itemLabel: styles.section,
+          itemSection: styles.section,
+        }}
         {...menuItemProps}
       >
-        <Ellipsified maw={isFolder ? "13rem" : "16rem"}>{name}</Ellipsified>
+        <Ellipsified>{name}</Ellipsified>
       </Menu.Item>
     </Box>
   );

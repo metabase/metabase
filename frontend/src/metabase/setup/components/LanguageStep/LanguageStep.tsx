@@ -2,15 +2,15 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Button } from "metabase/common/components/Button";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Stack } from "metabase/ui";
-import type { Locale } from "metabase-types/store";
+import { useDispatch, useSelector } from "metabase/redux";
+import type { Locale } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
+import { Button, Stack } from "metabase/ui";
 
 import { useStep } from "../..//useStep";
 import { goToNextStep, updateLocale } from "../../actions";
-import { getAvailableLocales, getLocale } from "../../selectors";
+import { getLocale } from "../../selectors";
 import { getLocales } from "../../utils";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
@@ -27,7 +27,7 @@ import {
 export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("language");
   const locale = useSelector(getLocale);
-  const localeData = useSelector(getAvailableLocales);
+  const localeData = useSetting("available-locales");
   const fieldId = useMemo(() => _.uniqueId(), []);
   const locales = useMemo(() => getLocales(localeData), [localeData]);
   const dispatch = useDispatch();
@@ -77,7 +77,7 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         ))}
       </LocaleGroup>
       <Button
-        primary={selectedLocale != null}
+        variant={selectedLocale != null ? "filled" : "default"}
         disabled={selectedLocale == null}
         onClick={handleStepSubmit}
       >

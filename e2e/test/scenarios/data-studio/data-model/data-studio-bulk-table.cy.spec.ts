@@ -19,12 +19,12 @@ interface Table {
   id: number;
 }
 
-describe("bulk table operations", () => {
+describe("bulk table operations", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     cy.intercept("POST", "/api/data-studio/table/sync-schema").as("syncSchema");
     cy.intercept("POST", "/api/data-studio/table/rescan-values").as(
       "rescanValues",
@@ -46,15 +46,29 @@ describe("bulk table operations", () => {
 
   it("syncing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    // Re-authenticate after restoring the writable-DB snapshot, like the
+    // sibling tests do — otherwise visiting Data Studio can land in an
+    // unauthenticated state and the TablePicker never issues the schema
+    // request, making `cy.wait("@getSchema")` time out.
+    cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
-    cy.wait("@getSchema").then(({ response }) => {
-      const tables = response?.body ?? [];
-      const accountTableId = getTableId(tables, "Orders");
-      const feedbackTableId = getTableId(tables, "Products");
+    // Wait for the UI to load the database's tables before interacting.
+    cy.wait("@getSchema");
 
-      cy.wrap([accountTableId, feedbackTableId]).as("tableIds");
+    // Capture the expected table IDs from a direct API request rather than the
+    // intercepted UI response: under stress the aliased `@getSchema` response
+    // body is occasionally a non-array (e.g. an error map), which made
+    // `tables.find` throw `TypeError: tables.find is not a function`. A
+    // `cy.request` deterministically returns the table list.
+    cy.request<Table[]>(
+      `/api/database/${WRITABLE_DB_ID}/schema/public?include_hidden=true`,
+    ).then(({ body: tables }) => {
+      const ordersTableId = getTableId(tables, "Orders");
+      const productsTableId = getTableId(tables, "Products");
+
+      cy.wrap([ordersTableId, productsTableId]).as("tableIds");
     });
 
     TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
@@ -119,12 +133,25 @@ describe("bulk table operations", () => {
     { tags: ["@external"] },
     () => {
       H.restore("postgres-writable");
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       cy.signInAsAdmin();
       H.DataModel.visitDataStudio();
 
       cy.log("select multiple tables");
-      TablePicker.getDatabase("Writable Postgres12").click();
+      // The picker tree keeps mounting after the databases request resolves, so
+      // clicking the database row before its expand handler is wired drops the click
+      // and the schema fetch that populates the tables never fires. Wait for the
+      // expand toggle to render collapsed, click it, then confirm it expanded so the
+      // schema request reliably occurs before we select the tables.
+      TablePicker.getDatabaseToggle("Writable Postgres12")
+        .should("have.attr", "aria-expanded", "false")
+        .click();
+      cy.wait("@getSchema");
+      TablePicker.getDatabaseToggle("Writable Postgres12").should(
+        "have.attr",
+        "aria-expanded",
+        "true",
+      );
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       TablePicker.getTable("Reviews").findByRole("checkbox").check();
@@ -163,10 +190,12 @@ describe("bulk table operations", () => {
 
   it("allows to edit attributes for tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
+    // wait for the database's tables to load before selecting them
+    cy.wait("@getSchema");
     TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
     TablePicker.getTable("Products").find('input[type="checkbox"]').check();
 
@@ -216,7 +245,7 @@ describe("bulk table operations", () => {
     () => {
       beforeEach(() => {
         H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
         H.createLibrary();
         cy.signInAsAdmin();
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
@@ -291,10 +320,29 @@ describe("bulk table operations", () => {
 
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.createLibrary();
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
+
+    cy.log(
+      "Expand the rows up front - we'll need them later for the assertion",
+    );
+    // The picker tree keeps mounting after the databases request resolves, so
+    // clicking the database row before its expand handler is wired drops the click
+    // and the schema fetch that populates the tables never fires. Wait for the
+    // expand toggle to render collapsed, click it, then confirm it expanded so the
+    // schema request reliably occurs before we select the database.
+    TablePicker.getDatabaseToggle("Writable Postgres12")
+      .should("have.attr", "aria-expanded", "false")
+      .click();
+    cy.wait("@getSchema");
+    TablePicker.getDatabaseToggle("Writable Postgres12").should(
+      "have.attr",
+      "aria-expanded",
+      "true",
+    );
+
     TablePicker.getDatabase("Writable Postgres12")
       .find('input[type="checkbox"]')
       .check();
@@ -315,10 +363,9 @@ describe("bulk table operations", () => {
     H.modal().findByText("Publish these tables").click();
     cy.wait("@publishTables");
 
-    TablePicker.getDatabase("Writable Postgres12").click();
-
     cy.findAllByTestId("tree-item")
       .filter('[data-type="table"]')
+      .should("have.length.greaterThan", 0)
       .each((table) => {
         cy.wrap(table)
           .findByTestId("table-owner")
@@ -332,7 +379,7 @@ describe("bulk table operations", () => {
 
   it("allows to edit attributes for schema", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });

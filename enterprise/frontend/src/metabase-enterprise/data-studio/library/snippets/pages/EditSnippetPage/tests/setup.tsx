@@ -1,20 +1,23 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
-import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks";
+import {
+  setupCollectionByIdEndpoint,
+  setupNativeQuerySnippetEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type {
   EnterpriseSettings,
   NativeQuerySnippet,
   TokenFeatures,
 } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockNativeQuerySnippet,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { EditSnippetPage } from "../EditSnippetPage";
 
@@ -33,6 +36,9 @@ export const setup = async ({
 }: SetupOps) => {
   const mockSnippet = createMockNativeQuerySnippet(snippet);
   setupNativeQuerySnippetEndpoints({ snippets: [mockSnippet] });
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root" })],
+  });
 
   const settings = mockSettings({
     "remote-sync-type": remoteSyncType,
@@ -48,7 +54,7 @@ export const setup = async ({
   }
 
   renderWithProviders(
-    <Route component={EditSnippetPage} path="/snippets/:snippetId" />,
+    <Route element={<EditSnippetPage />} path="/snippets/:snippetId" />,
     {
       initialRoute: `/snippets/${mockSnippet.id}`,
       storeInitialState: state,
@@ -62,7 +68,7 @@ export const setup = async ({
 export const DEFAULT_EE_SETTINGS: Partial<SetupOps> = {
   enterprisePlugins: ["library", "remote_sync"],
   tokenFeatures: {
-    data_studio: true,
+    library: true,
     remote_sync: true,
   },
 };

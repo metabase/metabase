@@ -6,6 +6,8 @@ redirect_from:
 
 # Embedding overview
 
+You can use Metabase as a BI tool for your own team, or embed Metabase in your app so your customers can explore their own data.
+
 ## [Introduction](./introduction.md)
 
 What is embedding, and how does it work?
@@ -24,13 +26,45 @@ With the Modular embedding SDK, you can embed individual Metabase components wit
 
 Jump to a SDK quickstart with a sample React application.
 
+### [Embed a dashboard](./dashboard.md)
+
+Embed a dashboard, view-only or interactive, with web components or the React SDK. Let people edit and create dashboards from your app.
+
+### [Dashboard component reference](./dashboard-reference.md)
+
+Every `<metabase-dashboard>` attribute, the `StaticDashboard`, `InteractiveDashboard`, and `EditableDashboard` props, and the `dashboardCardMenu` plugin.
+
+### [Embed a chart](./chart.md)
+
+Embed a single chart, view-only or interactive, with web components or the React SDK.
+
+### [Embed the query builder](./query-builder.md)
+
+Embed Metabase's visual query builder or SQL editor, so people can build and save their own questions.
+
+### [Question component reference](./question-reference.md)
+
+Every `<metabase-question>` attribute, the `StaticQuestion` and `InteractiveQuestion` props, and the components you can use to build your own question layout.
+
+### [Embed a collection browser](./browser.md)
+
+Embed a browsable collection with web components or the React SDK, so people can find and open dashboards and questions themselves.
+
+### [Browser component reference](./browser-reference.md)
+
+Every `<metabase-browser>` attribute and the `CollectionBrowser` props.
+
 ### [Guest embedding](./guest-embedding.md)
 
 Guest embedding is a secure way to embed charts and dashboards. Guest embeds are view-only; people won't be able to drill-through charts and tables.
 
-### [Translating guest embeds](./translations.md)
+### [Custom visualizations in embeds](./custom-visualizations.md)
 
-Upload a translation dictionary to translate questions and dashboards (only in guest embeds).
+Allowlist the custom visualizations that your embedded components can load. Available in modular embeds that use SSO, with web components or the React SDK.
+
+### [Translating embeds](./translations.md)
+
+Upload a translation dictionary to translate questions and dashboards in modular embeds.
 
 ## [Full app embedding](./full-app-embedding.md)
 
@@ -51,3 +85,7 @@ Admins can also create unsecured public links or embeds of questions and dashboa
 ## [Securing embeds](./securing-embeds.md)
 
 How to make sure the right people can see the right data in your embedded Metabase.
+
+## [AI agent resources](./ai-agent-resources.md)
+
+Machine-readable docs and agent skills to help AI coding agents with embedding setup, upgrades, and migrations.

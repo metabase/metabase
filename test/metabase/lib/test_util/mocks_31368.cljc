@@ -1,5 +1,5 @@
 (ns metabase.lib.test-util.mocks-31368
-  "Repro for `[MLv2] Handle MLv1 field references for columns from questions/models in MLv2` (#31368)"
+  "Repro for `[Lib] Handle MLv1-generated field references for columns from questions/models in Lib` (#31368)"
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -23,12 +23,12 @@
   (for [col (lib/returned-columns
              (lib/query meta/metadata-provider legacy-card-query))]
     (cond-> col
-      (:source-alias col)
+      (:lib/original-join-alias col)
       (update :display-name (fn [display-name]
-                              (str (:source-alias col) " → " display-name))))))
+                              (str (:lib/original-join-alias col) " → " display-name))))))
 
 (defn query-with-legacy-source-card
-  "An MLv2 query that has a `:source-card` that has a legacy query, and legacy metadata."
+  "An MBQL 5 query that has a `:source-card` that has a legacy query, and legacy metadata."
   ([has-result-metadata?]
    (query-with-legacy-source-card has-result-metadata? :question))
   ([has-result-metadata? card-type]

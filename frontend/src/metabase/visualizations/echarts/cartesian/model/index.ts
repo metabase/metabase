@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/utils/types";
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   getXAxisModel,
@@ -18,7 +19,10 @@ import {
   getFormatters,
 } from "metabase/visualizations/echarts/cartesian/model/series";
 import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
-import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import {
+  getCartesianChartColumns,
+  getReferencedColumns,
+} from "metabase/visualizations/lib/graph/columns";
 import { getSingleSeriesDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
 import { getAreDimensionsAndMetricsValid } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type {
@@ -53,8 +57,8 @@ const getSettingsWithDefaultMetricsAndDimensions = (series: SingleSeries) => {
   const { dimensions, metrics } = getSingleSeriesDimensionsAndMetrics(series);
   const settingsWithDefaults = { ...settings };
 
-  settingsWithDefaults["graph.dimensions"] = dimensions;
-  settingsWithDefaults["graph.metrics"] = metrics;
+  settingsWithDefaults["graph.dimensions"] = dimensions.filter(isNotNull);
+  settingsWithDefaults["graph.metrics"] = metrics.filter(isNotNull);
 
   return settingsWithDefaults;
 };
@@ -77,6 +81,23 @@ export const getCardsColumns = (
 
     const cardSettings = getSettingsWithDefaultMetricsAndDimensions(series);
     return getCartesianChartColumns(data.cols, cardSettings);
+  });
+};
+
+// Like `getCardsColumns`, but returns the columns referenced by each card's
+// `graph.dimensions` / `graph.metrics` settings without requiring a full
+// chart-shape to be buildable. Use this when you need to know which columns
+// are spoken for, regardless of whether a chart can render.
+export const getCardsReferencedColumns = (
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) => {
+  return rawSeries.map((series) => {
+    const shouldUseIndividualCardSettings = rawSeries.length > 1;
+    const cardSettings = shouldUseIndividualCardSettings
+      ? getSettingsWithDefaultMetricsAndDimensions(series)
+      : settings;
+    return getReferencedColumns(series.data.cols, cardSettings);
   });
 };
 
@@ -176,17 +197,18 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  const { leftAxisModel, rightAxisModel } = getYAxesModels(
-    seriesModels,
-    dataset,
-    transformedDataset,
-    settings,
-    columnByDataKey,
-    true,
-    stackModels,
-    isCompactFormatting,
-    gridSize,
-  );
+  const { leftAxisModel, rightAxisModel, splitPanelYAxisModels } =
+    getYAxesModels(
+      seriesModels,
+      dataset,
+      transformedDataset,
+      settings,
+      columnByDataKey,
+      true,
+      stackModels,
+      isCompactFormatting,
+      gridSize,
+    );
 
   const trendLinesModel = getTrendLines(
     rawSeries,
@@ -205,11 +227,13 @@ export const getCartesianChartModel = (
     transformedDataset,
     seriesModels,
     yAxisScaleTransforms,
+    cardsColumns,
     columnByDataKey,
     dimensionModel,
     xAxisModel,
     leftAxisModel,
     rightAxisModel,
+    splitPanelYAxisModels,
     trendLinesModel,
     seriesLabelsFormatters,
     stackedLabelsFormatters,

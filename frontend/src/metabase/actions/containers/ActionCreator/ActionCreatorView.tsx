@@ -1,6 +1,9 @@
-import type * as React from "react";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
+
+import { Button } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
+import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import {
   ActionCreatorBodyContainer,
@@ -9,21 +12,17 @@ import {
   ModalLeft,
   ModalRight,
   ModalRoot,
-} from "metabase/actions/containers/ActionCreator/ActionCreator.styled";
-import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
-import { FormCreator } from "metabase/actions/containers/ActionCreator/FormCreator";
-import {
-  DataReferenceInline,
-  DataReferenceTriggerButton,
-} from "metabase/actions/containers/ActionCreator/InlineDataReference";
-import { Button } from "metabase/common/components/Button";
-import { isNotNull } from "metabase/lib/types";
-import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
-
+} from "./ActionCreator.styled";
+import ActionCreatorHeader from "./ActionCreatorHeader";
+import { FormCreator } from "./FormCreator";
 import InlineActionSettings, {
   ActionSettingsTriggerButton,
 } from "./InlineActionSettings";
-import type { ActionCreatorUIProps, SideView } from "./types";
+import type {
+  ActionCreatorUIProps,
+  DataReferenceSlot,
+  SideView,
+} from "./types";
 
 interface ActionCreatorProps extends ActionCreatorUIProps {
   action: Partial<WritebackAction>;
@@ -32,6 +31,7 @@ interface ActionCreatorProps extends ActionCreatorUIProps {
   canSave: boolean;
   isNew: boolean;
   isEditable: boolean;
+  dataReference: DataReferenceSlot;
 
   children: React.ReactNode;
 
@@ -52,6 +52,7 @@ export default function ActionCreatorView({
   isEditable,
   canRename,
   canChangeFieldSettings,
+  dataReference,
   children,
   onChangeAction,
   onChangeFormSettings,
@@ -90,13 +91,12 @@ export default function ActionCreatorView({
       <ActionCreatorBodyContainer>
         <ModalLeft>
           <ActionCreatorHeader
-            type="query"
             name={action.name ?? t`New Action`}
             canRename={canRename}
             isEditable={isEditable}
             onChangeName={(name) => onChangeAction({ name })}
             actionButtons={[
-              <DataReferenceTriggerButton
+              <dataReference.TriggerButton
                 key="dataReference"
                 onClick={toggleDataRef}
               />,
@@ -108,11 +108,15 @@ export default function ActionCreatorView({
           />
           <EditorContainer>{children}</EditorContainer>
           <ModalActions>
-            <Button onClick={onCloseModal} borderless>
+            <Button onClick={onCloseModal} variant="subtle">
               {t`Cancel`}
             </Button>
             {isEditable && (
-              <Button primary disabled={!canSave} onClick={onClickSave}>
+              <Button
+                variant="filled"
+                disabled={!canSave}
+                onClick={onClickSave}
+              >
                 {isNew ? t`Save` : t`Update`}
               </Button>
             )}
@@ -129,7 +133,7 @@ export default function ActionCreatorView({
               onClose={onCloseModal}
             />
           ) : activeSideView === "dataReference" ? (
-            <DataReferenceInline
+            <dataReference.Panel
               onClose={onCloseModal}
               onBack={closeSideView}
             />

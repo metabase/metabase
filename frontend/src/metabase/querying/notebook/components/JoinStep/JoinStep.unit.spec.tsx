@@ -1,4 +1,4 @@
-import userEvent from "@testing-library/user-event";
+import _userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -19,10 +19,16 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { METAKEY } from "metabase/lib/browser";
+import { createMockState } from "metabase/redux/store/mocks";
+import { METAKEY } from "metabase/utils/browser";
 import * as Lib from "metabase-lib";
-import { createQuery, getJoinQueryHelpers } from "metabase-lib/test-helpers";
-import type { CollectionItem, RecentItem } from "metabase-types/api";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import type {
+  CollectionItem,
+  RecentItem,
+  TestColumnWithBinningSpec,
+  TestExpressionSpec,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -30,12 +36,12 @@ import {
   createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   PRODUCTS_ID,
   createSampleDatabase,
   createSavedStructuredCard,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
@@ -74,90 +80,101 @@ const metadata = createMockMetadata({
   questions: [MODEL, QUESTION],
 });
 
+const provider = createMetadataProvider({ metadata });
+
+const userEvent = _userEvent.setup();
+
 function getJoinedQuery() {
-  const query = createQuery({ metadata });
-
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
-
-  const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
-  const productsId = findRHSColumn("PRODUCTS", "ID");
-
-  const stageIndex = -1;
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    ordersProductId,
-    productsId,
-  );
-
-  const join = Lib.withJoinFields(
-    Lib.joinClause(table, [condition], defaultStrategy),
-    "all",
-  );
-
-  return Lib.join(query, stageIndex, join);
+  return Lib.createTestQuery(provider, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  sourceName: "ORDERS",
+                  name: "PRODUCT_ID",
+                },
+                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 }
 
-type FindColumn = (tableName: string, columnName: string) => Lib.ColumnMetadata;
-type CreateExpression = (findColumn: FindColumn) => Lib.ExpressionClause;
-
 function getJoinedQueryWithCustomExpressions(
-  createLhsExpression: CreateExpression,
-  createRhsExpression: CreateExpression,
+  left: TestColumnWithBinningSpec | TestExpressionSpec,
+  right: TestColumnWithBinningSpec | TestExpressionSpec,
 ) {
-  const query = createQuery({ metadata });
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
-  const stageIndex = -1;
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    createLhsExpression(findLHSColumn),
-    createRhsExpression(findRHSColumn),
-  );
-  const join = Lib.withJoinFields(
-    Lib.joinClause(table, [condition], defaultStrategy),
-    "all",
-  );
-
-  return Lib.join(query, stageIndex, join);
+  return Lib.createTestQuery(provider, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left,
+                right,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 }
 
 function getJoinedQueryWithMultipleConditions() {
-  const query = getJoinedQuery();
-  const { defaultOperator, findLHSColumn, findRHSColumn } = getJoinQueryHelpers(
-    query,
-    0,
-    PRODUCTS_ID,
-  );
-
-  const [currentJoin] = Lib.joins(query, 0);
-  const currentConditions = Lib.joinConditions(currentJoin);
-
-  const ordersCreatedAt = findLHSColumn("ORDERS", "CREATED_AT");
-  const productsCreatedAt = findRHSColumn("PRODUCTS", "CREATED_AT");
-
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    ordersCreatedAt,
-    productsCreatedAt,
-  );
-
-  const nextJoin = Lib.withJoinConditions(currentJoin, [
-    ...currentConditions,
-    condition,
-  ]);
-
-  return Lib.replaceClause(query, 0, currentJoin, nextJoin);
+  return Lib.createTestQuery(provider, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  sourceName: "ORDERS",
+                  name: "PRODUCT_ID",
+                },
+                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+              },
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  sourceName: "ORDERS",
+                  name: "CREATED_AT",
+                },
+                right: {
+                  type: "column",
+                  sourceName: "PRODUCTS",
+                  name: "CREATED_AT",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 }
 
 function setup({
@@ -203,7 +220,7 @@ function setup({
           step={step}
           stageIndex={step.stageIndex}
           query={query}
-          color="brand"
+          color="core-brand"
           isLastOpened={false}
           readOnly={readOnly}
           reportTimezone="UTC"
@@ -252,7 +269,7 @@ function setup({
 }
 
 async function enterCustomExpression(expression: string) {
-  const input = screen.getByTestId("custom-expression-query-editor");
+  const input = await screen.findByTestId("custom-expression-query-editor");
   await waitFor(() => expect(input).toHaveProperty("readOnly", false));
   await userEvent.clear(input);
   await userEvent.type(input, expression);
@@ -271,7 +288,10 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   afterAll(() => {
-    jest.resetAllMocks();
+    // restore (not reset): resetAllMocks would leave the spied
+    // `getBoundingClientRect` returning `undefined`, which crashes
+    // floating-ui callbacks that fire after the tests finish.
+    jest.restoreAllMocks();
   });
 
   it("should display a join correctly", () => {
@@ -824,6 +844,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(within(rhsColumnPicker).getByText("Rating"));
 
       const { query, fields } = getRecentJoin();
+      // Unjustified type cast. FIXME
       const columns = fields as Lib.ColumnMetadata[];
       const reviewer = columns.find(
         (column) => Lib.displayInfo(query, 0, column).name === "REVIEWER",
@@ -914,6 +935,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(within(picker).getByText("Vendor"));
 
       const { query, fields } = getRecentJoin();
+      // Unjustified type cast. FIXME
       const columns = fields as Lib.ColumnMetadata[];
       const vendor = columns.find(
         (column) => Lib.displayInfo(query, 0, column).name === "VENDOR",
@@ -1342,13 +1364,15 @@ describe("Notebook Editor > Join Step", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
-            () =>
-              Lib.expressionClause("value", [10], {
-                "base-type": "type/Integer",
-                "effective-type": "type/Integer",
-              }),
-            (findRHSColumn) =>
-              Lib.expressionClause(findRHSColumn("PRODUCTS", "ID")),
+            {
+              type: "literal",
+              value: 10,
+            },
+            {
+              type: "column",
+              sourceName: "PRODUCTS",
+              name: "ID",
+            },
           ),
         }),
       });
@@ -1362,13 +1386,8 @@ describe("Notebook Editor > Join Step", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
-            (findLHSColumn) =>
-              Lib.expressionClause(findLHSColumn("ORDERS", "PRODUCT_ID")),
-            () =>
-              Lib.expressionClause("value", ["abc"], {
-                "base-type": "type/Text",
-                "effective-type": "type/Text",
-              }),
+            { type: "column", sourceName: "ORDERS", name: "PRODUCT_ID" },
+            { type: "literal", value: "abc" },
           ),
         }),
       });
@@ -1382,13 +1401,15 @@ describe("Notebook Editor > Join Step", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
-            (findLHSColumn) =>
-              Lib.expressionClause("+", [
-                findLHSColumn("ORDERS", "PRODUCT_ID"),
-                1,
-              ]),
-            (findRHSColumn) =>
-              Lib.expressionClause(findRHSColumn("PRODUCTS", "ID")),
+            {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "column", sourceName: "ORDERS", name: "PRODUCT_ID" },
+                { type: "literal", value: 1 },
+              ],
+            },
+            { type: "column", sourceName: "PRODUCTS", name: "ID" },
           ),
         }),
       });
@@ -1402,10 +1423,19 @@ describe("Notebook Editor > Join Step", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
-            (findLHSColumn) =>
-              Lib.expressionClause(findLHSColumn("ORDERS", "PRODUCT_ID")),
-            (findRHSColumn) =>
-              Lib.expressionClause("+", [findRHSColumn("PRODUCTS", "ID"), 1]),
+            {
+              type: "column",
+              sourceName: "ORDERS",
+              name: "PRODUCT_ID",
+            },
+            {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "column", sourceName: "PRODUCTS", name: "ID" },
+                { type: "literal", value: 1 },
+              ],
+            },
           ),
         }),
       });

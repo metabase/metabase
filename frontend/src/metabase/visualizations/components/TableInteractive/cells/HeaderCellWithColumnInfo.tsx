@@ -12,10 +12,11 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";
 
+import { useTableInteractiveContext } from "../TableInteractiveContext";
+
 import S from "./HeaderCellWithColumnInfo.module.css";
 
 export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
-  getInfoPopoversDisabled: () => boolean;
   timezone?: string;
   question: Question;
   column: DatasetColumn;
@@ -35,7 +36,6 @@ export const HeaderCellWithColumnInfo = memo(
     align,
     sort,
     variant = "light",
-    getInfoPopoversDisabled,
     question,
     timezone,
     column,
@@ -44,8 +44,7 @@ export const HeaderCellWithColumnInfo = memo(
     className,
     renderTableHeader,
   }: HeaderCellWithColumnInfoProps) {
-    const query = question?.query();
-    const stageIndex = -1;
+    const { infoPopoversDisabled } = useTableInteractiveContext();
 
     const headerCellOverride = useMemo(() => {
       return renderTableHeader != null
@@ -63,23 +62,33 @@ export const HeaderCellWithColumnInfo = memo(
       </div>
     );
 
+    let headerContent: React.ReactNode;
+
+    if (infoPopoversDisabled) {
+      headerContent = cellContent;
+    } else {
+      // question.query will throw when used in the visualizer
+      // we don't go down this code path in the visualizer because isDashboard is true
+      const query = question?.query();
+      const stageIndex = -1;
+      headerContent = (
+        <QueryColumnInfoPopover
+          position="bottom-start"
+          query={query}
+          stageIndex={stageIndex}
+          column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
+          timezone={timezone}
+          openDelay={500}
+          showFingerprintInfo
+        >
+          {cellContent}
+        </QueryColumnInfoPopover>
+      );
+    }
+
     return (
       <HeaderCellWrapper className={className} variant={variant} align={align}>
-        {getInfoPopoversDisabled() ? (
-          cellContent
-        ) : (
-          <QueryColumnInfoPopover
-            position="bottom-start"
-            query={query}
-            stageIndex={-1}
-            column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
-            timezone={timezone}
-            openDelay={500}
-            showFingerprintInfo
-          >
-            {cellContent}
-          </QueryColumnInfoPopover>
-        )}
+        {headerContent}
       </HeaderCellWrapper>
     );
   },

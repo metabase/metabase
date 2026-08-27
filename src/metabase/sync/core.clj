@@ -20,7 +20,8 @@
 
 (p/import-vars
  [metabase.sync.analyze
-  analyze-db!]
+  analyze-db!
+  analyze-db-explicit!]
  [metabase.sync.field-values
   update-field-values!
   update-field-values-for-table!]
@@ -29,7 +30,8 @@
   sync-database!
   sync-table!]
  [metabase.sync.sync-metadata
-  sync-db-metadata!]
+  sync-db-metadata!
+  sync-db-metadata-explicit!]
  [metabase.sync.sync-metadata.fields
   sync-fields-for-table!]
  [metabase.sync.sync-metadata.tables

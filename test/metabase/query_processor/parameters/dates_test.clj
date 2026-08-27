@@ -5,7 +5,12 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [java-time.api :as t]
+   [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.parameters.dates :as params.dates]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (deftest ^:parallel date-string->filter-test
@@ -39,6 +44,16 @@
             (params.dates/date-string->filter
              "2019-04-01"
              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))
+
+(deftest ^:parallel date-string->filter-test-3b
+  (testing "single hour-granular value"
+    (is (=? [:=
+             {}
+             [:field {:temporal-unit :minute} (meta/id :orders :created-at)]
+             "2025-04-01T09:00:00"]
+            (params.dates/date-string->filter
+             "2025-04-01T09"
+             (lib/ref (meta/field-metadata :orders :created-at)))))))
 
 (deftest ^:parallel date-string->filter-test-4
   (testing "single minute"
@@ -191,112 +206,107 @@
 
 (deftest ^:parallel date-string->filter-test-15a
   (testing "exclusions"
-    (mt/with-clock #t "2016-06-07T12:13:55Z"
-      (testing "hours"
-        (is (=? [:!=
-                 {}
-                 [:field {:base-type :type/DateTime, :temporal-unit :hour-of-day} "field"]
-                 "2016-06-07T00:00:00"]
-                (params.dates/date-string->filter
-                 "exclude-hours-0"
-                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
-        (is (=? [:!=
-                 {}
-                 [:field {:base-type :type/DateTime, :temporal-unit :hour-of-day} "field"]
-                 "2016-06-07T00:00:00"
-                 "2016-06-07T23:00:00"]
-                (params.dates/date-string->filter
-                 "exclude-hours-0-23"
-                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Don't know how to parse date string \"exclude-hours-\""
-             (params.dates/date-string->filter
-              "exclude-hours-"
-              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Don't know how to parse date string \"exclude-hours-24-3\""
-             (params.dates/date-string->filter
-              "exclude-hours-24-3"
-              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))))
+    (testing "hours"
+      (is (=? [:!=
+               {}
+               [:field {:base-type :type/DateTime, :temporal-unit :hour-of-day} "field"]
+               0]
+              (params.dates/date-string->filter
+               "exclude-hours-0"
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+      (is (=? [:!=
+               {}
+               [:field {:base-type :type/DateTime, :temporal-unit :hour-of-day} "field"]
+               0
+               23]
+              (params.dates/date-string->filter
+               "exclude-hours-0-23"
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Don't know how to parse date string \"exclude-hours-\""
+           (params.dates/date-string->filter
+            "exclude-hours-"
+            [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Don't know how to parse date string \"exclude-hours-24-3\""
+           (params.dates/date-string->filter
+            "exclude-hours-24-3"
+            [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]))))))
 
 (deftest ^:parallel date-string->filter-test-15b
   (testing "exclusions"
-    (mt/with-clock #t "2016-06-07T12:13:55Z"
-      (testing "quarters"
-        (is (=? [:!=
-                 {}
-                 [:field {:base-type :type/DateTime, :temporal-unit :quarter-of-year} "field"]
-                 "2016-01-01"]
-                (params.dates/date-string->filter
-                 "exclude-quarters-1"
-                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
-        (is (=? [:!=
-                 {}
-                 [:field {:base-type :type/DateTime, :temporal-unit :quarter-of-year} "field"]
-                 "2016-04-01"
-                 "2016-07-01"
-                 "2016-10-01"]
-                (params.dates/date-string->filter
-                 "exclude-quarters-2-3-4"
-                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Don't know how to parse date string \"exclude-quarters-Q1\""
-             (params.dates/date-string->filter
-              "exclude-quarters-Q1"
-              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))))
+    (testing "quarters"
+      (is (=? [:!=
+               {}
+               [:field {:base-type :type/DateTime, :temporal-unit :quarter-of-year} "field"]
+               1]
+              (params.dates/date-string->filter
+               "exclude-quarters-1"
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+      (is (=? [:!=
+               {}
+               [:field {:base-type :type/DateTime, :temporal-unit :quarter-of-year} "field"]
+               2
+               3
+               4]
+              (params.dates/date-string->filter
+               "exclude-quarters-2-3-4"
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Don't know how to parse date string \"exclude-quarters-Q1\""
+           (params.dates/date-string->filter
+            "exclude-quarters-Q1"
+            [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]))))))
 
 (deftest ^:parallel date-string->filter-test-15c
   (testing "exclusions"
-    (mt/with-clock #t "2016-06-07T12:13:55Z"
-      (testing "days"
-        (is (=? [:!=
-                 {}
-                 [:field {:base-type :type/DateTime, :temporal-unit :day-of-week} "field"]
-                 "2016-06-10"
-                 "2016-06-07"]
-                (params.dates/date-string->filter
-                 "exclude-days-Fri-Tue"
-                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Don't know how to parse date string \"exclude-days-Friday\""
-             (params.dates/date-string->filter
-              "exclude-days-Friday"
-              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))))
+    (testing "days (with default start-of-week = Sunday: Sun=1, Mon=2, Tue=3, Wed=4, Thu=5, Fri=6, Sat=7)"
+      (is (=? [:!=
+               {}
+               [:field {:base-type :type/DateTime, :temporal-unit :day-of-week} "field"]
+               6
+               3]
+              (params.dates/date-string->filter
+               "exclude-days-Fri-Tue"
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Don't know how to parse date string \"exclude-days-Friday\""
+           (params.dates/date-string->filter
+            "exclude-days-Friday"
+            [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]))))))
 
 (deftest ^:parallel date-string->filter-test-15d
   (testing "exclusions"
-    (mt/with-clock #t "2016-06-07T12:13:55Z"
-      (testing "months"
-        (is (=? [:!=
-                 {}
-                 [:field {:base-type :type/DateTime, :temporal-unit :month-of-year} "field"]
-                 "2016-12-01"
-                 "2016-04-01"
-                 "2016-09-01"]
-                (params.dates/date-string->filter
-                 "exclude-months-Dec-Apr-Sep"
-                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Don't know how to parse date string \"exclude-months-April\""
-             (params.dates/date-string->filter
-              "exclude-months-April"
-              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))))
+    (testing "months"
+      (is (=? [:!=
+               {}
+               [:field {:base-type :type/DateTime, :temporal-unit :month-of-year} "field"]
+               12
+               4
+               9]
+              (params.dates/date-string->filter
+               "exclude-months-Dec-Apr-Sep"
+               [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Don't know how to parse date string \"exclude-months-April\""
+           (params.dates/date-string->filter
+            "exclude-months-April"
+            [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]))))))
 
 (deftest ^:parallel date-string->filter-test-15e
   (testing "exclusions"
-    (mt/with-clock #t "2016-06-07T12:13:55Z"
-      (testing "minutes"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Don't know how to parse date string \"exclude-minutes-15-30\""
-             (params.dates/date-string->filter
-              "exclude-minutes-15-30"
-              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"])))))))
+    (testing "minutes"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Don't know how to parse date string \"exclude-minutes-15-30\""
+           (params.dates/date-string->filter
+            "exclude-minutes-15-30"
+            [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/DateTime} "field"]))))))
 
 (defn do-date-string-range-test
   [s->expected]
@@ -544,6 +554,59 @@
                  {:start "2016-06-06" :end "2016-06-07"}
                  {:start "2016-06-07" :end "2016-06-08"}
                  {:start "2016-06-06" :end "2016-06-08"}]}))
+
+(defn- do-with-qp-context-and-results-tz
+  [results-tz thunk]
+  ;; date-string->raw-range only honors the report timezone when invoked inside a QP context
+  ;; (driver bound + store initialized). Mimic that here with a postgres-engined mock provider.
+  (driver/with-driver :postgres
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      {:database (assoc meta/database :engine :postgres)})
+      (mt/with-results-timezone-id results-tz
+        (thunk)))))
+
+(defn- check-relative-date-ranges
+  [results-tz s->expected]
+  (do-with-qp-context-and-results-tz
+   results-tz
+   (fn []
+     (doseq [[s expected] s->expected]
+       (testing (pr-str s)
+         (is (= expected
+                (params.dates/date-string->range s))))))))
+
+(deftest ^:parallel date-string->range-relative-respects-report-timezone-test
+  (testing "Relative date ranges anchor to the report timezone, not the JVM timezone (#74542)"
+    (testing "UTC just past midnight; US/Pacific still on the previous day"
+      ;; 2016-06-07T03:00:00Z — UTC date = 2016-06-07, US/Pacific date = 2016-06-06.
+      (mt/with-clock #t "2016-06-07T03:00:00Z"
+        (check-relative-date-ranges
+         "US/Pacific"
+         {"today"      {:start "2016-06-06" :end "2016-06-06"}
+          "yesterday"  {:start "2016-06-05" :end "2016-06-05"}
+          "past1days"  {:start "2016-06-05" :end "2016-06-05"}
+          "past3days"  {:start "2016-06-03" :end "2016-06-05"}
+          "past3days~" {:start "2016-06-03" :end "2016-06-06"}})))
+    (testing "UTC right at midnight; US/Pacific still on the previous day"
+      ;; 2016-06-07T00:00:00Z — UTC date = 2016-06-07, US/Pacific date = 2016-06-06.
+      (mt/with-clock #t "2016-06-07T00:00:00Z"
+        (check-relative-date-ranges
+         "US/Pacific"
+         {"today"     {:start "2016-06-06" :end "2016-06-06"}
+          "yesterday" {:start "2016-06-05" :end "2016-06-05"}})))
+    (testing "UTC and Pacific agree on the date — control case, behavior unchanged"
+      (mt/with-clock #t "2016-06-07T12:13:55Z"
+        (check-relative-date-ranges
+         "US/Pacific"
+         {"today"     {:start "2016-06-07" :end "2016-06-07"}
+          "yesterday" {:start "2016-06-06" :end "2016-06-06"}})))
+    (testing "Eastern timezone — UTC late evening, Tokyo already on the next day"
+      ;; 2016-06-07T20:00:00Z — UTC date = 2016-06-07, Asia/Tokyo (UTC+9) date = 2016-06-08.
+      (mt/with-clock #t "2016-06-07T20:00:00Z"
+        (check-relative-date-ranges
+         "Asia/Tokyo"
+         {"today"     {:start "2016-06-08" :end "2016-06-08"}
+          "next3days" {:start "2016-06-09" :end "2016-06-11"}})))))
 
 (deftest ^:parallel date-string->range-relative-past-from-test
   (do-date-string-range-test

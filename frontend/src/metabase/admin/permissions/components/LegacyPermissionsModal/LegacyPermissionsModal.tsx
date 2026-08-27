@@ -1,8 +1,8 @@
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Button, Flex, Modal, Text } from "metabase/ui";
 
@@ -39,14 +39,14 @@ export const LegacyPermissionsModal = ({
           <Text
             key="view-data"
             component="span"
-            c="brand"
+            c="core-brand"
             fw="bold"
           >{t`View data`}</Text>
         )} and ${(
           <Text
             key="create-queries"
             component="span"
-            c="brand"
+            c="core-brand"
             fw="bold"
           >{t`Create queries`}</Text>
         )}. Having separate settings for what people can view and what they can query makes data permissions more expressive and easier to reason about.`}

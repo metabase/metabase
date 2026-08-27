@@ -1,33 +1,49 @@
 import cx from "classnames";
-import type * as React from "react";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetPermissionsGroupQuery,
+  useGetTableQuery,
+  useValidateGroupTableAccessPolicyMutation,
+} from "metabase/api";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import { QuestionLoader } from "metabase/common/components/QuestionLoader";
-import { Radio } from "metabase/common/components/Radio";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { EntityName } from "metabase/entities/containers/EntityName";
-import { GTAPApi } from "metabase/services";
-import type { IconName } from "metabase/ui";
-import { Button, Center, Icon, Loader } from "metabase/ui";
+import { QuestionLoader } from "metabase/questions/components/QuestionLoader";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Center,
+  Icon,
+  Loader,
+  Menu,
+  Radio,
+  Stack,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { getName } from "metabase/utils/name";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
 } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 import type {
+  GroupId,
   GroupTableAccessPolicy,
+  IconName,
   Table,
   UserAttributeKey,
 } from "metabase-types/api";
@@ -37,6 +53,8 @@ import {
   DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
 
+import S from "./EditSandboxingModal.module.css";
+
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
 
@@ -44,6 +62,7 @@ const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
   shouldUseSavedQuestion: boolean,
 ): GroupTableAccessPolicy => {
+  // Unjustified type cast. FIXME
   return {
     ...policy,
     card_id: shouldUseSavedQuestion ? policy.card_id : null,
@@ -59,8 +78,8 @@ const getDraftPolicy = ({
   groupId,
 }: GroupTableAccessPolicyParams): GroupTableAccessPolicyDraft => {
   return {
-    table_id: parseInt(tableId),
-    group_id: parseInt(groupId),
+    table_id: parseInt(String(tableId)),
+    group_id: parseInt(String(groupId)),
     card_id: null,
     attribute_remappings: { "": null },
   };
@@ -105,13 +124,15 @@ const EditSandboxingModal = ({
   const [showPickerModal, { turnOn: showModal, turnOff: hideModal }] =
     useToggle(false);
 
+  const [validatePolicy] = useValidateGroupTableAccessPolicyMutation();
+
   const [{ error }, savePolicy] = useAsyncFn(async () => {
     const shouldValidate = normalizedPolicy.card_id != null;
     if (shouldValidate) {
-      await GTAPApi.validate(normalizedPolicy);
+      await validatePolicy(normalizedPolicy).unwrap();
     }
     onSave(normalizedPolicy);
-  }, [normalizedPolicy]);
+  }, [normalizedPolicy, validatePolicy]);
 
   const remainingAttributesOptions = attributes.filter(
     (attribute) => !(attribute in policy.attribute_remappings),
@@ -140,7 +161,7 @@ const EditSandboxingModal = ({
   if (loadingCard || loadingTabe) {
     return (
       <Center p="2rem">
-        <Loader data-testid="loading-indicator" />
+        <Loader />
       </Center>
     );
   }
@@ -164,20 +185,23 @@ const EditSandboxingModal = ({
               <h4
                 className={CS.pb1}
               >{t`How do you want to filter this table?`}</h4>
-              <Radio
-                value={!shouldUseSavedQuestion}
-                options={[
-                  { name: t`Filter by a column in the table`, value: true },
-                  {
-                    name: t`Use a saved question to create a custom view for this table`,
-                    value: false,
-                  },
-                ]}
-                onChange={(shouldUseSavedQuestion) =>
-                  setShouldUseSavedQuestion(!shouldUseSavedQuestion)
+              <Radio.Group
+                value={shouldUseSavedQuestion ? "saved-question" : "column"}
+                onChange={(value) =>
+                  setShouldUseSavedQuestion(value === "saved-question")
                 }
-                vertical
-              />
+              >
+                <Stack gap="sm">
+                  <Radio
+                    value="column"
+                    label={t`Filter by a column in the table`}
+                  />
+                  <Radio
+                    value="saved-question"
+                    label={t`Use a saved question to create a custom view for this table`}
+                  />
+                </Stack>
+              </Radio.Group>
             </div>
           ) : (
             <div>
@@ -193,20 +217,50 @@ const EditSandboxingModal = ({
             <div className={CS.pb2}>
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
-            <Button
-              data-testid="custom-view-picker-button"
-              onClick={showModal}
-              fullWidth
-              rightSection={<Icon name="ellipsis" />}
-              styles={{
-                inner: {
-                  justifyContent: "space-between",
-                },
-                root: { "&:active": { transform: "none" } },
-              }}
-            >
-              {policyCard?.name ?? t`Select a question`}
-            </Button>
+            <Box pos="relative">
+              <Button
+                data-testid="custom-view-picker-button"
+                onClick={showModal}
+                fullWidth
+                rightSection={policyCard ? undefined : <Icon name="ellipsis" />}
+                classNames={{
+                  root: S.policyCardButton,
+                  inner: S.policyCardButtonInner,
+                  label: policyCard ? S.policyCardLabel : undefined,
+                }}
+              >
+                {policyCard?.name ?? t`Select a question`}
+              </Button>
+              {policyCard && (
+                <Menu position="bottom-end">
+                  <Menu.Target>
+                    <ActionIcon
+                      aria-label={t`Question options`}
+                      className={S.optionsButton}
+                    >
+                      <Icon name="ellipsis" />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      component="a"
+                      href={Urls.card(policyCard)}
+                      target="_blank"
+                      rel="noreferrer"
+                      leftSection={<Icon name="external" />}
+                    >
+                      {t`Go to question`}
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={showModal}
+                      leftSection={<Icon name="refresh" />}
+                    >
+                      {t`Replace`}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              )}
+            </Box>
             {showPickerModal && (
               <QuestionPickerModal
                 value={
@@ -278,7 +332,7 @@ const EditSandboxingModal = ({
           <ActionButton
             className={CS.ml1}
             actionFn={savePolicy}
-            primary
+            variant="filled"
             disabled={!canSave}
           >
             {t`Save`}
@@ -312,12 +366,18 @@ const SummaryRow = ({ icon, content }: SummaryRowProps) => (
   </div>
 );
 
+const PermissionsGroupName = ({ groupId }: { groupId: GroupId }) => {
+  const { data: group } = useGetPermissionsGroupQuery(groupId);
+  return group ? <span>{group.name}</span> : null;
+};
+
 interface PolicySummaryProps {
   policy: GroupTableAccessPolicy;
   policyTable: Table | undefined;
 }
 
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
+  const tc = useTranslateContent();
   const headingId = _.uniqueId();
   return (
     <div aria-labelledby={headingId}>
@@ -331,7 +391,7 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
         icon="group"
         content={jt`Users in ${(
           <strong key="group-name">
-            <EntityName entityType="groups" entityId={policy.group_id} />
+            <PermissionsGroupName groupId={policy.group_id} />
           </strong>
         )} can view`}
       />
@@ -341,16 +401,11 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
           policy.card_id
             ? jt`rows in the ${(
                 <strong key="question-name">
-                  <EntityName
-                    entityType="questions"
-                    entityId={policy.card_id}
-                  />
+                  <QuestionName id={policy.card_id} />
                 </strong>
               )} question`
             : jt`rows in the ${(
-                <strong key="table-name">
-                  <EntityName entityType="tables" entityId={policy.table_id} />
-                </strong>
+                <strong key="table-name">{tc(getName(policyTable))}</strong>
               )} table`
         }
       />
@@ -409,7 +464,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
         <span>
           {c(
             "{0} is a name of a variable being used by row and column security",
-          ).jt`${(<strong key="strong">{target[1][1]}</strong>)} variable`}
+          ).jt`${<strong key="strong">{target[1][1]}</strong>} variable`}
         </span>
       );
     } else if (target[0] === "dimension") {
@@ -426,7 +481,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
           }
           includeSensitiveFields
         >
-          {({ question }: { question: Question }) => {
+          {({ question }) => {
             if (!question) {
               return null;
             }
@@ -451,7 +506,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
                 {c(
                   "{0} is a name of a field being used by row and column security",
                 )
-                  .jt`${(<strong key="strong">{columnInfo.displayName}</strong>)} field`}
+                  .jt`${<strong key="strong">{columnInfo.displayName}</strong>} field`}
               </span>
             );
           }}

@@ -1,17 +1,21 @@
-import type { Dayjs } from "dayjs";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 
+import type { Dayjs } from "metabase/dayjs";
 import type {
   INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { Extent } from "metabase/visualizations/types";
 import type {
+  Card,
   CardId,
   DatasetColumn,
   DateTimeAbsoluteUnit,
   RowValue,
+  VisualizationSettingKey,
 } from "metabase-types/api";
 
 export type BreakoutValue = Exclude<RowValue, object>;
@@ -30,11 +34,9 @@ export type DataKey =
   | typeof X_AXIS_DATA_KEY
   | typeof INDEX_KEY;
 
-export type VizSettingsKey = string;
-
 export type LegacySeriesSettingsObjectKey = {
-  card: {
-    _seriesKey: VizSettingsKey;
+  card: Partial<Card> & {
+    _seriesKey?: VisualizationSettingKey;
   };
 };
 
@@ -48,7 +50,7 @@ export type BaseSeriesModel = {
 };
 
 export type RegularSeriesModel = BaseSeriesModel & {
-  vizSettingsKey: VizSettingsKey;
+  vizSettingsKey: VisualizationSettingKey;
 
   // TODO: remove when the settings definitions are updated for the dynamic combo chart.
   // This object is used as a key for the `series` function of the computed
@@ -92,7 +94,6 @@ export type Datum = Record<DataKey, RowValue> & {
   [INDEX_KEY]?: number;
 };
 export type ChartDataset<D extends Datum = Datum> = D[];
-export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
 export type RawValueFormatter = (value: RowValue) => string;
 export type LabelFormatter = RawValueFormatter;
@@ -214,7 +215,7 @@ export type ComboChartDataDensity = BaseChartDataDensity & {
   type: "combo";
   seriesDataKeysWithLabels: DataKey[];
   stackedDisplayWithLabels: StackDisplay[];
-  totalNumberOfDots: number;
+  numberOfDotsBySeriesKey: Record<DataKey, number>;
 };
 
 export type BaseCartesianChartModel = {
@@ -227,8 +228,10 @@ export type BaseCartesianChartModel = {
 
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
+  splitPanelYAxisModels?: YAxisModel[];
   xAxisModel: XAxisModel;
 
+  cardsColumns: CartesianChartColumns[];
   columnByDataKey: Record<DataKey, DatasetColumn>;
 
   // Allows to use multiple ECharts series options to represent single data series

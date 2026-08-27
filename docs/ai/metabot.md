@@ -5,11 +5,11 @@ summary: Metabot is Metabase's AI assistant that helps you analyze data, create 
 
 # Metabot - Metabase's AI assistant
 
-> Metabot is only available as an add-on on Metabase Cloud.
-
 ![Meet Metabot](./images/metabot.png)
 
 Metabot helps you analyze your data by creating charts from natural language, generating SQL queries, fixing query errors, and analyzing existing visualizations.
+
+> Join us for AI Analytics Week: three live sessions on trusting AI answers, rolling out AI safely, and building on top of AI. [Details and registration →](https://metaba.se/ai-analytics-week)
 
 ## Set up Metabot
 
@@ -17,15 +17,17 @@ To set up Metabot, see [Metabot settings](./settings.md).
 
 ## What Metabot can do
 
-Metabot can help you to:
+Here's a non-exhaustive list of things Metabot can help with:
 
-- [AI exploration](#ai-exploration).
+- [Answer data questions asked with natural language](#ai-exploration).
 - [Create a chart using the query builder](#how-metabot-uses-the-query-builder) from a natural language query.
 - [Generate SQL in the native editor](../questions/native-editor/writing-sql.md) from natural language. (Currently, only SQL is supported.)
 - [Edit SQL directly in the native editor](#inline-sql-editing).
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
-- Answer questions from our documentation (as in, the literature you're reading right now).
+- [Generate transforms](../data-studio/transforms/transforms-overview.md#use-metabot-to-generate-code-for-transforms)
+- [Generate charts in documents](../documents/introduction.md)
+- [Answer questions from Slack](./metabot-slack.md).
 
 Like with all generative AI, you'll always need to double-check results.
 
@@ -62,9 +64,9 @@ Hover over Metabot's response to:
 
 ![Metabot analyzes a chart](./images/metabot-response.png)
 
-When viewing a question, you can click the Metabot icon in the upper right to analyze a visualization. You can also open the command palette to tell Metabot to analyze the chart.
+When viewing a question, open the [chat sidebar](#the-metabot-chat-sidebar) and ask Metabot to analyze the chart.
 
-When viewing a table of results, Metabase won't display the Metabot button, but you can open the chat to ask Metabot to analyze the table, and it will produce an [X-ray](../exploration-and-organization/x-rays.md) of the results.
+When viewing a table of results, ask Metabot in the chat to analyze the table, and it will produce an [X-ray](../exploration-and-organization/x-rays.md) of the results.
 
 You can also ask Metabot to tell you about specific tables in your database.
 
@@ -72,7 +74,7 @@ You can also ask Metabot to tell you about specific tables in your database.
 
 When you ask Metabot to create a chart from natural language, it first looks for existing questions that might answer your request. If it finds a relevant question, it'll point you to that instead of creating something new. Otherwise, Metabot will use the [query builder](../questions/query-builder/editor.md) to create a new chart for you.
 
-Keep in mind that Metabot is still learning the query builder. Metabot can only handle basic query builder operations, and it lacks access to the library of [custom expressions](../questions/query-builder/expressions-list.md). Metabot is also limited to single-level aggregation and grouping, so if you need more complex analysis, you can take over and refine the query yourself, or switch to the SQL editor.
+Metabot is not magic, and it's [still learning Metabase and the query builder](#current-limitations).
 
 ## Metabot in the native editor
 
@@ -102,11 +104,13 @@ When you get an error in a SQL query, you can click the **Have Metabot fix it** 
 You can ask Metabot to generate or edit code in the SQL editor, without using the [chat sidebar](#the-metabot-chat-sidebar):
 
 1. Open the [SQL editor](../questions/native-editor/writing-sql.md).
-2. Press Cmd+shift+i on Mac or Ctrl+shift+i on Windows.
-3. Describe the SQL you want to generate or modify.
-4. Review the generated code and accept or reject it.
+2. Press **Cmd+Shift+I** (Mac) or **Ctrl+Shift+I** (Windows).
+3. Enter one or more tables.
+4. Type a prompt describing the query you want to write.
+5. Click **Generate** to create the SQL.
+6. Accept or reject the change. Always review the code before running it (AI is not magic).
 
-Once you start typing or editing your SQL, you can continue using the keyboard shortcut to refine your code.
+You can also edit existing SQL. Place your cursor in the query, press **Cmd/Ctrl+Shift+I**, and describe the change you want to make (like "add a filter for orders from this year"). Metabase will suggest edits that you can accept or reject.
 
 ## Navigating after Metabot creates a chart
 
@@ -124,6 +128,19 @@ Open it from **+ New → AI exploration**, then ask a question or pick one of th
 
 When answering questions in AI exploration, Metabot searches a limited set of content instead of your entire Metabase. Admins can set a **Collection for natural language querying** to scope AI exploration to a specific collection and its subcollections. You can still refer to content outside that scope by explicitly @-mentioning it in your prompt. See [Metabot AI settings](../ai/settings.md) for more details.
 
+## Current limitations
+
+Metabot is getting smarter all the time, but there are some things it can't do yet:
+
+- **SQL variables.** Metabot can't generate SQL queries that include [SQL parameters](../questions/native-editor/sql-parameters.md) (like filters or field filters).
+- **Goal lines.** Metabot can't add [goal lines](../questions/visualizations/line-bar-and-area-charts.md#goal-lines) to charts.
+- **Chart formatting.** Metabot can't change visualization settings like colors, axis labels, or number formatting.
+- **Managing alerts.** [Metabot in Slack](./metabot-slack.md) can create alerts and dashboard subscriptions, but can't modify or delete existing ones.
+- **Search.** Metabot can only search for tables, metrics, questions, models, and dashboards. It can't discover segments, measures, documents, collections, actions, or indexed entities on its own — but it can use segments and measures in ad-hoc queries (for example, filtering by a segment).
+
+## Metabot in Slack
+
+Slack Metabot directly or @mention it in a channel to ask questions about your data. See [Metabot in Slack](./metabot-slack.md).
 
 ## Giving feedback on Metabot responses
 

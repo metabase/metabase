@@ -16,6 +16,7 @@
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.memoize :as memoize]
    [ring.util.response :as response]
    [stencil.core :as stencil])
   (:import
@@ -68,14 +69,14 @@
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
 
-(def ^:private ^{:arglists '([resource-name])} load-inline-js (memoize load-inline-js*))
+(def ^:private ^{:arglists '([resource-name])} load-inline-js (memoize/memo load-inline-js*))
 
 (defn- load-template [path variables]
   (try
     (stencil/render-file path variables)
     (catch IllegalArgumentException e
       (let [message (trs "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?" path)]
-        (log/error e message)
+        (log/error message (ex-message e))
         (throw (Exception. message e))))))
 
 (defn- template-parameters
@@ -99,7 +100,7 @@
      :applicationName        (hiccup.util/escape-html (appearance/application-name))
      :uri                    (hiccup.util/escape-html uri)
      :baseHref               (hiccup.util/escape-html (base-href))
-     :embedCode              (when embeddable? (embed/head uri))
+     :embedCode              (when embeddable? (embed/head (system/site-url) uri))
      :enableGoogleAuth       (boolean google-auth-client-id)
      :enableAnonTracking     (boolean anon-tracking-enabled)}))
 
@@ -126,3 +127,4 @@
 (def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))
 (def embed  "/embed index.html entrypoint."  (partial entrypoint "embed"  :embeddable))
 (def embed-sdk  "/embed/sdk/v1 index.html entrypoint."  (partial entrypoint "embed-sdk"  :embeddable))
+(def data-app   "/embed/apps/:name iframe entrypoint." (partial entrypoint "data-app"   :embeddable))

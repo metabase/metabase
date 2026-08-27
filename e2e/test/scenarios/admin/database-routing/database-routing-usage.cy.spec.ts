@@ -4,12 +4,10 @@ import _ from "underscore";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 
-import { interceptPerformanceRoutes } from "../performance/helpers/e2e-performance-helpers";
-
 import {
   BASE_POSTGRES_DESTINATION_DB_INFO,
   DB_ROUTER_USERS,
-  configurDbRoutingViaAPI,
+  configureDbRoutingViaAPI,
   createDbWithIdentifierTable,
   createDestinationDatabasesViaAPI,
   signInAs,
@@ -33,7 +31,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
     });
 
     H.addPostgresDatabase("lead", false, "lead", "leadDbId").then(function () {
-      configurDbRoutingViaAPI({
+      configureDbRoutingViaAPI({
         router_database_id: this.leadDbId,
         user_attribute: "destination_database",
       });
@@ -100,6 +98,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
   });
 
   beforeEach(() => {
+    // Unjustified type cast. FIXME
     H.restore("db-routing-3-dbs" as any);
     cy.signInAsAdmin();
   });
@@ -221,7 +220,6 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
         query: "SELECT name FROM db_identifier;",
       },
     }).then(({ body: { id: questionId } }) => {
-      interceptPerformanceRoutes();
       cy.request("PUT", "api/cache", {
         model: "question",
         model_id: questionId,
@@ -237,20 +235,16 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
       cy.log("User A");
       signInAs(DB_ROUTER_USERS.userA);
       H.visitQuestion(questionId);
-      cy.get('[data-column-id="name"]').should("contain", "destination_one");
-      cy.get('[data-column-id="name"]').should(
-        "not.contain",
-        "destination_two",
-      );
+      cy.get('[data-column-id="name"]')
+        .should("contain", "destination_one")
+        .and("not.contain", "destination_two");
 
       cy.log("User B");
       signInAs(DB_ROUTER_USERS.userB);
       H.visitQuestion(questionId);
-      cy.get('[data-column-id="name"]').should("contain", "destination_two");
-      cy.get('[data-column-id="name"]').should(
-        "not.contain",
-        "destination_one",
-      );
+      cy.get('[data-column-id="name"]')
+        .should("contain", "destination_two")
+        .and("not.contain", "destination_one");
     });
   });
 
@@ -393,7 +387,16 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
       });
 
       signInAs(DB_ROUTER_USERS.userA);
-      H.visitQuestion(questionId);
+      const alias = "cardQuery" + questionId;
+      const metadataAlias = `${alias}-queryMetadata`;
+      cy.intercept("POST", `/api/card/**/${questionId}/query`).as(alias);
+      cy.intercept("GET", `/api/card/**/${questionId}/query_metadata`).as(
+        metadataAlias,
+      );
+      cy.visit(`/question/${questionId}`);
+      // Longer timeout: first impersonation validation triggers cold Python context init
+      cy.wait("@" + metadataAlias, { timeout: 30000 });
+      cy.wait("@" + alias, { timeout: 30000 });
       cy.get('[data-column-id="name"]').should("contain", "destination_one");
       cy.get('[data-column-id="color"]').should("contain", "blue");
       cy.get('[data-column-id="color"]').should("not.contain", "red");

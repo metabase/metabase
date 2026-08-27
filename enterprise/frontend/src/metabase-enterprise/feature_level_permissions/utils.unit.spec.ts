@@ -1,6 +1,13 @@
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import {
+  createMockUser,
+  createMockUserPermissions,
+} from "metabase-types/api/mocks";
 
-import { getDataColumns } from "./utils";
+import {
+  databaseManagementPermissionAllowedPathGetter,
+  getDataColumns,
+} from "./utils";
 
 describe("getDataColumns", () => {
   const originalIsEnabled = PLUGIN_TRANSFORMS.isEnabled;
@@ -10,24 +17,51 @@ describe("getDataColumns", () => {
   });
 
   describe("schemas subject (database level)", () => {
-    it("returns 4 columns with Transforms when PLUGIN_TRANSFORMS.isEnabled is true", () => {
+    it("returns 4 permissions including transforms when PLUGIN_TRANSFORMS.isEnabled is true and transforms are enabled on the instance", () => {
       PLUGIN_TRANSFORMS.isEnabled = true;
 
-      expect(getDataColumns("schemas", "admin")).toStrictEqual([
+      expect(
+        getDataColumns({
+          subject: "schemas",
+          groupType: "admin",
+          showTransformPermissions: true,
+        }),
+      ).toStrictEqual([
         {
           name: "Download results",
           hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",
         },
         { name: "Manage table metadata" },
         { name: "Manage database" },
-        { name: "Transforms", hint: null },
+        {
+          name: "Transforms",
+          hint: "This lets users see, edit, and run transforms based on this database.",
+        },
       ]);
     });
 
-    it("returns 3 columns without Transforms when PLUGIN_TRANSFORMS.isEnabled is false", () => {
-      PLUGIN_TRANSFORMS.isEnabled = false;
+    it("explains the Transforms permission and notes the Data Analysts requirement for non-analyst groups", () => {
+      PLUGIN_TRANSFORMS.isEnabled = true;
 
-      expect(getDataColumns("schemas")).toStrictEqual([
+      const columns = getDataColumns({
+        subject: "schemas",
+        showTransformPermissions: true,
+      });
+      const transformsColumn = columns.find(
+        ({ name }) => name === "Transforms",
+      );
+
+      expect(transformsColumn?.hint).not.toBeNull();
+      // `jt` returns an array of nodes; the description is the leading string.
+      expect(transformsColumn?.hint).toEqual(
+        expect.arrayContaining([
+          "This lets users see, edit, and run transforms based on this database.",
+        ]),
+      );
+    });
+
+    it("returns 3 permissions when the transform token feature is disabled", () => {
+      expect(getDataColumns({ subject: "schemas" })).toStrictEqual([
         {
           name: "Download results",
           hint: "Downloads of native queries are only allowed if a group has download permissions for the entire database.",
@@ -49,10 +83,14 @@ describe("getDataColumns", () => {
       ];
 
       PLUGIN_TRANSFORMS.isEnabled = true;
-      expect(getDataColumns("tables")).toStrictEqual(expectedColumns);
+      expect(getDataColumns({ subject: "tables" })).toStrictEqual(
+        expectedColumns,
+      );
 
       PLUGIN_TRANSFORMS.isEnabled = false;
-      expect(getDataColumns("tables")).toStrictEqual(expectedColumns);
+      expect(getDataColumns({ subject: "tables" })).toStrictEqual(
+        expectedColumns,
+      );
     });
   });
 
@@ -67,10 +105,42 @@ describe("getDataColumns", () => {
       ];
 
       PLUGIN_TRANSFORMS.isEnabled = true;
-      expect(getDataColumns("fields")).toStrictEqual(expectedColumns);
+      expect(getDataColumns({ subject: "fields" })).toStrictEqual(
+        expectedColumns,
+      );
 
       PLUGIN_TRANSFORMS.isEnabled = false;
-      expect(getDataColumns("fields")).toStrictEqual(expectedColumns);
+      expect(getDataColumns({ subject: "fields" })).toStrictEqual(
+        expectedColumns,
+      );
     });
+  });
+});
+
+describe("databaseManagementPermissionAllowedPathGetter", () => {
+  it("grants the databases admin path when the user has database management permission", () => {
+    const user = createMockUser({
+      is_superuser: false,
+      permissions: createMockUserPermissions({ can_access_db_details: true }),
+    });
+
+    expect(databaseManagementPermissionAllowedPathGetter(user)).toEqual([
+      "databases",
+    ]);
+  });
+
+  it("grants no path when the user lacks database management permission", () => {
+    const user = createMockUser({
+      is_superuser: false,
+      permissions: createMockUserPermissions({ can_access_db_details: false }),
+    });
+
+    expect(databaseManagementPermissionAllowedPathGetter(user)).toEqual([]);
+  });
+
+  it("grants no path when there is no user", () => {
+    expect(databaseManagementPermissionAllowedPathGetter(undefined)).toEqual(
+      [],
+    );
   });
 });

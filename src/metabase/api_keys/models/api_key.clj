@@ -57,7 +57,8 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ApiKey
-  {:scope mi/transform-keyword})
+  {:scope mi/transform-keyword
+   :key   mi/transform-encrypted-text})
 
 (mu/defn- expose :- :string
   ^String [s :- [:or ::u.secret/secret :string]]
@@ -195,8 +196,8 @@
   (u/auto-retry 5
     (let [api-key (generate-key)
           prefix (prefix (u.secret/expose api-key))]
-     ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
-     ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
+      ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
+      ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
       (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
         api-key
         (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
@@ -216,8 +217,7 @@
                                              {:email      email
                                               :first_name key-name
                                               :last_name  ""
-                                              :type       :api-key
-                                              :password   (str (random-uuid))})]
+                                              :type       :api-key})]
         (when group-id
           (user/set-permissions-groups! user-id [(perms/all-users-group) group-id]))
         (-> (t2/insert-returning-instance! :model/ApiKey

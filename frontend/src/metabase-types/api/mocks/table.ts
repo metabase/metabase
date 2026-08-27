@@ -1,6 +1,6 @@
 import type {
   BulkTableInfo,
-  BulkTableSelection,
+  BulkTableRequest,
   BulkTableSelectionInfo,
   ForeignKey,
   PublishTablesResponse,
@@ -66,8 +66,8 @@ export const createMockBulkTableInfo = (
 };
 
 export const createMockBulkTableSelection = (
-  opts?: Partial<BulkTableSelection>,
-): BulkTableSelection => {
+  opts?: Partial<BulkTableRequest>,
+): BulkTableRequest => {
   return {
     ...opts,
   };

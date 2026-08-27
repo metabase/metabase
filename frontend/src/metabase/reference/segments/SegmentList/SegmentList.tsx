@@ -3,17 +3,18 @@ import type { CSSProperties } from "react";
 import { t } from "ttag";
 
 import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
-import { List } from "metabase/common/components/List";
-import S from "metabase/common/components/List/List.module.css";
-import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
+import { List } from "metabase/reference/components/List";
+import S from "metabase/reference/components/List/List.module.css";
+import { ListItem } from "metabase/reference/components/ListItem";
+import { getShallowSegments } from "metabase/selectors/metadata";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
-import { getError, getLoading, getSegments } from "../../selectors";
 
 const emptyStateData = {
   get title() {
@@ -32,13 +33,17 @@ const emptyStateData = {
 };
 
 interface SegmentListProps {
+  loading?: boolean;
+  loadingError?: unknown;
   style?: CSSProperties;
 }
 
-export function SegmentList({ style }: SegmentListProps) {
-  const entities = useSelector(getSegments);
-  const loading = useSelector(getLoading);
-  const loadingError = useSelector(getError);
+export function SegmentList({
+  style,
+  loading,
+  loadingError,
+}: SegmentListProps) {
+  const entities = useSelector(getShallowSegments);
   const adminLink = useSelector((state) =>
     getDocsUrl(state, {
       page: "data-modeling/segments",
@@ -67,7 +72,7 @@ export function SegmentList({ style }: SegmentListProps) {
                         name={entity.name}
                         description={entity.description}
                         url={`/reference/segments/${entity.id}`}
-                        icon="segment"
+                        icon={modelIconMap.segment}
                       />
                     ),
                 )}

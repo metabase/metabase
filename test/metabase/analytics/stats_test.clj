@@ -10,6 +10,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
+   [metabase.lib.core :as lib]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -87,8 +88,8 @@
     "250+"    5000))
 
 (deftest anonymous-usage-stats-test
-  (with-redefs [channel.settings/email-configured? (constantly false)
-                channel.settings/slack-configured? (constantly false)]
+  (mt/with-dynamic-fn-redefs [channel.settings/email-configured? (constantly false)
+                              channel.settings/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
                                        google-auth-enabled false
@@ -125,8 +126,8 @@
 (deftest anonymous-usage-stats-test-ee-with-values-changed
   ; some settings are behind the whitelabel feature flag
   (mt/with-premium-features #{:whitelabel}
-    (with-redefs [channel.settings/email-configured? (constantly false)
-                  channel.settings/slack-configured? (constantly false)]
+    (mt/with-dynamic-fn-redefs [channel.settings/email-configured? (constantly false)
+                                channel.settings/slack-configured? (constantly false)]
       (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
                                          startup-time-millis          1234.0
                                          google-auth-enabled          false
@@ -229,11 +230,12 @@
    :started_at   (t/offset-date-time)})
 
 (deftest new-impl-test
-  (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
-                                                {:error "some error"})
-                 :model/QueryExecution _ (merge query-execution-defaults
-                                                {:error "some error"})
-                 :model/QueryExecution _ query-execution-defaults]
+  (mt/with-temp [:model/QueryExecution {id1 :id} (merge query-execution-defaults
+                                                        {:error "some error"})
+                 :model/QueryExecution {id2 :id} (merge query-execution-defaults
+                                                        {:error "some error"})
+                 :model/QueryExecution {id3 :id} query-execution-defaults]
+    (t2/delete! :model/QueryExecution :id [:not-in [id1 id2 id3]])
     (is (= (old-execution-metrics)
            (#'stats/execution-metrics))
         "the new version of the executions metrics works the same way the old one did")))
@@ -243,22 +245,19 @@
     (doseq [tz ["Pacific/Auckland" "Europe/Helsinki"]]
       (testing tz
         (mt/with-app-db-timezone-id! tz
-          (let [get-executions #(:executions (#'stats/execution-metrics))
-                before         (get-executions)]
-            (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
-                                                          {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
-                                                                           (t/minus (t/days 30))
-                                                                           (t/plus (t/minutes 10)))})]
-              (is (= (inc before)
-                     (get-executions))
-                  "execution metrics include query executions since 30 days ago"))
-            (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
-                                                          {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
-                                                                           (t/minus (t/days 30))
-                                                                           (t/minus (t/minutes 10)))})]
-              (is (= before
-                     (get-executions))
-                  "the executions metrics exclude query executions before 30 days ago"))))))))
+          (mt/with-temp [:model/QueryExecution {inside :id} (merge query-execution-defaults
+                                                                   {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                                    (t/minus (t/days 30))
+                                                                                    (t/plus (t/minutes 10)))})
+                         :model/QueryExecution {outside :id} (merge query-execution-defaults
+                                                                    {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                                     (t/minus (t/days 30))
+                                                                                     (t/minus (t/minutes 10)))})]
+            ;; QueryExecutions are written asynchronously in batches, so rows queued by other tests can commit at any
+            ;; moment. Count against a table holding only the two rows under test instead of against a delta.
+            (t2/delete! :model/QueryExecution :id [:not-in [inside outside]])
+            (is (= 1 (:executions (#'stats/execution-metrics)))
+                "the 30 day cutoff includes the execution 10 minutes after it and excludes the one 10 minutes before")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Pulses & Alerts                                                 |
@@ -431,17 +430,13 @@
 (deftest activation-signals-test
   (mt/with-temp-empty-app-db [_conn :h2]
     (mdb/setup-db! :create-sample-content? true)
-
     (testing "sufficient-users? correctly counts the number of users within three days of instance creation"
       (is (false? (@#'stats/sufficient-users? 1)))
-
       (mt/with-temp [:model/User _ {:date_joined
                                     (t/plus (t/offset-date-time) (t/days 4))}]
         (is (false? (@#'stats/sufficient-users? 1))))
-
       (mt/with-temp [:model/User _ {:date_joined (t/offset-date-time)}]
         (is (true? (@#'stats/sufficient-users? 1)))))
-
     (testing "sufficient-queries? correctly counts the number of queries"
       (is (false? (@#'stats/sufficient-queries? 1)))
       (mt/with-temp [:model/QueryExecution _ query-execution-defaults]
@@ -450,29 +445,24 @@
 (deftest csv-upload-available-test
   (mt/with-temp-empty-app-db [_conn :h2]
     (mdb/setup-db! :create-sample-content? true)
-
     (testing "csv-upload-available? currently detects upload availability based on the current MB version"
       (mt/with-temp [:model/Database _ {:engine :postgres}]
-        (with-redefs [config/current-major-version (constantly 46)
-                      config/current-minor-version (constantly 0)]
+        (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 46)
+                                    config/current-minor-version (constantly 0)]
           (is (false? (@#'stats/csv-upload-available?))))
-
-        (with-redefs [config/current-major-version (constantly 47)
-                      config/current-minor-version (constantly 1)]
+        (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 47)
+                                    config/current-minor-version (constantly 1)]
           (is (true? (@#'stats/csv-upload-available?))))))
-
     (mt/with-temp [:model/Database _ {:engine :redshift}]
-      (with-redefs [config/current-major-version (constantly 49)
-                    config/current-minor-version (constantly 5)]
+      (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 49)
+                                  config/current-minor-version (constantly 5)]
         (is (false? (@#'stats/csv-upload-available?))))
-
-      (with-redefs [config/current-major-version (constantly 49)
-                    config/current-minor-version (constantly 6)]
+      (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 49)
+                                  config/current-minor-version (constantly 6)]
         (is (true? (@#'stats/csv-upload-available?))))))
-
   ;; If we can't detect the MB version, return nil
-  (with-redefs [config/current-major-version (constantly nil)
-                config/current-minor-version (constantly nil)]
+  (mt/with-dynamic-fn-redefs [config/current-major-version (constantly nil)
+                              config/current-minor-version (constantly nil)]
     (is (false? (@#'stats/csv-upload-available?)))))
 
 (deftest starburst-legacy-test
@@ -506,7 +496,6 @@
              (m/find-first (fn [{key-name :name}]
                              (= key-name :starburst-legacy-impersonation))
                            (#'stats/snowplow-features-data)))))
-
     (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
                                                       :name "starburst-legacy-test"
                                                       :created_at (t/instant)
@@ -521,19 +510,17 @@
 
 (deftest deployment-model-test
   (testing "deployment model correctly reports cloud/docker/jar"
-    (with-redefs [premium-features.settings/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly true)]
       (is (= "cloud" (@#'stats/deployment-model))))
-
     ;; Lets just mock io/file to always return an existing (temp) file, to validate that we're doing a filesystem check
     ;; to determine whether we're in a Docker container
     (mt/with-temp-file [mock-file]
       (spit mock-file "Temp file!")
-      (with-redefs [premium-features.settings/is-hosted? (constantly false)
-                    io/file                              (constantly (java.io.File. mock-file))]
+      (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)
+                                  io/file                              (constantly (java.io.File. mock-file))]
         (is (= "docker" (@#'stats/deployment-model)))))
-
-    (with-redefs [premium-features.settings/is-hosted? (constantly false)
-                  stats/in-docker?                     (constantly false)]
+    (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)
+                                stats/in-docker?                     (constantly false)]
       (is (= "jar" (@#'stats/deployment-model))))))
 
 (deftest no-features-enabled-but-not-available-test
@@ -556,8 +543,11 @@
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
+    :data-apps-preview
+    :data-complexity-score
     :development-mode
-    :data-studio
+    :library
+    :library-retrieval
     :embedding
     :embedding-sdk
     :embedding-simple
@@ -565,10 +555,14 @@
     :enhancements
     :etl-connections
     :etl-connections-pg
-    :llm-autodescription
+    :offer-metabase-ai-managed
     :query-reference-validation
+    :metabase-ai-managed
+    :metabot-v3
     :cloud-custom-smtp
-    :session-timeout-config})
+    :session-timeout-config
+    :sso-oidc
+    :admin-security-center})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
@@ -578,7 +572,6 @@
           all-features      @@#'premium-features.settings/premium-features]
       ;; make sure features are not missing
       (is (empty? (set/difference all-features included-features-set excluded-features)))
-
       ;; make sure features are not duplicated
       (is (= (count included-features) (count included-features-set))))))
 
@@ -586,11 +579,11 @@
   (testing "query_executions"
     (let [{:keys [query_executions query_executions_24h]} (#'stats/->snowplow-grouped-metric-info)]
       (doseq [k (keys query_executions)]
-        (testing (str "> key " k))
-        (is (contains? query_executions_24h k))
-        (is (not (< (get query_executions k)
-                    (get query_executions_24h k)))
-            "There are never more query executions in the 24h version than all-of-time.")))))
+        (testing (str "> key " k)
+          (is (contains? query_executions_24h k))
+          (is (not (< (get query_executions k)
+                      (get query_executions_24h k)))
+              "There are never more query executions in the 24h version than all-of-time."))))))
 
 (deftest snowplow-setting-tests
   (testing "snowplow formated settings"
@@ -644,7 +637,6 @@
       (is (= {:library_data 0
               :library_metrics 0}
              (#'stats/library-stats))))
-
     (testing "with library collections and data"
       (mt/with-temp [:model/User       {user-id :id}         {:email      "test@example.com"
                                                               :first_name "Test"
@@ -705,7 +697,26 @@
                (#'stats/library-stats)))))))
 
 (deftest transform-metrics-test
-  (testing "ee-transform-metrics should return zeros for OSS"
-    (mt/with-empty-h2-app-db!
-      (is (= {:transforms 0, :transform_runs_last_24h 0}
-             (stats/ee-transform-metrics))))))
+  (mt/with-empty-h2-app-db!
+    (testing "with no transforms"
+      (is (=? {:transforms 0 :transform_runs_last_24h 0}
+              (#'stats/transform-metrics))))
+    (testing "with transforms and recent runs"
+      (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
+                                                          :table "test_table"}
+                                                 :name "Test SQL transform"
+                                                 :source {:type "query"
+                                                          :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
+                     :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 1))
+                                            :transform_id (:id transform)}]
+        (is (=? {:transforms 1 :transform_runs_last_24h 1}
+                (#'stats/transform-metrics)))))
+    (testing "with old transform runs"
+      (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
+                                                          :table "test_table"}
+                                                 :name "Test SQL transform"
+                                                 :source {:type "query"
+                                                          :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
+                     :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 25))
+                                            :transform_id (:id transform)}]
+        (is (zero? (:transform_runs_last_24h (#'stats/transform-metrics))))))))

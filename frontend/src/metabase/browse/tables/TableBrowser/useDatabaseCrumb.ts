@@ -1,22 +1,23 @@
 import { t } from "ttag";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
-import { Databases } from "metabase/entities/databases";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
+import * as Urls from "metabase/urls";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId } from "metabase-types/api";
 
 export const useDatabaseCrumb = (id: DatabaseId) => {
-  // We display what we already have in store to avoid showing loading state.
-  // It's possible because GET /api/database is always dispatched on app launch.
-  // We still re-fetch the database to get new data, just in case it changed.
-  const legacyDatabase = useSelector((state) => {
-    return Databases.selectors.getObject(state, {
-      entityId: id,
-      requestType: "fetch",
-    });
-  });
+  // We display what the database list already holds to avoid showing a loading
+  // state. It's possible because GET /api/database is always dispatched on app
+  // launch. We still re-fetch the database to get new data, just in case it
+  // changed.
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const cachedDatabase = databasesResponse?.data.find(
+    (database) => database.id === id,
+  );
 
   const { data: fetchedDatabase } = useGetDatabaseQuery(
     id === SAVED_QUESTIONS_VIRTUAL_DB_ID ? skipToken : { id },
@@ -29,7 +30,7 @@ export const useDatabaseCrumb = (id: DatabaseId) => {
     };
   }
 
-  const database = fetchedDatabase ?? legacyDatabase;
+  const database = fetchedDatabase ?? cachedDatabase;
 
   if (!database) {
     return {

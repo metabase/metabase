@@ -1,21 +1,22 @@
 (ns metabase-enterprise.sso.integrations.saml-utils
   "Functions for handling SAML authentication with the SDK side, including HTML popups"
   (:require
-   [java-time.api :as t])
+   [java-time.api :as t]
+   [metabase.util.json :as json])
   (:import
    (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
 (defn- generate-saml-html-popup
-  [key ^Instant exp ^Instant iat origin continue-url]
+  [key ^Instant exp ^Instant iat origin continue-url nonce]
   (str "<!DOCTYPE html>
 <html>
 <head>
   <title>Authentication Complete</title>
-  <script>
+  <script nonce=\"" nonce "\">
     const authData = {
-      id: \"" key "\",
+      id: " (json/encode key) ",
       exp: " (.getEpochSecond exp) ",
       iat: " (.getEpochSecond iat) ",
       status: \"ok\"
@@ -25,7 +26,7 @@
         window.opener.postMessage({
           type: 'SAML_AUTH_COMPLETE',
           authData: authData
-        }, '" origin "');
+        }, " (json/encode origin) ");
 
         setTimeout(function() {
           window.close();
@@ -35,7 +36,7 @@
         document.body.innerHTML += '<p>Error: ' + e.message + '</p>';
       }
     } else {
-      window.location.href = '" continue-url "';
+      window.location.href = " (json/encode continue-url) ";
     }
   </script>
 </head>
@@ -49,9 +50,9 @@
 
 (defn create-token-response
   "Create a token response with HTML and JavaScript to post the auth message"
-  [session origin continue-url]
+  [session origin continue-url nonce]
   (let [current-time (t/instant)
         expiration-time (t/plus current-time (t/seconds 86400))]
     {:status 200
      :headers {"Content-Type" "text/html"}
-     :body (generate-saml-html-popup (:key session) expiration-time current-time origin continue-url)}))
+     :body (generate-saml-html-popup (:key session) expiration-time current-time origin continue-url nonce)}))

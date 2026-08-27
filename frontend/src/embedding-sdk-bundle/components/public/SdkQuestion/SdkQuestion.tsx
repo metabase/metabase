@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import {
   BackButton,
   Breakout,
@@ -53,10 +54,13 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
     | "onBeforeSave"
     | "onSave"
     | "entityTypes"
+    | "dataPicker"
     | "isSaveEnabled"
     | "initialSqlParameters"
     | "withDownloads"
+    | "withAlerts"
     | "targetCollection"
+    | "initialCollection"
     | "onRun"
   >;
 
@@ -79,7 +83,13 @@ export type DrillThroughQuestionProps = Omit<
  * @category InteractiveQuestion
  */
 export type SdkQuestionProps = SdkQuestionDefaultViewProps &
-  Omit<SdkQuestionProviderProps, "componentPlugins"> & {
+  // TEMP: initialVisualization is disabled at the public boundary. The internal
+  // plumbing (provider, use-load-question, run-question-query) is kept; re-enable
+  // by removing it from this Omit and restoring the prop forwarding below.
+  Omit<
+    SdkQuestionProviderProps,
+    "componentPlugins" | "initialVisualization"
+  > & {
     plugins?: SdkQuestionProviderProps["componentPlugins"];
   };
 
@@ -130,8 +140,12 @@ export const _SdkQuestion = ({
   onRun,
   isSaveEnabled = true,
   entityTypes,
+  dataPicker,
   targetCollection,
+  initialCollection,
   initialSqlParameters,
+  sqlParameters,
+  onSqlParametersChange,
   hiddenParameters,
   withDownloads = false,
   withAlerts = false,
@@ -139,52 +153,87 @@ export const _SdkQuestion = ({
   backToDashboard,
   getClickActionMode,
   navigateToNewCard,
+  onDrillThrough,
 
   height,
   width,
   className,
   style,
   title,
-  withResetButton = true,
   withChartTypeSelector = true,
+  withEditorButton = true,
   onVisualizationChange,
-}: SdkQuestionProps): JSX.Element | null => (
-  <SdkQuestionProvider
-    questionId={questionId}
-    token={token}
-    options={options}
-    deserializedCard={deserializedCard}
-    componentPlugins={plugins}
-    onNavigateBack={onNavigateBack}
-    onBeforeSave={onBeforeSave}
-    onSave={onSave}
-    onRun={onRun}
-    isSaveEnabled={isSaveEnabled}
-    entityTypes={entityTypes}
-    targetCollection={targetCollection}
-    initialSqlParameters={initialSqlParameters}
-    hiddenParameters={hiddenParameters}
-    withDownloads={withDownloads}
-    withAlerts={withAlerts}
-    targetDashboardId={targetDashboardId}
-    backToDashboard={backToDashboard}
-    getClickActionMode={getClickActionMode}
-    navigateToNewCard={navigateToNewCard}
-    onVisualizationChange={onVisualizationChange}
-  >
-    {children ?? (
-      <SdkQuestionDefaultView
-        height={height}
-        width={width}
-        className={className}
-        style={style}
-        title={title}
-        withResetButton={withResetButton}
-        withChartTypeSelector={withChartTypeSelector}
-      />
-    )}
-  </SdkQuestionProvider>
-);
+}: SdkQuestionProps): JSX.Element | null => {
+  const drillThroughQuestionProps: DrillThroughQuestionProps = {
+    height,
+    width,
+    className,
+    style,
+    title,
+    withChartTypeSelector,
+    withEditorButton,
+    isSaveEnabled,
+    targetCollection,
+    initialCollection,
+    entityTypes,
+    onBeforeSave,
+    onSave,
+    onRun,
+    withDownloads,
+    withAlerts,
+    plugins,
+  };
+
+  return (
+    <SdkInternalNavigationProvider
+      renderDrillThroughQuestion={() => <SdkQuestionDefaultView />}
+      drillThroughQuestionProps={drillThroughQuestionProps}
+      style={style}
+      className={className}
+    >
+      <SdkQuestionProvider
+        questionId={questionId}
+        token={token}
+        options={options}
+        deserializedCard={deserializedCard}
+        componentPlugins={plugins}
+        onNavigateBack={onNavigateBack}
+        onBeforeSave={onBeforeSave}
+        onSave={onSave}
+        onRun={onRun}
+        isSaveEnabled={isSaveEnabled}
+        entityTypes={entityTypes}
+        dataPicker={dataPicker}
+        targetCollection={targetCollection}
+        initialCollection={initialCollection}
+        initialSqlParameters={initialSqlParameters}
+        sqlParameters={sqlParameters}
+        onSqlParametersChange={onSqlParametersChange}
+        hiddenParameters={hiddenParameters}
+        withDownloads={withDownloads}
+        withAlerts={withAlerts}
+        targetDashboardId={targetDashboardId}
+        backToDashboard={backToDashboard}
+        getClickActionMode={getClickActionMode}
+        navigateToNewCard={navigateToNewCard}
+        onDrillThrough={onDrillThrough}
+        onVisualizationChange={onVisualizationChange}
+      >
+        {children ?? (
+          <SdkQuestionDefaultView
+            height={height}
+            width={width}
+            className={className}
+            style={style}
+            title={title}
+            withChartTypeSelector={withChartTypeSelector}
+            withEditorButton={withEditorButton}
+          />
+        )}
+      </SdkQuestionProvider>
+    </SdkInternalNavigationProvider>
+  );
+};
 
 const subComponents: SdkQuestionComponents = {
   BackButton: BackButton,

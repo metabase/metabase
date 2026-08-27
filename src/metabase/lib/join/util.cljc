@@ -46,7 +46,7 @@
   [field-or-join]
   (case (lib.dispatch/dispatch-value field-or-join)
     :field             (:join-alias (lib.options/options field-or-join))
-    :metadata/column   (:metabase.lib.join/join-alias field-or-join)
+    :metadata/column   (:lib/join-alias field-or-join)
     :mbql/join         (:alias field-or-join)
     nil))
 

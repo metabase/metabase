@@ -13,6 +13,7 @@ import {
   type EditableDashboardProps,
 } from "./EditableDashboard";
 
+// Unjustified type cast. FIXME
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 type CustomArgs = {
@@ -32,7 +33,11 @@ const meta = {
 
     "dataPickerProps.entityTypes": {
       control: "check",
-      options: ["model", "table"] satisfies SdkQuestionProps["entityTypes"],
+      options: [
+        "model",
+        "table",
+        "question",
+      ] satisfies SdkQuestionProps["entityTypes"],
     },
 
     // Display options

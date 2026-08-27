@@ -1,0 +1,22 @@
+name: ip_address
+display_name: IP Address
+description: IP address recorded on the metabot_conversation row, if any.
+created_at: '2026-04-24T19:39:29.987038Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_metabot_conversations]
+database_type: varchar
+base_type: type/Text
+effective_type: type/Text
+dimensions: []
+position: 17
+custom_position: 0
+database_position: 17
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_metabot_conversations, model: Table}
+- {id: ip_address, model: Field}
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

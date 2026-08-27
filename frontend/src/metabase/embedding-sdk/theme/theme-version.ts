@@ -1,5 +1,6 @@
+import type { MetabaseEmbeddingThemeV2 } from "metabase/ui/colors/types";
+
 import type { MetabaseTheme } from "./MetabaseTheme";
-import type { MetabaseEmbeddingThemeV2 } from "./MetabaseThemeV2";
 
 /**
  * Theme configuration for embedded Metabase components.

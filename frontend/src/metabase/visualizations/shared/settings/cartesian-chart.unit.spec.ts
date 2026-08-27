@@ -1,4 +1,5 @@
 import {
+  getDefaultBoxplotDimensions,
   getDefaultColumns,
   getDefaultDimensions,
   getDefaultMetrics,
@@ -100,6 +101,18 @@ describe("cartesian-chart defaults", () => {
         base_type: "type/Integer",
         source: "aggregation",
       }),
+      createMockColumn({
+        name: "m3",
+        display_name: "M3",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+      createMockColumn({
+        name: "m4",
+        display_name: "M4",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
     ];
     const series = createSeries({ display: "scatter", cols });
 
@@ -120,6 +133,24 @@ describe("cartesian-chart defaults", () => {
       createMockColumn({
         name: "m1",
         display_name: "M1",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+      createMockColumn({
+        name: "m2",
+        display_name: "M2",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+      createMockColumn({
+        name: "m3",
+        display_name: "M3",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+      createMockColumn({
+        name: "m4",
+        display_name: "M4",
         base_type: "type/Integer",
         source: "aggregation",
       }),
@@ -204,5 +235,44 @@ describe("getDefaultColumns", () => {
       dimensions: ["QUANTITY"],
       metrics: ["count"],
     });
+  });
+});
+
+describe("getDefaultBoxplotDimensions", () => {
+  it("should return the dimension with the lowest cardinality", () => {
+    const cols = [
+      createMockColumn({
+        name: "category",
+        display_name: "Category",
+        source: "breakout",
+      }),
+      createMockColumn({
+        name: "status",
+        display_name: "Status",
+        source: "breakout",
+      }),
+      createMockColumn({
+        name: "total",
+        display_name: "Total",
+        base_type: "type/Integer",
+        source: "aggregation",
+      }),
+    ];
+
+    const rows = [
+      ["Electronics", "active", 100],
+      ["Electronics", "inactive", 50],
+      ["Clothing", "active", 75],
+      ["Clothing", "inactive", 25],
+      ["Food", "active", 60],
+      ["Food", "inactive", 30],
+    ];
+
+    const series = createSeries({ display: "boxplot", cols, rows });
+
+    const result = getDefaultBoxplotDimensions(series, {});
+
+    // "status" has cardinality 2, "category" has cardinality 3
+    expect(result).toEqual(["status"]);
   });
 });

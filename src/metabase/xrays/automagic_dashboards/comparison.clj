@@ -139,7 +139,6 @@
                                               :card_id                (:id card-right)
                                               :series                 series-right
                                               :visualization_settings {}}))))))
-
     (populate/add-text-card dashboard {:text                   (:text card)
                                        :width                  (/ populate/grid-width 2)
                                        :height                 (:height card)

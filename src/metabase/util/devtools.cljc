@@ -14,16 +14,13 @@
      (devtools/set-pref! :disable-advanced-mode-check true)
      (devtools/install!)
      (js/console.log "CLJS Devtools loaded")
-
      (defn- frontend-dev-port
        "Gets the frontend dev port from environment variable, defaulting to 8080"
        []
        (or (when-let [port-str (.. js/process -env -MB_FRONTEND_DEV_PORT)]
              (js/parseInt port-str))
            8080))
-
      (defonce unload-handler-set? (atom false))
-
      (defn- ^:dev/after-load on-reload []
        (when (compare-and-set! unload-handler-set? false true)
          (js/console.log "CLJS code hot loaded; setting up webpack invalidation on unload")

@@ -1,0 +1,19 @@
+.SnippetButton[data-variant="subtle"] {
+  background-color: var(--mb-color-background_page-secondary);
+  margin-top: 0.5rem;
+
+  &:hover {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-core-brand);
+  }
+}
+
+.SnippetContent {
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.SnippetIcon {
+  flex-shrink: 0;
+}

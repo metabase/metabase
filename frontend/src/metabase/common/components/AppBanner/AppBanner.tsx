@@ -1,19 +1,18 @@
-import dayjs from "dayjs";
+import { getUserIsAdmin } from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
+import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
+import { useSetting, useUserSetting } from "metabase/settings";
+import { isWithinIframe } from "metabase/utils/iframe";
 
-import { useSetting, useUserSetting } from "metabase/common/hooks";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
-import { DevModeBanner } from "metabase/nav/components/DevModeBanner";
+import { DevModeBanner } from "./DevModeBanner";
 import {
   LicenseTokenMissingBanner,
   useLicenseTokenMissingBanner,
-} from "metabase/nav/components/LicenseTokenMissingBanner";
-import { PaymentBanner } from "metabase/nav/components/PaymentBanner/PaymentBanner";
-import { ReadOnlyBanner } from "metabase/nav/components/ReadOnlyBanner";
-import { TrialBanner } from "metabase/nav/components/TrialBanner";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { getIsHosted } from "metabase/setup/selectors";
-
+} from "./LicenseTokenMissingBanner";
+import { PaymentBanner } from "./PaymentBanner/PaymentBanner";
+import { ReadOnlyBanner } from "./ReadOnlyBanner";
+import { TrialBanner } from "./TrialBanner";
 import { getCurrentUTCTimestamp, shouldShowTrialBanner } from "./utils";
 
 export const AppBanner = () => {
@@ -22,7 +21,7 @@ export const AppBanner = () => {
   );
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const isHosted = useSelector(getIsHosted);
+  const isHosted = useSetting("is-hosted?");
   const tokenStatus = useSetting("token-status");
   const migrateReadOnly = useSetting("read-only-mode");
   const isDevMode = useSetting("development-mode?");
@@ -41,7 +40,11 @@ export const AppBanner = () => {
 
   // Most banners are only visible to admins, but DevModeBanner gets shown to all users
   if (!isAdmin) {
-    return isDevMode ? <DevModeBanner /> : null;
+    return migrateReadOnly ? (
+      <ReadOnlyBanner />
+    ) : isDevMode ? (
+      <DevModeBanner />
+    ) : null;
   }
 
   if (migrateReadOnly) {
@@ -77,6 +80,11 @@ export const AppBanner = () => {
 
   if (shouldRenderPaymentBanner) {
     return <PaymentBanner tokenStatus={tokenStatus} />;
+  }
+
+  if (PLUGIN_SECURITY_CENTER.isEnabled) {
+    const { SecurityCenterBanner } = PLUGIN_SECURITY_CENTER;
+    return <SecurityCenterBanner />;
   }
 
   if (isDevMode) {

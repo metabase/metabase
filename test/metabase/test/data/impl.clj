@@ -24,6 +24,12 @@
 (p/import-vars
  [verify verify-data-loaded-correctly])
 
+(def ^:dynamic *skip-dataset-prewarm?*
+  "Whether `with-temp` should skip materializing the test-data Database before opening its transaction.
+
+  Bind this in helpers whose app DB must remain empty. See [[metabase.test.data/with-empty-h2-app-db!]]."
+  false)
+
 (defmulti get-or-create-database!
   "Create data warehouse database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
   and sync the Database. `driver` is a keyword name of a driver that implements test extension methods (as defined in
@@ -61,9 +67,24 @@
 
   That is memoized for the current application database."
   []
-  (mdb/memoize-for-application-db
-   (fn [driver]
-     (u/the-id (get-or-create-default-dataset! driver)))))
+  (let [cached (mdb/memoize-for-application-db
+                (fn [driver]
+                  (u/the-id (get-or-create-default-dataset! driver))))]
+    (fn [driver]
+      ;; A cached ID can outlive the transaction that created its Database. Bypass the cache within a transaction so
+      ;; rollback cannot leave a stale ID. Do not create the Database on a dedicated connection: the caller may hold
+      ;; cluster-lock rows that would block that connection until timeout.
+      ;; TODO (Chris 2026-08-18) -- On a cache miss, concurrent transactions cannot see one another's uncommitted
+      ;; Database and may each create and sync a duplicate because `(name, engine)` is not unique. Quartz triggers
+      ;; from the after-insert hook can also outlive a rollback. A dedicated connection can deadlock on cluster
+      ;; locks held by the caller, while coordination that lasts until commit would be complex for a test-only path.
+      ;; Materializing the dataset before opening the transaction avoids both problems.
+      ;;
+      ;; Inside a transaction, `mt/id` therefore costs a query, so a `t2/with-call-count` window expecting zero
+      ;; calls must resolve its ids before opening.
+      (if (mdb/in-transaction?)
+        (u/the-id (get-or-create-default-dataset! driver))
+        (cached driver)))))
 
 (def ^:private memoized-test-data-database-id-fn
   "Atom with a function with the signature
@@ -140,11 +161,23 @@
                     :table_id table-id
                     :active   true))
 
-(def ^:private ^{:arglists '([database-id])} table-lookup-map
+;; Like the Database ID above, these maps are memoized for the application DB. Bypass the caches within a transaction
+;; so a rollback cannot leave IDs for Tables and Fields that no longer exist.
+(def ^:private ^{:arglists '([database-id])} cached-table-lookup-map
   (mdb/memoize-for-application-db build-table-lookup-map))
 
-(def ^:private ^{:arglists '([field-lookup-map])} field-lookup-map
+(defn- table-lookup-map [database-id]
+  (if (mdb/in-transaction?)
+    (build-table-lookup-map database-id)
+    (cached-table-lookup-map database-id)))
+
+(def ^:private ^{:arglists '([table-id])} cached-field-lookup-map
   (mdb/memoize-for-application-db build-field-lookup-map))
+
+(defn- field-lookup-map [table-id]
+  (if (mdb/in-transaction?)
+    (build-field-lookup-map table-id)
+    (cached-field-lookup-map table-id)))
 
 (defn- cached-table-id [db-id table-name]
   (get (table-lookup-map db-id) [db-id table-name]))
@@ -252,25 +285,47 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- copy-table-fields! [old-table-id new-table-id]
-  (t2/insert! :model/Field
-              (for [field (t2/select :model/Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
-                (-> field
-                    (dissoc :id :fk_target_field_id)
-                    (assoc :table_id new-table-id))))
-  ;; now copy the FieldValues as well.
-  (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
-        new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
-        old-field-values   (t2/select :model/FieldValues :field_id [:in (set (keys old-field-id->name))])]
-    (t2/insert! :model/FieldValues
-                (for [{old-field-id :field_id, :as field-values} old-field-values
-                      :let                                       [field-name (get old-field-id->name old-field-id)]]
-                  (-> field-values
-                      (dissoc :id)
-                      (assoc :field_id (get new-field-name->id field-name))
-            ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
-            ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
-            ;; NULL like [[metabase.parameters.chain-filter/search-cached-field-values?]]
-                      (update :human_readable_values not-empty))))))
+  (let [old-fields (t2/select :model/Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
+    (t2/insert! :model/Field
+                (for [field old-fields]
+                  (-> field
+                      (dissoc :id :fk_target_field_id)
+                      (assoc :table_id new-table-id))))
+    ;; Remap `:parent_id` on copied nested fields. The insert above leaves them pointing to the *old* parent
+    ;; field ids; nested fields would otherwise reference fields in the original DB, which breaks anything that
+    ;; walks the parent chain (e.g. resolve-fields → bulk-metadata-or-throw).
+    ;; (name, nfc_path) uniquely identifies a field within a table, so we match across the old/new copies on that.
+    (let [field-key      (juxt :name :nfc_path)
+          new-fields     (t2/select :model/Field :table_id new-table-id, :active true)
+          new-key->id    (into {} (map (juxt field-key :id)) new-fields)
+          old-id->new-id (into {}
+                               (keep (fn [{old-id :id, :as old-field}]
+                                       (when-let [new-id (get new-key->id (field-key old-field))]
+                                         [old-id new-id])))
+                               old-fields)]
+      (doseq [{new-id :id, old-parent-id :parent_id} new-fields
+              :when                                  (some? old-parent-id)
+              :let                                   [new-parent-id (get old-id->new-id old-parent-id)]
+              :when                                  (and new-parent-id
+                                                          (not= new-parent-id old-parent-id))]
+        (t2/update! :model/Field new-id {:parent_id new-parent-id})))
+    ;; now copy the FieldValues as well. Only the full ones: an advanced FieldValues is looked up by a hash that
+    ;; includes the id of the field it was cached for, so a copy of one can never be found again, and only turns
+    ;; up in whatever a test counts.
+    (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
+          new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
+          old-field-values   (when-let [field-ids (seq (keys old-field-id->name))]
+                               (t2/select :model/FieldValues :field_id [:in (set field-ids)] :type :full))]
+      (t2/insert! :model/FieldValues
+                  (for [{old-field-id :field_id, :as field-values} old-field-values
+                        :let                                       [field-name (get old-field-id->name old-field-id)]]
+                    (-> field-values
+                        (dissoc :id)
+                        (assoc :field_id (get new-field-name->id field-name))
+                        ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
+                        ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
+                        ;; NULL like [[metabase.parameters.chain-filter/search-cached-field-values?]]
+                        (update :human_readable_values not-empty)))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
   (let [old-tables    (t2/select :model/Table :db_id old-db-id, :active true, {:order-by [[:id :asc]]})
@@ -371,14 +426,63 @@
   "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
-        get-db-for-driver (mdb/memoize-for-application-db
-                           (fn [driver]
-                             (let [db (get-or-create-database! driver dbdef)]
-                               (assert db)
-                               (assert (pos-int? (:id db)))
-                               db)))
+        get-db!           (fn [driver]
+                            (let [db (get-or-create-database! driver dbdef)]
+                              (assert db)
+                              (assert (pos-int? (:id db)))
+                              db))
+        cached            (mdb/memoize-for-application-db get-db!)
+        ;; Bypass the cache within a transaction; see [[make-memoized-test-database-id-fn]].
+        get-db-for-driver #(if (mdb/in-transaction?) (get-db! %) (cached %))
         db-fn             #(get-db-for-driver (tx/driver))]
     (binding [*db-fn*                   db-fn
               *db-id-fn*                #(u/the-id (db-fn))
               *dbdef-used-to-create-db* dbdef]
       (f))))
+
+(defn- log! [fmt & args]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println (apply format fmt args)))
+
+(defn drop-dataset!
+  "Drop a test dataset by driver and name. Resolves the dataset name to its definition
+   and calls [[metabase.test.data.interface/destroy-db!]].
+
+   Can be called from the REPL or via clojure -X:
+
+     clojure -X:dev:drivers:drivers-dev:test metabase.test.data.impl/drop-dataset! :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
+  [{:keys [driver dataset-name]}]
+  (let [driver      (keyword driver)
+        _           (classloader/require 'metabase.test.data.dataset-definitions)
+        dataset-def (resolve-dataset-definition
+                     'metabase.test.data.dataset-definitions
+                     (symbol dataset-name))
+        dbdef       (tx/get-dataset-definition dataset-def)]
+    (log! "[%s] Dropping dataset '%s'..." (name driver) dataset-name)
+    (tx/destroy-db! driver dbdef)
+    (log! "[%s] Done." (name driver))))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defn test-drop-dataset
+  "Like [[drop-dataset!]] but checks existence before and after, verifying deletion.
+   Name lacks `!` because clojure -X cannot resolve function names ending in `!`.
+
+     clojure -X:dev:drivers:drivers-dev:test metabase.test.data.impl/test-drop-dataset :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
+  [{:keys [driver dataset-name] :as opts}]
+  (let [driver      (keyword driver)
+        _           (classloader/require 'metabase.test.data.dataset-definitions)
+        dataset-def (resolve-dataset-definition
+                     'metabase.test.data.dataset-definitions
+                     (symbol dataset-name))
+        dbdef       (tx/get-dataset-definition dataset-def)]
+    (log! "[%s] Checking if dataset '%s' exists..." (name driver) dataset-name)
+    (if-not (tx/dataset-already-loaded? driver dbdef)
+      (log! "[%s] Dataset '%s' does not exist, nothing to drop." (name driver) dataset-name)
+      (do
+        (log! "[%s] Dataset '%s' exists, proceeding with drop." (name driver) dataset-name)
+        (drop-dataset! opts)
+        (log! "[%s] Verifying dataset '%s' was deleted..." (name driver) dataset-name)
+        (if (tx/dataset-already-loaded? driver dbdef)
+          (do (log! "[%s] FAIL: dataset '%s' still exists after drop!" (name driver) dataset-name)
+              (System/exit 1))
+          (log! "[%s] PASS: dataset '%s' has been deleted." (name driver) dataset-name))))))

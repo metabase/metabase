@@ -8,7 +8,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
+import { createMockState } from "metabase/redux/store/mocks";
+import * as iframeUtils from "metabase/utils/iframe";
 import type { VersionInfo, VersionInfoRecord } from "metabase-types/api"; // Add VersionInfo
 import {
   createMockSettings,
@@ -17,7 +18,6 @@ import {
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { WhatsNewNotification } from "./WhatsNewNotification";
 
@@ -52,7 +52,7 @@ const setup = ({
   versions?: VersionInfoRecord[];
 } = {}) => {
   // Added default empty object
-  jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(isEmbedded);
+  jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(isEmbedded);
 
   const versionMock = createMockVersion({ tag: currentVersionTag });
   const [latest, ...older] = versions;
@@ -168,6 +168,7 @@ describe("WhatsNewNotification", () => {
 
       await waitFor(async () => {
         const lastCall = fetchMock.callHistory.lastCall(LAST_ACK_SETTINGS_URL);
+        // Unjustified type cast. FIXME
         expect(JSON.parse(lastCall?.options?.body as string)).toEqual({
           value: currentVersionTag,
         });

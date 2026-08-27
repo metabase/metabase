@@ -13,11 +13,9 @@
   ;; TODO this is a clumsy workaround due to the api encoders not being run for some reason
   (mapv
    #(if (keyword? %) (strip-namespace-hack %) %)
-
    [:enum
     {:encode/api name
      :decode/api #(keyword "input" %)}
-
     :input/boolean
     :input/date
     :input/datetime
@@ -129,7 +127,6 @@
                             ;; dashcard column context can hide parameters (if defined)
                             :when (:enabled column-settings true)
                             :let [required (or pk? (:database_required field false))]]
-
                         (u/remove-nils
                          ;; TODO yet another comment about how field id would be a better key, due to case issues
                          {:id                      (:name field)

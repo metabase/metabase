@@ -8,7 +8,7 @@ redirect_from:
 
 > This page covers connecting to MySQL as a _data warehouse_. For using MySQL as Metabase's _application database_, see [Configuring the Metabase application database](../../installation-and-operation/configuring-application-database.md).
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 ## Supported versions
 
@@ -74,7 +74,7 @@ You can append options to the connection string that Metabase uses to connect to
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -186,6 +186,10 @@ mysql:
 ## Passwords with special characters
 
 If your password contains characters that aren't UTF-8, then you might need to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This ensures that MySQL understands the special characters in the password during authentication.
+
+## Writable connection
+
+Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
 ## Model features
 

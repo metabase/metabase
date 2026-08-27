@@ -1,17 +1,23 @@
 import { Box } from "metabase/ui";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { PieRow } from "metabase-types/api";
 
 import { SliceNameInput } from "./SliceNameWidget.styled";
+
+// The widget only reads these fields, so any row shape that carries them works
+// (PieRow for pie, TreemapRow for treemap).
+type NameableRow = Pick<PieRow, "key" | "name" | "originalName">;
+
+export type SliceNameWidgetProps = {
+  initialKey: string | number;
+  pieRows: NameableRow[];
+  updateRowName: (newName: string, key: string | number) => void;
+};
 
 export function SliceNameWidget({
   initialKey,
   pieRows,
   updateRowName,
-}: {
-  initialKey: string | number;
-  pieRows: PieRow[];
-  updateRowName: (newName: string, key: string | number) => void;
-}) {
+}: SliceNameWidgetProps) {
   if (pieRows.length === 0) {
     return null;
   }
@@ -26,6 +32,7 @@ export function SliceNameWidget({
     // only 1rem bottom padding
     <Box w="100%" pb="0.5rem">
       <SliceNameInput
+        resetOnEsc
         value={row.name}
         description={
           row.name !== row.originalName ? row.originalName : undefined

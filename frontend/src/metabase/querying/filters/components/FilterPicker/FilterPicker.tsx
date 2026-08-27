@@ -1,12 +1,20 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import * as Lib from "metabase-lib";
 
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
-} from "metabase/query_builder/components/expressions";
-import type { DefinedClauseName } from "metabase/querying/expressions";
-import * as Lib from "metabase-lib";
+} from "../../../components/expressions";
+import { prefetchExpressionWidget } from "../../../components/expressions/ExpressionWidget";
 
 import {
   FilterColumnPicker,
@@ -55,7 +63,7 @@ export function FilterPicker({
   );
   const stageIndexes = useMemo(() => [stageIndex], [stageIndex]);
   const [initialExpressionClause, setInitialExpressionClause] =
-    useState<DefinedClauseName | null>(null);
+    useState<Lib.DefinedClauseName | null>(null);
   const availableColumns = useMemo(
     () => Lib.expressionableColumns(query, stageIndex),
     [query, stageIndex],
@@ -91,17 +99,26 @@ export function FilterPicker({
     handleChange(item.segment);
   };
 
-  const handleExpressionSelect = (clause?: DefinedClauseName) => {
+  // The widget is a separate chunk. Fetching it while the user reads the column
+  // list, and switching in a transition, keeps this list on screen until the whole
+  // widget is ready, so it appears complete rather than as a shell that fills in.
+  useEffect(() => {
+    prefetchExpressionWidget();
+  }, []);
+
+  const handleExpressionSelect = (clause?: Lib.DefinedClauseName) => {
     setInitialExpressionClause(clause ?? null);
-    openExpressionEditor();
+    startTransition(() => {
+      openExpressionEditor();
+    });
   };
 
   const checkItemIsSelected = useCallback(
     (item: ColumnListItem | SegmentListItem | ExpressionClauseItem) => {
       return Boolean(
         filterIndex != null &&
-          "filterPositions" in item &&
-          item.filterPositions?.includes?.(filterIndex),
+        "filterPositions" in item &&
+        item.filterPositions?.includes?.(filterIndex),
       );
     },
     [filterIndex],

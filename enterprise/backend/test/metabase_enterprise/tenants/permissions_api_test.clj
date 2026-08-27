@@ -17,7 +17,6 @@
           (let [group (t2/select-one :model/PermissionsGroup :name "Tenants Group")]
             (is (some? group))
             (is (true? (:is_tenant_group group)))))))
-
     (testing "validates is_tenant_group parameter type"
       (testing "rejects invalid type"
         (is (= {:errors {:is_tenant_group "nullable boolean"}

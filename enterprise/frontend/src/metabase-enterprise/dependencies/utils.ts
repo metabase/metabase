@@ -1,9 +1,8 @@
 import { c, msgid, ngettext, t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-import type { NamedUser } from "metabase/lib/user";
-import type { IconName } from "metabase/ui";
-import visualizations from "metabase/visualizations";
+import * as Urls from "metabase/urls";
+import type { NamedUser } from "metabase/utils/user";
+import { visualizations } from "metabase/visualizations";
 import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,
@@ -14,6 +13,8 @@ import type {
   DependencyNode,
   DependencyType,
   Field,
+  IconName,
+  SourceReplacementEntry,
   Transform,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -59,7 +60,6 @@ export function getNodeDescription(node: DependencyNode): string | null {
   switch (node.type) {
     case "document":
     case "sandbox":
-    case "workspace-transform":
       return null;
     default:
       return node.data.description ?? "";
@@ -102,8 +102,6 @@ export function getNodeIconWithType(
       return "table";
     case "transform":
       return "transform";
-    case "workspace-transform":
-      return "transform";
     case "snippet":
       return "snippet";
     case "dashboard":
@@ -115,7 +113,7 @@ export function getNodeIconWithType(
     case "segment":
       return "segment";
     case "measure":
-      return "sum";
+      return "ruler";
   }
 }
 
@@ -135,7 +133,7 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "card":
       return {
         label: getCardLinkLabel(node.data.type),
-        url: Urls.question({
+        url: Urls.card({
           id: node.id,
           name: node.data.name,
           type: node.data.type,
@@ -155,17 +153,6 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         label: t`View this transform`,
         url: Urls.transform(node.id),
       };
-    case "workspace-transform": {
-      const workspaceId = node.data.workspace_id;
-      const refId = node.data.ref_id;
-      if (workspaceId == null) {
-        return null;
-      }
-      return {
-        label: t`View this workspace transform`,
-        url: Urls.dataStudioWorkspace(workspaceId, refId),
-      };
-    }
     case "dashboard":
       return {
         label: t`View this dashboard`,
@@ -345,7 +332,6 @@ export function getNodeLocationInfo(
       }
       return null;
     case "transform":
-    case "workspace-transform":
     case "sandbox":
       return null;
   }
@@ -463,8 +449,6 @@ export function getNodeFields(node: DependencyNode): Field[] | null {
     case "transform":
     case "sandbox":
       return node.data.table?.fields ?? [];
-    case "workspace-transform":
-      return [];
     case "snippet":
     case "dashboard":
     case "document":
@@ -486,6 +470,22 @@ export function getNodeFieldsLabelWithCount(fieldCount: number) {
     `${fieldCount} fields`,
     fieldCount,
   );
+}
+
+export function getNodeSourceReplacementEntry(
+  node: DependencyNode,
+): SourceReplacementEntry | null {
+  switch (node.type) {
+    case "table":
+      return { id: node.id, type: node.type };
+    case "card":
+      if (node.data.type === "question" || node.data.type === "model") {
+        return { id: node.id, type: node.type };
+      }
+      return null;
+    default:
+      return null;
+  }
 }
 
 export function getCardType(groupType: DependencyGroupType): CardType | null {
@@ -522,8 +522,6 @@ export function getDependencyGroupType(
       return "table";
     case "transform":
       return "transform";
-    case "workspace-transform":
-      return "workspace-transform";
     case "dashboard":
       return "dashboard";
     case "document":
@@ -546,27 +544,28 @@ export function getDependencyGroupTypeInfo(
     case "question":
       return { label: t`Question`, color: "text-secondary" };
     case "model":
-      return { label: t`Model`, color: "brand" };
+      return { label: t`Model`, color: "core-brand" };
     case "metric":
-      return { label: t`Metric`, color: "summarize" };
+      return { label: t`Metric`, color: "core-summarize" };
     case "table":
-      return { label: t`Table`, color: "brand" };
+      return { label: t`Table`, color: "core-brand" };
     case "transform":
-      return { label: t`Transform`, color: "warning" };
-    case "workspace-transform":
-      return { label: t`Workspace transform`, color: "warning" };
+      return { label: t`Transform`, color: "feedback-warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
     case "dashboard":
-      return { label: t`Dashboard`, color: "filter" };
+      return { label: t`Dashboard`, color: "core-filter" };
     case "document":
       return { label: t`Document`, color: "text-secondary" };
     case "sandbox":
-      return { label: t`Row and column security rule`, color: "error" };
+      return {
+        label: t`Row and column security rule`,
+        color: "feedback-negative",
+      };
     case "segment":
       return { label: t`Segment`, color: "accent2" };
     case "measure":
-      return { label: t`Measure`, color: "summarize" };
+      return { label: t`Measure`, color: "core-summarize" };
   }
 }
 
@@ -734,6 +733,10 @@ export function getErrorTypeLabel(
   count = 0,
 ): string {
   switch (type) {
+    case "missing-table":
+      return count === 1 ? t`Missing table` : t`Missing tables`;
+    case "missing-card":
+      return count === 1 ? t`Missing question` : t`Missing questions`;
     case "missing-column":
       return count === 1 ? t`Missing column` : t`Missing columns`;
     case "missing-table-alias":
@@ -752,6 +755,18 @@ export function getErrorTypeLabelWithCount(
   count = 0,
 ): string {
   switch (type) {
+    case "missing-table":
+      return ngettext(
+        msgid`${count} missing table`,
+        `${count} missing tables`,
+        count,
+      );
+    case "missing-card":
+      return ngettext(
+        msgid`${count} missing question`,
+        `${count} missing questions`,
+        count,
+      );
     case "missing-column":
       return ngettext(
         msgid`${count} missing column`,

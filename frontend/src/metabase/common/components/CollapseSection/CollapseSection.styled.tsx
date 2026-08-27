@@ -4,8 +4,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 type HeaderContainerProps = HTMLAttributes<HTMLDivElement> & {
   hasRightAction?: boolean;
@@ -65,6 +66,7 @@ export const ToggleIcon = styled(
   }: ToggleIconProps & Omit<IconProps, "name">) => {
     const { collapsed, expanded } = ICON_VARIANTS[variant];
     const name = isExpanded ? expanded : collapsed;
+    // Unjustified type cast. FIXME
     return <Icon name={name as IconName} size={size} {...props} />;
   },
 )`

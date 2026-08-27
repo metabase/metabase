@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import { getObjectKeys } from "metabase/lib/objects";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { checkNumber, isNotNull } from "metabase/lib/types";
-import { isEmpty } from "metabase/lib/validate";
+import type { Dayjs } from "metabase/dayjs";
+import { getObjectKeys } from "metabase/utils/objects";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { checkNumber, isNotNull } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   INDEX_KEY,
@@ -19,7 +20,6 @@ import type {
   ChartDataset,
   DataKey,
   Datum,
-  Extent,
   NumericAxisScaleTransforms,
   SeriesExtents,
   SeriesModel,
@@ -35,14 +35,18 @@ import {
   nullDimensionWarning,
   unaggregatedDataWarning,
 } from "metabase/visualizations/lib/warnings";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  DatasetColumn,
-  RawSeries,
-  RowValue,
-  SingleSeries,
-  XAxisScale,
+  ComputedVisualizationSettings,
+  Extent,
+} from "metabase/visualizations/types";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
+import {
+  type DatasetColumn,
+  type RawSeries,
+  type RowValue,
+  type SingleSeries,
+  type XAxisScale,
+  getRowsForStableKeys,
 } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
@@ -102,6 +106,7 @@ const aggregateColumnValuesForDatum = (
   cardId: number,
   dimensionIndex: number,
   breakoutIndex: number | undefined,
+  untranslatedBreakoutValue: RowValue | undefined,
   showWarning?: ShowWarning,
 ): void => {
   columns.forEach(({ column, isMetric }, columnIndex) => {
@@ -111,7 +116,7 @@ const aggregateColumnValuesForDatum = (
     const seriesKey =
       breakoutIndex == null
         ? getDatasetKey(column, cardId)
-        : getDatasetKey(column, cardId, row[breakoutIndex]);
+        : getDatasetKey(column, cardId, untranslatedBreakoutValue);
 
     // The dimension values should not be aggregated, only metrics
     if (isMetric && !isDimensionColumn) {
@@ -161,8 +166,9 @@ export const getJoinedCardsDataset = (
     const dimensionIndex = chartColumns.dimension.index;
     const breakoutIndex =
       "breakout" in chartColumns ? chartColumns.breakout.index : undefined;
+    const rowsForKeys = getRowsForStableKeys(cardSeries.data);
 
-    for (const row of rows) {
+    rows.forEach((row, rowIndex) => {
       const dimensionValue = row[dimensionIndex];
 
       // Get the existing datum by the dimension value if exists
@@ -174,6 +180,11 @@ export const getJoinedCardsDataset = (
         groupedData.set(dimensionValue, datum);
       }
 
+      const untranslatedBreakoutValue =
+        breakoutIndex != null
+          ? rowsForKeys[rowIndex][breakoutIndex]
+          : undefined;
+
       aggregateColumnValuesForDatum(
         datum,
         datasetColumns,
@@ -181,9 +192,10 @@ export const getJoinedCardsDataset = (
         card.id,
         dimensionIndex,
         breakoutIndex,
+        untranslatedBreakoutValue,
         showWarning,
       );
-    }
+    });
   });
 
   return Array.from(groupedData.values());
@@ -297,12 +309,12 @@ export const getNullReplacerTransform = (
   seriesModels: SeriesModel[],
 ): TransformFn => {
   const replaceNullsWithZeroDataKeys = seriesModels
-    .filter(
-      (seriesModel) =>
-        settings.series(seriesModel.legacySeriesSettingsObjectKey)[
-          "line.missing"
-        ] === "zero",
-    )
+    .filter((seriesModel) => {
+      const seriesSettings = settings.series?.(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+      return seriesSettings?.["line.missing"] === "zero";
+    })
     .map((seriesModel) => seriesModel.dataKey);
 
   return (datum) => {
@@ -319,12 +331,13 @@ const hasInterpolatedAreaSeries = (
   settings: ComputedVisualizationSettings,
 ) => {
   return seriesModels.some((seriesModel) => {
-    const seriesSettings = settings.series(
+    const seriesSettings = settings.series?.(
       seriesModel.legacySeriesSettingsObjectKey,
     );
-    return (
+    return Boolean(
+      seriesSettings &&
       seriesSettings["line.missing"] !== "none" &&
-      seriesSettings.display === "area"
+      seriesSettings.display === "area",
     );
   });
 };
@@ -509,13 +522,33 @@ function getBarSeriesDataLabelTransform(
 function getBarSeriesZeroToNullTransform(
   barSeriesModels: SeriesModel[],
 ): ConditionalTransform {
+  const dataKeysWithNonZeroValues = new Set<DataKey>();
+  let hasCheckedNonZeroValues = false;
+
   return {
     condition: barSeriesModels.length > 0,
-    fn: (datum: Datum) => {
+    fn: (datum: Datum, _index: number, dataset: ChartDataset) => {
+      if (!hasCheckedNonZeroValues) {
+        barSeriesModels.forEach(({ dataKey }) => {
+          if (
+            dataset.some(
+              (datum) =>
+                typeof datum[dataKey] === "number" && datum[dataKey] !== 0,
+            )
+          ) {
+            dataKeysWithNonZeroValues.add(dataKey);
+          }
+        });
+        hasCheckedNonZeroValues = true;
+      }
+
       const transforedDatum = { ...datum };
 
       barSeriesModels.forEach(({ dataKey }) => {
-        transforedDatum[dataKey] = datum[dataKey] === 0 ? null : datum[dataKey];
+        transforedDatum[dataKey] =
+          dataKeysWithNonZeroValues.has(dataKey) && datum[dataKey] === 0
+            ? null
+            : datum[dataKey];
       });
 
       return transforedDatum;
@@ -613,6 +646,11 @@ function getHistogramDataset(
 
 const MAX_FILL_COUNT = 10000;
 
+/**
+ * Inserts placeholder rows for missing time-series buckets so downstream
+ * transforms can replace missing metric values with zeros or nulls.
+ * For example, monthly values for January and March produce a February row.
+ */
 const interpolateTimeSeriesData = (
   dataset: ChartDataset,
   axisModel: TimeSeriesXAxisModel,
@@ -622,7 +660,23 @@ const interpolateTimeSeriesData = (
   }
 
   const { count, unit } = axisModel.interval;
+  const timezone = axisModel.timezone;
+  const isWeeklyIntervalInTimezone = timezone != null && unit === "week";
   const result = [];
+
+  const addInterval = (date: Dayjs) => {
+    const nextDate = date.add(count, unit);
+
+    // Weekly buckets should stay anchored to the same local wall-clock time
+    // across DST boundaries, e.g. Sunday 00:00 before and after spring-forward.
+    return isWeeklyIntervalInTimezone ? nextDate.tz(timezone, true) : nextDate;
+  };
+
+  const isBeforeEnd = (date: Dayjs, end: Dayjs) => {
+    return isWeeklyIntervalInTimezone
+      ? date.isBefore(end)
+      : date.isBefore(end, unit);
+  };
 
   for (let i = 0; i < dataset.length; i++) {
     const datum = dataset[i];
@@ -635,19 +689,26 @@ const interpolateTimeSeriesData = (
     const end = parseTimestamp(dataset[i + 1][X_AXIS_DATA_KEY]);
 
     let start = parseTimestamp(datum[X_AXIS_DATA_KEY]);
-    while (start.add(count, unit).isBefore(end, unit)) {
-      const interpolatedValue = start.add(count, unit);
+    let interpolatedValue = addInterval(start);
+
+    while (isBeforeEnd(interpolatedValue, end)) {
       result.push({
         [X_AXIS_DATA_KEY]: interpolatedValue.toISOString(),
       });
 
       start = interpolatedValue;
+      interpolatedValue = addInterval(start);
     }
   }
 
   return result;
 };
 
+/**
+ * Applies per-column display scaling to metric values before they reach
+ * ECharts. For example, a column configured as percentage points can be
+ * multiplied by 100 while leaving non-numeric values as null.
+ */
 export function scaleDataset(
   dataset: ChartDataset,
   seriesModels: BaseSeriesModel[],
@@ -669,7 +730,8 @@ export function scaleDataset(
       const key = seriesModel.dataKey;
       if (key in datum) {
         const scaledValue = Number.isFinite(datum[key])
-          ? (datum[key] as number) * scale
+          ? // Unjustified type cast. FIXME
+            (datum[key] as number) * scale
           : null;
         transformedRecord[key] = scaledValue;
       }
@@ -730,10 +792,10 @@ export const applyVisualizationSettingsDataTransformations = (
 ) => {
   dataset = appendDataIndex(dataset);
   const barSeriesModels = seriesModels.filter((seriesModel) => {
-    const seriesSettings = settings.series(
+    const seriesSettings = settings.series?.(
       seriesModel.legacySeriesSettingsObjectKey,
     );
-    return seriesSettings.display === "bar";
+    return seriesSettings?.display === "bar";
   });
   const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
 
@@ -795,7 +857,10 @@ export const applyVisualizationSettingsDataTransformations = (
           : value;
       }),
     },
-    getStackedDataLabelTransform(settings, seriesDataKeys),
+    getStackedDataLabelTransform(
+      settings,
+      stackModels.flatMap((stackModel) => stackModel.seriesKeys),
+    ),
     getBarSeriesDataLabelTransform(barSeriesModels),
     {
       condition:
@@ -827,7 +892,15 @@ export const sortDataset = (
 
       if (leftDate == null || rightDate == null) {
         showWarning?.(invalidDateWarning(leftDate == null ? left : right).text);
-        return 0;
+        if (leftDate == null && rightDate == null) {
+          return 0;
+        }
+        if (leftDate == null) {
+          return 1; // sort nulls to end
+        }
+        if (rightDate == null) {
+          return -1;
+        }
       }
 
       return leftDate.valueOf() - rightDate.valueOf();
@@ -922,6 +995,7 @@ export const replaceValues = (
     return getObjectKeys(datum).reduce((updatedRow, dataKey) => {
       updatedRow[dataKey] = replacer(dataKey, datum[dataKey]);
       return updatedRow;
+      // Unjustified type cast. FIXME
     }, {} as Datum);
   });
 };
@@ -943,6 +1017,7 @@ export const getDatasetExtents = (
       acc[key] = extent;
     }
     return acc;
+    // Unjustified type cast. FIXME
   }, {} as SeriesExtents);
 };
 
@@ -992,6 +1067,7 @@ export const getCardColumnByDataKeyMap = (
       }
       return acc;
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, DatasetColumn>,
   );
 };
@@ -1010,6 +1086,7 @@ export const getCardsColumnByDataKeyMap = (
 
       return { ...acc, ...cardColumnByDataKeyMap };
     },
+    // Unjustified type cast. FIXME
     {} as Record<DataKey, DatasetColumn>,
   );
 };

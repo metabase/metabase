@@ -1,17 +1,17 @@
 import { useFormikContext } from "formik";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import type * as Yup from "yup";
 
-import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { hasFeature } from "metabase/databases";
 import {
   Form,
   FormErrorMessage,
@@ -20,22 +20,16 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { IncrementalTransformSettings } from "metabase/transforms/components/IncrementalTransform/IncrementalTransformSettings";
-import {
-  QueryComplexityWarning,
-  useQueryComplexityChecks,
-} from "metabase/transforms/components/QueryComplexityWarning";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import type {
-  QueryComplexity,
   SchemaName,
   Transform,
   TransformSource,
-  WorkspaceTransform,
 } from "metabase-types/api";
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
+import { TargetNameInput } from "../../../components/TargetNameInput";
 
-import { TargetNameInput } from "./TargetNameInput";
 import type { NewTransformValues } from "./form";
 import { useCreateTransform } from "./hooks";
 
@@ -50,12 +44,11 @@ type CreateTransformModalProps = {
   onClose: () => void;
   schemasFilter?: SchemasFilter;
   validationSchemaExtension?: ValidationSchemaExtension;
-  handleSubmit?: (
-    values: NewTransformValues,
-  ) => Promise<Transform | WorkspaceTransform>;
+  handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
   targetDescription?: string;
   validateOnMount?: boolean;
   showIncrementalSettings?: boolean;
+  closeOnEscape?: boolean;
 };
 
 export function CreateTransformModal({
@@ -69,6 +62,7 @@ export function CreateTransformModal({
   targetDescription,
   validateOnMount,
   showIncrementalSettings,
+  closeOnEscape,
 }: CreateTransformModalProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -107,6 +101,11 @@ export function CreateTransformModal({
     [validationSchemaExtension, defaultSchema],
   );
 
+  const validationContext = useMemo(
+    () => ({ supportsSchemas: Boolean(supportsSchemas) }),
+    [supportsSchemas],
+  );
+
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -120,10 +119,17 @@ export function CreateTransformModal({
   };
 
   return (
-    <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
+    <Modal
+      title={t`Save your transform`}
+      opened
+      padding="xl"
+      closeOnEscape={closeOnEscape}
+      onClose={onClose}
+    >
       <FormProvider
         initialValues={initialValues}
         validationSchema={validationSchema}
+        validationContext={validationContext}
         onSubmit={handleSubmit || defaultHandleSubmit}
         validateOnMount={validateOnMount}
       >
@@ -158,17 +164,9 @@ function CreateTransformForm({
   showIncrementalSettings = true,
 }: CreateTransformFormFieldsProps) {
   const { values, setFieldValue } = useFormikContext<NewTransformValues>();
-  const { checkComplexity } = useQueryComplexityChecks();
-  const [complexity, setComplexity] = useState<QueryComplexity | undefined>();
 
-  const handleIncrementalChange = async (value: boolean) => {
+  const handleIncrementalChange = (value: boolean) => {
     setFieldValue("incremental", value);
-    if (value) {
-      const complexity = await checkComplexity(source);
-      setComplexity(complexity);
-    } else {
-      setComplexity(undefined);
-    }
   };
 
   return (
@@ -201,17 +199,12 @@ function CreateTransformForm({
             onIncrementalChange={handleIncrementalChange}
           />
         )}
-        {complexity && <QueryComplexityWarning variant="standout" />}
         <Group>
           <Box flex={1}>
             <FormErrorMessage />
           </Box>
           <Button onClick={onClose}>{t`Back`}</Button>
-          <FormSubmitButton
-            label={complexity ? t`Save anyway` : t`Save`}
-            variant="filled"
-            color={complexity ? "saturated-red" : undefined}
-          />
+          <FormSubmitButton label={t`Save`} variant="filled" />
         </Group>
       </Stack>
     </Form>

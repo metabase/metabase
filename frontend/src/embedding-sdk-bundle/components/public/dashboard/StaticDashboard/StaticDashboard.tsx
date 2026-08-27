@@ -1,11 +1,12 @@
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
+import { EmbeddingSdkStaticMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkStaticMode";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
-import { isQuestionCard } from "metabase/dashboard/utils";
+import { isQuestionCard } from "metabase/utils/dashboard";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
@@ -24,6 +25,7 @@ export type StaticDashboardProps = Omit<
   | "drillThroughQuestionProps"
   | "drillThroughQuestionHeight"
   | "renderDrillThroughQuestion"
+  | "enableEntityNavigation"
 > &
   SdkDashboardEntityPublicProps;
 
@@ -32,7 +34,21 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
   const normalizedProps =
     useNormalizeGuestEmbedQuestionOrDashboardComponentProps(props);
 
-  const { withDownloads } = normalizedProps;
+  const { withDownloads, withTitle, withSubscriptions, autoRefreshInterval } =
+    normalizedProps;
+
+  const dashboardId = "dashboardId" in props ? props.dashboardId : undefined;
+
+  useTrackSdkComponentMount(
+    "StaticDashboard",
+    dashboardId != null ? dashboardId : null,
+    {
+      with_title: withTitle,
+      with_downloads: withDownloads,
+      with_subscriptions: withSubscriptions,
+      auto_refresh: autoRefreshInterval != null,
+    },
+  );
 
   const getClickActionMode: ClickActionModeGetter = ({ question }) =>
     getEmbeddingMode({
@@ -42,6 +58,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
 
   return (
     <SdkDashboard
+      // Unjustified type cast. FIXME
       {...(normalizedProps as SdkDashboardProps)}
       getClickActionMode={getClickActionMode}
       dashboardActions={[

@@ -38,6 +38,16 @@ Pairing Official badges with [verified items](./content-verification.md) can hel
 
 To add an Official badge to a collection, an admin can visit the collection and click on the three-dot menu (**...**) and select **Make collection official**. Admins can also remove an Official badge in the same menu. Admins can also mark a collection as Official or not when they first create the collection.
 
+### Library
+
+{% include plans-blockquote.html feature="Library" %}
+
+![Library](./images/library.png)
+
+The Library is a special collection that helps you create a source of truth for analytics by providing a centrally managed set of curated content. Use the Library to separate authoritative, reusable components from ad-hoc analyses.
+
+See [Library organization](../data-studio/library.md#library-organization).
+
 ## Collection permissions
 
 [Administrators can give you different kinds of access](../permissions/collections.md) to each collection:
@@ -64,10 +74,6 @@ To pin and un-pin things in a collection, you need to have **Curate** permission
 
 - To pin an item, find the item on the collection page, go into the three-dot menu (**...**), and select **Pin this**.
 - To unpin a pinned item, hover over the pinned card, go to the three-dot menu (**...**), and select **Unpin**.
-
-For pinned questions, you can also choose whether to display the visualization from the three-dot menu (**...**).
-
-![Show pinned viz](./images/pinned-show-viz.png)
 
 Pinned items will appear pinned for all people looking at the collection. If you just want to organize your favorite items, you should [bookmark them](./exploration.md#bookmarks) (only you can see your bookmarks).
 

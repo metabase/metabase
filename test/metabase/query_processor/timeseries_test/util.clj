@@ -2,11 +2,12 @@
   "Utility functions and macros for testing timeseries database drivers, such as Druid."
   (:require
    [metabase.test :as mt]
+   [metabase.test.data :as test.data]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.interface :as tx]))
 
 (defn timeseries-drivers []
-  #{:druid :druid-jdbc})
+  test.data/timeseries-drivers)
 
 (def flattened-db-def
   "The normal test-data DB definition as a flattened, single-table DB definition."

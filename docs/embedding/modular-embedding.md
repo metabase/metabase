@@ -7,8 +7,6 @@ redirect_from:
 
 # Modular embedding
 
-{% include shared/in-page-promo-embedding-workshop.html %}
-
 ![Modular embedding wizard](./images/modular-embedding-wizard.png)
 
 Modular embedding lets you embed and customize Metabase [components](./components.md) (like dashboards, the query builder, AI chat, and more) into your own application. You don't need to write embedding code on your own - just use the wizard to create a code snippet and paste it into your app.
@@ -19,7 +17,7 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 ## Enable modular embedding
 
-1. In Metabase, go to **Admin settings > Embedding**.
+1. In Metabase, go to **Admin > Embedding**.
 2. Toggle on **Enable modular embedding**.
 
 **For guest embeds**: You're done! Skip to [Create a new embed](#create-a-new-embed) or see the [Guest embedding guide](./guest-embedding.md) for detailed setup instructions.
@@ -38,22 +36,22 @@ You can generate a code snippet for embedding a component by going through the e
 In your Metabase:
 
 1. Visit the item you want to embed.
-2. Click the sharing icon.
+2. Click the **Share** icon.
 3. Select **Embed**.
 
-![Embed share button](./images/embed-share-button.png)
+![Share button to embed dashboard](./images/sharing-embed.png)
 
 You can also open a command palette with Ctrl/Cmd+K, type "New embed". You'll get a wizard to help you set up your embed.
 
-You can also go to **Admin settings > Embedding > Modular embedding** and click **New embed**.
+You can also go to **Admin > Embedding > Modular embedding** and click **New embed**.
 
 ![New modular embed from the admin settings](./images/new-modular-embed-from-admin-settings.png)
 
 ### 2. Pick how to authenticate the embed
 
-{% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embedding=true %}
 
-With SSO, Metabase can know who is viewing the embed, and it can unlock all of its bells and whistles (see this [comparison between SSO and guest embeds](./introduction.md#comparison-of-embedding-types)).
+With SSO, Metabase can know who is viewing the embed, and it can unlock all of its bells and whistles (see this [comparison between SSO and guest embeds](./introduction.md#comparison-between-sso-and-guest-authentication)).
 
 This page covers the [SSO setup for your Metabase](./authentication.md). If you don't need to set up SSO, check out the [guest embed docs](./guest-embedding.md).
 
@@ -63,9 +61,15 @@ The exact customization options you see will depend on what type of entity you'r
 
 ![Embed flow options for AI chat](./images/embed-flow-options.png)
 
-If you are on Metabase OSS/Starter plans, you'll be able to select light or dark themes for your components. On Metabase Pro/Enterprise, you'll be also be able to pick specific colors for brand, text, and background in the embed wizard, and add more customization options through [appearance settings](./appearance.md) later.
+If you're on Metabase OSS/Starter plans, you can select light or dark themes for your components.
 
-All the customization options you select in this wizard will be reflected in code snippet that the embed wizard will generate for you, and you'll be able to add more options later.
+On Metabase Pro/Enterprise, you can also:
+
+- Pick a [saved theme](./appearance.md#embedding-themes) you've created in **Admin settings > Embedding > Themes**.
+- Pick specific colors for brand, text, and background in the embed wizard.
+- Add more [advanced theme options](./appearance.md#advanced-theming) by editing the generated snippet later.
+
+All the customization options you select in this wizard will be reflected in the code snippet that the embed wizard will generate for you, and you'll be able to add more options later.
 
 For example, this code defines the font, color, and size for text, background colors, and colors for filters and summaries:
 
@@ -98,10 +102,10 @@ If you [create an embed through the built-in embed wizard](#create-a-new-embed),
 
 You'll add this code snippet to your app and refresh the page.
 
-The code snippets:
+The code snippet has three parts:
 
 - Loading the modular embedding library from your Metabase instance.
-- Set global configuration settings, like the URL of your Metabase and the `theme`. See [Page-level config](#page-level-config).
+- Setting global configuration settings, like the URL of your Metabase and the `theme`. See [Page-level config](#page-level-config).
 - The component(s) to embed, with their parameters. See [Components](./components.md).
 
 Here's an example snippet:
@@ -136,13 +140,15 @@ Here's an example snippet:
 <metabase-dashboard dashboard-id="2" with-title="false"></metabase-dashboard>
 ```
 
+These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
+
 Note the `defer` attribute and the reference to your Metabase URL in the script that loads `embed.js` library.
 
 If you're embedding multiple components in a single page, you only need to include the `<script>` tags once globally.
 
 ## Each end user should have their own Metabase account
 
-{% include plans-blockquote.html feature="Modular embedding with SSO" convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Modular embedding with SSO" convert_pro_link_to_embedding=true %}
 
 With SSO embeds, each end-user must have their own Metabase account. If you can't provision accounts for every end user, you have to use [Guest embeds](./guest-embedding.md) instead.
 
@@ -152,23 +158,29 @@ If each end-user has their own Metabase account, however, you can configure perm
 
 In addition to this, we consider shared accounts to be unfair usage. Fair usage of modular embedding involves giving each end-user of the embedded analytics their own Metabase account.
 
-## Customizing embeds
+## Customizing authenticated embeds
 
-The exact customization options you see will depend on what type of entity you're embedding and which plan you're on.
+The exact customization options you see will depend on which type of entity you're embedding. These are the settings for authenticated embeds available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans. For guest embeds (OSS and paid), see [guest embedding options](./guest-embedding.md#component-attributes).
 
-When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see some or all the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
+When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see some or all of the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
 
-- **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
+- **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](../questions/visualizations/drill-through.md) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
-- **Allow downloads**: determines whether people can download question results and save dashboards as PDFs.
+- **Allow downloads**. Determines whether people can download question results and save dashboards as PDFs.
 
-- **Allow people to save new questions**. If you embed the query builder but disable this option, people can still do their own explorations, they just won't be able to save them.
+- **Allow people to save new questions**. If you embed the query builder (visual or SQL) but disable this option, people can still do their own explorations, they just won't be able to save them.
 
 - **Parameters**: for dashboard filters, SQL variables, and time grouping parameters, you can add default values. Default values set here override the default values set at the dashboard or question level. For dashboard filters and parameters, you can choose whether to hide the parameter.
 
 - **Show title**: what it says on the tin.
 
-- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection. When disabled, they can still perform actions like filter, summarize, and drill-through, but won't be able to save results.
+- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection, including both visual and native (SQL) questions. When disabled, they can still perform actions like filter, summarize, and drill-through, but won't be able to save results. This option only shows up when you're embedding a collection browser; checking it sets `read-only="false"` on `<metabase-browser>`. There's no equivalent attribute on `<metabase-dashboard>`, so see [Web component editable dashboard](./dashboard.md#web-component-editable-dashboard) for how to embed an editable dashboard.
+
+- **Allow alerts**: lets people set up [alerts](../questions/alerts.md) on embedded questions. Requires [email setup](../configuring-metabase/email.md). Only for authenticated (SSO) question embeds.
+
+## Pass parameter values to embedded components
+
+See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components).
 
 ## Page-level config
 
@@ -183,6 +195,10 @@ To define the configuration that applies to every embed on the page, use the `de
 - `apiKey: mb_YourAPIKey` (optional, for development only) - another way to preview embeds locally using an API key.
 
 - `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./authentication.md#customizing-jwt-authentication).
+
+- `pluginsConfig` : plugins to customize the behavior of embedded components. Use the `handleLink` function to customize what happens when people click a link in your embedded questions and dashboards. For details on the `handleLink` API, including code examples, see [`handleLink` plugin](./sdk/plugins.md#handlelink).
+
+- `allowedCustomVisualizations: ["custom:Calendar Heatmap"]` (optional): the [custom visualizations](./custom-visualizations.md) that the components on the page are allowed to load. Not available in guest embeds.
 
 ## Authentication
 

@@ -11,11 +11,16 @@ Object.assign(navigator, {
 
 beforeEach(() => {
   fetchMock.mockGlobal();
+  // Always mock the error reporting endpoint — it's fire-and-forget
+  // and should never affect test behavior
+  fetchMock.post("path:/api/frontend-errors", 200);
 });
 
 afterEach(async () => {
   // Cleanup React components FIRST to trigger any unmount effects
   cleanup();
+
+  delete window.MetabaseBootstrap;
   // Wait for any pending fetch requests to complete
   await fetchMock.callHistory.flush();
 

@@ -1,5 +1,6 @@
 *.class
 *.*.rej
+*.d.css
 *.iml
 *.jar
 *.log
@@ -10,20 +11,24 @@
 *.xcworkspacedata
 .DS_Store
 .\#*
-.cpcache/
+.cpcache
 .eastwood
+.bot
 .idea/
 .nrepl-port
 .portal
 .vscode
+/.zed
 /*.h2.db
 /*.lock.db
 /*.mv.db
+/*.sql
 /*.trace.db
 /.babel_cache
 /.env*
 !/.env.example
 /.envrc
+/.workmux.yaml
 /.lein-env
 /.lein-failures
 /.lein-plugins
@@ -36,37 +41,61 @@
 /classes
 /coverage
 /crate-*
+/jars
 /cypress
 cypress.env.json
 /deploy/artifacts/*
-/docs/**/node_modules
+**/node_modules
 /docs/**/package.json
 /docs/**/yarn.lock
-/docs/embedding/sdk/api/
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
 !/e2e/tmp/db_dumps
 /e2e/tmp/db_dumps/*
 !/e2e/tmp/db_dumps/.gitkeep
+/e2e/support/assets/example_custom_viz_plugin*.tgz
+# Coverage artifacts
+/e2e/coverage-manifest-raw
+/e2e/coverage-manifest
+/e2e/coverage/analysis
+/e2e/coverage/spec-file-manifest.json
+/e2e/coverage/spec-test-manifest.json
+/e2e/coverage/openapi.json
+/e2e/support/.nyc_output
+/e2e/support/coverage
+/e2e/support/e2e
+/.nyc_output
+
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
+# Pseudo-locale generated at build time
+/locales/en-ZZ.po
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
-/node_modules/
+# Generated in-process embedder model bundles and build outputs.
+/modules/embedder/resources/metabase-embedder
+/modules/embedder/target
 /plugins
 /process.yml
 /reset-password-artifacts
+/resources/frontend_client/app/**/*.br
+/resources/frontend_client/app/**/*.gz
+/resources/frontend_client/app/**/*.hot-update.js
+/resources/frontend_client/app/**/*.hot-update.json
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
 /resources/frontend_client/app/embed.js
 /resources/frontend_client/app/embedding-sdk.js
 /resources/frontend_client/app/embedding-sdk.js.map
+/resources/frontend_client/app/embedding-sdk/
 /resources/frontend_client/tmp-*/
+/resources/frontend_client/data-app.html
 /resources/frontend_client/embed.html
 /resources/frontend_client/embed-sdk.html
+/resources/frontend_client/embed-mcp.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
 /resources/embedding-sdk
@@ -74,8 +103,10 @@ cypress.env.json
 /resources/instance_analytics.zip
 /resources/license-backend-third-party.txt
 /resources/license-frontend-third-party.txt
+/resources/metabase/config/modules.edn
 /resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
+!/resources/sample-database.*
 /resources/version.properties
 /screenshots
 /sqlite.db
@@ -86,13 +117,12 @@ cypress.env.json
 /temp
 **/cli-snippets-tmp/**
 \#*\#
-bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
 coverage-summary.json
 junit.xml
 pom.xml
 pom.xml.asc
-profiles.clj
+/profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
@@ -116,20 +146,19 @@ dev/serialization_deltas/
 mise.local.toml
 
 # lsp: ignore all but the config file
-.lsp/*
-!.lsp/config.edn
-modules/drivers/*/.lsp/*
-!modules/drivers/*/.lsp/config.edn
+**/.lsp/*
+!**/.lsp/config.edn
 **/.clj-kondo/.cache
 
 # clj-kondo: ignore all except our defined config
-.clj-kondo/*
-!.clj-kondo/README.md
-!.clj-kondo/config.edn
-!.clj-kondo/config/
-!.clj-kondo/src/
-!.clj-kondo/test/
-!.clj-kondo/macros/
+**/.clj-kondo/*
+!**/.clj-kondo/README.md
+!**/.clj-kondo/config.edn
+!**/.clj-kondo/ratchets.edn
+!**/.clj-kondo/config/
+!**/.clj-kondo/src/
+!**/.clj-kondo/test/
+!**/.clj-kondo/macros/
 
 # Editor- or environment-specific local files
 *.code-workspace
@@ -141,8 +170,6 @@ modules/drivers/*/.lsp/*
 
 .github/static-viz-sources.yaml
 
-# airgap
-/resources/airgap/
 
 # swc
 .swc/
@@ -161,9 +188,25 @@ llm-payloads
 /config.yml
 CLAUDE.local.md
 .claude/settings.local.json
+.claude/agent-memory/
 
 .eslintcache
 
 /logs
 /.clojure-mcp
 
+# Python dependencies (pip-installed, not committed)
+/resources/python-sources/sqlglot/
+/resources/python-sources/sqlglot-*.dist-info/
+/resources/python-sources/.lock
+__pycache__/
+.mcp.json
+.config/wt.toml
+.claude/worktrees
+.claude/scheduled_tasks.lock
+.playwright-mcp
+.ci_reports/
+
+# dependency-cruiser output
+dependency-graph.json
+.playwright-cli/

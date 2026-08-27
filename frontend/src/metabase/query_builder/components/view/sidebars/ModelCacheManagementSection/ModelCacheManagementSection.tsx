@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
 
 import {
@@ -6,6 +5,7 @@ import {
   useRefreshModelCacheMutation,
 } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { dayjs } from "metabase/dayjs";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { Box, Button, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -79,13 +79,13 @@ export function ModelCacheManagementSection({ model }: Props) {
           justify="space-between"
           align="center"
           data-testid="model-cache-section"
-          c={canManageDB ? "text-primary" : "text-tertiary"}
+          c={canManageDB ? "text-primary" : "text-disabled"}
           fz="md"
         >
           <Box>
             <Flex align="center" fw="bold" gap="sm">
               {statusMessage}
-              {isError && <Icon name="warning" c="error" ml="sm" />}
+              {isError && <Icon name="warning" c="feedback-negative" ml="sm" />}
             </Flex>
             {isError && <Box pt="sm">{lastRefreshLabel}</Box>}
           </Box>

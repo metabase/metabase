@@ -2,9 +2,10 @@ import cx from "classnames";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { EditBar } from "metabase/common/components/EditBar";
 import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
+import { SIDEBAR_WIDTH } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import {
   applyDraftParameterValues,
@@ -20,18 +21,18 @@ import {
   getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
 import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
 
-import { Dashboard } from "../Dashboard";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
-import { SIDEBAR_WIDTH } from "../Sidebar";
+import { DashboardTabs } from "../DashboardTabs";
+import { DashboardTitle } from "../DashboardTitle";
 
 import S from "./DashboardHeaderView.module.css";
 
@@ -114,6 +115,7 @@ export function DashboardHeaderView({
             isSidebarOpen && !isInfoSidebarOpen && !isSettingsSidebarOpen,
         })}
         style={
+          // Unjustified type cast. FIXME
           {
             "--sidebar-width": `${SIDEBAR_WIDTH}px`,
           } as React.CSSProperties
@@ -133,12 +135,13 @@ export function DashboardHeaderView({
               {titled && (
                 <Box
                   role="heading"
+                  aria-level={1}
                   className={cx(S.HeaderContent, {
                     [S.showSubHeader]: showSubHeader,
                   })}
                 >
                   <Flex className={S.HeaderCaptionContainer} gap={2}>
-                    <Dashboard.Title className={S.HeaderCaption} />
+                    <DashboardTitle className={S.HeaderCaption} />
 
                     <Flex
                       align="center"
@@ -153,7 +156,7 @@ export function DashboardHeaderView({
                       />
                       {!!collection && (
                         <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                          c="brand"
+                          c="core-brand"
                           collection={collection}
                           entity="dashboard"
                         />
@@ -182,7 +185,7 @@ export function DashboardHeaderView({
             data-testid="fixed-width-dashboard-tabs"
             isFixedWidth={dashboard?.width === "fixed"}
           >
-            <Dashboard.Tabs />
+            <DashboardTabs />
           </FixedWidthContainer>
         </FullWidthContainer>
       </div>

@@ -404,12 +404,7 @@ describe("scenarios > collections > trash", () => {
     archiveBanner().should("not.exist");
 
     cy.visit("/trash");
-
-    collectionTable().within(() => {
-      cy.findByText("Collection A").should("not.exist");
-      cy.findByText("Dashboard A").should("not.exist");
-      cy.findByText("Question A").should("not.exist");
-    });
+    cy.findByTestId("collection-empty-state").should("be.visible");
 
     cy.visit(`/collection/${FIRST_COLLECTION_ID}`);
 
@@ -494,9 +489,7 @@ describe("scenarios > collections > trash", () => {
     archiveBanner().findByText("Delete permanently").click();
     H.modal().findByText("Delete Question B permanently?").should("exist");
     H.modal().findByText("Delete permanently").click();
-    collectionTable().within(() => {
-      cy.findByText("Question B").should("not.exist");
-    });
+    cy.findByTestId("collection-empty-state").should("be.visible");
   });
 
   describe("bulk actions", () => {
@@ -757,7 +750,6 @@ describe("scenarios > collections > trash", () => {
       cy.intercept("GET", `/api/dashboard/${dashboard.id}*`).as("getDashboard");
       H.visitDashboard(dashboard.id);
       cy.wait("@getDashboard");
-      H.openNavigationSidebar();
       assertTrashSelectedInNavigationSidebar();
     });
 
@@ -769,7 +761,6 @@ describe("scenarios > collections > trash", () => {
       );
       H.visitQuestion(question.id);
       cy.wait("@getQuestionResult");
-      H.openNavigationSidebar();
       assertTrashSelectedInNavigationSidebar();
     });
   });
@@ -852,14 +843,14 @@ describe("scenarios > collections > trash", () => {
     cy.visit("/trash");
 
     toggleEllipsisMenuFor("Orders");
-    cy.findAllByRole("dialog")
+    cy.findAllByRole("menu")
       .should("have.length", 1)
       .and("contain", "Move")
       .and("contain", "Restore")
       .and("contain", "Delete permanently");
 
     toggleEllipsisMenuFor("Orders, Count");
-    cy.findAllByRole("dialog")
+    cy.findAllByRole("menu")
       .should("have.length", 1)
       .and("contain", "Move")
       .and("contain", "Restore")
@@ -979,17 +970,25 @@ function ensureCanRestoreFromPage(name) {
 }
 
 function selectItem(name) {
-  cy.findByText(name).closest("tr").findByRole("checkbox").check();
+  cy.findByText(name)
+    .closest("tr")
+    .findByRole("checkbox")
+    .closest("button")
+    .click();
 }
 
 function assertChecked(name, checked = true) {
   cy.findByText(name)
     .closest("tr")
     .findByRole("checkbox")
-    .should(checked ? "have.attr" : "not.have.attr", "checked");
+    .should(checked ? "be.checked" : "not.be.checked");
 }
 
 function assertTrashSelectedInNavigationSidebar() {
+  // Routes like a dashboard or question collapse the navbar, so ensure it's
+  // open before asserting. openNavigationSidebar is idempotent and self-heals
+  // against a pending collapse, so it's safe to call unconditionally here.
+  H.openNavigationSidebar();
   H.navigationSidebar().within(() => {
     cy.findByText("Trash")
       .parents("li")

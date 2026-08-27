@@ -36,7 +36,7 @@ To embed a dashboard in your app using the SDK, you'll need to:
 
 ## 1. Enable the SDK in Metabase
 
-In Metabase, click on the gear icon in the upper right and navigate to **Admin Settings > Embedding > Modular** and enable the **SDK for React**.
+In Metabase, click the grid icon in the upper right and navigate to **Admin > Embedding > Modular** and enable the **SDK for React**.
 
 ## 2. Create an API key in Metabase
 
@@ -47,19 +47,21 @@ Still in the Admin console, go to **Settings > Authentication** and click on the
 
 ## 3. Install the SDK in your app
 
-When installing the npm package, it's critical to use the npm dist-tag that corresponds to the major version of your Metabase. For example, if your Metabase is version 1.56.x, you'd run `56-stable`. See [SDK versioning](./version.md).
+Install the `@{major}-stable` dist-tag matching your Metabase major, so the package's types and exported components in your client match your SDK bundle served from your Metabase. For Metabase 60:
 
 Via npm:
 
 ```
-npm install @metabase/embedding-sdk-react@53-stable
+npm install @metabase/embedding-sdk-react@60-stable
 ```
 
 Via Yarn:
 
 ```
-yarn add @metabase/embedding-sdk-react@53-stable
+yarn add @metabase/embedding-sdk-react@60-stable
 ```
+
+See [SDK versions](./version.md) for other install options.
 
 ## 4. Embed SDK components in your app
 

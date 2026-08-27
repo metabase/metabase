@@ -1,8 +1,14 @@
-import type { CollectionType } from "./collection";
+import type { CollectionEssentials } from "metabase-types/api/search";
+
 import type { SortDirection } from "./sorting";
 
 /** 'Model' as in 'type of object' */
-export type CacheableModel = "root" | "database" | "dashboard" | "question";
+export type CacheableModel =
+  | "root"
+  | "database"
+  | "dashboard"
+  | "question"
+  | "metric";
 
 export type CacheStrategyType =
   | "nocache"
@@ -69,7 +75,7 @@ export interface CacheConfig {
 
 export type CacheSortColumn = "name" | "collection" | "policy";
 
-export interface ListCacheConfigsRequest {
+export type ListCacheConfigsRequest = {
   model?: CacheableModel[];
   collection?: number;
   id?: number;
@@ -77,17 +83,12 @@ export interface ListCacheConfigsRequest {
   offset?: number;
   sort_column?: CacheSortColumn;
   sort_direction?: SortDirection;
-}
+};
 
 /** Cache config with hydrated name and collection data */
 export interface CacheConfigWithDetails extends CacheConfig {
   name?: string;
-  collection?: {
-    id: number;
-    name: string;
-    authority_level?: "official" | null;
-    type?: CollectionType;
-  } | null;
+  collection?: CollectionEssentials | null;
 }
 
 export interface ListCacheConfigsResponse {

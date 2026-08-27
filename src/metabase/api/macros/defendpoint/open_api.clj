@@ -16,9 +16,43 @@
 
 (def ^:private ^:dynamic *definitions* nil)
 
+(defn- sanitize-schema-name
+  "Sanitize schema names to match OpenAPI's required pattern: ^[a-zA-Z0-9.\\-_]+$
+   Only replaces characters that are invalid in OpenAPI schema names."
+  [s]
+  (-> s
+      ;; ~1 is JSON Pointer encoding for / - decode first
+      (str/replace "~1" "/")
+      ;; Replace only invalid characters, keeping . and - which are valid
+      (str/replace "!" "_BANG_")
+      (str/replace "=" "_EQ_")
+      (str/replace "<" "_LT_")
+      (str/replace ">" "_GT_")
+      (str/replace "*" "_STAR_")
+      (str/replace "+" "_PLUS_")
+      (str/replace "/" "_SLASH_")))
+
+(defn- sanitize-ref
+  "Sanitize $ref paths to use sanitized schema names."
+  [schema]
+  (cond-> schema
+    (:$ref schema)
+    (update :$ref (fn [r]
+                    (str/replace r #"#/components/schemas/(.+)"
+                                 (fn [[_ schema-name]]
+                                   (str "#/components/schemas/" (sanitize-schema-name schema-name))))))))
+
+(defn- path->operation-id
+  "Generate an operationId from method and path, e.g. :get + '/api/action/{id}' -> 'get-api-action-id'"
+  [method full-path]
+  (str (name method)
+       (-> full-path
+           (str/replace #"[{}]" "")
+           (str/replace #"/" "-"))))
+
 (mu/defn- merge-required :- :metabase.api.open-api/parameter.schema.object
   [schema]
-  (let [optional? (set (keep (fn [[k v]] (when (:optional v) k))
+  (let [optional? (set (keep (fn [[k v]] (when (or (:optional v) (contains? v :default)) k))
                              (:properties schema)))]
     (-> schema
         (m/update-existing :required #(into []
@@ -38,16 +72,26 @@
   to be?"
   [schema :- :map]
   (try
-    (let [schema (-> schema
+    ;; Helper to recursively fix nested schemas and strip :optional (which is only
+    ;; meaningful at the top level for parameter detection, not inside oneOf/anyOf/allOf)
+    (let [fix-nested #(dissoc (fix-json-schema %) :optional)
+          ;; Sanitize definition keys
+          sanitize-definitions (fn [defs]
+                                 (into {}
+                                       (map (fn [[k v]]
+                                              [(sanitize-schema-name k) (fix-nested v)]))
+                                       defs))
+          schema (-> schema
+                     sanitize-ref
                      (m/update-existing :description str)
                      (m/update-existing :type keyword)
-                     (m/update-existing :definitions #(update-vals % fix-json-schema))
-                     (m/update-existing :oneOf #(mapv fix-json-schema %))
-                     (m/update-existing :anyOf #(mapv fix-json-schema %))
-                     (m/update-existing :allOf #(mapv fix-json-schema %))
+                     (m/update-existing :definitions sanitize-definitions)
+                     (m/update-existing :oneOf #(mapv fix-nested %))
+                     (m/update-existing :anyOf #(mapv fix-nested %))
+                     (m/update-existing :allOf #(mapv fix-nested %))
                      (m/update-existing :additionalProperties (fn [additional-properties]
                                                                 (cond-> additional-properties
-                                                                  (map? additional-properties) fix-json-schema))))]
+                                                                  (map? additional-properties) fix-nested))))]
       (cond
         ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
         (:allOf schema)
@@ -105,22 +149,14 @@
           :let             [k (get renames k k)]
           :when            (in-fn k)
           :let             [schema    (fix-json-schema param-schema)
-                            ;; if schema does not indicate it's optional, it's not :)
-                            optional? (:optional schema)]]
+                            ;; optional if flagged so, or if it carries a `:default` (a defaulted param is
+                            ;; safe to omit, so it shouldn't be advertised as required)
+                            optional? (or (:optional schema) (contains? schema :default))]]
       (cond-> {:in          (in-fn k)
                :name        (u/qualified-name k)
                :required    (and (contains? required k) (not optional?))
                :schema      (dissoc schema :optional :description)}
         (:description schema) (assoc :description (str (:description schema)))))))
-
-(mu/defn- multipart-schema [form :- :metabase.api.macros/parsed-args]
-  (when-let [request-schema (get-in form [:params :request :schema])]
-    (let [schema (-> request-schema mr/resolve-schema mc/schema)]
-      (when (= (mc/type schema) :map)
-        (some (fn [[k _opts schema]]
-                (when (= k :multipart-params)
-                  schema))
-              (mc/children schema))))))
 
 (def ^:private default-response-schema
   "Default response schema for OpenAPI endpoints. This is used when the endpoint does not specify a response schema."
@@ -169,15 +205,14 @@
           ctype           (if (get-in form [:metadata :multipart])
                             "multipart/form-data"
                             "application/json")
-          body-schema     (some-> (if (= ctype "multipart/form-data")
-                                    (multipart-schema form)
-                                    (get-in form [:params :body :schema]))
+          body-schema     (some-> (get-in form [:params :body :schema])
                                   mjs-collect-definitions
                                   fix-json-schema)
           response-schema (:response-schema form)
           deprecated?     (get-in form [:metadata :deprecated])]
       ;; summary is the string in the sidebar of Scalar
-      (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
+      (cond-> {:operationId (path->operation-id method full-path)
+               :summary     (str (u/upper-case-en (name method)) " " full-path)
                :description (some-> (:docstr form) str)
                :parameters params
                :responses  default-response-schema}
@@ -201,6 +236,11 @@
                       {:full-path full-path, :form form, :definitions @*definitions*}
                       e)))))
 
+(defn- strip-trailing-slash
+  "Remove trailing slash from a string, but keep root paths like '/api' unchanged."
+  [s]
+  (str/replace s #"/$" ""))
+
 (mu/defn open-api-spec :- :metabase.api.open-api/spec
   "Create an OpenAPI spec for then `endpoints` in a namespace. Note this returns an incomplete OpenAPI object;
   use [[metabase.api.open-api/root-open-api-object]] to get something complete."
@@ -211,7 +251,8 @@
              (map (fn [endpoint]
                     (let [local-path (-> (get-in endpoint [:form :route :path])
                                          (str/replace #"/:([^/]+)" "/{$1}"))
-                          full-path  (str prefix local-path)
+                          full-path  (-> (str prefix local-path)
+                                         strip-trailing-slash)
                           method     (get-in endpoint [:form :method])]
                       {full-path {method (assoc (path-item full-path (:form endpoint))
                                                 :tags [prefix])}})))
@@ -220,7 +261,7 @@
              (vals endpoints))
      :components {:schemas @*definitions*}}))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
   (open-api-spec (metabase.api.macros/ns-routes 'metabase.geojson.api) "/api/geojson")
 

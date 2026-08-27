@@ -1,10 +1,10 @@
-import type { MetadataSelectorOpts } from "metabase/selectors/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
-import type { Settings } from "metabase-types/api";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import type { MetadataSelectorOpts } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+import type { Settings } from "metabase-types/api";
 
 import type { EntitiesStateOpts } from "./store";
 import { createMockEntitiesState } from "./store";

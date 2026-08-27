@@ -1,68 +1,13 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const QUESTION_NAME = "Foo";
-const MONGO_DB_ID = 2;
-
-describe("issue 4482", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.openTable({
-      table: PRODUCTS_ID,
-      mode: "notebook",
-    });
-
-    cy.findByRole("button", { name: "Summarize" }).click();
-  });
-
-  it("should be possible to summarize min of a temporal column (metabase#4482-1)", () => {
-    pickMetric("Minimum of");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Created At").click();
-
-    H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 1, 2022, 12:00 AM");
-  });
-
-  it("should be possible to summarize max of a temporal column (metabase#4482-2)", () => {
-    pickMetric("Maximum of");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Created At").click();
-
-    H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 1, 2025, 12:00 AM");
-  });
-
-  it("should be not possible to average a temporal column (metabase#4482-3)", () => {
-    pickMetric("Average of");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At").should("not.exist");
-  });
-});
-
-function pickMetric(metric) {
-  cy.contains("Pick a function or metric").click();
-
-  cy.contains(metric).click();
-  cy.findByText("Price");
-  cy.findByText("Rating");
-}
 
 describe("issue 6239", () => {
   beforeEach(() => {
@@ -188,87 +133,6 @@ function openEllipsisMenuFor(item) {
     .click({ force: true });
 }
 
-describe("issue 13097", { tags: "@mongo" }, () => {
-  beforeEach(() => {
-    H.restore("mongo-5");
-    cy.signInAsAdmin();
-
-    H.withDatabase(MONGO_DB_ID, ({ PEOPLE_ID }) => {
-      const questionDetails = {
-        dataset_query: {
-          type: "query",
-          query: { "source-table": PEOPLE_ID, limit: 5 },
-          database: MONGO_DB_ID,
-        },
-      };
-
-      const hash = H.adhocQuestionHash(questionDetails);
-
-      cy.visit(`/question/notebook#${hash}`);
-    });
-  });
-
-  it("should correctly apply distinct count on multiple columns (metabase#13097)", () => {
-    H.summarize({ mode: "notebook" });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Number of distinct values of ...").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
-
-    cy.findAllByTestId("notebook-cell-item").find(".Icon-add").click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Number of distinct values of ...").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("State").click();
-
-    H.visualize();
-
-    // cy.log("Reported failing on stats ~v0.36.3");
-    cy.get("[data-testid=cell-data]")
-      .should("have.length", 4)
-      .and("contain", "Distinct values of City")
-      .and("contain", "1,966")
-      .and("contain", "Distinct values of State")
-      .and("contain", "49");
-  });
-});
-
-describe("postgres > user > query", { tags: "@external" }, () => {
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
-      ({ body }) => {
-        const tableId = body.find((table) => table.name === "orders").id;
-        H.openTable({
-          database: WRITABLE_DB_ID,
-          table: tableId,
-        });
-      },
-    );
-  });
-
-  it("should show row details when clicked on its entity key (metabase#13263)", () => {
-    // We're clicking on ID: 1 (the first order) => do not change!
-    // It is tightly coupled to the assertion ("37.65"), which is "Subtotal" value for that order.
-    cy.get(".test-Table-ID").eq(0).click();
-
-    // Wait until "doing science" spinner disappears (DOM is ready for assertions)
-    // TODO: if this proves to be reliable, extract it as a helper function for waiting on DOM to render
-    cy.findByTestId("loading-indicator").should("not.exist");
-
-    // Assertions
-    cy.log("Fails in v0.36.6");
-    // This could be omitted because real test is searching for "37.65" on the page
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question").should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
-  });
-});
-
 describe("issue 14957", { tags: "@external" }, () => {
   const PG_DB_NAME = "QA Postgres12";
 
@@ -391,62 +255,6 @@ describe("issue 15876", { tags: "@external" }, () => {
   });
 });
 
-describe("issue 17512", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("custom expression should work with `case` in nested queries (metabase#17512)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-
-    addSummarizeCustomExpression(
-      "Distinct(case([Discount] > 0, [Subtotal], [Total]))",
-      "CE",
-    );
-
-    cy.findByTestId("aggregate-step").contains("CE").should("exist");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At").click();
-
-    addCustomColumn("1 + 1", "CC");
-
-    H.visualize(({ body }) => {
-      expect(body.error).to.not.exist;
-    });
-
-    cy.findAllByTestId("header-cell").contains("CE").should("exist");
-    cy.findAllByTestId("header-cell").contains("CC").should("exist");
-  });
-});
-
-function addSummarizeCustomExpression(formula, name) {
-  H.summarize({ mode: "notebook" });
-  H.popover().contains("Custom Expression").click();
-
-  H.enterCustomColumnDetails({
-    formula,
-    name,
-    format: true,
-  });
-  H.expressionEditorWidget().button("Done").click();
-}
-
-function addCustomColumn(formula, name) {
-  cy.findByText("Custom column").click();
-  H.enterCustomColumnDetails({
-    formula,
-    name,
-    format: true,
-  });
-  H.expressionEditorWidget().button("Done").click();
-}
-
 describe("issue 17514", () => {
   const questionDetails = {
     name: "17514",
@@ -544,16 +352,20 @@ describe("issue 17514", () => {
       cy.wait("@dataset");
       cy.findByTextEnsureVisible("Subtotal");
 
-      cy.findByTestId("view-footer")
-        .findByText("Showing first 2,000 rows")
+      cy.findByTestId("question-row-count")
+        .contains(/^Showing .+ rows$/)
         .should("be.visible");
 
       cy.findByTestId("query-builder-main")
-        .findAllByText("76.83")
+        .findAllByText("79.37")
         .eq(0)
+        .should("be.visible")
         .click();
 
-      cy.findByTestId("click-actions-view").findByText("Filter by this value");
+      cy.findByTestId("click-actions-view").should(
+        "contain",
+        "Filter by this value",
+      );
     });
   });
 
@@ -569,43 +381,38 @@ describe("issue 17514", () => {
 
       removeJoinedTable();
 
-      cy.button("Visualize").click();
-      cy.wait("@dataset");
+      H.visualize();
 
       cy.findByTextEnsureVisible("Subtotal");
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").click();
-
-      cy.findByTestId("save-question-modal").within((modal) => {
-        cy.findByText("Save").click();
-      });
-
+      cy.log("Update the question");
+      cy.findByTestId("qb-header").button("Save").click();
+      cy.findByTestId("save-question-modal").button("Save").click();
       cy.findByTestId("save-question-modal").should("not.exist");
     });
 
     it("should not show the run overlay because of the references to the orphaned fields (metabase#17514-2)", () => {
       openNotebookMode();
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Join data").click();
+      H.join();
       H.miniPicker().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("Products").click();
       });
 
-      cy.button("Visualize").click();
+      H.visualize();
 
-      // wait until view results are done rendering
-      cy.wait("@dataset");
+      cy.log("Wait until view results are done rendering");
       cy.findByTestId("query-builder-main").within(() => {
         cy.findByText("Doing science...").should("not.exist");
       });
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       H.tableHeaderClick("Subtotal");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column");
+      cy.findByTestId("click-actions-view").should(
+        "contain",
+        "Filter by this column",
+      );
     });
   });
 });
@@ -646,10 +453,11 @@ function moveColumnToTop(column) {
     cy.findByText(column)
       .should("be.visible")
       .closest("[data-testid^=draggable-item]")
-      .trigger("mousedown", 0, 0, { force: true })
-      .trigger("mousemove", 5, 5, { force: true })
-      .trigger("mousemove", 0, -600, { force: true })
-      .trigger("mouseup", 0, -600, { force: true });
+      .as("dragColumn");
+  });
+  H.moveDnDKitElementByAlias("@dragColumn", {
+    vertical: -130,
+    useMouseEvents: true,
   });
 }
 
@@ -677,150 +485,9 @@ describe("issue 17910", () => {
         .blur();
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByTestId("saved-question-history-list")
-        .children()
+        .findAllByTestId("revision-history-event")
         .should("have.length", 2);
     });
-  });
-});
-
-describe("issue 17963", { tags: "@mongo" }, () => {
-  beforeEach(() => {
-    H.restore("mongo-5");
-    cy.signInAsAdmin();
-
-    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
-      const tableId = body.find((table) => table.name === "orders").id;
-      H.openTable({
-        database: WRITABLE_DB_ID,
-        table: tableId,
-        mode: "notebook",
-      });
-    });
-  });
-
-  it("should be able to compare two fields using filter expression (metabase#17963)", () => {
-    cy.findByRole("button", { name: "Filter" }).click();
-
-    H.popover().contains("Custom Expression").click();
-
-    typeAndSelect([
-      { string: "dis", field: "Discount" },
-      { string: "> quan", field: "Quantity" },
-    ]);
-
-    H.CustomExpressionEditor.blur();
-    cy.button("Done").click();
-
-    H.getNotebookStep("filter").findByText("Discount is greater than Quantity");
-
-    cy.findByRole("button", { name: /Summarize/ }).click();
-    H.popover().findByText("Count of rows").click();
-
-    H.visualize();
-
-    cy.findByTestId("scalar-value").contains("1,337");
-  });
-});
-
-function typeAndSelect(arr) {
-  arr.forEach(({ string, field }) => {
-    H.CustomExpressionEditor.type(string);
-
-    H.CustomExpressionEditor.selectCompletion(field);
-  });
-}
-
-describe("issue 18207", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.openProductsTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
-  });
-
-  it("should be possible to use MIN on a string column (metabase#18207, metabase#22155)", () => {
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Minimum of").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Price");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Ean").should("be.visible");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Category").click();
-
-    H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Doohickey");
-  });
-
-  it("should be possible to use MAX on a string column (metabase#18207, metabase#22155)", () => {
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Maximum of").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Price");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Ean").should("be.visible");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Category").click();
-
-    H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Widget");
-  });
-
-  it("should be not possible to use AVERAGE on a string column (metabase#18207, metabase#22155)", () => {
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Average of").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Price");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rating");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Ean").should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category").should("not.exist");
-  });
-
-  it("should be possible to group by a string expression (metabase#18207)", () => {
-    H.popover().contains("Custom Expression").click();
-
-    H.enterCustomColumnDetails({
-      formula: "Max([Vendor])",
-      name: "LastVendor",
-    });
-
-    H.expressionEditorWidget().button("Done").click();
-
-    cy.findByTestId("aggregate-step").contains("LastVendor").should("exist");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Pick a column to group by").click();
-    H.popover().contains("Category").click();
-
-    H.visualize();
-
-    // Why is it not a table?
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Visualization").click();
-    H.leftSidebar().within(() => {
-      cy.icon("table2").click();
-      cy.findByTestId("Table-button").realHover();
-      cy.icon("gear").click();
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Done").click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Zemlak-Wiegand");
   });
 });
 
@@ -903,7 +570,10 @@ describe("issues 11914, 18978, 18977, 23857", () => {
 
     cy.log("Make sure user can change visualization but not save the question");
     H.openVizTypeSidebar();
-    cy.findByTestId("Number-button").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("number").click();
+    });
     cy.findByTestId("scalar-value").should("exist");
     assertSaveIsDisabled();
 
@@ -1037,254 +707,5 @@ describe("issue 19742", () => {
       cy.findByText("Reviews").should("exist");
       cy.findByText("People").should("exist");
     });
-  });
-});
-
-const QUESTION_1 = {
-  name: "Q1",
-  query: {
-    "source-table": PRODUCTS_ID,
-    aggregation: [["count"]],
-    breakout: [["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }]],
-  },
-};
-
-const QUESTION_2 = {
-  name: "Q2",
-  query: {
-    "source-table": PRODUCTS_ID,
-    aggregation: [
-      ["sum", ["field", PRODUCTS.PRICE, { "base-type": "type/Float" }]],
-    ],
-    breakout: [["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }]],
-  },
-};
-
-describe("issue 19893", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it(
-    "should display correct join source table when joining visited questions (metabase#19893)",
-    { tags: "@skip" },
-    () => {
-      H.createQuestion(QUESTION_1, {
-        wrapId: true,
-        idAlias: "questionId1",
-        visitQuestion: true,
-      });
-      H.createQuestion(QUESTION_2, {
-        wrapId: true,
-        idAlias: "questionId2",
-        visitQuestion: true,
-      });
-
-      cy.then(function () {
-        const { questionId1, questionId2 } = this;
-
-        createQ1PlusQ2Question(questionId1, questionId2).then(
-          ({ body: question }) => {
-            cy.visit(`/question/${question.id}/notebook`);
-          },
-        );
-      });
-
-      assertQ1PlusQ2Joins();
-    },
-  );
-
-  it(
-    "should display correct join source table when joining non-visited questions (metabase#19893)",
-    { tags: "@skip" },
-    () => {
-      H.createQuestion(QUESTION_1, { wrapId: true, idAlias: "questionId1" });
-      H.createQuestion(QUESTION_2, { wrapId: true, idAlias: "questionId2" });
-
-      cy.then(function () {
-        const { questionId1, questionId2 } = this;
-
-        createQ1PlusQ2Question(questionId1, questionId2).then(
-          ({ body: question }) => {
-            cy.visit(`/question/${question.id}/notebook`);
-          },
-        );
-      });
-
-      assertQ1PlusQ2Joins();
-    },
-  );
-});
-
-const createQ1PlusQ2Question = (questionId1, questionId2) => {
-  return H.createQuestion({
-    name: "Q1 + Q2",
-    query: {
-      "source-table": `card__${questionId1}`,
-      joins: [
-        {
-          fields: "all",
-          strategy: "left-join",
-          alias: "Q2 - Category",
-          condition: [
-            "=",
-            ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-            [
-              "field",
-              PRODUCTS.CATEGORY,
-              { "base-type": "type/Text", "join-alias": "Q2 - Category" },
-            ],
-          ],
-          "source-table": `card__${questionId2}`,
-        },
-      ],
-    },
-  });
-};
-
-const assertQ1PlusQ2Joins = () => {
-  H.getNotebookStep("join").within(() => {
-    cy.findAllByTestId("notebook-cell-item").then((items) => {
-      cy.wrap(items[0]).should("contain", QUESTION_1.name);
-      cy.wrap(items[1]).should("contain", QUESTION_2.name);
-    });
-
-    cy.findByLabelText("Left column").within(() => {
-      cy.findByText(QUESTION_1.name).should("exist");
-      cy.findByText("Category").should("exist");
-    });
-
-    cy.findByLabelText("Right column").within(() => {
-      cy.findByText(QUESTION_2.name).should("exist");
-      cy.findByText("Q2 - Category → Category").should("exist");
-    });
-  });
-};
-
-const foreignKeyColumnName = "Surprisingly long and awesome Product ID";
-const newTableName = "Products with a very long name";
-
-describe("issue 20627", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    renameColumn(ORDERS.PRODUCT_ID, foreignKeyColumnName);
-    renameTable(PRODUCTS_ID, newTableName);
-  });
-
-  it("nested queries should handle long column and/or table names (metabase#20627)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Join data").click();
-
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText(newTableName).click();
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summarize").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    H.popover().within(() => {
-      cy.findByText(newTableName).click();
-
-      cy.findByText("Category").click();
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom column").click();
-    H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
-    cy.button("Done").click();
-
-    H.visualize();
-
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "Math")
-      .and("contain", "Doohickey")
-      .and("contain", "3,976");
-  });
-});
-
-function renameColumn(columnId, name) {
-  cy.request("PUT", `/api/field/${columnId}`, { display_name: name });
-}
-
-function renameTable(tableId, name) {
-  cy.request("PUT", `/api/table/${tableId}`, { display_name: name });
-}
-
-describe("issue 20809", () => {
-  const questionDetails = {
-    name: "20809",
-    query: {
-      "source-table": REVIEWS_ID,
-      filter: [
-        "=",
-        ["field", PRODUCTS.CATEGORY, { "source-field": REVIEWS.PRODUCT_ID }],
-        "Doohickey",
-      ],
-      aggregation: [["count"]],
-      breakout: [["field", REVIEWS.PRODUCT_ID, null]],
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(questionDetails).then(({ body: { id } }) => {
-      const nestedQuestion = {
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: "all",
-                "source-table": `card__${id}`,
-                condition: [
-                  "=",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  [
-                    "field",
-                    REVIEWS.PRODUCT_ID,
-                    { "join-alias": `Question ${id}` },
-                  ],
-                ],
-                alias: `Question ${id}`,
-              },
-            ],
-          },
-          type: "query",
-        },
-      };
-
-      H.visitQuestionAdhoc(nestedQuestion, { mode: "notebook" });
-    });
-  });
-
-  it("nesting should work on a saved question with a filter to implicit/explicit table (metabase#20809)", () => {
-    cy.findByTextEnsureVisible("Custom column").click();
-
-    H.enterCustomColumnDetails({
-      formula: "1 + 1",
-      name: "Two",
-    });
-
-    cy.button("Done").click();
-
-    H.visualize((response) => {
-      expect(response.body.error).to.not.exist;
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
   });
 });

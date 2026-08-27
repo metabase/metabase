@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.premium-features.core :as premium-features]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms.test-dataset :as transforms-dataset]
@@ -30,7 +31,7 @@
   {:name   "Python Transform"
    :source {:type            "python"
             :body            "print('hello world')"
-            :source-tables   {}
+            :source-tables   []
             :source-database (mt/id)}
    :target {:type     "table"
             :schema   (get-test-schema)
@@ -88,7 +89,7 @@
 
 (deftest list-transforms-excludes-python-without-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {query-id :id} {}
                        :model/Transform {python-id :id} (python-transform-map (str "python_transform_" (u/generate-nano-id)))]
@@ -99,14 +100,14 @@
 
 (deftest get-python-transform-403-without-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {python-id :id} (python-transform-map (str "python_transform_" (u/generate-nano-id)))]
           (mt/user-http-request :crowberto :get 403 (format "transform/%d" python-id)))))))
 
 (deftest get-python-transform-200-with-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms :transforms-python}
+    (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {python-id :id} (python-transform-map (str "python_transform_" (u/generate-nano-id)))]
           (let [response (mt/user-http-request :crowberto :get 200 (format "transform/%d" python-id))]
@@ -114,7 +115,7 @@
 
 (deftest create-transform-with-routing-fails-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms :database-routing}
+    (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -130,7 +131,7 @@
 
 (deftest update-transform-with-routing-fails-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms :database-routing}
+    (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
           (mt/with-temp [:model/Database _destination {:engine driver/*driver*
@@ -146,59 +147,65 @@
 (deftest search-filters-transform-source-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
-      (let [search-term (str "transform-search-" (u/generate-nano-id))
-            query-name  (str search-term "-query")
-            python-name (str search-term "-python")]
-        (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
-                                                              :name query-name)
-                       :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
-                                                               :name python-name)]
-          (search.tu/with-new-search-and-legacy-search
-            (testing "no hosting feature"
-              (mt/with-premium-features #{}
-                (is (= #{query-id} (search-transform-ids search-term)))))
-            (testing "no transforms feature"
-              (mt/with-premium-features #{:hosting}
-                (is (empty? (search-transform-ids search-term)))))
-            (testing "transforms only"
-              (mt/with-premium-features #{:transforms :hosting}
-                (is (= #{query-id} (search-transform-ids search-term)))))
-            (testing "transforms and transforms-python"
-              (mt/with-premium-features #{:transforms :transforms-python :hosting}
-                (is (= #{query-id python-id} (search-transform-ids search-term)))))))))))
+      ;; the temp index table is created here, before `with-temp` opens its transaction: creating (and
+      ;; especially dropping) it inside would run DDL on the ambient connection, which on H2/MySQL
+      ;; implicitly commits the transaction, so its rollback could not take the rows back and the
+      ;; Transforms would leak to every later test that counts them. The index scope nested inside
+      ;; `with-appdb-search-and-legacy-search` reuses this one rather than creating its own. The
+      ;; `-if-supported` variant keeps the legacy-search leg running on app dbs that cannot hold an index.
+      (search.tu/with-temp-index-table-if-supported
+        (let [search-term (str "transform-search-" (u/generate-nano-id))
+              query-name  (str search-term "-query")
+              python-name (str search-term "-python")]
+          (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
+                                                                :name query-name)
+                         :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
+                                                                 :name python-name)]
+            (search.tu/with-appdb-search-and-legacy-search
+              (testing "no transforms feature"
+                (mt/with-premium-features #{}
+                  (is (empty? (search-transform-ids search-term)))))
+              (testing "transforms only"
+                (mt/with-premium-features #{:transforms-basic :hosting}
+                  (is (= #{query-id} (search-transform-ids search-term)))))
+              (testing "transforms and transforms-python"
+                (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+                  (is (= #{query-id python-id} (search-transform-ids search-term))))))))))))
 
 (deftest search-filtering-updates-with-feature-flips-without-reindex-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/dataset transforms-dataset/transforms-test
-      (let [search-term (str "transform-search-" (u/generate-nano-id))
-            query-name  (str search-term "-query")
-            python-name (str search-term "-python")]
-        (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
-                                                              :name query-name)
-                       :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
-                                                               :name python-name)]
-          (search.tu/with-new-search-and-legacy-search
-            (mt/with-premium-features #{:transforms :transforms-python :hosting}
-              (is (= #{query-id python-id} (search-transform-ids search-term))))
-            (mt/with-premium-features #{:transforms :hosting}
-              (is (= #{query-id} (search-transform-ids search-term))))
-            (mt/with-premium-features #{:hosting}
-              (is (empty? (search-transform-ids search-term))))
-            (mt/with-premium-features #{}
-              (is (= #{query-id} (search-transform-ids search-term))))))))))
+      ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
+      (search.tu/with-temp-index-table-if-supported
+        (let [search-term (str "transform-search-" (u/generate-nano-id))
+              query-name  (str search-term "-query")
+              python-name (str search-term "-python")]
+          (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
+                                                                :name query-name)
+                         :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
+                                                                 :name python-name)]
+            (search.tu/with-appdb-search-and-legacy-search
+              (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+                (is (= #{query-id python-id} (search-transform-ids search-term))))
+              (mt/with-premium-features #{:transforms-basic :hosting}
+                (is (= #{query-id} (search-transform-ids search-term))))
+              (mt/with-premium-features #{}
+                (is (empty? (search-transform-ids search-term)))))))))))
 
 (deftest search-api-transform-models-empty-without-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:hosting}
       (mt/dataset transforms-dataset/transforms-test
-        (let [search-term (str "transform-search-" (u/generate-nano-id))
-              query-name  (str search-term "-query")]
-          (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
-                                                                :name query-name)]
-            (search.tu/with-new-search-and-legacy-search
-              (let [ids (search-api-transform-ids :crowberto search-term)]
-                (is (empty? ids))
-                (is (not (contains? ids query-id)))))))))))
+        ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
+        (search.tu/with-temp-index-table-if-supported
+          (let [search-term (str "transform-search-" (u/generate-nano-id))
+                query-name  (str search-term "-query")]
+            (mt/with-temp [:model/Transform {query-id :id} (assoc (query-transform-payload (str "target_" (u/generate-nano-id)))
+                                                                  :name query-name)]
+              (search.tu/with-appdb-search-and-legacy-search
+                (let [ids (search-api-transform-ids :crowberto search-term)]
+                  (is (empty? ids))
+                  (is (not (contains? ids query-id))))))))))))
 
 ;;; ------------------------------------------------------------
 ;;; Run List Sorting - TODO [OSS] - move this to OSS
@@ -206,7 +213,7 @@
 
 (deftest get-runs-sort-by-transform-name-test
   (testing "GET /api/transform/run - sort by transform-name"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-b-id :id} {:name "Transform B"}
                      :model/Transform    {transform-a-id :id} {:name "Transform A"}
                      :model/TransformRun {run-b-id :id}       {:transform_id transform-b-id}
@@ -214,16 +221,16 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "transform-name"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-a-id transform-b-id])]
+                                                 :sort-column "transform-name"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-a-id transform-b-id])]
               (is (= (cond-> [run-a-id run-b-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
 
 (deftest get-runs-sort-stable-test
   (testing "GET /api/transform/run - sorting is stable when values are equal (tiebreaker by :id)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-1-id :id} {:name "Same Name"}
                      :model/Transform    {transform-2-id :id} {:name "Same Name"}
                      :model/TransformRun {run-1-id :id}       {:transform_id transform-1-id}
@@ -231,16 +238,16 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "transform-name"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-1-id transform-2-id])]
+                                                 :sort-column "transform-name"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-1-id transform-2-id])]
               (is (= (cond-> [run-1-id run-2-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
 
 (deftest get-runs-sort-by-start-time-test
   (testing "GET /api/transform/run - sort by start-time"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-id :id} {}
                      :model/TransformRun {earlier-run-id :id} {:transform_id transform-id
                                                                :start_time   (parse-instant "2025-01-01T00:00:00")}
@@ -249,16 +256,16 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "start-time"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-id])]
+                                                 :sort-column "start-time"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-id])]
               (is (= (cond-> [earlier-run-id later-run-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
 
 (deftest get-runs-sort-by-end-time-test
   (testing "GET /api/transform/run - sort by end-time"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-id :id} {}
                      :model/TransformRun {earlier-run-id :id} {:transform_id transform-id
                                                                :end_time     (parse-instant "2025-01-01T00:00:00")}
@@ -267,16 +274,16 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "end-time"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-id])]
+                                                 :sort-column "end-time"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-id])]
               (is (= (cond-> [earlier-run-id later-run-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
 
 (deftest get-runs-sort-by-run-method-test
   (testing "GET /api/transform/run - sort by run-method (translated names)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-id :id}   {}
                      ;; "Manual" < "Schedule"
                      :model/TransformRun {manual-run-id :id}   {:transform_id transform-id :run_method "manual"}
@@ -284,16 +291,16 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "run-method"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-id])]
+                                                 :sort-column "run-method"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-id])]
               (is (= (cond-> [manual-run-id schedule-run-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
 
 (deftest get-runs-sort-by-status-test
   (testing "GET /api/transform/run - sort by status (translated names)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-id :id}        {}
                      ;; Sorted by translated name: "Canceled" < "Canceling" < "Failed" < "In progress" < "Success" < "Timeout"
                      :model/TransformRun {canceled-run-id :id}     {:transform_id transform-id :status "canceled"}
@@ -306,9 +313,9 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "status"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-id])]
+                                                 :sort-column "status"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-id])]
               (is (= (cond-> [canceled-run-id canceling-run-id failed-run-id
                               in-progress-run-id success-run-id timeout-run-id]
                        (= sort-direction :desc) reverse)
@@ -316,7 +323,7 @@
 
 (deftest get-runs-sort-by-transform-tags-test
   (testing "GET /api/transform/run - sort by transform-tags (first tag name)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformTag          {tag-a-id :id}       {:name "Tag A"}
                      :model/TransformTag          {tag-b-id :id}       {:name "Tag B"}
                      :model/TransformTag          {tag-ignored-id :id} {:name "Tag Ignored"}
@@ -332,66 +339,55 @@
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "transform-tags"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-a-id transform-b-id])]
+                                                 :sort-column "transform-tags"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-a-id transform-b-id])]
               (is (= (cond-> [run-a-id run-b-id]
                        (= sort-direction :desc) reverse)
                      (->> response :data (map :id)))))))))))
 
 (deftest get-runs-sort-by-built-in-transform-tags-test
   (testing "GET /api/transform/run - sort by built-in transform-tags (translated names)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       ;; Translated names alphabetically: "daily" < "hourly" < "monthly" < "weekly"
       (mt/with-temp [:model/TransformTag {tag-daily-id :id}
                      {:name "daily" :built_in_type "daily"}
-
                      :model/TransformTag {tag-hourly-id :id}
                      {:name "hourly" :built_in_type "hourly"}
-
                      :model/TransformTag {tag-monthly-id :id}
                      {:name "monthly" :built_in_type "monthly"}
-
                      :model/TransformTag {tag-weekly-id :id}
                      {:name "weekly" :built_in_type "weekly"}
-
                      :model/Transform {transform-daily-id :id} {}
                      :model/TransformTransformTag _ {:transform_id transform-daily-id
                                                      :tag_id       tag-daily-id
                                                      :position     0}
-
                      :model/Transform {transform-hourly-id :id} {}
                      :model/TransformTransformTag _ {:transform_id transform-hourly-id
                                                      :tag_id       tag-hourly-id
                                                      :position     0}
-
                      :model/Transform {transform-monthly-id :id} {}
                      :model/TransformTransformTag _ {:transform_id transform-monthly-id
                                                      :tag_id       tag-monthly-id
                                                      :position     0}
-
                      :model/Transform {transform-weekly-id :id} {}
                      :model/TransformTransformTag _ {:transform_id transform-weekly-id
                                                      :tag_id       tag-weekly-id
                                                      :position     0}
-
                      :model/TransformRun {daily-run-id :id}
                      {:transform_id transform-daily-id}
-
                      :model/TransformRun {hourly-run-id :id}
                      {:transform_id transform-hourly-id}
-
                      :model/TransformRun {monthly-run-id :id}
                      {:transform_id transform-monthly-id}
-
                      :model/TransformRun {weekly-run-id :id}
                      {:transform_id transform-weekly-id}]
         (doseq [sort-direction [:asc :desc]]
           (testing (str sort-direction)
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                                 :sort_column "transform-tags"
-                                                 :sort_direction sort-direction
-                                                 :transform_ids [transform-daily-id transform-hourly-id
+                                                 :sort-column "transform-tags"
+                                                 :sort-direction sort-direction
+                                                 :transform-ids [transform-daily-id transform-hourly-id
                                                                  transform-monthly-id transform-weekly-id])]
               (is (= (cond-> [daily-run-id hourly-run-id monthly-run-id weekly-run-id]
                        (= sort-direction :desc) reverse)
@@ -399,14 +395,14 @@
 
 (deftest get-runs-hydrate-collection-test
   (testing "GET /api/transform/run - hydrates collection on transform"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Subfolder" :namespace :transforms}
                      :model/Transform {transform-in-collection-id :id} {:collection_id collection-id}
                      :model/Transform {transform-in-root-id :id} {:collection_id nil}
                      :model/TransformRun {run-in-collection-id :id} {:transform_id transform-in-collection-id}
                      :model/TransformRun {run-in-root-id :id} {:transform_id transform-in-root-id}]
         (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
-                                             :transform_ids [transform-in-collection-id
+                                             :transform-ids [transform-in-collection-id
                                                              transform-in-root-id])
               runs-by-id (m/index-by :id (:data response))]
           (testing "transform in explicit collection has that collection hydrated"
@@ -415,3 +411,39 @@
           (testing "transform in root collection has root collection hydrated"
             (is (= "Transforms"
                    (get-in (runs-by-id run-in-root-id) [:transform :collection :name])))))))))
+
+(deftest run-transform-locked-meter-returns-402-test
+  (testing "POST /api/transform/:id/run returns 402 with the structured lock error when the meter is locked.
+            Asserted at the API layer — execution is never reached, so no driver setup is needed."
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-temp [:model/Transform {transform-id :id} (query-transform-payload
+                                                              (str "locked_" (u/generate-nano-id)))]
+            (testing "basic-bucket lock returns metabase_transforms_locked 402"
+              (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
+                (let [response (mt/user-http-request :crowberto :post 402
+                                                     (format "transform/%d/run" transform-id))]
+                  (is (= "metabase_transforms_locked" (:error-code response)))
+                  (is (string? (:message response)))
+                  (is (re-find #"locked" (:message response))))))
+            (testing "advanced-bucket lock — same generic error code (no bucket-specific code)"
+              ;; Add :writable-connection so the basic-mbql transform routes to advanced bucket.
+              (mt/with-premium-features #{:hosting :transforms-basic :writable-connection}
+                (mt/with-temporary-setting-values [locked-meters {:transform-advanced-runs true}]
+                  (let [response (mt/user-http-request :crowberto :post 402
+                                                       (format "transform/%d/run" transform-id))]
+                    (is (= "metabase_transforms_locked" (:error-code response)))))))
+            (testing "non-metered transform (transform-metered-as → nil) → no 402 even with locks set"
+              ;; Realistic scenario: self-hosted EE with only :transforms-basic (no :writable-connection,
+              ;; no :transforms-python). check-feature-enabled! passes (the customer has :transforms-basic),
+              ;; but transform-metered-as returns nil for native/mbql because is-hosted? is false. The
+              ;; fail-open contract requires that lock state is irrelevant for non-metered transforms — even
+              ;; if harbormaster somehow sends lock state for such a customer, or the setting gets tampered.
+              ;; (Note: pure OSS doesn't reach this branch because check-feature-enabled! 402s earlier on
+              ;; missing premium features.)
+              (with-redefs [premium-features/transform-metered-as (constantly nil)]
+                (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    true
+                                                                  :transform-advanced-runs true}]
+                  (mt/user-http-request :crowberto :post 202
+                                        (format "transform/%d/run" transform-id)))))))))))

@@ -1,4 +1,5 @@
 (ns metabase-enterprise.sandbox.pulse-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.sandbox.pulse-test]}}}}}}
   #_{:clj-kondo/ignore [:deprecated-namespace]}
   (:require
    [clojure.data.csv :as csv]
@@ -12,7 +13,7 @@
    [metabase.pulse.api.pulse :as api.pulse]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -57,7 +58,7 @@
                                          :user_id          (mt/user->id :rasta)}]
         (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
           (mt/with-fake-inbox
-            (with-redefs [notification.send/channel-send-retrying!  (fn [_ _ _ _] :noop)]
+            (mt/with-dynamic-fn-redefs [notification.send/channel-send-retrying!  (fn [_ _ _ _] :noop)]
               (mt/with-test-user :lucky
                 (pulse.send/send-pulse! pulse)))
             (is (= {:topic    :subscription-send
@@ -106,45 +107,39 @@
               (testing "ad-hoc query"
                 (is (= 22
                        (count (mt/rows (qp/process-query query))))))
-
               (testing "in a Saved Question"
                 (is (= 22
                        (count (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))))))
-
             (testing "Pulse should be sandboxed"
               (is (= 22
                      (count (mt/rows (alert-results! query))))))))))))
 
-(deftest pulse-preview-test
-  (testing "Pulse preview endpoints should be sandboxed"
+(deftest pulse-test-endpoint-sandboxed-test
+  (testing "POST /api/pulse/test should be sandboxed"
     (met/with-gtaps! {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
                       :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
         (mt/with-test-user :rasta
           (mt/with-temp [:model/Card card {:dataset_query query}]
-            (testing "GET /api/pulse/preview_card/:id"
-              (is (= 22
-                     (html->row-count (mt/user-http-request :rasta :get 200 (format "pulse/preview_card/%d" (u/the-id card)))))))
-            (testing "POST /api/pulse/test"
-              (mt/with-fake-inbox
-                (mt/user-http-request :rasta :post 200 "pulse/test" {:name     "venues"
-                                                                     :alert_condition "rows"
-                                                                     :cards    [{:id          (u/the-id card)
-                                                                                 :include_csv true
-                                                                                 :include_xls false}]
-                                                                     :channels [{:channel_type  :email
-                                                                                 :schedule_type "hourly"
-                                                                                 :enabled       :true
-                                                                                 :recipients    [{:id    (mt/user->id :rasta)
-                                                                                                  :email "rasta@metabase.com"}]}]})
-                (let [[{html :content} {_icon :content} {attachment :content}] (get-in @mt/inbox ["rasta@metabase.com" 0 :body])]
-                  (testing "email"
-                    (is (= 22
-                           (html->row-count html))))
-                  (testing "CSV attachment"
-                    ;; one extra row because first row is column names
-                    (is (= 23
-                           (csv->row-count attachment)))))))))))))
+            (mt/with-fake-inbox
+              (mt/user-http-request :rasta :post 200 "pulse/test" {:name     "venues"
+                                                                   :alert_condition "rows"
+                                                                   :cards    [{:id          (u/the-id card)
+                                                                               :include_csv true
+                                                                               :include_xls false}]
+                                                                   :channels [{:channel_type  :email
+                                                                               :schedule_type "hourly"
+                                                                               :enabled       :true
+                                                                               :recipients    [{:id    (mt/user->id :rasta)
+                                                                                                :email "rasta@metabase.com"}]}]})
+              (let [[{html :content} {_icon :content} {attachment :content}] (get-in @mt/inbox ["rasta@metabase.com" 0 :body])]
+                (testing "email"
+                  (is (= 22
+                         (html->row-count html))))
+                (testing "CSV attachment"
+                  ;; one extra row because first row is column names
+                  (is (= 23
+                         (csv->row-count attachment))))))))))))
 
 (deftest csv-downloads-test
   (testing "CSV/XLSX downloads attached to an email should be sandboxed"
@@ -187,21 +182,18 @@
                                   recipients (-> pulse :channels first :recipients)]
                               (sort (map :id recipients))))]
         (mt/with-test-user :rasta
-          (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
+          (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
             (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
-
             (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                    (-> (mt/user-http-request :rasta :get 200 (format "pulse/%d" pulse-id))
                        vector
                        recipient-ids))))
-
-          (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+          (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
             (is (= [(mt/user->id :rasta)]
                    (-> (mt/user-http-request :rasta :get 200 "pulse/")
                        recipient-ids)))
-
             (is (= [(mt/user->id :rasta)]
                    (-> (mt/user-http-request :rasta :get 200 (format "pulse/%d" pulse-id))
                        vector
@@ -217,22 +209,18 @@
                                                            :details      {:emails "asdf@metabase.com"}}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :crowberto)}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id :user_id (mt/user->id :rasta)}]
-
       (mt/with-test-user :rasta
-        (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+        (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
           ;; Rasta, a sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]}))
-
         ;; Check that both Rasta and Crowberto are still recipients
         (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
                (->> (#'api.pulse/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort)))
-
-        (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
+        (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
           ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})
-
           ;; Crowberto should now be removed as a recipient
           (is (= [(mt/user->id :rasta)]
                  (->> (#'api.pulse/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort))))))))

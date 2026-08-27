@@ -1,7 +1,7 @@
 import type { GlobalTypes } from "@storybook/types";
 import { initialize, mswLoader } from "msw-storybook-addon";
 
-import { storybookThemeOptions } from "embedding-sdk-bundle/test/storybook-themes";
+import { storybookThemeOptions } from "embedding-sdk-shared/test/storybook-themes";
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
 import { defineGlobalDependencies } from "metabase/embedding-sdk/lib/define-global-dependencies";
 
@@ -11,7 +11,7 @@ defineBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO");
 defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");
 defineGlobalDependencies();
 
-// @ts-expect-error: See metabase/lib/delay
+// @ts-expect-error: See metabase/utils/delay
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
 

@@ -1,10 +1,11 @@
 (ns metabase-enterprise.impersonation.cache-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.impersonation.cache-test]}}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer [deftest testing is]]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (deftest impersonated-users-get-a-different-cache
@@ -13,7 +14,7 @@
                      {:type :ttl
                       :multiplier 60
                       :avg-execution-ms 1000
-                      :min-duration-ms 1})]
+                      :min_duration_ms 1})]
     (mt/with-premium-features #{:advanced-permissions}
       (cache-test/with-mock-cache! [save-chan purge-chan]
         (while (a/poll! save-chan))

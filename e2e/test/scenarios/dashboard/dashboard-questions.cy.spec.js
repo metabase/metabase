@@ -23,7 +23,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
     it("can save a new question to a dashboard and move it to a collection", () => {
       // visit dash first to set it as recently opened
-      cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
 
       H.newButton("Question").click();
       H.miniPicker().within(() => {
@@ -43,10 +43,12 @@ describe("Dashboard > Dashboard Questions", () => {
       H.modal().findByText("Orders in a dashboard");
       H.modal().button("Save").click();
 
-      // should take you to the edit dashboard screen + url has hash param to auto-scroll
+      // should take you to the edit dashboard screen and auto-scroll to the new card
       cy.url().should("include", "/dashboard/");
-      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
-      H.dashboardCards().findByText("Orders with a discount");
+      cy.location("hash").should("not.include", "scrollTo");
+      H.dashboardCards()
+        .findByText("Orders with a discount")
+        .should("be.visible");
       cy.findByTestId("edit-bar").findByText("You're editing this dashboard.");
 
       // we can't use the save dashboard util, because we're not actually saving any changes
@@ -70,7 +72,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.appBar().findByText("Orders in a dashboard").should("not.exist"); // dashboard name should no longer be visible
 
       // card should still be visible in dashboard
-      cy.visit(`/dashboard/${S.ORDERS_DASHBOARD_ID}`);
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       H.dashboardCards().findByText("Orders with a discount");
     });
 
@@ -201,10 +203,10 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Okay").click();
       });
 
-      // its in the new dash + url has hash param to auto-scroll
+      // its in the new dash and auto-scrolls to the card
       cy.url().should("include", "/dashboard/");
-
-      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("hash").should("not.include", "scrollTo");
+      H.dashboardCards().findByText("Total Orders").should("be.visible");
       H.undoToast().findByText("Orders in a dashboard");
       H.dashboardCards().should("contain", "Total Orders");
 
@@ -240,11 +242,13 @@ describe("Dashboard > Dashboard Questions", () => {
       H.entityPickerModal().button("Move").click();
 
       // we shouldn't be making 20 requests here
-      cy.wait(new Array(20).fill("@updateCard"));
+      // their staggered tail can land past cy.wait's default 5s under CPU load, so allow more time
+      cy.wait(new Array(20).fill("@updateCard"), { timeout: 30000 });
 
       H.undoToast().findByText("Moved 20 questions");
 
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      // 20+ dashcard queries stagger behind the concurrency limit; allow their tail past the 5s default
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID, { dashcardTimeout: 30000 });
 
       new Array(20).fill("slowbro").forEach((_, i) => {
         H.dashboardCards().findByText(`Question ${i + 1}`);
@@ -267,12 +271,14 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.wait(["@updateCard", "@updateCard"]);
       cy.findByTestId("error-boundary").should("not.exist");
-      H.visitDashboard(S.ORDERS_DASHBOARD_ID);
+      H.visitDashboard(S.ORDERS_DASHBOARD_ID, { dashcardTimeout: 30000 });
       H.dashboardCards().findByText("Orders");
       H.dashboardCards().findByText("Orders, Count");
     });
 
     it("should tell users which dashboards will be affected when doing bulk question moves", () => {
+      cy.intercept("PUT", "/api/card/*").as("moveQuestion");
+
       H.createQuestionAndDashboard({
         questionDetails: {
           name: "Sample Question",
@@ -308,11 +314,17 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Move it").should("exist").click();
       });
 
+      // Wait for the move to land before navigating: otherwise Test Dashboard
+      // can load while its dashcard is still present, so the empty state never
+      // renders and the assertion below times out.
+      cy.wait("@moveQuestion");
+      H.modal().should("not.exist");
+
       H.collectionTable().findByText("Test Dashboard").click();
 
       cy.findByTestId("dashboard-empty-state")
         .findByText("This dashboard is empty")
-        .should("exist");
+        .should("be.visible");
 
       H.visitDashboard(S.ORDERS_DASHBOARD_ID);
       H.dashboardCards().findByText("Sample Question").should("exist");
@@ -390,6 +402,8 @@ describe("Dashboard > Dashboard Questions", () => {
     });
 
     it("can save a native question to a dashboard", () => {
+      cy.intercept("POST", "/api/card").as("createCard");
+
       H.startNewNativeQuestion({ query: "SELECT 123" });
 
       // this reduces the flakiness
@@ -402,6 +416,7 @@ describe("Dashboard > Dashboard Questions", () => {
         cy.button("Save").click();
       });
 
+      cy.wait("@createCard", { timeout: 30 * 1000 }); // trying something dumb...
       cy.findByTestId("edit-bar").button("Save").click();
       H.dashboardCards().findByText("Half Orders");
     });
@@ -727,9 +742,9 @@ describe("Dashboard > Dashboard Questions", () => {
     it("notifies the user about dashboards and dashcard series that a question will be removed from", () => {
       cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-      H.createQuestion(
-        {
-          name: "Average Quantity by Month Question",
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Blue Question",
           collection_id: S.FIRST_COLLECTION_ID,
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -753,15 +768,17 @@ describe("Dashboard > Dashboard Questions", () => {
           },
           display: "line",
         },
-        {
-          wrapId: true,
-          idAlias: "avgQuanityQuestionId",
+        dashboardDetails: {
+          name: "Blue Dashboard",
+          collection_id: S.FIRST_COLLECTION_ID,
         },
-      );
+      }).then(({ body: { card_id } }) => {
+        cy.wrap(card_id).as("blueQuestionId");
+      });
 
-      H.createQuestion(
-        {
-          name: "Average Order Total by Month Question",
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Purple Question",
           collection_id: S.FIRST_COLLECTION_ID,
           query: {
             "source-table": SAMPLE_DATABASE.ORDERS_ID,
@@ -785,116 +802,90 @@ describe("Dashboard > Dashboard Questions", () => {
           },
           display: "line",
         },
-        {
-          wrapId: true,
-          idAlias: "avgTotalQuestionId",
-        },
-      );
-
-      H.createDashboard(
-        {
-          name: "Blue Dashboard",
-          collection_id: S.FIRST_COLLECTION_ID,
-        },
-        { wrapId: true, idAlias: "blueDashboardId" },
-      );
-
-      H.createDashboard(
-        {
+        dashboardDetails: {
           name: "Purple Dashboard",
           collection_id: S.FIRST_COLLECTION_ID,
         },
-        { wrapId: true, idAlias: "purpleDashboardId" },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+      });
+
+      cy.log(
+        "Add the blue question to the purple dashboard as an additional series",
       );
-
-      cy.get("@blueDashboardId").then((blueDashboardId) => {
-        H.visitDashboard(blueDashboardId);
-      });
-
-      // add the quanity question to the blue dashboard
       H.editDashboard();
-      H.openQuestionsSidebar();
 
-      H.sidebar().findByText("First collection").click();
-      H.sidebar().findByText("Average Quantity by Month Question").click();
-      H.saveDashboard();
-
-      cy.get("@purpleDashboardId").then((purpleDashboardId) => {
-        H.visitDashboard(purpleDashboardId);
-      });
-
-      // add the total question to the purple dashboard
-      H.editDashboard();
-      H.openQuestionsSidebar();
-
-      H.sidebar().findByText("First collection").click();
-      H.sidebar().findByText("Average Order Total by Month Question").click();
-
-      // overlay the quantity series in the purple dashboard
       H.showDashcardVisualizerModal(0, {
         isVisualizerCard: false,
       });
 
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.selectDataset("Average Quantity by Month Question");
+        H.selectDataset("Blue Question");
         cy.button("Save").click();
       });
 
-      H.saveDashboard();
-      H.dashboardCards()
-        .findByText(/Average Quantity by Month/)
-        .should("be.visible");
+      // The modal-save dispatches a dashcard update; the dashboard's
+      // "dirty" flag only flips once that commits. Wait for the modal to
+      // unmount before H.saveDashboard so the edit-bar Save sees the new
+      // dashcard state — otherwise its early-return-if-unchanged path
+      // skips the PUT (no @saveDashboardCards request ever fires).
+      H.modal().should("not.exist");
+      H.getDashboardCard()
+        .findAllByTestId("legend-item")
+        .filter(':contains("Blue Question")')
+        .should("exist");
 
-      // move the quantity question to an entirely different dashboard
-      H.visitQuestion("@avgQuanityQuestionId");
+      H.saveDashboard();
+      H.getDashboardCard().within(() => {
+        H.echartsContainer().should("be.visible").and("not.be.empty");
+        cy.log("Visit the question directly from a dashcard");
+        cy.findAllByTestId("legend-item")
+          .filter(":contains(Blue Question)")
+          .click();
+      });
+
+      cy.log("Move the question to an entirely different dashboard");
       H.openQuestionActions("Move");
 
       H.entityPickerModal().findByText("Orders in a dashboard").click();
       H.entityPickerModal().button("Move").click();
 
-      let shouldError = true;
+      cy.log("Should warn about removing from 2 dashboards");
+      // The first (blue) dashboard is the one that contains the question as dashcard
+      // The second (purple) dashboard contains it as a series
+      H.modal().should(
+        "contain.text",
+        "Blue Question will be removed from Blue Dashboard and Purple Dashboard",
+      );
 
-      // Simulate an error to ensure that it's passed back and shown in the modal.
-      cy.get("@avgQuanityQuestionId").then((questionId) => {
-        cy.intercept("PUT", `**/api/card/${questionId}**`, (req) => {
-          if (shouldError === true) {
-            shouldError = false;
-            req.reply({
-              statusCode: 400,
-              body: {
-                message: "Ryan said no",
-              },
-            });
-          } else {
-            req.continue();
-          }
-        });
+      cy.log("Simulate an error ONLY ON THE FIRST MOVE ATTEMPT");
+      cy.get("@blueQuestionId").then((questionId) => {
+        cy.intercept(
+          { method: "PUT", url: `**/api/card/${questionId}**`, times: 1 },
+          {
+            statusCode: 400,
+            body: {
+              message: "Ryan said no",
+            },
+          },
+        );
       });
 
-      // should warn about removing from 2 dashboards
       H.modal().within(() => {
-        cy.findByText(/will be removed from/i);
-        cy.findByText(/purple dashboard/i);
-        cy.findByText(/blue dashboard/i);
+        cy.log(
+          "Simulated error should appear in the modal on the first attempt only.",
+        );
         cy.button("Move it").click();
         cy.findByText("Ryan said no");
 
-        //Continue with the expected behavior
+        cy.log("Continue with the expected behavior");
         cy.button("Move it").click();
       });
 
-      cy.get("@purpleDashboardId").then((purpleDashboardId) => {
-        H.visitDashboard(purpleDashboardId);
-      });
-
-      //Wait for dashcard to load
-      H.dashboardCards().findByText("Created At: Month").should("exist");
-
-      H.dashboardCards().should(
-        "not.contain.text",
-        "Average Quantity by Month Question",
-      );
+      cy.log("The question move succeeded");
+      cy.findByRole("status").should("contain", "Question moved");
+      H.modal().should("not.exist");
     });
 
     it("should be able to save a question to a specific tab", () => {
@@ -965,12 +956,12 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.log("should navigate user to the tab the question was saved to");
       cy.url().should("include", "/dashboard/");
-      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("hash").should("not.include", "scrollTo");
       cy.location("search").should("contain", "tab"); // url should have tab param configured
       H.assertTabSelected(TAB_TWO_NAME);
-      H.dashboardCards().within(() => {
-        cy.findByText(DASHBOARD_QUESTION_NAME).should("exist");
-      });
+      H.dashboardCards()
+        .findByText(DASHBOARD_QUESTION_NAME)
+        .should("be.visible");
     });
 
     it("should allow a user to copy a question into a tab", () => {
@@ -1009,12 +1000,12 @@ describe("Dashboard > Dashboard Questions", () => {
 
       cy.log("should navigate user to the tab the question was saved to");
       cy.url().should("include", "/dashboard/");
-      cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
+      cy.location("hash").should("not.include", "scrollTo");
       cy.location("search").should("contain", "tab"); // url should have tab param configured
       H.assertTabSelected(TAB_ONE_NAME);
-      H.dashboardCards().within(() => {
-        cy.findByText("Orders, Count - Duplicate").should("exist");
-      });
+      H.dashboardCards()
+        .findByText("Orders, Count - Duplicate")
+        .should("be.visible");
     });
   });
 
@@ -1347,5 +1338,6 @@ function selectCollectionItem(name) {
     .parent()
     .parent()
     .findByRole("checkbox")
+    .closest("button")
     .click();
 }

@@ -64,7 +64,10 @@ export function PythonDataPicker({
 
   const handleChange = (selections: TableSelection[]) => {
     if (database) {
-      const tableAliases = selectionsToTableAliases(selections);
+      const tableAliases = selectionsToTableAliases(
+        selections,
+        tablesData ?? [],
+      );
       onChange(database, tableAliases, tablesData ?? []);
     }
   };
@@ -123,7 +126,7 @@ export function PythonDataPicker({
       {database && (
         <Box>
           <Text fw="bold">{t`Pick tables and alias them`}</Text>
-          <Text size="sm" c="text-tertiary" mb="sm">
+          <Text size="sm" c="text-disabled" mb="sm">
             {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
           </Text>
           <Stack gap="md">
@@ -218,7 +221,7 @@ function SelectionInput({
       <TableSelector
         database={database}
         table={table}
-        selectedTableIds={Object.values(tables)}
+        selectedTableIds={tables.map((t) => t.table_id)}
         onChange={handleTableChange}
         onRemove={onRemove}
         availableTables={availableTables}

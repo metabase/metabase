@@ -153,8 +153,8 @@ describe("scenarios > dashboard > filters > management", () => {
 
       changeFilterType("ID");
 
-      cy.log("verify ID doesn't render operator select");
-      H.sidebar().findByText("Filter operator").should("not.exist");
+      cy.log("verify ID default value: Numeric ID");
+      verifyOperatorValue("Numeric ID");
 
       changeFilterType("Date picker");
 

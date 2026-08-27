@@ -1,0 +1,44 @@
+import { t } from "ttag";
+
+import {
+  AdminNavItem,
+  AdminNavWrapper,
+} from "metabase/admin/components/AdminNav";
+import { PLUGIN_AI_CONTROLS } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
+import { Flex } from "metabase/ui";
+
+export function MetabotNavPane() {
+  const AiControlsNavItems = PLUGIN_AI_CONTROLS.getAiControlsNavItems();
+  const areAiFeaturesEnabled = useSetting("ai-features-enabled?") !== false;
+
+  return (
+    <Flex direction="column" flex="0 0 auto">
+      <AdminNavWrapper>
+        <AdminNavItem
+          icon="gear"
+          label={t`AI Settings`}
+          path="/admin/metabot"
+        />
+        <AdminNavItem
+          disabled={!areAiFeaturesEnabled}
+          icon="mcp"
+          label={t`MCP`}
+          folderPattern="/admin/metabot/mcp"
+        >
+          <AdminNavItem
+            disabled={!areAiFeaturesEnabled}
+            label={t`Settings`}
+            path="/admin/metabot/mcp"
+          />
+          <AdminNavItem
+            disabled={!areAiFeaturesEnabled}
+            label={t`Authorizations`}
+            path="/admin/metabot/mcp/authorizations"
+          />
+        </AdminNavItem>
+        {AiControlsNavItems}
+      </AdminNavWrapper>
+    </Flex>
+  );
+}

@@ -6,12 +6,16 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dev.deps-graph]
+   [dev.model-boundary-config]
    [metabase.util.json :as json]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
    [rewrite-clj.zip :as z]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once #(binding [dev.deps-graph/*parsed-file-cache* (atom {})]
+                       (%)))
 
 (defn- modules-config
   "Kondo modules config."
@@ -31,7 +35,7 @@
 
 (def ^:private teams-to-reassign #{"Admin Webapp" "DashViz"})
 
-(deftest ^:parallel all-modules-have-teams-test
+(deftest all-modules-have-teams-test
   (testing "All modules should have a valid :team owner"
     (let [teams (teams)]
       (doseq [[module config] (modules-config)]
@@ -76,7 +80,7 @@
               module-name])
            module-names))
 
-(deftest ^:parallel modules-should-be-sorted-by-name-test
+(deftest modules-should-be-sorted-by-name-test
   (testing "Modules configs should sorted by module name with enterprise/modules appearing last"
     (let [actual   (module-names-in-file-order)
           expected (sort-module-names actual)]
@@ -97,7 +101,7 @@
       (when-let [zloc' (z/right config-zloc)]
         (recur zloc')))))
 
-(deftest ^:parallel module-api-namespaces-should-be-sorted-test
+(deftest module-api-namespaces-should-be-sorted-test
   (testing "Module :api namespaces should be sorted"
     (do-each-module-config
      (fn [module config-zloc]
@@ -117,7 +121,7 @@
            (is (= (sort api-namespaces)
                   api-namespaces))))))))
 
-(deftest ^:parallel module-uses-should-be-sorted-test
+(deftest module-uses-should-be-sorted-test
   (testing "Module :uses namespaces should be sorted"
     (do-each-module-config
      (fn [module config-zloc]
@@ -137,7 +141,7 @@
            (is (= (sort-module-names uses)
                   uses))))))))
 
-(deftest ^:parallel modules-config-up-to-date-test
+(deftest modules-config-up-to-date-test
   (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
     (let [deps     (dev.deps-graph/dependencies)
@@ -168,3 +172,94 @@
           (is (empty? missing)))
         (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
           (is (empty? extraneous)))))))
+
+(defn- rest-module? [module]
+  (str/ends-with? module "-rest"))
+
+(deftest do-not-use-rest-modules-in-other-modules-test
+  (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)
+          :when                                (not (rest-module? module))
+          used-module                          (when (set? uses)
+                                                 uses)]
+    (is (not (rest-module? used-module))
+        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
+                used-module
+                module
+                used-module
+                (symbol (str/replace used-module #"-rest$" ""))))))
+
+;;;; Model boundary tests
+
+(deftest model-boundaries-test
+  (testing "Model boundary enforcement\n"
+    (let [ownership    (dev.deps-graph/model-ownership)
+          known-models (set (keys ownership))
+          config       (modules-config)
+          violations   (dev.deps-graph/model-boundary-violations (dev.deps-graph/kondo-config))]
+      (testing "No model boundary violations"
+        (doseq [{:keys [file module model defining-module violation-type]} violations]
+          (testing (format "\n%s (module %s) references %s (defined in %s) — %s violation"
+                           file module model (or defining-module "unknown") (name violation-type))
+            (is (nil? violation-type)))))
+      (testing ":model-exports and :model-imports reference valid models"
+        (doseq [[module module-config] config
+                config-key [:model-exports :model-imports]
+                :when (set? (get module-config config-key))
+                model (get module-config config-key)]
+          (testing (format "\n'%s' %s %s should be a known model" module config-key model)
+            (is (contains? known-models model)))))
+      (testing ":model-exports only lists models owned by the module"
+        (doseq [[module module-config] config
+                :when                  (set? (:model-exports module-config))
+                model                  (:model-exports module-config)]
+          (testing (format "\n'%s' exports %s (owned by %s)" module model (get ownership model))
+            (is (= module (get ownership model)))))))))
+
+(deftest model-config-not-stale-test
+  (testing "Model exports and imports should not list models that are unused.\n"
+    (let [{computed-exports :model-exports
+           computed-imports :model-imports} (dev.model-boundary-config/compute-model-boundaries)
+          config (modules-config)]
+      (doseq [[config-key computed direction] [[:model-exports computed-exports "exports"]
+                                               [:model-imports computed-imports "imports"]]
+              [module module-config]           config
+              :when                            (set? (get module-config config-key))
+              :let                             [needed     (get computed module #{})
+                                                configured (get module-config config-key)
+                                                stale      (set/difference configured needed)]
+              :when                            (seq stale)]
+        (testing (format "\n'%s' %s models that aren't used — remove them from %s."
+                         module direction config-key)
+          (is (empty? (sort stale))))))))
+
+(deftest model-exports-sorted-test
+  (testing "Module :model-exports should be sorted"
+    (do-each-module-config
+     (fn [module config-zloc]
+       (when-let [exports (-> config-zloc
+                              z/down
+                              (z/find (fn [zloc]
+                                        (and (n/keyword-node? (z/node zloc))
+                                             (= (z/sexpr zloc) :model-exports))))
+                              z/right
+                              z/child-sexprs
+                              not-empty)]
+         (testing (format "\n'%s' module :model-exports" module)
+           (is (= (sort exports)
+                  exports))))))))
+
+(deftest model-imports-sorted-test
+  (testing "Module :model-imports should be sorted"
+    (do-each-module-config
+     (fn [module config-zloc]
+       (when-let [imports (-> config-zloc
+                              z/down
+                              (z/find (fn [zloc]
+                                        (and (n/keyword-node? (z/node zloc))
+                                             (= (z/sexpr zloc) :model-imports))))
+                              z/right
+                              z/child-sexprs
+                              not-empty)]
+         (testing (format "\n'%s' module :model-imports" module)
+           (is (= (sort imports)
+                  imports))))))))

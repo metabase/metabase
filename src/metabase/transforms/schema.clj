@@ -1,49 +1,45 @@
 (ns metabase.transforms.schema
   (:require
-   [metabase.lib.metadata.column :as lib.metadata.column]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.queries.schema :as queries.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::source-table-ref
-  "A reference to a source table by name, for cases where table_id may not exist yet.
-  Also saves querying metadata in situations where we'll need the name."
+(mr/def ::lookback
+  "A lookback window: each run re-reads source rows up to `value` `unit`s behind the checkpoint,
+  so late-arriving rows older than the watermark still get picked up. Only supported for
+  temporal checkpoint columns."
   [:map
-   [:database_id :int]
-   [:schema {:optional true} [:maybe :string]]
-   [:table :string]
-   [:table_id {:optional true} [:maybe :int]]])
-
-(mr/def ::source-table-value
-  "Either a table ID (int) or a reference map."
-  [:or :int ::source-table-ref])
+   [:value pos-int?]
+   [:unit (into [:enum] (map name) (sort u.date/add-units))]])
 
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
-   ;; for native
-   [:checkpoint-filter {:optional true} :string]
-   ;; for mbql and python
-   [:checkpoint-filter-unique-key {:optional true}
-    ::lib.metadata.column/column-unique-key]])
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]
+   [:lookback {:optional true} [:maybe ::lookback]]])
 
 (mr/def ::source-incremental-strategy
-  [:multi {:dispatch :type}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         :type}
    ["checkpoint" ::checkpoint-strategy]])
 
 (mr/def ::transform-source
-  [:multi {:dispatch (comp keyword :type)}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
    [:query
     [:map
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
-     [:query ::queries.schema/query]
+     [:query ::lib-be.schema/maybe-legacy-query]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
     [:map
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
-     [:source-tables   [:map-of :string ::source-table-value]]
+     [:source-tables   [:sequential ::transforms-base.u/source-table-entry]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
@@ -51,9 +47,23 @@
 (mr/def ::append-config
   [:map [:type [:= "append"]]])
 
+(mr/def ::merge-key-column
+  "One column of a merge unique key. Carries a resolved `:field-id` when the target column is known,
+  degrading to a `:name` ref when the target table doesn't exist yet (mirrors `::source-table-entry`)."
+  [:map
+   [:name {:optional true} ms/NonBlankString]
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]])
+
+(mr/def ::merge-config
+  [:map
+   [:type [:= "merge"]]
+   [:unique-key [:sequential ::merge-key-column]]])
+
 (mr/def ::target-incremental-strategy
-  [:multi {:dispatch :type}
-   ["append" ::append-config]])
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         :type}
+   ["append" ::append-config]
+   ["merge"  ::merge-config]])
 
 (mr/def ::table-target
   [:map
@@ -71,13 +81,12 @@
    [:target-incremental-strategy ::target-incremental-strategy]])
 
 (mr/def ::transform-target
-  [:multi {:dispatch :type}
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         :type}
    ["table" ::table-target]
    ["table-incremental" ::table-incremental-target]])
 
 (mr/def ::id pos-int?)
-
-(mr/def ::run-id pos-int?)
 
 (mr/def ::transform
   [:map

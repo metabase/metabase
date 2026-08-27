@@ -1,10 +1,15 @@
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   ConcreteTableId,
-  Group,
+  GroupInfo,
   GroupsPermissions,
+  PermissionsDatabase,
 } from "metabase-types/api";
 
+import type {
+  DatabasePermissionsDiff,
+  GroupPermissionsDiff,
+  PermissionsGraphDiff,
+} from "../../types";
 import { DataPermission } from "../../types";
 
 import {
@@ -23,12 +28,12 @@ function diffDatabasePermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
   groupId: number,
-  database: Database,
-) {
+  database: PermissionsDatabase,
+): Partial<DatabasePermissionsDiff> {
   const databaseDiff: {
-    grantedTables: any;
-    revokedTables: any;
-    native?: any;
+    grantedTables: NonNullable<DatabasePermissionsDiff["grantedTables"]>;
+    revokedTables: NonNullable<DatabasePermissionsDiff["revokedTables"]>;
+    native?: DatabasePermissionsDiff["native"];
   } = {
     grantedTables: {},
     revokedTables: {},
@@ -56,7 +61,8 @@ function diffDatabasePermissions(
       groupId,
       {
         databaseId: database.id,
-        schemaName: table.schema_name || "",
+        schemaName: table.schema || "",
+        // A permission entity always names a real warehouse table, never a card.
         tableId: table.id as ConcreteTableId,
       },
       DataPermission.VIEW_DATA,
@@ -66,7 +72,8 @@ function diffDatabasePermissions(
       groupId,
       {
         databaseId: database.id,
-        schemaName: table.schema_name || "",
+        schemaName: table.schema || "",
+        // A permission entity always names a real warehouse table, never a card.
         tableId: table.id as ConcreteTableId,
       },
       DataPermission.VIEW_DATA,
@@ -90,9 +97,11 @@ function diffGroupPermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
   groupId: number,
-  databases: Database[],
-) {
-  const groupDiff: { databases: any } = { databases: {} };
+  databases: PermissionsDatabase[],
+): Partial<GroupPermissionsDiff> {
+  const groupDiff: {
+    databases: Record<number | string, Partial<DatabasePermissionsDiff>>;
+  } = { databases: {} };
   for (const database of databases) {
     groupDiff.databases[database.id] = diffDatabasePermissions(
       newPerms,
@@ -106,16 +115,19 @@ function diffGroupPermissions(
     }
   }
   deleteIfEmpty(groupDiff, "databases");
-  return groupDiff;
+  // Unjustified type cast. FIXME
+  return groupDiff as Partial<GroupPermissionsDiff>;
 }
 
 export function diffDataPermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
-  groups: Group[],
-  databases: Database[],
-) {
-  const permissionsDiff: { groups: any } = { groups: {} };
+  groups: GroupInfo[],
+  databases: PermissionsDatabase[],
+): PermissionsGraphDiff {
+  const permissionsDiff: {
+    groups: Record<number | string, Partial<GroupPermissionsDiff>>;
+  } = { groups: {} };
   if (newPerms && oldPerms && databases) {
     for (const group of groups) {
       permissionsDiff.groups[group.id] = diffGroupPermissions(
@@ -130,5 +142,6 @@ export function diffDataPermissions(
       }
     }
   }
-  return permissionsDiff;
+  // Unjustified type cast. FIXME
+  return permissionsDiff as PermissionsGraphDiff;
 }

@@ -26,12 +26,16 @@ function getDefaultValue(
 interface SetupOpts {
   value: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
+  minDate?: Date;
+  maxDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
 }
 
 function setup({
   value,
   availableUnits = DATE_PICKER_UNITS,
+  minDate,
+  maxDate,
   renderSubmitButton,
 }: SetupOpts) {
   const onChange = jest.fn();
@@ -41,6 +45,8 @@ function setup({
     <DateIntervalPicker
       value={value}
       availableUnits={availableUnits}
+      minDate={minDate}
+      maxDate={maxDate}
       renderSubmitButton={renderSubmitButton}
       onChange={onChange}
       onSubmit={onSubmit}
@@ -230,6 +236,30 @@ describe("DateIntervalPicker", () => {
           value: defaultValue,
           isDisabled: false,
         });
+      });
+
+      it("should disable submit when the range falls outside the bounds", () => {
+        const renderSubmitButton = jest.fn().mockReturnValue(null);
+        setup({
+          value: defaultValue,
+          minDate: direction === "past" ? new Date(2020, 0, 1) : undefined,
+          maxDate: direction === "future" ? new Date(2020, 0, 2) : undefined,
+          renderSubmitButton,
+        });
+        expect(renderSubmitButton).toHaveBeenLastCalledWith({
+          value: defaultValue,
+          isDisabled: true,
+        });
+      });
+
+      it("should not submit when the range falls outside the bounds", async () => {
+        const { onSubmit } = setup({
+          value: defaultValue,
+          minDate: direction === "past" ? new Date(2020, 0, 1) : undefined,
+          maxDate: direction === "future" ? new Date(2020, 0, 2) : undefined,
+        });
+        await userEvent.type(screen.getByLabelText("Interval"), "{enter}");
+        expect(onSubmit).not.toHaveBeenCalled();
       });
     },
   );

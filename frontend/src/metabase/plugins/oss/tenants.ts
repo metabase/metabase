@@ -1,20 +1,33 @@
 import type React from "react";
+import type { SetStateAction } from "react";
 
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import type {
   Collection,
   CollectionId,
   CollectionItemModel,
   CollectionNamespace,
+  DataSegregationStrategy,
   Group,
+  Tenant,
   User,
 } from "metabase-types/api";
 
-import { PluginPlaceholder } from "../components/PluginPlaceholder";
+import {
+  PluginPlaceholder,
+  pluginPlaceholderRoute,
+} from "../components/PluginPlaceholder";
+import type { PluginRoute } from "../types";
+
+export type CreatedTenantData = {
+  name: string;
+  slug: string;
+  dataIsolationFieldValue: string;
+};
 
 export type TenantCollectionPathItem = {
   id: CollectionId;
@@ -26,51 +39,100 @@ export type TenantCollectionPathItem = {
   is_tenant_dashboard?: boolean;
 };
 
+export type UseListActiveTenantsResult = {
+  data: Tenant[] | undefined;
+  isLoading: boolean;
+  error: unknown;
+};
+
+type UseListActiveTenantsOptions = {
+  skip?: boolean;
+};
+
 const getDefaultPluginTenants = () => ({
   isEnabled: false,
+  useListActiveTenants: (
+    _options?: UseListActiveTenantsOptions,
+  ): UseListActiveTenantsResult => ({
+    data: undefined,
+    isLoading: false,
+    error: undefined,
+  }),
+  // Unjustified type cast. FIXME
   userStrategyRoute: null as React.ReactElement | null,
+  // Unjustified type cast. FIXME
   tenantsRoutes: null as React.ReactElement | null,
+  // Unjustified type cast. FIXME
+  CreateTenantsOnboardingStep: PluginPlaceholder as React.ComponentType<{
+    onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+    tenants: CreatedTenantData[];
+    onTenantsChange: (value: SetStateAction<CreatedTenantData[]>) => void;
+    selectedFieldIds?: number[];
+    strategy?: DataSegregationStrategy | null;
+    rlsColumnName?: string | null;
+  }>,
+  // Unjustified type cast. FIXME
+  TenantsSummaryOnboardingStep: PluginPlaceholder as React.ComponentType<{
+    tenants: CreatedTenantData[];
+    strategy?: DataSegregationStrategy | null;
+    rlsTableNames?: string[];
+    rlsColumnName?: string | null;
+  }>,
   EditUserStrategySettingsButton: PluginPlaceholder,
+  // Unjustified type cast. FIXME
   FormTenantWidget: (_props: any) => null as React.ReactElement | null,
+  // Unjustified type cast. FIXME
   TenantDisplayName: (_props: any) => null as React.ReactElement | null,
   isExternalUsersGroup: (_group: Pick<Group, "magic_group_type">) => false,
   isTenantGroup: (_group: Pick<Group, "is_tenant_group">) => false,
   isExternalUser: (_user?: Pick<User, "tenant_id">) => false,
   isTenantCollection: (_collection: Partial<Pick<Collection, "namespace">>) =>
     false,
+  // Unjustified type cast. FIXME
   PeopleNav: null as React.ReactElement | null,
   ReactivateExternalUserButton: ({ user: _user }: { user: User }) =>
+    // Unjustified type cast. FIXME
     null as React.ReactElement | null,
   TenantGroupHintIcon: PluginPlaceholder,
+  // Unjustified type cast. FIXME
   MainNavSharedCollections: PluginPlaceholder as React.ComponentType<{
+    canAccessTenantSpecificCollections: boolean;
     canCreateSharedCollection: boolean;
     sharedTenantCollections: Collection[] | undefined;
   }>,
   TenantCollectionItemList: (_props: { pathIndex: number }) =>
+    // Unjustified type cast. FIXME
     null as React.ReactElement | null,
   TenantSpecificCollectionsItemList: (_props: { pathIndex: number }) =>
+    // Unjustified type cast. FIXME
     null as React.ReactElement | null,
-  TenantCollectionList: PluginPlaceholder,
-  TenantUsersList: PluginPlaceholder,
-  TenantUsersPersonalCollectionList: PluginPlaceholder as React.ComponentType<{
-    params: { tenantId: string };
-  }>,
+  tenantCollectionList: pluginPlaceholderRoute,
+  canAccessTenantSpecificRoute: pluginPlaceholderRoute,
+  tenantUsersList: pluginPlaceholderRoute,
+  tenantUsersPersonalCollectionList: pluginPlaceholderRoute,
   GroupDescription: (_props: { group: Group }) =>
+    // Unjustified type cast. FIXME
     null as React.ReactElement | null,
   EditUserStrategyModal: PluginPlaceholder,
+  // Unjustified type cast. FIXME
   getNewUserModalTitle: (_isExternal: boolean) => null as string | null,
+  // Unjustified type cast. FIXME
   getFormGroupsTitle: (_isExternal: boolean) => null as string | null,
   // cannot be null, because that refers to the default namespace
   SHARED_TENANT_NAMESPACE: "none" as CollectionNamespace,
   // cannot be null, because that refers to the default namespace
   TENANT_SPECIFIC_NAMESPACE: "none" as CollectionNamespace,
   canPlaceEntityInCollection: () => true,
+  // Unjustified type cast. FIXME
   getRootCollectionItem: () => null as OmniPickerCollectionItem | null,
+  // Unjustified type cast. FIXME
   getTenantRootDisabledReason: () => null as string | null,
   getNamespaceDisplayName: (_namespace?: CollectionNamespace) =>
+    // Unjustified type cast. FIXME
     null as string | null,
   getFlattenedCollectionsForNavbar: () => [],
   useTenantMainNavbarData: () => ({
+    canAccessTenantSpecificCollections: false,
     canCreateSharedCollection: false,
     showExternalCollectionsSection: false,
     sharedTenantCollections: [],
@@ -79,13 +141,31 @@ const getDefaultPluginTenants = () => ({
 
 export const PLUGIN_TENANTS: {
   isEnabled: boolean;
+  useListActiveTenants: (
+    options?: UseListActiveTenantsOptions,
+  ) => UseListActiveTenantsResult;
   userStrategyRoute: React.ReactElement | null;
   useTenantMainNavbarData: () => {
+    canAccessTenantSpecificCollections: boolean;
     canCreateSharedCollection: boolean;
     showExternalCollectionsSection: boolean;
     sharedTenantCollections: Collection[] | undefined;
   };
   tenantsRoutes: React.ReactElement | null;
+  CreateTenantsOnboardingStep: React.ComponentType<{
+    onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+    tenants: CreatedTenantData[];
+    onTenantsChange: (value: SetStateAction<CreatedTenantData[]>) => void;
+    selectedFieldIds?: number[];
+    strategy?: DataSegregationStrategy | null;
+    rlsColumnName?: string | null;
+  }>;
+  TenantsSummaryOnboardingStep: React.ComponentType<{
+    tenants: CreatedTenantData[];
+    strategy?: DataSegregationStrategy | null;
+    rlsTableNames?: string[];
+    rlsColumnName?: string | null;
+  }>;
   EditUserStrategySettingsButton: (props: {
     page: "people" | "tenants";
   }) => React.ReactElement | null;
@@ -103,6 +183,7 @@ export const PLUGIN_TENANTS: {
   }) => React.ReactElement | null;
   TenantGroupHintIcon: React.ComponentType;
   MainNavSharedCollections: React.ComponentType<{
+    canAccessTenantSpecificCollections: boolean;
     canCreateSharedCollection: boolean;
     sharedTenantCollections: Collection[] | undefined;
   }>;
@@ -112,11 +193,10 @@ export const PLUGIN_TENANTS: {
   TenantSpecificCollectionsItemList: (props: {
     pathIndex: number;
   }) => React.ReactElement | null;
-  TenantCollectionList: React.ComponentType;
-  TenantUsersList: React.ComponentType;
-  TenantUsersPersonalCollectionList: React.ComponentType<{
-    params: { tenantId: string };
-  }>;
+  tenantCollectionList: PluginRoute;
+  canAccessTenantSpecificRoute: PluginRoute;
+  tenantUsersList: PluginRoute;
+  tenantUsersPersonalCollectionList: PluginRoute;
   GroupDescription: (props: { group: Group }) => React.ReactElement | null;
   EditUserStrategyModal: (props: {
     onClose: () => void;

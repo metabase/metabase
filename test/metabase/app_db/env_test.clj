@@ -16,7 +16,6 @@
   (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://metabase?user=cam&password=1234")
          (#'mdb.env/env->DataSource :postgres {:mb-db-connection-uri "postgres://metabase?user=cam&password=1234"})
          (#'mdb.env/env->DataSource :postgres {:mb-db-connection-uri "postgres://metabase?user=cam&password=1234", :mb-db-user "", :mb-db-pass ""})))
-
   (testing "Raw connection string should support separate username and/or password (#20122)"
     (testing "username and password"
       (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://metabase" "cam" "1234" nil)

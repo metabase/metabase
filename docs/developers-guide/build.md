@@ -18,20 +18,22 @@ To complete any build of the Metabase code, you'll need to install the following
 
 1. [Clojure (https://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
 
-2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 21 ([more info on Java versions](../installation-and-operation/running-the-metabase-jar-file.md))
+2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 25 ([more info on Java versions](../installation-and-operation/running-the-metabase-jar-file.md))
 
 3. [Node.js (https://nodejs.org/)](https://nodejs.org/) - latest LTS release
 
-4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by running:
+4. [uv](https://docs.astral.sh/uv/getting-started/installation/) - for installing python deps
+
+4. [Bun package manager](https://bun.sh/) - you can install it by running:
 
 ```
-npm install --global yarn
+curl -fsSL https://bun.sh/install | bash
 ```
 
-On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure, can be installed by using:
+On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure and Bun, can be installed by using:
 
 ```
-sudo apt install openjdk-21-jdk nodejs && sudo npm install --global yarn
+sudo apt install openjdk-25-jdk nodejs
 ```
 
 If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building with:
@@ -40,7 +42,7 @@ If you have multiple JDK versions installed in your machine, be sure to switch y
 sudo update-alternatives --config java
 ```
 
-Then select Java 21 in the menu.
+Then select Java 25 in the menu.
 
 ### Running on M1 Apple computers
 
@@ -102,7 +104,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
    git pull
    ```
 
-   You should do this every time to make sure that you have all the latest Metabase branches and code on your computer. It’s also how you’ll get updates on a feature branch someone make changes to it.
+   You should do this every time to make sure that you have all the latest Metabase branches and code on your computer. It’s also how you’ll get updates on a feature branch when someone makes changes to it.
 
 7. Find the name of the branch you want to run by going to the “pull request” page for that feature on GitHub and copying the branch name from there. Here’s [an example PR page](https://github.com/metabase/metabase/pull/19138), with the branch name
    `fix-native-dataset-drill-popover`.
@@ -138,7 +140,7 @@ When it’s done, you should see a message that says something like “Metabase 
 10. Open up another tab or window of your terminal app, and then “build” the frontend (all the UI) with this command:
 
 ```
-yarn build-hot
+bun run build-hot
 ```
 
 If you're having trouble with this step, make sure you are using the LTS version of [Node.js (https://nodejs.org/)](https://nodejs.org/).

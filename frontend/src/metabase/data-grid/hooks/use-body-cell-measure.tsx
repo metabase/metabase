@@ -2,9 +2,9 @@ import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 
-import { getPortalRootElement } from "metabase/css/core/overlays/utils";
+import { getPortalRootElement } from "metabase/common/utils/portal";
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
-import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
+import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 
 import { DEFAULT_FONT_SIZE } from "../constants";
 import type { DataGridTheme } from "../types";
@@ -22,6 +22,7 @@ export interface CellSize {
 export const useCellMeasure = (
   cell: React.ReactNode,
   contentNodeSelector: string,
+  fontSize?: string,
 ) => {
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -37,14 +38,14 @@ export const useCellMeasure = (
           visibility: "hidden",
           pointerEvents: "none",
           zIndex: -999,
-          fontSize: DEFAULT_FONT_SIZE,
+          fontSize: fontSize ?? DEFAULT_FONT_SIZE,
           overflow: "visible",
         }}
       >
         {cell}
       </div>
     );
-  }, [cell]);
+  }, [cell, fontSize]);
 
   const measureDimensions: CellMeasurer = useCallback(
     (content: React.ReactNode, containerWidth?: number) => {
@@ -93,10 +94,15 @@ export const useBodyCellMeasure = (theme?: DataGridTheme) => {
     ),
     [theme?.fontSize],
   );
+
   const {
     measureDimensions: measureBodyCellDimensions,
     measureRoot: measureBodyCellRoot,
-  } = useCellMeasure(bodyCellToMeasure, "[data-grid-cell-content]");
+  } = useCellMeasure(
+    bodyCellToMeasure,
+    "[data-grid-cell-content]",
+    theme?.fontSize,
+  );
 
   const measureRoot = useMemo(
     () => createPortal(measureBodyCellRoot, getPortalRootElement()),

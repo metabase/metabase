@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.common
-  (:refer-clojure :exclude [update-keys every? #?@(:clj [some])])
+  (:refer-clojure :exclude [update-keys #?@(:clj [some])])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -8,7 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :refer [update-keys every? #?@(:clj [some])]]))
+   [metabase.util.performance :refer [update-keys every-key? #?@(:clj [some])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -63,10 +63,31 @@
     (update-keys m memoized-kebab-key)))
 
 (defn normalize-map
-  "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`; convert map to
+  "Base normalization behavior for a MBQL 5 map: keywordize keys and keywordize `:lib/type`; convert map to
   kebab-case (excluding the so-called [[HORRIBLE-keys]]."
   [m]
   (-> m normalize-map-no-kebab-case map->kebab-case))
+
+(defn internal-key?
+  "True if `k` is a namespaced key outside the `:lib` namespace. These are internal keys the query processor adds to a
+  query as it runs, as opposed to the `:lib/*` and simple keys that make up a query itself. Handles string keys too,
+  since keys are not always keywordized yet when this runs."
+  [k]
+  (let [k (cond-> k (string? k) keyword)]
+    (and (qualified-keyword? k)
+         (not= "lib" (namespace k)))))
+
+(defn remove-internal-keys
+  "For use as a `:decode/deserialize` (and `:encode/serialize`) transformer on a query/stage/join/options map: remove
+  every [[internal-key?]] from map `m`."
+  [m]
+  (if-not (map? m)
+    m
+    (reduce-kv (fn [acc k _v]
+                 (cond-> acc
+                   (internal-key? k) (dissoc k)))
+               m
+               m)))
 
 (defn normalize-string-key
   "Base normalization behavior for things that should be string map keys. Converts keywords to strings if needed. This
@@ -93,16 +114,12 @@
   [:and
    {:error/message "non-blank string"
     :json-schema   {:type "string" :minLength 1}}
-   [:string {:min 1}]
+   [:string {:min 1, :decode/normalize (fn [x]
+                                         (cond-> x
+                                           (keyword? x) u/qualified-name))}]
    [:fn
     {:error/message "non-blank string"}
     (complement str/blank?)]])
-
-(mr/def ::int-greater-than-or-equal-to-zero
-  "Schema representing an integer than must also be greater than or equal to zero."
-  [:int
-   {:error/message "integer greater than or equal to zero"
-    :min           0}])
 
 (mr/def ::positive-number
   [:fn
@@ -165,7 +182,10 @@
   [x]
   (normalize-keyword x))
 
-(defn- normalize-base-type [x]
+(defn normalize-base-type
+  "Normalize `x` to a base type keyword, repairing the lower-cased type names some prod fingerprints were stored
+  under (#63397). Returns `nil` if it isn't keyword-able."
+  [x]
   (when-let [k (normalize-base-type* x)]
     (or (cond
           (isa? k :type/*)
@@ -187,6 +207,19 @@
      :error/fn      (fn [{:keys [value]} _]
                       (str "Not a valid base type: " (pr-str value)))}
     base-type?]])
+
+(defn- coercion-strategy? [x]
+  (isa? x :Coercion/*))
+
+(mr/def ::coercion-strategy
+  [:and
+   [:keyword
+    {:decode/normalize #'normalize-keyword}]
+   [:fn
+    {:error/message "valid coercion strategy"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Not a valid coercion strategy: " (pr-str value)))}
+    coercion-strategy?]])
 
 (defn normalize-options-map
   "Basic normalization behavior for an MBQL clause options map."
@@ -274,6 +307,7 @@
    {:default {}}
    [:map
     {:decode/normalize   #'normalize-options-map
+     :decode/api         #'remove-internal-keys
      :encode/for-hashing #'encode-map-for-hashing}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
@@ -283,7 +317,19 @@
     [:semantic-type  {:optional true} [:maybe ::semantic-or-relation-type]]
     [:database-type  {:optional true} [:maybe ::non-blank-string]]
     [:name           {:optional true} [:maybe ::non-blank-string]]
-    [:display-name   {:optional true} [:maybe ::non-blank-string]]]
+    [:display-name   {:optional true} [:maybe ::non-blank-string]]
+    ;; the keys clauses add to a plain options map. Clause-specific option schemas (`::lib.schema.ref/field.options`
+    ;; and friends) declare the rest; they all have to be named here because a map schema strips whatever it doesn't
+    ;; declare.
+    ;;
+    ;; the name an expression is defined under, on the expression's own clause
+    [:lib/expression-name {:optional true} ::non-blank-string]
+    ;; `:contains`/`:starts-with`/`:ends-with` and the other string filters
+    [:case-sensitive      {:optional true} :boolean]
+    ;; `:time-interval`
+    [:include-current     {:optional true} :boolean]
+    ;; the name an aggregation is referenced by
+    [:lib/source-name     {:optional true} ::non-blank-string]]
    (disallowed-keys
     {:ident ":ident is deprecated and should not be included in options maps"})])
 
@@ -317,7 +363,7 @@
 
 (defn- kebab-cased-map? [m]
   (and (map? m)
-       (every? kebab-cased-key? (keys m))))
+       (every-key? kebab-cased-key? m)))
 
 (mr/def ::kebab-cased-map
   [:fn
@@ -336,3 +382,26 @@
   - Unreserved characters: letters, digits, hyphens, periods, underscores, tildes
   - Percent-encoded characters: `%` followed by exactly 2 hex digits"
   #"(?:[A-Za-z0-9\-._~]|%[0-9A-Fa-f]{2})+")
+
+(def deprecated-lib-key-renames
+  "Map of old long-namespaced keys to their new `:lib/*` equivalents."
+  {:metabase.lib.join/join-alias                      :lib/join-alias
+   :metabase.lib.field/binning                        :lib/binning
+   :metabase.lib.field/temporal-unit                  :lib/temporal-unit
+   :metabase.lib.field/original-effective-type        :lib/original-effective-type
+   :metabase.lib.field/simple-display-name            :lib/simple-display-name
+   :metabase.lib.query/transformation-added-base-type :lib/transformation-added-base-type})
+
+(defn rename-deprecated-lib-keys
+  "Rename old long-namespaced keys like `:metabase.lib.field/temporal-unit` to their short `:lib/*` equivalents.
+  If both old and new key are present, the new key takes precedence and the old key is removed."
+  [m]
+  (reduce-kv
+   (fn [m old-key new-key]
+     (if-some [e (find m old-key)]
+       (cond-> (dissoc m old-key)
+         (not (contains? m new-key))
+         (assoc new-key (val e)))
+       m))
+   m
+   deprecated-lib-key-renames))

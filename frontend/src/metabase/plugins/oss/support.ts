@@ -1,17 +1,19 @@
 import type { ComponentType } from "react";
 
-import { NotFoundPlaceholder } from "../components/PluginPlaceholder";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+
+import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
 const getDefaultPluginSupport = () => ({
   isEnabled: false,
-  SupportSettings: NotFoundPlaceholder,
-  GrantAccessModal: NotFoundPlaceholder,
+  SupportSettings: PluginPlaceholder,
+  GrantAccessModal: PluginPlaceholder,
 });
 
 export const PLUGIN_SUPPORT: {
   isEnabled: boolean;
   SupportSettings: ComponentType;
-  GrantAccessModal: ComponentType<{ onClose: VoidFunction }>;
+  GrantAccessModal: ComponentType<ModalComponentProps>;
 } = getDefaultPluginSupport();
 
 /**

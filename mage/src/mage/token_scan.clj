@@ -1,7 +1,6 @@
 (ns mage.token-scan
   (:require
    [babashka.fs :as fs]
-   [babashka.process :as p]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [mage.color :as c]
@@ -39,6 +38,17 @@
 
 (defn- whitelisted? [line]
   (boolean (some #(str/includes? line %) token-like-whitelist)))
+
+(def ^:private blacklisted-extensions
+  "File extensions to skip when scanning. These are binary/image/archive formats that
+   cannot contain meaningful plaintext tokens and only generate false positives or errors."
+  #{"png" "jpg" "jpeg" "gif" "bmp" ;; images (svg excluded: it's text and can hide tokens)
+    "zip" "tar" "gz" "7z" "rar" ;; archives
+    "exe" "dll" "so" "bin" ;; binaries
+    })
+
+(defn- blacklisted-file? [file-path]
+  (contains? blacklisted-extensions (str/lower-case (str (fs/extension file-path)))))
 
 (defn- truncate-around-match
   "Truncate text around a regex match, showing ~100 chars before and after"
@@ -149,6 +159,7 @@
                                :babashka/exit 1})))]
     (->> files
          (filter fs/regular-file?)
+         (remove blacklisted-file?)
          (map str)
          distinct)))
 
@@ -164,7 +175,6 @@
          :as   full-info} (scan-files token-patterns files')
         info              (dissoc full-info :scanned :duration-ms)
         duration-ms       (/ (- (System/nanoTime) start-time) 1e6)]
-
     ;; Print results
     (doseq [{:keys [file matches error]} scanned]
       (when error
@@ -176,7 +186,6 @@
                            (when column-number (str ":" column-number))
                            (c/yellow "[" pattern-name "]")
                            (c/magenta (str/trim line-text)))))))
-
     (println "Scan completed in:   " (format "%.0f" duration-ms) "ms")
     (when verbose
       (println "--------------------")
@@ -185,7 +194,6 @@
                                        files-with-matches))
       (println "Total matches:      " ((if (zero? total-matches) c/green c/yellow)
                                        total-matches)))
-
     (if (> total-matches 0)
       (throw (ex-info nil
                       {:outcome    info

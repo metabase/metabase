@@ -2,10 +2,11 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { trackSegmentCreateStarted } from "metabase/common/data-studio/analytics";
+import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
+import { useSelector } from "metabase/redux";
 import { Button, Group, Icon, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
 import S from "../../TableSection.module.css";
@@ -44,6 +45,12 @@ export function SegmentList({ table }: SegmentListProps) {
             py="xs"
             size="xs"
             leftSection={<Icon name="add" />}
+            onClick={() =>
+              trackSegmentCreateStarted(
+                "data_studio_segments",
+                Number(table.id),
+              )
+            }
           >{t`New segment`}</Button>
         </Group>
       )}
@@ -53,7 +60,7 @@ export function SegmentList({ table }: SegmentListProps) {
           className={S.EmptyState}
           spacing="sm"
           illustrationElement={
-            <Icon name="segment2" size={32} c="text-secondary" />
+            <Icon name="segment" size={32} c="text-secondary" />
           }
           title={t`No segments yet`}
           message={t`Create a segment to filter rows in this table.`}

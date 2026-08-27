@@ -94,7 +94,7 @@
   (let [oss-or-ee (if (in-ee?) :ee :oss)]
     (case oss-or-ee
       :ee  (validate-ee-args options)
-      :oss (validate-oss-args '~ee-ns options))
+      :oss (validate-oss-args ee-ns options))
     `(let [ee-ns#        '~(or ee-ns (ns-name *ns*))
            ee-fn-name#   (symbol (str ee-ns# "/" '~fn-name))
            oss-or-ee-fn# ~(if schema?
@@ -102,7 +102,7 @@
                             `(fn ~(symbol (str fn-name)) ~@fn-tail))]
        (register-mapping! ee-fn-name# (merge ~options {~oss-or-ee oss-or-ee-fn#}))
        (def
-         ~(vary-meta fn-name assoc :arglists ''([& args]))
+         ~(vary-meta fn-name merge {:arglists ''([& args])})
          ~docstr
          (dynamic-ee-oss-fn ee-ns# ee-fn-name#)))))
 

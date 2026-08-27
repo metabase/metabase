@@ -21,11 +21,12 @@ describe(suiteTitle, () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.enableTracking();
 
     H.updateSetting("enable-embedding-simple", true);
     H.updateSetting("enable-embedding-static", true);
+    H.setupAnthropicLlmProvider();
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -47,6 +48,11 @@ describe(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
       H.waitForSimpleEmbedIframesToLoad();
+
+      getEmbedSidebar().within(() => {
+        cy.findByLabelText("Guest").click();
+      });
+      embedModalEnableEmbedding();
 
       getEmbedSidebar().within(() => {
         cy.findByText("Next").click();
@@ -79,6 +85,11 @@ describe(suiteTitle, () => {
       H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
       getEmbedSidebar().within(() => {
+        cy.findByLabelText("Guest").click();
+      });
+      embedModalEnableEmbedding();
+
+      getEmbedSidebar().within(() => {
         cy.findByText("Chart").click();
         cy.findByText("Next").click();
       });
@@ -92,30 +103,6 @@ describe(suiteTitle, () => {
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title is visible");
         cy.findByText(questionName).should("be.visible");
-      });
-    });
-
-    it("shows exploration template when selected", { tags: "@skip" }, () => {
-      visitNewEmbedPage();
-
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("Metabase account (SSO)").click();
-
-        cy.findByText("Exploration").click();
-        cy.findByText("Next").click();
-      });
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_completed",
-        event_detail:
-          "authType=sso,experience=exploration,isDefaultExperience=false",
-      });
-
-      H.waitForSimpleEmbedIframesToLoad();
-
-      H.getSimpleEmbedIframeContent().within(() => {
-        cy.log("data picker is visible");
-        cy.findByText("Pick your starting data").should("be.visible");
       });
     });
 
@@ -158,6 +145,14 @@ describe(suiteTitle, () => {
       cy.intercept("GET", "/api/activity/recents?*", { recents: [] }).as(
         "emptyRecentItems",
       );
+
+      // The embed wizard calls the search API to find recently created
+      // dashboards. Without this, the snapshot's admin-owned dashboards
+      // would be returned and selected as the default.
+      cy.log("simulate that there are no recently created dashboards");
+      cy.intercept("GET", "/api/search?*", { data: [], total: 0 }).as(
+        "emptySearch",
+      );
     });
 
     it("shows dashboard of id=1 when activity log is empty", () => {
@@ -174,33 +169,6 @@ describe(suiteTitle, () => {
         cy.findByText("Person detail").should("be.visible");
       });
     });
-
-    it(
-      "shows question of id=1 when activity log is empty and chart is selected",
-      { tags: "@skip" },
-      () => {
-        visitNewEmbedPage();
-        cy.wait("@emptyRecentItems");
-
-        getEmbedSidebar().within(() => {
-          cy.findByText("Chart").click();
-          cy.findByText("Next").click();
-        });
-
-        H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_experience_completed",
-          event_detail:
-            "authType=guest-embed,experience=chart,isDefaultExperience=false",
-        });
-
-        H.waitForSimpleEmbedIframesToLoad();
-
-        H.getSimpleEmbedIframeContent().within(() => {
-          cy.log("question title of id=1 is visible");
-          cy.findByText("Query log").should("be.visible");
-        });
-      },
-    );
   });
 
   it("should show a fake loading indicator in embed preview", () => {

@@ -22,30 +22,42 @@
   [message-id]
   (str/replace message-id #"\{\s*(\d+)\s*\}" "\\${ $1 }"))
 
-(defn- ->translations-map [messages]
-  {"" (into {}
-            (comp
-             ;; filter out i18n messages that aren't used on the FE client
-             (filter frontend-message?)
-             i18n/print-message-count-xform
-             (map (fn [message]
-                    [(->ttag-reference (:id message))
-                     (if (:plural? message)
-                       {:msgid_plural (:id-plural message)
-                        :msgstr       (map ->ttag-reference (:str-plural message))}
-                       {:msgstr [(->ttag-reference (:str message))]})])))
-            messages)})
+(defn- ->translation-entry [message]
+  [(->ttag-reference (:id message))
+   (if (:plural? message)
+     {:msgid_plural (:id-plural message)
+      :msgstr       (map ->ttag-reference (:str-plural message))}
+     {:msgstr [(->ttag-reference (:str message))]})])
+
+(defn- ->translations-map
+  "ttag looks a translation up by (context, msgid), so the top level of the map is keyed by the
+  message's `msgctxt` — `\"\"` for the messages that declare none.
+
+  Two messages may share a `msgid` as long as their contexts differ, e.g. `Year` exists both as a
+  pluralized unit (`ngettext(\"Year\", \"Years\", n)`) and as a granularity option
+  (``c(\"Date granularity option\").t`Year` ``). Keying by `msgid` alone collapsed them onto one
+  entry, so the last one won and the other's translation was lost — including, for the pair above,
+  the plural form that `ngettext` then failed to find."
+  [messages drop-msgids]
+  (let [frontend-messages (into []
+                                (comp
+                                 ;; filter out i18n messages that aren't used on the FE client
+                                 (filter frontend-message?)
+                                 (remove (fn [{:keys [id]}] (contains? drop-msgids id)))
+                                 i18n/print-message-count-xform)
+                                messages)]
+    (into {}
+          (map (fn [[context messages]]
+                 [context (into {} (map ->translation-entry) messages)]))
+          (group-by #(or (:context %) "") frontend-messages))))
 
 (defn- ->i18n-map
   "Convert the contents of a `.po` file to map format used in the frontend client."
-  [po-contents]
+  [po-contents drop-msgids]
   {:charset      "utf-8"
    :headers      (into {} (for [[k v] (:headers po-contents)]
                             [(str/lower-case k) v]))
-   :translations (->translations-map (:messages po-contents))})
-
-(defn- i18n-map [locale]
-  (->i18n-map (i18n/po-contents locale)))
+   :translations (->translations-map (:messages po-contents) drop-msgids)})
 
 (def target-directory
   "Target directory for frontend i18n resources."
@@ -55,8 +67,15 @@
   (u/filename target-directory (format "%s.json" (str/replace locale #"-" "_"))))
 
 (defn create-artifact-for-locale!
-  "Create an artifact with translated strings for `locale` for frontend (JS) usage."
-  [locale]
+  "Create an artifact with translated strings for `locale` for frontend (JS) usage.
+
+  `drop-msgids` is a set of English source strings to exclude from the output (typically those
+  whose translations had fatal validation errors).
+
+  `po-contents` is the parsed + autofixed `.po` content from
+  `(i18n.autofix/autofix-po-contents (i18n.common/po-contents locale))`. Passed by the caller
+  rather than re-parsed here so scanner and writer stay in sync."
+  [locale drop-msgids po-contents]
   (let [target-file (target-filename locale)]
     (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
       (u/create-directory-unless-exists! target-directory)
@@ -64,5 +83,5 @@
       (u/step "Write JSON"
         (with-open [os (FileOutputStream. (io/file target-file))
                     w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
-          (json/generate-stream (i18n-map locale) w)))
+          (json/generate-stream (->i18n-map po-contents drop-msgids) w)))
       (u/assert-file-exists target-file))))

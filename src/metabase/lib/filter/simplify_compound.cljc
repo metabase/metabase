@@ -7,9 +7,9 @@
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [some empty?]]))
 
 (mr/def ::mbql-clause
@@ -68,10 +68,10 @@
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
   and duplicate subclauses from the clauses."
   [x]
-  (lib.util.match/replace x
+  (match/replace x
     ;; double negation, eliminate both
     [:not opts [:not arg-opts arg-arg]]
-    (recur
+    (&recur
      ;; preserve options from the collapsed clauses.
      (lib.options/update-options arg-arg merge arg-opts opts))
 

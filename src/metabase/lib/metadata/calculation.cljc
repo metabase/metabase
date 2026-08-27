@@ -74,12 +74,12 @@
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
     ((some-fn :display-name :lib/expression-name) (lib.options/options x))
-    (try
-      (display-name-method query stage-number x style)
-      (catch #?(:clj Throwable :cljs js/Error) e
-        (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
-                        {:query query, :x x}
-                        e)))))))
+    (lib.util/recover
+     (fn [] (display-name-method query stage-number x style))
+     (fn [e]
+       (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
+                       {:query query, :x x}
+                       e)))))))
 
 (mu/defn column-name :- ::lib.schema.common/non-blank-string
   "Calculate a database-friendly name to use for an expression."
@@ -92,14 +92,14 @@
    (or
     ;; if this is an MBQL clause with `:name` in the options map, then use that rather than calculating a name.
     (:name (lib.options/options x))
-    (try
-      (column-name-method query stage-number x)
-      (catch #?(:clj Throwable :cljs js/Error) e
-        (throw (ex-info (i18n/tru "Error calculating column name for {0}: {1}" (pr-str x) (ex-message e))
-                        {:x            x
-                         :query        query
-                         :stage-number stage-number}
-                        e)))))))
+    (lib.util/recover
+     (fn [] (column-name-method query stage-number x))
+     (fn [e]
+       (throw (ex-info (i18n/tru "Error calculating column name for {0}: {1}" (pr-str x) (ex-message e))
+                       {:x            x
+                        :query        query
+                        :stage-number stage-number}
+                       e)))))))
 
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
@@ -108,12 +108,7 @@
            :cljs         true ;; the linter complains when :cljs is not here(?)
            :cljs-dev     true
            :cljs-release false)
-    (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-               ;; TODO: (Braden 11/04/2025) This logic would make sense in [[metabase.util]].
-               (let [s (pr-str x)]
-                 (if (> (count s) 2000)
-                   (str (subs s 0 1500) " ... " (subs s (- (count s) 500)))
-                   s))
+    (log/warnf "Don't know how to calculate display name. Add an impl for %s for %s"
                `display-name-method
                (lib.dispatch/dispatch-value x)))
   (if (and (vector? x)
@@ -215,11 +210,7 @@
       (lib.computed/with-cache-ephemeral* query [:expression-types/by-clause stage-number x]
         (fn []
           (let [calculated-type (type-of-method query stage-number x)]
-            ;; if calculated type is not a true type but a placeholder like `:metabase.lib.schema.expression/type.unknown`
-            ;; or a union of types then fall back to `:type/*`, an actual type.
-            (if (isa? calculated-type :type/*)
-              calculated-type
-              :type/*))))))))
+            (lib.schema.expression/resolve-type calculated-type))))))))
 
 (defmethod type-of-method :default
   [_query _stage-number expr]
@@ -263,20 +254,20 @@
 
 (defmethod metadata-method :default
   [query stage-number x]
-  (try
-    {:lib/type     :metadata/column
-     ;; TODO -- effective-type
-     :base-type    (type-of query stage-number x)
-     :name         (column-name query stage-number x)
-     :display-name (display-name query stage-number x)}
-    ;; if you see this error it's usually because you're calling [[metadata]] on something that you shouldn't be, for
-    ;; example a query
-    (catch #?(:clj Throwable :cljs js/Error) e
-      (throw (ex-info (i18n/tru "Error calculating metadata for {0}: {1}"
-                                (pr-str (lib.dispatch/dispatch-value x))
-                                (ex-message e))
-                      {:query query, :stage-number stage-number, :x x}
-                      e)))))
+  (lib.util/recover
+   (fn []
+     {:lib/type     :metadata/column
+      ;; TODO -- effective-type
+      :base-type    (type-of query stage-number x)
+      :name         (column-name query stage-number x)
+      :display-name (display-name query stage-number x)})
+   ;; This usually means [[metadata]] was called on something it shouldn't be, e.g. a query.
+   (fn [e]
+     (throw (ex-info (i18n/tru "Error calculating metadata for {0}: {1}"
+                               (pr-str (lib.dispatch/dispatch-value x))
+                               (ex-message e))
+                     {:query query, :stage-number stage-number, :x x}
+                     e)))))
 
 (mr/def ::metadata-map
   [:map [:lib/type [:and
@@ -309,11 +300,14 @@
   as [[describe-query]] except for native queries, where we don't describe anything."
   [query]
   (when-not (= (:lib/type (lib.util/query-stage query -1)) :mbql.stage/native)
-    (try
-      (describe-query query)
-      (catch #?(:clj Throwable :cljs js/Error) e
-        (log/errorf e "Error calculating display name for query: %s" (ex-message e))
-        nil))))
+    (lib.util/recover
+     (fn [] (describe-query query))
+     (fn [e]
+       ;; Throttled: a bulk caller such as a search reindex can hit this for many failing metric Cards,
+       ;; so don't log every one.
+       (log/throttle (* 10 1000)
+                     (log/errorf "Error calculating display name for query: %s" (ex-message e)))
+       nil))))
 
 (defmulti display-info-method
   "Implementation for [[display-info]]. Implementations that call [[display-name]] should use the `:default` display
@@ -384,14 +378,14 @@
     stage-number :- :int
     x]
    (letfn [(display-info* [x]
-             (try
-               (display-info-method query stage-number x)
-               (catch #?(:clj Throwable :cljs js/Error) e
-                 (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                           (lib.dispatch/dispatch-value x)
-                                           (ex-message e))
-                                 {:query query, :stage-number stage-number, :x x}
-                                 e)))))]
+             (lib.util/recover
+              (fn [] (display-info-method query stage-number x))
+              (fn [e]
+                (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
+                                          (lib.dispatch/dispatch-value x)
+                                          (ex-message e))
+                                {:query query, :stage-number stage-number, :x x}
+                                e)))))]
      #?(:clj
         (display-info* x)
         :cljs
@@ -440,7 +434,7 @@
         :is-breakout            (boolean (:lib/breakout? x-metadata))})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
-     (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
+     (when-let [temporal-unit ((some-fn :lib/temporal-unit :temporal-unit) x-metadata)]
        {:is-temporal-extraction
         (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
              (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
@@ -545,7 +539,7 @@
 
  * `returned-columns` for a Card has the same source and desired aliases you'd see in that Card's `:result-metadata`!!"
   ([query]
-   (returned-columns query (lib.util/query-stage query -1)))
+   (returned-columns query -1 query))
 
   ([query x]
    (returned-columns query -1 x))
@@ -672,7 +666,7 @@
           :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped)}
          ;; if a remap is of a joined column then we should do the remap in the join itself; columns with
          ;; `:lib/source` `:source/joins` need to have a join alias.
-         (select-keys column [:metabase.lib.join/join-alias]))))))
+         (select-keys column [:lib/join-alias]))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
@@ -702,13 +696,15 @@
         id->target-fields (m/index-by :id (lib.metadata/bulk-metadata
                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))
         target-fields (into []
-                            (comp (map (fn [{source-field-id :id
-                                             :keys [fk-target-field-id]
-                                             :as   source}]
-                                         (-> (id->target-fields fk-target-field-id)
-                                             (assoc ::fk-field-id   source-field-id
-                                                    ::fk-field-name (lib.field.util/inherited-column-name source)
-                                                    ::fk-join-alias (:metabase.lib.join/join-alias source)))))
+                            (comp (keep (fn [{source-field-id :id
+                                              :keys [fk-target-field-id]
+                                              :as   source}]
+                                          ;; the target field might not exist
+                                          (when-let [target (id->target-fields fk-target-field-id)]
+                                            (assoc target
+                                                   ::fk-field-id   source-field-id
+                                                   ::fk-field-name (lib.field.util/inherited-column-name source)
+                                                   ::fk-join-alias (:lib/join-alias source)))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
@@ -738,3 +734,26 @@
     (into [] (remove (comp #{:source/joins :source/implicitly-joinable}
                            :lib/source))
           (returned-columns no-fields stage-number))))
+
+(mu/defn primary-source-table :- [:maybe ::lib.schema.metadata/table]
+  "If this query has an MBQL first stage with a `:source-table` ID, return the `:metadata/table` for it.
+
+  Returns nil if the query is native or has a `:source-card`."
+  [query]
+  (some->> query lib.util/source-table-id (lib.metadata/table query)))
+
+(mu/defn primary-source-card :- [:maybe ::lib.schema.metadata/card]
+  "If this query has an MBQL first stage with a `:source-card` ID, return the `:metadata/card` for it.
+
+  Returns nil if the query is native or has a `:source-table`."
+  [query]
+  (some->> query lib.util/source-card-id (lib.metadata/card query)))
+
+(mu/defn primary-source :- [:maybe [:or ::lib.schema.metadata/card ::lib.schema.metadata/table]]
+  "If this query has an MBQL first stage with a `:source-table` or `:source-card`, return the corresponding
+  `:metadata/table` or `:metadata/card`.
+
+  Returns nil if the query is native."
+  [query]
+  (or (primary-source-table query)
+      (primary-source-card  query)))

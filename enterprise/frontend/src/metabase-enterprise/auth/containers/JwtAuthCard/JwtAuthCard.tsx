@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
 import { AuthCard } from "metabase/admin/settings/auth/components/AuthCard";
-import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import type { EnterpriseSettings } from "metabase-types/api";
+import { useAdminSetting } from "metabase/settings";
 
 import { JWT_SCHEMA } from "../../constants";
 
@@ -16,12 +15,13 @@ export function JwtAuthCard() {
     settingDetails,
     isLoading,
   } = useAdminSetting("jwt-configured");
-  const { value: isEnabled } = useAdminSetting("jwt-enabled");
+  const { value: isEnabled, settingDetails: jwtEnabledDetails } =
+    useAdminSetting("jwt-enabled");
+
+  const isEnabledViaEnv = !!jwtEnabledDetails?.is_env_setting;
 
   const handleDeactivate = () => {
-    return updateSettings(
-      JWT_SCHEMA.getDefault() as Partial<EnterpriseSettings>,
-    );
+    return updateSettings(JWT_SCHEMA.getDefault());
   };
 
   const hasFeature = useHasTokenFeature("sso_jwt");
@@ -41,12 +41,15 @@ export function JwtAuthCard() {
       description={t`Allows users to login via a JWT Identity Provider.`}
       isEnabled={!!isEnabled}
       isConfigured={!!isConfigured}
-      onDeactivate={handleDeactivate}
-      onChange={(newValue) =>
-        updateSetting({
-          key: "jwt-enabled",
-          value: newValue,
-        })
+      onDeactivate={isEnabledViaEnv ? undefined : handleDeactivate}
+      onChange={
+        isEnabledViaEnv
+          ? undefined
+          : (newValue) =>
+              updateSetting({
+                key: "jwt-enabled",
+                value: newValue,
+              })
       }
       setting={settingDetails}
     />

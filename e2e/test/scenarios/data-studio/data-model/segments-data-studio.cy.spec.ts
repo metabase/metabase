@@ -13,8 +13,9 @@ describe(
   () => {
     beforeEach(() => {
       H.restore();
+      H.resetSnowplow();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("POST", "/api/segment").as("createSegment");
       cy.intercept("PUT", "/api/segment/*").as("updateSegment");
@@ -98,6 +99,13 @@ describe(
         cy.log("navigate to new segment page");
         SegmentList.getNewSegmentLink().scrollIntoView().click();
 
+        cy.log("verify segment_create_started event was tracked");
+        H.expectUnstructuredSnowplowEvent({
+          event: "segment_create_started",
+          triggered_from: "data_studio_segments",
+          target_id: ORDERS_ID,
+        });
+
         cy.log("fill in segment name");
         SegmentEditor.getNameInput().type("Premium Orders");
 
@@ -118,6 +126,13 @@ describe(
         cy.log("save segment");
         SegmentEditor.getSaveButton().click();
         cy.wait("@createSegment");
+
+        cy.log("verify segment_created event was tracked");
+        H.expectUnstructuredSnowplowEvent({
+          event: "segment_created",
+          triggered_from: "data_studio_segments",
+          result: "success",
+        });
 
         cy.log("verify redirect to edit page and toast");
         H.undoToast().should("contain.text", "Segment created");
@@ -389,7 +404,6 @@ describe(
         cy.log("create segment on Products table");
         H.createSegment({
           name: "Expensive Products",
-          table_id: PRODUCTS_ID,
           definition: {
             type: "query",
             database: SAMPLE_DB_ID,
@@ -426,7 +440,6 @@ describe(
           cy.log("create segment based on segment");
           H.createSegment({
             name: "High Value Recent Orders",
-            table_id: ORDERS_ID,
             definition: {
               type: "query",
               database: SAMPLE_DB_ID,
@@ -460,7 +473,6 @@ describe(
         cy.log("create Segment A");
         H.createSegment({
           name: "Segment A",
-          table_id: ORDERS_ID,
           definition: {
             type: "query",
             database: SAMPLE_DB_ID,
@@ -473,7 +485,6 @@ describe(
           cy.log("create Segment B that depends on A");
           H.createSegment({
             name: "Segment B",
-            table_id: ORDERS_ID,
             definition: {
               type: "query",
               database: SAMPLE_DB_ID,
@@ -724,7 +735,6 @@ function createTestSegment(
   H.createSegment({
     name,
     description,
-    table_id: tableId,
     definition: {
       type: "query",
       database: SAMPLE_DB_ID,

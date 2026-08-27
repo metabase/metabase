@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.core :as cmd]
    [metabase.cmd.dump-to-h2-test :as dump-to-h2-test]
@@ -35,8 +36,8 @@
                                 "select value from setting where setting.key=?;") keyy]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
-  (with-redefs [rotate-encryption-key! #(throw (Exception. "err"))
-                cmd/system-exit! identity]
+  (mt/with-dynamic-fn-redefs [rotate-encryption-key! #(throw (Exception. "err"))
+                              cmd/system-exit!       identity]
     (is (= 1 (cmd/rotate-encryption-key
               "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))
 
@@ -89,7 +90,6 @@
                                                                           :password     "nopassword"
                                                                           :is_active    true
                                                                           :is_superuser false}))]
-
                 (reset! user-id (u/the-id u)))
               (let [secret (first (t2/insert-returning-instances! :model/Secret {:name       "My Secret (plaintext)"
                                                                                  :kind       "password"
@@ -98,13 +98,16 @@
                 (reset! secret-id-unenc (u/the-id secret)))
               (encryption-test/with-secret-key k1
                 (t2/insert! :model/Setting {:key "k1crypted", :value "encrypted with k1"})
+                (mdb.encryption/encrypt-db driver/*driver* data-source nil)
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
+                ;; other encrypted-json columns that must also be re-encrypted on rotation
+                (t2/update! :model/Database 1 {:settings {:database-enable-actions true}})
+                (t2/update! :model/User @user-id {:settings {:locale "en"}})
                 (let [secret (first (t2/insert-returning-instances! :model/Secret {:name       "My Secret (encrypted)"
                                                                                    :kind       "password"
                                                                                    :value      (.getBytes secret-val StandardCharsets/UTF_8)
                                                                                    :creator_id @user-id}))]
                   (reset! secret-id-enc (u/the-id secret))))
-
               (testing "rotating with the same key is a noop"
                 (encryption-test/with-secret-key k1
                   (rotate-encryption-key! k1)
@@ -118,25 +121,28 @@
                     (is (not= "encrypted with k1" (raw-value "k1crypted")))
                     (is (= "encrypted with k1" (t2/select-one-fn :value :model/Setting :key "k1crypted")))
                     (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-enc))))))
-
               (testing "settings-last-updated is updated AND plaintext"
                 (is (not= original-timestamp (raw-value "settings-last-updated")))
                 (is (not (encryption/possibly-encrypted-string? (raw-value "settings-last-updated")))))
-
               (testing "rotating with a new key is recoverable"
                 (encryption-test/with-secret-key k1 (rotate-encryption-key! k2))
                 (testing "with new key"
                   (encryption-test/with-secret-key k2
                     (is (= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
                     (is (= {:db "/tmp/test.db"} (t2/select-one-fn :details :model/Database :id 1)))
+                    (is (= {:database-enable-actions true} (t2/select-one-fn :settings :model/Database :id 1)))
+                    (is (= {:locale "en"} (t2/select-one-fn :settings :model/User :id @user-id)))
                     (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))
                 (testing "but not with old key"
                   (encryption-test/with-secret-key k1
+                    ;; the Setting after-select is lenient: an undecryptable value comes back as-is (the raw ciphertext)
+                    ;; rather than throwing, so the reader degrades gracefully instead of failing on every settings read
                     (is (not= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
-                    (is (not= "{\"db\":\"/tmp/test.db\"}" (t2/select-one-fn :details :model/Database :id 1)))
-                    (is (not (mt/secret-value-equals? secret-val
-                                                      (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))))
-
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database :id 1)))
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/Database :id 1)))
+                    (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :settings :model/User :id @user-id)))
+                    (is (thrown? clojure.lang.ExceptionInfo
+                                 (t2/select-one-fn :value :model/Secret :id @secret-id-unenc))))))
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
                 (encryption-test/with-secret-key k3
                   (let [db (first (t2/insert-returning-instances! :model/Database {:name "k3", :engine :mysql, :details {:db "/tmp/k3.db"}}))]
@@ -151,19 +157,93 @@
                        #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
                        (rotate-encryption-key! k3))))
                 (encryption-test/with-secret-key k3
-                  (is (not= {:db "/tmp/k2.db"} (t2/select-one-fn :details :model/Database :name "k2")))
+                  (is (thrown? clojure.lang.ExceptionInfo (t2/select-one-fn :details :model/Database :name "k2")))
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details :model/Database :name "k3")))))
-
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
                 (t2/update! :model/Database 1 {:details {:db "/tmp/test.db"}})
                 (t2/update! :model/Database {:name "k3"} {:details {:db "/tmp/test.db"}})
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))
-               ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
-               ;; should be decrypted
+                ;; at this point, both the originally encrypted, and the originally unencrypted secret instances
+                ;; should be decrypted
                 (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))
                 (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-enc))))
-
               (testing "short keys fail to rotate"
                 (is (thrown? Throwable (rotate-encryption-key! "short")))))))))))
+
+(defn- set-encryption-check-raw!
+  "Set the raw value of the `encryption-check` sentinel setting, replacing any existing row."
+  [value]
+  (t2/delete! :setting :key "encryption-check")
+  (t2/insert! :setting {:key "encryption-check" :value value}))
+
+(defn- insert-user-with-raw-settings!
+  "Insert a row directly into the `core_user` table (bypassing model transforms) and return its id."
+  [raw-settings]
+  (first (t2/insert-returning-pks! :core_user {:email         (str (mt/random-name) "@nowhere.test")
+                                               :first_name    "No"
+                                               :last_name     "Body"
+                                               :password      "nopassword"
+                                               :password_salt "nosalt"
+                                               :date_joined   :%now
+                                               :is_superuser  false
+                                               :is_active     true
+                                               ;; NOT NULL, and the model hook that fills it is bypassed
+                                               :entity_id     (u/generate-nano-id)
+                                               :settings      raw-settings})))
+
+(defn- insert-channel-with-raw-details!
+  "Insert a row directly into the `channel` table (bypassing model transforms) and return its id."
+  [raw-details]
+  (first (t2/insert-returning-pks! :channel {:name       (mt/random-name)
+                                             :type       "channel/http"
+                                             :details    raw-details
+                                             :active     true
+                                             :created_at :%now
+                                             :updated_at :%now})))
+
+(deftest decrypt-db-undecryptable-values-test
+  (let [k1        "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+        k2        "yHa/6VEQuIItMyd5CNcgV9nXvzZcX6bWmiY0oOh6pLU="
+        k2-hashed (encryption/validate-and-hash-secret-key k2)]
+    (testing "when encryption-check verifies the key, a clearable column under an unknown key is reset to {} instead of aborting"
+      (mt/with-empty-h2-app-db!
+        (encryption-test/with-secret-key k1
+          (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
+          (let [good-id (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}"))
+                bad-id  (insert-user-with-raw-settings! (encryption/encrypt k2-hashed "{\"locale\":\"fr\"}"))]
+            (mdb/decrypt-db :h2 (mdb/data-source))
+            (is (= "{\"locale\":\"en\"}" (t2/select-one-fn :settings :core_user :id good-id)))
+            (is (= "{}" (t2/select-one-fn :settings :core_user :id bad-id)))
+            (is (= "unencrypted" (t2/select-one-fn :value :setting :key "encryption-check")))))))
+    (testing "when encryption-check does not decrypt, decryption aborts before touching any rows"
+      (mt/with-empty-h2-app-db!
+        (let [user-id (encryption-test/with-secret-key k1
+                        (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
+                        (insert-user-with-raw-settings! (encryption/encrypt "{\"locale\":\"en\"}")))
+              raw-settings (t2/select-one-fn :settings :core_user :id user-id)]
+          (encryption-test/with-secret-key k2
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Database was encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY environment contains"
+                 (mdb/decrypt-db :h2 (mdb/data-source)))))
+          (is (= raw-settings (t2/select-one-fn :settings :core_user :id user-id))))))
+    (testing "without an encryption-check sentinel, an undecryptable value still aborts even in a clearable column"
+      (mt/with-empty-h2-app-db!
+        (encryption-test/with-secret-key k1
+          (t2/delete! :setting :key "encryption-check")
+          (insert-user-with-raw-settings! (encryption/encrypt k2-hashed "{\"locale\":\"fr\"}"))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
+               (mdb/decrypt-db :h2 (mdb/data-source)))))))
+    (testing "an undecryptable value in a non-clearable column aborts even when the key is verified"
+      (mt/with-empty-h2-app-db!
+        (encryption-test/with-secret-key k1
+          (set-encryption-check-raw! (encryption/encrypt (str (random-uuid))))
+          (insert-channel-with-raw-details! (encryption/encrypt k2-hashed "{\"url\":\"http://bad\"}"))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
+               (mdb/decrypt-db :h2 (mdb/data-source)))))))))

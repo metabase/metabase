@@ -22,7 +22,9 @@
                 metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
+                metabase.transforms-inspector.js
                 metabase.lib.types.isa
+                metabase.lib-metric.js
                 metabase.parameters.shared
                 metabase.pivot.core
                 metabase.pivot.js
@@ -31,6 +33,7 @@
                 metabase.util.devtools
                 metabase.util.formatting.constants
                 metabase.util.formatting.date
+                metabase.util.markdown.image
                 metabase.util.time
                 metabase.xrays.domain-entities.queries.util]}
 

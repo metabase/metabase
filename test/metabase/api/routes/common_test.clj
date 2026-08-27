@@ -28,17 +28,14 @@
       (is (= api.response/response-forbidden
              (api-key-enforced-handler
               (ring.mock/request :get "/anyurl")))))
-
     (testing "valid apikey, expect 200"
       (is (= {:success true}
              (api-key-enforced-handler
               (request-with-api-key "test-api-key")))))
-
     (testing "invalid apikey, expect 403"
       (is (= api.response/response-forbidden
              (api-key-enforced-handler
               (request-with-api-key "foobar"))))))
-
   (testing "no apikey is set, expect 403"
     (doseq [api-key-value [nil ""]]
       (testing (str "when key is " ({nil "nil" "" "empty"} api-key-value))

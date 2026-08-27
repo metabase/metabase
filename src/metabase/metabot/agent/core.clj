@@ -1,0 +1,779 @@
+(ns metabase.metabot.agent.core
+  "Main agent loop implementation using reducible streaming infrastructure."
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.ai-tracing.core :as ait]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.api.common :as api]
+   [metabase.config.core :as config]
+   [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.agent.links :as links]
+   [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.agent.messages :as messages]
+   [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.capabilities :as capabilities]
+   [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.schema :as metabot.schema]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.self :as self]
+   [metabase.metabot.tools :as tools]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.o11y :refer [with-span]]))
+
+(set! *warn-on-reflection* true)
+
+;;; Debug logging
+;;
+;; When `*debug-log*` is bound to an atom, the agent loop records full LLM
+;; request/response data for every iteration. This is invaluable for debugging
+;; benchmark failures — you can see exactly what the system prompt, message
+;; history, and raw response were for each turn.
+;;
+;; Usage:
+;;   (binding [core/*debug-log* (atom [])]
+;;     (into [] (run-agent-loop opts))
+;;     @core/*debug-log*)  ;; => [{:iteration 0 :request {...} :response [...]} ...]
+;;
+;; Or via the API with `"debug": true` in the request body, which emits the
+;; debug log as a "debug_log" data part in the SSE stream.
+
+(def ^:dynamic *debug-log*
+  "When bound to an atom, collects full LLM request/response data per iteration.
+  Each entry is a map with :iteration, :request, and :response keys.
+  The :request contains :model, :system, :messages (full history), and :tools.
+  The :response contains the collected parts from that iteration."
+  nil)
+
+(defn- collect-text-from-parts
+  "Collect all text content from parts into a single string."
+  [parts]
+  (->> parts
+       (filter #(= :text (:type %)))
+       (map :text)
+       (str/join "")))
+
+(defn- summarize-tool-ios
+  "Summarize tool inputs and outputs from parts."
+  [parts]
+  (let [inputs  (filter #(= :tool-input (:type %)) parts)
+        outputs (filter #(= :tool-output (:type %)) parts)]
+    {:tool-calls   (mapv (fn [p] {:id        (:id p)
+                                  :function  (:function p)
+                                  :arguments (:arguments p)})
+                         inputs)
+     :tool-results (mapv (fn [p] {:id     (:id p)
+                                  :output (let [r (:result p)]
+                                            (or (:output r) r))
+                                  :error  (:error p)})
+                         outputs)}))
+
+(defn- debug-log!
+  "Append a debug entry if *debug-log* is bound."
+  [entry]
+  (when *debug-log*
+    (swap! *debug-log* conj entry)))
+
+;;; Schemas
+
+;;; Message schemas
+;;
+;; Input messages to the agent loop arrive in Chat Completions format (from the
+;; API / frontend history).  `messages.clj` converts them into AISDK parts.
+;;
+;; `:content` can be either a plain string or a sequential of content blocks
+;; (backward-compat with Claude-format messages stored by the old Python AI
+;; service).
+
+(mr/def ::content-block
+  "A content block in a multi-part message (Claude format, backward-compat)."
+  [:map
+   [:type :string]]) ;; "text", "tool_use", "tool_result", etc.
+
+(mr/def ::content
+  "Message content — string or sequential of content blocks."
+  [:or :string [:sequential ::content-block]])
+
+(mr/def ::tool-call
+  "A tool call in an assistant message."
+  [:map
+   [:id :string]
+   [:name :string]
+   [:arguments [:or :string :map]]])
+
+(mr/def ::user-message
+  "A user message: plain text or a sequence of tool_result content blocks."
+  [:map
+   [:role [:= :user]]
+   [:content ::content]])
+
+(mr/def ::assistant-message
+  "An assistant message with optional text and/or tool calls."
+  [:map
+   [:role [:= :assistant]]
+   [:content {:optional true} [:maybe ::content]]
+   [:tool_calls {:optional true} [:maybe [:sequential ::tool-call]]]])
+
+(mr/def ::system-message
+  "A system message."
+  [:map
+   [:role [:= :system]]
+   [:content :string]])
+
+(mr/def ::tool-message
+  "A tool result message, referencing a previous tool call by ID."
+  [:map
+   [:role [:= :tool]]
+   [:tool_call_id :string]
+   [:content [:or :string :map]]])
+
+(mr/def ::message
+  "A single message in the conversation history.
+  Discriminated by :role — each role has its own required/optional fields."
+  [:multi {:dispatch :role}
+   [:user      ::user-message]
+   [:assistant ::assistant-message]
+   [:system    ::system-message]
+   [:tool      ::tool-message]])
+
+(mr/def ::messages
+  "Sequence of messages in the conversation."
+  [:sequential ::message])
+
+(mr/def ::context
+  "Context information for the agent."
+  [:map-of :keyword :any])
+
+(mr/def ::profile-id
+  "Profile identifier keyword."
+  [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content :slackbot :explorations])
+
+(mr/def ::tracking-opts
+  "Options for snowplow and prometheus analytics tracking."
+  [:map
+   [:session-id          {:optional true} [:maybe ms/UUIDString]]
+   [:source              {:optional true} [:maybe :string]]
+   [:tag                 {:optional true} [:maybe :string]]])
+
+;;; Iteration control
+
+(defn- has-tool-calls?
+  "Check if any parts contain tool calls."
+  [parts]
+  (some #(= (:type %) :tool-input) parts))
+
+(defn- successful-tool-output?
+  "Whether a `:tool-output` part represents a successful call.
+  Answer-producing tools attach `:structured-output` when they produce a result (a query, a chart
+  draft, a clarification question), and return just an `:output` error string on validation/exception
+  failures — so its presence is the success signal."
+  [part]
+  (and (= (:type part) :tool-output)
+       (some? (get-in part [:result :structured-output]))))
+
+(defn- terminal-tool-call?
+  "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
+  tool-name strings). This lets a profile end the turn as soon as it produces its answer (e.g. the
+  `:sql` profile after a successful `edit_sql_query`, or `ask_for_sql_clarification`) instead of
+  forcing the model to keep emitting tool calls under `:required-tool-call?`.
+
+  Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
+  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
+  [terminal-tools parts]
+  (boolean
+   (when (seq terminal-tools)
+     (let [success-ids (into #{} (comp (filter successful-tool-output?) (map :id)) parts)]
+       (some (fn [p]
+               (and (= (:type p) :tool-input)
+                    (contains? terminal-tools (:function p))
+                    (contains? success-ids (:id p))))
+             parts)))))
+
+(defn- truncated?
+  "Whether the provider cut this iteration off at its output-token limit. A truncated
+  turn may contain a half-streamed tool call, so it must not continue the loop."
+  [parts]
+  (some #(and (= (:type %) :usage)
+              (= (:finish-reason %) "length"))
+        parts))
+
+(defn- terminal-error-message
+  "Message from a tool failure no retry can fix (a permission denial), or nil if there was none."
+  [parts]
+  (some (fn [part]
+          (when (and (= (:type part) :tool-output)
+                     (get-in part [:result :terminal-error?]))
+            (not-empty (get-in part [:result :output]))))
+        parts))
+
+(defn- should-continue?
+  "Determine if agent should continue iterating."
+  [iteration max-iterations terminal-tools parts]
+  (and (< iteration max-iterations)
+       (has-tool-calls? parts)
+       (not (terminal-tool-call? terminal-tools parts))
+       (not (truncated? parts))))
+
+(defn- finish-reason
+  "Determine why the agent loop stopped."
+  [iteration max-iterations terminal-tools parts]
+  (cond
+    (truncated? parts)                         :length
+    (terminal-tool-call? terminal-tools parts) :terminal-tool
+    (and (>= iteration max-iterations)
+         (has-tool-calls? parts))              :max-iterations
+    :else                                      :stop))
+
+;;; Call LLM
+(defn- part->invert-links-key
+  "Return the key that might contain links that need to be inverted or nil if no such key exists."
+  [part]
+  (cond
+    (and (= (:type part) :text) (string? (:text part)))
+    :text
+    (and (= (:role part) :user) (string? (:content part)))
+    :content))
+
+(defn- invert-links
+  "Apply link inversion to all :text parts in a sequence of AISDK parts.
+  Also inverts :content in user-role parts (which contain resolved URLs from prior requests)."
+  [parts registry-map]
+  (if (empty? registry-map)
+    parts
+    (mapv (fn [part]
+            (let [links-key (part->invert-links-key part)]
+              (cond-> part
+                links-key (-> (update links-key links/invert-links registry-map)
+                              (update links-key links/invert-slack-links registry-map)))))
+          parts)))
+
+(defn- call-llm
+  "Call the LLM and stream processed parts.
+
+  Builds AISDK parts from memory and passes them to the adapter which converts
+  them to its native wire format."
+  [memory context profile tools iteration tracking-opts link-registry-atom]
+  (let [model        (:model profile)
+        system-msg   (messages/build-system-message context profile tools)
+        input-parts  (-> (messages/build-message-history context memory)
+                         (invert-links @link-registry-atom))
+        llm-opts     (cond-> {}
+                       (:required-tool-call? profile) (assoc :tool-choice "required"))]
+    (when *debug-log*
+      (debug-log! {:iteration iteration
+                   :phase     :request
+                   :model     model
+                   :system    (:content system-msg)
+                   :parts     input-parts
+                   :tools     (vec tools)}))
+    (when (ait/capture-active?)
+      (ait/record! {:ai/system      (:content system-msg)
+                    :ai/input-parts input-parts
+                    :ai/tool-count  (count tools)}))
+    (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
+                                         (get-in memory [:state :charts] {})
+                                         link-registry-atom)
+              (self/call-llm model (:content system-msg) input-parts tools tracking-opts llm-opts))))
+
+;;; Memory management
+
+(defn- get-structured-output [result]
+  (or (:structured-output result) (:structured_output result)))
+
+(defn- extract-queries
+  "Extract and store queries from tool outputs."
+  [memory parts]
+  (transduce
+   (comp (filter #(= :tool-output (:type %)))
+         (map #(get-structured-output (:result %)))
+         (filter #(and (:query-id %) (:query %))))
+   (completing
+    (fn [mem {:keys [query-id query]}]
+      (memory/set-query mem query-id query)))
+   memory
+   parts))
+
+(defn- extract-charts
+  "Extract and store charts from tool outputs."
+  [memory parts]
+  (transduce
+   (comp (filter #(= :tool-output (:type %)))
+         (map #(get-structured-output (:result %)))
+         (filter #(and (:chart-id %) (:query-id %))))
+   (completing
+    (fn [mem {:keys [chart-id query-id chart-type query]}]
+      (memory/set-chart mem
+                        chart-id
+                        {:chart_id chart-id
+                         :query_id query-id
+                         :queries [query]
+                         :visualization_settings {:chart_type chart-type}})))
+   memory
+   parts))
+
+(defn- update-memory
+  "Update memory with parts from an iteration."
+  [memory parts]
+  (-> memory
+      (memory/add-step parts)
+      (extract-queries parts)
+      (extract-charts parts)))
+
+;;; Context seeding
+
+(defn- normalize-type [t]
+  (cond (keyword? t) (name t)
+        (string? t)  t
+        :else        (some-> t str)))
+
+(defn- ensure-context-item-id
+  "Ensure a viewing context item has an :id, generating a UUID if missing.
+  The Python ai-service auto-generates UUIDs for context items; we match that behavior."
+  [item]
+  (cond-> item
+    (not (:id item)) (assoc :id (str (random-uuid)))))
+
+(defn- assign-context-ids
+  "Assign IDs to all viewing context items that lack one.
+  Must be called before both seed-state and enrich-context-for-template
+  so they share consistent IDs."
+  [context]
+  (update context :user_is_viewing #(mapv ensure-context-item-id %)))
+
+(defn- extract-query-from-context-item
+  "Extract [query-id query] from viewing context item."
+  [{:keys [id type query source] :as _item}]
+  (let [t (normalize-type type)]
+    (cond
+      (and (#{"adhoc" "native"} t) (map? query) id)
+      [(str id) query]
+
+      (and (= "transform" t)
+           (= "query" (normalize-type (:type source)))
+           (map? (:query source))
+           id)
+      [(str id) (:query source)])))
+
+(defn- seed-state
+  "Seed state with queries from viewing context."
+  [state context]
+  (reduce (fn [s item]
+            (if-let [[qid q] (extract-query-from-context-item item)]
+              (assoc-in s [:queries qid] q)
+              s))
+          state
+          (:user_is_viewing context)))
+
+(defn- extract-chart-configs-from-context-item
+  "Extract chart configs from a viewing context item.
+  Returns a sequence of [chart-config-id chart-config] pairs.
+
+  Chart config IDs are constructed as '{context-item-id}' for single configs,
+  or '{context-item-id}-{index}' for multiple configs on the same item."
+  [{:keys [id chart_configs] :as _item}]
+  (when (and id (seq chart_configs))
+    (if (= 1 (count chart_configs))
+      [[(str id) (first chart_configs)]]
+      (map-indexed
+       (fn [idx config]
+         [(str id "-" idx) config])
+       chart_configs))))
+
+(defn- seed-chart-configs
+  "Seed state with chart configs from viewing context.
+  Chart configs contain pre-materialized series data from the frontend."
+  [state context]
+  (reduce (fn [s item]
+            (if-let [configs (extract-chart-configs-from-context-item item)]
+              (reduce (fn [s' [config-id config]]
+                        (assoc-in s' [:chart-configs config-id] config))
+                      s
+                      configs)
+              s))
+          state
+          (:user_is_viewing context)))
+
+(defn chart-config->chart
+  "Create chart structure from chart-config"
+  [id {:keys [query timeline_events] :as chart-config}]
+  {:chart_id id
+   :queries [query]
+   :timeline_events (or timeline_events [])
+   ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
+   ;;                           what is the reason behind that if any and either add it or drop.
+   :visualization_settings nil
+   :chart_config chart-config})
+
+(defn seed-charts
+  "Reduce the chart-configs from context into charts."
+  [state context]
+  (reduce
+   ;; This logic is flawed for items with more than 1 chart config. It expects at most 1 chart config per viewing item.
+   ;; TODO (lbrdnk 2026-03-24): Figure out what is reasonable solution here. (ie no overwriting single config)
+   (fn [acc {:keys [id chart_configs] :as _item}]
+     ;; TODO (lbrdnk 2026-03-24): This is developed against adhoc queries. Ensure other cases work too!
+     (if-not (seq chart_configs)
+       acc
+       (update acc :charts merge
+               (into {}
+                     (map (comp
+                           (juxt :chart_id identity)
+                           (partial chart-config->chart id)))
+                     chart_configs))))
+   state
+   (:user_is_viewing context)))
+
+;;; Main loop
+
+(def ^:private profile-id->required-permission
+  "Map from profile-id to the metabot permission that must be `:yes` for a user
+  to use that profile. Profiles not listed here have no profile-level permission gate."
+  {:sql                       :permission/metabot-sql-generation
+   :nlq                       :permission/metabot-nlq
+   :transforms_codegen        :permission/metabot-sql-generation
+   :document-generate-content :permission/metabot-other-tools
+   :explorations              :permission/metabot-nlq})
+
+(defn- check-metabot-access!
+  "Throw a 403 if the user's metabot permissions do not grant access to the
+  requested profile. The base + profile-specific gating policy lives in
+  [[scope/missing-permission]], shared with [[metabase.metabot.self]]."
+  [profile-id perms]
+  (when-let [missing (scope/missing-permission perms (profile-id->required-permission profile-id))]
+    (api/check false
+               [403 (if (= missing :permission/metabot)
+                      "You do not have permission to use the AI assistant."
+                      (format "You do not have permission to use the %s assistant." (name profile-id)))])))
+
+(defn- init-agent
+  "Initialize agent state."
+  [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
+    external-memory-atom :memory-atom}]
+  (let [context      (assign-context-ids context)
+        ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
+        ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
+        profile      (or (profiles/get-profile profile-id)
+                         (throw (ex-info "Unknown profile" {:profile-id profile-id})))
+        capabilities (get context :capabilities #{})
+        base-tools   (profiles/profile->tools profile capabilities)
+        seeded       (-> (or state {})
+                         (seed-state context)
+                         (seed-chart-configs context)
+                         (seed-charts context))
+        memory       (assoc (memory/initialize messages seeded context)
+                            :conversation-id conversation-id)
+        memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
+        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
+    (log/info "Starting agent" {:profile  profile-id
+                                :tools    (count tools)
+                                :max-iter (:max-iterations profile)
+                                :msgs     (count messages)})
+    {:profile       profile
+     :tools         tools
+     :context       context
+     :memory-atom   memory-atom
+     :tracking-opts (merge {:profile-id          profile-id
+                            :request-id          (str (random-uuid))
+                            :source              "metabot_agent"
+                            :tag                 "agent"
+                            :required-permission (or (profile-id->required-permission profile-id)
+                                                     :permission/metabot)}
+                           tracking-opts)}))
+
+(defn- initial-loop-state
+  "Create initial loop state from agent config and reduction context."
+  [agent rf init usage-atom]
+  {:agent      agent
+   :rf         rf
+   :result     init
+   :iteration  1
+   :status     :continue
+   :usage-atom usage-atom})
+
+(defn- final-state-part [memory]
+  {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
+
+(defn- terminal-error-text-part
+  "Tool results are not rendered in the conversation, so a terminal error needs assistant text."
+  [message]
+  {:type :text, :id (str (random-uuid)), :text message})
+
+(defn- error-part [^Exception e]
+  {:type :error, :error {:message (.getMessage e), :type (str (type e)), :data (ex-data e)}})
+
+(defn- accumulate-usage-xf
+  "Transducer that merges each `:usage` part into the cumulative usage atom
+  (keyed by provider-and-model) and replaces the part's `:usage` with the running total.
+  Also sets `:model` on the part to `provider-and-model` so downstream consumers
+  (e.g. `extract-usage`) key usage by the canonical provider/model string rather
+  than the raw model name returned by the API.
+
+  The `metabase/` routing prefix is stripped so usage keys reflect the actual
+  provider/model (e.g. `openrouter/anthropic/claude-haiku-4.5`) regardless of
+  whether the request was routed through the AI proxy.
+  Non-usage parts pass through unchanged."
+  [usage-atom provider-and-model]
+  (let [model (or (some-> provider-and-model llm.provider/strip-managed-prefix)
+                  "unknown")]
+    (map (fn [part]
+           (if (= (:type part) :usage)
+             (assoc part
+                    :model model
+                    :usage (-> (swap! usage-atom update model (partial merge-with +) (:usage part))
+                               (get model)))
+             part)))))
+
+(defn- loop-step
+  "Execute one iteration of the agent loop. Returns next loop state.
+
+  Streams parts to the consumer as they arrive while simultaneously accumulating
+  them for memory updates and control flow decisions."
+  [{:keys [agent rf result iteration usage-atom] :as loop-state}]
+  (with-span :debug {:name      :metabot.agent/loop-step
+                     :iteration iteration}
+    (let [{:keys [profile tools context memory-atom tracking-opts]} agent
+          max-iter           (:max-iterations profile 15)
+          terminal-tools     (set (:terminal-tools profile))
+          tracking-opts      (assoc tracking-opts :iteration iteration)
+          memory             @memory-atom
+          parts-atom         (atom [])
+          link-registry-atom (atom (get-in memory [:state :link-registry] {}))
+          xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
+                                   (u/tee-xf parts-atom))
+          ;; We use `reduce` instead of `transduce` because rf is the outer reducing
+          ;; function (e.g. parts->aisdk-sse-xf wrapping streaming-writer-rf) whose completion
+          ;; arity emits a finish message — that must only fire once, at the end of the
+          ;; entire agent loop, not after every iteration.
+          ;; `call-llm` runs inside the eval span so the request attrs it records attach here.
+          result'            (ait/with-llm-call {:ai/iteration iteration
+                                                 :ai/model     (:model profile)}
+                               (let [llm-call       (call-llm memory context profile tools iteration
+                                                              tracking-opts link-registry-atom)
+                                     reduced-result (reduce (xf rf) result llm-call)]
+                                 (when (ait/capture-active?)
+                                   (ait/record! {:ai/output-text (collect-text-from-parts @parts-atom)
+                                                 :ai/tool-io     (summarize-tool-ios @parts-atom)
+                                                 ;; preserve data parts (e.g. generated_entity) emitted this iteration
+                                                 :ai/data-parts  (filterv #(= :data (:type %)) @parts-atom)}))
+                                 reduced-result))
+          parts              @parts-atom]
+      ;; Sync link registry back to memory after streaming completes
+      (swap! memory-atom memory/set-link-registry @link-registry-atom)
+      ;; Capture response for debug log
+      (when *debug-log*
+        (debug-log! {:iteration iteration
+                     :phase     :response
+                     :text      (collect-text-from-parts parts)
+                     :tools     (summarize-tool-ios parts)
+                     :all-parts parts}))
+      (log/debug "Iteration" {:n iteration :parts-count (count parts)})
+      (if (empty? parts)
+        ;; LLM returned nothing this iteration — a natural stop, surfaced for the turn span.
+        (assoc loop-state :status :done :finish-reason :empty-response
+               :result (rf result (final-state-part @memory-atom)))
+        (do
+          (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
+          (swap! memory-atom update-memory parts)
+          ;; these profiles cannot answer in text, so a denial would otherwise loop to max-iterations
+          (let [terminal-error (when (:required-tool-call? profile)
+                                 (terminal-error-message parts))]
+            (cond
+              (reduced? result')
+              ;; consumer signalled early termination (e.g. client disconnect / cancellation)
+              (assoc loop-state :status :reduced :finish-reason :reduced :result @result')
+
+              terminal-error
+              (let [result'' (rf result' (terminal-error-text-part terminal-error))]
+                (if (reduced? result'')
+                  (assoc loop-state :status :reduced :finish-reason :reduced :result @result'')
+                  (do (log/info "Agent loop complete" {:iterations iteration :reason :terminal-error})
+                      (assoc loop-state
+                             :status :done
+                             :finish-reason :terminal-error
+                             :result (rf result'' (final-state-part @memory-atom))))))
+
+              (should-continue? iteration max-iter terminal-tools parts)
+              (assoc loop-state :result result' :iteration (inc iteration))
+
+              :else
+              (let [reason (finish-reason iteration max-iter terminal-tools parts)]
+                (if (= reason :length)
+                  (log/warn "Agent loop complete" {:iterations iteration :reason reason})
+                  (log/info "Agent loop complete" {:iterations iteration :reason reason}))
+                (assoc loop-state
+                       :status :done
+                       ;; surfaced so run-agent-loop can record it on the turn span
+                       :finish-reason reason
+                       :result (rf result' (final-state-part @memory-atom)))))))))))
+
+;;; Public API
+
+(def ^:private debug-log-file
+  "File path for debug log output. Only written in dev mode."
+  "metabot-debug.json")
+
+(defn- write-debug-log-file!
+  "Write debug log to file in dev mode. Overwrites any existing file."
+  [debug-log]
+  (when config/is-dev?
+    (try
+      (with-open [w (io/writer debug-log-file)]
+        (.write w (json/encode debug-log {:pretty true})))
+      (log/debug "Wrote debug log to" debug-log-file)
+      (catch Exception e
+        (log/warnf "Failed to write debug log file: %s" (ex-message e))))))
+
+(defn- debug-log-part
+  "Create a data part containing the complete debug log.
+  Emitted at the end of the stream when debug mode is active.
+  Also writes to file in dev mode."
+  [debug-log]
+  (write-debug-log-file! debug-log)
+  {:type      :data
+   :data-type "debug_log"
+   :version   1
+   :data      debug-log})
+
+(defn- eval-session-part
+  "Create a data part carrying just the eval session id. Emitted at the end of the stream when
+  `MB_AI_EVAL_CAPTURE` is enabled, so the benchmark/eval harness can locate the per-session
+  `<session-id>.jsonl` trace file written by `metabase.ai-tracing.log`."
+  [session-id]
+  {:type      :data
+   :data-type "eval_session"
+   :version   1
+   :data      {:session-id session-id}})
+
+(mu/defn run-agent-loop
+  "Run agent loop, returning a reducible of parts.
+
+  When `:debug?` is true, binds `*debug-log*` and emits a `debug_log` data part
+  at the end of the stream with the complete LLM request/response data for every
+  iteration. This is useful for debugging benchmark failures.
+
+  Usage:
+    (into [] (run-agent-loop opts))
+    (transduce xf rf (run-agent-loop opts))
+    (into [] (run-agent-loop (assoc opts :debug? true)))  ;; with debug log"
+  [opts :- [:map
+            [:messages ::messages]
+            [:profile-id ::profile-id]
+            [:metabot-id {:optional true} [:maybe :string]]
+            [:conversation-id {:optional true} [:maybe :string]]
+            [:state {:optional true} [:maybe ::metabot.schema/state]]
+            [:context {:optional true} [:maybe ::context]]
+            [:tracking-opts {:optional true} [:maybe ::tracking-opts]]
+            ;; eval-only: when supplied (e.g. by the benchmark harness), names the per-session
+            ;; trace file so the caller can read it back without parsing the stream. Length + charset
+            ;; are enforced here (rather than only deep in `ait/checked-session-id`) so a bad id 400s
+            ;; at the boundary instead of surfacing as a generic agent error. `ait/max-session-id-length`
+            ;; and `ait/safe-session-id-re` are the single source of truth for the cap and the charset.
+            [:eval-session-id {:optional true}
+             [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
+            [:debug? {:optional true} [:maybe :boolean]]
+            [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]]]
+  (let [opts               (m/update-existing-in opts [:context :capabilities]
+                                                 capabilities/enforce-permissions)
+        profile-id         (:profile-id opts)
+        debug?             (:debug? opts)
+        labels             {:profile-id (name profile-id)}
+        perms              (or scope/*current-user-metabot-permissions*
+                               (if api/*is-superuser?*
+                                 scope/all-yes-permissions
+                                 (scope/resolve-user-permissions api/*current-user-id*)))
+        scopes             (if api/*is-superuser?*
+                             api-scope/unrestricted
+                             (scope/user-metabot-perms->scopes perms))]
+    (check-metabot-access! profile-id perms)
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (with-span :info {:name       :metabot.agent/run-agent-loop
+                          :profile-id profile-id
+                          :msg-count  (count (:messages opts))}
+          (analytics/inc! :metabase-metabot/agent-requests labels)
+          (let [start-ms (u/start-timer)]
+            (binding [*debug-log*                              (when debug? (atom []))
+                      scope/*current-user-scope*               scopes
+                      scope/*current-user-metabot-permissions* perms
+                      scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
+                      scope/*current-loadable-skill-ids*       (atom #{})
+                      metabot.perms/*cache*                    (atom {})]
+              (try
+                ;; `with-eval-session` establishes the eval capture (gated by MB_AI_EVAL_CAPTURE,
+                ;; inherited when an in-process `capture-reducible` already bound one). Spans stream
+                ;; to the per-session JSONL file as they finish.
+                (ait/with-eval-session (:eval-session-id opts)
+                  (let [turn-result
+                        (ait/with-agent-turn {:ai/profile-id (name profile-id)
+                                              :ai/msg-count  (count (:messages opts))
+                                              ;; the user's latest question — trace-level input for evals
+                                              :ai/user-input (some->> (:messages opts)
+                                                                      (filter #(= "user" (some-> % :role name)))
+                                                                      last :content)
+                                              ;; full request — makes the trace a self-contained record
+                                              :ai/messages   (:messages opts)
+                                              :ai/context    (:context opts)
+                                              :ai/state      (:state opts)}
+                          (let [agent      (init-agent opts)
+                                usage-atom (atom {})
+                                {result        :result
+                                 iteration     :iteration
+                                 finish-reason :finish-reason} (->> (initial-loop-state agent rf init usage-atom)
+                                                                    (iterate loop-step)
+                                                                    (drop-while #(= :continue (:status %)))
+                                                                    first)]
+                            (analytics/observe! :metabase-metabot/agent-iterations labels iteration)
+                            ;; Materialized turn-level outputs for evals: token usage, why the loop
+                            ;; stopped, and the final agent state (link registry / generated entities).
+                            (when (ait/capture-active?)
+                              (ait/record! {:ai/finish-reason finish-reason
+                                            :ai/usage         @usage-atom
+                                            :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
+                            ;; A :reduced stop (client disconnect / cancellation) has already terminated
+                            ;; the reducing fn — stepping it again would violate the transducer contract.
+                            ;; Append trailing parts only on a normal finish: the debug log, the
+                            ;; loop's finish reason, and the eval-session pointer that lets the
+                            ;; harness locate the per-session `<session-id>.jsonl` (it reads that
+                            ;; file, not the stream, so a skipped pointer on disconnect costs
+                            ;; nothing). Gate the pointer on a non-nil `*session-id*` too: the
+                            ;; in-process `capture-reducible`/`capturing` path is capture-active but
+                            ;; deliberately file-less (session id nil, read `:trace`), so emitting a
+                            ;; pointer there would name a `<nil>.jsonl` that never exists.
+                            (if (= :reduced finish-reason)
+                              result
+                              (-> result
+                                  (cond->
+                                   (and debug? (seq @*debug-log*))            (rf (debug-log-part @*debug-log*))
+                                   (and (ait/capture-active?) ait/*session-id*) (rf (eval-session-part ait/*session-id*)))
+                                  (rf {:type :finish :finish-reason finish-reason})))))]
+                    turn-result))
+                (catch Exception e
+                  (analytics/inc! :metabase-metabot/agent-errors labels)
+                  (let [{:keys [api-error status provider]} (ex-data e)
+                        msg (ex-message e)]
+                    (cond
+                      (and api-error status)
+                      (log/errorf "Agent loop API error: %s status=%s provider=%s"
+                                  msg status provider)
+
+                      api-error
+                      (log/errorf "Agent loop API error: %s provider=%s" msg provider)
+
+                      ;; ex-message can be nil/blank for exceptions thrown without a message
+                      ;; (e.g. (NullPointerException.)) — skip the colon when there's nothing to say.
+                      (str/blank? msg)
+                      (log/error "Agent loop error")
+
+                      :else
+                      (log/errorf "Agent loop error: %s" msg)))
+                  (rf init (error-part e)))
+                (finally
+                  (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))

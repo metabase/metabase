@@ -9,8 +9,8 @@
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.event :as analytics.event]
    [metabase.analytics.settings :as analytics.settings]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
@@ -133,13 +133,12 @@
    :sso_configured                       (setting/get :google-auth-enabled)
    :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
-   :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
+   :enable_embedding                     (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
    :enable_embedding_simple              (setting/get :enable-embedding-simple)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
    :enable_embedding_static              (setting/get :enable-embedding-static)
    :embedding_app_origin_set             (boolean
-                                          #_{:clj-kondo/ignore [:deprecated-var]}
                                           (setting/get :embedding-app-origin))
    ;; We no longer add "localhost:*" as a default origin as of Metabase 56, as it is always allowed,
    ;; but we still filter it out in stats for compatibility with migrated instances.
@@ -531,7 +530,7 @@
   (try
     (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
     (catch Throwable e
-      (log/error e "Sending usage stats FAILED"))))
+      (log/errorf "Sending usage stats FAILED: %s" (ex-message e)))))
 
 (defn- in-docker?
   "Is the current Metabase process running in a Docker container?
@@ -650,7 +649,7 @@
   [executions]
   (mapv (fn [qe-group]
           {:group (str qe-group) :value (get executions qe-group)})
-        [:interactive_embed :internal :public_link :sdk_embed :static_embed]))
+        [:interactive_embed :internal :public_link :sdk_embed :simple_embed :static_embed]))
 
 (mu/defn- snowplow-grouped-metrics
   :- [:sequential
@@ -673,17 +672,13 @@
      :values (mapv (fn [[k v]] {:group k :value v}) eid-translations-24h)
      :tags ["embedding"]}]))
 
-(defn- ee-transform-metrics'
-  "OSS fallback for transform metrics. Returns zeros since transforms are an enterprise feature."
-  []
-  {:transforms               0
-   :transform_runs_last_24h  0})
-
-(defenterprise ee-transform-metrics
+(defn- transform-metrics
   "Returns transform usage metrics for the Snowplow stats ping."
-  metabase-enterprise.analytics.stats
   []
-  (ee-transform-metrics'))
+  (let [one-day-ago (->one-day-ago)]
+    {:transforms               (t2/count :model/Transform)
+     :transform_runs_last_24h  (t2/count :model/TransformRun
+                                         :start_time [:>= one-day-ago])}))
 
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
@@ -705,7 +700,7 @@
       :scim_users_last_24h             (t2/count :model/User :sso_source :scim
                                                  :is_active true
                                                  :date_joined [:>= one-day-ago])}
-     (ee-transform-metrics))))
+     (transform-metrics))))
 
 (mu/defn- snowplow-metrics
   [stats metric-info :- [:map
@@ -799,7 +794,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :sso-slack :scim :sandboxes :email-allow-list :semantic-search]]
+  (let [features [:sso-jwt :sso-saml :scim :multi-factor-auth :sandboxes :email-allow-list :semantic-search]]
     (map
      (fn [feature]
        {:name      feature
@@ -853,6 +848,11 @@
    {:name      :whitelabel
     :available (premium-features/enable-whitelabeling?)
     :enabled   (whitelabeling-in-use?)}
+   {:name      :custom-viz
+    :available (premium-features/enable-custom-viz?)
+    :enabled   (and config/ee-available?
+                    (premium-features/enable-custom-viz?)
+                    (t2/exists? :model/CustomVizPlugin))}
    {:name      :csv-upload
     :available (csv-upload-available?)
     :enabled   (t2/exists? :model/Database :uploads_enabled true)}
@@ -884,7 +884,7 @@
                  false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
-    :enabled   (some? (get env/env :mb-config-file-path))}
+    :enabled   (not (str/blank? (get env/env :mb-config-file-path)))}
    {:name      :content-translation
     :available (premium-features/enable-content-translation?)
     :enabled   (premium-features/enable-content-translation?)}
@@ -909,18 +909,6 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
-   {:name      :metabot-v3
-    :available (premium-features/enable-metabot-v3?)
-    :enabled   (premium-features/enable-metabot-v3?)}
-   {:name      :ai-entity-analysis
-    :available (premium-features/enable-ai-entity-analysis?)
-    :enabled   (premium-features/enable-ai-entity-analysis?)}
-   {:name      :ai-sql-fixer
-    :available (premium-features/enable-ai-sql-fixer?)
-    :enabled   (premium-features/enable-ai-sql-fixer?)}
-   {:name      :ai-sql-generation
-    :available (premium-features/enable-ai-sql-generation?)
-    :enabled   (premium-features/enable-ai-sql-generation?)}
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}
@@ -938,21 +926,27 @@
    {:name      :table-data-editing
     :available (premium-features/table-data-editing?)
     :enabled   (premium-features/table-data-editing?)}
-   {:name      :transforms
-    :available (premium-features/enable-transforms?)
-    :enabled   (premium-features/enable-transforms?)}
+   {:name      :transforms-basic
+    :available (premium-features/enable-basic-transforms?)
+    :enabled   (premium-features/enable-basic-transforms?)}
    {:name      :transforms-python
     :available (premium-features/enable-python-transforms?)
     :enabled   (premium-features/enable-python-transforms?)}
    {:name      :dependencies
     :available (premium-features/enable-dependencies?)
     :enabled   (premium-features/enable-dependencies?)}
+   {:name      :schema-viewer
+    :available (premium-features/enable-schema-viewer?)
+    :enabled   (premium-features/enable-schema-viewer?)}
    {:name      :support-users
     :available (premium-features/enable-support-users?)
     :enabled   (premium-features/enable-support-users?)}
-   {:name      :workspaces
-    :available (premium-features/enable-workspaces?)
-    :enabled   (premium-features/enable-workspaces?)}])
+   {:name      :writable-connection
+    :available (premium-features/enable-writable-connection?)
+    :enabled   (premium-features/enable-writable-connection?)}
+   {:name      :ai-controls
+    :available (premium-features/enable-ai-controls?)
+    :enabled   (premium-features/enable-ai-controls?)}])
 
 (defn- snowplow-features
   []
@@ -1056,5 +1050,5 @@
               (str "Missing required keys in snowplow-data. got:" (sort (keys snowplow-data))))
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
-      (snowplow/track-event! :snowplow/instance_stats snowplow-data)
+      (analytics.event/track-event! :snowplow/instance_stats snowplow-data)
       (stats-post-cleanup))))

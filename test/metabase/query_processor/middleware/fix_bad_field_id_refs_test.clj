@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.fix-bad-field-id-refs-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.fix-bad-field-id-refs-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -6,8 +7,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.fix-bad-field-id-refs :as fix-bad-field-id-refs]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -271,6 +273,74 @@
                                &Q2.birth-date
                                &Q2.*count/BigInteger]
                 :limit        3}))))))
+
+;; Regression test for bug #70232.
+;;
+;; This situation arises when stage 0 has no :source-table — either because the query is
+;; card-sourced (:source-card instead of :source-table) or because sandboxing middleware has
+;; substituted the source with a native subquery at runtime. In both cases fix-bad-field-id-refs
+;; would previously strip :lib/expression-name when rewriting a plain field-ref expression.
+(deftest ^:parallel bug-70232-card-sourced-plain-field-ref-expression-test
+  (testing "fix-bad-field-id-refs should preserve :lib/expression-name when rewriting a plain field-ref expression (#70232)"
+    (let [mp (lib.tu/mock-metadata-provider
+              {:database {:id 1, :engine :h2}
+               :tables   [{:id 10, :db-id 1, :name "MY_TABLE", :schema "PUBLIC"}]
+               :fields   [{:id 100, :table-id 10, :name "DATE_COL",  :base-type :type/DateTime}
+                          {:id 101, :table-id 10, :name "VALUE_COL", :base-type :type/Text}]})
+          legacy-query {:database 1
+                        :type     :query
+                        :query    {:source-query {:native "SELECT DATE_COL, VALUE_COL FROM MY_TABLE"}
+                                   :expressions  {"My Date" [:field 100 {:base-type "type/DateTime"}]}
+                                   :breakout     [[:expression "My Date" {:base-type "type/DateTime"}]
+                                                  [:field 101 {:base-type "type/Text"}]]
+                                   :aggregation  [[:cum-count]]}}
+          mbql5         (lib/query mp legacy-query)
+          mbql5-with-meta (assoc-in mbql5 [:stages 0 :lib/stage-metadata]
+                                    {:lib/type :metadata/results
+                                     :columns  [{:lib/type  :metadata/column
+                                                 :name      "DATE_COL"
+                                                 :base-type :type/DateTime
+                                                 :id        100
+                                                 :table-id  10}
+                                                {:lib/type  :metadata/column
+                                                 :name      "VALUE_COL"
+                                                 :base-type :type/Text
+                                                 :id        101
+                                                 :table-id  10}]})
+          result (fix-bad-field-id-refs/fix-bad-field-id-refs mbql5-with-meta)]
+      (testing "expression definition must retain :lib/expression-name after fix-bad-field-id-refs"
+        (is (=? {:stages [{} {:expressions [[:field {:lib/expression-name "My Date"} "DATE_COL"]]}]}
+                result)))
+      (testing "->legacy-MBQL :expressions must have string keys, not nil"
+        (let [mbql4 (lib/->legacy-MBQL result)
+              exprs (get-in mbql4 [:query :expressions])]
+          (is (every? string? (keys exprs))
+              (str "Assert failed: :expressions should always use string keys, got: " (pr-str exprs))))))))
+
+(deftest ^:parallel preserve-remapping-keys-when-fixing-field-id-ref-test
+  (testing "rewriting bad ID refs preserves the remapping dimension keys added by add-remaps (#78187)"
+    ;; a legacy card-source query with ID refs is the same shape sandboxing produces: the stage has no
+    ;; :source-table, so both the remapped-from and remapped-to refs hit the rewrite branch here
+    (let [mp           (-> meta/metadata-provider
+                           (lib.tu/metadata-provider-with-cards-for-queries
+                            [(lib/query meta/metadata-provider (meta/table-metadata :venues))])
+                           (lib.tu/remap-metadata-provider
+                            (meta/field-metadata :venues :category-id)
+                            (meta/field-metadata :categories :name)))
+          query        (lib/query mp {:database (meta/id)
+                                      :type     :query
+                                      :query    {:source-table "card__1"
+                                                 :fields       [[:field (meta/id :venues :category-id) nil]]}})
+          dimension-id (get-in (lib.metadata/field mp (meta/id :venues :category-id))
+                               [:lib/external-remap :id])]
+      (is (=? {:stages [{:fields [[:field {::qp.add-remaps/original-field-dimension-id dimension-id}
+                                   "CATEGORY_ID"]
+                                  [:field {:source-field                          (meta/id :venues :category-id)
+                                           ::qp.add-remaps/new-field-dimension-id dimension-id}
+                                   (meta/id :categories :name)]]}]}
+              (-> query
+                  qp.add-remaps/add-remapped-columns
+                  fix-bad-field-id-refs/fix-bad-field-id-refs))))))
 
 (deftest ^:parallel resolve-join-conditions-test
   (testing "Resolve fields in join :conditions"

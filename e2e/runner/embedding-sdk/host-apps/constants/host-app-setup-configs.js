@@ -7,7 +7,7 @@ const BASE_ENV = {
 };
 
 const BASE_SETUP_CONFIG = {
-  "app-run-command": "yarn start",
+  "app-run-command": "bun start",
   "app-down-command": `kill -9 $(lsof -ti:"${BASE_ENV.CLIENT_PORT}");`,
   env: BASE_ENV,
   cypressEnv: {
@@ -23,6 +23,10 @@ export const HOST_APP_SETUP_CONFIGS = {
       ...BASE_ENV,
       VITE_MB_PORT: BASE_ENV.MB_PORT,
     },
+  },
+  "vite-6-data-app-host-app-e2e": {
+    ...BASE_SETUP_CONFIG,
+    appName: "vite-6-data-app-host-app",
   },
   "next-15-app-router-host-app-e2e": {
     ...BASE_SETUP_CONFIG,

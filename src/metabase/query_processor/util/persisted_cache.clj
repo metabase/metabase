@@ -27,7 +27,7 @@
           (model-persistence/metadata->definition (:result-metadata card)
                                                   (:table-name persisted-info)))))
 
-(mu/defn persisted-info-native-query
+(mu/defn persisted-info-native-query :- string?
   "Returns a native query that selects from the persisted cached table from `persisted-info`. Does not check if
   persistence is appropriate. Use [[can-substitute?]] for that check."
   [database-id                              :- ::lib.schema.id/database

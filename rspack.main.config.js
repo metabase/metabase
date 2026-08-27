@@ -1,12 +1,18 @@
 // @ts-check
 /* eslint-env node */
-/* eslint-disable import/no-commonjs */
+
 const fs = require("fs");
 
 const rspack = require("@rspack/core");
-const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
+const { ReactRefreshRspackPlugin } = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
 
 const {
   IS_DEV_MODE,
@@ -18,28 +24,29 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const {
+  CssVarsDeclarationPlugin,
+} = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
+const {
+  RESOLVE_ALIASES,
+} = require("./frontend/build/shared/rspack/resolve-aliases");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
-const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
-const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
-const IMAGES_PATH = __dirname + "/resources/frontend_client/app/img";
-const DOCS_PATH = __dirname + "/docs";
-const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
-const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
-const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_PACKAGE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-package";
-const SDK_BUNDLE_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-bundle";
-const SDK_SHARED_SRC_PATH = __dirname + "/frontend/src/embedding-sdk-shared";
-const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
-const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
-const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
-const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
-const E2E_PATH = __dirname + "/e2e";
+
+// Data apps are an enterprise plugin (the iframe entry + its template live in the
+// enterprise tree), so their build entries and HTML are only produced in EE builds.
+const isEEBuild = process.env.MB_EDITION === "ee";
+
+// For sharing the embedding snippets in the docs with the embedding
+// onboarding flow in the app to keep the snippets always in sync.
+const SDK_DOCS_SNIPPETS_PATH = __dirname + "/docs/embedding/sdk/snippets";
 
 const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
 const isDevMode = IS_DEV_MODE;
@@ -72,7 +79,13 @@ const SWC_LOADER = {
         tsx: true,
       },
       experimental: {
-        plugins: [["@swc/plugin-emotion", { sourceMap: isDevMode }]],
+        plugins: [
+          ["@swc/plugin-emotion", { sourceMap: isDevMode }],
+          // instrumentation slows builds significantly and should only run in the nightly coverage CI job.
+          ...(process.env.INSTRUMENT_COVERAGE === "true"
+            ? [["swc-plugin-coverage-instrument", {}]]
+            : []),
+        ],
       },
     },
 
@@ -85,27 +98,74 @@ const SWC_LOADER = {
 };
 
 class OnScriptError {
-  apply(compiler) {
-    compiler.hooks.compilation.tap("OnScriptError", (compilation) => {
-      HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
-        "OnScriptError",
-        (data, cb) => {
-          // Manipulate the content
-          data.assetTags.scripts.forEach((script) => {
-            script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
-          });
-          // Tell webpack to move on
-          cb(null, data);
-        },
-      );
-    });
+  apply(/** @type {import("webpack").Compiler} */ compiler) {
+    compiler.hooks.compilation.tap(
+      "OnScriptError",
+      (/** @type {import("webpack").Compilation} */ compilation) => {
+        HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
+          "OnScriptError",
+          (data, cb) => {
+            // Manipulate the content
+            data.assetTags.scripts.forEach((script) => {
+              script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
+            });
+            // Tell webpack to move on
+            cb(null, data);
+          },
+        );
+      },
+    );
   }
 }
 
-const resolveEnterprisePathOrNoop = (path) =>
-  process.env.MB_EDITION === "ee"
-    ? ENTERPRISE_SRC_PATH + path
-    : SRC_PATH + "/lib/noop";
+const PRELOAD_MARKER = "<!-- asset-preloads -->";
+
+/**
+ * The bundle tags are injected at the end of <head>, after ~124 kB of inline JSON,
+ * so the browser only discovers them once nearly the whole document has arrived.
+ * This emits `rel=preload` copies near the top of <head> instead, where they land in
+ * the first flight of response bytes. Templates without the marker are left alone.
+ */
+class PreloadAssetTags {
+  apply(/** @type {import("webpack").Compiler} */ compiler) {
+    compiler.hooks.compilation.tap(
+      "PreloadAssetTags",
+      (/** @type {import("webpack").Compilation} */ compilation) => {
+        HtmlWebpackPlugin.getHooks(compilation).afterTemplateExecution.tapAsync(
+          "PreloadAssetTags",
+          (data, cb) => {
+            if (!data.html.includes(PRELOAD_MARKER)) {
+              cb(null, data);
+              return;
+            }
+
+            const hints = data.headTags
+              .flatMap((tag) => {
+                if (tag.tagName === "script" && tag.attributes.src) {
+                  return [{ url: tag.attributes.src, as: "script" }];
+                }
+                if (
+                  tag.attributes.rel === "stylesheet" &&
+                  tag.attributes.href
+                ) {
+                  return [{ url: tag.attributes.href, as: "style" }];
+                }
+                return [];
+              })
+              .map(
+                (hint) =>
+                  `<link rel="preload" href="${hint.url}" as="${hint.as}">`,
+              )
+              .join("");
+
+            data.html = data.html.replace(PRELOAD_MARKER, hints);
+            cb(null, data);
+          },
+        );
+      },
+    );
+  }
+}
 
 /** @type {import('@rspack/cli').Configuration} */
 const config = {
@@ -115,12 +175,18 @@ const config = {
   // output a bundle for the app JS and a bundle for styles
   // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
   entry: {
-    "app-main": "./app-main.js",
-    "app-public": "./app-public.js",
-    "app-embed": "./app-embed.js",
+    "app-main": "./app-main.ts",
+    "app-public": "./app-public.ts",
+    "app-embed": "./app-embed.ts",
     "app-embed-sdk": "./app-embed-sdk.tsx",
-    "vendor-styles": "./css/vendor.css",
+    "app-embed-mcp": "./app-embed-mcp.tsx",
     styles: "./css/index.module.css",
+    ...(isEEBuild && {
+      "app-data-app":
+        ENTERPRISE_SRC_PATH + "/data_apps/runtime/app-data-app.tsx",
+      "data-app-vendors":
+        ENTERPRISE_SRC_PATH + "/data_apps/runtime/iframe-vendors.ts",
+    }),
   },
 
   // we override it for dev mode below
@@ -128,7 +194,6 @@ const config = {
 
   externals: {
     canvg: "canvg",
-    dompurify: "dompurify",
   },
 
   // output to "dist"
@@ -143,6 +208,7 @@ const config = {
 
   module: {
     rules: [
+      SIDE_EFFECT_FREE_RULE,
       {
         // swc breaks styles for the whole app if we process this file
         test: /css\/core\/fonts\.styled\.ts$/,
@@ -150,8 +216,20 @@ const config = {
         use: [BABEL_LOADER],
       },
       {
+        // Embedding onboarding flow requires sharing snippets from
+        // docs, so we treat TypeScript files inside docs/ as raw text
+        test: /\.tsx?$/,
+        include: [SDK_DOCS_SNIPPETS_PATH],
+        type: "asset/source",
+      },
+      {
         test: /\.(tsx?|jsx?)$/,
-        exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
+        exclude: [
+          /node_modules/,
+          /cljs/,
+          /css\/core\/fonts\.styled\.ts/,
+          SDK_DOCS_SNIPPETS_PATH,
+        ],
         use: [SWC_LOADER],
         type: "javascript/auto",
       },
@@ -204,59 +282,13 @@ const config = {
     ],
   },
   resolve: {
-    extensions: [
-      ".webpack.js",
-      ".web.js",
-      ".js",
-      ".jsx",
-      ".ts",
-      ".tsx",
-      ".css",
-      ".svg",
-    ],
-    alias: {
-      "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
-      assets: ASSETS_PATH,
-      img: IMAGES_PATH,
-      fonts: FONTS_PATH,
-      docs: DOCS_PATH,
-      metabase: SRC_PATH,
-      "metabase-lib": LIB_SRC_PATH,
-      "metabase-enterprise": ENTERPRISE_SRC_PATH,
-      "metabase-types": TYPES_SRC_PATH,
-      "metabase-dev": `${SRC_PATH}/dev${isDevMode ? "" : "-noop"}.ts`,
-      cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
-      __support__: TEST_SUPPORT_PATH,
-      e2e: E2E_PATH,
-      style: SRC_PATH + "/css/core/index",
-      // NOTE @kdoh - 7/24/18
-      // icepick 2.x is es6 by defalt, to maintain backwards compatability
-      // with ie11 point to the minified version
-      icepick: __dirname + "/node_modules/icepick/icepick.min",
-      // conditionally load either the EE plugins file or a empty file in the CE code tree
-      "ee-plugins":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/plugins"
-          : SRC_PATH + "/plugins/noop",
-      "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
-      embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk-package": SDK_PACKAGE_SRC_PATH,
-      "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
-      "embedding-sdk-shared": SDK_SHARED_SRC_PATH,
-      "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
-        "/sdk-iframe-embedding-plugins",
-      ),
-      "sdk-iframe-embedding-script-ee-plugins": resolveEnterprisePathOrNoop(
-        "/sdk-iframe-embedding-script-plugins",
-      ),
-      "sdk-ee-plugins":
-        process.env.MB_EDITION === "ee"
-          ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
-          : SRC_PATH + "/plugins/noop",
-      "sdk-specific-imports": SRC_PATH + "/lib/noop",
-    },
+    extensions: [".js", ".jsx", ".ts", ".tsx", ".css", ".svg"],
+    alias: RESOLVE_ALIASES,
     fallback: {
       buffer: require.resolve("buffer/"),
+      url: require.resolve("url/"),
+      events: require.resolve("events/"),
+      querystring: require.resolve("querystring-es3"),
     },
   },
   optimization: {
@@ -264,24 +296,43 @@ const config = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro)[\\/])/,
-          chunks: "all",
+          test: /[\\/]node_modules[\\/]/,
+          // The data-app iframe is isolated from main-app CSS/JS by design;
+          // sharing the vendor chunk would re-link them. Keep its
+          // node_modules in its own chunks.
+          chunks: (chunk) =>
+            chunk.canBeInitial() &&
+            chunk.name !== "data-app-vendors" &&
+            chunk.name !== "app-data-app",
           name: "vendor",
+          priority: -10,
+        },
+        // Modules shared by two or more async chunks (e.g. CodeMirror, pulled
+        // in by every lazily loaded editor) move into a shared async chunk
+        // instead of being copied into each one. `vendors` above only claims
+        // initial chunks, so this never grows the initial payload.
+        asyncCommons: {
+          chunks: "async",
+          minChunks: 2,
+          reuseExistingChunk: true,
         },
         sqlFormatter: {
-          test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
+          test: /[\\/]sql-formatter[\\/]/,
           chunks: "all",
           name: "sql-formatter",
+          priority: 10,
         },
         jspdf: {
-          test: /[\\/]node_modules[\\/]jspdf[\\/]/,
+          test: /[\\/]jspdf[\\/]/,
           chunks: "all",
           name: "jspdf",
+          priority: 10,
         },
         html2canvas: {
-          test: /[\\/]node_modules[\\/](html2canvas|html2canvas-pro)[\\/]/,
+          test: /[\\/](html2canvas|html2canvas-pro)[\\/]/,
           chunks: "all",
           name: "html2canvas",
+          priority: 10,
         },
       },
     },
@@ -289,6 +340,7 @@ const config = {
   },
 
   plugins: [
+    ...bundleStatsPlugins("stats-main.json"),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
       filename: isDevMode ? "[name].css" : "[name].[contenthash].css",
@@ -300,29 +352,55 @@ const config = {
       ignoreOrder: true,
     }),
     new OnScriptError(),
+    new PreloadAssetTags(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-main"],
+      chunks: ["vendor", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../public.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-public"],
+      chunks: ["vendor", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-embed"],
+      chunks: ["vendor", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed-sdk.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
+      chunks: ["vendor", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
+    // Enterprise-only: data apps are an enterprise plugin, so the iframe HTML is
+    // only emitted in EE builds (its chunks only exist there).
+    ...(isEEBuild
+      ? [
+          new HtmlWebpackPlugin({
+            filename: "../../data-app.html",
+            chunksSortMode: "manual",
+            chunks: ["data-app-vendors", "app-data-app"],
+            template:
+              __dirname + "/resources/frontend_client/data_app_template.html",
+          }),
+        ]
+      : []),
+    new HtmlWebpackPlugin({
+      filename: "../../embed-mcp.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "styles", "app-embed-mcp"],
+      template: __dirname + "/resources/frontend_client/mcp_apps_template.html",
+
+      // MCP apps are rendered inside a sandboxed srcdoc iframe (about:srcdoc),
+      // so asset URLs must point to the Metabase instance. We embed a Mustache
+      // variable in publicPath — HtmlWebpackPlugin emits it literally, then
+      // Stencil substitutes it at runtime with the real instance URL.
+      publicPath: "{{{instanceUrlRaw}}}/app/dist/",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     // https://github.com/orgs/remarkjs/discussions/903
@@ -335,6 +413,7 @@ const config = {
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
+    ...COMPRESSION_CONFIG,
   ],
 };
 
@@ -345,12 +424,15 @@ if (shouldEnableHotRefresh) {
     throw new Error("webpack config is missing configuration");
   }
 
-  // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
+  // suffixing with ".hot" allows us to run both `bun run build-hot` and `bun run test` or `bun run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
     `http://localhost:${PORT}/` + config.output.publicPath;
+
+  // Disable lazy compilation explicitly to match behavior of rspack 1.x
+  config.lazyCompilation = false;
 
   config.devServer = {
     port: PORT, // make the port explicit so it errors if it's already in use
@@ -386,8 +468,10 @@ if (shouldEnableHotRefresh) {
   };
 
   config.plugins.unshift(
-    new ReactRefreshPlugin({
-      overlay: false,
+    new ReactRefreshRspackPlugin({
+      // app-embed-mcp runs in an isolated iframe with CSP restrictions.
+      // Excluding it avoids injecting the React Refresh runtime which uses eval.
+      exclude: [SDK_DOCS_SNIPPETS_PATH, /app-embed-mcp/],
     }),
   );
 }
@@ -420,10 +504,19 @@ if (isDevMode) {
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
 
+  if (!process.env.DISABLE_BUILD_NOTIFICATIONS) {
+    config.plugins.push(
+      new WebpackNotifierPlugin({
+        excludeWarnings: true,
+        skipFirstNotification: true,
+      }),
+    );
+  }
+
   config.plugins.push(
-    new WebpackNotifierPlugin({
-      excludeWarnings: true,
-      skipFirstNotification: true,
+    new CssVarsDeclarationPlugin({
+      frontendSrcPath: __dirname + "/frontend/src",
+      rootPath: __dirname,
     }),
   );
 }

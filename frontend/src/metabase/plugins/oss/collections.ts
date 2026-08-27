@@ -2,18 +2,19 @@ import type React from "react";
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
-import { Messages } from "metabase/admin/permissions/constants/messages";
-import { getIconBase } from "metabase/lib/icon";
+import type {
+  CollectionAuthorityLevelConfig,
+  CollectionInstanceAnaltyicsConfig,
+} from "metabase/common/collections/types";
+import { useGetIconBase } from "metabase/hooks/use-icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
 import type {
   BaseEntityId,
   Bookmark,
   Collection,
-  CollectionAuthorityLevelConfig,
   CollectionEssentials,
   CollectionId,
-  CollectionInstanceAnaltyicsConfig,
 } from "metabase-types/api";
 
 // Types
@@ -21,6 +22,7 @@ export type ItemWithCollection = { collection: CollectionEssentials };
 
 type GetCollectionIdType = (
   sourceCollectionId?: CollectionId | null,
+  options?: { disabled?: boolean },
 ) => CollectionId | null;
 
 export type CollectionAuthorityLevelDisplayProps = {
@@ -68,28 +70,31 @@ const getDefaultPluginCollections = () => ({
     _collection: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
+  // Unjustified type cast. FIXME
   useGetDefaultCollectionId: null as GetCollectionIdType | null,
+  // Unjustified type cast. FIXME
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "" as BaseEntityId | "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE:
-    Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
+    t`Administrators always have the highest level of access to everything in Metabase.`,
   getAuthorityLevelMenuItems: (
     _collection: Collection,
     _onUpdate: (collection: Collection, values: Partial<Collection>) => void,
   ): React.ReactNode[] => [],
-  getIcon: (
-    item: Parameters<typeof getIconBase>[0],
-    _opts?: { isTenantUser?: boolean },
-  ) => getIconBase(item),
+  useGetIcon: useGetIconBase,
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
-  ) => items as Item[],
+  ) => items,
+  // Unjustified type cast. FIXME
   canCleanUp: (_collection: Collection) => false as boolean,
   useGetCleanUpMenuItems: (
     _collection: Collection,
   ): { menuItems: JSX.Element[] } => ({
     menuItems: [],
   }),
+  // Unjustified type cast. FIXME
   cleanUpRoute: null as React.ReactElement | null,
+  // Unjustified type cast. FIXME
   cleanUpAlert: (() => null) as (props: {
     collection: Collection;
   }) => JSX.Element | null,
@@ -99,12 +104,16 @@ export const PLUGIN_COLLECTIONS = getDefaultPluginCollections();
 
 const getDefaultPluginCollectionComponents = () => ({
   CollectionAuthorityLevelIcon:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as CollectionAuthorityLevelIcon,
   FormCollectionAuthorityLevelPicker:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as FormCollectionAuthorityLevelPicker,
   CollectionInstanceAnalyticsIcon:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as CollectionInstanceAnalyticsIcon,
   CollectionAuthorityLevelDisplay:
+    // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<CollectionAuthorityLevelDisplayProps>,
 });
 

@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Alert } from "metabase/common/components/Alert";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { breakpointMaxMedium } from "metabase/styled-components/theme";
 
 export const Root = styled.div`
@@ -16,10 +14,6 @@ export const ActionsHeader = styled.div`
   align-items: center;
 `;
 
-export const ActionMenu = styled(EntityMenu)`
-  margin-left: 0.5rem;
-`;
-
 export const ActionList = styled.ul`
   width: 70%;
   margin-top: 1rem;
@@ -31,8 +25,4 @@ export const ActionList = styled.ul`
   ${breakpointMaxMedium} {
     width: 100%;
   }
-`;
-
-export const ActionAlert = styled(Alert)`
-  width: 70%;
 `;

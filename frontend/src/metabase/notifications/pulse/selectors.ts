@@ -1,10 +1,10 @@
+import type { State } from "metabase/redux/store";
 import type {
   ChannelApiResponse,
-  DashboardSubscription,
+  DraftDashboardSubscription,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
-export const getEditingPulse = (state: State): DashboardSubscription =>
+export const getEditingPulse = (state: State): DraftDashboardSubscription =>
   state.pulse.editingPulse;
 
 export const getPulseFormInput = (

@@ -1,14 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
-import { push } from "react-router-redux";
 import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
 import { clickableTokens } from "metabase/common/components/CodeMirror";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { RunButtonWithTooltip } from "metabase/query_builder/components/RunButtonWithTooltip";
+import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
+import { useNavigate } from "metabase/router";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
 import { PythonEditor } from "../../PythonEditor";
@@ -16,7 +15,7 @@ import { PythonEditor } from "../../PythonEditor";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
 import { createPythonImportTokenLocator } from "./utils";
 
-type PythonEditorBodyProps = {
+export type PythonEditorBodyProps = {
   disabled?: boolean;
   source: string;
   proposedSource?: string;
@@ -57,7 +56,7 @@ export function PythonEditorBody({
   const [isResizing, setIsResizing] = useState(false);
   const showResizeHandle = isEditMode && withDebugger;
   const editorHeight = useInitialEditorHeight(isEditMode, showResizeHandle);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const navigateToCommonLibrary = useCallback(
     (e: MouseEvent) => {
@@ -68,10 +67,10 @@ export function PythonEditorBody({
       if (openInNewTab) {
         window.open(href, "_blank", "noopener,noreferrer");
       } else {
-        dispatch(push(href));
+        navigate(href);
       }
     },
-    [dispatch],
+    [navigate],
   );
 
   const clickableTokensExtension = useMemo(
@@ -86,7 +85,7 @@ export function PythonEditorBody({
   );
 
   const editorContent = (
-    <Flex h="100%" align="end" bg="background-secondary" pos="relative">
+    <Flex h="100%" align="end" bg="background_page-secondary" pos="relative">
       <PythonEditor
         value={source}
         proposedValue={proposedSource}
@@ -105,7 +104,7 @@ export function PythonEditorBody({
                 <Button
                   data-testid="accept-proposed-changes-button"
                   variant="filled"
-                  bg="success"
+                  bg="feedback-positive"
                   px="0"
                   w="2.5rem"
                   onClick={onAcceptProposed}
@@ -119,7 +118,7 @@ export function PythonEditorBody({
                   w="2.5rem"
                   px="0"
                   variant="filled"
-                  bg="danger"
+                  bg="feedback-negative"
                   onClick={onRejectProposed}
                 >
                   <Icon name="close" />
@@ -130,8 +129,8 @@ export function PythonEditorBody({
           {!hideRunButton && (
             <RunButtonWithTooltip
               disabled={!isRunnable}
-              isRunning={isRunning}
-              isDirty={isDirty}
+              isRunning={Boolean(isRunning)}
+              isDirty={Boolean(isDirty)}
               onRun={onRun}
               onCancel={onCancel}
               getTooltip={() => t`Run Python script`}
@@ -178,7 +177,6 @@ function useInitialEditorHeight(
   }
 
   if (!showResizeHandle) {
-    // No preview panel (e.g. workspace) – height is not used; container uses 100%
     return availableHeight;
   }
 

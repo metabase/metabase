@@ -32,7 +32,7 @@ export function BaseSelectListItem({
   children,
   ...rest
 }: BaseSelectListItemProps) {
-  const ref = useScrollOnMount();
+  const ref = useScrollOnMount<HTMLLIElement>();
   const Root = as;
   return (
     <Root

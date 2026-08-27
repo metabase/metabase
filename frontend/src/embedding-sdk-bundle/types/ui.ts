@@ -1,4 +1,7 @@
-import type { JSX, ReactNode } from "react";
+export type {
+  SdkErrorComponent,
+  SdkErrorComponentProps,
+} from "metabase/embedding-sdk/types/error-component";
 
 /**
  * @inline
@@ -36,6 +39,7 @@ export type InitializationStatus =
   | InitializationStatusError;
 
 export type { ButtonProps } from "metabase/ui";
+export type { MetabaseFontFamily } from "metabase-types/api";
 export type {
   ChartColor,
   MetabaseTheme,
@@ -43,21 +47,6 @@ export type {
   MetabaseColors,
   MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
-export type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
-
-export type SdkErrorComponentProps = {
-  type?: "relative" | "fixed";
-  message: ReactNode;
-  error?: Error;
-  withCloseButton?: boolean;
-  onClose?: () => void;
-};
-
-export type SdkErrorComponent = ({
-  type,
-  message,
-  error,
-}: SdkErrorComponentProps) => JSX.Element;
 
 export type SdkLoadingError = {
   status: number;

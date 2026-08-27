@@ -1,7 +1,7 @@
 import type {
   EmbeddingParameterVisibility,
   EmbeddingParameters,
-} from "metabase/public/lib/types";
+} from "metabase-types/api";
 
 export const countEmbeddingParameterOptions = (
   embeddingParams: EmbeddingParameters,
@@ -11,6 +11,7 @@ export const countEmbeddingParameterOptions = (
       acc[value] += 1;
       return acc;
     },
+    // Unjustified type cast. FIXME
     { disabled: 0, locked: 0, enabled: 0 } as Record<
       EmbeddingParameterVisibility,
       number

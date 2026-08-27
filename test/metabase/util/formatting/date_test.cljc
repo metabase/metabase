@@ -62,11 +62,9 @@
       (testing "in different years, even with :compact true"
         (is (= (str "Dec 29, 2019" date/range-separator "Jan 4, 2020")
                (week-of "2019-12-31T11:19:04")))))
-
     (testing "split months, shared year (M d - M d, Y"
       (is (= (str "Aug 28" date/range-separator "Sep 3, 2022")
              (week-of "2022-08-31T11:19:04"))))
-
     (testing "shared month and year (M d - d, Y)"
       (is (= (str "Dec 11" date/range-separator "17, 2022")
              (week-of "2022-12-14T11:19:04"))))))

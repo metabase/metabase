@@ -3,7 +3,7 @@
 
   &:hover {
     .text {
-      color: var(--mb-color-brand) !important;
+      color: var(--mb-color-core-brand) !important;
     }
   }
 }

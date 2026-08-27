@@ -31,9 +31,7 @@ export function menu() {
 }
 
 export function modal(options = {}) {
-  const MODAL_SELECTOR = ".mb-mantine-Modal-content[role='dialog']";
-  const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
-  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","), options);
+  return cy.get("[role='dialog'][aria-modal='true']", options);
 }
 
 export function tooltip() {
@@ -50,10 +48,6 @@ export function miniPicker() {
 
 export function miniPickerBrowseAll() {
   return miniPicker().findByText("Browse all");
-}
-
-export function miniPickerOurAnalytics() {
-  return miniPicker().findByText("Our analytics");
 }
 
 export function miniPickerHeader() {
@@ -157,8 +151,32 @@ export function appBar() {
 }
 
 export function openNavigationSidebar() {
-  appBar().findByTestId("sidebar-toggle").click();
+  // Opening the sidebar is racy. The toggle flips the sidebar, so blindly
+  // clicking it closes an already-open one. But a single non-retrying read of
+  // its open state isn't safe either: navigating to a dashboard/question
+  // collapses the navbar, and that collapse can land a beat after the page
+  // content renders. The old code could read a lingering-open navbar, skip the
+  // toggle click, then watch it collapse out from under the assertion below.
+  // Re-check after acting and re-open if it collapsed, so the helper self-heals
+  // regardless of a pending collapse.
+  ensureNavigationSidebarOpen();
   navigationSidebar().should("be.visible");
+}
+
+function ensureNavigationSidebarOpen(attempt = 0) {
+  const MAX_ATTEMPTS = 5;
+  navigationSidebar().then(($nav) => {
+    if (!$nav.is(":visible")) {
+      appBar().findByTestId("sidebar-toggle").click();
+    }
+  });
+  // Each Cypress command yields a tick, giving a pending collapse time to
+  // flush; if the navbar closed after our first read, try again.
+  navigationSidebar().then(($nav) => {
+    if (!$nav.is(":visible") && attempt < MAX_ATTEMPTS) {
+      ensureNavigationSidebarOpen(attempt + 1);
+    }
+  });
 }
 
 export function closeNavigationSidebar() {
@@ -325,11 +343,17 @@ export const moveColumnDown = (column, distance) => {
  * @param {Object} options
  * @param {number} options.startIndex - The index of the element to drag
  * @param {number} options.dropIndex - The index where the element should be dropped
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 export const moveDnDKitListElement = (
   dataTestId,
-  { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
+  {
+    startIndex,
+    dropIndex,
+    onBeforeDragEnd = () => {},
+    useMouseEvents = false,
+  } = {},
 ) => {
   const selector = new RegExp(dataTestId);
   const getElement = () =>
@@ -350,6 +374,7 @@ export const moveDnDKitListElement = (
     moveDnDKitElementByGetter(getElement, {
       vertical: dropPoint.clientY - dragPoint.clientY,
       horizontal: dropPoint.clientX - dragPoint.clientX,
+      useMouseEvents,
       onBeforeDragEnd,
     });
   });
@@ -362,6 +387,7 @@ export const moveDnDKitListElement = (
  * @param {Object} options
  * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
  * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 export const moveDnDKitElementByAlias = (alias, options) => {
@@ -378,45 +404,58 @@ export const moveDnDKitElementByAlias = (alias, options) => {
  * @param {Object} options
  * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
  * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 const moveDnDKitElementByGetter = (
   getElement,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
+  {
+    horizontal = 0,
+    vertical = 0,
+    useMouseEvents = false,
+    onBeforeDragEnd = () => {},
+  } = {},
 ) => {
+  const down = useMouseEvents ? "mousedown" : "pointerdown";
+  const move = useMouseEvents ? "mousemove" : "pointermove";
+  const up = useMouseEvents ? "mouseup" : "pointerup";
+  const extraProps = useMouseEvents
+    ? { eventConstructor: "MouseEvent" }
+    : { isPrimary: true };
+
   getElement()
-    .trigger("pointerdown", 0, 0, {
+    .trigger(down, 0, 0, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 
   // This initial move needs to be greater than the activation constraint
-  // of the pointer sensor
+  // of the sensor
   getElement()
-    .trigger("pointermove", 20, 20, {
+    .trigger(move, 20, 20, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 
   getElement()
-    .trigger("pointermove", horizontal, vertical, {
+    .trigger(move, horizontal, vertical, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 
   onBeforeDragEnd();
 
   cy.document()
-    .trigger("pointerup", {
+    .trigger(up, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 };
@@ -689,8 +728,10 @@ export function getUniqueTableColumnValues(columnName) {
 
 export function ensureParameterColumnValue({ columnName, columnValue }) {
   tableInteractiveBody().within(() => {
-    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
-      cy.wrap(cell).should("have.text", columnValue);
+    cy.get(`[data-column-id="${columnName}"]`).should(($cells) => {
+      $cells.each((i, cell) => {
+        expect(cell).to.have.text(columnValue);
+      });
     });
   });
 }

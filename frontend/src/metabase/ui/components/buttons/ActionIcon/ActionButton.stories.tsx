@@ -9,8 +9,8 @@ export default {
     color: {
       control: {
         type: "select",
-        options: ["brand"],
       },
+      options: ["core-brand"],
     },
     disabled: {
       control: {
@@ -20,14 +20,22 @@ export default {
     size: {
       control: {
         type: "select",
-        options: ["xs", "sm", "md", "lg", "xl"],
       },
+      options: ["xs", "sm", "md", "lg", "xl"],
     },
     variant: {
       control: {
         type: "select",
-        options: ["filled", "subtle", "viewFooter", "viewHeader"],
       },
+      options: [
+        "filled",
+        "subtle",
+        "viewFooter",
+        "viewHeader",
+        "info",
+        "warning",
+        "error",
+      ],
     },
   },
 };
@@ -39,7 +47,7 @@ export const Default = {
     </ActionIcon>
   ),
   args: {
-    color: "brand",
+    color: "core-brand",
     size: "md",
     variant: "filled",
     disabled: false,

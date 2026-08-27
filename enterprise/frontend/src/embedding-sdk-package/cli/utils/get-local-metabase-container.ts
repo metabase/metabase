@@ -1,7 +1,7 @@
 import { exec as execCallback } from "child_process";
 import { promisify } from "util";
 
-import { safeJsonParse } from "metabase/lib/json-parse";
+import { safeJsonParse } from "metabase/utils/json-parse";
 
 import { CONTAINER_NAME } from "../constants/config";
 
@@ -35,6 +35,7 @@ export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null>
     return null;
   }
 
+  // Unjustified type cast. FIXME
   const info = safeJsonParse(stdout) as ContainerInfo;
 
   if (!info) {

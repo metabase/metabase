@@ -1,6 +1,5 @@
 import { sql } from "@codemirror/lang-sql";
 import { useLayoutEffect, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
@@ -12,15 +11,17 @@ import {
 import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useToast } from "metabase/common/hooks";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { Card, Center, Flex, Stack } from "metabase/ui";
+import { useSelector } from "metabase/redux";
+import { useParams } from "metabase/router";
+import { Alert, Card, Center, Flex, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { SnippetDescriptionSection } from "../../components/SnippetDescriptionSection";
 import { SnippetHeader } from "../../components/SnippetHeader";
@@ -31,12 +32,8 @@ type EditSnippetPageParams = {
   snippetId: string;
 };
 
-type EditSnippetPageProps = {
-  params: EditSnippetPageParams;
-  route: Route;
-};
-
-export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
+export function EditSnippetPage() {
+  const params = useParams<EditSnippetPageParams>();
   const snippetId = Urls.extractEntityId(params.snippetId);
   const [sendToast] = useToast();
   const remoteSyncReadOnly = useSelector(
@@ -51,6 +48,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
 
   const [content, setContent] = useState(snippet?.content ?? "");
   const [updateSnippet, { isLoading: isSaving }] = useUpdateSnippetMutation();
+  const isReadOnly = remoteSyncReadOnly || !!snippet?.archived;
 
   const isDirty = useMemo(
     () => snippet != null && content !== snippet.content,
@@ -95,6 +93,10 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
 
   const extensions = useMemo(() => [sql()], []);
 
+  if (!snippetId) {
+    return <NotFound />;
+  }
+
   if (isLoading || error || !snippet) {
     return (
       <Center h="100%">
@@ -105,7 +107,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
 
   return (
     <>
-      <PageContainer pos="relative" data-testid="edit-snippet-page">
+      <PageContainer pos="relative" data-testid="edit-snippet-page" gap="md">
         <SnippetHeader
           snippet={snippet}
           actions={
@@ -118,7 +120,20 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
             />
           }
         />
-        <Flex flex={1} w="100%" gap="sm">
+        {isReadOnly && (
+          <Alert
+            size="compact"
+            className={S.flexStart}
+            color="warning"
+            title={
+              snippet?.archived
+                ? t`This snippet is archived and cannot be edited. Unarchive it to edit.`
+                : t`This snippet is not editable because Remote Sync is in read-only mode.`
+            }
+            w="auto"
+          />
+        )}
+        <Flex flex={1} w="100%" gap="sm" mt="md">
           <Card
             withBorder
             p={0}
@@ -135,7 +150,8 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
               height="100%"
               className={S.editor}
               data-testid="snippet-editor"
-              editable={!remoteSyncReadOnly}
+              editable={!isReadOnly}
+              readOnly={isReadOnly}
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,
@@ -147,7 +163,7 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
           <Stack p="md" gap="lg" flex="0 0 20rem">
             <SnippetDescriptionSection
               snippet={snippet}
-              isDisabled={remoteSyncReadOnly}
+              isDisabled={isReadOnly}
             />
             <EntityCreationInfo
               createdAt={snippet.created_at}
@@ -158,7 +174,6 @@ export function EditSnippetPage({ params, route }: EditSnippetPageProps) {
       </PageContainer>
       <LeaveRouteConfirmModal
         key={snippetId}
-        route={route}
         isEnabled={isDirty && !isSaving}
       />
     </>

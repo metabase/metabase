@@ -1,11 +1,10 @@
 import { type MouseEvent, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useNavigate } from "metabase/router";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Transform } from "metabase-types/api";
 
 import { TransformRevisionHistorySidebar } from "../../TransformRevisionHistorySidebar";
@@ -114,11 +113,11 @@ function TransformModal({
   onClose,
 }: TransformModalProps) {
   const { sendSuccessToast } = useMetadataToasts();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleDelete = () => {
     sendSuccessToast(t`Transform deleted`);
-    dispatch(push(Urls.transformList()));
+    navigate(Urls.transformList());
     onClose();
   };
 

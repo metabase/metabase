@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl, getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type Question from "metabase-lib/v1/Question";

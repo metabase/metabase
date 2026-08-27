@@ -4,10 +4,10 @@ import { t } from "ttag";
 import { useUpdateFieldMutation } from "metabase/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Group, Stack, type StackProps, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { NameDescriptionInput } from "../NameDescriptionInput";

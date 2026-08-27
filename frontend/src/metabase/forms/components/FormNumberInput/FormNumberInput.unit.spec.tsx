@@ -64,6 +64,17 @@ describe("FormNumberInput", () => {
     });
   });
 
+  it("should submit a decimal value", async () => {
+    const { onSubmit } = setup();
+
+    await userEvent.type(screen.getByLabelText("Goal"), "3.4");
+    await userEvent.click(screen.getByText("Submit"));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({ goal: 3.4 }, expect.anything());
+    });
+  });
+
   it("should submit an empty value", async () => {
     const { onSubmit } = setup({
       initialValues: { goal: 20 },

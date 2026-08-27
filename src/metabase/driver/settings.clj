@@ -1,14 +1,41 @@
 (ns metabase.driver.settings
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (set! *warn-on-reflection* true)
+
+(defsetting warehouse-allowed-networks
+  (deferred-tru (str "Controls which networks Metabase may connect to for warehouse connections.\n"
+                     "Options:\n"
+                     "- external-only (only globally routable public addresses)\n"
+                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
+                     "- allow-all (no restrictions).\n"
+                     "Defaults to external-only on Metabase Cloud and allow-all when self-hosted.\n"
+                     "Also covers the SSH tunnel host and the database auth-provider URLs."))
+  :type       :keyword
+  :visibility :internal
+  :export?    false
+  ;; No `:default`, because it depends on where we are running. On Cloud a warehouse is always reached across the
+  ;; public internet, so an internal address is somebody reaching for our own infrastructure rather than their
+  ;; database. Self-hosted, a warehouse on a private network is the ordinary case, and defaulting to anything
+  ;; stricter would break working instances on upgrade.
+  :getter     (fn []
+                (or (setting/get-value-of-type :keyword :warehouse-allowed-networks)
+                    (if (premium-features/is-hosted?)
+                      :external-only
+                      :allow-all)))
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
+                          (tru (str "Invalid warehouse-allowed-networks! Only values of `external-only`, "
+                                    "`allow-private`,` and `allow-all` are allowed."))))
+                (setting/set-value-of-type! :keyword :warehouse-allowed-networks new-value)))
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
@@ -95,9 +122,11 @@
   :default    (if config/is-prod?
                 20
                 3)
-  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
-  If you have long-running queries, you might consider increasing this value.
-  Adjusting the timeout does not impact Metabase’s frontend.
+  :doc "Timeout in minutes for the database's query execution, both for the Metabase application database and any data connections.
+  If you have long-running queries, you might consider increasing this value. Adjusting the timeout does not impact Metabase’s frontend.
+
+  This setting does not apply to queries executed within transforms; those are governed by MB_TRANSFORM_TIMEOUT instead.
+
   Please be aware that other services (like Nginx) may still drop long-running queries.")
 
 ;; This is normally set via the env var `MB_JDBC_NETWORK_TIMEOUT_MS`
@@ -125,6 +154,38 @@
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
 
+(defsetting jdbc-data-warehouse-connection-pool-checkout-timeout-ms
+  "Number of milliseconds a query will wait for a free data-warehouse connection once the c3p0 pool has hit
+  [[jdbc-data-warehouse-max-connection-pool-size]] before giving up. Maps to c3p0's `checkoutTimeout`. `0` waits
+  indefinitely (the old, unbounded behavior); a positive value fails fast, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable) rather than letting the request queue grow without limit."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    0
+  :audit      :getter
+  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum time (in milliseconds) a query will wait before failing with a \"service unavailable\" (HTTP 503) error
+  instead of queueing indefinitely. Raise it if you routinely run more concurrent queries than
+  MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE and would rather have them wait; set it to `0` to wait forever.")
+
+(defsetting jdbc-data-warehouse-connection-pool-max-pending-checkouts
+  "Maximum number of queries allowed to be waiting for a free data-warehouse connection at once, once the c3p0 pool has
+  hit [[jdbc-data-warehouse-max-connection-pool-size]]. When this many queries are already queued waiting for a
+  connection, further queries fail fast instead of joining the queue, which the query processor surfaces to the
+  frontend as an HTTP 503 (Service Unavailable). `0` (the default) lets the queue grow without bound (the old
+  behavior). Complements [[jdbc-data-warehouse-connection-pool-checkout-timeout-ms]], which bounds how long each query
+  waits; this bounds how many can wait at the same time."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    0
+  :audit      :getter
+  :doc "When every data-warehouse connection is in use, additional queries wait for one to free up. This is the
+  maximum number of queries that may be waiting at the same time before further queries fail immediately with a
+  \"service unavailable\" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
+  `0` to allow an unbounded queue.")
+
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))
@@ -143,14 +204,27 @@
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
 
+(def ^:dynamic *impersonation-allow-write?*
+  "Whether write-back operations are permitted while connection impersonation is active. Normally `false`."
+  false)
+
+(def ^:dynamic *allow-testing-sqlite-connections*
+  "Whether to allow testing new SQLite connections. Normally disabled on hosted Metabase, which effectively prevents
+  users from creating new SQLite databases from the API. Internal flows that need to test connections to the bundled
+  Sample Database (sync, schema refresh, fingerprinting, etc.) bind this to `true`."
+  false)
+
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
       (long (/ *query-timeout-ms* 1000))))
 
 (defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
-  "Kill connections if they are unreturned after this amount of time. Currently, this is the mechanism that
-  terminates JDBC driver queries that run too long. This should be the same as the query timeout in
-  [[metabase.query-processor.context/query-timeout-ms]] and should not be overridden without a very good reason."
+  "Kill data-warehouse connections that have been checked out but not returned to the pool after this many seconds.
+  Acts as a leak-detector safety net — per-query timeouts are enforced separately via `Statement.setQueryTimeout`.
+  Defaults to the current `*query-timeout-ms*` in seconds, which is `MB_DB_QUERY_TIMEOUT_MINUTES` outside transforms
+  and `MB_TRANSFORM_TIMEOUT` inside [[metabase.driver.connection/with-transform-connection]] — so the transform pool
+  (a separate c3p0 pool keyed on `:transform`) gets a leak-detector tuned to transform-length runtimes without
+  weakening the leak-detector on the default pool used by ad-hoc queries."
   :visibility :internal
   :type       :integer
   :getter     #'-jdbc-data-warehouse-unreturned-connection-timeout-seconds
@@ -160,7 +234,7 @@
   "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
   [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
 
-  Note: You also need to update the com.mchange log level to INFO or higher in the log4j configs in order to see the
+  Note: You also need to update the com.mchange log level to INFO or higher in the Log4j configs in order to see the
   stack traces in the logs."
   :visibility :internal
   :type       :boolean
@@ -202,3 +276,12 @@
   :export? true
   :type :integer
   :default 1000)
+
+(defsetting sync-max-fields-per-table
+  "Maximum number of fields per table to sync as :model/Field rows. If a table's warehouse schema has more fields than
+  this, only the first (by name) are synced and the rest are skipped -- keeps document databases with very large or
+  dynamic schemas (e.g. MongoDB) from creating an unbounded number of Fields."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    10000)

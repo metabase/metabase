@@ -1,6 +1,4 @@
 import type { NodeViewProps } from "@tiptap/react";
-import { createMemoryHistory } from "history";
-import { Route, Router, useRouterHistory } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -11,6 +9,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { RouterProviderMemory } from "metabase/router";
 import {
   createMockCard,
   createMockCollection,
@@ -28,22 +27,29 @@ function createProps(
   model: SuggestionModel,
   entity: SmartLinkEntity | { id: number; label?: string },
   label?: string,
+  updateAttributes?: NodeViewProps["updateAttributes"],
 ) {
   const node = { attrs: { entityId: entity.id, model, label } };
-  return { node } as unknown as NodeViewProps;
+  // Unjustified type cast. FIXME
+  return {
+    node,
+    updateAttributes: updateAttributes ?? jest.fn(),
+  } as unknown as NodeViewProps;
 }
 
 function setup({
   entity,
   model,
   label,
+  updateAttributes,
 }: {
   model: SuggestionModel;
   entity: SmartLinkEntity;
   label?: string;
+  updateAttributes?: NodeViewProps["updateAttributes"];
 }) {
-  const props = createProps(model, entity, label);
-  renderWithProviders(<SmartLinkComponent {...props} />);
+  const props = createProps(model, entity, label, updateAttributes);
+  renderWithProviders(<SmartLinkComponent {...props} />, { withRouter: true });
 }
 
 describe("SmartLink", () => {
@@ -60,6 +66,25 @@ describe("SmartLink", () => {
       // Eventually updates to network data
       expect(await screen.findByText("Network Card Name")).toBeInTheDocument();
       expect(screen.queryByText("Cached Card Name")).not.toBeInTheDocument();
+    });
+
+    it("updates missing labels for pasted smart links", async () => {
+      const card = createMockCard({ id: 123, name: "Network Card Name" });
+      const updateAttributes = jest.fn();
+
+      setupCardEndpoints(card);
+      setup({
+        model: "card",
+        entity: card,
+        label: undefined,
+        updateAttributes,
+      });
+
+      await waitFor(() => {
+        expect(updateAttributes).toHaveBeenCalledWith({
+          label: "Network Card Name",
+        });
+      });
     });
   });
 
@@ -178,16 +203,13 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyWithBasename = useRouterHistory(createMemoryHistory)({
-        basename: "/subpath",
-        entries: ["/"],
-      });
-
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <Router history={historyWithBasename}>
-          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
-        </Router>,
+        <RouterProviderMemory
+          initialRoute="/subpath"
+          basename="/subpath"
+          routes={[{ path: "*", element: <SmartLinkComponent {...props} /> }]}
+        />,
       );
 
       await waitFor(() => {
@@ -209,15 +231,12 @@ describe("SmartLink", () => {
 
       setupDashboardEndpoints(dashboard);
 
-      const historyNoBasename = useRouterHistory(createMemoryHistory)({
-        entries: ["/"],
-      });
-
       const props = createProps("dashboard", dashboard);
       renderWithProviders(
-        <Router history={historyNoBasename}>
-          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
-        </Router>,
+        <RouterProviderMemory
+          initialRoute="/"
+          routes={[{ path: "*", element: <SmartLinkComponent {...props} /> }]}
+        />,
       );
 
       await waitFor(() => {

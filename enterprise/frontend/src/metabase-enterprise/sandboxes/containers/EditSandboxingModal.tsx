@@ -1,114 +1,100 @@
-import { useEffect } from "react";
-import { withRouter } from "react-router";
-import { push } from "react-router-redux";
-import _ from "underscore";
+import { t } from "ttag";
 
-import { useListUserAttributesQuery } from "metabase/api";
+import { GROUPS_BASE_PATH } from "metabase/admin/permissions/utils/urls";
+import {
+  skipToken,
+  useGetGroupTableAccessPolicyQuery,
+  useListUserAttributesQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getParentPath } from "metabase/hoc/ModalRoute";
-import { connect } from "metabase/lib/redux";
-import {
-  getGroupTableAccessPolicy,
-  getPolicyRequestState,
-} from "metabase-enterprise/sandboxes/selectors";
-import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
-import { getUserAttributes } from "metabase-enterprise/shared/selectors";
-import type {
-  GroupTableAccessPolicy,
-  UserAttributeKey,
-} from "metabase-types/api";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { useDispatch, useSelector } from "metabase/redux";
+import { parseIntParam } from "metabase/urls";
+import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
+import type { GroupTableAccessPolicy } from "metabase-types/api";
 
-import {
-  fetchPolicy,
-  updatePolicy,
-  updateTableSandboxingPermission,
-} from "../actions";
+import { updatePolicy, updateTableSandboxingPermission } from "../actions";
 import EditSandboxingModal from "../components/EditSandboxingModal";
-import type { GroupTableAccessPolicyParams, SandboxesState } from "../types";
-
-interface EditSandboxingModalContainerProps {
-  policy: GroupTableAccessPolicy;
-  attributes: UserAttributeKey[];
-  push: (path: string) => void;
-  params: GroupTableAccessPolicyParams;
-  route: any;
-  policyRequestState: any;
-  fetchPolicy: (params: GroupTableAccessPolicyParams) => void;
-  fetchUserAttributes: () => void;
-  updatePolicy: (policy: GroupTableAccessPolicy) => void;
-  updateTableSandboxingPermission: (
-    params: GroupTableAccessPolicyParams,
-  ) => void;
-}
 
 const EditSandboxingModalContainer = ({
-  policy,
-  push,
   params,
-  route,
-  fetchPolicy,
-  fetchUserAttributes,
-  policyRequestState,
-  updatePolicy,
-  updateTableSandboxingPermission,
-}: EditSandboxingModalContainerProps) => {
-  useEffect(() => {
-    fetchPolicy(params);
-    fetchUserAttributes();
-  }, [fetchPolicy, params, fetchUserAttributes]);
+  location,
+  onClose,
+}: ModalComponentProps) => {
+  const dispatch = useDispatch();
 
-  const { data: attributes } = useListUserAttributesQuery();
-  const isLoading = policyRequestState?.loading || !attributes;
+  const groupId = parseIntParam(params.groupId);
+  const tableId = parseIntParam(params.tableId);
+  const databaseId = parseIntParam(params.databaseId);
 
-  if (!policyRequestState?.loaded) {
-    return null;
+  const {
+    data: fetchedPolicy,
+    isLoading: isPoliciesLoading,
+    error: policiesError,
+  } = useGetGroupTableAccessPolicyQuery(
+    tableId == null || groupId == null
+      ? skipToken
+      : {
+          group_id: groupId,
+          table_id: tableId,
+        },
+  );
+
+  const {
+    data: attributes = [],
+    isLoading: isAttributesLoading,
+    error: attributesError,
+  } = useListUserAttributesQuery();
+
+  const draftPolicy = useSelector((state) =>
+    groupId != null && tableId != null
+      ? getGroupTableAccessPolicy(state, { params: { groupId, tableId } })
+      : undefined,
+  );
+
+  if (groupId == null || tableId == null || databaseId == null) {
+    return <LoadingAndErrorWrapper error={t`Invalid table id`} />;
   }
 
-  const close = () => {
-    return push(getParentPath(route, location));
-  };
+  const policy = draftPolicy ?? fetchedPolicy ?? undefined;
+
+  const isLoading = isPoliciesLoading || isAttributesLoading;
+  const error = policiesError || attributesError;
+
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
 
   const handleSave = async (policy: GroupTableAccessPolicy) => {
-    updatePolicy(policy);
-    updateTableSandboxingPermission(params);
-    close();
+    dispatch(updatePolicy(policy));
+    dispatch(
+      updateTableSandboxingPermission({
+        groupId,
+        entityId: { databaseId, schemaName: params.schemaName, tableId },
+        // the modal is mounted under both permissions editor views; only
+        // permission post-actions read the view
+        view: location.pathname.startsWith(GROUPS_BASE_PATH)
+          ? "group"
+          : "database",
+      }),
+    );
+    onClose();
   };
 
   return (
-    <LoadingAndErrorWrapper
-      loading={isLoading}
-      error={policyRequestState?.error}
-    >
-      <EditSandboxingModal
-        policy={policy}
-        attributes={attributes || []}
-        params={params}
-        onCancel={close}
-        onSave={handleSave}
-      />
-    </LoadingAndErrorWrapper>
+    <EditSandboxingModal
+      policy={policy}
+      attributes={attributes || []}
+      params={{ groupId, tableId }}
+      onCancel={onClose}
+      onSave={handleSave}
+    />
   );
 };
 
-const mapStateToProps = (
-  state: SandboxesState,
-  props: EditSandboxingModalContainerProps,
-) => ({
-  policy: getGroupTableAccessPolicy(state, props),
-  policyRequestState: getPolicyRequestState(state, props),
-  attributes: getUserAttributes(state),
-});
-
-const mapDispatchToProps = {
-  push,
-  fetchPolicy,
-  updatePolicy,
-  fetchUserAttributes,
-  updateTableSandboxingPermission,
-};
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  withRouter,
-  connect(mapStateToProps, mapDispatchToProps),
-)(EditSandboxingModalContainer);
+export default EditSandboxingModalContainer;

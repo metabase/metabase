@@ -37,6 +37,18 @@
   :visibility :settings-manager
   :encryption :when-encryption-key-set)
 
+(defsetting test-api-setting-premium-feature
+  (deferred-tru "Setting gated behind a premium feature. This only shows up in dev.")
+  :visibility :admin
+  :type       :boolean
+  :default    false
+  :feature    :test-feature)
+
+(defsetting test-admin-write-authed-read-visibility
+  (deferred-tru "Setting to test the `:admin-write-authed-read` visibility level. This only shows up in dev.")
+  :visibility :admin-write-authed-read
+  :encryption :when-encryption-key-set)
+
 ;; ## Helper Fns
 (defn- fetch-test-settings
   "Fetch the provided settings using the API. Settings not present in the response are ignored."
@@ -59,8 +71,8 @@
 
 (defn- do-with-mocked-settings-manager-access!
   [f]
-  (with-redefs [setting/has-advanced-setting-access?        (constantly true)
-                validation/check-has-application-permission (constantly true)]
+  (mt/with-dynamic-fn-redefs [setting/has-advanced-setting-access?        (constantly true)
+                              validation/check-has-application-permission (constantly true)]
     (f)))
 
 (defmacro ^:private with-mocked-settings-manager-access!
@@ -87,11 +99,9 @@
                :description    "Test setting - this only shows up in dev (2)"
                :default        "[Default Value]"}]
              (fetch-test-settings [:test-setting-1 :test-setting-2 :test-setting-3]))))
-
     (testing "Check that fetching Settings does not return settings marked as :include-in-list?=false"
       (is (empty?
            (fetch-test-settings [:test-setting-that-is-not-included-when-listing-in-api]))))
-
     (testing "Check that non-admin setting managers can fetch Settings with `:visibility :settings-manager`"
       (test-settings-manager-visibility! nil)
       (with-mocked-settings-manager-access!
@@ -102,22 +112,29 @@
                  :description "Setting to test the `:settings-manager` visibility level. This only shows up in dev.",
                  :default nil}]
                (fetch-test-settings :rasta [:test-setting-1 :test-settings-manager-visibility])))))
-
+    (testing "Check that authenticated users can read Settings with `:visibility :admin-write-authed-read` via session/properties"
+      (test-admin-write-authed-read-visibility! "VALUE")
+      (is (= "VALUE"
+             (get (mt/user-http-request :rasta :get 200 "session/properties")
+                  :test-admin-write-authed-read-visibility)))
+      (testing "but non-admins cannot read them via GET /api/setting (the admin-only listing endpoint)"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "setting"))))
+      (test-admin-write-authed-read-visibility! nil))
     (testing "Check that non-admins are denied access"
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "setting")))))
+             (mt/user-http-request :rasta :get 403 "setting"))))))
 
+(deftest fetch-setting-test-2
   (testing "GET /api/setting/:key"
     (testing "Test that admins can fetch a single Setting"
       (models.setting-test/test-setting-2! "OK!")
       (is (= "OK!"
              (fetch-setting :test-setting-2 200))))
-
     (testing "Test that non-admin setting managers can fetch a single Setting if it has `:visibility :settings-manager`."
       (test-settings-manager-visibility! "OK!")
       (with-mocked-settings-manager-access!
         (is (= "OK!" (fetch-setting :test-settings-manager-visibility 200)))))
-
     (testing "Check that non-superusers cannot fetch a single Setting if it is not user-local"
       (is (= "You don't have permissions to do that."
              (fetch-setting :rasta :test-setting-2 403))))
@@ -125,10 +142,8 @@
       ;; n.b. the api will return nil if a setting is its default value.
       (test-api-setting-double! 3.14)
       (is (= 3.14 (fetch-setting :test-api-setting-double 200)))
-
       (test-api-setting-boolean! true)
       (is (true? (fetch-setting :test-api-setting-boolean 200)))
-
       (test-api-setting-integer! 42)
       (is (= 42 (fetch-setting :test-api-setting-integer 200))))))
 
@@ -166,25 +181,45 @@
     (is (= "NICE!"
            (models.setting-test/test-setting-1))
         "Updated setting should be visible from setting getter")
-
     (is (= "NICE!"
            (fetch-setting :test-setting-1 200))
         "Updated setting should be visible from API endpoint")
-
     (testing "Check that non-admin setting managers can only update Settings with `:visibility :settings-manager`."
       (with-mocked-settings-manager-access!
         (mt/user-http-request :rasta :put 204 "setting/test-settings-manager-visibility" {:value "NICE!"})
         (is (= "NICE!" (fetch-setting :test-settings-manager-visibility 200)))
-
         (mt/user-http-request :rasta :put 403 "setting/test-setting-1" {:value "Not nice :("})))
-
     (testing "Check non-superuser can't set a Setting that is not user-local"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting/test-setting-1" {:value "NICE!"}))))
-
+    (testing "Check that :admin-write-authed-read settings are writable by admins but not non-admins"
+      (mt/user-http-request :crowberto :put 204 "setting/test-admin-write-authed-read-visibility" {:value "ADMIN_SET"})
+      (is (= "ADMIN_SET"
+             (test-admin-write-authed-read-visibility)))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 "setting/test-admin-write-authed-read-visibility" {:value "RASTA_SET"})))
+      (is (= "ADMIN_SET"
+             (test-admin-write-authed-read-visibility))
+          "Value should be unchanged after non-admin write attempt")
+      (test-admin-write-authed-read-visibility! nil))
     (testing "Check that a generic 403 error is returned if a non-superuser tries to set a Setting that doesn't exist"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting/bad-setting" {:value "NICE!"}))))))
+
+(deftest update-setting-without-premium-feature-test
+  (testing "PUT /api/setting/:key for a setting whose premium feature is unavailable returns a 402, not a 500"
+    (mt/with-premium-features #{}
+      (doseq [[endpoint body] [["setting/test-api-setting-premium-feature" {:value true}]
+                               ["setting"                                  {:test-api-setting-premium-feature true}]]]
+        (testing (str "PUT /api/" endpoint)
+          (let [response (mt/user-http-request :crowberto :put 402 endpoint body)]
+            (is (= "Setting test-api-setting-premium-feature is not enabled because feature :test-feature is not available"
+                   (:message response)))
+            (testing "the setting definition is not leaked into the response body"
+              (is (not-any? (set (keys response)) [:description :getter :setter :default])))))))
+    (testing "turning the setting off is rejected the same way, rather than 500ing"
+      (mt/with-premium-features #{}
+        (mt/user-http-request :crowberto :put 402 "setting/test-api-setting-premium-feature" {:value false})))))
 
 (deftest fetch-sensitive-setting-test
   (testing "Sensitive settings should always come back obfuscated"
@@ -192,7 +227,6 @@
       (models.setting-test/test-sensitive-setting! "ABCDEF")
       (is (= "**********EF"
              (fetch-setting :test-sensitive-setting 200))))
-
     (testing "GET /api/setting"
       (models.setting-test/test-sensitive-setting! "GHIJKLM")
       (is (= {:key            "test-sensitive-setting"
@@ -212,7 +246,6 @@
     (mt/user-http-request :crowberto :put 204 "setting/test-sensitive-setting" {:value "123456"})
     (is (= "123456"
            (models.setting-test/test-sensitive-setting))))
-
   (testing "Attempts to set the Setting to an obfuscated value should be ignored"
     (testing "PUT /api/setting/:name"
       (models.setting-test/test-sensitive-setting! "123456")
@@ -220,7 +253,6 @@
              (mt/user-http-request :crowberto :put 204 "setting/test-sensitive-setting" {:value "**********56"})))
       (is (= "123456"
              (models.setting-test/test-sensitive-setting))))
-
     (testing "PUT /api/setting"
       (models.setting-test/test-sensitive-setting! "123456")
       (is (= nil
@@ -239,7 +271,6 @@
              (models.setting-test/test-setting-1)))
       (is (= "DEF"
              (models.setting-test/test-setting-2))))
-
     (testing "non-admin setting managers should only be able to update multiple settings at once if they have `:visibility :settings-manager`"
       (with-mocked-settings-manager-access!
         (is (= nil
@@ -252,7 +283,6 @@
                (test-settings-manager-visibility)))
         (is (= "ABC"
                (models.setting-test/test-setting-1)))))
-
     (testing "non-admin should not be able to update multiple settings at once if any of them are not user-local"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting" {:test-setting-1 "GHI", :test-setting-2 "JKL"})))
@@ -305,7 +335,6 @@
                  :default nil}]
                (fetch-user-local-test-settings :crowberto)))
         (clear-user-local-values)))
-
     (testing "GET /api/setting/:key"
       (testing "should return the user-local value of a user-local setting"
         (set-initial-user-local-values)
@@ -313,13 +342,11 @@
                (mt/user-http-request :crowberto :get 200 "setting/test-user-local-only-setting")))
         (is (= "ABC"
                (mt/user-http-request :crowberto :get 200 "setting/test-user-local-allowed-setting")))
-
         (is (= "DEF"
                (mt/user-http-request :rasta :get 200 "setting/test-user-local-only-setting")))
         (is (= "DEF"
                (mt/user-http-request :rasta :get 200 "setting/test-user-local-allowed-setting")))
         (clear-user-local-values)))
-
     (testing "PUT /api/setting/:key"
       (testing "should update the user-local value of a user-local setting"
         (set-initial-user-local-values)
@@ -329,7 +356,6 @@
         (mt/user-http-request :crowberto :put 204 "setting/test-user-local-allowed-setting" {:value "JKL"})
         (is (= "JKL"
                (mt/user-http-request :crowberto :get 200 "setting/test-user-local-allowed-setting")))
-
         (mt/user-http-request :rasta :put 204 "setting/test-user-local-only-setting" {:value "MNO"})
         (is (= "MNO"
                (mt/user-http-request :rasta :get 200 "setting/test-user-local-only-setting")))
@@ -337,7 +363,6 @@
         (is (= "PQR"
                (mt/user-http-request :rasta :get 200 "setting/test-user-local-allowed-setting")))
         (clear-user-local-values)))
-
     (testing "PUT /api/setting"
       (testing "can updated multiple user-local settings at once"
         (set-initial-user-local-values)
@@ -347,7 +372,6 @@
                (mt/user-http-request :crowberto :get 200 "setting/test-user-local-only-setting")))
         (is (= "JKL"
                (mt/user-http-request :crowberto :get 200 "setting/test-user-local-allowed-setting")))
-
         (mt/user-http-request :rasta :put 204 "setting" {:test-user-local-only-setting    "MNO"
                                                          :test-user-local-allowed-setting "PQR"})
         (is (= "MNO"
@@ -355,7 +379,6 @@
         (is (= "PQR"
                (mt/user-http-request :rasta :get 200 "setting/test-user-local-allowed-setting")))
         (clear-user-local-values))
-
       (testing "if a non-admin tries to set multiple settings and any aren't user-local, none are updated"
         (set-initial-user-local-values)
         (models.setting-test/test-setting-1! "ABC")
@@ -374,13 +397,11 @@
         (is (= "ABC" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1")))
         (is (= (mt/user-http-request :crowberto :get 200 "setting/test-setting-1")
                (mt/user-http-request :crowberto :get 200 "setting/test_setting_1"))))
-
       (testing "PUT /api/setting/:key"
         (mt/user-http-request :crowberto :put 204 "setting/test_setting_1" {:value "DEF"})
         (is (= "DEF" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1")))
         (is (= (mt/user-http-request :crowberto :get 200 "setting/test-setting-1")
                (mt/user-http-request :crowberto :get 200 "setting/test_setting_1"))))
-
       (testing "PUT /api/setting"
         (mt/user-http-request :crowberto :put 204 "setting" {:test_setting_1 "GHI", :test_setting_2 "JKL"})
         (is (= "GHI" (mt/user-http-request :crowberto :get 200 "setting/test_setting_1")))
@@ -396,3 +417,11 @@
     (test-deprecated-setting! "hello")
     (is (re-find #"Setting test-deprecated-setting is deprecated as of Metabase 0.51.0"
                  (str/join " " (map :message (warnings)))))))
+
+(deftest site-name-description-reflects-application-name-test
+  (testing "GET /api/setting returns the site-name description interpolated with a whitelabel application-name (#17043)"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-name "New Test Co"]
+        (let [site-name-setting (some #(when (= "site-name" (:key %)) %)
+                                      (mt/user-http-request :crowberto :get 200 "setting"))]
+          (is (str/includes? (:description site-name-setting) "New Test Co")))))))

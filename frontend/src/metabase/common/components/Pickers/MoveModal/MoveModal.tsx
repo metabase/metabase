@@ -6,18 +6,18 @@ import type {
   MoveCollectionDestination,
   MoveDestination,
   OnMoveWithOneItem,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import {
   canPlaceEntityInCollection,
   canPlaceEntityInCollectionOrDescendants,
   isItemCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import {
   EntityPickerModal,
   isInDbTree,
 } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
-import { PLUGIN_TENANTS } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import type { CollectionId, CollectionItem } from "metabase-types/api";
 
 import type {
@@ -70,6 +70,10 @@ export const MoveModal = ({
       }
 
       if (item.model === "collection") {
+        if (!canMoveCollectionToLibraryDestination(movingItem, item)) {
+          return true;
+        }
+
         return !canPlaceEntityInCollectionOrDescendants(
           movingItem.model,
           getCollectionType(item),
@@ -87,7 +91,7 @@ export const MoveModal = ({
       }
 
       if (isDisabledItem) {
-        return isDisabledItem(item as OmniPickerCollectionItem);
+        return isDisabledItem(item);
       }
 
       return false;
@@ -102,6 +106,13 @@ export const MoveModal = ({
       }
 
       if (shouldDisableItem(item)) {
+        return false;
+      }
+
+      if (
+        item.model === "collection" &&
+        !canPlaceEntityInCollection(movingItem.model, getCollectionType(item))
+      ) {
         return false;
       }
 
@@ -155,7 +166,7 @@ export const MoveModal = ({
         return onMove({
           id: destination.id,
           model: destination.model,
-        } as MoveDestination);
+        });
       }
     },
     [onMove, canMoveToDashboard],
@@ -183,6 +194,7 @@ export const MoveModal = ({
         hasRootCollection: true,
         hasConfirmButtons: true,
         canCreateCollections: true,
+        canCreateDashboards: canMoveToDashboard ?? false,
         hasPersonalCollections: true,
         confirmButtonText: t`Move`,
       }}
@@ -192,6 +204,27 @@ export const MoveModal = ({
     />
   );
 };
+
+export function canMoveCollectionToLibraryDestination(
+  movingItem: OmniPickerCollectionItem,
+  destination: OmniPickerCollectionItem,
+) {
+  if (movingItem.model !== "collection") {
+    return true;
+  }
+
+  const destinationType = getCollectionType(destination);
+
+  if (!PLUGIN_LIBRARY.isLibraryCollectionType(destinationType)) {
+    return true;
+  }
+
+  if (destinationType === "library") {
+    return PLUGIN_LIBRARY.isLibrarySubCollectionType(movingItem.type);
+  }
+
+  return movingItem.type === destinationType;
+}
 
 interface BulkMoveModalProps {
   onClose: () => void;
@@ -233,6 +266,7 @@ export const BulkMoveModal = ({
       if (item.model === "collection") {
         const hasInvalidItem = selectedItems.some(
           (selectedItem) =>
+            !canMoveCollectionToLibraryDestination(selectedItem, item) ||
             !canPlaceEntityInCollectionOrDescendants(
               selectedItem.model,
               getCollectionType(item),
@@ -293,11 +327,17 @@ export const BulkMoveModal = ({
   const shouldHideItem = useCallback(
     (item: OmniPickerItem) => {
       if (item.model === "collection") {
-        return !selectedItems.every((selectedItem) =>
-          canPlaceEntityInCollection(
-            selectedItem.model,
-            getCollectionType(item),
-          ),
+        return !selectedItems.every(
+          (selectedItem) =>
+            canMoveCollectionToLibraryDestination(
+              // Unjustified type cast. FIXME
+              selectedItem as OmniPickerCollectionItem,
+              item,
+            ) &&
+            canPlaceEntityInCollection(
+              selectedItem.model,
+              getCollectionType(item),
+            ),
         );
       }
       return false;
@@ -307,6 +347,7 @@ export const BulkMoveModal = ({
 
   const handleMove = useCallback(
     async (destination: OmniPickerItem) => {
+      // Unjustified type cast. FIXME
       return onMove({
         id: destination.id,
         model: destination.model,
@@ -336,6 +377,7 @@ export const BulkMoveModal = ({
         hasRootCollection: true,
         hasConfirmButtons: true,
         canCreateCollections: true,
+        canCreateDashboards: canMoveToDashboard,
         confirmButtonText: t`Move`,
       }}
       isDisabledItem={shouldDisableItem}
@@ -346,7 +388,7 @@ export const BulkMoveModal = ({
   );
 };
 
-const isSameDestination = (
+export const isSameDestination = (
   movingItem: OmniPickerCollectionItem,
   movingTarget: OmniPickerCollectionItem,
 ) => {
@@ -359,6 +401,7 @@ const isSameDestination = (
 
   if (
     movingTarget.model === "collection" &&
+    !movingItem.dashboard_id &&
     movingItem.collection?.id === movingTarget.id
   ) {
     return true;

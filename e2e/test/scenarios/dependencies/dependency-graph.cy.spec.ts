@@ -6,7 +6,6 @@ import {
   FIRST_COLLECTION_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { IconName } from "metabase/ui";
 import type {
   CardId,
   CardType,
@@ -14,11 +13,11 @@ import type {
   DashboardId,
   DependencyId,
   DependencyType,
+  IconName,
   MeasureId,
   NativeQuerySnippetId,
   SegmentId,
   TableId,
-  TransformId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -68,9 +67,11 @@ describe("scenarios > dependencies > dependency graph", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: TABLE_NAME });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     H.getTableId({ name: TABLE_NAME }).as(TABLE_ID_ALIAS);
+    H.resetSnowplow();
   });
 
   describe("entity search", () => {
@@ -86,6 +87,12 @@ describe("scenarios > dependencies > dependency graph", () => {
       cy.log(`verify that "${itemName}" can be found via search`);
       H.DependencyGraph.entrySearchInput().clear().type(itemName);
       H.popover().findByText(itemName).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "dependency-graph",
+        event_detail: "table",
+      });
+
       H.DependencyGraph.entryButton().should("have.text", itemName);
       H.DependencyGraph.entryButton().icon(itemIcon).should("be.visible");
       H.DependencyGraph.entryButton().icon("close").click();
@@ -128,6 +135,7 @@ describe("scenarios > dependencies > dependency graph", () => {
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
+        // Unjustified type cast. FIXME
         cy.findByPlaceholderText(/Search/).type(itemName as string);
         cy.findByText(/results for/).should("be.visible");
         cy.findByTestId("search-scope-selector")
@@ -486,7 +494,7 @@ describe("scenarios > dependencies > dependency graph", () => {
     it("should display dependencies for a transform and navigate to them", () => {
       createTableBasedTransform({ tableName: TABLE_NAME }).then(
         ({ body: transform }) => {
-          runTransformAndWaitForSuccess(transform.id);
+          H.runTransformAndWaitForSuccess(transform.id);
           visitGraphForEntity(transform.id, "transform");
         },
       );
@@ -684,6 +692,8 @@ function visitGraph() {
 }
 
 function visitGraphForEntity(id: DependencyId, type: DependencyType) {
+  // Wait for async dependency computation to complete before navigating
+  H.waitForBackfillComplete();
   return cy.visit(BASE_URL, { qs: { id, type } });
 }
 
@@ -1065,11 +1075,6 @@ function createSnippetBasedTransform({
   });
 }
 
-function runTransformAndWaitForSuccess(transformId: TransformId) {
-  cy.request("POST", `/api/transform/${transformId}/run`);
-  H.waitForSucceededTransformRuns();
-}
-
 function createEmptySnippet() {
   return H.createSnippet({
     name: EMPTY_SNIPPET_NAME,
@@ -1095,10 +1100,13 @@ function createTableBasedSegment({ tableId }: { tableId: TableId }) {
   return H.createSegment({
     name: TABLE_BASED_SEGMENT_NAME,
     description: "Segment description",
-    table_id: tableId,
     definition: {
-      "source-table": tableId,
-      filter: ["=", 1, 1],
+      database: WRITABLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        filter: ["=", 1, 1],
+      },
     },
   });
 }
@@ -1113,10 +1121,13 @@ function createSegmentBasedSegment({
   return H.createSegment({
     name: SEGMENT_BASED_SEGMENT_NAME,
     description: "Segment description",
-    table_id: tableId,
     definition: {
-      "source-table": tableId,
-      filter: ["segment", segmentId],
+      database: WRITABLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        filter: ["segment", segmentId],
+      },
     },
   });
 }
@@ -1202,7 +1213,7 @@ function createDocumentWithTableBasedQuestion({
 }) {
   return H.createDocument({
     name: DOCUMENT_NAME,
-    document: [],
+    document: { type: "doc", content: [] },
     cards: {
       "-1": createMockCard({
         id: -1,
@@ -1223,10 +1234,13 @@ function createDocumentWithTableBasedQuestion({
 function createTableBasedMeasure({ tableId }: { tableId: TableId }) {
   return H.createMeasure({
     name: TABLE_BASED_MEASURE_NAME,
-    table_id: tableId,
     definition: {
-      "source-table": tableId,
-      aggregation: [["count"]],
+      database: WRITABLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        aggregation: [["count"]],
+      },
     },
   });
 }
@@ -1240,10 +1254,13 @@ function createSegmentBaseMeasure({
 }) {
   return H.createMeasure({
     name: SEGMENT_BASED_MEASURE_NAME,
-    table_id: tableId,
     definition: {
-      "source-table": tableId,
-      aggregation: [["count-where", ["segment", segmentId]]],
+      database: WRITABLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        aggregation: [["count-where", ["segment", segmentId]]],
+      },
     },
   });
 }
@@ -1336,10 +1353,13 @@ function createMeasureBasedMeasure({
 }) {
   return H.createMeasure({
     name: MEASURE_BASED_MEASURE_NAME,
-    table_id: tableId,
     definition: {
-      "source-table": tableId,
-      aggregation: ["+", 1, ["measure", measureId]],
+      database: WRITABLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": tableId,
+        aggregation: ["+", 1, ["measure", measureId]],
+      },
     },
   });
 }

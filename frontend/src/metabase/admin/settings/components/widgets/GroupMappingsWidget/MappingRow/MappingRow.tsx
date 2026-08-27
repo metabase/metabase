@@ -1,6 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
-import type * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,16 +7,16 @@ import type {
   GroupIds,
 } from "metabase/admin/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { isAdminGroup } from "metabase/common/utils/groups";
 import AdminS from "metabase/css/admin.module.css";
-import CS from "metabase/css/core/index.css";
-import { isAdminGroup } from "metabase/lib/groups";
-import { Icon, Tooltip } from "metabase/ui";
-import type { GroupInfo } from "metabase-types/api";
+import { Flex, Icon, Tooltip } from "metabase/ui";
+import type { GroupId, GroupInfo } from "metabase-types/api";
 
-import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
-import Selectbox from "../GroupSelect";
+import { DeleteGroupMappingModal } from "../DeleteGroupMappingModal";
+import { GroupSelect } from "../GroupSelect";
 
-import { DeleteMappingButton } from "./MappingRow.styled";
+import S from "./MappingRow.module.css";
 
 type OnDeleteMappingType = (arg: {
   name: string;
@@ -32,7 +30,7 @@ type MappingRowProps = {
   selectedGroupIds: GroupIds;
   clearGroupMember: ({ id }: { id: number }) => void;
   deleteGroup: ({ id }: { id: number }) => void;
-  onChange: () => void;
+  onChange: (group: { id: GroupId }, selected: boolean) => void;
   onDeleteMapping: OnDeleteMappingType;
 };
 
@@ -133,14 +131,14 @@ export const MappingRow = ({
       <tr>
         <td>{name}</td>
         <td>
-          <Selectbox
+          <GroupSelect
             groups={groups}
             selectedGroupIds={selectedGroupIdsFromGroupsThatExist}
             onGroupChange={onChange}
           />
         </td>
         <td className={AdminS.TableActions}>
-          <div className={cx(CS.floatRight, CS.mr1)}>
+          <Flex justify="flex-end" mr="sm">
             <DeleteButton
               onDelete={() =>
                 shouldUseDeleteGroupMappingModal
@@ -148,7 +146,7 @@ export const MappingRow = ({
                   : openDeleteMappingModal()
               }
             />
-          </div>
+          </Flex>
         </td>
       </tr>
       <ConfirmModal
@@ -178,8 +176,8 @@ const DeleteButton = ({
   onDelete?: React.MouseEventHandler<HTMLButtonElement>;
 }) => (
   <Tooltip label={t`Remove mapping`} position="top">
-    <DeleteMappingButton onClick={onDelete}>
+    <IconButtonWrapper className={S.deleteButton} onClick={onDelete}>
       <Icon name="close" />
-    </DeleteMappingButton>
+    </IconButtonWrapper>
   </Tooltip>
 );

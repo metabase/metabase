@@ -2,6 +2,7 @@
   "`permissions` module API namespace."
   {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:require
+   [metabase.permissions.data-access-token]
    [metabase.permissions.models.application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision]
    [metabase.permissions.models.collection.graph]
@@ -29,6 +30,7 @@
   metabase.permissions.models.permissions-group/keep-me
   metabase.permissions.models.permissions-group-membership/keep-me
   metabase.permissions.models.permissions-revision/keep-me
+  metabase.permissions.data-access-token/keep-me
   metabase.permissions.path/keep-me
   metabase.permissions.published-tables/keep-me
   metabase.permissions.user/keep-me
@@ -38,23 +40,25 @@
 (p/import-vars
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
+  batch-delete-permissions!
+  batch-insert-permissions!
   disable-perms-cache
   download-perms-level
-  full-db-permission-for-user
+  full-database-permission-for-user
   full-schema-permission-for-user
   groups-have-permission-for-table?
+  index-database-permissions
   is-superuser?
   is-data-analyst?
   most-permissive-database-permission-for-user
   native-download-permission-for-user
   permissions-for-user
-  prime-db-cache
+  prime-database-perms-cache
+  prime-schema-perms-cache
+  prime-table-perms-cache
   sandboxes-for-user
   schema-permission-for-user
   set-database-permission!
-  set-external-group-permissions!
-  set-new-database-permissions!
-  set-new-table-permissions!
   set-table-permission!
   set-table-permissions!
   table-permission-for-user
@@ -66,7 +70,13 @@
   with-additional-table-permission
   with-relevant-permissions-for-user
   has-any-transforms-permission?
-  has-db-transforms-permission?]
+  has-db-transforms-permission?
+  set-default-group-permissions!
+  set-default-database-permissions!
+  set-default-table-permissions!
+  set-default-table-permissions-bulk!
+  with-global-permissions-lock
+  with-db-scoped-permissions-lock]
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
@@ -77,7 +87,13 @@
  [metabase.permissions.models.permissions
   namespace-clause
   can-read-audit-helper
+  can-read-via-parent-collection?
+  collection-based-visibility-search-models
+  collection-id-only-read-method
+  collection-id-only-read-models
+  collection-read-access-group-ids
   current-user-has-application-permissions?
+  define-collection-based-visibility!
   grant-application-permissions!
   grant-collection-read-permissions!
   grant-collection-readwrite-permissions!
@@ -101,6 +117,8 @@
   fail-to-remove-last-admin-msg
   remove-user-from-group!
   remove-user-from-groups!
+  remove-all-users-from-group!
+  remove-user-from-all-groups!
   throw-if-last-admin!
   without-is-superuser-sync-on-add-to-admin-group]
  [metabase.permissions.path
@@ -109,6 +127,7 @@
   collection-readwrite-path
   collection-path?]
  [metabase.permissions.user
+  query-creation-capabilities
   user-permissions-set
   user->tenant-collection-and-descendant-ids]
  [metabase.permissions.util
@@ -119,6 +138,7 @@
   log-permissions-changes
   sandboxed-or-impersonated-user?
   sandboxed-user?
+  sandboxed-user-for-db?
   increment-implicit-perms-revision!
   save-perms-revision!]
  [metabase.permissions.validation
@@ -133,9 +153,16 @@
   can-access-via-collection?
   user-published-table-permission
   user-has-any-published-table-permission?
-  user-has-published-table-permission-for-database?])
+  user-has-published-table-permission-for-database?
+  published-table-visible-clause])
 
 (p/import-vars [metabase.permissions.settings use-tenants])
+
+(p/import-vars
+ [metabase.permissions.data-access-token
+  data-access-token
+  data-access-compatible?
+  data-access-token-transform])
 
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)

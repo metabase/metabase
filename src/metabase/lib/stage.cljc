@@ -14,17 +14,18 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.stage.util]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.namespaces :as shared.ns]
    [metabase.util.performance :refer [mapv some not-empty get-in #?(:clj for)]]))
 
@@ -141,7 +142,9 @@
    options        :- ::lib.metadata.calculation/returned-columns.options]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
-      (not-empty (lib.metadata.calculation/returned-columns query stage-number card options)))))
+      (not-empty
+       (into [] (remove :remapped-from)
+             (lib.metadata.calculation/returned-columns query stage-number card options))))))
 
 ;;; TODO (Cam 8/6/25) -- this should probably live in [[metabase.lib.metric]]
 (mu/defn- metric-visible-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
@@ -167,7 +170,7 @@
          ;; Only include "late" expressions when required.
          ;; "Late" expressions those like :offset which can't be used within the same query stage, like aggregations.
          :when (or include-late-exprs?
-                   (not (lib.util.match/match-lite clause :offset clause)))]
+                   (not (match/match-one clause :offset clause)))]
      (-> col
          (assoc :lib/source :source/expressions, :lib/source-column-alias (:name col))
          (u/assoc-default :effective-type (or (:base-type col) :type/*))))))
@@ -209,7 +212,7 @@
       ;; 1b: default visible Fields for the source Table
       (when source-table
         (assert (integer? source-table))
-        (let [table (lib.metadata/table query source-table)]
+        (when-some [table (lib.metadata/table query source-table)]
           (lib.metadata.calculation/returned-columns query stage-number table options)))
       ;; 1e. Metadata associated with a Metric
       (when metric-based?
@@ -234,8 +237,10 @@
 (mu/defn- existing-visible-columns :- ::lib.metadata.calculation/visible-columns
   [query                                                       :- ::lib.schema/query
    stage-number                                                :- :int
-   {:keys [include-joined? include-expressions?], :as options} :- ::lib.metadata.calculation/visible-columns.options]
-  (let [source-columns (previous-stage-or-source-visible-columns query stage-number options)]
+   {:keys [include-joined? include-expressions? include-sensitive-fields?], :as options} :- ::lib.metadata.calculation/visible-columns.options]
+  (let [source-columns (into []
+                             (lib.metadata/active-column-filter-xform {:include-sensitive? include-sensitive-fields?})
+                             (previous-stage-or-source-visible-columns query stage-number options))]
     (concat
      ;; 1: columns from the previous stage, source table or query
      source-columns
@@ -292,7 +297,7 @@
 (mu/defmethod lib.metadata.calculation/returned-columns-method ::stage :- ::lib.metadata.calculation/returned-columns
   [query                                  :- ::lib.schema/query
    stage-number                           :- :int
-   _stage                                 :- ::lib.schema/stage
+   stage                                  :- ::lib.schema/stage
    {:keys [include-remaps?], :as options} :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   ;; Not including the stage itself in the cache key, since it's not used(!)
   (lib.computed/with-cache-ephemeral* query [::returned-columns stage-number (lib.metadata.calculation/cacheable-options options)]
@@ -326,7 +331,9 @@
                                source-cols
                                (expressions-metadata query stage-number {:include-late-exprs? true})
                                (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
-                               (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))]
+                               (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))
+             cols         (cond-> cols
+                            (:pivot stage) lib.pivot/splice-pivot-grouping)]
          (into []
                (comp (lib.field.util/add-source-and-desired-aliases-xform query)
                      ;; we need to update `:name` to be the deduplicated name here, otherwise viz settings will break

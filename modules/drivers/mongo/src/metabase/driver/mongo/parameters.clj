@@ -4,23 +4,21 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.driver.common.parameters.operators :as params.ops]
-   [metabase.driver.common.parameters.parse :as params.parse]
-   [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.util :as u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.query-processor.parameters.operators :as params.ops]
+   [metabase.query-processor.parameters.values :as params.values]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [get-in]])
   (:import
    (java.time ZoneOffset)
-   (java.time.temporal Temporal)
-   (metabase.driver.common.parameters Date)))
+   (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
 
@@ -44,7 +42,7 @@
 
     ;; Date = the Parameters Date type, not an java.util.Date or java.sql.Date type
     ;; convert to a `Temporal` instance and recur
-    (instance? Date x)
+    (lib/parsed-date-param? x)
     (recur field (u.date/parse (:s x)))
 
     (and (instance? Temporal x)
@@ -64,73 +62,83 @@
     (pr-str x)))
 
 (mu/defn- field->name
-  [field :- driver-api/schema.metadata.column
-   alias]
-  (let [name (if (str/blank? alias)
-               (mongo.qp/field->name field ".")
-               alias)]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   field                 :- driver-api/schema.metadata.column
+   column-alias          :- [:maybe :string]]
+  (let [name (if (str/blank? column-alias)
+               (mongo.qp/field->name metadata-providerable field ".")
+               column-alias)]
     (pr-str name)))
 
-(defn- substitute-one-field-filter-date-range [{field :field, alias :alias, {value :value} :value}]
+(mu/defn- substitute-one-field-filter-date-range
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   {field :field, alias :alias, {value :value} :value}]
   (let [{:keys [start end]} (params.dates/date-string->range value {:inclusive-end? false})
         start-condition     (when start
                               (format "{%s: {$gte: %s}}"
-                                      (field->name field alias)
+                                      (field->name metadata-providerable field alias)
                                       (param-value->str field (u.date/parse start ZoneOffset/UTC))))
         end-condition       (when end
                               (format "{%s: {$lt: %s}}"
-                                      (field->name field alias)
+                                      (field->name metadata-providerable field alias)
                                       (param-value->str field (u.date/parse end ZoneOffset/UTC))))]
     (if (and start-condition end-condition)
       (format "{$and: [%s, %s]}" start-condition end-condition)
       (or start-condition
           end-condition))))
 
-;; Field filter value is either params/no-value (handled in `substitute-param`, a map with `:type` and `:value`, or a
+;; Field filter value is either lib/parsed-param-no-value-placeholder (handled in `substitute-param`, a map with `:type` and `:value`, or a
 ;; sequence of those maps.
-(defn- substitute-one-field-filter [{field :field, alias :alias, {param-type :type, value :value} :value, :as field-filter}]
+(mu/defn- substitute-one-field-filter
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   {:keys [field alias], {param-type :type, value :value} :value, :as field-filter} :- :metabase.lib.parameters.parse.types/field-filter]
   ;; convert relative dates to appropriate date range representations
   (cond
     (params.dates/not-single-date-type? param-type)
-    (substitute-one-field-filter-date-range field-filter)
+    (substitute-one-field-filter-date-range metadata-providerable field-filter)
 
     ;; a `date/single` like `2020-01-10`
     (and (params.dates/date-type? param-type)
          (string? value))
     (let [t (u.date/parse value)]
       (format "{$and: [%s, %s]}"
-              (format "{%s: {$gte: %s}}" (field->name field alias) (param-value->str field t))
-              (format "{%s: {$lt: %s}}"  (field->name field alias) (param-value->str field (u.date/add t :day 1)))))
+              (format "{%s: {$gte: %s}}" (field->name metadata-providerable field alias) (param-value->str field t))
+              (format "{%s: {$lt: %s}}"  (field->name metadata-providerable field alias) (param-value->str field (u.date/add t :day 1)))))
 
     :else
-    (format "{%s: %s}" (field->name field alias) (param-value->str field value))))
+    (format "{%s: %s}" (field->name metadata-providerable field alias) (param-value->str field value))))
 
 (mu/defn- substitute-field-filter
-  [{field :field, alias :alias, {:keys [value]} :value, :as field-filter} :- [:map
-                                                                              [:field driver-api/schema.metadata.column]
-                                                                              [:value [:map [:value :any]]]]]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   {field :field, alias :alias, {:keys [value]} :value, :as field-filter} :- :metabase.lib.parameters.parse.types/field-filter]
   (if (sequential? value)
-    (format "{%s: %s}" (field->name field alias) (param-value->str field value))
-    (substitute-one-field-filter field-filter)))
+    (format "{%s: %s}" (field->name metadata-providerable field alias) (param-value->str field value))
+    (substitute-one-field-filter metadata-providerable field-filter)))
 
-(defn- substitute-native-query-snippet [[acc missing] v]
-  (let [{:keys [content]} v]
-    [(conj acc content) missing]))
+(mu/defn- substitute-native-query-snippet
+  [[acc missing]
+   {:keys [content]} :- :metabase.lib.parameters.parse.types/referenced-query-snippet]
+  [(conj acc content) missing])
 
-(defn- substitute-param [param->value [acc missing] in-optional? {:keys [k], :as _param}]
+(mu/defn- substitute-param
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   param->value
+   [acc missing]
+   in-optional?
+   {:keys [k], :as _param} :- :metabase.lib.parameters.parse.types/param]
   (let [v (get param->value k)]
     (cond
       (not (contains? param->value k))
       [acc (conj missing k)]
 
-      (params/FieldFilter? v)
-      (let [no-value? (= (:value v) params/no-value)]
+      (lib/parsed-field-filter-param? v)
+      (let [no-value? (= (:value v) lib/parsed-param-no-value-placeholder)]
         (cond
           (params.ops/operator? (get-in v [:value :type]))
-          #_{:clj-kondo/ignore [:deprecated-var]}
           (let [param (:value v)
                 field-name (if (str/blank? (:alias v))
-                             (mongo.qp/field->name (:field v) ".")
+                             (mongo.qp/field->name query (:field v) ".")
                              (:alias v))
                 compiled-clause (-> (assoc param
                                            :target
@@ -138,29 +146,37 @@
                                             [:field field-name
                                              {:base-type (get-in v [:field :base-type])}]])
                                     params.ops/to-clause
-                                    ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
-                                    ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that
-                                    ;; desugars to [:or [:= 'field 1] ...].
-                                    driver-api/desugar-filter-clause
-                                    driver-api/wrap-value-literals-in-mbql
-                                    mongo.qp/compile-filter
+                                    ;; desugar only impacts
+                                    ;;
+                                    ;;    :does-not-contain -> [:not [:contains ...]]
+                                    ;;
+                                    ;; but it prevents an optimization of
+                                    ;;
+                                    ;;    [:= <field> 1 2 3] -> [:in <field> [1 2 3]]
+                                    ;;
+                                    ;; since that desugars to
+                                    ;;
+                                    ;;    [:or [:= <field> 1] ...].
+                                    lib/desugar-filter-clause
+                                    driver-api/wrap-value-literals-in-mbql5
+                                    (->> (mongo.qp/compile-filter query stage-number))
                                     json/encode)]
             [(conj acc compiled-clause) missing])
           ;; no-value field filters inside optional clauses are ignored and omitted entirely
           (and no-value? in-optional?) [acc (conj missing k)]
           ;; otherwise replace it with a {} which is the $match equivalent of 1 = 1, i.e. always true
           no-value?                    [(conj acc "{}") missing]
-          :else                        [(conj acc (substitute-field-filter v))
+          :else                        [(conj acc (substitute-field-filter query v))
                                         missing]))
 
-      (params/ReferencedQuerySnippet? v)
+      (lib/parsed-referenced-query-snippet-param? v)
       (substitute-native-query-snippet [acc missing] v)
 
-      (params/ReferencedCardQuery? v)
+      (lib/parsed-referenced-card-query-param? v)
       (throw (ex-info (tru "Cannot run query: MongoDB doesn''t support saved questions reference: {0}" k)
                       {:type driver-api/qp.error-type.invalid-query}))
 
-      (= v params/no-value)
+      (= v lib/parsed-param-no-value-placeholder)
       [acc (conj missing k)]
 
       :else
@@ -168,26 +184,35 @@
 
 (declare substitute*)
 
-(defn- substitute-optional [param->value [acc missing] {subclauses :args}]
-  (let [[opt-acc opt-missing] (substitute* param->value subclauses true)]
+(mu/defn- substitute-optional
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   param->value
+   [acc missing]
+   {subclauses :args} :- :metabase.lib.parameters.parse.types/optional]
+  (let [[opt-acc opt-missing] (substitute* query stage-number param->value subclauses true)]
     (if (seq opt-missing)
       [acc missing]
       [(into acc opt-acc) missing])))
 
-(defn- substitute*
+(mu/defn- substitute*
   "Returns a sequence of `[[replaced...] missing-parameters]`."
-  [param->value xs in-optional?]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   param->value
+   xs
+   in-optional?]
   (reduce
    (fn [[acc missing] x]
      (cond
        (string? x)
        [(conj acc x) missing]
 
-       (params/Param? x)
-       (substitute-param param->value [acc missing] in-optional? x)
+       (lib/parsed-param? x)
+       (substitute-param query stage-number param->value [acc missing] in-optional? x)
 
-       (params/Optional? x)
-       (substitute-optional param->value [acc missing] x)
+       (lib/parsed-optional-param? x)
+       (substitute-optional query stage-number param->value [acc missing] x)
 
        :else
        (throw (ex-info (tru "Don''t know how to substitute {0} {1}" (.getName (class x)) (pr-str x))
@@ -195,23 +220,34 @@
    [[] nil]
    xs))
 
-(defn- substitute [param->value xs]
-  (let [[replaced missing] (substitute* param->value xs false)]
+(mu/defn- substitute
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   param->value :- [:maybe [:map-of :string :any]]
+   xs]
+  (let [[replaced missing] (substitute* query stage-number param->value xs false)]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
                       {:type driver-api/qp.error-type.invalid-query})))
     (when (seq replaced)
       (str/join replaced))))
 
-(defn- parse-and-substitute [param->value x]
+(mu/defn- parse-and-substitute
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   param->value
+   x]
   (if-not (string? x)
     x
-    (u/prog1 (substitute param->value (params.parse/parse x false))
-      (when-not (= x <>)
-        (log/debugf "Substituted %s -> %s" (pr-str x) (pr-str <>))))))
+    (substitute query stage-number param->value (lib/parse-parameters x false))))
 
-(defn substitute-native-parameters
+(mu/defn substitute-native-parameters :- ::lib.schema/query
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."
-  [_driver inner-query]
-  (let [param->value (params.values/query->params-map inner-query)]
-    (update inner-query :query (partial perf/postwalk (partial parse-and-substitute param->value)))))
+  [_driver      :- :keyword
+   query        :- ::lib.schema/query
+   stage-number :- :int]
+  (let [param->value (params.values/stage->params-map query (lib/query-stage query stage-number))
+        update-stage (fn [native-stage]
+                       (perf/postwalk (partial parse-and-substitute query stage-number param->value)
+                                      native-stage))]
+    (lib/update-query-stage query stage-number update :native update-stage)))

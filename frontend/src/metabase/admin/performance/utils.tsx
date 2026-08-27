@@ -1,221 +1,38 @@
 import { match } from "ts-pattern";
-import { c, t } from "ttag";
-import { memoize } from "underscore";
+import { c } from "ttag";
+import * as Yup from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
+import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
+import { getScheduleStrings } from "metabase/common/components/Schedule/strings";
 import {
-  Cron,
-  getScheduleStrings,
-} from "metabase/common/components/Schedule/strings";
-import { isNullOrUndefined } from "metabase/lib/types";
-import { PLUGIN_CACHING } from "metabase/plugins";
+  PLUGIN_CACHING,
+  type PerformanceTabId,
+  type StrategyData,
+  type StrategyLabel,
+  defaultMinDurationMs,
+} from "metabase/plugins";
+import { isNullOrUndefined } from "metabase/utils/types";
 import type {
   AdaptiveStrategy,
   CacheConfig,
   CacheStrategy,
   CacheStrategyType,
   CacheableModel,
-  ScheduleDayType,
-  ScheduleFrameType,
-  ScheduleSettings,
-  ScheduleType,
 } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
-import { defaultMinDurationMs, rootId } from "./constants/simple";
-import type { PerformanceTabId, StrategyData, StrategyLabel } from "./types";
-
-const AM = 0;
-const PM = 1;
-
-const everyToCronSyntax = (every: number | string) =>
-  `${Cron.EveryPrefix}${every}`;
-export const isRepeatingEvery = (every: string) =>
-  every.startsWith(Cron.EveryPrefix);
-export const cronUnitToNumber = (unit: string) =>
-  parseInt(unit.replace(Cron.EveryPrefix, ""));
-
-const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
-  const { weekdays } = getScheduleStrings();
-  const index = weekdays.findIndex((o) => o.value === day);
-  if (index === -1) {
-    throw new Error(`Invalid day: ${day}`);
-  }
-  return index + 1;
-};
-
-const frameToCronMap = { first: "1", last: "L", mid: "15" };
-const frameToCron = (frame: ScheduleFrameType) => frameToCronMap[frame];
-
-const frameFromCronMap: Record<string, ScheduleFrameType> = {
-  "15": "mid",
-  "1": "first",
-  L: "last",
-};
-const frameFromCron = (frameInCronFormat: string) =>
-  frameFromCronMap[frameInCronFormat];
-
-export const scheduleSettingsToCron = (settings: ScheduleSettings): string => {
-  const second = "0";
-  const year = "*";
-  let minute = settings.schedule_minute?.toString() ?? Cron.AllValues;
-  const hour = settings.schedule_hour?.toString() ?? Cron.AllValues;
-  let weekday = settings.schedule_day
-    ? dayToCron(settings.schedule_day).toString()
-    : Cron.NoSpecificValue;
-  const month = Cron.AllValues;
-  let dayOfMonth: string = settings.schedule_day
-    ? Cron.NoSpecificValue
-    : Cron.AllValues;
-  if (settings.schedule_type === "every_n_minutes") {
-    minute = everyToCronSyntax(minute);
-  } else if (settings.schedule_type === "monthly" && settings.schedule_frame) {
-    // There are two kinds of monthly schedule:
-    // - weekday-based (e.g. "on the first Monday of the month")
-    // - date-based (e.g. "on the 15th of the month")
-    if (settings.schedule_day) {
-      // Handle weekday-based monthly schedule
-      const frameInCronFormat = frameToCron(settings.schedule_frame).replace(
-        /^1$/,
-        "#1",
-      );
-      const dayInCronFormat = dayToCron(settings.schedule_day);
-      weekday = `${dayInCronFormat}${frameInCronFormat}`;
-    } else {
-      // Handle date-based monthly schedule
-      dayOfMonth = frameToCron(settings.schedule_frame);
-    }
-  }
-  const cronExpression = [
-    second,
-    minute,
-    hour,
-    dayOfMonth,
-    month,
-    weekday,
-    year,
-  ].join(" ");
-  return cronExpression;
-};
-
-/** Returns null if we can't convert the cron expression to a ScheduleSettings object */
-export const cronToScheduleSettings_unmemoized = (
-  cron: string | null | undefined,
-  isCustomSchedule: boolean = false,
-): ScheduleSettings | null => {
-  if (!cron) {
-    return defaultSchedule;
-  }
-
-  const { weekdays } = getScheduleStrings();
-
-  // The Quartz cron library used in the backend distinguishes between 'no specific value' and 'all values',
-  // but for simplicity we can treat them as the same here
-  cron = cron.replace(
-    new RegExp(Cron.NoSpecificValue_Escaped, "g"),
-    Cron.AllValues,
-  );
-
-  const [_second, minute, hour, dayOfMonth, month, weekday] = cron.split(" ");
-
-  if (month !== Cron.AllValues && !isCustomSchedule) {
-    return null;
-  }
-  let schedule_type: ScheduleType | undefined;
-  if (isCustomSchedule) {
-    schedule_type = "cron";
-  } else if (dayOfMonth === Cron.AllValues) {
-    if (weekday === Cron.AllValues) {
-      if (hour === Cron.AllValues) {
-        schedule_type = isRepeatingEvery(minute) ? "every_n_minutes" : "hourly";
-      } else {
-        schedule_type = "daily";
-      }
-    } else {
-      // If the weekday part of the cron expression is something like '1#1' (first Monday),
-      // or '2L' (last Tuesday), then the frequency is monthly
-      const oneWeekPerMonth = weekday.match(/[#L]/);
-      schedule_type = oneWeekPerMonth ? "monthly" : "weekly";
-    }
-  } else {
-    schedule_type = "monthly";
-  }
-  let schedule_frame: ScheduleFrameType | undefined;
-  let schedule_day: ScheduleDayType | undefined;
-  if (schedule_type === "monthly") {
-    if (weekday === Cron.AllValues) {
-      schedule_frame = frameFromCron(dayOfMonth);
-    } else {
-      const dayStr = weekday.match(/^\d+/)?.[0];
-      if (!dayStr) {
-        throw new Error(
-          t`The cron expression contains an invalid weekday: ${weekday}`,
-        );
-      }
-      const day = parseInt(dayStr);
-      schedule_day = weekdays[day - 1]?.value as ScheduleDayType;
-      if (dayOfMonth === Cron.AllValues) {
-        // Match the part after the '#' in a string like '6#1' or the letter in '6L'
-        const frameInCronFormat = weekday
-          .match(/^\d+(\D.*)$/)?.[1]
-          .replace(/^#/, "");
-        if (!frameInCronFormat) {
-          throw new Error(
-            t`The cron expression contains an invalid weekday: ${weekday}`,
-          );
-        }
-        schedule_frame = frameFromCron(frameInCronFormat);
-      } else {
-        schedule_frame = frameFromCron(dayOfMonth);
-      }
-    }
-  } else {
-    if (weekday !== Cron.AllValues) {
-      schedule_day = weekdays[parseInt(weekday) - 1]?.value as ScheduleDayType;
-    }
-  }
-
-  const scheduleMinute =
-    minute === Cron.AllValues ? null : cronUnitToNumber(minute);
-  const scheduleHour = hour === Cron.AllValues ? null : cronUnitToNumber(hour);
-  return {
-    schedule_type,
-    schedule_minute: scheduleMinute,
-    schedule_hour: scheduleHour,
-    schedule_day,
-    schedule_frame,
-  };
-};
-export const cronToScheduleSettings = memoize(
-  cronToScheduleSettings_unmemoized,
-  (cron, isCustomSchedule) => `${cron}_${isCustomSchedule}`,
-);
-
-const defaultSchedule: ScheduleSettings = {
-  schedule_type: "hourly",
-  schedule_minute: 0,
-};
-export const defaultCron = scheduleSettingsToCron(defaultSchedule);
-
-const isValidAmPm = (amPm: number) => amPm === AM || amPm === PM;
-
-export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
-
-export const hourTo24HourFormat = (hour: number, amPm: number): number => {
-  if (!isValidAmPm(amPm)) {
-    amPm = AM;
-  }
-  const hour24 = amPm === PM ? (hour % 12) + 12 : hour % 12;
-  return hour24 === 24 ? 0 : hour24;
-};
+import { rootId } from "./constants/simple";
 
 type ErrorWithMessage = { data: { message: string } };
 export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
   typeof error === "object" &&
   error !== null &&
   "data" in error &&
-  typeof (error as { data: any }).data === "object" &&
-  "message" in (error as { data: any }).data &&
-  typeof (error as { data: { message: any } }).data.message === "string";
+  isObject(error.data) &&
+  "message" in error.data &&
+  typeof error.data.message === "string";
 
 const delay = (milliseconds: number) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -231,7 +48,7 @@ export const resolveSmoothly = async (
 };
 
 export const getFrequencyFromCron = (cron: string) => {
-  const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
+  const scheduleType = cronToBuilderValue(cron)?.schedule_type;
   const { scheduleOptionNames } = getScheduleStrings();
   return isNullOrUndefined(scheduleType)
     ? ""
@@ -264,12 +81,35 @@ export const getShortStrategyLabel = (
     .with({ type: "schedule" }, (strategy) =>
       getFrequencyFromCron(strategy.schedule),
     )
-    .with(
-      { type: "duration" },
-      (strategy) =>
-        c(
-          "{0} is a number. Indicates a number of hours (the length of a cache)",
-        ).t`${strategy.duration}h`,
+    .with({ type: "duration" }, ({ duration, unit }) =>
+      match(unit)
+        .with(
+          CacheDurationUnit.Minutes,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} minutes (the length of a cache)",
+            ).t`${duration}m`,
+        )
+        .with(
+          CacheDurationUnit.Seconds,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} seconds (the length of a cache)",
+            ).t`${duration}s`,
+        )
+        .with(
+          CacheDurationUnit.Days,
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} days (the length of a cache)",
+            ).t`${duration}d`,
+        )
+        .otherwise(
+          () =>
+            c(
+              "{0} is a number. Abbreviation of {0} hours (the length of a cache)",
+            ).t`${duration}h`,
+        ),
     )
     .otherwise(() => null);
   if (subLabel) {
@@ -289,9 +129,46 @@ export const getStrategyValidationSchema = (strategyData: StrategyData) => {
   }
 };
 
+// Unjustified type cast. FIXME
+export const strategyValidationSchema = Yup.object().test(
+  "strategy-validation",
+  "The object must match one of the strategy validation schemas",
+  function (value) {
+    if (!value) {
+      return this.createError({
+        message: "Strategy is falsy",
+      });
+    }
+    // Unjustified type cast. FIXME
+    const { type } = value as unknown as { type: string };
+    if (!isValidStrategyName(type)) {
+      return this.createError({
+        message: `"${type}" is not a valid strategy name`,
+        path: "type",
+      });
+    }
+    const schema = getStrategyValidationSchema(PLUGIN_CACHING.strategies[type]);
+    try {
+      schema.validateSync(value);
+      return true;
+    } catch (error: unknown) {
+      if (error instanceof Yup.ValidationError) {
+        return this.createError({
+          message: error.message,
+          path: error.path,
+        });
+      } else {
+        console.error("Unhandled error:", error);
+        return false;
+      }
+    }
+  },
+) as Yup.AnySchema;
+
 export const getFieldsForStrategyType = (strategyType: CacheStrategyType) => {
   const { strategies } = PLUGIN_CACHING;
   const strategyData = strategies[strategyType];
+  // Unjustified type cast. FIXME
   const validationSchemaDescription = getStrategyValidationSchema(
     strategyData,
   ).describe() as SchemaObjectDescription;
@@ -304,6 +181,7 @@ export const translateConfig = <T extends CacheConfig>(
   config: T,
   direction: "fromAPI" | "toAPI",
 ): T => {
+  // Unjustified type cast. FIXME
   const translated = { ...config, strategy: { ...config.strategy } } as T;
 
   // If strategy type is unsupported, use a fallback

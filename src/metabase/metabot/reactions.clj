@@ -1,0 +1,93 @@
+(ns metabase.metabot.reactions
+  "Schemas for various reactions.
+
+  All reactions must have a `:type` with the namespace `metabot.reaction`, but declaring a schema for it is optional.
+  If you want to declare a schema, you can use [[defreaction]]."
+  (:require
+   [malli.core :as mc]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
+
+(defonce ^{:private true
+           :doc "Hierarchy of declared reaction types, all descending from `:metabot/registered-action`. Kept
+  separate from Clojure's global hierarchy so that a registration here cannot collide with other users of the global
+  hierarchy, and so the watch below only fires for reaction registrations."}
+  hierarchy
+  (make-hierarchy))
+
+(defn- derive!
+  "Make `parent` an ancestor of `tag` in the reaction [[hierarchy]]."
+  [tag parent]
+  (alter-var-root #'hierarchy derive tag parent)
+  nil)
+
+(mr/def ::reaction-type
+  "A Metabot reaction type keyword e.g. `:metabot.reaction/message`"
+  [:fn
+   {:error/message "Reaction type must be a kebab-case keyword starting whose namespace is `metabot.reaction`."}
+   (fn [x]
+     (and (qualified-keyword? x)
+          (= (u/->kebab-case-en (u/qualified-name x)) (u/qualified-name x))
+          (= (namespace x) "metabot.reaction")))])
+
+;;; TODO -- need Kondo hook that registers the keyword
+(mu/defn defreaction
+  "Declare a new reaction type and the schema for it.
+
+  The schema name matches the reaction-name."
+  [reaction-name :- ::reaction-type
+   schema]
+  (derive! reaction-name :metabot/registered-action)
+  (mr/register! reaction-name schema))
+
+(defn- known-reaction-types
+  "Reaction types with schemas that were declared with [[defreaction]]."
+  []
+  (descendants hierarchy :metabot/registered-action))
+
+;;; this is just a placeholder so LSP can register the place it lives for jump-to-definition functionality. Actual
+;;; schema gets created below by [[reaction-schema]] and [[update-reaction-schema!]]
+(mr/def ::reaction any?)
+
+(defn- reaction-schema
+  "Build the schema for `::reaction`."
+  []
+  [:and
+   [:map
+    [:type ::reaction-type]]
+   (into [:multi
+          {:dispatch :type}
+          [::mc/default :any]]
+         (map (fn [reaction-type]
+                [reaction-type reaction-type]))
+         (known-reaction-types))])
+
+(defn- update-reaction-schema! []
+  (log/debug "Updating reaction schema")
+  (mr/register! :metabase.metabot.reactions/reaction (reaction-schema)))
+
+(update-reaction-schema!)
+
+;;; when the descendants of `:metabot/registered-action` change update the `::reaction` schema
+(add-watch #'hierarchy
+           ::update-reaction-schema
+           (fn [_key _ref old-hierarchy new-hierarchy]
+             (when-not (= (descendants old-hierarchy :metabot/registered-action)
+                          (descendants new-hierarchy :metabot/registered-action))
+               (update-reaction-schema!))))
+
+;;;;
+;;;; Reaction definitions
+;;;;
+
+(defreaction :metabot.reaction/message
+  [:map
+   [:type    [:= :metabot.reaction/message]]
+   [:message :string]])
+
+(defreaction :metabot.reaction/redirect
+  [:map
+   [:type [:= :metabot.reaction/redirect]]
+   [:url :string]])

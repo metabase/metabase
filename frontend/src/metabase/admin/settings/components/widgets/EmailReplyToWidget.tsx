@@ -1,12 +1,13 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useAdminSetting } from "metabase/api/utils";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
+import { useAdminSetting } from "metabase/settings";
 import { Stack } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";
 
-import { BasicAdminSettingInput, SetByEnvVar } from "./AdminSettingInput";
+import { BasicAdminSettingInput } from "./AdminSettingInput";
 
 // The backend accepts a string array for multiple reply-to emails,
 // but currently the frontend only lets the user enter a single email.

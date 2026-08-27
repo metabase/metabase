@@ -5,7 +5,7 @@ export interface MenuItem {
 }
 
 export interface ModalParams {
-  slug: string;
+  slug?: string;
   timelineId?: string;
   timelineEventId?: string;
 }

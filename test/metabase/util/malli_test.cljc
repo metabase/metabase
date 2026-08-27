@@ -20,17 +20,13 @@
                                     [:fn less-than-four-fxn]
                                     (deferred-tru "Special Number that has to be less than four description")
                                     (deferred-tru "Special Number that has to be less than four error"))]
-
            (is (= [(deferred-tru "Special Number that has to be less than four error")]
                   (me/humanize (mr/explain special-lt-4-schema 8))))
-
            (is (= ["Special Number that has to be less than four error, received: 8"]
                   (me/humanize (mr/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value})))
-
            (testing "should be user-localized"
              (is (= "Special Number that has to be less than four description"
                     (umd/describe special-lt-4-schema)))
-
              (mt/with-mock-i18n-bundles! {"es" {:messages {"Special Number that has to be less than four description"
                                                            "Número especial que tiene que ser menos de cuatro descripción"
 
@@ -40,20 +36,16 @@
                (mt/with-user-locale "es"
                  (is (= "Número especial que tiene que ser menos de cuatro descripción"
                         (umd/describe special-lt-4-schema)))
-
                  (is (= ["Número especial que tiene que ser menos de cuatro errores, recibió: 8"]
                         (me/humanize (mr/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value}))))))))
-
        (testing "inner schema"
          (let [special-lt-4-schema [:map [:ltf-key (mu/with-api-error-message
                                                     [:fn less-than-four-fxn]
                                                     (deferred-tru "Special Number that has to be less than four"))]]]
            (is (= {:ltf-key ["missing required key"]}
                   (me/humanize (mr/explain special-lt-4-schema {}))))
-
            (is (= {:ltf-key [(deferred-tru "Special Number that has to be less than four")]}
                   (me/humanize (mr/explain special-lt-4-schema {:ltf-key 8}))))
-
            (is (= "map where {:ltf-key -> <Special Number that has to be less than four>}"
                   (umd/describe special-lt-4-schema))))))))
 

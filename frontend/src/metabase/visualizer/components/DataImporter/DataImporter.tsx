@@ -3,9 +3,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   Box,
   Button,
@@ -16,19 +14,31 @@ import {
   TextInput,
   Title,
 } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { useBooleanMap } from "metabase/visualizer/hooks/use-boolean-map";
 import { getDataSources } from "metabase/visualizer/selectors";
 import {
   initializeVisualizer,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerDataSource } from "metabase-types/api";
+import type { DashboardId, VisualizerDataSource } from "metabase-types/api";
+
+import {
+  trackVisualizerAddMoreDataClicked,
+  trackVisualizerShowColumnsClicked,
+} from "../analytics";
 
 import { ColumnsList } from "./ColumnsList/ColumnsList";
 import S from "./DataImporter.module.css";
 import { DatasetsList } from "./DatasetsList/DatasetsList";
 
-export const DataImporter = ({ className }: { className?: string }) => {
+export const DataImporter = ({
+  className,
+  dashboardId,
+}: {
+  className?: string;
+  dashboardId: DashboardId | undefined;
+}) => {
   const [search, setSearch] = useState("");
   const [showDatasets, handlers] = useDisclosure(false);
   const dispatch = useDispatch();
@@ -81,12 +91,11 @@ export const DataImporter = ({ className }: { className?: string }) => {
           variant="transparent"
           ml="auto"
           onClick={() => {
-            trackSimpleEvent({
-              event: showDatasets
-                ? "visualizer_show_columns_clicked"
-                : "visualizer_add_more_data_clicked",
-              triggered_from: "visualizer-modal",
-            });
+            if (showDatasets) {
+              trackVisualizerShowColumnsClicked();
+            } else {
+              trackVisualizerAddMoreDataClicked();
+            }
 
             handlers.toggle();
           }}
@@ -118,15 +127,16 @@ export const DataImporter = ({ className }: { className?: string }) => {
           search={debouncedSearch}
           setDataSourceCollapsed={setDataSourceCollapsed}
           muted={!showDatasets}
+          dashboardId={dashboardId}
         />
       </Flex>
       <Flex
         direction="column"
         className={S.Content}
-        bg="background-primary"
+        bg="background_page-primary"
         h="100%"
         display={showDatasets ? "none" : "flex"}
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         style={{
           borderRadius: "var(--default-border-radius)",
         }}
@@ -142,11 +152,11 @@ export const DataImporter = ({ className }: { className?: string }) => {
           <Flex
             direction="column"
             className={S.Content}
-            bg="background-primary"
+            bg="background_page-primary"
             style={{
               borderRadius: "var(--default-border-radius)",
               height: "100%",
-              border: `1px solid var(--mb-color-border)`,
+              border: `1px solid var(--mb-color-border-neutral)`,
             }}
           >
             {dataSources.length > 0 ? (

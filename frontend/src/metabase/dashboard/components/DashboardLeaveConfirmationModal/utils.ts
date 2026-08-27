@@ -1,6 +1,5 @@
-import type { Location } from "history";
-
-import { deserializeCard, parseHash } from "metabase/query_builder/actions";
+import { deserializeCard, parseHash } from "metabase/common/utils/card";
+import type { Location } from "metabase/router";
 
 export const isNavigatingToCreateADashboardQuestion = (
   nextLocation?: Location,
@@ -17,7 +16,7 @@ export const isNavigatingToCreateADashboardQuestion = (
     const isDashboardQuestion =
       deserializedCard && deserializedCard.dashboard_id !== null;
 
-    return isDashboardQuestion;
+    return Boolean(isDashboardQuestion);
   }
 
   return false;

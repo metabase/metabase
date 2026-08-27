@@ -1,6 +1,7 @@
 import {
   NO_SQL_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -10,6 +11,7 @@ import type {
 } from "e2e/support/helpers/api";
 import {
   ACCOUNTS_COUNT_BY_CREATED_AT,
+  ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
   PIVOT_TABLE_CARD,
   PRODUCTS_AVERAGE_BY_CATEGORY,
@@ -26,6 +28,190 @@ describe("documents", () => {
     H.restore();
     cy.signInAsAdmin();
     H.resetSnowplow();
+  });
+
+  describe("duplicating documents", () => {
+    it("should warn about unsaved changes when duplicating an existing document", () => {
+      H.createDocument({
+        name: "Unsaved Duplicate Doc",
+        document: {
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Original content" }],
+              attrs: { _id: "1" },
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("textbox", { name: "Document Title" })
+        .should("have.value", "Unsaved Duplicate Doc")
+        .clear()
+        .type("Unsaved title");
+
+      H.documentContent().click();
+      H.addToDocument(" changed", false);
+
+      H.documentSaveButton().should("be.visible");
+
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByTestId("save-confirmation").should("be.visible");
+
+      cy.findByRole("button", { name: "Cancel" }).click();
+
+      cy.findByTestId("save-confirmation").should("not.exist");
+      cy.findByRole("heading", { name: /Duplicate "/ }).should("not.exist");
+
+      // still unsaved
+      H.documentSaveButton().should("be.visible");
+    });
+
+    it("should save changes when duplicating, then copy and redirect to the new document", () => {
+      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
+
+      H.createDocument({
+        name: "Save Duplicate Doc",
+        document: {
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Original content" }],
+              attrs: { _id: "1" },
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("textbox", { name: "Document Title" })
+        .should("have.value", "Save Duplicate Doc")
+        .clear()
+        .type("Saved title");
+
+      H.documentContent().click();
+      H.addToDocument(" changed", false);
+
+      H.documentSaveButton().should("be.visible");
+
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByTestId("save-confirmation").should("be.visible");
+      cy.findByRole("button", { name: "Save changes" }).click();
+
+      // saved
+      H.documentSaveButton().should("not.exist");
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Saved title",
+      );
+
+      // duplicate modal
+      cy.findByRole("button", { name: "Duplicate" }).should("be.visible");
+      cy.findByRole("textbox", { name: "Name" }).then(($input) => {
+        // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
+        const copyName = ($input.val() ?? "").toString();
+        cy.wrap(copyName).as("copyName");
+      });
+
+      cy.findByRole("button", { name: "Duplicate" }).click();
+
+      cy.wait("@copyDoc").then(({ response }) => {
+        const copiedId = response?.body?.id;
+        expect(copiedId).to.exist;
+
+        cy.location("pathname").should(
+          "match",
+          new RegExp(`^/document/${copiedId}`),
+        );
+      });
+
+      cy.get<string>("@copyName").then((copyName) => {
+        cy.findByRole("textbox", { name: "Document Title" }).should(
+          "have.value",
+          copyName,
+        );
+      });
+
+      // content should match the saved changes
+      H.documentContent().should("contain.text", "Original content changed");
+    });
+
+    it("should duplicate a document without any changes (happy path)", () => {
+      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
+
+      H.createDocument({
+        name: "Happy Path Duplicate Doc",
+        document: {
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Original content" }],
+              attrs: { _id: "1" },
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Happy Path Duplicate Doc",
+      );
+      H.documentSaveButton().should("not.exist");
+
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByRole("heading", {
+        name: 'Duplicate "Happy Path Duplicate Doc"',
+      }).should("be.visible");
+
+      cy.findByRole("textbox", { name: "Name" }).then(($input) => {
+        // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
+        const copyName = ($input.val() ?? "").toString();
+        cy.wrap(copyName).as("copyName");
+      });
+      cy.findByRole("button", { name: "Duplicate" }).click();
+
+      cy.wait("@copyDoc").then(({ response }) => {
+        const copiedId = response?.body?.id;
+        expect(copiedId).to.exist;
+
+        cy.location("pathname").should(
+          "match",
+          new RegExp(`^/document/${copiedId}`),
+        );
+      });
+
+      cy.get<string>("@copyName").then((copyName) => {
+        cy.findByRole("textbox", { name: "Document Title" }).should(
+          "have.value",
+          copyName,
+        );
+      });
+
+      H.documentContent().should("contain.text", "Original content");
+    });
   });
 
   it("should allow you to create a new document from the new button and save", () => {
@@ -122,7 +308,7 @@ describe("documents", () => {
     cy.findByTestId("collection-picker-button").click();
     H.entityPickerModalItem(0, /Personal Collection/).click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
-    H.modal().findByRole("button", { name: "Copy" }).click();
+    H.modal().findByRole("button", { name: "Duplicate" }).click();
     H.openNavigationSidebar();
     H.navigationSidebar().findByText("Your personal collection").click();
 
@@ -155,6 +341,38 @@ describe("documents", () => {
     H.documentContent()
       .findByRole("textbox")
       .should("have.attr", "contenteditable", "false");
+  });
+
+  it("should default the save modal to a selectable collection when Library is enabled (#73538)", () => {
+    H.activateToken("pro-self-hosted");
+    H.createLibrary();
+    cy.intercept("POST", "/api/document").as("createDocument");
+
+    cy.visit("/");
+
+    H.newButton("Document").click();
+    cy.findByRole("textbox", { name: "Document Title" }).type(
+      "Document in default collection",
+    );
+    H.documentContent().type(
+      "This document should save without changing folders",
+    );
+
+    cy.findByRole("button", { name: "Save" }).click();
+
+    H.entityPickerModal().within(() => {
+      cy.findByTestId("entity-picker-select-button").should("be.enabled");
+    });
+    cy.findByTestId("entity-picker-select-button").click();
+
+    cy.wait("@createDocument").then(({ request }) => {
+      expect(request.body).not.to.have.property("collection_id");
+    });
+    cy.location("pathname").should("match", /^\/document\/\d+/);
+    cy.findByRole("textbox", { name: "Document Title" }).should(
+      "have.value",
+      "Document in default collection",
+    );
   });
 
   it("should focus the start of the document body when pressing Enter on the title input", () => {
@@ -335,37 +553,32 @@ describe("documents", () => {
       });
 
       it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
-        const isMac = Cypress.platform === "darwin";
-        const metaKey = isMac ? "Meta" : "Control";
         H.visitDocument("@documentId");
         H.getDocumentCard("Orders").should("exist");
         H.documentContent().within(() => {
           const originalText = "Lorem Ipsum and some more words";
           const originalExact = new RegExp(`^${originalText}$`);
           cy.contains(originalExact).click();
-          cy.realPress([metaKey, "z"]);
+          cy.realPress([H.metaKey, "z"]);
           cy.contains(originalExact);
 
           const modification = " etc.";
           const modifiedExact = new RegExp(`^${originalText}${modification}$`);
           H.addToDocument(modification, false);
           cy.contains(modifiedExact);
-          cy.realPress([metaKey, "z"]);
+          cy.realPress([H.metaKey, "z"]);
           cy.contains(originalExact);
-          cy.realPress(["Shift", metaKey, "z"]);
+          cy.realPress(["Shift", H.metaKey, "z"]);
           cy.contains(modifiedExact);
-          cy.realPress([metaKey, "z"]); // revert to prevent "unsaved changes" dialog
+          cy.realPress([H.metaKey, "z"]); // revert to prevent "unsaved changes" dialog
         });
         H.newButton("Document").click();
         H.documentContent().should("have.text", "");
-        cy.realPress([metaKey, "z"]);
+        cy.realPress([H.metaKey, "z"]);
         H.documentContent().should("have.text", "");
       });
 
       it("should not clear undo history on save", () => {
-        const isMac = Cypress.platform === "darwin";
-        const metaKey = isMac ? "Meta" : "Control";
-
         const originalText = "Lorem Ipsum and some more words";
         const originalExact = new RegExp(`^${originalText}$`);
         H.visitDocument("@documentId");
@@ -377,13 +590,13 @@ describe("documents", () => {
         H.addToDocument(modification, false);
         H.documentContent().contains(modifiedExact);
 
-        cy.realPress([metaKey, "s"]);
+        cy.realPress([H.metaKey, "s"]);
         cy.findByTestId("toast-undo")
           .findByText("Document saved")
           .should("be.visible");
 
-        cy.realPress([metaKey, "z"]);
-        cy.realPress([metaKey, "z"]);
+        cy.realPress([H.metaKey, "z"]);
+        cy.realPress([H.metaKey, "z"]);
         H.documentContent().contains(originalExact);
       });
     });
@@ -567,7 +780,8 @@ describe("documents", () => {
       });
 
       it("should support keyboard and mouse selection in suggestions without double highlight", () => {
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
+        H.setupAnthropicLlmProvider();
         H.visitDocument("@documentId");
 
         H.documentContent().click();
@@ -793,6 +1007,7 @@ describe("documents", () => {
 
             cy.log(`${ogHeight}, ${newHeight}`);
 
+            // Unjustified type cast. FIXME
             expect(newHeight).to.be.lessThan(ogHeight as number);
           });
         });
@@ -1639,11 +1854,20 @@ describe("documents", () => {
       H.documentContent().click();
       H.addToDocument("Updated content");
       H.documentSaveButton().click();
+      cy.findByTestId("toast-undo")
+        .should("be.visible")
+        .and("contain.text", "Document saved");
+      // dismiss after asserting so toasts don't stack into later lookups
+      H.undoToast().icon("close").click({ force: true });
 
       cy.log("Make another change");
       H.documentContent().click();
       H.addToDocument("More changes");
       H.documentSaveButton().click();
+      cy.contains('[data-testid="toast-undo"]', "Document saved").should(
+        "be.visible",
+      );
+      H.undoToast().icon("close").click({ force: true });
 
       cy.log("Open revision history");
       cy.findByLabelText("More options").click();
@@ -1663,10 +1887,9 @@ describe("documents", () => {
       cy.intercept("GET", "/api/document/*").as("documentReload");
       cy.findByTestId("document-history-list")
         .findByText(/created this/)
-        .parent()
-        .within(() => {
-          cy.findByTestId("question-revert-button").click();
-        });
+        .closest('[data-testid="revision-history-event"]')
+        .findByTestId("question-revert-button")
+        .click();
       cy.wait(["@revert", "@documentReload"]);
 
       cy.log("Verify document was reverted");
@@ -1681,9 +1904,211 @@ describe("documents", () => {
       cy.findByTestId("document-history-list")
         .findByText(/reverted to an earlier version/)
         .should("be.visible");
+
+      cy.log("Surface backend error when a revert fails (UXW-310)");
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing document" },
+      }).as("failedRevert");
+
+      cy.findByTestId("document-history-list")
+        .findAllByTestId("question-revert-button")
+        .first()
+        .click();
+      cy.wait("@failedRevert");
+
+      H.undoToast().should("contain.text", "Cannot revert: missing document");
+    });
+  });
+
+  describe("timeline events on chart embeds", () => {
+    const TIMESERIES_CARD_1 = "Orders, Count, Grouped by Created At (year)";
+    const NON_TIMESERIES_CARD = "Orders, Count";
+    const TIMESERIES_CARD_3 = "Orders by Created At (Month)";
+    const TIMELINE_NAME = "Releases";
+    const TIMELINE_EVENT_NAME = "RC1";
+
+    it("should show the Events menu only on timeseries charts and manage per-chart timeline selection", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: TIMELINE_NAME },
+        events: [
+          {
+            name: TIMELINE_EVENT_NAME,
+            timestamp: "2026-06-01T00:00:00Z",
+            icon: "star",
+            timezone: "UTC",
+          },
+        ],
+      });
+
+      H.createQuestion(ORDERS_COUNT_BY_CREATED_AT).then(
+        ({ body: { id: timeseriesCard3Id } }) => {
+          H.createDocument({
+            name: "Timeline events document",
+            document: {
+              type: "doc",
+              content: [
+                {
+                  type: "resizeNode",
+                  attrs: { height: 350, minHeight: 280, _id: "1" },
+                  content: [
+                    {
+                      type: "cardEmbed",
+                      attrs: {
+                        id: ORDERS_BY_YEAR_QUESTION_ID,
+                        name: null,
+                        _id: "1a",
+                      },
+                    },
+                  ],
+                },
+                { type: "paragraph", attrs: { _id: "2" } },
+                {
+                  type: "resizeNode",
+                  attrs: { height: 350, minHeight: 280, _id: "3" },
+                  content: [
+                    {
+                      type: "cardEmbed",
+                      attrs: {
+                        id: ORDERS_COUNT_QUESTION_ID,
+                        name: null,
+                        _id: "3a",
+                      },
+                    },
+                  ],
+                },
+                { type: "paragraph", attrs: { _id: "4" } },
+                {
+                  type: "resizeNode",
+                  attrs: { height: 350, minHeight: 280, _id: "5" },
+                  content: [
+                    {
+                      type: "cardEmbed",
+                      attrs: {
+                        id: timeseriesCard3Id,
+                        name: null,
+                        _id: "5a",
+                      },
+                    },
+                  ],
+                },
+                { type: "paragraph", attrs: { _id: "6" } },
+              ],
+            },
+            collection_id: null,
+            idAlias: "timelineDocumentId",
+          });
+        },
+      );
+
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      H.visitDocument("@timelineDocumentId");
+
+      cy.wait(["@cardQuery", "@cardQuery", "@cardQuery"]);
+
+      H.getDocumentCard(TIMESERIES_CARD_1)
+        .findByTestId("chart-container")
+        .should("exist");
+      H.getDocumentCard(NON_TIMESERIES_CARD)
+        .findByTestId("visualization-root")
+        .should("exist");
+      H.getDocumentCard(TIMESERIES_CARD_3)
+        .findByTestId("chart-container")
+        .should("exist");
+
+      cy.log("Events menu appears for timeseries chart 1, not for chart 2");
+      H.openDocumentCardMenu(TIMESERIES_CARD_1);
+      H.popover()
+        .findByRole("menuitem", { name: /Events/ })
+        .should("be.visible");
+      cy.realPress("Escape");
+
+      H.openDocumentCardMenu(NON_TIMESERIES_CARD);
+      H.popover()
+        .findByRole("menuitem", { name: /Edit Visualization/ })
+        .should("be.visible");
+      H.popover()
+        .findByRole("menuitem", { name: /Events/ })
+        .should("not.exist");
+      cy.realPress("Escape");
+
+      cy.log("Add timeline to chart 1");
+      H.openDocumentCardMenu(TIMESERIES_CARD_1);
+      H.popover()
+        .findByRole("menuitem", { name: /Events/ })
+        .click();
+
+      documentTimelineSidebar().should("be.visible");
+      documentTimelineHeaderCheckbox(TIMELINE_NAME)
+        .should("not.be.checked")
+        .click();
+      documentTimelineHeaderCheckbox(TIMELINE_NAME).should("be.checked");
+
+      documentCardTimelineEventChip(
+        TIMESERIES_CARD_1,
+        TIMELINE_EVENT_NAME,
+      ).should("be.visible");
+
+      cy.log("Open timeline sidebar by clicking event chip");
+      closeDocumentTimelineSidebar();
+      documentTimelineSidebar().should("not.exist");
+
+      H.getDocumentCard(TIMESERIES_CARD_1)
+        .findByTestId("timeline-event-chip")
+        .click();
+
+      documentTimelineSidebar().should("be.visible");
+
+      cy.log("Chart 3 has independent timeline state");
+      selectDocumentCard(TIMESERIES_CARD_3);
+
+      documentTimelineHeaderCheckbox(TIMELINE_NAME).should("not.be.checked");
+      documentCardTimelineEventChip(
+        TIMESERIES_CARD_3,
+        TIMELINE_EVENT_NAME,
+      ).should("not.exist");
+
+      cy.log("Remove timeline from chart 1");
+      selectDocumentCard(TIMESERIES_CARD_1);
+
+      documentTimelineHeaderCheckbox(TIMELINE_NAME)
+        .should("be.checked")
+        .click();
+      documentTimelineHeaderCheckbox(TIMELINE_NAME).should("not.be.checked");
+      documentCardTimelineEventChip(
+        TIMESERIES_CARD_1,
+        TIMELINE_EVENT_NAME,
+      ).should("not.exist");
     });
   });
 });
+
+function documentTimelineSidebar() {
+  return cy.findByTestId("document-timeline-sidebar");
+}
+
+function documentTimelineHeaderCheckbox(timelineName: string) {
+  return documentTimelineSidebar()
+    .findAllByLabelText("Timeline card header")
+    .filter((_, el) => el.textContent?.includes(timelineName) ?? false)
+    .should("have.length", 1)
+    .findByRole("checkbox");
+}
+
+function closeDocumentTimelineSidebar() {
+  return documentTimelineSidebar().findByLabelText("Close").click();
+}
+
+function selectDocumentCard(cardName: string) {
+  return H.getDocumentCard(cardName).click("top");
+}
+
+function documentCardTimelineEventChip(cardName: string, eventName: string) {
+  return H.getDocumentCard(cardName).findByRole("button", {
+    name: eventName,
+  });
+}
 
 const assertOnlyOneOptionActive = (
   name: string | RegExp,

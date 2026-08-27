@@ -1,0 +1,26 @@
+## Widen mcp_query_handle.mcp_session_id for stateless MCP session ids with capability hints.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/062_update_migrations.yaml
+
+  - changeSet:
+      id: v62.2026-05-26T00:00:00
+      author: phoomparin
+      comment: Widen mcp_query_handle.mcp_session_id for MCP session capability hints
+      changes:
+        - modifyDataType:
+            tableName: mcp_query_handle
+            columnName: mcp_session_id
+            newDataType: varchar(254)
+      rollback: []
+
+  - changeSet:
+      id: v62.2026-05-26T00:00:01
+      author: phoomparin
+      comment: Preserve NOT NULL on mcp_query_handle.mcp_session_id after widening
+      changes:
+        - addNotNullConstraint:
+            tableName: mcp_query_handle
+            columnName: mcp_session_id
+            columnDataType: varchar(254)
+      rollback: []

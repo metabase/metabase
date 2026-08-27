@@ -1,25 +1,21 @@
 import cx from "classnames";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useListDatabasesQuery } from "metabase/api";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import { getEngineLogo } from "metabase/databases/utils/engine";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { newDatabase } from "metabase/lib/urls";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Group, Stack, Text, Title } from "metabase/ui";
+import { useSelector } from "metabase/redux";
+import { Box, Flex, Group, Stack, Text, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { newDatabase } from "metabase/urls";
 
 import { BrowseCard } from "../components/BrowseCard";
-import {
-  BrowseContainer,
-  BrowseMain,
-  BrowseSection,
-  CenteredEmptyState,
-} from "../components/BrowseContainer.styled";
+import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseGrid } from "../components/BrowseGrid";
 
@@ -42,10 +38,11 @@ export const BrowseDatabases = () => {
 
   if (!databases?.length && !isAdmin) {
     return (
-      <CenteredEmptyState
-        title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
+      <EmptyState
+        className={S.centeredEmptyState}
+        title={<Box mb="sm">{t`No databases here yet`}</Box>}
         illustrationElement={
-          <Box mb=".5rem">
+          <Box mb="sm">
             <img src={NoResults} />
           </Box>
         }
@@ -54,34 +51,51 @@ export const BrowseDatabases = () => {
   }
 
   return (
-    <BrowseContainer>
+    <Flex
+      className={S.browseContainer}
+      flex={1}
+      direction="column"
+      wrap="nowrap"
+      pt="md"
+    >
       <BrowseDataHeader />
-      <BrowseMain>
-        <BrowseSection direction="column">
+      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
+        <Flex maw="64rem" mx="auto" w="100%" direction="column">
           <BrowseGrid data-testid="database-browser">
             {databases &&
               databases.length > 0 &&
-              databases.map((database) => (
-                <BrowseCard
-                  to={Urls.browseDatabase(database)}
-                  key={database.id}
-                  title={database.name}
-                  icon="database"
-                  size="lg"
-                />
-              ))}
+              databases.map((database) => {
+                const hasNameCollision = databases.some(
+                  (db) => db.id !== database.id && db.name === database.name,
+                );
+
+                // in case of name collisions, use id-slug url for uniqueness
+                const databaseUrl = hasNameCollision
+                  ? Urls.browseDatabase(database)
+                  : Urls.permalinkDatabase(database);
+
+                return (
+                  <BrowseCard
+                    to={databaseUrl}
+                    key={database.id}
+                    title={database.name}
+                    icon="database"
+                    size="lg"
+                  />
+                );
+              })}
             {isAdmin && <AddDatabaseCard />}
           </BrowseGrid>
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 };
 
 const CardImageWrapper = ({ database }: { database: string }) => {
   return (
     <Box
-      bg="white"
+      bg="core-white"
       h="xl"
       w="xl"
       className={CS.rounded}

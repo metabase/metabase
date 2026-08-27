@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.core :as lib]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
@@ -229,7 +228,7 @@
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
           column     (meta/field-metadata :people :birth-date)
           query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
-                                        (lib.query/->legacy-MBQL)
+                                        lib/->legacy-MBQL
                                         (lib/query meta/metadata-provider))
                                    (lib/with-temporal-bucket column :year))
           breakouts  (lib/breakouts query)]
@@ -238,7 +237,7 @@
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
           column     (meta/field-metadata :people :birth-date)
           query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
-                                        (lib.query/->legacy-MBQL)
+                                        lib/->legacy-MBQL
                                         (lib/query meta/metadata-provider))
                                    (lib/with-temporal-bucket column :month))
           breakouts  (lib/breakouts query)]
@@ -266,20 +265,20 @@
                    {:id (meta/id :venues :latitude) :name "LATITUDE"}
                    {:id (meta/id :venues :longitude) :name "LONGITUDE"}
                    {:id (meta/id :venues :price) :name "PRICE"}
-                   {:lib/type     :metadata/column
-                    :name         "ID"
-                    :display-name "ID"
-                    :source-alias "Cat"
-                    :id           (meta/id :categories :id)
-                    :table-id     (meta/id :categories)
-                    :base-type    :type/BigInteger}
-                   {:lib/type     :metadata/column
-                    :name         "NAME"
-                    :display-name "Name"
-                    :source-alias "Cat"
-                    :id           (meta/id :categories :name)
-                    :table-id     (meta/id :categories)
-                    :base-type    :type/Text}]
+                   {:lib/type                     :metadata/column
+                    :name                         "ID"
+                    :display-name                 "ID"
+                    :lib/join-alias "Cat"
+                    :id                           (meta/id :categories :id)
+                    :table-id                     (meta/id :categories)
+                    :base-type                    :type/BigInteger}
+                   {:lib/type                     :metadata/column
+                    :name                         "NAME"
+                    :display-name                 "Name"
+                    :lib/join-alias "Cat"
+                    :id                           (meta/id :categories :name)
+                    :table-id                     (meta/id :categories)
+                    :base-type                    :type/Text}]
                   (lib/breakoutable-columns query))))))))
 
 (deftest ^:parallel breakoutable-columns-source-card-test
@@ -558,7 +557,7 @@
             [nil          "PRICE"]
             ["Categories" "ID"] ; this column is not projected, but should still be returned.
             ["Categories" "NAME"]]
-           (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
+           (map (juxt :lib/join-alias :lib/source-column-alias)
                 (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
@@ -803,3 +802,38 @@
                    (juxt #(get-in % [:table :long-display-name]) :long-display-name)
                    #(lib/display-info query %))
                   (lib/breakoutable-columns query)))))))
+
+(deftest ^:parallel available-binning-strategies-through-joins-test
+  (testing "#16674 binning strategies / temporal buckets offered on a joined column match the direct-column list"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (testing "coordinate binning on an implicitly-joined column"
+        (let [lat    (m/find-first #(and (= (:id %) (meta/id :people :latitude))
+                                         (= :source/implicitly-joinable (:lib/source %)))
+                                   (lib/breakoutable-columns query))
+              direct (lib/available-binning-strategies
+                      (lib/query meta/metadata-provider (meta/table-metadata :people))
+                      (meta/field-metadata :people :latitude))]
+          (is (some? lat))
+          (is (= (map :display-name direct)
+                 (map :display-name (lib/available-binning-strategies query lat))))))
+      (testing "temporal buckets on an implicitly-joined column"
+        (let [bd     (m/find-first #(and (= (:id %) (meta/id :people :birth-date))
+                                         (= :source/implicitly-joinable (:lib/source %)))
+                                   (lib/breakoutable-columns query))
+              direct (lib/available-temporal-buckets
+                      (lib/query meta/metadata-provider (meta/table-metadata :people))
+                      (meta/field-metadata :people :birth-date))]
+          (is (some? bd))
+          (is (= (map :display-name direct)
+                 (map :display-name (lib/available-temporal-buckets query bd)))))))))
+
+(deftest ^:parallel breakout-columns-no-duplicate-created-at-on-fk-remap-test
+  (testing "#15563 a datetime FK remap does not duplicate Created At in breakoutable-columns"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :reviews :created-at) (meta/id :orders :created-at))
+          query (lib/query mp (meta/table-metadata :reviews))
+          cols  (filter #(and (= (:display-name %) "Created At")
+                              (= :source/table-defaults (:lib/source %)))
+                        (lib/breakoutable-columns query))]
+      (is (= 1 (count cols))))))

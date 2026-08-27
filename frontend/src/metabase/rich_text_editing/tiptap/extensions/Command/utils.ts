@@ -1,30 +1,42 @@
 import { t } from "ttag";
 
-import { PLUGIN_METABOT } from "metabase/plugins";
+import type { EditorCapabilities } from "metabase/rich_text_editing/tiptap/EditorHost";
 
 import type { CommandSection } from "./types";
 
-export const getAllCommandSections = (): CommandSection[] => {
+export type MetabotCommandConfig = {
+  name: string;
+};
+
+export const getAllCommandSections = (
+  metabotCommand: MetabotCommandConfig | null | undefined,
+  capabilities: EditorCapabilities,
+): CommandSection[] => {
   return [
     {
       items: [
-        ...(PLUGIN_METABOT.isEnabled()
+        ...(metabotCommand && capabilities.canUseMetabot
           ? ([
               {
                 icon: "metabot" as const,
-                label: t`Ask Metabot`,
+                label: t`Ask ${metabotCommand.name}`,
                 command: "metabot",
                 isAllowedAtPosition: (editor) =>
                   !editor.isActive("supportingText"),
               },
             ] satisfies CommandSection["items"])
           : []),
-        {
-          icon: "lineandbar",
-          label: t`Chart`,
-          command: "embedQuestion",
-          isAllowedAtPosition: (editor) => !editor.isActive("supportingText"),
-        },
+        ...(capabilities.canEmbedCharts
+          ? ([
+              {
+                icon: "lineandbar",
+                label: t`Chart`,
+                command: "embedQuestion",
+                isAllowedAtPosition: (editor) =>
+                  !editor.isActive("supportingText"),
+              },
+            ] satisfies CommandSection["items"])
+          : []),
         {
           icon: "link",
           label: t`Link`,

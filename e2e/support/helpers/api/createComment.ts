@@ -6,7 +6,7 @@ export const createComment = ({
   child_target_id,
   parent_comment_id = null,
   content,
-  html,
+  context,
 }: Partial<CreateCommentRequest>): Cypress.Chainable<
   Cypress.Response<Comment>
 > => {
@@ -16,6 +16,6 @@ export const createComment = ({
     child_target_id,
     parent_comment_id,
     content,
-    html,
+    context,
   });
 };

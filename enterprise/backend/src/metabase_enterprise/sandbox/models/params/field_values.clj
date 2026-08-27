@@ -3,8 +3,8 @@
    [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
@@ -19,17 +19,20 @@
   (table/only-sandboxed-perms? (or table (field/table field))))
 
 (defn- table-id->sandbox
-  "Find the GTAP for current user that apply to table `table-id`."
+  "Find the GTAP for current user that apply to table `table-id`. Returns nil when there is no current user (e.g. when
+  called from a background sync), since sandboxes are scoped to a user's group memberships."
   [table-id]
-  (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
-        sandboxes (t2/select :model/Sandbox
-                             :group_id [:in group-ids]
-                             :table_id table-id)]
-    (when sandboxes
-      (sandboxing/assert-one-sandbox-per-table sandboxes)
-      ;; there should be only one gtap per table and we only need one table here
-      ;; see docs in [[metabase.permissions.models.permissions]] for more info
-      (t2/hydrate (first sandboxes) :card))))
+  (when api/*current-user-id*
+    (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
+          sandboxes (when (seq group-ids)
+                      (t2/select :model/Sandbox
+                                 :group_id [:in group-ids]
+                                 :table_id table-id))]
+      (when sandboxes
+        (sandboxing/assert-one-sandbox-per-table sandboxes)
+        ;; there should be only one gtap per table and we only need one table here
+        ;; see docs in [[metabase.permissions.models.permissions]] for more info
+        (t2/hydrate (first sandboxes) :card)))))
 
 (defn- field->sandbox-attributes-for-current-user
   "Returns the gtap attributes for current user that applied to `field`.
@@ -67,7 +70,7 @@
          (into {} (for [[k v] attribute_remappings
                         ;; get attribute that map to fields of the same table
                         :when (contains? field-ids
-                                         (lib.util.match/match-one v
+                                         (match/match-one v
                                            ;; new style with {:stage-number }
                                            [:dimension [:field field-id _] _] field-id
                                            ;; old style without stage number
@@ -80,3 +83,28 @@
   [field]
   (when (field-is-sandboxed? field)
     {:sandbox-attributes (field->sandbox-attributes-for-current-user field)}))
+
+(defenterprise sandbox-token-for-table
+  "Sandbox fingerprint for the current user on `table-id` (GTAP card, its version, and resolved
+  user-attribute values), or nil when the user is not *enforced*-sandboxed on that table. Reuses
+  the same enforcement guard (`field-is-sandboxed?`) and attribute-extraction as the FieldValues
+  cache, so superusers and users with full access via another group correctly get no token, and
+  two genuinely-sandboxed users \"share a sandbox\" iff they'd see the same rows. The card's
+  `:updated_at` is stringified to give it a printed form that is stable across processes and
+  versions: the caller digests this value rather than storing it, and a digest is only comparable
+  if the bytes going into it are reproducible.
+
+  The raw attribute values in here never reach storage — [[metabase.permissions.data-access-token]]
+  replaces this whole value with a SHA-256 of it before returning a token.
+
+  When the enforcement guard says the user IS sandboxed but the attribute lookup finds nothing
+  (the guard and the lookup consult different subsystems), we must not return nil — the
+  compatibility gate reads nil as \"unrestricted\", which would fail open. Instead we return a
+  user-scoped indeterminate token that matches no other user's token — fail closed."
+  :feature :none
+  [table-id]
+  (let [field {:table_id table-id}]
+    (when (field-is-sandboxed? field)
+      (if-let [[card-id updated-at attributes] (field->sandbox-attributes-for-current-user field)]
+        [card-id (str updated-at) attributes]
+        [::indeterminate-sandbox api/*current-user-id*]))))

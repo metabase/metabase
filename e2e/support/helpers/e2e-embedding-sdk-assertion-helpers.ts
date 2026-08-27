@@ -34,7 +34,7 @@ export function assertSdkInteractiveQuestionOrdersUsable() {
   cy.findByTestId("chart-type-selector-button").click();
 
   cy.log("2. can switch to a trend chart");
-  cy.findByRole("menu").within(() => {
+  cy.findByRole("listbox").within(() => {
     cy.findByText("Trend").click();
   });
 

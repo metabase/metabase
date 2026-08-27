@@ -5,9 +5,9 @@ summary: Embed questions, dashboards, and documents without requiring SSO.
 
 # Guest embeds
 
-{% include shared/in-page-promo-embedding-workshop.html %}
-
 Guest embeds are a way to embed basic Metabase components in your app without requiring you to create a Metabase account for each person viewing the charts and dashboards. But not logging people in to your Metabase has some major tradeoffs: see [limitations](#guest-embed-limitations).
+
+"Guest" refers to the authentication approach: Metabase doesn't create a session for each person. Authentication has nothing to do with data freshness. Dashboards and charts in guest embeds always show live data from your database.
 
 Even though you're not using SSO, guest embeds are still secure: Metabase will only load the embed if the request has a JWT signed with the secret shared between your app and your Metabase. The JWT also includes a reference to the resource to load (like the ID of the embedded item), and any values for parameters.
 
@@ -17,19 +17,19 @@ To restrict data in guest embeds for specific people or groups, use [locked para
 
 The path to embedding settings depends on your Metabase version:
 
-- **OSS**: **Admin settings > Embedding**
-- **Starter/Pro/Enterprise**: **Admin settings > Embedding > Guest embeds**
+- **OSS**: **Admin > Embedding**
+- **Starter/Pro/Enterprise**: **Admin > Embedding > Guest embeds**
 
 Toggle **Enable guest embeds**.
 
 ## Creating a guest embed
 
-![Sharing button to embed dashboard](./images/sharing-embed.png)
+![Share button to embed dashboard](./images/sharing-embed.png)
 
 To create a guest embed:
 
 1. Go to the item that you want to embed in your website. You can also open a command palette with Ctrl/Cmd+K and type "New embed".
-2. Click the **sharing icon**.
+2. Click the **Share** icon.
 3. Select **Embed**.
 4. Under **Authentication**, select **Guest**.
 5. Optional: [customize the appearance of the embed](./appearance.md)
@@ -53,6 +53,9 @@ Add the embed script and configuration to your HTML:
   window.metabaseConfig = {
     isGuest: true,
     instanceUrl: "YOUR_METABASE_URL",
+    // Optional. Set this if you want the embed to fetch a fresh JWT
+    // when the current one expires. See "Refreshing the JWT" below.
+    // guestEmbedProviderUri: "/your/apps/endpoint",
   };
 </script>
 ```
@@ -72,7 +75,7 @@ Then add the component for the item you want to embed:
 <metabase-question token="YOUR_JWT_TOKEN"></metabase-question>
 ```
 
-> Never hardcode JWT tokens directly in your HTML. Always fetch the token from your backend and pass the token to the web component programmatically.
+> Don't paste a fixed JWT into your HTML and leave it there. Tokens expire, so that embed will stop working. Either sign a fresh token on your server for each page load and render it into the `token` attribute, or set [`guestEmbedProviderUri`](#refreshing-or-initializing-the-jwt-from-your-server) and let the embed fetch and refresh its own token.
 
 ### Server-side code
 
@@ -92,18 +95,23 @@ const payload = {
 const token = jwt.sign(payload, METABASE_SECRET_KEY);
 ```
 
-Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regenerating-the-embedding-secret-key).
+Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regenerating-the-embedding-secret-key). These examples use sequential IDs — the number in the item's URL. On Pro and Enterprise plans, you can use [entity IDs](../installation-and-operation/serialization.md#entity-ids-work-with-embedding) instead; they stay the same when you [serialize](../installation-and-operation/serialization.md) content from one Metabase to another, like from staging to production.
 
 ### Component attributes
 
 You can set different attributes to enable/disable UI. Here are some example attributes:
 
-| Attribute            | Description                                                           |
-| -------------------- | --------------------------------------------------------------------- |
-| `token`              | Required. The signed JWT token from your server.                      |
-| `with-title`         | Show or hide the title. Values: `"true"` or `"false"`.                |
-| `with-downloads`     | Enable or disable downloads. Values: `"true"` or `"false"`.           |
-| `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`. |
+| Attribute               | Description                                                                                                                                                                                                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `token`                 | Required. The signed JWT token from your server.                                                                                                                                                                                                                                 |
+| `with-title`            | Show or hide the title. Values: `"true"` or `"false"`.                                                                                                                                                                                                                           |
+| `with-downloads`\*      | Enable or disable downloads. Values: `"true"` or `"false"`.                                                                                                                                                                                                                      |
+| `initial-parameters`    | JSON string of initial parameter values (uncontrolled). Example: `'{"category":["Gizmo"]}'`. See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components).                                                                                   |
+| `parameters`            | JSON string of parameter values (controlled). Example: `'{"category":["Gizmo"]}'`. See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components).                                                                                             |
+| `auto-refresh-interval` | Dashboards only. Auto-refresh interval in seconds.                                                                                                                                                                                                                               |
+| `custom-context`        | Forwarded to your [`guestEmbedProviderUri`](#refreshing-or-initializing-the-jwt-from-your-server) endpoint as `customContext`. Either a string (e.g., `"gadgets-tab"`), or a JSON-stringified object like `initial-parameters` (e.g., `'{"tab":"gadgets","region":"us-east"}'`). |
+
+\* Disabling downloads is only available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options than embeds that use SSO. See more on [components and their attributes](./components.md).
 
@@ -122,7 +130,7 @@ Parameters are disabled by default, which also makes them hidden from end-users.
 To configure parameters:
 
 1. Go to your embedded question or dashboard.
-2. Click the **sharing icon** and select **Embed**.
+2. Click the **Share** icon and select **Embed**.
 3. Under **Parameters**, select the visibility option for each parameter, and optionally default value(s).
 4. Click **Publish**.
 
@@ -169,10 +177,8 @@ You set default parameters on the client side with the `initial-parameters` key.
 </script>
 
 <!--
-THIS IS THE EXAMPLE!
-NEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!
-
-Fetch the JWT token from your backend and programmatically pass it to the 'metabase-dashboard'.
+This token is a placeholder. Don't paste a fixed JWT into your HTML: sign a
+fresh one on your server for each page load, or use guestEmbedProviderUri.
 -->
 <metabase-dashboard
   token="YOUR SIGNED TOKEN"
@@ -183,9 +189,13 @@ Fetch the JWT token from your backend and programmatically pass it to the 'metab
 </metabase-dashboard>
 ```
 
+See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embedded-components) for controlled parameters documentation.
+
 ### Locked parameters
 
-Locked parameters let you filter data without exposing the filter to the end-user. This is useful for restricting data based on who's viewing the embed (for example, showing each customer only their own data).
+Locked parameters let you filter data without exposing the filter to the end-user. Locking parameters is useful for restricting data based on who's viewing the embed (for example, showing each customer only their own data).
+
+![Locked parameters](./images/locked-parameters.png)
 
 To use locked parameters, you need to:
 
@@ -230,8 +240,8 @@ The parameter is set by the JWT:
 </script>
 
 <!--
-IMPORTANT: Never hardcode JWT tokens directly in your HTML!
-Fetch the token from your backend and pass it to the component programmatically.
+This token is a placeholder. Don't paste a fixed JWT into your HTML: sign a
+fresh one on your server for each page load, or use guestEmbedProviderUri.
 -->
 <metabase-dashboard
   token="YOUR_JWT_TOKEN"
@@ -242,27 +252,233 @@ Fetch the token from your backend and pass it to the component programmatically.
 
 The end user won't see the "category" filter, but the dashboard will only show data for the "Gadget" category (or whatever you passed to the "category" array in the `params` object in the server payload you used to sign the JWT).
 
+## Updating a locked parameter
+
+Things to keep in mind if you need to make changes to your locked parameters.
+
+### Include all locked parameters in your JWT
+
+Once you publish a question or dashboard with a locked parameter, you _must_ include the name of the locked parameter in the `params` object when you sign the JWT. If you leave the parameter out, Metabase will refuse the request and log: `You must specify a value for :<parameter-name> in the JWT`. For example, if your locked parameter is `category`, the error will read `You must specify a value for :category in the JWT`.
+
+### Pass an empty array to turn off a locked parameter
+
+If you don't want the locked filter to apply for a given token, pass an empty array, `[]`, as the value for the parameter in the JWT:
+
+```javascript
+const payload = {
+  resource: { dashboard: 10 },
+  params: {
+    category: [], // locked filter is bypassed for this token
+  },
+  exp: Math.round(Date.now() / 1000) + 10 * 60,
+};
+```
+
+This is handy when you want to reuse the same dashboard or question across contexts, and conditionally skip a locked filter in some of them.
+
+### Filter name should match the locked parameter name
+
+If you rename a dashboard filter that's used as a locked parameter, update the matching key in your JWT `params` object. Locked parameters that are connected to a [SQL variable](../questions/native-editor/sql-parameters.md) don't need to be renamed on the server.
+
+### Multiple locked parameters or multiple values
+
+The values for a locked parameter in your JWT should match your filter's values exactly. The best way to set multiple locked parameters, or pass multiple values to a single locked parameter, is to pick a filter value under **Preview locked parameters** in the embed wizard and copy the server code that Metabase generates.
+
+Multiple locked parameters combine with `AND`, not `OR`. If you only want to apply a subset of the locked parameters for a given token, pass `[]` for the ones you want to skip (see [pass an empty array](#pass-an-empty-array-to-turn-off-a-locked-parameter)).
+
+## Locked parameters limit the values available to other editable parameters
+
+Because locked parameters filter data _before_ the results are displayed in the embed, locked parameters also limit the values available to any editable filter widgets on the same item.
+
+For example, say you're embedding a dashboard with two filters, State and City. If you lock the State parameter with the value "Vermont", the City filter will only show cities in Vermont in its dropdown. You don't need to wire the filters together explicitly — they'll behave like [linked filters](../dashboards/filters.md#linking-filters).
+
+## Locked parameters on dashboards with SQL questions
+
+If a locked parameter is linked to a dashboard filter that's in turn linked to a SQL question, you'll only be able to pass a _single_ value for that locked parameter in the JWT.
+
+For example, if you have a dashboard filter called "Breakfast" with the values "Hash browns", "Muffin", and "Waffles", and the filter is linked to _any_ SQL question on the dashboard, you can only pass one of those options as the locked parameter value.
+
+## Using locked parameters to power custom widgets in your app
+
+Because Metabase doesn't render locked parameters as filter widgets, you can use them to power custom filter widgets that you build yourself. You may want to build your own filter widget(s) to:
+
+- Match the widget to the look and feel of your app.
+- Add custom logic, like remembering recently used values.
+- Reuse one dashboard in different ways in different parts of your app. For example, a sales dashboard that's locked by "region" in one place and by "team" in another.
+
+When the end-user changes a value in your custom widget, re-sign a new JWT on your server with the updated `params` and swap it onto the web component's `token` attribute. The embed will re-request the data with the new locked value.
+
+Render an initial token on the component for this flow, rather than letting [`guestEmbedProviderUri`](#refreshing-or-initializing-the-jwt-from-your-server) supply the first one. An embed that starts without a token fetches one from your endpoint on load, and that token would overwrite whatever your widget had just set.
+
+## Refreshing or initializing the JWT from your server
+
+JWTs that you sign for guest embeds have an expiration (`exp`). Once a token expires, the embed can't load fresh data, and any filter selections the viewer made will reset on the next request. To keep the embed alive without reloading the page, you can configure a guest token endpoint on your server to hand out fresh JWTs on demand.
+
+The endpoint can serve two flows:
+
+- **Refreshing tokens**: when the embed's current JWT is about to expire, the embed POSTs to your endpoint to get the new JWT, and swaps it in.
+- **Initializing with a token** (optional): if you don't want to pre-render a JWT in the HTML at all, the embed can call the same endpoint on load to fetch that first JWT.
+
+### Setting the endpoint URL in the guest embed
+
+Add `guestEmbedProviderUri` to your `metabaseConfig`. The value is a path (or full URL) to an endpoint in your app:
+
+```html
+<script>
+  window.metabaseConfig = {
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+    guestEmbedProviderUri: "/api/metabase-guest-token",
+  };
+</script>
+```
+
+When the embed needs a token, it sends a `POST` request to `guestEmbedProviderUri` with a JSON body, which includes cookies, so you can authenticate the request with your app's existing session.
+
+Request:
+
+```json
+{
+  "entityType": "dashboard",
+  "entityId": 10,
+  "customContext": "..."
+}
+```
+
+| Field           | Description                                                                         |
+| --------------- | ----------------------------------------------------------------------------------- |
+| `entityType`    | `"dashboard"` or `"question"`.                                                      |
+| `entityId`      | The ID of the dashboard or question being embedded, as you set it on the component. |
+| `customContext` | Optional. The string or object you set on the `custom-context` attribute.           |
+
+Response: a JSON object with a single `jwt` field:
+
+```json
+{ "jwt": "YOUR_NEWLY_SIGNED_JWT" }
+```
+
+### Refresh flow
+
+Pre-render an initial JWT on the component (just like a regular guest embed) and configure `guestEmbedProviderUri`. When the JWT expires, the embed will call your endpoint to get a fresh one and swap it in.
+
+```html
+<script>
+  window.metabaseConfig = {
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+    guestEmbedProviderUri: "/api/metabase-guest-token",
+  };
+</script>
+
+<metabase-dashboard token="YOUR_INITIAL_JWT"></metabase-dashboard>
+```
+
+### Initialize the embed without a JWT in the HTML
+
+If you don't want to render the JWT in the HTML at all, omit the `token` attribute and use `dashboard-id` (or `question-id`) instead. If you've set the `guestEmbedProviderUri`, then the embed will call that endpoint on load to fetch the first JWT.
+
+```html
+<metabase-dashboard dashboard-id="10"></metabase-dashboard>
+```
+
+This way you can keep all your token-issuing logic in one place on your server.
+
+### Example endpoint (Node.js / Express)
+
+```javascript
+const jwt = require("jsonwebtoken");
+const METABASE_SECRET_KEY = "YOUR_METABASE_SECRET_KEY";
+
+app.post("/api/metabase-guest-token", (req, res) => {
+  // Authenticate using your app's existing session.
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(403).json({ error: "Not signed in" });
+  }
+
+  const { entityType, entityId, customContext } = req.body;
+
+  // Authorize the request. The browser picks the entityType and entityId, so
+  // check them against your own rule before signing for them.
+  // This is just an example
+  if (!userCanView(user, entityType, entityId)) {
+    return res.status(403).json({ error: "Not allowed" });
+  }
+
+  const payload = {
+    resource: { [entityType]: entityId },
+    params: paramsFor(user, customContext),
+    exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+  };
+
+  res.json({ jwt: jwt.sign(payload, METABASE_SECRET_KEY) });
+});
+```
+
+Because the embed's request includes your app's session cookie, your endpoint can:
+
+- Refuse to issue a JWT (with a `403`) for visitors who aren't signed in to your app.
+- Refuse to issue a JWT for a dashboard or question that this visitor shouldn't see. The `entityType` and `entityId` arrive from the browser, so an endpoint that signs them unchecked will give any signed-in visitor a token for any published item.
+- Compute different `params` (i.e., locked filter values) per visitor.
+
+### Sending custom context
+
+When you embed the same dashboard or question more than once on a page, you can use the `custom-context` attribute to tell your endpoint which copy is requesting a token. The value you pass is forwarded to your endpoint as `customContext`.
+
+For example, two copies of the same dashboard scoped to different categories:
+
+```html
+<metabase-dashboard
+  dashboard-id="10"
+  custom-context="gadgets-tab"
+></metabase-dashboard>
+```
+
+You can also pass a JSON-stringified object (the embed parses it before forwarding it on, so your endpoint receives a real object):
+
+```html
+<metabase-dashboard
+  dashboard-id="10"
+  custom-context='{"tab":"gadgets","region":"us-east"}'
+></metabase-dashboard>
+```
+
+Your endpoint can switch on `customContext` to set different locked parameters, like so:
+
+```javascript
+function paramsFor(user, customContext) {
+  switch (customContext) {
+    case "gadgets-tab":
+      return { category: ["Gadget"] };
+    case "doohickeys-tab":
+      return { category: ["Doohickey"] };
+    default:
+      return {};
+  }
+}
+```
+
 ## Disabling embedding for a question or dashboard
 
 1. Visit the embeddable question or dashboard.
-2. Click the **sharing icon** (square with an arrow pointing to the top right).
+2. Click the **Share** icon (square with an arrow pointing to the top right).
 3. Select **Embed**.
 4. Select **Guest embedding**
 5. Click **Unpublish**.
 
-Admins can find a list of embedded items in **Admin settings > Embedding** (on Pro and Enterprise plans, check the **Guest embeds** tab).
+Admins can find a list of embedded items in **Admin > Embedding** (on Pro and Enterprise plans, check the **Guest embeds** tab).
 
 ## Removing the "Powered by Metabase" banner
 
 ![Powered by Metabase](./images/powered-by-metabase.png)
 
-The banner appears on guest embeds created with Metabase's open-source version. To remove the banner, you'll need to upgrade to a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
+Metabase adds the banner to guest embeds (both charts and dashboards) on the OSS and Starter plans. To remove the banner, upgrade to a [Pro](https://www.metabase.com/product/pro) or [Enterprise](https://www.metabase.com/product/enterprise) plan.
 
 ## Regenerating the embedding secret key
 
 Your embedding secret key is used to sign JWTs for all of your embeds.
 
-1. Go to **Admin settings > Embedding**. On Pro and Enterprise plans, check the **Guest embeds** tab.
+1. Go to **Admin > Embedding**. On Pro and Enterprise plans, check the **Guest embeds** tab.
 2. Under **Regenerate secret key**, click **Regenerate key**.
 
 This key is shared across all guest embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
@@ -273,7 +489,7 @@ You can only use the **URL** option for [custom destinations](../dashboards/inte
 
 You can propagate filter values into the external URL, unless the filter is locked.
 
-## Translating guest embeds
+## Translating embeds
 
 To translate an embed, set the `locale` in `window.metabaseConfig`:
 
@@ -287,7 +503,7 @@ To translate an embed, set the `locale` in `window.metabaseConfig`:
 </script>
 ```
 
-The `locale` setting works for all modular embeds (guest and SSO). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a translation dictionary. Translation dictionaries only work with guest embeds. See [Translating embedded questions and dashboards](./translations.md).
+The `locale` setting works for all modular embeds (guest, SSO, and SDK). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a [translation dictionary](./translations.md).
 
 ## How guest embedding works
 
@@ -299,12 +515,13 @@ When a visitor views your page:
 2. The web component sends the token to Metabase.
 3. Metabase verifies the JWT signature using your secret key.
 4. If valid, Metabase returns the embedded content.
+5. If you've configured [JWT refresh](#refreshing-or-initializing-the-jwt-from-your-server), the embed will fetch a fresh JWT from your endpoint when it next needs to make a data request after the current token has expired — not on a background timer. An idle embed makes no refresh requests. (Optionally, the embed can also fetch the very first JWT from your endpoint on load.) The embed keeps working without a page reload.
 
 For interactive filters, you can pass initial parameter values via the `initial-parameters` attribute. When a visitor changes a filter, the web component handles the update automatically.
 
 The signed JWT is generated using your [Metabase secret key](#regenerating-the-embedding-secret-key). The secret key tells Metabase that the request can be trusted. Note that this secret key is shared for all guest embeds, so whoever has access to that key will have access to all embedded artifacts.
 
-If you want to embed charts with additional interactive features, like [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
+If you want to embed charts with additional interactive features, like [drill-down](../questions/visualizations/drill-through.md) and [self-service querying](../questions/query-builder/editor.md), see [Modular embedding](./modular-embedding.md).
 
 ## Using guest embeds with the SDK
 
@@ -320,10 +537,11 @@ Guest embeds can't take advantage of:
 
 - [Row and column security](../permissions/row-and-column-security.md)
 - [Database routing](../permissions/database-routing.md)
-- [Drill-through](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through)
+- [Drill-through](../questions/visualizations/drill-through.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Query builder](../questions/query-builder/editor.md)
 - [AI chat](./sdk/ai-chat.md)
+- [Custom visualizations](./custom-visualizations.md)
 
 For those features, check out [Modular embedding with SSO](./modular-embedding.md).
 

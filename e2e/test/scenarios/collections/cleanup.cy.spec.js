@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { assocIn } from "icepick";
 import { P, isMatching } from "ts-pattern";
 
@@ -8,6 +7,7 @@ import {
   FIRST_COLLECTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { dayjs } from "metabase/dayjs";
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios > collections > clean up", () => {
@@ -365,7 +365,7 @@ const closeCleanUpModal = () =>
   cy.findAllByTestId("cleanup-collection-modal-close-btn").click();
 
 const recursiveFilter = () =>
-  cy.findByText(/Include items in sub-collections/).should("exist");
+  cy.findByLabelText(/Include items in sub-collections/).should("exist");
 const dateFilter = () => cy.findByTestId("cleanup-date-filter");
 const pagination = () => cy.findByTestId("cleanup-collection-modal-pagination");
 const emptyState = () => cy.findByText(/All items have been used in the past/);

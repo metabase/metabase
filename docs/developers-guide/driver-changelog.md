@@ -4,6 +4,195 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.64.0
+
+- `metabase.driver/workspace-isolation-details` `[driver database workspace]` -- new workspace-isolation
+  multimethod. Computes the isolation identifiers (`:schema`, and driver-specific `:database_details` such as
+  user/password) for a workspace *before* any warehouse work happens; `init-workspace-isolation!`,
+  `grant-workspace-read-access!`, and `destroy-workspace-isolation!` now receive those identifiers on the
+  `workspace` map instead of computing them internally. `:sql-jdbc` drivers inherit a default implementation
+  (deterministic schema/user names plus a random password); non-JDBC drivers that support workspaces must
+  implement it themselves.
+
+- `metabase.driver/check-isolation-permissions`, added in 0.59.0, has been removed. Permission problems now
+  surface as failures from `init-workspace-isolation!`/`grant-workspace-read-access!` themselves.
+
+- Added a `:native-pivot-tables` driver feature flag for drivers that can compile a pivot query as a single
+  `GROUP BY GROUPING SETS (...)` statement instead of the legacy multi-query path. Drivers that opt in must also
+  derive from `:sql` (which provides the `:pivot` clause compiler). Defaults to `false`.
+
+- The `:sql-mbql5` abstract driver has been removed, and the `:sql` driver now compiles MBQL 5 directly. SQL drivers
+  must handle MBQL 5 clause shapes (options map as the second element) in their `sql.qp/->honeysql` implementations.
+  The transitional multimethods added in 0.61.0 to support both MBQL formats (e.g. `sql.qp/mbql-clause-with-opts`,
+  `sql.qp/compile-mbql`) have been removed along with the legacy `:sql` implementations they dispatched to.
+
+- `metabase.driver.sql-mbql5.pivot/pivot-grouping-hsql` `[driver exprs]` -- produces the HoneySQL
+  form for the pivot-grouping bitmask. The default emits `GROUPING(exprs...)` (the Postgres/Oracle/Snowflake
+  multi-arg extension); drivers whose SQL dialect uses a different function or shape override this method.
+
+- `:native-pivot-tables` is now enabled for `:hive-like` drivers.
+  Hive-family dialects synthesise the pivot-grouping bitmask from single-arg `GROUPING(x)` calls.
+
+- Index Manager: drivers can now read and create table indexes, in the broad sense (secondary indexes, sort keys,
+  distribution keys, clustering, etc.). New driver feature flags:
+
+  - `:index/fetch` -- the driver can read the indexes that physically exist on a table. Implemented by Postgres,
+    ClickHouse, and Redshift.
+
+  - `:index/standalone-create` -- the driver can create an index on a transform's target table as a standalone
+    statement after the table is created. Implemented by Postgres.
+
+  - `:index/inline-create` -- the driver inlines an index into the table-creation statement itself (e.g. Redshift
+    `SORTKEY`) rather than creating it afterwards. Such drivers render the index from the `:indexes` key of the
+    transform details when they build the creation statement: in `metabase.driver/compile-transform` (the CTAS for a
+    SQL transform) and/or `metabase.driver/create-table!` (the CREATE TABLE for a Python transform). Implemented by
+    Redshift.
+
+  New driver methods:
+
+  - `metabase.driver/fetch-table-indexes` `[driver database schema table]` -- reads a table's physical indexes,
+    returning them as a vector of normalized index maps. Drivers declaring `:index/fetch` implement it; the default
+    implementation throws.
+
+  - `metabase.driver/supported-index-methods` `[driver database]` -- returns the index methods the driver supports as
+    a map of `index-kind` to a metadata map carrying at least `:lifecycle` (`:standalone` or `:inline`). Defaults to
+    `{}`.
+
+  - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
+    the DDL statement(s) that create it.
+
+  - `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
+    tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.
+
+  - `metabase.driver-api.core/aggregation-name` is now deprecated, as it operates on legacy MBQL; use
+    `metabase.driver-api.core/mbql-5-aggregation-name` going forward.
+
+  - The method signature for `metabase.driver/substitute-native-parameters-in-stage-method`, introduced in 63, has
+    changed; please update your implementations accordingly.
+
+## Metabase 0.63.0
+
+- `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]` -- refreshes table
+  statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
+
+- `metabase.driver/describe-table-fks`, deprecated in 0.49.0, has been removed. Please implement
+  `metabase.driver/describe-fks` instead. This method is now required for drivers that support
+  `:metadata/key-constraints`.
+
+  - JDBC-based drivers can implement `metabase.driver.sql-jdbc.sync.describe-table/describe-fks-sql` to take advantage
+    of a more performant shared `:sql-jdbc` implementation of `describe-fks`; if they do not implement this method
+    they will fall back to a default implementation of `describe-fks` that uses JDBC metadata for each matching table,
+    similar to the old default implementation of `describe-table-fks`.
+
+  - The `metabase.driver.sql-jdbc.sync/describe-table-fks` helper function has been removed, but helper functions
+    `metabase.driver.sql-jdbc.sync/reducible-fks-for-tables-matching-options` and
+    `metabase.driver.sql-jdbc.sync/reducible-table-fks-from-jdbc-metadata` have been added for use if you want to
+    write an implementation that works on a per-table basis similar to how the old `describe-table-fks` method worked.
+
+  - `metabase.driver-api.core/reducible-sync-tables` has been exposed in the driver API to fetch a set of matching
+    tables that match the `{:schema-names ... :table-names ...}` options passed to `describe-fks`, useful if you want
+    to implement a version that fetches FK metadata on a per-table basis.
+
+  - The `:describe-fks` driver feature flag has been removed as a feature since it is no longer needed to differentiate
+    between the aforementioned FK description methods; you should remove any `metabase.driver/database-supports?`
+    implementations for it.
+
+## Metabase 0.62.0
+
+- `sql.params.substitution/field->clause`, `to-clause`, `desugar-filter-clause`, `wrap-value-literals-in-mbql`, and
+  `date-string->filter`, introduced in 0.61.0, have been removed; they are no longer necessary. They have been
+  replaced by a single method, `sql.params.substitution/->honeysql`, which compiles an MBQL 5 clause to HoneySQL with
+  the given options.
+
+- The `metabase.driver.commmon.parameters` and `metabase.driver.commmon.parameters.parse` namespaces, deprecated in
+  0.57.0, have been removed. Please use the Lib implementations instead. Relevant functions are aliased in
+  `metabase.lib.core`, for example `metabase.lib.core/parse-parameters`, `metabase.lib.core/parsed-parameter`, and
+  `metabase.lib.core/parsed-parameter?`.
+
+- The `metabase.driver.common.parameters.dates` and `metabase.driver.common.parameters.operators` namespaces,
+  deprecated in 0.57.0, have been removed. Use the equivalent QP namespaces instead:
+  `metabase.query-processor.parameters.dates` and `metabase.query-processor.parameters.operators`, respectively. These
+  namespaces return MBQL 5 clauses rather than MBQL 4; use `metabase.lib.core/->legacy-MBQL` if needed until your
+  driver has been fully updated to MBQL 5.
+
+- `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, deprecated in 0.49.0, has been
+  removed.
+
+- `metabase.driver-api.core/desugar-filter-clause`, `metabase.driver-api.core/negate-filter-clause`, and
+  `metabase.driver-api.core/simplify-compound-filter`, deprecated in 0.57.0, have been removed; use the
+  `metabase.lib.core` versions instead. The new versions operate on MBQL 5 instead of MBQL 4.
+
+- Added `metabase.driver.sql/table-qualification-style` multimethod. Returns one of
+  `:table-qualification-style/{table,schema-table,db-table,db-schema-table}` describing the per-driver
+  SQL identifier shape. Used by workspace table remapping
+  (`metabase-enterprise.workspaces.core/engine-namespace-positions`) to decide tuple shape when
+  storing `:model/TableRemapping` rows and matching AST positions during query rewriting. Defaults
+  to `:table-qualification-style/schema-table` -- the common case, so Postgres/Redshift/H2/ClickHouse
+  need no override. Drivers that emit `db.table` (MySQL) override to
+  `:table-qualification-style/db-table`; drivers that emit `db.schema.table` (SQL Server, BigQuery)
+  override to `:table-qualification-style/db-schema-table`. Drivers that emit a bare `table` use
+  `:table-qualification-style/table`.
+
+- Added `metabase.driver.sql/db-slot-value` multimethod. Returns the `:db` AST slot string (catalog,
+  project id, etc.) for a `Database` row. Required for `:table-qualification-style/db-table` and
+  `:table-qualification-style/db-schema-table` drivers; the default returns `nil`. Overridden by
+  MySQL and SQL Server (`(:db (:details db))`) and BigQuery (`(:project-id (:details db))`).
+
+- Added `metabase.driver/qualified-name-components` multimethod. Returns the ordered subset of
+  `#{:db :schema}` identifier positions a driver populates when referencing a table in compiled
+  SQL. Defaults to `[:schema]`. Drivers that emit bare table names (Mongo) override to `[]`;
+  MySQL overrides to `[:db]` (its "database" rides on the connection but participates as the
+  `:db` AST slot for cross-DB consumers); drivers that emit a 3-part `catalog.schema.table`
+  identifier (SQL Server, BigQuery) override to `[:db :schema]`.
+
+- The `metabase.driver.common.parameters.values` namespace, deprecated in 0.57.0, has been removed. Use the equivalent
+  QP namespace, `metabase.query-processor.parameters.values`, instead. Note that this namespace operates on MBQL 5
+  rather than MBQL 4.
+
+- `metabase.driver/substitute-native-parameters` has been deprecated; `substitute-native-parameters-in-stage-method`
+  replaces it. The new method operates on MBQL 5 rather than MBQL 4. `substitute-native-parameters` is no longer
+  called in Metabase 0.62.0+; on the off chance that you implemented it, please implement
+  `substitute-native-parameters-in-stage-method` instead as soon as possible.
+
+- `metabase.driver-api.core/wrap-value-literals-in-mbql` has been removed; use
+  `metabase.driver-api.core/wrap-value-literals-in-mbql5` instead.
+
+## Metabase 0.61.0
+
+- Added the following driver multimethods to support MBQL5 compilation migration:
+  - `sql.qp/compile-mbql` - Compiles an MBQL inner query to HoneySQL.
+  - `sql.qp/mbql-clause-with-opts` - Returns an MBQL clause in the desired MBQL format of the driver.
+  - `sql.qp/expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name.
+  - `sql.qp/aggregation-name` - Returns the name of an aggregation clause.
+  - `sql.qp/over-order-by->honeysql` - Returns the HoneySQL for an order by clause in the over clause of a window function.
+  - `sql.qp/clause-value-idx` - Returns the index of the value in a value clause.
+  - `sql.qp/breakout-options-index` - Returns the index of options in a breakout clause.
+  - `sql.params.substitution/field->clause` - Returns an MBQL field clause with the given options.
+  - `sql.params.substitution/to-clause` - Helper to dispatch to `params.ops/to-clause` or `qp.params.ops/to-clause`.
+  - `sql.params.substitution/desugar-filter-clause` - Helper to dispatch to `driver-api/desugar-filter-clause` or `lib/desugar-filter-clause`.
+  - `sql.params.substitution/wrap-value-literals-in-mbql` - Helper to dispatch to `driver-api/wrap-value-literals-in-mbql` or `driver-api/wrap-value-literals-in-mbql5`.
+  - `sql.params.substitution/date-string->filter` - Helper to dispatch to `params.dates/date-string->filter` or `qp.params.dates/date-string->filter`.
+
+  These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should *not* need to
+  implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent, and updating the `sql.qp/->honeysql`
+  methods to handle the clause options argument as the second parameter. See the `:h2` driver in https://github.com/metabase/metabase/pull/71439 for
+  an example. Drivers will need to be migrated to work with MBQL5 compilation over the next three releases by v64. After v64 these methods will be deprecated
+  in favour of the `:sql-mbql5` implementations once all drivers have been migrated.
+
+- Added a `driver` parameter to `sql.qp/maybe-cast-uuid-for-text-compare`. Any drivers that call this function should
+  update it to pass in the `driver` parameter now. An example is in the Snowflake driver's `string-filter` function.
+
+- `driver/field-reference-mlv2`, deprecated in 0.57.0, has now been removed.
+
+- `metabase.driver.sql/set-role-statement` has been deprecated in favor of
+  `metabase.driver.sql-jdbc/set-role-statement`, which takes an additional `java.sql.Connection` parameter, so you use
+  the connection to call `quote_ident()` or similar for identifier quoting/escaping purposes.
+
+## Metabase 0.60.0
+
+- Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.
+  It should return the query if it is valid and throw otherwise.
+
 ## Metabase 0.59.0
 
 - Added `sql-jdbc.execute/db-type-name` multimethod. Override this method to customize how your SQL JDBC driver
@@ -17,6 +206,59 @@ title: Driver interface changelog
   - `destroy-workspace-isolation!` - Destroy all database resources created for workspace isolation.
   - `grant-workspace-read-access!` - Grant read access on specified tables to a workspace's isolated user.
   - `check-isolation-permissions`  - Test whether the database connection has sufficient permissions.
+
+- Added support for escaping `LIKE` metacharacters to `:sql` driver's handling of `LIKE` clauses, which are used to
+  implement the `:starts-with`, `:ends-with` and `:contains` filters. The default implementation uses backslashes to
+  escape backslashes, `%` and `_`, the `LIKE` metacharacters, when the RHS of one of these filters is a literal string.
+  Drivers which can handle `x LIKE y ESCAPE '\'` should just work. If a different way of escaping is needed, you can
+  override the new multimethod `metabase.driver.sql.query-processor/escape-like-pattern`; see `:sqlserver` which uses
+  `[%]` regex character classes. For drivers which already have backslash as the `ESCAPE` default, or don't support
+  that `ESCAPE` syntax, override the new multimethod `metabase.driver.sql.query-processor/transform-literal-like-pattern-honeysql`,
+  or as a shortcut if the override is an identity function, add the abstract driver
+  `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` as a parent of your driver.
+  See `metabase.driver.mysql` for an example of using the abstract driver.
+
+## Metabase 0.58.23
+
+- `metabase.driver/connection-hosts` `[driver details]` -- new multimethod returning the host names pointed to for a set
+  of connection details. Where `details` is the connection-details map stored
+  on the Database row: the values an admin filled into the "Add a database" form, plus anything Metabase derived from them.
+  The default implementation parses hostnames out of `:host` and/or `:hostname`.
+  The SSH tunnel host is handled externally and should not be returned here.
+
+  If you cannot work out the hosts -- an unparseable connection URI, say -- throw rather than guessing or returning
+  an empty list. Metabase turns a throw into a refusal, which is the safe answer; an empty list reads as "these
+  details name no hosts" and lets the connection through unchecked. Return an empty list only when the details really
+  do name nowhere, as a file-backed database does.
+
+- `metabase.driver/host-carrying-parameters` `[driver]` -- new multimethod returning possible client parameters
+  that can carry a host that the client will connect to: a proxy, a failover partner, a token or authentication
+  endpoint, an alternate API endpoint, etc.
+
+  ```clj
+  (defmethod driver/host-carrying-parameters :sqlserver
+    [_driver]
+    ["serverName" "failoverPartner" "enclaveAttestationUrl"])
+  ```
+
+  To find possible parameter names, `java.sql.Driver/getPropertyInfo` enumerates every parameter it accepts.
+
+- `metabase.driver/non-host-parameters` `[driver]` -- new multimethod naming the parameters that LOOK
+  like they might carry a host but have been checked and do not: a certificate's expected hostname, a Kerberos
+  principal, a local bind address, a proxy's port, etc. Nothing reads it at connection time; it records that
+  somebody looked, so that `host-carrying-parameters` can be checked for completeness in tests against what
+  the client says it accepts. Does NOT have to include all non-host parameters. Just ones that sound like they might
+  but actually don't.
+
+- `metabase.driver/connection-parameter-hosts` `[driver details]` -- new multimethod returning the host *values*
+  those parameters hold, once the details, `:additional-options`, and any driver-specific rewriting have been folded
+  in. The default implementation is almost always valid, but exists as a possible multimethod for special cases
+  such as when your connection string is somewhere the default implementation cannot see.
+
+- `metabase.driver/routes-connection-through-ssh-tunnel?` `[driver]` -- new multimethod saying whether the driver
+  opens its warehouse connection through the SSH tunnel described by the `:tunnel-*` details.
+  Defaults to `false`, and to `true` for `:sql-jdbc` and everything beneath it. A non-`:sql-jdbc`
+  driver that opens a tunnel itself must implement this.
 
 ## Metabase 0.58.0
 
@@ -41,6 +283,9 @@ title: Driver interface changelog
   `:bigquery-cloud-sdk` driver for example.
 
 ## Metabase 0.57.0
+
+- Added `metabase.driver/validate-db-details!` multimethod for rejecting connection details that are unsafe to
+  persist (independent of whether the database is currently reachable). The default implementation is a no-op.
 
 - `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
 
@@ -389,7 +634,7 @@ title: Driver interface changelog
   `metabase.test.data.sql.ddl/insert-rows-dml-statements`, since `INSERT` is DML, not DDL. Please update your method
   implementations accordingly.
 
-- The `:foreign-keys` driver feature has been removed. `:metadata/keys-constraints` should be used for drivers that
+- The `:foreign-keys` driver feature has been removed. `:metadata/key-constraints` should be used for drivers that
   support foreign key relationships reporting during sync. Implicit joins now depend on the `:left-join` feature
   instead. The default value is true for `:sql` based drivers. All join features are now enabled for `:sql` based
   drivers by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`,

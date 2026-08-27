@@ -1,11 +1,17 @@
 (ns metabase.query-processor.pipeline
   (:require
    [clojure.core.async :as a]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.driver :as driver]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]))
+
+(def ^:dynamic *pivot?*
+  "True while [[metabase.query-processor.pivot]] is re-running its generated sub-queries through the query processor.
+  These sub-queries carry internal `:qp.pivot/*` keys and already-derived annotations, so preprocessing must not strip
+  internal keys from them."
+  false)
 
 (def ^:dynamic ^clojure.core.async.impl.channels.ManyToManyChannel *canceled-chan*
   "If this channel is bound, you can send it a message to cancel the query. You can check if it has received a message
@@ -122,7 +128,7 @@
           (when-not (interrupted-exception? e)
             (throw e))
           ;; ok, at this point we know it's an InterruptedException.
-          (log/trace e "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
+          (log/trace "Caught InterruptedException when executing query, this means the query was canceled. Ignoring exception.")
           ;; just to be extra safe and sure that the canceled chan has gotten a message. It's a promise channel so
           ;; duplicate messages don't matter
           (some-> *canceled-chan* (a/>!! ::cancel))

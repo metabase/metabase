@@ -108,7 +108,9 @@ describe("command palette", () => {
         .should("contain.text", "Our analytics")
         .should("contain.text", "The best question");
 
-      cy.findByText('Search documentation for "Orders, Count"').should("exist");
+      cy.findByText('Search Metabase\'s docs for "Orders, Count"').should(
+        "exist",
+      );
 
       // Since the command palette list is virtualized, we will search for a few
       // to ensure they're reachable
@@ -120,7 +122,7 @@ describe("command palette", () => {
 
       // When entering a query, if there are results that come before search results, highlight
       // the first action, otherwise, highlight the first search result
-      H.commandPaletteInput().clear().type("For");
+      H.commandPaletteInput().clear().type("Form");
       cy.findByRole("option", { name: "Performance" }).should(
         "have.attr",
         "aria-selected",
@@ -160,6 +162,8 @@ describe("command palette", () => {
       .should("not.exist");
     H.commandPalette().findByText("No results for “New”").should("be.visible");
 
+    // Every "New …" action matches "New" equally, so the default order applies
+    // and "New question" is first and selected by default.
     H.commandPalette()
       .findByRole("option", { name: "New question" })
       .should("have.attr", "aria-selected", "true");
@@ -167,17 +171,17 @@ describe("command palette", () => {
     cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: "New collection" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
     H.commandPalette()
-      .findByRole("option", { name: 'Search documentation for "New"' })
+      .findByRole("option", { name: 'Search Metabase\'s docs for "New"' })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: "New collection" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();
@@ -187,7 +191,7 @@ describe("command palette", () => {
 
     H.pressEnd();
     H.commandPalette()
-      .findByRole("option", { name: 'Search documentation for "New"' })
+      .findByRole("option", { name: 'Search Metabase\'s docs for "New"' })
       .should("have.attr", "aria-selected", "true");
 
     H.pressHome();
@@ -212,7 +216,7 @@ describe("command palette", () => {
 
         cy.findAllByRole("option")
           // filter out unrelated items, keep only options with data
-          .invoke("slice", 1, -2)
+          .invoke("slice", 3, -2)
           .should("have.length", results.length)
           .each(($option, index) => {
             cy.wrap($option).should("contain", results[index].name);
@@ -285,7 +289,7 @@ describe("command palette", () => {
         H.commandPaletteAction("Performance").should("not.exist");
         H.commandPaletteInput().clear();
 
-        // Tools
+        // Monitor tools live outside the Admin command-palette links
         H.commandPaletteInput().clear().type("tool");
         H.commandPaletteAction("Tools").should("not.exist");
         H.commandPaletteInput().clear();
@@ -314,7 +318,7 @@ describe("command palette", () => {
 
         H.saveChangesToPermissions();
 
-        cy.findByRole("radiogroup").findByText("Data").click();
+        cy.findByRole("tab", { name: "Data" }).click();
         cy.findByRole("menuitem", { name: "All Users" }).click();
 
         const TABLE_METADATA_INDEX = 3;
@@ -344,9 +348,9 @@ describe("command palette", () => {
           H.commandPaletteAction("Settings - General").should("exist");
           H.commandPaletteInput().clear();
 
-          // Tools
+          // Monitor tools live outside the Admin command-palette links
           H.commandPaletteInput().clear().type("tool");
-          H.commandPaletteAction("Tools").should("exist");
+          H.commandPaletteAction("Tools").should("not.exist");
           H.commandPaletteInput().clear();
 
           //Database and table metadata
@@ -421,7 +425,7 @@ describe("command palette", () => {
       H.commandPaletteInput().should("exist").type("Me");
       cy.findByText("New metric").should("be.visible").click();
 
-      cy.location("pathname").should("eq", "/metric/query");
+      cy.location("pathname").should("eq", "/metric/new");
     });
   });
 
@@ -444,19 +448,19 @@ describe("command palette", () => {
       .should("contain", "Search everything");
   });
 
+  it("should show the 'New embed' command palette item", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /search/i }).click();
+
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().should("exist").type("new embed");
+      cy.findByText("New embed").should("be.visible");
+    });
+  });
+
   describe("ee", () => {
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
-    });
-
-    it("should show the 'New embed' command palette item", () => {
-      cy.visit("/");
-      cy.findByRole("button", { name: /search/i }).click();
-
-      H.commandPalette().within(() => {
-        H.commandPaletteInput().should("exist").type("new embed");
-        cy.findByText("New embed").should("be.visible");
-      });
+      H.activateToken("pro-self-hosted");
     });
 
     it("should have a 'New document' item", () => {
@@ -575,6 +579,16 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
       event_detail: "navigate-trash",
     });
 
+    cy.realPress("g").realPress("s");
+    cy.location("pathname").should("match", /^\/data-studio/);
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "navigate-data-studio",
+    });
+
+    cy.realPress("g").realPress("m");
+
     cy.log("shortcuts should not be enabled when working in a modal (ADM 658)");
 
     H.navigationSidebar().should("be.visible");
@@ -615,7 +629,18 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("5");
     cy.location("pathname").should("contain", "/admin/datamodel");
     cy.realPress("9");
-    cy.location("pathname").should("contain", "/admin/tools");
+    cy.location("pathname").should("contain", "/admin/help");
+  });
+
+  it("should not navigate to data studio via shortcut for non-admin users", () => {
+    cy.signInAsNormalUser();
+    cy.visit("/");
+    cy.findByTestId("home-page")
+      .findByText(/see what metabase can do/i)
+      .should("exist");
+
+    cy.realPress("g").realPress("s");
+    cy.location("pathname").should("equal", "/");
   });
 
   it("should support dashboard shortcuts", () => {

@@ -1,0 +1,28 @@
+## Add admin_details column to metabase_database for the :admin-connection feature
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v62.2026-05-04T00:00:00
+      author: galdre
+      comment: Add admin_details column to metabase_database for separate admin (highest-privilege) connection credentials
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: admin_details
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: admin_details
+                  type: ${text.type}
+                  remarks: Encrypted JSON containing connection details for admin (highest-privilege) operations such as DDL and ownership changes
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: admin_details

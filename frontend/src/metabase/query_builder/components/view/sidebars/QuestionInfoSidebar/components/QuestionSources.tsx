@@ -1,35 +1,46 @@
 import { Fragment, useMemo } from "react";
 import { c } from "ttag";
 
+import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
-import { getIcon } from "metabase/lib/icon";
-import { useSelector } from "metabase/lib/redux";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import { useSelector } from "metabase/redux";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";
 
 import type { QuestionSource } from "./types";
 
 export const QuestionSources = () => {
-  /** Retrieve current question from the Redux store */
+  const getIcon = useGetIcon();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
+
+  const databaseId = underlyingQuestion
+    ? Lib.databaseID(underlyingQuestion.query())
+    : null;
+  const { data: schemas = [] } = useListDatabaseSchemasQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
 
   const sourcesWithIcons: QuestionSource[] = useMemo(() => {
     const sources = underlyingQuestion
-      ? (getDataSourceParts({
+      ? // Unjustified type cast. FIXME
+        (getDataSourceParts({
           question: underlyingQuestion,
           subHead: false,
           isObjectDetail: true,
           formatTableAsComponent: false,
+          hasMultipleSchemas: schemas.length > 1,
         }) as QuestionSource[]) // note: this type cast is horrendous
       : [];
     return sources.map((source) => ({
       ...source,
       iconProps: getIcon({ model: source.model ?? "card" }),
     }));
-  }, [underlyingQuestion]);
+  }, [underlyingQuestion, getIcon, schemas.length]);
 
   if (!underlyingQuestion || !sourcesWithIcons.length) {
     return null;
@@ -45,10 +56,8 @@ export const QuestionSources = () => {
         {sourcesWithIcons.map(({ href, name, iconProps }, index) => (
           <Fragment key={`${href}-${name}`}>
             <Link to={href} variant="brand">
-              <Flex gap="sm" lh="1.25rem" maw="20rem">
-                {iconProps ? (
-                  <Icon mt={2} c="text-primary" {...iconProps} />
-                ) : null}
+              <Flex gap="sm" lh="1.25rem" maw="20rem" align="center">
+                {iconProps ? <Icon {...iconProps} /> : null}
                 {name}
               </Flex>
             </Link>

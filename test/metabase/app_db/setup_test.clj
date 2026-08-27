@@ -27,6 +27,31 @@
       (#'mdb.setup/verify-db-connection :h2 (mdb.data-source/raw-connection-string->DataSource
                                              (format "jdbc:h2:mem:%s" (mt/random-name)))))))
 
+(deftest supported-app-db-version?-test
+  (testing "Should be able to check if an app DB is a supported version"
+    (letfn [(test-supported-versions [db expected-min-version]
+              (doseq [diff [nil {:major 1} {:minor 1} {:patch 1}]]
+                (is (true? (#'mdb.setup/supported-app-db-version? db (merge-with + expected-min-version diff)))))
+              (doseq [diff [{:major -1} {:minor -1} {:patch -1}]]
+                (is (false? (#'mdb.setup/supported-app-db-version? db (merge-with + expected-min-version diff))))))]
+      (test-supported-versions :h2 {:major 2 :minor 1 :patch 214})
+      (test-supported-versions :postgres {:major 14 :minor 0 :patch 0})
+      (test-supported-versions :mysql {:major 8 :minor 0 :patch 0})
+      (test-supported-versions :mariadb {:major 10 :minor 6 :patch 0}))))
+
+(deftest parse-db-version-test
+  (testing "Can parse H2 version strings"
+    (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "2.1.214 (2022-06-13)"))))
+  (testing "Can parse postgres version strings"
+    (is (= {:major 18 :minor 3 :patch 0} (#'mdb.setup/parse-db-version "18.3 (Debian 18.3-1.pgdg13+1)")))
+    (is (= {:major 14 :minor 22 :patch 0} (#'mdb.setup/parse-db-version "14.22 (Debian 14.22-1.pgdg13+1)")))
+    (is (= {:major 11 :minor 16 :patch 0} (#'mdb.setup/parse-db-version "11.16 (Debian 11.16-1.pgdg90+1)"))))
+  (testing "Can parse mysql version strings"
+    (is (= {:major 9 :minor 6 :patch 0} (#'mdb.setup/parse-db-version "9.6.0")))
+    (is (= {:major 8 :minor 0 :patch 45} (#'mdb.setup/parse-db-version "8.0.45"))))
+  (testing "Can parse mariadb version strings"
+    (is (= {:major 12 :minor 2 :patch 2} (#'mdb.setup/parse-db-version "12.2.2-MariaDB-ubu2404")))))
+
 (deftest setup-db-test
   (testing "Should be able to set up an arbitrary application DB"
     (letfn [(test* [data-source]
@@ -70,10 +95,8 @@
       (testing "Running setup with `auto-migrate?`=false should pass if no migrations exist which need to be run"
         (is (= :done
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)))
-
         (is (= :done
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) false false)))))
-
     (testing "Setting up DB with `auto-migrate?`=false should exit if any migrations exist which need to be run"
       ;; Use a migration file that intentionally errors with failOnError: false, so that a migration is still unrun
       ;; when we re-run `setup-db!`
@@ -81,7 +104,6 @@
         (mt/with-temp-empty-app-db [_conn driver/*driver*]
           (is (= :done
                  (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)))
-
           (is (thrown-with-msg?
                Exception
                #"Database requires manual upgrade."
@@ -101,7 +123,7 @@
 (deftest setup-a-mb-instance-running-version-lower-than-45
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
+      (mt/with-dynamic-fn-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
         ;; set up a db in a way we have a MB instance running metabase 44
         (update-to-changelog-id "v44.00-000" conn))
       (is (= :done
@@ -110,8 +132,8 @@
 (deftest setup-a-mb-instance-running-version-greater-than-45
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
-             ;; set up a db in a way we have a MB instance running metabase 45
+      (mt/with-dynamic-fn-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
+        ;; set up a db in a way we have a MB instance running metabase 45
         (update-to-changelog-id "v45.00-001" conn))
       (is (= :done
              (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false))))))
@@ -121,20 +143,44 @@
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       ;; migrate to v45
       (update-to-changelog-id "v45.00-001" conn)
-
       ;; the latest changeSet in `000_legacy_migrations.yaml` is `v44.00-044`. We can simulate a downgrade to that
       ;; version by telling Liquibase that's the migrations file.
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
+      (mt/with-dynamic-fn-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
         (is (thrown-with-msg?
              Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 45."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
-
       ;; check that the error correctly reports the version to run `downgrade` from
       (update-to-changelog-id "v46.00-001" conn)
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
+      (mt/with-dynamic-fn-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
         (is (thrown-with-msg?
              Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 46."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))
+
+(deftest changesets-from-later-version-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      ;; Run all real migrations first so the changelog table exists
+      (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
+      (liquibase/with-liquibase [liquibase conn]
+        (let [table    (liquibase/changelog-table-name liquibase)
+              db-conn  {:connection conn}
+              fake-ids ["v998.00-001" "v998.00-002" "v999.00-001"]]
+          ;; Insert fake changelog entries for versions 998 and 999
+          (doseq [[i id] (map-indexed vector fake-ids)]
+            (jdbc/execute! db-conn
+                           [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum)
+                                     VALUES (?, 'test', 'test.yaml', CURRENT_TIMESTAMP, ?, 'EXECUTED', 'fake')"
+                                    table)
+                            id (+ 99990 i)]))
+          (try
+            (let [later (liquibase/changesets-from-later-version conn (.getDatabase liquibase) 997 999)]
+              (testing "returns exactly the fake changeset IDs in execution order"
+                (is (= fake-ids later))))
+            (finally
+              ;; Clean up fake rows
+              (doseq [id fake-ids]
+                (jdbc/execute! db-conn
+                               [(format "DELETE FROM %s WHERE id = ?" table) id])))))))))
 
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
@@ -153,7 +199,6 @@
                           :where     [:= :table.db_id [:inline 0]]}))))))
 
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (deftest ^:parallel build-before-delete-query-test
   (testing "before-delete's select query should remove `:delete`/`:delete-from` (workaround for https://github.com/camsaul/toucan2/issues/203)"
     (is (= {:select [:*], :from [[:metabase_field :field]], :where [:= :field.id 0]}

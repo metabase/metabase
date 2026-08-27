@@ -192,16 +192,16 @@ You can create tenant-level [user attributes](#tenant-attributes) which all user
 
 ![Edit tenant](./images/edit-tenant.png)
 
-To add a tenant attribute:
+To create a tenant attribute manually using the Metabase UI:
 
 1. Go to **Admin settings > People**
 2. Select **Tenants** on the left sidebar.
 3. Click on **three dots** next to the tenant.
 4. Input the attribute key and value.
 
-Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can be overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
+You can also assign tenant attributes automatically through JWT claims, see [Setting tenant attributes using tenant claims](#setting-tenant-attributes-using-tenant-claims) below.
 
-Currently, you can't assign custom tenant attributes with SSO. The only way to assign attributes is through the Metabase UI (but you can provision attributes for _individual users_ through SSO, see [JWT user attributes](../people-and-groups/authenticating-with-jwt.md)). However, if you're using user attribute to set permissions, then you can use the [special slug attribute](#special-tenant-slug-attribute) which Metabase creates automatically.
+Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can be overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
 
 ### Special tenant slug attribute
 
@@ -264,6 +264,25 @@ When user provisioning with JWT is enabled:
 2. If the tenant doesn't exist, Metabase automatically creates it. Metabase will use the value of the `@tenant` key (or your chosen assignment attribute) as the tenant slug.
 3. New users are automatically assigned to the tenant from their JWT.
 
+### Setting tenant attributes using tenant claims
+
+To create tenant attributes from JWT SSO, include a claim `@tenant.attributes`:
+
+```json
+{
+  "@tenant": "meowdern_solutions",
+  "@tenant.attributes": {
+    "id": "13371337",
+    "name": "Mammoth Solutions"
+  },
+  "email": "mittens@example.com",
+  "first_name": "Mister",
+  "last_name": "Mittens"
+}
+```
+
+If a tenant attribute with this name doesn't exist, Metabase will create the attribute and assign the value from the JWT claim. However, if the tenant attribute already exists, Metabase will **not** update the value.
+
 ### Troubleshooting JWT authentication with tenants
 
 Some common auth error messages and what they mean:
@@ -289,6 +308,8 @@ For an overview of how data permissions work in Metabase, see [Data permissions]
 
   If every tenant has their data in a separate database, then instead of using permissions for data access control, you can use [**database routing**](../permissions/database-routing.md) to route queries to appropriate databases directly.
 
+  For a comparison of data isolation methods, see [Choosing a data isolation method](../permissions/data-isolation-methods.md).
+
 - **Create queries** controls whether tenant users can create queries on the data they see. If you want to give your tenant users the ability to drill through (e.g., through `drills` parameter in [modular embedding](../embedding/modular-embedding.md)), you need to give them "Create queries" permissions, because a drill through is a new query.
 
 - **Download results** controls, unsurprisingly, whether people can download results of queries. You need to set download permissions if you want to give your users the option to download their data as a spreadsheet (for example, through `with-downloads` parameter in [modular embedding](../embedding/modular-embedding.md)).
@@ -299,7 +320,7 @@ Please review [Data permissions documentation](../permissions/data.md) for more 
 
 ### Use tenant attributes for data permissions
 
-[Row and column security](../permissions/row-and-column-security.md), [Impersonation](../permissions/impersonation.md), and Database routing require user attributes. You can [specify custom tenant attributes](#tenant-attributes) to configure data permissions based on attribute values. See [Tenant attributes](#tenant-attributes). Alternatively, you can use the special tenant slug attribute, see [Special slug attribute](#special-tenant-slug-attribute).
+[Row and column security](../permissions/row-and-column-security.md), [Impersonation](../permissions/impersonation.md), and Database routing require user attributes. You can [specify custom tenant attributes](#tenant-attributes) to configure data permissions based on attribute values. See [Tenant attributes](#tenant-attributes). 
 
 ## Collection permissions for tenants
 
@@ -329,8 +350,7 @@ Permissions are granted to groups. Which permissions are available to each group
 ### Internal user collection permissions
 
 - Metabase Admins will have **Curate** access to all shared collections and all tenant collections.
-- Other internal groups can be granted **View** or **Curate** access to **shared collections**, see [Configuring shared collection permissions](#configuring-shared-collections-permissions).
-- Non-admin internal users will have **No** access to tenant-specific collections. Currently, this can't be configured.
+- Other internal and non-admin groups have **No** access by default, but can be granted **View** or **Curate** access to shared or tenant collections. See [Configuring shared collection permissions](#configuring-shared-collections-permissions) for details.
 
 For configuring permissions to _internal_ collections for internal users, see [general docs on collection permissions](../permissions/collections.md).
 
@@ -419,3 +439,4 @@ If you disable multi-tenant strategy, _all your tenant users will be deactivated
 - [Embedding overview](./start.md)
 - [JWT authentication](../people-and-groups/authenticating-with-jwt.md)
 - [Permissions overview](../permissions/start.md)
+- [Data isolation methods](../permissions/data-isolation-methods.md)

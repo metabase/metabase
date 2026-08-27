@@ -4,7 +4,7 @@ title: Presto
 
 # Presto
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 Fill out the fields for that database, and click **Save changes** at the bottom.
 
@@ -70,7 +70,7 @@ Kerberos settings include:
 - Kerberos credential cache file (e.g., `/tmp/kerbo-credential-cache`)
 - Kerberos keytab file (e.g., `/path/to/kerberos.keytab`)
 - Kerberos configuration file (e.g., `/etc/krb5.conf`)
-- Presto coordinator Kerberos service principal pattern (e.g., `${SERVICE}@${HOST}.${SERVICE}`
+- Presto coordinator Kerberos service principal pattern (e.g., `${SERVICE}@${HOST}.${SERVICE}`)
 
 ### Additional JDBC connection string options
 
@@ -80,7 +80,7 @@ You can append options to the connection string that Metabase uses to connect to
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -93,6 +93,10 @@ See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
+
+## Writable connection
+
+Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
 ## Database routing
 

@@ -1,7 +1,8 @@
 import type { Active } from "@dnd-kit/core";
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
+import type { DraggedColumn } from "metabase/redux/store/visualizer";
 import {
   getHoveredItems,
   getReferencedColumns,
@@ -11,7 +12,6 @@ import type {
   DatasetColumn,
   VisualizerColumnReference,
 } from "metabase-types/api";
-import type { DraggedColumn } from "metabase-types/store/visualizer";
 
 interface UseCanHandleActiveItemParams {
   active: Active | null;

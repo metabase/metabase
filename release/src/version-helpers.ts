@@ -1,4 +1,5 @@
 import type { GithubProps, Tag } from "./types";
+import { isLtsVersion } from "./version-info";
 
 // https://regexr.com/7l1ip
 export const isValidVersionString = (versionString: string) => {
@@ -116,17 +117,11 @@ export const getMajorVersionFromRef = (ref: string) => {
   return getMajorVersionNumberFromReleaseBranch(ref.replace("refs/heads/", ""));
 };
 
-const SDK_TAG_REGEXP = /embedding-sdk-(0\.\d+\.\d+(-\w+)?)$/;
-
-export const getSdkVersionFromReleaseTagName = (tagName: string) => {
-  const match = SDK_TAG_REGEXP.exec(tagName);
-
-  if (!match) {
-    throw new Error(`Invalid sdk release tag: ${tagName}`);
-  }
-
-  return match[1];
-};
+// creates tag in format: `v<oss|ee>.<major>-lts`, for example: v0.58-lts
+const getLtsTag = (version: string) => {
+  const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
+  return pieces.slice(0, 2).join(".") + "-lts";
+}
 
 export const getDotXs = (version: string, number: number) => {
   const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
@@ -154,7 +149,7 @@ const shouldAddLatestTag = ({
   return majorVersion === latestMajorVersion;
 };
 
-export const getExtraTagsForVersion = ({
+export const getExtraTagsForVersion = async ({
   version,
   latestMajorVersion,
 }: {
@@ -168,55 +163,18 @@ export const getExtraTagsForVersion = ({
   // eg. v0.23.x / v1.23.x
   const baseTags = [getDotXs(ossVersion, 1), getDotXs(eeVersion, 1)];
   // eg. v0.23.4.x / v1.23.4.x
-  const minorTags = versionType !== "major"
-    ? [getDotXs(ossVersion, 2), getDotXs(eeVersion, 2)]
-    : [];
+  const minorTags =
+    versionType !== "major"
+      ? [getDotXs(ossVersion, 2), getDotXs(eeVersion, 2)]
+      : [];
 
   return [
     ...baseTags,
     ...minorTags,
     ...(shouldAddLatestTag({ version, latestMajorVersion }) ? ["latest"] : []),
+    ...(await isLtsVersion({ version }) ? [getLtsTag(ossVersion), getLtsTag(eeVersion)] : [])
   ];
 };
-
-/**
- * queries the github api to get all embedding sdk version tags
- */
-export async function getLastEmbeddingSdkReleaseTag({
-  github,
-  owner,
-  repo,
-  majorVersion = "",
-}: GithubProps & {
-  majorVersion?: string;
-}) {
-  const tags = await github.paginate(github.rest.git.listMatchingRefs, {
-    owner,
-    repo,
-    ref: `tags/embedding-sdk-0.${majorVersion}`,
-  });
-
-  const lastRelease = getLastReleaseFromTags({
-    tags: tags.filter(filterOutNonSupportedPrereleaseIdentifier),
-  });
-
-  return lastRelease;
-}
-
-const ALLOWED_SDK_PRERELEASE_IDENTIFIERS = ["nightly"];
-/**
- *
- * @param tag a GitHub tag object
- */
-export function filterOutNonSupportedPrereleaseIdentifier(tag: Tag) {
-  const prereleaseIdentifier = /\d+\.\d+\.\d+-(?<prerelease>\w+)$/.exec(tag.ref)
-    ?.groups?.prerelease;
-
-  return (
-    !prereleaseIdentifier ||
-    ALLOWED_SDK_PRERELEASE_IDENTIFIERS.includes(prereleaseIdentifier)
-  );
-}
 
 export const getMajorVersionNumberFromReleaseBranch = (branch: string) => {
   const match = /release-x\.(\d+)\.x$/.exec(branch);
@@ -248,6 +206,12 @@ export const versionRequirements: Record<
   56: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   57: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
   58: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  59: { java: 21, node: 22, platforms: "linux/amd64,linux/arm64" },
+  60: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
+  61: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
+  62: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
+  63: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
+  64: { java: 25, node: 22, platforms: "linux/amd64,linux/arm64" },
 };
 
 export const getBuildRequirements = (version: string) => {
@@ -429,110 +393,64 @@ export const getNextPatchVersion = async ({
     ignorePreReleases: false,
   });
 
-  const nextPatch = findNextPatchVersion(lastRelease);
-
-  return nextPatch;
-};
-
-type SdkVersionInfo = {
-  version: string;
-  preReleaseLabel: string;
-  majorVersion: string;
-};
-
-type PreReleaseInfo = {
-  label: string;
-  version: number | null;
-};
-
-const parsePreReleaseSuffix = (suffix: string | undefined): PreReleaseInfo => {
-  if (!suffix) {
-    return { label: "", version: null };
+  if (!lastRelease) {
+    return undefined;
   }
 
-  const [label, versionStr] = suffix.split(".");
-  const version = versionStr ? parseInt(versionStr, 10) : null;
-
-  return { label: label ?? "", version };
+  return findNextPatchVersion(lastRelease);
 };
 
-const getNextAlphaVersion = (
-  currentVersionBase: string,
-  preRelease: PreReleaseInfo,
-  majorVersion: string,
-): SdkVersionInfo => {
-  if (preRelease.label !== "alpha") {
+export const findNextMinorVersion = (version: string) => {
+  if (!isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
+
+  if (isPreReleaseVersion(version)) {
     throw new Error(
-      "Only `alpha` versions can be released from the `master` branch.",
+      `Auto-minor releases are not supported for pre-release versions: ${version}`,
     );
   }
 
-  const nextPreReleaseVersion = (preRelease.version ?? -1) + 1;
+  const [major, minor] = version
+    .replace(/(v1|v0)\./, "")
+    .split(".")
+    .map(Number);
 
-  return {
-    version: `${currentVersionBase}-${preRelease.label}.${nextPreReleaseVersion}`,
-    preReleaseLabel: preRelease.label,
-    majorVersion,
-  };
+  return `v0.${major}.${(minor || 0) + 1}`;
 };
 
-const getNextReleaseBranchVersion = (
-  versionParts: string[],
-  preRelease: PreReleaseInfo,
-  majorVersion: string,
-): SdkVersionInfo => {
-  if (preRelease.label && preRelease.label !== "beta") {
-    throw new Error(
-      "Only `beta` versions can be released from the `release` branch.",
-    );
+export const getNextMinorVersion = async ({
+  github,
+  owner,
+  repo,
+  majorVersion,
+}: GithubProps & { majorVersion: number }) => {
+  const lastRelease = await getLastReleaseTag({
+    github,
+    owner,
+    repo,
+    version: `v0.${majorVersion.toString()}.0`,
+    ignorePatches: true,
+    ignorePreReleases: true,
+  });
+
+  // No stable release yet for this major (e.g. only vX.NN.0-beta has shipped).
+  // The gold release is cut manually — skip rather than crash the cron.
+  if (!lastRelease) {
+    return undefined;
   }
 
-  const updatedVersionParts = [...versionParts];
-  const lastIndex = updatedVersionParts.length - 1;
-  const patchVersion = updatedVersionParts[lastIndex] ?? "0";
-
-  // Handle .x placeholder versions
-  if (patchVersion === "x") {
-    updatedVersionParts[lastIndex] = "0";
-  } else if (!preRelease.label && preRelease.version === null) {
-    // Increment patch version for stable releases
-    const currentPatch = parseInt(patchVersion, 10) || 0;
-    updatedVersionParts[lastIndex] = String(currentPatch + 1);
-  }
-
-  const newVersionBase = updatedVersionParts.join(".");
-  const nextPreReleaseVersion = (preRelease.version ?? -1) + 1;
-
-  const versionSuffix = preRelease.label
-    ? `-${preRelease.label}.${nextPreReleaseVersion}`
-    : "";
-
-  return {
-    version: `${newVersionBase}${versionSuffix}`,
-    preReleaseLabel: "",
-    majorVersion,
-  };
+  return findNextMinorVersion(lastRelease);
 };
 
-export const getNextSdkVersion = (
-  branch: string,
-  currentVersion: string,
-): SdkVersionInfo => {
-  const [currentVersionBase, suffix] = currentVersion.split("-");
-  const versionParts = currentVersionBase.split(".");
-  const majorVersion = versionParts[1] ?? "";
-
-  if (branch === "master") {
-    if (!suffix) {
-      throw new Error(
-        `Expected pre-release suffix on master branch, got: ${currentVersion}`,
-      );
-    }
-
-    const preRelease = parsePreReleaseSuffix(suffix);
-    return getNextAlphaVersion(currentVersionBase, preRelease, majorVersion);
-  }
-
-  const preRelease = parsePreReleaseSuffix(suffix);
-  return getNextReleaseBranchVersion(versionParts, preRelease, majorVersion);
+export const getNextVersion = async ({
+  github,
+  owner,
+  repo,
+  majorVersion,
+  kind,
+}: GithubProps & { majorVersion: number; kind: "patch" | "minor" }) => {
+  return kind === "patch"
+    ? getNextPatchVersion({ github, owner, repo, majorVersion })
+    : getNextMinorVersion({ github, owner, repo, majorVersion });
 };

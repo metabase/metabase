@@ -19,6 +19,7 @@
    (clojure.core.async.impl.channels ManyToManyChannel)
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (metabase.server.streaming_response StreamingResponse)
+   (org.apache.logging.log4j ThreadContext)
    (org.eclipse.jetty.util.thread QueuedThreadPool)))
 
 (set! *warn-on-reflection* true)
@@ -87,11 +88,6 @@
   (when include-stats?
     (stats diag-info-fn)))
 
-(defn- format-error-info [{{:keys [body]} :response} {:keys [error?]}]
-  (when (and error?
-             (or (string? body) (coll? body)))
-    (str "\n" (u/pprint-to-str body))))
-
 (defn- format-log-context [{:keys [log-context]} _]
   (pr-str log-context))
 
@@ -99,8 +95,7 @@
   (str/join " " (filter some? [(format-status-info info)
                                (format-performance-info info)
                                (format-threads-info info opts)
-                               (format-log-context info opts)
-                               (format-error-info info opts)])))
+                               (format-log-context info opts)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Logging the Info                                                |
@@ -148,7 +143,7 @@
                 log-options)]
       (log-fn (u/format-color color (format-info info opts))))
     (catch Throwable e
-      (log/error e "Error logging API request"))))
+      (log/errorf "Error logging API request: %s" (ex-message e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Async Logging                                                  |
@@ -159,29 +154,42 @@
 
 (defn- log-core-async-response
   "For async responses that return a `core.async` channel, wait for the channel to return a response before logging the
-  API request info."
-  [{{chan :body, :as _response} :response, :as info}]
+  API request info. `mdc-ctx` is the MDC snapshot from the request thread — restored before logging
+  so trace_id/span_id appear in async log lines."
+  [{{chan :body, :as _response} :response, :as info} mdc-ctx]
   {:pre [(async.u/promise-chan? chan)]}
   ;; [async] wait for the pipe to close the canceled/finished channel and log the API response
   (a/go
     (let [result (a/<! chan)]
-      (log-info (assoc info :async-status (if (nil? result) "canceled" "completed"))))))
+      (try
+        (ThreadContext/putAll mdc-ctx)
+        (log-info (assoc info :async-status (if (nil? result) "canceled" "completed")))
+        (finally
+          (ThreadContext/removeAll (keys mdc-ctx)))))))
 
-(defn- log-streaming-response [{{streaming-response :body, :as _response} :response, :as info}]
+(defn- log-streaming-response
+  "Log a streaming response after it completes. `mdc-ctx` is the MDC snapshot from the request thread."
+  [{{streaming-response :body, :as _response} :response, :as info} mdc-ctx]
   ;; [async] wait for the streaming response to be canceled/finished channel and log the API response
   (let [finished-chan (streaming-response/finished-chan streaming-response)]
     (a/go
       (let [result (a/<! finished-chan)]
-        (log-info (assoc info :async-status (name result)))))))
+        (try
+          (ThreadContext/putAll mdc-ctx)
+          (log-info (assoc info :async-status (name result)))
+          (finally
+            (ThreadContext/removeAll (keys mdc-ctx))))))))
 
 (defn- logged-response
   "Log an API response. Returns response, possibly modified (i.e., core.async channels will be wrapped); this value
-  should be passed to the normal `respond` function."
+  should be passed to the normal `respond` function.
+  Captures MDC context from the request thread so that async log lines include trace_id/span_id."
   [{{:keys [body], :as response} :response, :as info}]
-  (condp instance? body
-    ManyToManyChannel (log-core-async-response info)
-    StreamingResponse (log-streaming-response info)
-    (log-info info))
+  (let [mdc-ctx (ThreadContext/getImmutableContext)]
+    (condp instance? body
+      ManyToManyChannel (log-core-async-response info mdc-ctx)
+      StreamingResponse (log-streaming-response info mdc-ctx)
+      (log-info info)))
   response)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -197,10 +205,12 @@
   (cond-> #{"/api/logger/logs"}
     (not (server.settings/health-check-logging-enabled)) (into #{"/api/health" "/livez" "/readyz"})))
 
-(defn- should-log-request? [{:keys [uri], :as request}]
+(defn- should-log-request? [{:keys [^String uri], :as request}]
   ;; don't log calls to health checks or /logger/logs because they clutter up the logs (especially the window in admin)
   ;; with useless lines
   (and (or (request/api-call? request)
+           (str/starts-with? uri "/.well-known")
+           (str/starts-with? uri "/oauth")
            (contains? #{"/livez" "/readyz"} uri))
        (not ((logging-disabled-uris) uri))))
 
@@ -217,9 +227,11 @@
           (let [info           {:request       request
                                 :start-time    (u/start-timer)
                                 :call-count-fn call-count-fn
-                                :diag-info-fn  diag-info-fn
-                                :log-context   {:metabase-user-id api/*current-user-id*}}
+                                :diag-info-fn  diag-info-fn}
                 response->info (fn [response]
-                                 (assoc info :response response))
+                                 (assoc info
+                                        :response response
+                                        :log-context {:metabase-user-id (or (:metabase-user-id (meta response))
+                                                                            api/*current-user-id*)}))
                 respond        (comp respond logged-response response->info)]
             (handler request respond raise)))))))

@@ -1,10 +1,10 @@
 import type { StoryFn } from "@storybook/react";
 
-import { color } from "metabase/lib/colors";
 import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
+import { color } from "metabase/ui/colors";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
@@ -40,6 +40,7 @@ const renderingContext: RenderingContext = {
 export const DefaultSettings = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.defaultSettings as any,
     renderingContext,
   },
@@ -48,6 +49,7 @@ export const DefaultSettings = {
 export const Watermark = {
   render: Template,
   args: {
+    // Unjustified type cast. FIXME
     rawSeries: data.defaultSettings as any,
     renderingContext,
     hasDevWatermark: true,

@@ -51,7 +51,7 @@
                  :native   "SELECT * FROM VENUES;"}]}))
 
 (deftest ^:parallel pipeline-joins-test
-  ;; this isn't meant to be 100% correct pMBQL -- `->pipeline` is just supposed to put stuff in the generally correct
+  ;; this isn't meant to be 100% correct MBQL 5 -- `->pipeline` is just supposed to put stuff in the generally correct
   ;; shape, just to make sure we have `:stages` and stuff looking the way they should. [[metabase.lib.convert]] uses
   ;; this as part of what it does
   (is (=? {:lib/type :mbql/query
@@ -223,15 +223,6 @@
                                              :type     :native
                                              :native   {:query "SELECT * FROM venues;"}}))))
 
-(deftest ^:parallel join-strings-with-conjunction-test
-  (are [coll expected] (= expected
-                          (lib.util/join-strings-with-conjunction "and" coll))
-    []                nil
-    ["a"]             "a"
-    ["a" "b"]         "a and b"
-    ["a" "b" "c"]     "a, b, and c"
-    ["a" "b" "c" "d"] "a, b, c, and d"))
-
 (deftest ^:parallel strip-id-test
   (are [exp in] (= exp (lib.util/strip-id in))
     "foo"            "foo"
@@ -388,3 +379,26 @@
                                                                                     {:name "count"}
                                                                                     {:name "CC", :lib/expression-name "CC"}]}}]}]}]}
               (lib.util/pipeline query))))))
+
+#?(:clj
+   (deftest ^:parallel recover-test
+     (testing "returns the thunk's value when nothing is thrown"
+       (is (= 42 (lib.util/recover (fn [] 42) (fn [_] :unreached)))))
+     (testing "recoverable throwables reach the handler unchanged -- any Exception, plus AssertionError"
+       (are [make] (let [e (make)]
+                     (identical? e (lib.util/recover (fn [] (throw e)) (fn [caught] caught))))
+         #(AssertionError. "bad data")
+         #(RuntimeException.)
+         #(ex-info "boom" {})
+         #(InterruptedException.)
+         #(java.util.concurrent.TimeoutException.)))
+     (testing "fatal Errors propagate uncaught, unchanged"
+       (are [make] (let [e (make)]
+                     (identical? e (try
+                                     (lib.util/recover (fn [] (throw e)) (fn [_] :unreached))
+                                     (catch Error caught caught))))
+         #(StackOverflowError.)
+         #(OutOfMemoryError.)
+         #(LinkageError.)
+         #(ThreadDeath.)
+         #(Error. "generic")))))

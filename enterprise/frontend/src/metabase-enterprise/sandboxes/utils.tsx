@@ -7,6 +7,7 @@ import type {
   StructuredUserAttributes,
   Table,
   Tenant,
+  UnsavedCard,
 } from "metabase-types/api";
 
 import type {
@@ -33,12 +34,14 @@ export const getPolicyKeyFromParams = ({
 export const getPolicyKey = (policy: GroupTableAccessPolicy) =>
   `${policy.group_id}:${policy.table_id}`;
 
-export const getRawDataQuestionForTable = (table: Table) => ({
+export const getRawDataQuestionForTable = (table: Table): UnsavedCard => ({
+  display: "table",
   dataset_query: {
     type: "query",
     database: table?.db_id,
     query: { "source-table": table?.id },
   },
+  visualization_settings: {},
 });
 
 export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
@@ -108,9 +111,10 @@ export const getExtraAttributes = (
 
   // for newly created tenant users, we want to pre-populate their inherited attributes
   return {
+    // the slug is system defined and frozen, matching what the backend returns for existing users
     [TENANT_SLUG_ATTRIBUTE]: {
       value: tenant.slug,
-      source: "tenant",
+      source: "system",
       frozen: true,
     },
     ...Object.fromEntries(

@@ -4,7 +4,6 @@ const { H } = cy;
 const { TablePicker } = H.DataModel;
 
 interface MetadataResponse {
-  updated_at: string;
   data_layer: string;
   view_count: number;
 }
@@ -14,7 +13,7 @@ describe("Table editing", () => {
     H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
@@ -39,18 +38,16 @@ describe("Table editing", () => {
 
   it("should display metadata information", { tags: ["@external"] }, () => {
     H.restore("mysql-8");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA MySQL8").click();
     TablePicker.getTable("Orders").click();
 
     cy.wait<MetadataResponse>("@metadata").then(({ response }) => {
-      const updatedAt = response?.body.updated_at ?? "";
-      const expectedDate = new Date(updatedAt).toLocaleString();
       const viewCount = response?.body.view_count ?? 0;
 
       cy.findByLabelText("Name in the database").should("have.text", "ORDERS");
-      cy.findByLabelText("Last updated at").should("have.text", expectedDate);
+      cy.findByLabelText("Last updated at").should("exist"); // Testing the actual value is done in TableMetadata.unit.spec.tsx
       cy.findByLabelText("View count").should("have.text", viewCount);
       cy.findByLabelText("Est. row count").should("not.exist");
       cy.findByLabelText("Dependencies").should("have.text", "0");
@@ -69,16 +66,22 @@ describe("Table editing", () => {
     { tags: ["@external"] },
     () => {
       H.restore("mysql-8");
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.DataModel.visitDataStudio();
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
 
       cy.log("publish the table and verify it's published");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("not.exist");
       cy.findByRole("button", { name: /Publish/ }).click();
       H.modal().findByText("Create my Library").click();
       H.modal().findByText("Publish this table").click();
       cy.wait("@publishTables");
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("be.visible");
       H.undoToastListContainer().within(() => {
         cy.findByText("Published").should("be.visible");
         cy.findByRole("button", { name: /Go to Data/ }).click();
@@ -93,29 +96,59 @@ describe("Table editing", () => {
       cy.findByRole("button", { name: /Unpublish/ }).click();
       H.modal().findByText("Unpublish this table").click();
       cy.wait("@unpublishTables");
-      H.DataStudio.nav().findByLabelText("Library").click();
+      TablePicker.getTable("Orders")
+        .findByTestId("table-published")
+        .should("not.exist");
+      H.DataStudio.nav().findByLabelText("Semantic layer").click();
       H.DataStudio.Library.allTableItems().should("have.length", 0);
     },
   );
 
   it("should allow to edit attributes", { tags: ["@external"] }, () => {
     H.restore("postgres-12");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
 
+    cy.log("rename the table and verify the name is updated in the picker");
+    H.DataModel.TableSection.getNameInput()
+      .clear()
+      .type("Renamed Orders")
+      .blur();
+    cy.wait("@updateTable");
+    TablePicker.getTable("Renamed Orders").should("be.visible");
+    H.undoToast().findByRole("img", { name: /Close/i }).click();
+
     H.selectHasValue("Owner", "No owner").click();
     H.selectDropdown().contains("Bobby Tables").click();
+
     H.undoToastListContainer()
       .findByText("Table owner updated")
       .should("be.visible");
+    H.undoToast().findByRole("img", { name: /Close/i }).click();
 
     H.selectHasValue("Visibility layer", "Internal").click();
     H.selectDropdown().contains("Final").click();
     H.undoToastListContainer()
       .findByText("Table visibility layer updated")
       .should("be.visible");
+
+    cy.log(
+      "undo the change and verify the table updates to the reverted value",
+    );
+    H.undoToastListContainer()
+      .findByText("Table visibility layer updated")
+      .closest("[data-testid='toast-undo']")
+      .button("Undo")
+      .click();
+    cy.wait("@updateTable");
+    H.undoToastListContainer().findByText("Change undone").should("be.visible");
+    H.undoToast().findByRole("img", { name: /Close/i }).click();
+    H.selectHasValue("Visibility layer", "Internal");
+    TablePicker.getTable("Orders")
+      .findByTestId("table-data-layer")
+      .should("have.text", "Internal");
 
     H.selectHasValue("Entity type", "Transaction").click();
     H.selectDropdown().contains("Person").click();
@@ -131,10 +164,10 @@ describe("Table editing", () => {
 
     // navigate away and back
     TablePicker.getTable("Products").click();
-    TablePicker.getTable("Orders").click();
+    TablePicker.getTable("Renamed Orders").click();
 
     H.selectHasValue("Owner", "Bobby Tables");
-    H.selectHasValue("Visibility layer", "Final");
+    H.selectHasValue("Visibility layer", "Internal");
     H.selectHasValue("Entity type", "Person");
     H.selectHasValue("Source", "Ingested");
   });
@@ -144,7 +177,8 @@ describe("Table editing", () => {
     { tags: ["@external"] },
     () => {
       H.restore("postgres-writable");
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
 
       const SOURCE_TABLE = "Animals";
@@ -175,4 +209,63 @@ describe("Table editing", () => {
       });
     },
   );
+
+  describe("with remote sync enabled", () => {
+    it(
+      "should update the tree after publishing, unpublishing, and renaming a table (metabase#69554)",
+      { tags: ["@external"] },
+      () => {
+        H.restore("mysql-8");
+        H.activateToken("pro-self-hosted");
+        H.setupGitSync();
+        H.configureGit("read-write");
+
+        H.DataModel.visitDataStudio();
+        TablePicker.getDatabase("QA MySQL8").click();
+        TablePicker.getTable("Orders").click();
+
+        cy.log("publish the table and verify the tree updates");
+        cy.findByRole("button", { name: /Publish/ }).click();
+        H.modal().findByText("Create my Library").click();
+        H.modal().findByText("Publish this table").click();
+        cy.wait("@publishTables");
+        TablePicker.getTable("Orders")
+          .findByTestId("table-published")
+          .should("be.visible");
+
+        cy.log("unpublish the table and verify the tree updates");
+        cy.findByRole("button", { name: /Unpublish/ }).click();
+        H.modal().findByText("Unpublish this table").click();
+        cy.wait("@unpublishTables");
+        TablePicker.getTable("Orders")
+          .findByTestId("table-published")
+          .should("not.exist");
+
+        cy.log("rename the table and verify the tree updates");
+        H.DataModel.TableSection.getNameInput()
+          .clear()
+          .type("Renamed Orders")
+          .blur();
+        cy.wait("@updateTable");
+        TablePicker.getTable("Renamed Orders").should("be.visible");
+
+        cy.log("update the owner and verify it is reflected");
+        TablePicker.getTable("Renamed Orders").should(
+          "not.contain.text",
+          "Bobby Tables",
+        );
+        H.selectHasValue("Owner", "No owner").click();
+        H.selectDropdown().contains("Bobby Tables").click();
+        cy.wait("@updateTable");
+        H.undoToastListContainer()
+          .findByText("Table owner updated")
+          .should("be.visible");
+        H.selectHasValue("Owner", "Bobby Tables");
+        TablePicker.getTable("Renamed Orders").should(
+          "contain.text",
+          "Bobby Tables",
+        );
+      },
+    );
+  });
 });

@@ -7,6 +7,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -113,7 +114,7 @@
 ;;; make sure that given an existing query, the expected description was generated correctly.
 
 (defn- describe-legacy-query [query]
-  (lib/describe-query (lib.query/query meta/metadata-provider (lib.convert/->pMBQL query))))
+  (lib/describe-query (lib.query/query meta/metadata-provider (lib.convert/->mbql5 query))))
 
 (deftest ^:parallel describe-multiple-aggregations-test
   (let [query {:database (meta/id)
@@ -194,7 +195,6 @@
                                   [:field
                                    {:base-type :type/Integer, :lib/uuid string?}
                                    (meta/id :venues :category-id)]]]}]}]
-
     (testing "with helper function"
       (is (=? result-query
               (-> q
@@ -569,7 +569,7 @@
                    {:display-name "Date"
                     :effective-type :type/Date
                     :lib/source :source/table-defaults
-                    :metabase.lib.field/temporal-unit :quarter
+                    :lib/temporal-unit :quarter
                     :selected? true}
                    {:display-name "User ID"
                     :effective-type :type/Integer
@@ -629,6 +629,49 @@
                :display-name   "Sum of Price"
                :lib/source     :source/aggregations}
               (lib/metadata query (first (lib/aggregations-metadata query -1))))))))
+
+(deftest ^:parallel preserve-model-column-settings-metadata-test
+  (testing "Aggregation metadata should return the `:settings` from model's result_metadata for the column being aggregated (#68692)"
+    (let [;; Create a model with a column that has custom settings (like "multiply by a number")
+          model-result-metadata [{:id             (meta/id :venues :id)
+                                  :name           "ID"
+                                  :base-type      :type/BigInteger
+                                  :effective-type :type/BigInteger
+                                  :display-name   "ID"}
+                                 {:id             (meta/id :venues :price)
+                                  :name           "PRICE"
+                                  :base-type      :type/Integer
+                                  :effective-type :type/Integer
+                                  :display-name   "Price"
+                                  ;; Custom settings like "multiply by a number" (scale: 0.01)
+                                  :settings       {:scale 0.01}}]
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id              1
+                        :name            "Venues Model"
+                        :database-id     (meta/id)
+                        :type            :model
+                        :dataset-query   {:lib/type :mbql/query
+                                          :database (meta/id)
+                                          :stages   [{:lib/type     :mbql.stage/mbql
+                                                      :source-table (meta/id :venues)}]}
+                        :result-metadata model-result-metadata}]})
+          ;; Query the model and do a Sum on the Price column
+          model-query (lib/query mp (lib.metadata/card mp 1))
+          price-col   (first (filter #(= (:name %) "PRICE")
+                                     (lib/returned-columns model-query)))
+          agg-query   (lib/aggregate model-query (lib/sum price-col))
+          agg-meta    (first (lib/aggregations-metadata agg-query))]
+      (testing "the price column from model should have :settings"
+        (is (=? {:settings {:scale 0.01}}
+                price-col)))
+      (testing "the aggregation metadata should preserve the :settings from the model column"
+        (is (=? {:settings       {:scale 0.01}
+                 :lib/type       :metadata/column
+                 :name           "sum"
+                 :display-name   "Sum of Price"
+                 :lib/source     :source/aggregations}
+                agg-meta))))))
 
 (deftest ^:parallel count-aggregation-type-test
   (testing "Count aggregation should produce numeric columns"
@@ -802,7 +845,7 @@
                           (lib/expression "Zero" (lib/+ 0 0))
                           (lib/expression "Total of Zero" (lib/coalesce (meta/field-metadata :orders :total) 0)))
           converted-query (lib/query meta/metadata-provider
-                                     (lib.convert/->pMBQL
+                                     (lib.convert/->mbql5
                                       (lib.tu.macros/mbql-query orders
                                         {:expressions {"Zero"          [:+ 0 0]
                                                        "Total of Zero" [:coalesce $total 0]}})))
@@ -952,4 +995,117 @@
                   :name         "max"}]
                 (lib/aggregations-metadata query 1)))))))
 
-;; trivial change to test CI; remove this next time you see it
+(deftest ^:parallel aggregation-display-name-patterns-test
+  (testing "aggregation-display-name-patterns returns patterns with prefix and suffix"
+    (let [patterns (lib.aggregation/aggregation-display-name-patterns)]
+      (testing "returns a non-empty vector"
+        (is (vector? patterns))
+        (is (pos? (count patterns))))
+      (testing "each pattern has :prefix and :suffix keys"
+        (doseq [pattern patterns]
+          (is (contains? pattern :prefix))
+          (is (contains? pattern :suffix))
+          (is (string? (:prefix pattern)))
+          (is (string? (:suffix pattern)))))
+      (testing "includes expected aggregation patterns"
+        (let [prefixes (set (map :prefix patterns))]
+          (is (contains? prefixes "Sum of "))
+          (is (contains? prefixes "Average of "))
+          (is (contains? prefixes "Distinct values of "))
+          (is (contains? prefixes "Max of "))
+          (is (contains? prefixes "Min of "))
+          (is (contains? prefixes "Count of "))))
+      (testing "includes pattern with suffix (sum-where)"
+        (is (some #(= " matching condition" (:suffix %)) patterns))))))
+
+(deftest ^:parallel aggregation-display-name-patterns-order-test
+  (testing "more specific patterns (with suffix) come before general patterns"
+    (let [patterns (lib.aggregation/aggregation-display-name-patterns)
+          sum-where-idx (some #(when (= " matching condition" (:suffix (second %))) (first %))
+                              (map-indexed vector patterns))
+          sum-idx (some #(when (and (= "Sum of " (:prefix (second %)))
+                                    (= "" (:suffix (second %))))
+                           (first %))
+                        (map-indexed vector patterns))]
+      (when (and sum-where-idx sum-idx)
+        (is (< sum-where-idx sum-idx)
+            "Sum-where pattern should come before plain Sum pattern")))))
+
+(deftest ^:parallel aggregable-columns-from-nested-aggregating-source-test
+  (testing "#24839 a nested question on an aggregating card offers its aggregation columns as aggregable columns"
+    (let [source (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity)))
+                     (lib/aggregate (lib/avg (meta/field-metadata :orders :total)))
+                     (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                       (lib/with-temporal-bucket :month))))
+          mp     (lib.tu/metadata-provider-with-card-from-query 1 source)
+          query  (lib/query mp (lib.metadata/card mp 1))]
+      (is (set/subset? #{"Sum of Quantity" "Average of Total"}
+                       (set (map :display-name (lib/aggregable-columns query nil))))))))
+
+(deftest ^:parallel expression-references-named-aggregation-test
+  (testing "an expression can reference a named aggregation column from the previous stage"
+    (let [q       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/aggregate (-> (lib/sum (meta/field-metadata :orders :total))
+                                         (lib/with-expression-name "Custom Sum")))
+                      (lib/breakout (meta/field-metadata :orders :user-id))
+                      lib/append-stage)
+          agg-col (m/find-first #(= "Custom Sum" (:display-name %)) (lib/visible-columns q))]
+      (is (some? agg-col))
+      (let [q'      (lib/expression q "Custom Sum + 1" (lib/+ agg-col 1))
+            new-col (m/find-first #(= "Custom Sum + 1" (:display-name %)) (lib/returned-columns q'))]
+        (is (some? new-col))
+        (is (lib.types.isa/numeric? new-col))))))
+
+(deftest ^:parallel aggregations-over-native-card-survive-normalize-test
+  (testing "#15725 aggregations built over a native card survive a convert round-trip and are not dropped"
+    (let [mp     (lib.tu/metadata-provider-with-mock-cards)
+          card   (:orders/native (lib.tu/mock-cards))
+          query  (lib/query mp card)
+          total  (m/find-first #(= "TOTAL" (:name %)) (lib/visible-columns query))
+          pid    (m/find-first #(= "PRODUCT_ID" (:name %)) (lib/visible-columns query))
+          q      (-> query
+                     (lib/aggregate (lib/count))
+                     (lib/aggregate (lib/sum total))
+                     (lib/breakout pid))
+          q'     (lib/query mp (lib.convert/->legacy-MBQL q))]
+      (is (= 2 (count (lib/aggregations q'))))
+      (is (= 1 (count (lib/breakouts q')))))))
+
+(deftest ^:parallel aggregation-named-same-as-aggregated-column-test
+  (testing "#44567 an aggregation named the same as the column it aggregates still resolves the inner field"
+    (let [total (meta/field-metadata :orders :total)
+          q     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (-> (lib/sum total) (lib/with-expression-name "Total"))))
+          agg   (first (lib/aggregations q))]
+      (testing "the aggregation display name is the custom name"
+        (is (= "Total" (:display-name (lib/display-info q agg)))))
+      (testing "the inner field ref still resolves to the Total column (not Unknown Field)"
+        (is (= "Total" (lib/display-name q (last agg)))))
+      (testing "Sum([Total]) + 1 still validates as an aggregation"
+        (is (= 2 (count (lib/aggregations (lib/aggregate q (lib/+ (lib/sum total) 1))))))))))
+
+(deftest ^:parallel aggregate-over-joined-card-aggregation-column-test
+  (testing "#32020 aggregation columns from source and joined cards can feed a new aggregation"
+    (let [card1  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                     (lib/breakout (meta/field-metadata :orders :user-id)))
+          card2  (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                     (lib/aggregate (lib/max (meta/field-metadata :people :longitude)))
+                     (lib/breakout (meta/field-metadata :people :id)))
+          mp     (lib.tu/metadata-provider-with-cards-for-queries meta/metadata-provider [card1 card2])
+          base   (lib/query mp (lib.metadata/card mp 1))
+          c2     (lib.metadata/card mp 2)
+          lhs    (m/find-first #(= "USER_ID" (:name %))
+                               (lib/join-condition-lhs-columns base c2 nil nil))
+          rhs    (m/find-first #(= "ID" (:name %))
+                               (lib/join-condition-rhs-columns base c2 (lib/ref lhs) nil))
+          joined (lib/join base (lib/join-clause c2 [(lib/= lhs rhs)]))
+          sum-op (m/find-first #(= :sum (:short %)) (lib/available-aggregation-operators joined))
+          cols   (lib/aggregation-operator-columns sum-op)
+          maxcol (m/find-first #(and (= "max" (:name %)) (= :source/joins (:lib/source %))) cols)]
+      (testing "the source card's aggregation column is offered as an aggregation input"
+        (is (some #(and (= "sum" (:name %)) (= :source/card (:lib/source %))) cols)))
+      (testing "the joined card's aggregation column is offered as an aggregation input"
+        (is (some? maxcol)))
+      (is (= 1 (count (lib/aggregations (lib/aggregate joined (lib/sum maxcol)))))))))

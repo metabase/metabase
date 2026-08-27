@@ -1,13 +1,12 @@
-import { useEffect } from "react";
-import { replace } from "react-router-redux";
+import { useLayoutEffect } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { updateUserSetting } from "metabase/redux/settings";
+import { useHomepageDashboard } from "metabase/home/use-homepage-dashboard";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { getHasDismissedCustomHomePageToast } from "metabase/selectors/app";
+import { useNavigate } from "metabase/router";
+import { useSetting, useUpdateSettingMutation } from "metabase/settings";
 
 import { HomeContent } from "../HomeContent";
 import { HomeLayout } from "../HomeLayout";
@@ -27,17 +26,19 @@ export const HomePage = (): JSX.Element => {
 
 const useDashboardRedirect = () => {
   const { dashboardId, dashboard, isLoading } = useHomepageDashboard();
-  const hasDismissedToast = useSelector(getHasDismissedCustomHomePageToast);
+  const hasDismissedToast = useSetting("dismissed-custom-dashboard-toast");
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [updateSetting] = useUpdateSettingMutation();
 
-  useEffect(() => {
+  // This redirect must live inside a useLayoutEffect to prevent the browser from painting a frame of <HomeContent>
+  // before firing the redirect (metabase#69917)
+  useLayoutEffect(() => {
     if (dashboardId && !isLoading && !dashboard?.archived) {
-      dispatch(
-        replace({
-          pathname: `/dashboard/${dashboardId}`,
-          state: { preserveNavbarState: true },
-        }),
-      );
+      navigate(`/dashboard/${dashboardId}`, {
+        replace: true,
+        state: { preserveNavbarState: true },
+      });
 
       if (!hasDismissedToast) {
         dispatch(
@@ -45,12 +46,12 @@ const useDashboardRedirect = () => {
             message: t`Your admin has set this dashboard as your homepage`,
             icon: "info",
             timeout: 10000,
-            actions: [
-              updateUserSetting({
+            action: () => {
+              updateSetting({
                 key: "dismissed-custom-dashboard-toast",
                 value: true,
-              }),
-            ],
+              });
+            },
             actionLabel: t`Got it`,
             canDismiss: false,
           }),
@@ -61,6 +62,8 @@ const useDashboardRedirect = () => {
     dashboardId,
     hasDismissedToast,
     dispatch,
+    navigate,
+    updateSetting,
     dashboard?.archived,
     isLoading,
   ]);

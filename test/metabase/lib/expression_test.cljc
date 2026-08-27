@@ -1,6 +1,7 @@
 (ns metabase.lib.expression-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.string :as str]
    [clojure.test :refer [deftest is are testing]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
@@ -126,6 +127,17 @@
     (is (= "Date - 1 day"
            (lib/display-name (lib.tu/venues-query) -1 clause)))))
 
+(deftest ^:parallel datetime-subtract-names-test
+  (let [clause [:datetime-subtract
+                {}
+                (lib.tu/field-clause :checkins :date {:base-type :type/Date})
+                1
+                :day]]
+    (is (= "DATE_minus_1_day"
+           (lib/column-name (lib.tu/venues-query) -1 clause)))
+    (is (= "Date - 1 day"
+           (lib/display-name (lib.tu/venues-query) -1 clause)))))
+
 (deftest ^:parallel expression-reference-names-test
   (let [query (-> (lib.tu/venues-query)
                   (lib/expression "double-price"
@@ -221,18 +233,18 @@
 (deftest ^:parallel arithmetic-expression-type-of-test
   (testing "Make sure we can calculate correct type information for arithmetic expression"
     (let [field [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]
-      (testing "+, -, and * should return common ancestor type of all args")
-      (doseq [tag   [:+ :- :*]
-              arg-2 [1 1.0]
-              :let  [clause [tag {:lib/uuid (str (random-uuid))} field arg-2]]]
-        (testing (str \newline (pr-str clause))
-          (testing "assume :type/Number for refs with unknown types (#29946)"
-            (is (= :type/Number
-                   (lib.schema.expression/type-of clause))))
-          (is (= (condp = arg-2
-                   1   :type/Integer
-                   1.0 :type/Float)
-                 (lib/type-of (lib.tu/venues-query) clause)))))
+      (testing "+, -, and * should return common ancestor type of all args"
+        (doseq [tag   [:+ :- :*]
+                arg-2 [1 1.0]
+                :let  [clause [tag {:lib/uuid (str (random-uuid))} field arg-2]]]
+          (testing (str \newline (pr-str clause))
+            (testing "assume :type/Number for refs with unknown types (#29946)"
+              (is (= :type/Number
+                     (lib.schema.expression/type-of clause))))
+            (is (= (condp = arg-2
+                     1   :type/Integer
+                     1.0 :type/Float)
+                   (lib/type-of (lib.tu/venues-query) clause))))))
       (testing "/ should always return type/Float"
         (doseq [arg-2 [1 1.0]
                 :let  [clause [:/ {:lib/uuid (str (random-uuid))} field arg-2]]]
@@ -257,7 +269,7 @@
                 (->> (map (fn [expr] (lib/display-info (lib.tu/venues-query) expr))))))))
   ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
   ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
-  ;; QP code, and it should be powered by MLv2 in due course.
+  ;; QP code, and it should be powered by Lib in due course.
   #_(testing "collisions with other column names are detected and rejected"
       (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
             ex    (try
@@ -403,7 +415,6 @@
                 3]]
               (lib/expressions query)))
       (is (= 1 (count (lib/joins query))))
-
       (let [dropped (lib/remove-join query join)]
         (is (empty? (lib/joins dropped)))
         (is (empty? (lib/expressions dropped)))))))
@@ -483,7 +494,7 @@
   (testing "correct expression are accepted silently"
     (are [mode expr] (nil? (lib.expression/diagnose-expression
                             (lib.tu/venues-query) 0 mode
-                            (lib.convert/->pMBQL expr)
+                            (lib.convert/->mbql5 expr)
                             #?(:clj nil :cljs js/undefined)))
       :expression  [:/ [:field 1 nil] 100]
       :aggregation [:sum [:field 1 {:base-type :type/Integer}]]
@@ -491,20 +502,20 @@
 
 (deftest ^:parallel diagnose-expression-test-2
   (testing "type errors are reported"
-    (are [mode expr] (=? {:message  "Types are incompatible."
-                          :friendly true}
-                         (lib.expression/diagnose-expression
-                          (lib.tu/venues-query) 0 mode
-                          (lib.convert/->pMBQL expr)
-                          #?(:clj nil :cljs js/undefined)))
-      :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
-        ;; To make this test case work, the aggregation schema has to be
-        ;; tighter and not allow anything. That's a bigger piece of work,
-        ;; because it makes expressions and aggregations mutually recursive
-        ;; or requires a large amount of duplication.
+    (are [mode expr msg] (=? {:message  msg
+                              :friendly true}
+                             (lib.expression/diagnose-expression
+                              (lib.tu/venues-query) 0 mode
+                              (lib.convert/->mbql5 expr)
+                              #?(:clj nil :cljs js/undefined)))
+      :expression  [:/ [:field 1 {:base-type :type/Address}] 100] "Types are incompatible: / expects a number as the 1st parameter."
+      ;; To make this test case work, the aggregation schema has to be
+      ;; tighter and not allow anything. That's a bigger piece of work,
+      ;; because it makes expressions and aggregations mutually recursive
+      ;; or requires a large amount of duplication.
       #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
-      :filter      [:sum [:field 1 {:base-type :type/Integer}]]
-      :filter      [:value "not a boolean" {:base_type :type/Text}])))
+      :filter      [:sum [:field 1 {:base-type :type/Integer}]] "Types are incompatible."
+      :filter      [:value "not a boolean" {:base_type :type/Text}] "Types are incompatible.")))
 
 (deftest ^:parallel diagnose-expression-test-3
   (testing "correct expression are accepted silently"
@@ -516,7 +527,7 @@
                                 "s" [:+ [:expression "a"] [:expression "b"] [:expression "c"]]
                                 "circular-c" [:+ [:expression "x"] 1]
                                 "non-circular-c" [:+ [:expression "a"] 1]}
-                               lib.convert/->pMBQL)
+                               lib.convert/->mbql5)
             query (reduce-kv (fn [query expr-name expr]
                                (lib/expression query 0 expr-name expr))
                              (lib.tu/venues-query)
@@ -533,7 +544,8 @@
                (nil? (lib.expression/diagnose-expression query 0 mode expr c-pos))
             :expression  (get exprs "non-circular-c")
             :aggregation (-> (get exprs "circular-c")
-                             (assoc 3 (lib/count)))
+                             (update 2 lib/sum)
+                             (assoc 4 (lib/count)))
             :filter      (assoc (get exprs "circular-c") 0 :=)))
         (testing "circular definition"
           (is (=? {:message "Cycle detected: c → x → b → c"}
@@ -575,7 +587,7 @@
         str-expr  [:value "foo" nil]
         bool-expr [:value true nil]
         diagnose-expr (fn [mode expr]
-                        (lib.expression/diagnose-expression query 0 mode (lib.convert/->pMBQL expr) nil))]
+                        (lib.expression/diagnose-expression query 0 mode (lib.convert/->mbql5 expr) nil))]
     (testing "valid literal expressions are accepted"
       (are [mode expr] (nil? (diagnose-expr mode expr))
         :expression  int-expr
@@ -590,7 +602,7 @@
 (deftest ^:parallel diagnose-expression-nested-aggregation-test
   (let [query     (lib/query meta/metadata-provider (meta/table-metadata :orders))
         diagnose-expr (fn [expr]
-                        (lib.expression/diagnose-expression query 0 :aggregation (lib.convert/->pMBQL expr) nil))]
+                        (lib.expression/diagnose-expression query 0 :aggregation (lib.convert/->mbql5 expr) nil))]
     (testing "valid aggregation expressions are accepted"
       (are [expr] (nil? (diagnose-expr expr))
         [:avg [:field 1]]
@@ -615,6 +627,67 @@
                     (lib/* 2))]
       (is (=? {:message (str "Cycle detected: " expr-name " → " expr-name)}
               (lib.expression/diagnose-expression query2 0 :aggregation expr 1))))))
+
+(deftest ^:parallel diagnose-expression-incompatible-types-test
+  (testing "expressions with incompatible types show correct error messages"
+    (are [expr msg] (= {:message msg
+                        :friendly true}
+                       (lib.expression/diagnose-expression
+                        (lib.tu/venues-query) 0 :expression
+                        (lib.convert/->mbql5 expr)
+                        #?(:clj nil :cljs js/undefined)))
+      ;; basic checks with different types
+      [:+ 1 true]  "Types are incompatible: + expects a number as the 2nd parameter."
+      [:- 1 "str"] "Types are incompatible: - expects a number as the 2nd parameter."
+      [:* false 1] "Types are incompatible: * expects a number as the 1st parameter."
+      [:/ "str" 1] "Types are incompatible: / expects a number as the 1st parameter."
+      ;; functions that expect different types
+      [:upper 1]   "Types are incompatible: upper expects a string as the 1st parameter."
+      [:get-day 1] "Types are incompatible: get-day expects a temporal value as the 1st parameter."
+      [:not 1]     "Types are incompatible: not expects a boolean as the 1st parameter."
+      [:> 1 true]  "Types are incompatible."
+      [:> [:field 1 {:base-type :type/JSON}] 1] "Types are incompatible: > expects an orderable type (e.g. number, string, temporal) as the 1st parameter."
+      ;; function with multiple args of different types
+      [:substring 1 1 1]        "Types are incompatible: substring expects a string as the 1st parameter."
+      [:substring "str" 1 true] "Types are incompatible: substring expects an integer as the 3rd parameter."
+      [:substring "str" true 1] "Types are incompatible: substring expects an integer as the 2nd parameter."
+      [:substring 1 true false] "Types are incompatible: substring expects a string as the 1st parameter."
+      ;; nested expressions
+      [:+ 1 [:- 1 true] 1] "Types are incompatible: - expects a number as the 2nd parameter."
+      [:+ true [:- 1 1] 1] "Types are incompatible: + expects a number as the 1st parameter."
+      [:+ 1 [:- 1 1] true] "Types are incompatible: + expects a number as the 3rd parameter."
+      [:+ true [:- 1 true] 1] "Types are incompatible: + expects a number as the 1st parameter."
+      [:+ 1 [:- 1 true] true] "Types are incompatible: - expects a number as the 2nd parameter."
+      [:+ 1 [:- 1 [:* 1 [:/ 1 true]]]] "Types are incompatible: / expects a number as the 2nd parameter."
+      [:+ 1 [:- 1 [:* true [:/ 1 1]]]] "Types are incompatible: * expects a number as the 1st parameter.")))
+
+(deftest ^:parallel diagnose-expression-unaggregated-fields-test
+  (let [query         (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        created-at    [:field (meta/id :orders :created-at)]
+        total         [:field (meta/id :orders :total)]
+        subtotal      [:field (meta/id :orders :subtotal)]
+        diagnose-expr (fn [expr]
+                        (lib.expression/diagnose-expression query 0 :aggregation (lib/->mbql5 expr) nil))]
+    (testing "aggregations without an aggregation function are rejected with an understandable error message"
+      (are [expr] (= {:message  "Aggregations should contain at least one aggregation function."
+                      :friendly true}
+                     (diagnose-expr expr))
+        [:datetime-diff created-at created-at :hour]
+        total
+        [:+ total subtotal]))
+    (testing "aggregations with unaggregated refs are rejected with an understandable error message"
+      (are [expr] (= {:message  "Fields in custom aggregations must be wrapped with a function like Sum."
+                      :friendly true}
+                     (diagnose-expr expr))
+        [:+ [:sum total] subtotal]
+        [:+ [:sum total] [:floor subtotal]]))
+    (testing "aggregations that contain an aggregation function are accepted"
+      (are [expr] (nil? (diagnose-expr expr))
+        [:sum total]
+        [:+ [:sum total] [:sum subtotal]]
+        [:+ [:sum total] 4]
+        [:+ [:sum total] [:floor [:sum subtotal]]]
+        [:+ [:sum total] [:count]]))))
 
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
@@ -771,3 +844,56 @@
 (deftest ^:parallel absolute-datetime-raw-temporal-bucket-test
   (is (= :day
          (lib/raw-temporal-bucket [:absolute-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} "2025-09-08" :day]))))
+
+(deftest ^:parallel temporal-functions-require-temporal-args-test
+  (testing "#26512 temporal-extraction / datetime-arithmetic functions reject non-temporal first args"
+    (are [expr] (=? {:message #"(?i).*incompatible.*" :friendly true}
+                    (lib.expression/diagnose-expression
+                     (lib.tu/venues-query) 0 :expression (lib.convert/->mbql5 expr)
+                     #?(:clj nil :cljs js/undefined)))
+      [:get-year "a string"]
+      [:datetime-add 42 1 :day]
+      [:datetime-diff true 1 :day])))
+
+(deftest ^:parallel expression-self-reference-rejected-test
+  (testing "#61010 an expression referencing itself at its own position is rejected"
+    (let [q   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "Foo" (lib/+ 1 1)))
+          pos (dec (count (lib/expressions q)))]
+      (is (some? (lib.expression/diagnose-expression
+                  q 0 :expression (lib/+ (lib/expression-ref q "Foo") 1) pos))))))
+
+(deftest ^:parallel unknown-field-ref-in-expression-degrades-gracefully-test
+  (testing "#48562 an expression over a non-existent field ref renders a non-blank display name without throwing"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/expression "CC" (lib.convert/->mbql5 [:contains [:field 10000 nil] "abc"])))
+          expr  (first (lib/expressions query))]
+      (is (string? (lib/display-name query expr)))
+      (is (not (str/blank? (lib/display-name query expr))))
+      (is (some? (lib/visible-columns query))))))
+
+(deftest ^:parallel post-aggregation-expression-keeps-filterable-columns-test
+  (testing "#19744 a post-aggregation expression must not drop first-stage temporal columns from filterable columns"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                    lib/append-stage
+                    (lib/expression "CC" (lib/+ 1 1)))]
+      (is (some #(= "CREATED_AT" (:name %)) (lib/filterable-columns query))))))
+
+(deftest ^:parallel same-name-expression-and-inherited-column-test
+  (testing "#39150 an expression named like an inherited source-card column yields two distinct resolvable columns"
+    (let [mp     (lib.tu/metadata-provider-with-card-from-query
+                  1 (lib/query meta/metadata-provider (meta/table-metadata :reviews)))
+          nested (-> (lib/query mp (lib.metadata/card mp 1))
+                     (lib/expression "Rating" (lib/+ 1 1)))
+          cols   (lib/returned-columns nested)]
+      (is (= 2 (count (filter #(= "Rating" (:display-name %)) cols)))))))
+
+(deftest ^:parallel expression-with-unresolvable-field-ref-does-not-throw-test
+  (testing "#28221 an expression whose inner field id no longer exists must not crash visible-columns / display-info"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/expression "Non-existing field" (lib.options/ensure-uuid [:field {} 9999])))]
+      (is (some? (lib/visible-columns query)))
+      (is (= "Non-existing field"
+             (:display-name (m/find-first :lib/expression-name (lib/visible-columns query))))))))

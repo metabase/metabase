@@ -6,7 +6,8 @@
    [metabase.auth-identity.provider :as provider]
    [metabase.sso.oidc.discovery :as oidc.discovery]
    [metabase.sso.oidc.tokens :as oidc.tokens]
-   [metabase.sso.providers.oidc]))
+   [metabase.sso.providers.oidc]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,8 +34,8 @@
 
 (deftest authenticate-initiate-flow-test
   (testing "Initiates authorization flow when no code present"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)]
       (let [request {:oidc-config test-config}
             result (provider/authenticate :provider/oidc request)]
         (is (= :redirect (:success? result)))
@@ -44,7 +45,6 @@
         (is (str/includes? (:redirect-url result) "https://provider.example.com/authorize"))
         (is (str/includes? (:redirect-url result) "client_id=test-client-id"))
         (is (str/includes? (:redirect-url result) "response_type=code")))))
-
   (testing "Uses manual endpoints when provided"
     (let [config (assoc test-config
                         :authorization-endpoint "https://provider.example.com/manual/authorize")
@@ -52,19 +52,17 @@
           result (provider/authenticate :provider/oidc request)]
       (is (= :redirect (:success? result)))
       (is (str/includes? (:redirect-url result) "https://provider.example.com/manual/authorize"))))
-
   (testing "Includes custom scopes in authorization URL"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)]
       (let [config (assoc test-config :scopes ["openid" "email" "profile" "groups"])
             request {:oidc-config config}
             result (provider/authenticate :provider/oidc request)]
         (is (= :redirect (:success? result)))
         (is (str/includes? (:redirect-url result) "scope=openid%20email%20profile%20groups")))))
-
   (testing "Returns error when authorization endpoint not found"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] nil)]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] nil)]
       (let [request {:oidc-config test-config}
             result (provider/authenticate :provider/oidc request)]
         (is (false? (:success? result)))
@@ -78,14 +76,12 @@
           result (provider/authenticate :provider/oidc request)]
       (is (false? (:success? result)))
       (is (= :invalid-callback (:error result)))))
-
   (testing "Returns error when code is missing"
     (let [request {:oidc-config test-config
                    :state "some-state"}
           result (provider/authenticate :provider/oidc request)]
       (is (false? (:success? result)))
       (is (= :invalid-callback (:error result)))))
-
   (testing "Returns error when state is missing"
     (let [request {:oidc-config test-config
                    :code "some-code"}
@@ -95,26 +91,25 @@
 
 (deftest authenticate-token-exchange-test
   (testing "Returns error when token exchange fails"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)
-                  http/post
-                  (fn [_url _opts]
-                    {:status 400
-                     :body {:error "invalid_grant"}})]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)
+                                http/post
+                                (fn [_url _opts]
+                                  {:status 400
+                                   :body {:error "invalid_grant"}})]
       (let [request {:oidc-config test-config
                      :code "auth-code-123"
                      :state "state-token-456"}
             result (provider/authenticate :provider/oidc request)]
         (is (false? (:success? result)))
         (is (= :token-exchange-failed (:error result))))))
-
   (testing "Returns error when token response missing id_token"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)
-                  http/post
-                  (fn [_url _opts]
-                    {:status 200
-                     :body {:access_token "access-token-123"}})]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)
+                                http/post
+                                (fn [_url _opts]
+                                  {:status 200
+                                   :body {:access_token "access-token-123"}})]
       (let [request {:oidc-config test-config
                      :code "auth-code-123"
                      :state "state-token-456"}
@@ -124,17 +119,17 @@
 
 (deftest authenticate-token-validation-test
   (testing "Returns error when token validation fails"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)
-                  http/post
-                  (fn [_url _opts]
-                    {:status 200
-                     :body {:id_token "invalid-token"
-                            :access_token "access-token-123"}})
-                  oidc.tokens/validate-id-token
-                  (fn [_token _config _nonce]
-                    {:valid? false
-                     :error "Invalid signature"})]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)
+                                http/post
+                                (fn [_url _opts]
+                                  {:status 200
+                                   :body {:id_token "invalid-token"
+                                          :access_token "access-token-123"}})
+                                oidc.tokens/validate-id-token
+                                (fn [_token _config _nonce]
+                                  {:valid? false
+                                   :error "Invalid signature"})]
       (let [request {:oidc-config test-config
                      :code "auth-code-123"
                      :state "state-token-456"
@@ -145,19 +140,19 @@
 
 (deftest authenticate-user-data-extraction-test
   (testing "Returns error when email not in claims"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)
-                  http/post
-                  (fn [_url _opts]
-                    {:status 200
-                     :body {:id_token "valid-token"
-                            :access_token "access-token-123"}})
-                  oidc.tokens/validate-id-token
-                  (fn [_token _config _nonce]
-                    {:valid? true
-                     :claims {:sub "user123"
-                              :iss "https://provider.example.com"
-                              :aud "test-client-id"}})]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)
+                                http/post
+                                (fn [_url _opts]
+                                  {:status 200
+                                   :body {:id_token "valid-token"
+                                          :access_token "access-token-123"}})
+                                oidc.tokens/validate-id-token
+                                (fn [_token _config _nonce]
+                                  {:valid? true
+                                   :claims {:sub "user123"
+                                            :iss "https://provider.example.com"
+                                            :aud "test-client-id"}})]
       (let [request {:oidc-config test-config
                      :code "auth-code-123"
                      :state "state-token-456"
@@ -168,22 +163,22 @@
 
 (deftest authenticate-success-test
   (testing "Successfully authenticates user with valid token"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)
-                  http/post
-                  (fn [_url _opts]
-                    {:status 200
-                     :body {:id_token "valid-token"
-                            :access_token "access-token-123"}})
-                  oidc.tokens/validate-id-token
-                  (fn [_token _config _nonce]
-                    {:valid? true
-                     :claims {:sub "user123"
-                              :iss "https://provider.example.com"
-                              :aud "test-client-id"
-                              :email "user@example.com"
-                              :given_name "John"
-                              :family_name "Doe"}})]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)
+                                http/post
+                                (fn [_url _opts]
+                                  {:status 200
+                                   :body {:id_token "valid-token"
+                                          :access_token "access-token-123"}})
+                                oidc.tokens/validate-id-token
+                                (fn [_token _config _nonce]
+                                  {:valid? true
+                                   :claims {:sub "user123"
+                                            :iss "https://provider.example.com"
+                                            :aud "test-client-id"
+                                            :email "user@example.com"
+                                            :given_name "John"
+                                            :family_name "Doe"}})]
       (let [request {:oidc-config test-config
                      :code "auth-code-123"
                      :state "state-token-456"
@@ -196,22 +191,21 @@
         (is (= "user123" (get-in result [:user-data :provider-id])))
         (is (= :oidc (get-in result [:user-data :sso_source])))
         (is (= "user123" (:provider-id result))))))
-
   (testing "Successfully authenticates with minimal claims"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)
-                  http/post
-                  (fn [_url _opts]
-                    {:status 200
-                     :body {:id_token "valid-token"
-                            :access_token "access-token-123"}})
-                  oidc.tokens/validate-id-token
-                  (fn [_token _config _nonce]
-                    {:valid? true
-                     :claims {:sub "user456"
-                              :iss "https://provider.example.com"
-                              :aud "test-client-id"
-                              :email "minimal@example.com"}})]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)
+                                http/post
+                                (fn [_url _opts]
+                                  {:status 200
+                                   :body {:id_token "valid-token"
+                                          :access_token "access-token-123"}})
+                                oidc.tokens/validate-id-token
+                                (fn [_token _config _nonce]
+                                  {:valid? true
+                                   :claims {:sub "user456"
+                                            :iss "https://provider.example.com"
+                                            :aud "test-client-id"
+                                            :email "minimal@example.com"}})]
       (let [request {:oidc-config test-config
                      :code "auth-code-123"
                      :state "state-token-456"
@@ -223,24 +217,78 @@
         (is (nil? (get-in result [:user-data :last_name])))
         (is (= "user456" (get-in result [:user-data :provider-id])))))))
 
+(defn- authenticate-with-claims
+  "Run the OIDC callback flow with mocked token exchange/validation returning `claims`."
+  [claims config]
+  (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                              (fn [_issuer] test-discovery-doc)
+                              http/post
+                              (fn [_url _opts]
+                                {:status 200
+                                 :body {:id_token "valid-token"
+                                        :access_token "access-token-123"}})
+                              oidc.tokens/validate-id-token
+                              (fn [_token _config _nonce]
+                                {:valid? true
+                                 :claims claims})]
+    (provider/authenticate :provider/oidc {:oidc-config config
+                                           :code "auth-code-123"
+                                           :state "state-token-456"
+                                           :nonce "test-nonce"})))
+
+(def ^:private base-claims
+  {:sub "user123"
+   :iss "https://provider.example.com"
+   :aud "test-client-id"
+   :email "user@example.com"})
+
+(deftest authenticate-email-verified-test
+  (testing "Rejects token when email_verified is explicitly false"
+    (let [result (authenticate-with-claims (assoc base-claims :email_verified false) test-config)]
+      (is (false? (:success? result)))
+      (is (= :email-not-verified (:error result)))
+      (is (nil? (:user-data result)))))
+  (testing "Rejects token when email_verified is the string \"false\""
+    (let [result (authenticate-with-claims (assoc base-claims :email_verified "false") test-config)]
+      (is (false? (:success? result)))
+      (is (= :email-not-verified (:error result)))))
+  (testing "Rejects token with email_verified false even with a custom email attribute mapping"
+    (let [config (assoc test-config :attribute-email "mail")
+          claims (assoc base-claims
+                        :mail "user@example.com"
+                        :email_verified false)
+          result (authenticate-with-claims claims config)]
+      (is (false? (:success? result)))
+      (is (= :email-not-verified (:error result)))))
+  (testing "Accepts token when email_verified is true"
+    (let [result (authenticate-with-claims (assoc base-claims :email_verified true) test-config)]
+      (is (true? (:success? result)))
+      (is (= "user@example.com" (get-in result [:user-data :email])))))
+  (testing "Accepts token when email_verified is the string \"true\""
+    (let [result (authenticate-with-claims (assoc base-claims :email_verified "true") test-config)]
+      (is (true? (:success? result)))))
+  (testing "Accepts token without an email_verified claim (claim is optional per OIDC Core)"
+    (let [result (authenticate-with-claims base-claims test-config)]
+      (is (true? (:success? result))))))
+
 (deftest authenticate-custom-attribute-mapping-test
   (testing "Uses custom attribute mappings when provided"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)
-                  http/post
-                  (fn [_url _opts]
-                    {:status 200
-                     :body {:id_token "valid-token"
-                            :access_token "access-token-123"}})
-                  oidc.tokens/validate-id-token
-                  (fn [_token _config _nonce]
-                    {:valid? true
-                     :claims {:sub "user789"
-                              :iss "https://provider.example.com"
-                              :aud "test-client-id"
-                              :mail "custom@example.com"
-                              :first "Jane"
-                              :last "Smith"}})]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)
+                                http/post
+                                (fn [_url _opts]
+                                  {:status 200
+                                   :body {:id_token "valid-token"
+                                          :access_token "access-token-123"}})
+                                oidc.tokens/validate-id-token
+                                (fn [_token _config _nonce]
+                                  {:valid? true
+                                   :claims {:sub "user789"
+                                            :iss "https://provider.example.com"
+                                            :aud "test-client-id"
+                                            :mail "custom@example.com"
+                                            :first "Jane"
+                                            :last "Smith"}})]
       (let [config (assoc test-config
                           :attribute-email "mail"
                           :attribute-firstname "first"
@@ -257,22 +305,20 @@
 
 (deftest authenticate-config-extraction-test
   (testing "Extracts config from :oidc-config key"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)]
       (let [request {:oidc-config test-config}
             result (provider/authenticate :provider/oidc request)]
         (is (= :redirect (:success? result))))))
-
   (testing "Extracts config from :auth-identity metadata"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)]
       (let [request {:auth-identity {:metadata test-config}}
             result (provider/authenticate :provider/oidc request)]
         (is (= :redirect (:success? result))))))
-
   (testing "Extracts config from direct request keys"
-    (with-redefs [oidc.discovery/discover-oidc-configuration
-                  (fn [_issuer] test-discovery-doc)]
+    (mt/with-dynamic-fn-redefs [oidc.discovery/discover-oidc-configuration
+                                (fn [_issuer] test-discovery-doc)]
       (let [request (merge test-config {:other-key "ignored"})
             result (provider/authenticate :provider/oidc request)]
         (is (= :redirect (:success? result)))))))
@@ -280,6 +326,5 @@
 (deftest provider-hierarchy-test
   (testing "OIDC provider derives from base provider"
     (is (isa? :provider/oidc ::provider/provider)))
-
   (testing "OIDC provider derives from create-user-if-not-exists"
     (is (isa? :provider/oidc ::provider/create-user-if-not-exists))))

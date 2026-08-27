@@ -72,11 +72,11 @@
                                           [:map {:closed true}
                                            [:native ms/NonBlankString]]
                                           ms/FieldType]]
-    ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
-    ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
-    ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
-    ;; datasets e.g. [[mt/with-actions-test-data]]
-    ;; default is nullable
+   ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
+   ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
+   ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
+   ;; datasets e.g. [[mt/with-actions-test-data]]
+   ;; default is nullable
    [:not-null?         {:optional true} [:maybe :boolean]]
    [:unique?           {:optional true} [:maybe :boolean]]
    [:pk?               {:optional true} [:maybe :boolean]]
@@ -130,7 +130,11 @@
 
 (defn- hash-dataset*
   [^DatabaseDefinition db-def]
-  (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) (get-dataset-definition db-def))))))
+  (let [db-def' (get-dataset-definition db-def)
+        ;; for routing tests (where hashes need to match despite content being different)
+        ;; it is important to be able to override the hash key
+        hash-key (:hash-key db-def' db-def')]
+    (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) hash-key))))))
 
 (def hash-dataset
   "Provides a consistent hash for the DatabaseDefinition"
@@ -445,6 +449,7 @@
 
 (defmacro with-temp-roles!
   "Creates the given roles and permissions for the database user, and drops them after execution"
+  {:style/indent :defn}
   [driver details roles db-user default-role & body]
   `(with-temp-roles-fn!
      ~driver
@@ -680,6 +685,10 @@
 (defmethod sorts-nil-first? ::test-extensions [_ _] true)
 
 (defmethod driver/database-supports? [::driver/driver :test/time-type]
+  [_driver _feature _database]
+  true)
+
+(defmethod driver/database-supports? [::driver/driver :test/date-type]
   [_driver _feature _database]
   true)
 
@@ -1149,32 +1158,29 @@
 (doseq [driver [:h2 :sqlite]]
   (defmethod bad-connection-details driver
     [_driver]
-    nil))
+    {:db (u.random/random-name)}))
 
-(doseq [driver [:bigquery-cloud-sdk]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:project-id (u.random/random-name)}))
+(defmethod bad-connection-details :bigquery-cloud-sdk
+  [_driver]
+  {:project-id (u.random/random-name)})
 
 (doseq [driver [:redshift :snowflake :vertica :sparksql]]
   (defmethod bad-connection-details driver
     [_driver]
     {:db (u.random/random-name)}))
 
-(doseq [driver [:oracle]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:service-name (u.random/random-name)}))
+(defmethod bad-connection-details :oracle
+  [_driver]
+  {:service-name (u.random/random-name)})
 
 (doseq [driver [:presto-jdbc :databricks]]
   (defmethod bad-connection-details driver
     [_driver]
     {:catalog (u.random/random-name)}))
 
-(doseq [driver [:athena]]
-  (defmethod bad-connection-details driver
-    [_driver]
-    {:access_key (u.random/random-name)}))
+(defmethod bad-connection-details :athena
+  [_driver]
+  {:access_key (u.random/random-name)})
 
 (doseq [driver [:postgres :mysql :snowflake :databricks :redshift :sqlite :vertica :athena :oracle]]
   (defmethod driver/database-supports? [driver :test/arrays]

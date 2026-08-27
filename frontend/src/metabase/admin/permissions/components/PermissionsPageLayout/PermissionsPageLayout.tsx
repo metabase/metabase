@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -14,20 +12,19 @@ import {
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
+import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { useToggle } from "metabase/common/hooks/use-toggle";
-import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { updateUserSetting } from "metabase/redux/settings";
-import type { IconName } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
+import { useUserSetting } from "metabase/settings";
 import {
   Group,
   Button as NewButton,
   Modal as NewModal,
   Text,
 } from "metabase/ui";
-import type { PermissionsGraph } from "metabase-types/api";
+import type { IconName } from "metabase-types/api";
 
 import {
   clearSaveError as clearPermissionsSaveError,
@@ -40,26 +37,26 @@ import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { PermissionsTabs } from "./PermissionsTabs";
 
-type PermissionsPageTab =
+export type PermissionsPageTab =
   | "data"
   | "collections"
   | "application"
-  | "tenant-collections";
+  | "tenant-collections"
+  | "tenant-specific-collections";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
   confirmBar?: ReactNode;
-  diff?: PermissionsGraph;
+  diff?: PermissionsGraphDiff;
   isDirty?: boolean;
   onSave?: () => void;
   onLoad?: () => void;
   saveError?: string;
   clearSaveError?: () => void;
   navigateToLocation?: (location: string) => void;
-  route: Route;
   navigateToTab?: (tab: string) => void;
   helpContent?: ReactNode;
-  showSplitPermsModal?: boolean;
+  canShowSplitPermsModal?: boolean;
 };
 
 const CloseSidebarButtonWithDefault = ({
@@ -77,21 +74,29 @@ export function PermissionsPageLayout({
   isDirty,
   onSave,
   onLoad,
-  route,
   helpContent,
-  showSplitPermsModal: _showSplitPermsModal = false,
+  canShowSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
-  const [showSplitPermsModal, { turnOff: disableSplitPermsModal }] =
-    useToggle(_showSplitPermsModal);
+  const [showModalSetting, setShowModalSetting] = useUserSetting(
+    "show-updated-permission-modal",
+    { shouldDebounce: false },
+  );
+  // Stops the split permissions modal from reopening after the user dismisses it once,
+  // even if the save fails
+  const [isSplitPermsModalDismissed, setIsSplitPermsModalDismissed] =
+    useState(false);
+  const showSplitPermsModal =
+    canShowSplitPermsModal && !!showModalSetting && !isSplitPermsModalDismissed;
 
   const saveError = useSelector((state) => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
 
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
-    dispatch(push(`/admin/permissions/${tab}`));
+    navigate(`/admin/permissions/${tab}`);
 
   const clearSaveError = () => {
     dispatch(clearPermissionsSaveError());
@@ -102,10 +107,8 @@ export function PermissionsPageLayout({
   }, [dispatch]);
 
   const handleDimissSplitPermsModal = () => {
-    disableSplitPermsModal();
-    dispatch(
-      updateUserSetting({ key: "show-updated-permission-modal", value: false }),
-    );
+    setIsSplitPermsModalDismissed(true);
+    setShowModalSetting(false);
   };
 
   return (
@@ -120,7 +123,7 @@ export function PermissionsPageLayout({
           />
         )}
 
-        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} route={route} />
+        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} />
 
         <ConfirmModal
           opened={saveError != null}
@@ -133,7 +136,7 @@ export function PermissionsPageLayout({
           closeButtonText={null}
         />
 
-        <TabsContainer className={CS.borderBottom}>
+        <TabsContainer>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
           <ToolbarButtonsContainer>
             {helpContent && !isHelpReferenceOpen && (

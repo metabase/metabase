@@ -1,8 +1,8 @@
 import { P, match } from "ts-pattern";
 
 import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
-import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { EmbedResourceDownloadOptions } from "metabase-types/api";
 
 /**
  * Initialize resource downloads plugin features that depend on hasPremiumFeature.

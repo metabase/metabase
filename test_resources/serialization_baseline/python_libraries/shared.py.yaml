@@ -1,0 +1,9 @@
+path: shared.py
+source: |-
+  def helper():
+      return 42
+entity_id: kb0QxR8AyP5W8SVHGYZr8
+created_at: '2026-04-02T02:00:49.163166Z'
+serdes/meta:
+- id: kb0QxR8AyP5W8SVHGYZr8
+  model: PythonLibrary

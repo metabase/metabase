@@ -11,7 +11,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.createLibrary();
     H.publishTables({ table_ids: [ORDERS_ID] });
 
@@ -144,7 +144,6 @@ function createTestSegment(opts: { name?: string; description?: string } = {}) {
   H.createSegment({
     name,
     description,
-    table_id: ORDERS_ID,
     definition: {
       type: "query",
       database: SAMPLE_DB_ID,

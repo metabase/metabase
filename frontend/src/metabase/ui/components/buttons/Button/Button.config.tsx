@@ -5,7 +5,7 @@ import ButtonStyles from "./Button.module.css";
 export const buttonOverrides = {
   Button: Button.extend({
     defaultProps: {
-      color: "brand",
+      color: "core-brand",
       variant: "default",
       size: "md",
       loaderProps: {

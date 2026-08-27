@@ -51,6 +51,7 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [clojure.core.memoize :as memoize]
    [clojure.main]
    [clojure.string :as str]
    [clojure.test]
@@ -103,7 +104,7 @@
 
 (apply require clojure.main/repl-requires)
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:discouraged-var :missing-docstring]}
 (defn tap>-spy [x]
   (doto x tap>))
 
@@ -157,7 +158,6 @@
   (let [h2-dbs (t2/select :model/Database :engine :h2)
         in-memory? (fn [db] (some-> db :details :db (str/starts-with? "mem:")))
         can-connect? (fn [db]
-                       #_:clj-kondo/ignore
                        (binding [driver.settings/*allow-testing-h2-connections* true]
                          (try
                            (driver/can-connect? :h2 (:details db))
@@ -365,10 +365,9 @@
   []
   (binding [t2.connection/*current-connectable* nil]
     (or (t2/select-one :model/Database :name "Application Database")
-        #_:clj-kondo/ignore
-        (let [details (#'metabase.app-db.env/broken-out-details
+        (let [details (#'mdb.env/broken-out-details
                        (mdb/db-type)
-                       @#'metabase.app-db.env/env)
+                       @#'mdb.env/env)
               app-db  (first (t2/insert-returning-instances! :model/Database
                                                              {:name    "Application Database"
                                                               :engine  (mdb/db-type)
@@ -392,7 +391,7 @@
   [form]
   (hashp/p* form))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defn tap
   "#tap, but to use in pipelines like `(-> 1 inc dev/tap prn inc)`."
   [form]
@@ -467,3 +466,9 @@
   (mt/initialize-if-needed! :test-users)
   ;; seed test db
   (mt/id))
+
+(defn reset-static!
+  "Reset static and template caches to pick up new js"
+  []
+  ((requiring-resolve 'stencil.loader/invalidate-cache))
+  (memoize/memo-clear! @(requiring-resolve 'metabase.server.routes.index/load-inline-js)))

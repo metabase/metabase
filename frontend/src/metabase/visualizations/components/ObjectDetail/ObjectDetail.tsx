@@ -1,88 +1,68 @@
-import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
-import {
+import { useEffect, useState } from "react";
+import { t } from "ttag";
+
+import { PaginationFooter } from "metabase/data-grid";
+import Question from "metabase-lib/v1/Question";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
+
+import S from "./ObjectDetail.module.css";
+import { ObjectDetailPanel } from "./ObjectDetailPanel";
+import type { ObjectDetailProps } from "./types";
+
+function getItemMessage(index: number, total: number) {
+  return total >= HARD_ROW_LIMIT
+    ? t`Item ${index + 1} of first ${total}`
+    : t`Item ${index + 1} of ${total}`;
+}
+
+export function ObjectDetail({
+  question,
+  isDataApp,
+  data,
   closeObjectDetail,
-  followForeignKey,
-  loadObjectDetailFKReferences,
-  viewNextObjectDetail,
-  viewPreviousObjectDetail,
-} from "metabase/query_builder/actions";
-import {
-  getCanZoomNextRow,
-  getCanZoomPreviousRow,
-  getQuestion,
-  getTableForeignKeyReferences,
-  getTableForeignKeys,
-  getTableMetadata,
-  getZoomRow,
-  getZoomedObjectId,
-} from "metabase/query_builder/selectors";
-import { getUser } from "metabase/selectors/user";
-import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
-import type { State } from "metabase-types/store";
+  card,
+  dashcard,
+  onActionSuccess,
+  ...rest
+}: ObjectDetailProps) {
+  const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
 
-import { ObjectDetailWrapper } from "./ObjectDetailWrapper";
-import type { ObjectDetailProps, ObjectId } from "./types";
-import { getIdValue, getSingleResultsRow } from "./utils";
+  useEffect(() => {
+    if (data.rows.length <= currentObjectIndex) {
+      setCurrentObjectIndex(0);
+    }
+  }, [data.rows, currentObjectIndex]);
 
-const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
-  const isLoggedIn = !!getUser(state);
+  const hasPagination = data?.rows?.length > 1;
+  const resolvedQuestion =
+    question ??
+    (card && rest.metadata ? new Question(card, rest.metadata) : undefined);
 
-  if (!isLoggedIn) {
-    return {};
-  }
-
-  const table = getTableMetadata(state);
-  let zoomedRowID = getZoomedObjectId(state);
-  const isZooming = zoomedRowID != null;
-
-  if (!isZooming) {
-    zoomedRowID = getIdValue({ data, tableId: table?.id });
-  }
-
-  const zoomedRow = isZooming ? getZoomRow(state) : getSingleResultsRow(data);
-  const canZoomPreviousRow = isZooming ? getCanZoomPreviousRow(state) : false;
-  const canZoomNextRow = isZooming ? Boolean(getCanZoomNextRow(state)) : false;
-
-  return {
-    question: getQuestion(state),
-    table,
-    tableForeignKeys: getTableForeignKeys(state),
-    tableForeignKeyReferences: getTableForeignKeyReferences(state),
-    zoomedRowID,
-    zoomedRow,
-    canZoom: isZooming && !!zoomedRow,
-    canZoomPreviousRow,
-    canZoomNextRow,
-  };
-};
-type MapStateProps = ReturnType<typeof mapStateToProps>;
-
-// ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
-const mapDispatchToProps = (dispatch: any) => ({
-  fetchTableFks: (id: number) =>
-    dispatch(Tables.objectActions.fetchForeignKeys({ id })),
-  loadObjectDetailFKReferences: (args: any) =>
-    dispatch(loadObjectDetailFKReferences(args)),
-  followForeignKey: ({
-    objectId,
-    fk,
-  }: {
-    objectId: ObjectId;
-    fk: ForeignKey;
-  }) => dispatch(followForeignKey({ objectId, fk })),
-  viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
-  viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
-  closeObjectDetail: () => dispatch(closeObjectDetail()),
-});
-type MapDispatchProps = ReturnType<typeof mapDispatchToProps>;
-
-type OwnProps = Omit<
-  ObjectDetailProps,
-  keyof MapStateProps | keyof MapDispatchProps
->;
-
-export const ObjectDetail = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(ObjectDetailWrapper) as unknown as React.ComponentType<OwnProps>;
+  return (
+    <>
+      <ObjectDetailPanel
+        {...rest}
+        zoomedRow={data.rows[currentObjectIndex]}
+        data={data}
+        question={resolvedQuestion}
+        showHeader={rest.settings["detail.showHeader"]}
+        showControls={false}
+        showRelations={false}
+        closeObjectDetail={closeObjectDetail}
+        isDataApp={isDataApp}
+      />
+      {hasPagination && (
+        <PaginationFooter
+          className={S.pagination}
+          data-testid="pagination-footer"
+          start={currentObjectIndex}
+          end={currentObjectIndex}
+          total={data.rows.length}
+          message={getItemMessage(currentObjectIndex, data.rows.length)}
+          onNextPage={() => setCurrentObjectIndex((prev) => prev + 1)}
+          onPreviousPage={() => setCurrentObjectIndex((prev) => prev - 1)}
+        />
+      )}
+    </>
+  );
+}

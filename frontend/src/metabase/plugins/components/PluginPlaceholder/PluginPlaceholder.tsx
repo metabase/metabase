@@ -1,21 +1,17 @@
-import { t } from "ttag";
+import type { PluginRoute } from "metabase/plugins/types";
 
-import NoResults from "assets/img/no_results.svg";
-import { EmptyState } from "metabase/common/components/EmptyState";
 interface Props {
   [key: string]: any;
 }
 
-export function PluginPlaceholder(_props: Props): JSX.Element | null {
+export function PluginPlaceholder<T = Props>(_props: T): JSX.Element | null {
   return null;
 }
 
-export function NotFoundPlaceholder(_props: Props): JSX.Element | null {
-  return (
-    <EmptyState
-      illustrationElement={<img src={NoResults} />}
-      title={t`We're a little lost...`}
-      message={t`The page you asked for couldn't be found.`}
-    />
-  );
-}
+/**
+ * The route equivalent of PluginPlaceholder, for a route slot that no plugin
+ * filled in.
+ */
+export const pluginPlaceholderRoute: PluginRoute = async () => ({
+  Component: PluginPlaceholder,
+});

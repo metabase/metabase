@@ -5,16 +5,11 @@
   Deprecated: will soon be migrated to notification APIs."
   (:require
    [clojure.set :refer [difference]]
-   [hiccup.core :refer [html]]
-   [hiccup.page :refer [html5]]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common]
-   [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
-   [metabase.channel.urls :as urls]
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -22,19 +17,16 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.send :as pulse.send]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.io ByteArrayInputStream)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -139,6 +131,65 @@
                                                                 :full :full))) cards))))
      (t2/hydrate pulses :can_write))))
 
+(defn create-pulse-with-perm-checks!
+  "Create a new Pulse with permissions checks."
+  [cards channels pulse-data]
+  (perms/check-has-application-permission :subscription false)
+  (api/create-check :model/Pulse (assoc pulse-data :cards cards))
+  (t2/with-transaction [_conn]
+    ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
+    ;; check that and fix it if needed
+    (api/maybe-reconcile-collection-position! pulse-data)
+    ;; ok, now create the Pulse
+    (let [pulse (api/check-500
+                 (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
+      (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
+      pulse)))
+
+(def ^:private PulseChannelType
+  [:enum "email" "slack" "http"])
+
+(def ^:private PulseScheduleType
+  [:enum "hourly" "daily" "weekly" "monthly"])
+
+(def ^:private PulseScheduleDay
+  [:enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"])
+
+(def ^:private PulseScheduleFrame
+  [:enum "first" "mid" "last"])
+
+(def ^:private PulseScheduleHour
+  [:int {:min 0 :max 23}])
+
+(def ^:private PulseChannelRecipient
+  [:map
+   [:id    {:optional true} [:maybe ms/PositiveInt]]
+   [:email {:optional true} [:maybe ms/Email]]])
+
+(def ^:private PulseChannelDetails
+  [:map
+   [:attachment_only {:optional true} [:maybe :boolean]]
+   [:include_pdf     {:optional true} [:maybe :boolean]]
+   [:channel         {:optional true} [:maybe :string]]
+   [:channels        {:optional true} [:maybe :string]]
+   [:channel_id      {:optional true} [:maybe :string]]
+   [:emails          {:optional true} [:maybe [:sequential ms/Email]]]])
+
+(def ^:private PulseChannel
+  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
+  [:map
+   [:id             {:optional true}   [:maybe ms/PositiveInt]]
+   [:channel_type                      PulseChannelType]
+   [:enabled        {:optional true}   [:maybe :boolean]]
+   [:pulse_id       {:optional true}   [:maybe ms/PositiveInt]]
+   [:channel_id     {:optional true}   [:maybe ms/PositiveInt]]
+   [:details        {:optional true}   [:maybe PulseChannelDetails]]
+   [:recipients     {:optional true}   [:sequential PulseChannelRecipient]]
+   [:schedule_type  {:optional true}   [:maybe PulseScheduleType]]
+   [:schedule_day   {:optional true}   [:maybe PulseScheduleDay]]
+   [:schedule_hour  {:optional true}   [:maybe PulseScheduleHour]]
+   [:schedule_frame {:optional true}   [:maybe PulseScheduleFrame]]])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -155,32 +206,24 @@
    :- [:map
        [:name                ms/NonBlankString]
        [:cards               [:+ models.pulse/CoercibleToCardRef]]
-       [:channels            [:+ :map]]
+       [:channels            [:+ PulseChannel]]
        [:skip_if_empty       {:default false} [:maybe :boolean]]
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-       [:parameters          {:optional true} [:maybe [:sequential :map]]]]
+       [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]
    request]
-  (perms/check-has-application-permission :subscription false)
-  (let [pulse-data {:name                name
-                    :creator_id          api/*current-user-id*
-                    :skip_if_empty       skip-if-empty
-                    :collection_id       collection-id
-                    :collection_position collection-position
-                    :dashboard_id        dashboard-id
-                    :parameters          parameters
-                    :disable_links       (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)}]
-    (api/create-check :model/Pulse (assoc pulse-data :cards cards))
-    (t2/with-transaction [_conn]
-      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
-      ;; check that and fix it if needed
-      (api/maybe-reconcile-collection-position! pulse-data)
-      ;; ok, now create the Pulse
-      (let [pulse (api/check-500
-                   (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
-        (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
-        pulse))))
+  (create-pulse-with-perm-checks!
+   cards
+   channels
+   {:name                name
+    :creator_id          api/*current-user-id*
+    :skip_if_empty       skip-if-empty
+    :collection_id       collection-id
+    :collection_position collection-position
+    :dashboard_id        dashboard-id
+    :parameters          parameters
+    :disable_links       (embed.util/is-modular-embedding-or-modular-embedding-sdk-request? request)}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -235,26 +278,28 @@
    {:keys [cards], :as pulse-updates} :- [:map
                                           [:name          {:optional true} [:maybe ms/NonBlankString]]
                                           [:cards         {:optional true} [:maybe [:+ models.pulse/CoercibleToCardRef]]]
-                                          [:channels      {:optional true} [:maybe [:+ :map]]]
+                                          [:channels      {:optional true} [:maybe [:+ PulseChannel]]]
                                           [:skip_if_empty {:default false} [:maybe :boolean]]
                                           [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                           [:archived      {:default false} [:maybe :boolean]]
-                                          [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
+                                          [:parameters    {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]]
   ;; do various perms checks
   (try
     (perms/check-has-application-permission :monitoring)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-has-application-permission :subscription false)))
-
   (let [pulse-before-update (api/write-check (models.pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
-
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)
-      (let [to-add-recipients (difference (set (map :id (:recipients (email-channel pulse-updates))))
-                                          (set (map :id (:recipients (email-channel pulse-before-update)))))
+      ;; key recipients the same way pulse-channel does: user recipients by :id, external recipients by
+      ;; :email, so changes to external addresses are part of the diff too
+      (let [recipient-key     (some-fn :id :email)
+            to-add-recipients (difference (set (keep recipient-key (:recipients (email-channel pulse-updates))))
+                                          (set (keep recipient-key (:recipients (email-channel pulse-before-update)))))
             current-user-has-application-permissions?
             (and (premium-features/enable-advanced-permissions?)
                  (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
@@ -265,7 +310,6 @@
                        has-subscription-perms?
                        (empty? to-add-recipients))
                    [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
-
     (let [pulse-updates (maybe-add-recipients pulse-updates pulse-before-update)]
       (t2/with-transaction [_conn]
         ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
@@ -310,124 +354,12 @@
                              [:slack :fields 0 :options]
                              (->> (channel.settings/slack-cached-channels-and-usernames)
                                   :channels
-                                  (map :display-name)))
+                                  (m/distinct-by :id)
+                                  (m/distinct-by :display-name)
+                                  (mapv (fn [{:keys [display-name id]}]
+                                          {:displayName display-name :id id}))))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
-
-(defn- pulse-card-query-results
-  {:arglists '([card])}
-  [{query :dataset_query, card-id :id}]
-  (binding [qp.perms/*card-id* card-id]
-    (qp/process-query
-     (qp/userland-query
-      (assoc query
-             :middleware {:process-viz-settings? true
-                          :js-int-to-string?     false})
-      {:executed-by api/*current-user-id*
-       :context     :pulse
-       :card-id     card-id}))))
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/preview_card/:id"
-  "Get HTML rendering of a Card with `id`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (let [card   (api/read-check :model/Card id)
-        result (pulse-card-query-results card)]
-    {:status 200
-     :body   (html5
-              [:html
-               [:body {:style "margin: 0;"}
-                (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card)
-                                                              card
-                                                              result
-                                                              {:channel.render/include-title? true, :channel.render/include-buttons? true})]])}))
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/preview_dashboard/:id"
-  "Get HTML rendering of a Dashboard with `id`.
-
-  This endpoint relies on a custom middleware defined in `metabase.channel.render.core/style-tag-nonce-middleware` to
-  allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
-  routes at the bottom of this namespace using `metabase.api.common/define-routes`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/read-check :model/Dashboard id)
-  {:status  200
-   :headers {"Content-Type" "text/html"}
-   :body    (channel.render/style-tag-from-inline-styles
-             (html5
-              [:head
-               [:meta {:charset "utf-8"}]
-               [:link {:nonce "%NONCE%" ;; this will be str/replaced by 'style-tag-nonce-middleware
-                       :rel  "stylesheet"
-                       :href "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"}]]
-              [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
-               (channel.render/render-dashboard-to-html id)]))})
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/preview_card_info/:id"
-  "Get JSON object containing HTML rendering of a Card with `id` and other information."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (let [card      (api/read-check :model/Card id)
-        result    (pulse-card-query-results card)
-        data      (:data result)
-        card-type (channel.render/detect-pulse-chart-type card nil data)
-        card-html (html (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card)
-                                                                      card
-                                                                      result
-                                                                      {:channel.render/include-title? true}))]
-    {:id              id
-     :pulse_card_type card-type
-     :pulse_card_html card-html
-     :pulse_card_name (:name card)
-     :pulse_card_url  (urls/card-url (:id card))
-     :row_count       (:row_count result)
-     :col_count       (count (:cols (:data result)))}))
-
-(def ^:private preview-card-width 400)
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/preview_card_png/:id"
-  "Get PNG rendering of a Card with `id`. Optionally specify `width` as a query parameter."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [width]} :- [:map
-                       [:width {:optional true} [:maybe ms/PositiveInt]]]]
-  (let [card   (api/read-check :model/Card id)
-        result (pulse-card-query-results card)
-        width  (or width preview-card-width)
-        ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
-                                                        card
-                                                        result
-                                                        width
-                                                        {:channel.render/include-title? true})]
-    {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -438,15 +370,24 @@
   [_route-params
    _query-params
    {:keys [cards channels] :as body} :- [:map
+                                         ;; the saved subscription this is a test send of, when there is one.
+                                         ;; `send-pulse!` builds the non-user unsubscribe link out of it, and the
+                                         ;; email template drops the whole "Unsubscribe" footer without a link
+                                         [:id                  {:optional true} [:maybe ms/PositiveInt]]
                                          [:name                ms/NonBlankString]
                                          [:cards               [:+ models.pulse/CoercibleToCardRef]]
-                                         [:channels            [:+ :map]]
+                                         [:channels            [:+ PulseChannel]]
                                          [:skip_if_empty       {:default false} [:maybe :boolean]]
                                          [:disable_links       {:default false} [:maybe :boolean]]
                                          [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                          [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]]
+                                         [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
+                                         [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
+                                         [:alert_condition     {:optional true} [:maybe models.pulse/AlertConditions]]
+                                         [:alert_first_only    {:optional true} [:maybe :boolean]]
+                                         [:alert_above_goal    {:optional true} [:maybe :boolean]]]
    request]
+  (perms/check-has-application-permission :subscription false)
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
   (check-card-read-permissions
    (remove (fn [{:keys [id display]}]
@@ -478,10 +419,6 @@
     (t2/delete! :model/PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
-(def ^:private ^{:arglists '([handler])} style-nonce-middleware
-  (metabase.api.routes.common/wrap-middleware-for-open-api-spec-generation
-   (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard")))
-
 (def ^{:arglists '([request respond raise])} routes
   "`/api/pulse` endpoints."
-  (api.macros/ns-handler *ns* style-nonce-middleware))
+  (api.macros/ns-handler *ns*))

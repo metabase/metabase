@@ -11,15 +11,11 @@ import { SettingHeader } from "metabase/admin/settings/components/SettingHeader"
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
-import {
-  useGetAdminSettingsDetailsQuery,
-  useGetSettingsQuery,
-} from "metabase/api";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Markdown } from "metabase/common/components/Markdown";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -29,8 +25,14 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useSetting,
+} from "metabase/settings";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export type SAMLFormSettings = Pick<
@@ -263,6 +265,7 @@ export function SettingsSAMLForm() {
                   <FormTextInput
                     name="saml-attribute-group"
                     label={t`Group attribute name`}
+                    placeholder="member_of"
                     nullable
                     {...getExtraFormFieldProps(
                       settingDetails?.["saml-attribute-group"],
@@ -340,7 +343,8 @@ function SamlUserProvisioning() {
       <AdminSettingInput
         name="saml-user-provisioning-enabled?"
         title={t`User provisioning`}
-        inputType="boolean"
+        inputType="radio"
+        options={provisioningOptions("SAML")}
       />
     </SettingsSection>
   );

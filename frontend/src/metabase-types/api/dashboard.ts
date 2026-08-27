@@ -1,8 +1,4 @@
 import type {
-  EmbeddingParameters,
-  EmbeddingType,
-} from "metabase/public/lib/types";
-import type {
   BaseEntityId,
   CardDisplayType,
   ClickBehavior,
@@ -10,6 +6,8 @@ import type {
   CollectionAuthorityLevel,
   CollectionId,
   Database,
+  EmbeddingParameters,
+  EmbeddingType,
   Field,
   FieldId,
   Parameter,
@@ -29,7 +27,12 @@ import type {
   WritebackAction,
   WritebackActionId,
 } from "./actions";
-import type { Card, CardId, VisualizationSettings } from "./card";
+import type {
+  Card,
+  CardId,
+  ColumnSettings,
+  VisualizationSettings,
+} from "./card";
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
 import type { SearchModel } from "./search";
@@ -65,6 +68,7 @@ export interface Dashboard {
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
+  can_set_cache_policy?: boolean;
   cache_ttl: number | null;
   "last-edit-info": {
     id: number;
@@ -132,10 +136,20 @@ export type DashboardCardLayoutAttrs = {
   size_y: number;
 };
 
+export type DashboardCardPosition = Pick<
+  DashboardCardLayoutAttrs,
+  "col" | "row"
+>;
+export type DashboardCardSize = Pick<
+  DashboardCardLayoutAttrs,
+  "size_x" | "size_y"
+>;
+
 export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
   iframe?: string;
+  column_settings?: Record<string, ColumnSettings>;
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
@@ -285,7 +299,19 @@ export type ListDashboardsResponse = Omit<
 export type GetDashboardRequest = {
   id: DashboardId;
   ignore_error?: boolean;
+  dashboard_load_id?: string;
 };
+
+export type DashboardParameterValuesRequest = {
+  dashId?: DashboardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
+};
+
+export type SearchDashboardParameterValuesRequest =
+  DashboardParameterValuesRequest & {
+    query: string;
+  };
 
 export type CreateDashboardRequest = {
   name: string;
@@ -327,6 +353,19 @@ export type GetDashboardQueryMetadataRequest = {
   dashboard_load_id?: string;
 };
 
+export type DashboardCardQueryRequest = {
+  dashboardId: DashboardId;
+  dashcardId: DashCardId;
+  cardId: CardId;
+  collection_preview?: boolean;
+  ignore_cache?: boolean;
+  parameters?: unknown[];
+  // Sent in the request body (in addition to the path params above) when
+  // querying a saved dashcard, for query provenance/telemetry.
+  dashboard_id?: DashboardId;
+  dashboard_load_id?: string;
+};
+
 export type SaveDashboardRequest = Omit<UpdateDashboardRequest, "id">;
 
 export type CopyDashboardRequest = {
@@ -347,9 +386,9 @@ export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
 
 export type GetRemappedDashboardParameterValueRequest = {
-  dashboard_id?: DashboardId;
-  entityIdentifier?: EntityUuid | EntityToken;
-  parameter_id: ParameterId;
+  dashId?: DashboardId;
+  entityIdentifier?: EntityUuid | EntityToken | null;
+  paramId: ParameterId;
   value: ParameterValueOrArray;
 };
 

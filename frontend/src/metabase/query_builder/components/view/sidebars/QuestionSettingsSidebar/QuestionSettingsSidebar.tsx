@@ -2,11 +2,11 @@ import { useMount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
-import { onCloseQuestionSettings } from "metabase/query_builder/actions";
+import { useDispatch } from "metabase/redux";
+import { onCloseQuestionSettings } from "metabase/redux/query-builder";
 import { Stack, useModalsStack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -80,7 +80,6 @@ export const QuestionSettingsSidebar = ({
           onClose={handleClose}
           overlayProps={{ bg: "transparent" }}
           onBack={() => close("caching")}
-          pt="md"
         />
       )}
     </>

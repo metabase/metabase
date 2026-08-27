@@ -59,14 +59,18 @@
   "Operators that should be listed as options in join conditions."
   (into [:enum] condition-operators))
 
+(def default-strategy
+  "The default join strategy when `:strategy` is not specified."
+  :left-join)
+
 (mr/def ::strategy
   "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database
   supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left
   joins will support the `:left-join` feature.
 
-  When `:strategy` is not specified, `:left-join` is the default strategy."
+  When `:strategy` is not specified, [[default-strategy]] is used."
   [:enum
-   {:decode/normalize common/normalize-keyword, :default :left-join}
+   {:decode/normalize common/normalize-keyword, :default default-strategy}
    :left-join
    :right-join
    :inner-join
@@ -115,7 +119,10 @@
 (mr/def ::join
   [:and
    [:map
-    {:default {}, :decode/normalize normalize-join}
+    {:default          {}
+     :decode/normalize normalize-join
+     :decode/api       common/remove-internal-keys
+     :encode/serialize common/remove-internal-keys}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
     [:stages      [:ref :metabase.lib.schema/stages]]
     [:conditions  ::conditions]

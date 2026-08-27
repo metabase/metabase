@@ -2,15 +2,18 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
+  CreateCardRequest,
   DashboardId,
+  DatabaseId,
   DatasetQuery,
   DraftTransform,
+  PaginationRequest,
   PaginationResponse,
+  ResearchPlanContext,
   RowValue,
   SuggestedTransform,
   Transform,
   UnsavedCard,
-  Version,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -48,40 +51,15 @@ export type MetabotChatContext = {
   user_is_viewing: MetabotUserIsViewingContext;
   current_time_with_timezone: string;
   default_database_id?: number;
-  workspace_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
+  research_plan?: ResearchPlanContext;
 };
 
 export type MetabotTool = {
   name: string; // TODO: make strictly typed - currently there's no tools
   parameters: Record<string, any>;
 };
-
-export type MetabotHistoryUserMessageEntry = {
-  role: "user";
-  message: string;
-  context: MetabotChatContext;
-};
-
-export type MetabotHistoryToolEntry = {
-  role: "assistant";
-  assistant_response_type: "tools";
-  tools: MetabotTool[];
-};
-
-export type MetabotHistoryMessageEntry = {
-  role: "assistant";
-  assistant_response_type: "message";
-  message: string;
-};
-
-export type MetabotHistoryEntry =
-  | MetabotHistoryUserMessageEntry
-  | MetabotHistoryToolEntry
-  | MetabotHistoryMessageEntry;
-
-export type MetabotHistory = any[];
 
 export type MetabotStateContext = Record<string, any>;
 
@@ -109,7 +87,6 @@ export type MetabotSeriesConfig = {
 };
 
 export type MetabotChartConfig = {
-  image_base_64?: string;
   title?: string | null;
   description?: string | null;
   data?: Array<{
@@ -152,9 +129,9 @@ export type MetabotDocumentInfo = {
 };
 
 export type MetabotTransformInfo =
-  | ({ type: "transform" } & Transform) // edit
-  | ({ type: "transform" } & SuggestedTransform) // edit saved suggested
-  | ({ type: "transform" } & DraftTransform); // edit unsaved suggested
+  | ({ type: "transform"; error?: string } & Transform) // edit
+  | ({ type: "transform"; error?: string } & SuggestedTransform) // edit saved suggested
+  | ({ type: "transform"; error?: string } & DraftTransform); // edit unsaved suggested
 
 export type MetabotEntityInfo =
   | MetabotCardInfo
@@ -175,17 +152,42 @@ export type MetabotCodeEdit = {
 export type MetabotAgentRequest = {
   message: string;
   context: MetabotChatContext;
-  history: MetabotHistory;
-  state: MetabotStateContext;
   conversation_id: string; // uuid
+  parent_message_id?: string;
+  retry_message_id?: string;
+  user_message_id?: string; // uuid
+  assistant_message_id?: string; // uuid
   metabot_id?: string;
   profile_id?: string;
 };
 
 export type MetabotAgentResponse = {
-  history: MetabotHistory[];
   conversation_id: string;
-  state: any;
+  state?: MetabotStateContext;
+};
+
+export type MetabotConversation = {
+  conversation_id: string;
+  created_at: string;
+  title: string | null;
+  user_id: number | null;
+  profile_id: string | null;
+  message_count: number;
+  last_message_at: string | null;
+  forked_from_conversation_id: string | null;
+};
+
+export type MetabotConversationTitleResponse =
+  | { status: "ready"; title: string }
+  | { status: "pending"; title: null }
+  | { status: "missing"; title: null };
+
+export type ListMetabotConversationsRequest = PaginationRequest & {
+  profile_id?: string | null;
+};
+
+export type ListMetabotConversationsResponse = PaginationResponse & {
+  data: MetabotConversation[];
 };
 
 /* Metabot - Suggested Prompts */
@@ -226,19 +228,74 @@ export type DeleteSuggestedMetabotPromptRequest = {
   prompt_id: SuggestedMetabotPrompt["id"];
 };
 
-export interface MetabotFeedback {
+export type RegenerateSuggestedMetabotPromptsResponse =
+  | { status: "generated"; prompt_count: number }
+  | { status: "no-library-content" }
+  | { status: "ai-produced-no-prompts" };
+
+export const METABOT_ISSUE_TYPE_VALUES = [
+  "ui-bug",
+  "took-incorrect-actions",
+  "overall-refusal",
+  "did-not-follow-request",
+  "not-factual",
+  "incomplete-response",
+  "other",
+] as const;
+
+export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
+
+export type MetabotFeedback = {
   metabot_id: MetabotId;
+  message_id: string;
+  freeform_feedback?: string;
+} & ({ positive: true } | { positive: false; issue_type?: MetabotIssueType });
+
+export type MetabotSourceType = "table" | "card" | "model";
+
+export type MetabotSourceFeedback = {
+  metabot_id: MetabotId;
+  message_id: string;
+  source_id: number;
+  source_type: MetabotSourceType;
+  positive: boolean;
+};
+
+/**
+ * Feedback payload for MCP Apps visualization results.
+ *
+ * Sends the prompt and query context needed to understand
+ * the generated visualization.
+ */
+export type McpAppsFeedback = {
+  /** User's rating and optional comments about the generated visualization. */
   feedback: {
     positive: boolean;
-    message_id: string;
-    issue_type?: string | undefined;
-    freeform_feedback: string;
+
+    /** Optional category for negative feedback. */
+    issue_type?: string;
+
+    /** Optional free-form user feedback text. */
+    freeform_feedback?: string;
   };
-  conversation_data: any;
-  version: Version;
-  submission_time: string;
-  is_admin: boolean;
-}
+
+  /** MCP-specific context stored alongside the rating. */
+  conversation_data: {
+    /** Identifies this submission as coming from the MCP Apps flow. */
+    source: "mcp";
+
+    /** User prompt that produced the visualization, when available. */
+    prompt: string | null;
+
+    /** Query text or structured query snapshot for the result, when available. */
+    query: string | null;
+  };
+};
+
+export type SubmitMcpAppsFeedbackRequest = {
+  mcpSessionId: string;
+  payload: McpAppsFeedback;
+};
 
 /* Metabot v3 - Entity Types */
 
@@ -264,9 +321,22 @@ export interface MetabotGenerateContentRequest {
 }
 
 export interface MetabotGenerateContentResponse {
-  draft_card: (UnsavedCard & { name?: string }) | null;
+  draft_card: (UnsavedCard & { name?: string; database_id: DatabaseId }) | null;
   description: string;
   error: string | null;
+}
+
+/* Metabot v3 - Conversations */
+
+export interface SaveMetabotEntityRequest {
+  conversation_id: string;
+  chart_id: string;
+  card: CreateCardRequest;
+}
+
+export interface ForkMetabotConversationRequest {
+  conversation_id: string;
+  message_id: string;
 }
 
 /* Metabot v3 - Data Part Types */
@@ -276,4 +346,65 @@ export type MetabotTodoItem = {
   content: string;
   status: "pending" | "in_progress" | "completed" | "cancelled";
   priority: "high" | "medium" | "low";
+};
+
+/* Metabot v3 - Slack Settings */
+
+export type MetabotSlackSettings =
+  | {
+      "slack-connect-client-id": string;
+      "slack-connect-client-secret": string;
+      "metabot-slack-signing-secret": string;
+    }
+  | {
+      "slack-connect-client-id": null;
+      "slack-connect-client-secret": null;
+      "metabot-slack-signing-secret": null;
+    };
+
+/* Metabot v3 - Group Permissions */
+
+export enum AIToolKey {
+  Metabot = "permission/metabot",
+  ChatAndNLQ = "permission/metabot-nlq",
+  SQLGeneration = "permission/metabot-sql-generation",
+  OtherTools = "permission/metabot-other-tools",
+}
+
+export type MetabotGroupPermission = {
+  group_id: number;
+  perm_type: AIToolKey;
+  perm_value: "yes" | "no";
+};
+
+export type MetabotPermissionsResponse = {
+  permissions: MetabotGroupPermission[];
+  advanced: boolean;
+};
+
+export type UpdateMetabotPermissionsRequest = {
+  permissions: MetabotGroupPermission[];
+};
+
+export type UserMetabotPermissions = {
+  metabot: "yes" | "no";
+  "metabot-sql-generation": "yes" | "no";
+  "metabot-nlq": "yes" | "no";
+  "metabot-other-tools": "yes" | "no";
+};
+
+export type UserMetabotPermissionsResponse = {
+  permissions: UserMetabotPermissions;
+};
+
+export type MetabotLimitPeriod = "daily" | "weekly" | "monthly";
+export type MetabotLimitType = "tokens" | "messages";
+
+/* Metabot v3 - Usage Limits */
+
+export type MetabotInstanceLimit = { max_usage: number | null };
+export type MetabotGroupLimit = { group_id: number; max_usage: number };
+export type MetabotTenantLimit = {
+  tenant_id: number;
+  max_usage: number | null;
 };

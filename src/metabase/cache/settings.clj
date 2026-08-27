@@ -2,14 +2,17 @@
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [toucan2.core :as t2]))
 
 (defsetting enable-query-caching
   (deferred-tru "Allow caching results of queries that take a long time to run.")
   :type       :boolean
   :default    true
   :visibility :authenticated
-  :audit      :getter)
+  :audit      :getter
+  :getter     #(t2/exists? :model/CacheConfig)
+  :setter     :none)
 
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
@@ -38,6 +41,17 @@
                         (tru "Values greater than {0} ({1}) are not allowed."
                              global-max-caching-kb (u/format-bytes (* global-max-caching-kb 1024)))))))
              (setting/set-value-of-type! :integer :query-caching-max-kb new-value)))
+
+(defsetting query-caching-early-refresh-ratio
+  (deferred-tru "Refresh cached results this fraction of their cache duration before they expire, so requests keep being served from cache instead of waiting for a recomputation. Set to 0 to only refresh once results have expired.")
+  ;; Expressed as a fraction of each entry's own cache duration rather than an absolute time so that it scales with
+  ;; the configured duration: a flat window longer than a short duration would refresh on every request. Values
+  ;; outside [0, 1) are allowed and behave sensibly at the limits -- 0 or less refreshes nothing early, 1 or more
+  ;; refreshes on every request that can take the lease, so cached results stop being reused.
+  :type    :double
+  :default 0.1
+  :export? false
+  :audit   :getter)
 
 (defsetting query-caching-max-ttl
   (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")

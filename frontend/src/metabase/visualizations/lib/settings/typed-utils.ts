@@ -1,14 +1,18 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { getVisualization } from "metabase/visualizations";
-import type { VisualizationSettingDefinition } from "metabase/visualizations/types";
+import type {
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import type {
   Card,
   TableColumnOrderSetting,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { getVisualization } from "../registry";
 
 // Merge two settings objects together.
 // Settings from the second argument take precedence over the first.
@@ -51,21 +55,12 @@ const mergeTableColumns = (
     ({ name }) =>
       secondTableColumns.findIndex((col) => col.name === name) === -1,
   );
-  const removedColumns = secondTableColumns
-    .filter(
-      ({ name }) =>
-        firstTableColumns.findIndex((col) => col.name === name) === -1,
-    )
-    .map(({ name }) => name);
 
-  return [
-    ...secondTableColumns.filter(({ name }) => !removedColumns.includes(name)),
-    ...addedColumns,
-  ];
+  return [...secondTableColumns, ...addedColumns];
 };
 
 export const isSettingHiddenOnDashboards = (
-  vizSettingDefinition: VisualizationSettingDefinition<unknown, unknown>,
+  vizSettingDefinition: VisualizationSettingDefinition,
 ) => {
   // strict check as by default all settings are visible on dashboards
   return vizSettingDefinition.dashboard === false;
@@ -78,10 +73,7 @@ export const isSettingHiddenOnDashboards = (
  */
 export function sanitizeDashcardSettings(
   settings: VisualizationSettings,
-  vizSettingsDefs: Record<
-    string,
-    VisualizationSettingDefinition<unknown, unknown>
-  >,
+  vizSettingsDefs: VisualizationSettingsDefinitions,
 ): VisualizationSettings {
   return _.pick(settings, (_, key) => {
     const settingDef = vizSettingsDefs[key];
@@ -89,10 +81,10 @@ export function sanitizeDashcardSettings(
   });
 }
 
-export function extendCardWithDashcardSettings(
-  card: Card | VirtualCard,
+export function extendCardWithDashcardSettings<T extends Card | VirtualCard>(
+  card: T,
   dashcardSettings?: VisualizationSettings,
-): Card | VirtualCard {
+): T {
   // Legacy broken behavior: When editing dashcard viz settings, we save both the edited setting and any settings with
   // persistDefault: true. This leads to saving data settings like graph.dimensions/graph.metrics even when they can't be edited in dashboards.
   const visualization = getVisualization(card.display);

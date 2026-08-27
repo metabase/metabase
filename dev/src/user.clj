@@ -2,7 +2,9 @@
   (:require
    [cider.nrepl :as cider-nrepl]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.tools.cli :as cli]
+   [dev.debug]
    [environ.core :as env]
    [hashp.preload]
    [metabase.classloader.core :as classloader]
@@ -11,7 +13,91 @@
    [nrepl.server :as nrepl-server]
    [refactor-nrepl.middleware]))
 
+;; Two debug-print readers, both available at dev time:
+;;
+;;   `#p`  - hashp's stock reader. Writes to *err* with color, suitable for
+;;           live REPL inspection.
+;;   `#d`  - our `dev.debug/d` reader. Writes to `DEV_DEBUG_LOG` (default
+;;           `/tmp/<cwd>_debug.log`). Real source line numbers (captured from
+;;           `(meta form)` at read time, not the runtime JVM stack like
+;;           hashp does). Survives across threads and JVM processes
+;;           (test-agent + REPL share the file).
+;;
+;; Use `#p` for live REPL inspection, `#d` for grep/tail-able output (test
+;; runs, agent debugging, cross-thread tracing).
+;;
+;; REPL helpers in `dev.debug`:
+;;   `(dev.debug/clear!)`     — truncate the file
+;;   `(dev.debug/where)`      — print the current log path
+;;   `(dev.debug/stack!)`     — spit a filtered call stack
+;;   `(dev.debug/set-file! p)`— override the log path
+;;
+;; Watch the log live:
+;;   tail -f $(echo /tmp/*_debug.log) | bat --paging=never -l edn
+
 (set! *warn-on-reflection* true)
+
+(defn- parse-toml-value
+  "Parse a TOML scalar value (RHS of `key = value`). Returns the unquoted string
+  for basic strings (with `\\\"` and `\\\\` escapes), the inner text for literal
+  strings, or the raw token for bare values (integers, booleans). Returns nil for
+  values we don't handle (multi-line strings, arrays, inline tables).
+
+  Mirrors mage.bot.env/parse-toml-value — duplicated here so REPL boot doesn't
+  depend on the mage namespace classpath. Keep the two in sync."
+  [v]
+  (let [v (str/trim v)]
+    (cond
+      ;; Basic string: "..." with \" and \\ escapes. Reject multi-line ("""...) here.
+      (and (str/starts-with? v "\"")
+           (not (str/starts-with? v "\"\"\""))
+           (re-matches #"\"(?:[^\"\\]|\\.)*\"" v))
+      (-> v
+          (subs 1 (dec (count v)))
+          (str/replace #"\\(.)" "$1"))
+
+      ;; Literal string: '...' (no escapes). Reject multi-line ('''...).
+      (and (str/starts-with? v "'")
+           (not (str/starts-with? v "'''"))
+           (re-matches #"'[^']*'" v))
+      (subs v 1 (dec (count v)))
+
+      ;; Bare scalar (int, float, bool) — just hand back the token.
+      (re-matches #"[A-Za-z0-9_+\-.]+" v)
+      v
+
+      :else nil)))
+
+(defn- load-mise-local!
+  "Parse mise.local.toml and merge its [env] values into environ's map.
+  This must run before metabase.config.core loads, which it does since that namespace
+  is loaded lazily via dev/start!.
+
+  Mirrors mage.bot.env/read-mise-local-toml's tolerance: keys may contain word
+  chars, hyphens, or dots, and values may be basic strings (with escapes),
+  literal strings, or bare scalars. Lines we can't parse are silently skipped
+  rather than crashing the REPL boot."
+  []
+  (let [f (io/file "mise.local.toml")]
+    (when (.exists f)
+      (with-open [rdr (io/reader f)]
+        (let [env-vars (->> (line-seq rdr)
+                            (drop-while #(not= (str/trim %) "[env]"))
+                            (drop 1)
+                            (take-while #(not (re-matches #"\s*\[.*\]\s*" %)))
+                            (keep (fn [line]
+                                    (when-let [[_ k raw-v]
+                                               (re-matches #"\s*([\w.\-]+)\s*=\s*(.*?)\s*" line)]
+                                      (when-let [v (parse-toml-value raw-v)]
+                                        (let [kw (-> k
+                                                     str/lower-case
+                                                     (str/replace "_" "-")
+                                                     keyword)]
+                                          [kw v])))))
+                            (into {}))]
+          (alter-var-root #'environ.core/env merge env-vars))))))
+
+(load-mise-local!)
 
 (comment
   metabase.core.bootstrap/keep-me
@@ -24,7 +110,7 @@
        enumeration-seq
        rest ; First file in the enumeration will be this file, so skip it.
        (run! #(do
-                #_:clj-kondo/ignore
+                #_{:clj-kondo/ignore [:discouraged-var]}
                 (println "Loading" (str %))
                 (clojure.lang.Compiler/load (io/reader %))))))
 
@@ -32,7 +118,7 @@
 ;; We sometimes need to run cmd stuffs like `clojure -M:migrate rollback n 3` and these
 ;; libraries might not be available in the classpath
 (u/ignore-exceptions
- ;; make sure stuff like `=?` and what not are loaded
+  ;; make sure stuff like `=?` and what not are loaded
   (classloader/require 'mb.hawk.assert-exprs))
 
 (u/ignore-exceptions
@@ -44,9 +130,9 @@
 
 (u/ignore-exceptions
   (classloader/require 'pjstadig.humane-test-output)
- ;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
- ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config.core]] so we don't load that
- ;; namespace before we load [[metabase.core.bootstrap]]
+  ;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
+  ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config.core]] so we don't load that
+  ;; namespace before we load [[metabase.core.bootstrap]]
   (when-not (= (env/env :mb-run-mode) "test")
     ((resolve 'pjstadig.humane-test-output/activate!))))
 
@@ -65,7 +151,9 @@
 (def cli-spec [["-h" "--help" "Show this help text"]
                ["-H" "--hot" "Enable hot reloading"] ;
                ["-p" "--port PORT" "Port to run the nREPL server on"
-                :default 50605
+                :default (if-let [p (env/env :nrepl-port)]
+                           (Integer/parseInt p)
+                           50605)
                 :parse-fn #(Integer/parseInt %)]])
 
 (defn -main
@@ -79,18 +167,18 @@
   [& args]
   (let [{:keys [help hot port]} (:options (cli/parse-opts args cli-spec))]
     (when help
-      #_:clj-kondo/ignore
+      #_{:clj-kondo/ignore [:discouraged-var :redundant-do]}
       (do
         (println "Usage: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev [options]")
         (println "Options:")
         (println (:summary (cli/parse-opts [] cli-spec))))
       (System/exit 0))
     (when hot
-      #_:clj-kondo/ignore
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Enabling hot reloading of code. Backend code will reload on every request.")
       (alter-var-root #'*enable-hot-reload* (constantly true)))
     (future
-      #_:clj-kondo/ignore
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (println "Starting Metabase cider repl on port" port)
       (spit ".nrepl-port" port)
       (nrepl-server/start-server

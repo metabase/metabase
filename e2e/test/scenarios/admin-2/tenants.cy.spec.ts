@@ -93,7 +93,7 @@ describe("Tenants - management", () => {
     cy.intercept("GET", "/api/user/*").as("getUser");
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should disable the feature if the token feature is not enabled", () => {
@@ -395,7 +395,7 @@ describe("Tenants - management", () => {
       "exist",
     ]);
 
-    cy.findByRole("radio", { name: "Databases" }).click({ force: true });
+    cy.findByRole("tab", { name: "Databases" }).click({ force: true });
     cy.findByRole("menuitem", { name: "Sample Database" }).click();
 
     assertPermissionTableColumnsExist([
@@ -431,7 +431,7 @@ describe("Tenants - management", () => {
 
       cy.visit(`/admin/permissions/data/group/${tenantGroupId}`);
 
-      cy.findByRole("radio", { name: "Groups" }).click({ force: true });
+      cy.findByRole("tab", { name: "Groups" }).click({ force: true });
 
       cy.findByRole("menuitem", { name: "All tenant users" }).click();
 
@@ -605,7 +605,7 @@ describe("Tenants - management", () => {
 
   it("should show tenant attributes in user attribute lists when multi tenancy is enabled", () => {
     H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted"); // needed because of the restore on the line above
 
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
@@ -702,7 +702,7 @@ describe("tenant users", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.request("PUT", "/api/setting", {
       "jwt-attribute-email": "email",
@@ -899,16 +899,12 @@ describe("tenant users", () => {
       .click();
     H.popover().findByText("Edit user").click();
 
-    H.modal().within(() => {
-      cy.findByText("Tenant groups");
-      cy.findByText("All tenant users").click();
-    });
-
+    H.modal().findByRole("combobox", { name: "Groups" }).click();
     H.popover().findByText(GROUP_NAME).click();
 
     H.modal().within(() => {
-      cy.findByText("Tenant groups").click(); // trigger blur
-      cy.findByText("2 other groups").should("be.visible");
+      cy.findByText("Tenant groups").click(); // dismiss the dropdown
+      cy.findByRole("list").findByText(GROUP_NAME).should("be.visible");
       cy.button("Update").click();
     });
 
@@ -930,12 +926,12 @@ describe("tenant users", () => {
     });
 
     H.popover().findByText(GIZMO_TENANT.name).click();
-    H.modal().findByText("All tenant users").click();
+    H.modal().findByRole("combobox", { name: "Groups" }).click();
     H.popover().findByText(GROUP_NAME).click();
 
     H.modal().within(() => {
-      cy.findByText("Tenant groups").click(); // trigger blur
-      cy.findByText("2 other groups").should("be.visible");
+      cy.findByText("Tenant groups").click(); // dismiss the dropdown
+      cy.findByRole("list").findByText(GROUP_NAME).should("be.visible");
       cy.button("Create").click();
     });
     cy.wait("@createUser").then(

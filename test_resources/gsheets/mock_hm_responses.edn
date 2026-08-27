@@ -151,7 +151,7 @@
                                :id                          "663f3e8a-bfff-4b3f-ad5f-20ceadf929cc",
                                :last-sync-at                "2025-03-24T22:00:33.636Z",
                                :last-sync-started-at        "2025-03-25T14:54:26.816Z",
-                               :status                      "syncing",
+                               :status                      "active",
                                :status-detail               nil,
                                :type                        "gdrive",
                                :updated-at                  "2025-03-25T14:54:26.824Z"},

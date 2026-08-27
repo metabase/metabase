@@ -1,6 +1,7 @@
 (ns metabase.driver.sql.normalize
   (:require
    [clojure.string :as str]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]))
@@ -19,8 +20,8 @@
   "Normalizes the (primarily table/column) name passed in.
   Should return a value that matches the name listed in the appdb."
   [driver name-str]
-  (let [quote-style (sql.qp/quote-style driver)
-        quote-char (if (= quote-style :mysql) \` \")]
+  (let [quote-char (when-let [quote-fn (:quote (sql/get-dialect (sql.qp/quote-style driver)))]
+                     (first (quote-fn "")))]
     (if (and (= (first name-str) quote-char)
              (= (last name-str) quote-char))
       (let [quote-quote (str quote-char quote-char)
@@ -29,6 +30,26 @@
             (subs 1 (dec (count name-str)))
             (str/replace quote-quote quote)))
       (normalize-unquoted-name driver name-str))))
+
+(defn normalize-error
+  "Normalize error names using driver-specific case normalization.
+   This ensures error names match database metadata conventions."
+  [driver error]
+  (if-let [error-name (:name error)]
+    (assoc error :name (normalize-name driver error-name))
+    error))
+
+(defmulti default-schema
+  "Returns the default schema for a given database driver.
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-schema :sql
+  [_]
+  "public")
 
 (defmulti reserved-literal
   "Checks whether a particular name is actually a literal value in a given sql dialect.

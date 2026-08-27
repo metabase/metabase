@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
 import {
@@ -114,6 +115,8 @@ function setup({
 }: SetupOpts) {
   const onChange = jest.fn();
   const onBack = jest.fn();
+
+  setupDatabaseEndpoints(DATABASE);
 
   renderWithProviders(
     <FilterPickerBody

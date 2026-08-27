@@ -1,4 +1,5 @@
 (ns metabase.query-processor.middleware.add-remaps-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.add-remaps-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -7,11 +8,11 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -180,6 +181,21 @@
                                                  ::qp.add-remaps/new-field-dimension-id pos-int?}]]}})
               (lib/->legacy-MBQL query))))))
 
+(deftest ^:parallel add-remapped-columns-with-previous-stage-test
+  (let [query        (-> (lib/query category-id-remap-metadata-provider (meta/table-metadata :venues))
+                         (lib/append-stage)
+                         (lib/with-fields [(meta/field-metadata :venues :category-id)]))
+        dimension-id (get-in (lib.metadata/field category-id-remap-metadata-provider (meta/id :venues :category-id))
+                             [:lib/external-remap :id])]
+    ;; The `lib/append-stage` models the sandbox behaviour where an extra stage is added
+    ;; and the `remap-column-infos` become name based instead of id based
+    (is (=? {:stages [{}
+                      {:fields [[:field {::qp.add-remaps/original-field-dimension-id dimension-id}
+                                 (meta/id :venues :category-id)]
+                                [:field {::qp.add-remaps/new-field-dimension-id dimension-id}
+                                 (meta/id :categories :name)]]}]}
+            (qp.add-remaps/add-remapped-columns query)))))
+
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
@@ -233,7 +249,6 @@
                                       {"apple"  "Appletini"
                                        "banana" "Bananasplit"
                                        "kiwi"   "Kiwi-flavored Thing"})
-
       (is (=? {:status    :completed
                :row_count 3
                :data      {:rows [[1 "apple"   4 3 "Appletini"]
@@ -488,7 +503,7 @@
 ;;; `partial=`, which ended up asserting nothing of value. However, other tests for this
 ;;; issue, [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]], and a test
 ;;; in `e2e/test/scenarios/joins/joins.cy.spec.js`, are still passing. So I'm not sure what to do with this test. I
-;;; updated it to use MLv2, but it's commented out for now.
+;;; updated it to use Lib, but it's commented out for now.
 ;;;
 ;;; Note that it mostly passes if you
 ;;; update [[metabase.query-processor.middleware.add-remaps/remap-column-infos]] not to ignore `:field`
@@ -832,3 +847,32 @@
         (is (= ["ID"
                 "Orders → ID"]
                (map :display_name (qp.preprocess/query->expected-cols query))))))))
+
+(deftest ^:parallel self-join-with-remapped-columns-uses-remapping-test
+  (let [mp (mt/metadata-provider)
+        orders (lib.metadata/table mp (mt/id :orders))
+        order-id (lib.metadata/field mp (mt/id :orders :id))
+        user-id (lib.metadata/field mp (mt/id :orders :user_id))
+        user-email (lib.metadata/field mp (mt/id :people :email))
+        rm-mp (lib.tu/remap-metadata-provider mp user-id user-email)
+        query (-> (lib/query rm-mp orders)
+                  (lib/with-fields [order-id user-id])
+                  (lib/join (-> (lib/join-clause orders [(lib/= order-id order-id)])
+                                (lib/with-join-fields [order-id user-id])))
+                  (lib/limit 3))
+        result (qp/process-query query)]
+    (is (= [[1 1 1 1 "borer-hudson@yahoo.com" "borer-hudson@yahoo.com"]
+            [2 1 2 1 "borer-hudson@yahoo.com" "borer-hudson@yahoo.com"]
+            [3 1 3 1 "borer-hudson@yahoo.com" "borer-hudson@yahoo.com"]]
+           (mt/rows result)))
+    (is (= [{:name "ID"}
+            {:name "USER_ID", :remapped_to "EMAIL"}
+            {:name "ID_2"}
+            {:name "USER_ID_2", :remapped_to "EMAIL_2"}
+            {:name "EMAIL", :remapped_from "USER_ID"}
+            {:name "EMAIL_2", :remapped_from "USER_ID_2"}]
+           (->> result
+                :data
+                :results_metadata
+                :columns
+                (mapv #(select-keys % [:name :remapped_to :remapped_from])))))))

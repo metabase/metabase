@@ -7,8 +7,10 @@ import { TextInput } from "metabase/ui";
 
 import { CopyWidgetButton } from "./FormTextInput.styled";
 
-export interface FormTextInputProps
-  extends Omit<TextInputProps, "value" | "error"> {
+export interface FormTextInputProps extends Omit<
+  TextInputProps,
+  "value" | "error"
+> {
   name: string;
   nullable?: boolean;
   hasCopyButton?: boolean;

@@ -1,18 +1,23 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import {
   getIcon,
   queryIcon,
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import * as Lib from "metabase-lib";
-import { createQueryWithClauses } from "metabase-lib/test-helpers";
-import { createMockCard } from "metabase-types/api/mocks";
 import {
   createMockQueryBuilderState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { createMockCard } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
@@ -20,9 +25,21 @@ import type { NotebookStep } from "../../types";
 import { AggregateStep } from "./AggregateStep";
 
 function createAggregatedQuery() {
-  return createQueryWithClauses({
-    aggregations: [
-      { operatorName: "avg", tableName: "ORDERS", columnName: "QUANTITY" },
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: {
+          type: "table",
+          id: ORDERS_ID,
+        },
+        aggregations: [
+          {
+            type: "operator",
+            operator: "avg",
+            args: [{ type: "column", sourceName: "ORDERS", name: "QUANTITY" }],
+          },
+        ],
+      },
     ],
   });
 }
@@ -34,12 +51,14 @@ interface SetupOpts {
 function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
   const updateQuery = jest.fn();
 
+  setupDatabaseEndpoints(createSampleDatabase());
+
   renderWithProviders(
     <AggregateStep
       step={step}
       stageIndex={step.stageIndex}
       query={step.query}
-      color="summarize"
+      color="core-summarize"
       isLastOpened={false}
       reportTimezone="UTC"
       updateQuery={updateQuery}
@@ -85,12 +104,25 @@ describe("AggregateStep", () => {
   it("should use foreign key name for foreign table columns", () => {
     setup({
       step: createMockNotebookStep({
-        query: createQueryWithClauses({
-          aggregations: [
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
             {
-              operatorName: "avg",
-              tableName: "PRODUCTS",
-              columnName: "RATING",
+              source: {
+                type: "table",
+                id: ORDERS_ID,
+              },
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "avg",
+                  args: [
+                    {
+                      type: "column",
+                      name: "RATING",
+                    },
+                  ],
+                },
+              ],
             },
           ],
         }),
@@ -180,8 +212,16 @@ describe("AggregateStep", () => {
     // TODO: unskip this once we enable "Compare to the past" again
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should not allow to use temporal comparisons for metrics", async () => {
-      const query = createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+          },
+        ],
       });
       const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
       const step = createMockNotebookStep({ question, query });
@@ -195,8 +235,16 @@ describe("AggregateStep", () => {
     // TODO: unskip this once we enable "Compare to the past" again
     // eslint-disable-next-line jest/no-disabled-tests
     it.skip("should allow to use temporal comparisons for non-metrics", async () => {
-      const query = createQueryWithClauses({
-        aggregations: [{ operatorName: "count" }],
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: {
+              type: "table",
+              id: ORDERS_ID,
+            },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+          },
+        ],
       });
       const question = DEFAULT_QUESTION.setType("question").setQuery(query);
       const step = createMockNotebookStep({ question, query });

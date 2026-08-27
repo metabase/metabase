@@ -1,4 +1,4 @@
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 
 import type { RawDataRouteParams } from "../../types";
 
@@ -6,6 +6,7 @@ import { state as mockState } from "./data-permissions.unit.spec.fixtures";
 
 import { getDataFocusSidebar } from ".";
 
+// Unjustified type cast. FIXME
 const state = mockState as unknown as State;
 
 const getRouteProps = ({
@@ -54,6 +55,15 @@ describe("getDataFocusSidebar", () => {
           },
         ],
       ]);
+    });
+
+    it("excludes destination databases from the list", () => {
+      const sidebarData = getDataFocusSidebar(state, getRouteProps({}));
+      const allDbNames = sidebarData?.entityGroups
+        ?.flat()
+        .map((entity: any) => entity.name);
+
+      expect(allDbNames).not.toContain("Destination Database");
     });
   });
 
@@ -153,7 +163,7 @@ describe("getDataFocusSidebar", () => {
 
     it("returns flat list of tables for a schemaless database", () => {
       const sidebarData = getDataFocusSidebar(
-        state as any,
+        state,
         getRouteProps({ databaseId: "3" }),
       );
 
@@ -162,7 +172,7 @@ describe("getDataFocusSidebar", () => {
           {
             entityId: {
               databaseId: 3,
-              schemaName: null,
+              schemaName: "",
               tableId: 10,
             },
             icon: "table",
@@ -172,7 +182,7 @@ describe("getDataFocusSidebar", () => {
           {
             entityId: {
               databaseId: 3,
-              schemaName: null,
+              schemaName: "",
               tableId: 11,
             },
             icon: "table",
@@ -182,7 +192,7 @@ describe("getDataFocusSidebar", () => {
           {
             entityId: {
               databaseId: 3,
-              schemaName: null,
+              schemaName: "",
               tableId: 13,
             },
             icon: "table",
@@ -192,7 +202,7 @@ describe("getDataFocusSidebar", () => {
           {
             entityId: {
               databaseId: 3,
-              schemaName: null,
+              schemaName: "",
               tableId: 12,
             },
             icon: "table",

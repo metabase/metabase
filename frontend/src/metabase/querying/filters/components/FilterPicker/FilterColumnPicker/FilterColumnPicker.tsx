@@ -9,17 +9,19 @@ import {
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+} from "metabase/common/components/MetadataInfo/QueryColumnInfoIcon";
+import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import { isNotNull } from "metabase/lib/types";
+import { modelIconMap } from "metabase/common/utils/icon";
+import { useTranslateContent } from "metabase/content-translation/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
-  type DefinedClauseName,
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
 import { WIDTH } from "../constants";
@@ -51,7 +53,7 @@ export interface FilterColumnPickerProps {
   checkItemIsSelected?: (item: Item) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
-  onExpressionSelect?: (clause?: DefinedClauseName) => void;
+  onExpressionSelect?: (clause?: Lib.DefinedClauseName) => void;
 
   withCustomExpression?: boolean;
   withColumnGroupIcon?: boolean;
@@ -59,6 +61,7 @@ export interface FilterColumnPickerProps {
 }
 
 export const isSegmentListItem = (item: Item): item is SegmentListItem => {
+  // Unjustified type cast. FIXME
   return (item as SegmentListItem).segment != null;
 };
 
@@ -85,6 +88,7 @@ export function FilterColumnPicker({
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
   const [searchText, setSearchText] = useState("");
   const isSearching = searchText !== "";
 
@@ -109,8 +113,16 @@ export function FilterColumnPicker({
   );
 
   const renderItemName = useCallback(
-    (item: Item) => tc(item.displayName),
-    [tc],
+    (item: Item) =>
+      searchText
+        ? // When searching, show the untranslated display name to match the search text
+          item.displayName
+        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+            displayName: item.displayName,
+            tc,
+            locale,
+          }),
+    [tc, locale, searchText],
   );
 
   const handleSectionChange = (section: Section) => {
@@ -257,7 +269,7 @@ function getSections({
 
 function renderItemIcon(query: Lib.Query, item: Item) {
   if (isSegmentListItem(item)) {
-    return <Icon name="star" size={18} />;
+    return <Icon name={modelIconMap["segment"]} size={18} />;
   } else if (isExpressionClauseItem(item)) {
     return <Icon name="function" size={18} />;
   } else {

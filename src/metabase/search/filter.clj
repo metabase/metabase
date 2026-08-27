@@ -1,5 +1,6 @@
 (ns metabase.search.filter
   (:require
+   [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
@@ -8,6 +9,7 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2])
   (:import
@@ -16,7 +18,10 @@
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))
 
-(defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
+(defn visible-to?
+  "Whether the search-model described by `spec` may be returned to the user described by `search-ctx`, per the spec's
+  `:visibility`."
+  [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
     :all       true
     :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
@@ -30,6 +35,14 @@
              ;; TODO remove special handling of :id
              (dissoc search.config/filters :id)))
 
+(defn- spec-supported-attr-keys
+  "All attr keys a spec supports.
+  Keys with value false are excluded — false means 'not present' in the spec DSL."
+  [spec]
+  (into #{}
+        (keep (fn [[k v]] (when v k)))
+        (:attrs spec)))
+
 (defn search-context->applicable-models
   "Returns a set of models that are applicable given the search context.
 
@@ -37,14 +50,23 @@
   [search-ctx]
   ;; Archived is an eccentric one - we treat it as false for models that don't map it, rather than removing them.
   ;; TODO move this behavior to the spec somehow
-  (let [required (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->filter))]
-    (into #{}
-          (remove nil?)
-          (for [search-model (:models search-ctx)
-                :let [spec (search.spec/spec search-model)]]
-            (when (and (visible-to? search-ctx spec)
-                       (every? (:attrs spec) required))
-              (:name spec))))))
+  ;; :curated? is a precomputed flag every index row carries, so it isn't a per-spec attr; handle it
+  ;; explicitly below rather than through the spec-attr gate (which would drop every model). It restricts
+  ;; to the curatable models — which include `table`, so curated content stays visible where the
+  ;; verified-only filter dropped it (BOT-1536) — and matches the in-place engine for consistency.
+  (let [required (->> (remove-if-falsey search-ctx :archived?)
+                      (#(dissoc % :curated?))
+                      keys
+                      (keep context-key->filter))
+        models   (into #{}
+                       (remove nil?)
+                       (for [search-model (:models search-ctx)
+                             :let [spec (search.spec/spec search-model)]]
+                         (when (and (visible-to? search-ctx spec)
+                                    (every? (spec-supported-attr-keys spec) required))
+                           (:name spec))))]
+    (cond-> models
+      (:curated? search-ctx) (set/intersection search.config/curated-search-models))))
 
 (defn models-without-collection
   "A list of the search models which are not associated with collections, even indirectly."
@@ -91,19 +113,18 @@
 (defmethod where-clause* ::collection-hierarchy [_ k v]
   ;; Filter by collection and all descendants
   ;; Match items directly in the collection OR in descendant collections
-  ;; Tables in collections are an EE feature (data-studio), so exclude them in OSS
+  ;; Tables in collections are an EE feature (library), so exclude them in OSS
   (let [collection-filter [:or
                            [:= k v]
                            [:like :collection.location (str "%" (collection/location-path v) "%")]]]
-    (if (premium-features/has-feature? :data-studio)
+    (if (premium-features/has-feature? :library)
       collection-filter
       [:and
-       [:not= :search_index.model [:inline "table"]]
+       [:not= :search_index.model "table"]
        collection-filter])))
 
 (defn personal-collections-where-clause
-  "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
-  WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
+  "Build a clause limiting the entries to those (not) within or within personal collections, if relevant."
   [{filter-type :filter-items-in-personal-collection :keys [current-user-id] :as search-ctx} collection-id-col]
   (case (or filter-type "all")
     "all" nil
@@ -121,25 +142,36 @@
                         collection-id-col)]
       [:or (with-filter "only-mine") (with-filter "exclude")])
 
-    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/")
-          child-patterns (for [id personal-ids] (format "/%d/%%" id))]
+    ;; "only" / "exclude": use a single EXISTS / NOT EXISTS against `collection` so the WHERE size
+    ;; is constant regardless of how many personal collections live on the instance. The previous
+    ;; approach generated one :like predicate per personal collection, which timed out the search
+    ;; query on instances with many users.
+    ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
+    (let [descendant-of-personal-collection
+          [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                     :from   [[:collection :pc]]
+                                     :where  [:and
+                                              [:not= :pc.personal_owner_id nil]
+                                              [:= :pc.location "/"]
+                                              [:like :collection.location
+                                               [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
       (case filter-type
         "only"
-        `[:or
-          ;; top level personal collections
-          [:and [:not= :collection.personal_owner_id nil] [:= :collection.location "/"]]
-          ;; their sub-collections
-          ~@(for [p child-patterns] [:like :collection.location p])]
+        [:or
+         ;; top level personal collections
+         [:and [:not= :collection.personal_owner_id nil] [:= :collection.location "/"]]
+         ;; their sub-collections
+         descendant-of-personal-collection]
 
         "exclude"
-        `[:or
-          ;; not in a collection
-          [:= ~collection-id-col nil]
-          [:and
-           ;; neither in a top-level personal collection
-           [:= :collection.personal_owner_id nil]
-           ;; nor within one of their sub-collections
-           ~@(for [p child-patterns] [:not-like :collection.location p])]]))))
+        [:or
+         ;; not in a collection
+         [:= collection-id-col nil]
+         [:and
+          ;; neither in a top-level personal collection
+          [:= :collection.personal_owner_id nil]
+          ;; nor within one of their sub-collections
+          [:not descendant-of-personal-collection]]]))))
 
 (defn transform-source-type-where-clause
   "Build a clause that limits transforms to enabled source types.
@@ -151,34 +183,48 @@
        [:= [:inline 0] [:inline 1]])))
   ([search-context model-col source-type-col]
    [:or
-    [:!= model-col [:inline "transform"]]
+    [:!= model-col "transform"]
     (transform-source-type-where-clause search-context source-type-col)]))
+
+(defn filter-clauses
+  "Ordered seq of `[filter-key honeysql-clause]` for the structural filters implied by `search-context`.
+  [[with-filters]] ANDs these into the query; the search debug API uses the keys to attribute which specific
+  filter excludes a given row."
+  [search-context]
+  (keep
+   identity
+   (concat
+    [[:models (if (seq (:models search-context))
+                [:in :search_index.model (:models search-context)]
+                ;; Ideally, we would not get this far, and bail out earlier.
+                [:= 1 2])]]
+    (when-let [ids (:ids search-context)]
+      [[:ids [:and
+              [:in :search_index.model_id (map str ids)]
+              ;; NOTE: we limit id-based search to only a subset of the models
+              ;; TODO this should just become part of the model spec e.g. :search-by-id?
+              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
+    [[:dashboard-questions [:and
+                            [:or
+                             ;; leverage the fact that only card-related models populate this attribute
+                             [:= nil :search_index.dashboard_id]
+                             (when (:include-dashboard-questions? search-context)
+                               [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]
+                            ;; documents with an exploration id are similar to a Dashboard Question - they aren't
+                            ;; searchable outside of their owning Exploration.
+                            [:= nil :search_index.exploration_id]]]]
+    (for [{t :type :keys [context-key required-feature supported-value? field]}
+          (vals (dissoc search.config/filters :id :native-query))
+          :let [v (get search-context context-key)]]
+      (when (some? v)
+        (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
+        (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
+          (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
+            [context-key c])))))))
 
 (defn with-filters
   "Return a HoneySQL clause corresponding to all the optional search filters."
   [search-context qry]
-  (as-> qry qry
-    (sql.helpers/where qry (if (seq (:models search-context))
-                             [:in :search_index.model (:models search-context)]
-                             ;; Ideally, we would not get this far, and bail out earlier.
-                             [:= 1 2]))
-    (sql.helpers/where qry (when-let [ids (:ids search-context)]
-                             [:and
-                              [:in :search_index.model_id (map str ids)]
-                              ;; NOTE: we limit id-based search to only a subset of the models
-                              ;; TODO this should just become part of the model spec e.g. :search-by-id?
-                              [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]))
-    (sql.helpers/where qry [:or
-                            ;; leverage the fact that only card-related models populate this attribute
-                            [:= nil :search_index.dashboard_id]
-                            (when (:include-dashboard-questions? search-context)
-                              [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])])
-    (reduce (fn [qry {t :type :keys [context-key required-feature supported-value? field]}]
-              (or (when-some [v (get search-context context-key)]
-                    (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
-                    (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
-                      (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
-                        (sql.helpers/where qry c))))
-                  qry))
-            qry
-            (vals (dissoc search.config/filters :id :native-query)))))
+  (reduce (fn [qry [_ c]] (sql.helpers/where qry c))
+          qry
+          (filter-clauses search-context)))

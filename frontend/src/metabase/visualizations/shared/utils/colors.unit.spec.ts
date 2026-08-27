@@ -1,10 +1,11 @@
-import { getColorsForValues } from "metabase/lib/colors/charts";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { getSeriesColors } from "./colors";
 
-jest.mock("metabase/lib/colors/charts");
+jest.mock("metabase/ui/colors/charts");
 
+// Unjustified type cast. FIXME
 const mockGetColorsForValues = getColorsForValues as jest.MockedFunction<
   typeof getColorsForValues
 >;

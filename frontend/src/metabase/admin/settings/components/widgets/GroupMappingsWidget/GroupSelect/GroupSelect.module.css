@@ -1,0 +1,7 @@
+/* Mantine's default Combobox group label color is not themed in Metabase
+   (resolves to transparent), so make the section header visible. */
+.groupLabel {
+  color: var(--mb-color-text-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+}

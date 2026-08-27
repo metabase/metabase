@@ -1,0 +1,156 @@
+name: Most viewed tables
+entity_id: ItdtatOMd0uUEpvx7tDAC
+created_at: '2023-11-01T12:01:42.296181Z'
+creator_id: internal@metabase.com
+display: table
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_view_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {lib/uuid: 179b1a23-7cb8-4508-a72f-cbd802dd3037}
+    breakout:
+    - - field
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Tables - Entity Qualified}
+      - [Internal Metabase Database, public, v_tables, name]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Databases}
+      - [Internal Metabase Database, public, v_databases, name]
+    - - field
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Databases}
+      - [Internal Metabase Database, public, v_databases, entity_id]
+    - - field
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Tables - Entity Qualified}
+      - [Internal Metabase Database, public, v_tables, entity_id]
+    filters:
+    - - =
+      - {}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_view_log, entity_type]
+      - table
+    - - not-null
+      - {}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Tables - Entity Qualified}
+        - [Internal Metabase Database, public, v_tables, name]
+    joins:
+    - alias: Group Members - User
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_view_log, user_id]
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
+          - [Internal Metabase Database, public, v_group_members, user_id]
+      stages:
+      - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: c38751e6-73dc-4369-9a6e-6bddd81f8bf8}
+      lib/type: mbql/join
+    - alias: Tables - Entity Qualified
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Text, effective-type: type/Text}
+          - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
+        - - field
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Tables - Entity Qualified}
+          - [Internal Metabase Database, public, v_tables, entity_qualified_id]
+      fields: all
+      stages:
+      - {source-card: x7GwgNdjfzrpQkKTraaqo, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: bd73ee74-a130-4607-92f2-fb50430d0b3b}
+      lib/type: mbql/join
+    - alias: People - User
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
+          - [Internal Metabase Database, public, v_group_members, user_id]
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - User}
+          - [Internal Metabase Database, public, v_users, user_id]
+      fields: all
+      stages:
+      - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: b57b4120-1e2d-4815-9e6c-095328a5a2ae}
+      lib/type: mbql/join
+    - alias: Databases
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Tables - Entity Qualified}
+          - [Internal Metabase Database, public, v_tables, database_id]
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Databases}
+          - [Internal Metabase Database, public, v_databases, entity_id]
+      fields: all
+      stages:
+      - {source-card: -19557ZnrWiDgG4h4cKxF, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: 5f32ce80-7a67-4242-9db3-3ca7c84d3db5}
+      lib/type: mbql/join
+    limit: 100
+    order-by:
+    - - desc
+      - {}
+      - - aggregation
+        - {}
+        - 179b1a23-7cb8-4508-a72f-cbd802dd3037
+    source-card: P6Ityjj7igswKh4NgZZjz
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+visualization_settings:
+  column_settings:
+    '["name","count"]': {show_mini_bar: true}
+    '["name","name"]': {column_title: Table name, link_url: '/question#?db={{entity_id}}&table={{entity_id_2}}', view_as: link}
+    '["name","name_2"]': {column_title: Database, link_url: '/browse/databases/{{entity_id}}', view_as: link}
+  graph.dimensions: [name]
+  graph.metrics: [count]
+  graph.show_values: true
+  table.cell_column: count
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_tables, name]
+    - {base-type: type/Text, join-alias: Tables - Entity Qualified}
+    name: name
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_databases, name]
+    - {base-type: type/Text, join-alias: Databases}
+    name: name_2
+  - enabled: false
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_databases, entity_id]
+    - {base-type: type/Integer, join-alias: Databases}
+    name: entity_id
+  - enabled: true
+    fieldRef: [aggregation, 0]
+    name: count
+  - {enabled: false, name: entity_id_2}
+  table.pivot: false
+  table.pivot_column: name_2
+card_schema: 23
+serdes/meta:
+- {id: ItdtatOMd0uUEpvx7tDAC, label: most_viewed_tables, model: Card}
+dashboard_id: IW64bVIFFkpldy410Pe5F
+source_card_id: P6Ityjj7igswKh4NgZZjz
+type: question

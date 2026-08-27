@@ -1,7 +1,9 @@
 (ns metabase.test.mock.moviedb
   "A simple relational schema based mocked for testing. 4 tables w/ some FKs."
   (:require
-   [metabase.driver :as driver]))
+   [metabase.driver :as driver]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.util.malli :as mu]))
 
 ;; TODO - this whole fake driver is used in exactly one test. Can definitely remove a lot of the stuff here since it's
 ;; not used.
@@ -84,11 +86,20 @@
       (update :fields (partial map-indexed (fn [idx field]
                                              (assoc field :database-position idx))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks ::moviedb [_ _ table]
-  (-> (get moviedb-tables (:name table))
-      :fks
-      set))
+(mu/defmethod driver/describe-fks ::moviedb :- ::driver/describe-fks.result
+  [_driver                               :- :keyword
+   _database                             :- ::lib.schema.metadata/database
+   & {:keys [table-names], :as _options} :- ::driver/describe-fks.options]
+  (for [[table-name table] moviedb-tables
+        :when              (or (empty? table-names)
+                               (contains? (set table-names) table-name))
+        fk                 (:fks table)]
+    {:fk-table-name   table-name
+     :fk-table-schema nil
+     :fk-column-name  (:fk-column-name fk)
+     :pk-table-name   (get-in fk [:dest-table :name])
+     :pk-table-schema (get-in fk [:dest-table :schema])
+     :pk-column-name  (:dest-column-name fk)}))
 
 (defmethod driver/table-rows-seq ::moviedb [_ _ table]
   (when (= (:name table) "_metabase_metadata")

@@ -29,16 +29,16 @@ To use a plugin on a per-component basis, pass the plugin as a prop to the compo
 
 See docs for specific components:
 
-- [Interactive question plugins](./questions.md#interactive-question-plugins)
-- [Dashboard plugins](./dashboards.md#dashboard-plugins)
+- [Question plugins](../chart.md#customize-what-happens-when-someone-clicks-on-a-chart)
+- [Dashboard plugins](../dashboard.md#customize-the-menu-on-dashboard-cards-react-sdk-only)
 
 ## Global plugins
 
 ### `mapQuestionClickActions`
 
-The plugin `mapQuestionClickActions` lets you to customize what happens when people click on a data point on a dashboard or chart. `mapQuestionClickActions` can be used globally, or on component level.
+The plugin `mapQuestionClickActions` lets you customize what happens when people click on a data point on a dashboard or chart. `mapQuestionClickActions` can be used globally, or on component level.
 
-See [`mapQuestionClickActions` plugin](./questions.md#mapquestionclickactions) for more information and examples.
+See [`mapQuestionClickActions` plugin](../chart.md#customize-what-happens-when-someone-clicks-on-a-chart) for more information and examples.
 
 ### `handleLink`
 
@@ -48,7 +48,13 @@ To customize what happens when people click a link in your embedded questions an
 {% include_file "{{ dirname }}/snippets/plugins/handlelink.tsx" snippet="example" %}
 ```
 
-The plugin `handleLink` can only be used [globally](#plugin-scope) on provider level.
+By default, links open in a new tab. Use `handleLink` to intercept link clicks — for example, to open a URL in a modal or navigate within your app using your router.
+
+The function receives a URL string. Return `{ handled: true }` to prevent default navigation, or `{ handled: false }` to open the link in a new tab.
+
+The plugin `handleLink` can only be used [globally](#plugin-scope) on provider level. `handleLink` is also available in [modular embedding](../modular-embedding.md#page-level-config) via `pluginsConfig` in `defineMetabaseConfig`, with the same API.
+
+To create clickable links in your table columns, set the column's formatting to [display as link](../../data-modeling/formatting.md#display-as).
 
 ### `getNoDataIllustration` and `getNoObjectIllustration`
 
@@ -62,5 +68,5 @@ The plugins `getNoDataIllustration` and `getNoObjectIllustration` can only be us
 
 ## Further reading
 
-- [Interactive question plugins](./questions.md#interactive-question-plugins)
-- [Dashboard plugins](./dashboards.md#dashboard-plugins)
+- [Question plugins](../chart.md#customize-what-happens-when-someone-clicks-on-a-chart)
+- [Dashboard plugins](../dashboard.md#customize-the-menu-on-dashboard-cards-react-sdk-only)

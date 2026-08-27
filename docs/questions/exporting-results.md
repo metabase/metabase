@@ -63,7 +63,7 @@ The reason Metabase doesn't try to export results as a native Excel PivotTable i
 
 By default, Metabase will export first 1048575 rows of results.
 
-- For CSV exports, you can increase this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../configuring-metabase/environment-variables.md). Increasing this limit, however, may impact your Metabase's performance.
+- For CSV exports, you can increase this limit with an environment variable: [`MB_DOWNLOAD_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_download_row_limit). Increasing this limit, however, may impact your Metabase's performance.
 - XLSX exports will always be limited to Excel's maximum of 1048575 rows (plus the header row).
 
 ### Cell character limit in Excel exports
@@ -103,11 +103,13 @@ You can export the results of a dashboard and its cards in different ways:
 
 ### Export dashboard as PDF
 
-You can export a dashboard as a PDF. Click on the **Sharing** button, then select **Export as PDF**.
+To export a dashboard as a PDF, click **Share**, then select **Export as PDF**. On dashboards with multiple tabs, select **Export tab as PDF** to export the current tab.
 
 ![Exporting a dashboard as a PDF](./images/export-dashboard-as-pdf.png)
 
 The PDF will only include screenshots of the charts as they are visible on the dashboard.
+
+To get a PDF of a dashboard delivered on a schedule, [attach a PDF to a dashboard subscription](../dashboards/subscriptions.md#attach-a-pdf-of-the-dashboard).
 
 ### Exporting results of a dashboard card
 
@@ -128,7 +130,7 @@ If you don't see this option, you may not have [permissions to download results]
 
 ### Exporting results of a dashboard via dashboard subscriptions
 
-You can use [dashboard subscriptions](../dashboards/subscriptions.md) to regularly export data from all questions on a dashboard, and include those results as an attachment.
+You can use [dashboard subscriptions](../dashboards/subscriptions.md) to regularly export data from all questions on a dashboard, and include those results as an attachment. You can also [attach a PDF](../dashboards/subscriptions.md#attach-a-pdf-of-the-dashboard) of the entire dashboard.
 
 ## Remove Metabase branding from exports
 

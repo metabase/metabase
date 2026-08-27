@@ -74,8 +74,10 @@
                    :model/Dashboard {dash-id :id} {:collection_id nil
                                                    :name "Root Dashboard"}]
       (testing "Documents appear alongside cards and dashboards in root"
-        (let [items (mt/user-http-request :rasta :get 200 "collection/root/items")
-              root-test-items (filter #(#{doc-id card-id dash-id} (:id %))
+        (let [items         (mt/user-http-request :rasta :get 200 "collection/root/items")
+              test-ids      (set [doc-id card-id dash-id])
+              root-test-items (filter #(and (test-ids (:id %))
+                                            (#{"document" "card" "dashboard"} (:model %)))
                                       (:data items))]
           (is (= #{[doc-id "document"]
                    [card-id "card"]
@@ -110,6 +112,52 @@
           (testing "Non-archived documents do not appear in trash"
             (is (not (some #(= normal-doc-id (:id %)) trash-test-items)))))))))
 
+(deftest archived-exploration-documents-appear-in-trash-with-flag
+  (testing "Exploration documents are hidden from collection listings by default,"
+    (testing "but appear in the Trash when show_exploration_documents=true (mirrors dashboard-questions behavior)."
+      (mt/with-temp [:model/Exploration {expl-id :id} {:creator_id (mt/user->id :rasta)
+                                                       :name "Test Exploration"}
+                     :model/Document {expl-doc-id :id} {:collection_id nil
+                                                        :name "Trashed Exploration Doc"
+                                                        :exploration_id expl-id
+                                                        :archived true
+                                                        :archived_directly true}]
+        (let [trash-id (collection/trash-collection-id)]
+          (testing "Without the flag, the trashed exploration document is hidden"
+            (let [items (mt/user-http-request :rasta :get 200
+                                              (format "collection/%d/items" trash-id))]
+              (is (not (some #(= expl-doc-id (:id %)) (:data items))))))
+          (testing "With show_exploration_documents=true, it appears with restore/delete affordances"
+            (let [items (mt/user-http-request :rasta :get 200
+                                              (format "collection/%d/items?show_exploration_documents=true" trash-id))
+                  hit   (first (filter #(= expl-doc-id (:id %)) (:data items)))]
+              (is (some? hit))
+              (is (= "document" (:model hit)))
+              (is (true? (:can_restore hit)))
+              (is (true? (:can_delete hit))))))))))
+
+(deftest exploration-documents-stay-hidden-in-collections
+  (testing "Non-archived exploration documents are hidden from a regular collection's items by default"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Exploration {expl-id :id} {:creator_id (mt/user->id :rasta)
+                                                     :name "Coll Exploration"}
+                   :model/Document {plain-doc-id :id} {:collection_id coll-id
+                                                       :name "Plain Doc"}
+                   :model/Document {expl-doc-id :id} {:collection_id coll-id
+                                                      :name "Exploration Doc"
+                                                      :exploration_id expl-id}]
+      (testing "Without the flag, only the plain document is listed"
+        (let [items (mt/user-http-request :rasta :get 200 (format "collection/%d/items" coll-id))
+              ids   (set (map :id (:data items)))]
+          (is (contains? ids plain-doc-id))
+          (is (not (contains? ids expl-doc-id)))))
+      (testing "With show_exploration_documents=true, both are listed"
+        (let [items (mt/user-http-request :rasta :get 200
+                                          (format "collection/%d/items?show_exploration_documents=true" coll-id))
+              ids   (set (map :id (:data items)))]
+          (is (contains? ids plain-doc-id))
+          (is (contains? ids expl-doc-id)))))))
+
 (deftest document-pinning-collection-items
   (testing "GET /api/collection/:id/items supports pinned_state parameter for documents"
     (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -133,7 +181,6 @@
           (is (contains? item-ids ["card" pinned-card-id]))
           (is (not (contains? item-ids ["document" unpinned-doc-id])))
           (is (not (contains? item-ids ["card" unpinned-card-id])))))
-
       (testing "pinned_state=is_not_pinned returns only unpinned documents and cards"
         (let [items (:data (mt/user-http-request :rasta :get 200
                                                  (str "collection/" coll-id "/items?pinned_state=is_not_pinned")))
@@ -142,7 +189,6 @@
           (is (not (contains? item-ids ["card" pinned-card-id])))
           (is (contains? item-ids ["document" unpinned-doc-id]))
           (is (contains? item-ids ["card" unpinned-card-id]))))
-
       (testing "pinned_state=all returns all documents and cards"
         (let [items (:data (mt/user-http-request :rasta :get 200
                                                  (str "collection/" coll-id "/items?pinned_state=all")))
@@ -173,7 +219,6 @@
           (is (contains? test-item-ids ["card" pinned-card-id]))
           (is (not (contains? test-item-ids ["document" unpinned-doc-id])))
           (is (not (contains? test-item-ids ["card" unpinned-card-id])))))
-
       (testing "pinned_state=is_not_pinned returns only unpinned root documents and cards"
         (let [items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?pinned_state=is_not_pinned"))
               test-item-ids (set (map (juxt :model :id) items))]
@@ -204,7 +249,6 @@
           (is (some #(= 1 %) doc-positions))
           (is (some nil? doc-positions))
           (is (some #(= 3 %) doc-positions))))
-
       (testing "Pinned documents have higher collection_position values and appear before unpinned"
         (let [items (:data (mt/user-http-request :rasta :get 200
                                                  (str "collection/" coll-id "/items?pinned_state=is_pinned")))

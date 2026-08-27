@@ -4,11 +4,11 @@ import { useMemo } from "react";
 import { useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SimpleDataPickerProps } from "metabase/plugins";
+import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
-import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
 
@@ -25,6 +25,7 @@ export function SimpleDataPicker({
   const { data, isLoading, error } = useSearchQuery({
     table_db_id: filterByDatabaseId ? filterByDatabaseId : undefined,
     models: translateEntityTypesToSearchModels(entityTypes),
+    context: "data-picker",
   });
 
   const options = useMemo(() => {
@@ -103,7 +104,7 @@ function sortEntities(
 const compareString = (a: string, b: string) => a.localeCompare(b);
 
 function translateEntityTypesToSearchModels(
-  entityTypes: ModularEmbeddingEntityType[],
+  entityTypes: EmbeddingEntityType[],
 ): SearchModel[] {
   const searchModels: SearchModel[] = [];
 

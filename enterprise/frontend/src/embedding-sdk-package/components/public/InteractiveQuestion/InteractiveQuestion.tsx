@@ -12,6 +12,11 @@ const subComponents: InteractiveQuestionComponents = {
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
         ?.BackButton,
   ),
+  NavigationBackButton: createComponent(
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.NavigationBackButton,
+  ),
   Filter: createComponent(
     () =>
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion?.Filter,

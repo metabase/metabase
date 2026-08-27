@@ -11,12 +11,12 @@
    [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email :as email]
+   [metabase.channel.email.logo :as email.logo]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.template.core :as channel.template]
    [metabase.channel.urls :as urls]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib.util :as lib.util]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -39,18 +39,21 @@
   (or (appearance/application-name)
       (trs "Metabase")))
 
-(defn logo-url
-  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
+(defn- logo-bundle
+  "Get the logo bundle for the current application logo."
   []
-  (let [url (appearance/application-logo-url)]
-    (cond
-      (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
+  (email.logo/logo-bundle (appearance/application-logo-url)))
 
-      :else nil)))
-      ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
-      ;; We need to extract them and embed as attachments like we do in metabase.channel.render.image-bundle
-      ;; (data-uri-svg? url)               (themed-image-url url color)
-      ;; :else                             url
+(defn logo-url
+  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo.
+   For data URIs, returns the cid: reference (requires logo-attachment to be included in email)."
+  []
+  (:image-src (logo-bundle)))
+
+(defn- logo-attachment
+  "Return the logo attachment map for embedding in emails, or nil if not needed."
+  []
+  (:attachment (logo-bundle)))
 
 (defn button-style
   "Return a CSS style string for a button with the given color."
@@ -81,38 +84,118 @@
    :colorTextDark      channel.render/color-text-dark
    :siteUrl            (system/site-url)})
 
+(defn- make-message-attachment
+  "Convert a content-id/url pair to an email attachment map."
+  [[content-id url]]
+  {:type         :inline
+   :content-id   content-id
+   :content-type "image/png"
+   :content      url})
+
+(defn- send-email-with-logo!
+  "Send an email, including the logo as an attachment if it's a data URI.
+   Takes the same args as email/send-message! but handles logo attachments automatically."
+  [{:keys [message] :as email-args}]
+  (if-let [attachment (logo-attachment)]
+    (email/send-message!
+     (assoc email-args
+            :message-type :attachments
+            :message      (vec (cons {:type    "text/html; charset=utf-8"
+                                      :content message}
+                                     [(make-message-attachment (first attachment))]))))
+    (email/send-message! email-args)))
+
 ;;; ### Public Interface
 
-(defn- all-admin-recipients
-  "Return a sequence of email addresses for all Admin users.
+;;; ---- MFA notification emails ----
 
-  The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in
-  `mailto` links (e.g., for the new user to email with any questions)."
+(defn send-mfa-enabled-email!
+  "Send an email notifying `email` that two-factor authentication was enabled on their account."
+  [email]
+  {:pre [(u/email? email)]}
+  (send-email-with-logo!
+   {:subject      (trs "[{0}] Two-factor authentication was enabled on your account" (app-name-trs))
+    :recipients   [email]
+    :message-type :html
+    :message      (channel.template/render "mfa_enabled" (assoc (common-context) :logoHeader true))}))
+
+(defn send-mfa-disabled-email!
+  "Send an email notifying `email` that two-factor authentication was disabled on their account.
+  The phrase 'using a verification code' is deliberate — the server can assert only what
+  credential authorized the action, not who acted."
+  [email]
+  {:pre [(u/email? email)]}
+  (send-email-with-logo!
+   {:subject      (trs "[{0}] Two-factor authentication was disabled on your account" (app-name-trs))
+    :recipients   [email]
+    :message-type :html
+    :message      (channel.template/render "mfa_disabled" (assoc (common-context) :logoHeader true))}))
+
+(defn send-mfa-removed-by-admin-email!
+  "Send an email notifying `email` that an administrator removed their two-factor authentication."
+  [email]
+  {:pre [(u/email? email)]}
+  (send-email-with-logo!
+   {:subject      (trs "[{0}] Two-factor authentication was removed from your account" (app-name-trs))
+    :recipients   [email]
+    :message-type :html
+    :message      (channel.template/render "mfa_removed_by_admin" (assoc (common-context) :logoHeader true))}))
+
+(defn send-mfa-login-code-email!
+  "Send an email containing a one-time sign-in `code` to `email`.
+  Uses [[metabase.channel.email/send-message-or-throw!]] directly so that SMTP delivery failures
+  propagate to the caller — the /send-email-otp endpoint returns 500 on failure. Because of this,
+  the data-URI logo-attachment handling in [[send-email-with-logo!]] is skipped."
+  [email code]
+  {:pre [(u/email? email) (string? code)]}
+  (email/send-message-or-throw!
+   {:subject      (trs "[{0}] Your sign-in code" (app-name-trs))
+    :recipients   [email]
+    :message-type :html
+    :message      (channel.template/render "mfa_login_code" (assoc (common-context) :logoHeader true :code code))}))
+
+;;; ---- end MFA notification emails ----
+
+(defn all-admin-recipients
+  "Return a sequence of email addresses for all Admin users who have accepted their invitation (i.e. have logged in at
+  least once). Admins who have been invited but not yet accepted are excluded — they shouldn't receive notifications
+  about activity in an instance they haven't joined.
+
+  The first recipient will be the site admin (or oldest accepted admin if unset), which is the address that should be
+  used in `mailto` links (e.g., for the new user to email with any questions)."
   []
   (concat (when-let [admin-email (system/admin-email)]
             [admin-email])
-          (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, :type "personal" {:order-by [[:id :asc]]})))
+          (t2/select-fn-set :email 'User
+                            :is_superuser true
+                            :is_active    true
+                            :last_login   [:not= nil]
+                            :type         "personal"
+                            {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
   [new-user & {:keys [google-auth?]}]
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
-    (email/send-message!
+    (send-email-with-logo!
      {:subject      (str (if google-auth?
                            (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
                            (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
       :recipients   recipients
       :message-type :html
-      :message      (channel.template/render "metabase/channel/email/user_joined_notification.hbs"
-                                             (merge (common-context)
-                                                    {:logoHeader        true
-                                                     :joinedUserName    (or (:first_name new-user) (:email new-user))
-                                                     :joinedViaSSO      google-auth?
-                                                     :joinedUserEmail   (:email new-user)
-                                                     :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
-                                                     :adminEmail        (first recipients)
-                                                     :joinedUserEditUrl (str (system/site-url) "/admin/people")}))})))
+      :message      (channel.template/render "user_joined_notification"
+                                             {:context           {:application_name     (appearance/application-name)
+                                                                  :application_color    (channel.render/primary-color)
+                                                                  :application_logo_url (logo-url)
+                                                                  :site_url             (system/site-url)}
+                                              :payload           {:style {:color_text_dark channel.render/color-text-dark}}
+                                              :joinedUserName    (or (:first_name new-user) (:email new-user))
+                                              :joinedViaSSO      google-auth?
+                                              :joinedUserEmail   (:email new-user)
+                                              :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
+                                              :adminEmail        (first recipients)
+                                              :joinedUserEditUrl (str (system/site-url) "/admin/people")})})))
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
@@ -121,7 +204,7 @@
          ((some-fn string? nil?) password-reset-url)]}
   (let [google-sso? (= :google sso-source)
         message-body (channel.template/render
-                      "metabase/channel/email/password_reset.hbs"
+                      "password_reset"
                       (merge (common-context)
                              {:emailType        "password_reset"
                               :google           google-sso?
@@ -131,7 +214,7 @@
                               :isActive         is-active?
                               :adminEmail       (system/admin-email)
                               :adminEmailSet    (boolean (system/admin-email))}))]
-    (email/send-message!
+    (send-email-with-logo!
      {:subject      (trs "[{0}] Password Reset Request" (app-name-trs))
       :recipients   [email]
       :message-type :html
@@ -147,14 +230,18 @@
         user-locale  (or (:locale user-info) (i18n/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
         username     (or (:first_name user-info) (:last_name user-info) (:email user-info))
-        context      (merge (common-context)
-                            {:first-name username
-                             :device     (:device_description login-history)
-                             :location   (:location login-history)
-                             :timestamp  timestamp})
-        message-body (channel.template/render "metabase/channel/email/login_from_new_device.hbs"
+        context      {:context    {:application_name     (appearance/application-name)
+                                   :application_color    (channel.render/primary-color)
+                                   :application_logo_url  (logo-url)
+                                   :site_url             (system/site-url)}
+                      :payload    {:style {:color_text_dark channel.render/color-text-dark}}
+                      :first-name username
+                      :device     (:device_description login-history)
+                      :location   (:location login-history)
+                      :timestamp  timestamp}
+        message-body (channel.template/render "login_from_new_device"
                                               context)]
-    (email/send-message!
+    (send-email-with-logo!
      {:subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) username)
       :recipients   [(:email user-info)]
       :message-type :html
@@ -171,11 +258,12 @@
                                          :from     [[:permissions_group_membership :pgm]]
                                          :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
                                          :where    [:and
-                                                    [:exists {:select [1]
-                                                              :from [[:permissions :p]]
-                                                              :where [:and
-                                                                      [:= :p.group_id :pg.id]
-                                                                      [:= :p.object monitoring]]}]]
+                                                    [:exists ^:allow-subquery
+                                                     {:select [1]
+                                                      :from [[:permissions :p]]
+                                                      :where [:and
+                                                              [:= :p.group_id :pg.id]
+                                                              [:= :p.object monitoring]]}]]
                                          :group-by [:pgm.user_id]}
                                         app-db/query
                                         (mapv :user_id)))
@@ -193,8 +281,10 @@
                                                       [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
-  "Format and send an email informing the user about errors in the persistent model refresh task."
-  [database-id persisted-infos trigger]
+  "Format and send an email informing the user about errors in the persistent model refresh task.
+  `trigger-label` is the human-readable label (e.g. \"Scheduled\" or \"Manual\") rendered as
+  `Last run trigger` in the email."
+  [database-id persisted-infos trigger-label]
   {:pre [(seq persisted-infos)]}
   (let [database (:database (first persisted-infos))
         emails (admin-or-ee-monitoring-details-emails database-id)
@@ -212,11 +302,11 @@
                     :collection-name (:name collection)
                     ;; February 1, 2022, 3:10 PM
                     :last-run-at (t/format "MMMM d, yyyy, h:mm a z" (t/zoned-date-time (:refresh_begin persisted-info) timezone))
-                    :last-run-trigger trigger
+                    :last-run-trigger trigger-label
                     :card-url (urls/card-url (:id card))
                     :collection-url (urls/collection-url (:id collection))
                     :caching-log-details-url (urls/tools-caching-details-url (:id persisted-info))})}
-        message-body (channel.template/render "metabase/channel/email/persisted-model-error.hbs"
+        message-body (channel.template/render "persisted-model-error"
                                               (merge (common-context) context))]
     (when (seq emails)
       (email/send-message!
@@ -235,11 +325,11 @@
                         :heading      (trs "We hope you''ve been enjoying Metabase.")
                         :callToAction (trs "Would you mind taking a quick 5 minute survey to tell us how it’s going?")
                         :link         "https://metabase.com/feedback/active"})
-        email {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
-               :recipients   [email]
-               :message-type :html
-               :message      (channel.template/render "metabase/channel/email/follow_up_email.hbs" context)}]
-    (email/send-message! email)))
+        email-msg {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
+                   :recipients   [email]
+                   :message-type :html
+                   :message      (channel.template/render "follow_up_email" context)}]
+    (send-email-with-logo! email-msg)))
 
 (defn send-creator-sentiment-email!
   "Format and send an email to a creator with a link to a survey. If a [[blob]] is included, it will be turned into json
@@ -262,8 +352,8 @@
         message {:subject      "Metabase would love your take on something"
                  :recipients   [email]
                  :message-type :html
-                 :message      (channel.template/render "metabase/channel/email/creator_sentiment_email.hbs" context)}]
-    (email/send-message! message)))
+                 :message      (channel.template/render "creator_sentiment_email" context)}]
+    (send-email-with-logo! message)))
 
 (defn generate-pulse-unsubscribe-hash
   "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions.
@@ -296,34 +386,31 @@
     :rows))
 
 (defn- send-email-sync!
-  ([recipients subject template-path template-context]
-   (send-email-sync! recipients subject template-path template-context false))
-  ([recipients subject template-path template-context bcc?]
+  ([recipients subject template-name template-context]
+   (send-email-sync! recipients subject template-name template-context false))
+  ([recipients subject template-name template-context bcc?]
    (when (seq recipients)
      (try
        (email/send-email-retrying!
         {:recipients   recipients
          :message-type :html
          :subject      subject
-         :message      (channel.template/render template-path template-context)
+         :message      (channel.template/render template-name template-context)
          :bcc?         bcc?})
        (catch Exception e
-         (log/errorf e "Failed to send message to '%s' with subject '%s'" (str/join ", " recipients) subject))))))
+         (log/errorf "Failed to send message to %d recipient(s): %s" (count recipients) (ex-message e)))))))
 
 (defn- send-email!
   "Sends an email on a background thread, returning a future."
   [& args]
   (future (apply send-email-sync! args)))
 
-(defn- template-path [template-name]
-  (str "metabase/channel/email/" template-name ".hbs"))
-
-;; Paths to the templates for all of the alerts emails
-(def ^:private you-unsubscribed-template   (template-path "notification_card_unsubscribed"))
-(def ^:private removed-template            (template-path "notification_card_you_were_removed"))
-(def ^:private added-template              (template-path "notification_card_you_were_added"))
-(def ^:private changed-stopped-template    (template-path "card_notification_changed_stopped"))
-(def ^:private archived-template           (template-path "card_notification_archived"))
+;; Template names for the alert emails
+(def ^:private you-unsubscribed-template   "notification_card_unsubscribed")
+(def ^:private removed-template            "notification_card_you_were_removed")
+(def ^:private added-template              "notification_card_you_were_added")
+(def ^:private changed-stopped-template    "card_notification_changed_stopped")
+(def ^:private archived-template           "card_notification_archived")
 
 (defn- username
   [user]
@@ -385,15 +472,15 @@
      :recipients (distinct (map :email [pulse-creator dashboard-creator]))
      :message-type :html
      :message (channel.template/render
-               "metabase/channel/email/broken_subscription_notification.hbs"
+               "broken_subscription_notification"
                (merge context
                       {:dashboardName            dashboard-name
                        :badParameters            (map
                                                   (fn [{:keys [value] :as param}]
                                                     (cond-> param
                                                       (coll? value)
-                                                      (update :value #(lib.util/join-strings-with-conjunction
-                                                                       (i18n/tru "or")
+                                                      (update :value #(i18n/join-strings-with-conjunction
+                                                                       (tru "or")
                                                                        %))))
                                                   bad-parameters)
                        :affectedUsers            (map

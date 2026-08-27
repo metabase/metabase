@@ -2,9 +2,10 @@
   "Functions shared by the various SSO implementations"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -14,7 +15,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- maybe-throw-user-provisioning
+(defn maybe-throw-user-provisioning
+  "Throw an error if `user-provisioning-enabled?` is falsey, indicating new user creation is not allowed."
   [user-provisioning-type]
   (when (not user-provisioning-type)
     (throw (ex-info (trs "Sorry, but you''ll need a {0} account to view this page. Please contact your administrator."
@@ -27,19 +29,23 @@
 
 (defmethod check-user-provisioning :saml
   [_]
-  (maybe-throw-user-provisioning (sso-settings/saml-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/saml-user-provisioning-enabled?)))
 
 (defmethod check-user-provisioning :ldap
   [_]
-  (maybe-throw-user-provisioning (sso-settings/ldap-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/ldap-user-provisioning-enabled?)))
 
 (defmethod check-user-provisioning :jwt
   [_]
-  (maybe-throw-user-provisioning (sso-settings/jwt-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/jwt-user-provisioning-enabled?)))
 
 (defmethod check-user-provisioning :slack-connect
   [_]
   (maybe-throw-user-provisioning (sso-settings/slack-connect-user-provisioning-enabled)))
+
+(defmethod check-user-provisioning :oidc
+  [_]
+  (maybe-throw-user-provisioning (ee-sso-settings/oidc-user-provisioning-enabled?)))
 
 (defn relative-uri?
   "Checks that given `uri` is not an absolute (so no scheme and no host)."
@@ -65,22 +71,46 @@
                          (= (.getHost redirect) our-host)))
       redirect-url)
     (catch Exception e
-      (log/error e "Invalid redirect URL")
+      (log/errorf "Invalid redirect URL: %s" (ex-message e))
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))
 
+(defn group-names->strings
+  "Coerce a group-names value (a single string or a collection) into a sequence of the string names it contains.
+  Non-string entries are ignored."
+  [group-names]
+  (into [] (filter string?) (cond-> group-names (string? group-names) vector)))
+
+(defn group-names->ids
+  "Translate a user's group names to a set of Metabase group IDs using the given group mappings."
+  [group-names group-mappings]
+  (->> (group-names->strings group-names)
+       (map keyword)
+       (mapcat group-mappings)
+       set))
+
+(defn all-mapped-group-ids
+  "Returns the set of all Metabase group IDs that have configured mappings."
+  [group-mappings]
+  (-> group-mappings vals flatten set))
+
 (defn stringify-valid-attributes
-  "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings"
+  "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings.
+  Multi-value attributes (vectors, lists, lazy seqs — produced by SAML/JWT for repeated attributes) are joined into a
+  comma-separated string so that downstream code receives a usable string value."
   [attrs]
   (->> attrs
        (keep (fn [[key value]]
                (cond
-                 (or (vector? value) (map? value) (nil? value))
-                 (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
+                 (or (map? value) (nil? value))
+                 (log/warnf "Dropping attribute '%s' with non-stringable value" (name key))
 
                  (str/starts-with? (name key) "@")
                  (log/warnf "Dropping attribute '%s', keys beginning with `@` are reserved" (name key))
+
+                 (sequential? value)
+                 [(u/qualified-name key) (str/join "," (map str value))]
 
                  :else
                  [(u/qualified-name key) (str value)])))

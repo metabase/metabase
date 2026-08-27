@@ -500,8 +500,8 @@
               (and resolved (:ns resolved))
               (symbol (name (:ns resolved)) (name (:name resolved)))
 
-             ;; if it wasn't resolved but is still qualified it's probably using the full namespace name rather than an
-             ;; alias.
+              ;; if it wasn't resolved but is still qualified it's probably using the full namespace name rather than an
+              ;; alias.
               (qualified-symbol? sexpr)
               sexpr)))))
     ;; some symbols like `*count/Integer` aren't resolvable.

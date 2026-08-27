@@ -1,0 +1,86 @@
+import { useEffect, useState } from "react";
+
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import { refetchCurrentUser } from "metabase/current-user";
+import { refetchSiteSettings } from "metabase/settings";
+
+import {
+  type McpAppsUserAndSettingsFetchErrorType,
+  getMcpAppsUserAndSettingsFetchErrorMessage,
+  getMcpAppsUserAndSettingsFetchErrorType,
+} from "../utils/getMcpAppsUserAndSettingsFetchError";
+
+interface UseMcpUserAndSettingsFetchOptions {
+  instanceUrl: string;
+  uiCredential: string;
+  store: SdkStore;
+}
+
+interface UseMcpUserAndSettingsFetchResult {
+  isSettingsReady: boolean;
+  userAndSettingsFetchError: string | null;
+}
+
+export function useMcpUserAndSettingsFetch({
+  instanceUrl,
+  uiCredential,
+  store,
+}: UseMcpUserAndSettingsFetchOptions): UseMcpUserAndSettingsFetchResult {
+  const [isSettingsReady, setIsSettingsReady] = useState(false);
+
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // The OSS no-op initAuth never loads user or settings. Do it ourselves so
+  // selectors like getTokenFeature has populated settings.
+  // We also no-op the EE auth flow (auth.ts) when in MCP Apps route.
+  useEffect(() => {
+    let isMounted = true;
+
+    const setErrorByType = (type: McpAppsUserAndSettingsFetchErrorType) =>
+      setFetchError(getMcpAppsUserAndSettingsFetchErrorMessage(type));
+
+    async function fetchUserAndSettings() {
+      try {
+        setIsSettingsReady(false);
+        setFetchError(null);
+
+        if (!uiCredential) {
+          setErrorByType("auth");
+          return;
+        }
+
+        if (!instanceUrl) {
+          setErrorByType("network");
+          return;
+        }
+
+        // `unwrap` both so an auth/network failure lands in the catch below
+        // instead of silently reporting ready.
+        await Promise.all([
+          store.dispatch(refetchCurrentUser()).unwrap(),
+          store.dispatch(refetchSiteSettings()).unwrap(),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setIsSettingsReady(true);
+      } catch (error) {
+        console.error("Error initializing MCP app", error);
+
+        if (isMounted) {
+          setErrorByType(getMcpAppsUserAndSettingsFetchErrorType(error));
+        }
+      }
+    }
+
+    fetchUserAndSettings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [instanceUrl, uiCredential, store]);
+
+  return { isSettingsReady, userAndSettingsFetchError: fetchError };
+}

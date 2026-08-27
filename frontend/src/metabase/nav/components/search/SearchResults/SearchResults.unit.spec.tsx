@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -12,9 +11,10 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
+import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import type { SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -56,17 +56,18 @@ const setup = async ({
 
   const onEntitySelect = jest.fn();
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <SearchResults
           onEntitySelect={onEntitySelect}
           forceEntitySelect={forceEntitySelect}
           searchText={searchText}
           footerComponent={footer}
+          context="search-bar"
         />
-      )}
+      }
     />,
     {
       withRouter: true,
@@ -77,7 +78,7 @@ const setup = async ({
 
   return {
     onEntitySelect,
-    history: checkNotNull(history),
+    router: checkNotNull(router),
   };
 };
 
@@ -116,7 +117,7 @@ describe("SearchResults", () => {
   });
 
   it("should trigger the onEntitySelect callback when forceEntitySelect=true and an entity is selected", async () => {
-    const { history, onEntitySelect } = await setup({
+    const { router, onEntitySelect } = await setup({
       forceEntitySelect: true,
     });
 
@@ -129,18 +130,18 @@ describe("SearchResults", () => {
     expect(onEntitySelect.mock.lastCall[0].description).toEqual(
       TEST_SEARCH_RESULTS[0].description,
     );
-    expect(history.getCurrentLocation().pathname).toEqual("/");
+    expect(router.location.pathname).toEqual("/");
   });
 
   it("should redirect to entity URL when forceEntitySelect=false and an entity is selected", async () => {
-    const { history, onEntitySelect } = await setup({
+    const { router, onEntitySelect } = await setup({
       forceEntitySelect: false,
     });
 
     await userEvent.click(screen.getByText(TEST_SEARCH_RESULTS[0].name));
 
     expect(onEntitySelect).not.toHaveBeenCalled();
-    expect(history.getCurrentLocation().pathname).toEqual("/question/1-test-0");
+    expect(router.location.pathname).toEqual("/question/1-test-0");
   });
 
   it("should redirect to URL when the entity is an indexed-entity type", async () => {
@@ -151,7 +152,7 @@ describe("SearchResults", () => {
       model: "indexed-entity",
     });
 
-    const { history, onEntitySelect } = await setup({
+    const { router, onEntitySelect } = await setup({
       searchResults: [indexedEntityResult],
     });
     await userEvent.click(screen.getByText(indexedEntityResult.name));
@@ -163,7 +164,7 @@ describe("SearchResults", () => {
     expect(onEntitySelect.mock.lastCall[0].description).toEqual(
       indexedEntityResult.description,
     );
-    expect(history.getCurrentLocation().pathname).toEqual("/");
+    expect(router.location.pathname).toEqual("/");
   });
 
   it("should render the footer with metadata", async () => {

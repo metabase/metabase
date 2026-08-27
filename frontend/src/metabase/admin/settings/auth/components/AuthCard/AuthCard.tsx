@@ -1,20 +1,18 @@
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { useCallback, useState } from "react";
 import { c, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { isNotNull } from "metabase/lib/types";
-import { Anchor, Button, Text } from "metabase/ui";
+import { Link } from "metabase/common/components/Link";
+import { ActionIcon, Anchor, Button, Icon, Menu, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
 
 import {
   CardBadge,
   CardDescription,
   CardHeader,
-  CardMenu,
   CardRoot,
   CardTitle,
 } from "./AuthCard.styled";
@@ -27,8 +25,8 @@ export interface AuthCardProps {
   description: string;
   isEnabled: boolean;
   isConfigured: boolean;
-  onChange: (value: boolean) => void;
-  onDeactivate: () => void;
+  onChange?: (value: boolean) => void;
+  onDeactivate?: () => void;
 }
 
 export const AuthCard = ({
@@ -55,7 +53,7 @@ export const AuthCard = ({
   }, []);
 
   const handleDeactivate = useCallback(async () => {
-    await onDeactivate();
+    await onDeactivate?.();
     handleClose();
   }, [onDeactivate, handleClose]);
 
@@ -64,7 +62,7 @@ export const AuthCard = ({
   const footer = isEnvSetting ? (
     <Text>
       {c("{0} is the name of a variable")
-        .jt`Set with env var ${(<Anchor key="anchor" href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>)}`}
+        .jt`Set with env var ${<Anchor key="anchor" href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>}`}
     </Text>
   ) : null;
 
@@ -77,7 +75,7 @@ export const AuthCard = ({
       isConfigured={isConfigured && !isEnvSetting}
       footer={footer}
     >
-      {isConfigured && !isEnvSetting && (
+      {isConfigured && !isEnvSetting && onChange && (
         <AuthCardMenu
           isEnabled={isEnabled}
           onChange={onChange}
@@ -160,22 +158,29 @@ const AuthCardMenu = ({
   onChange,
   onDeactivate,
 }: AuthCardMenuProps): JSX.Element => {
-  const menuItems = useMemo(
-    () =>
-      [
-        {
-          title: isEnabled ? t`Pause` : t`Resume`,
-          icon: isEnabled ? "pause" : "play",
-          action: () => onChange(!isEnabled),
-        },
-        onDeactivate && {
-          title: `Deactivate`,
-          icon: "close",
-          action: onDeactivate,
-        },
-      ].filter(isNotNull),
-    [isEnabled, onChange, onDeactivate],
+  return (
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <ActionIcon aria-label={t`Actions`} variant="subtle" ml="auto">
+          <Icon name="ellipsis" />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item
+          leftSection={<Icon name={isEnabled ? "pause" : "play"} aria-hidden />}
+          onClick={() => onChange(!isEnabled)}
+        >
+          {isEnabled ? t`Pause` : t`Resume`}
+        </Menu.Item>
+        {onDeactivate && (
+          <Menu.Item
+            leftSection={<Icon name="close" aria-hidden />}
+            onClick={onDeactivate}
+          >
+            {t`Deactivate`}
+          </Menu.Item>
+        )}
+      </Menu.Dropdown>
+    </Menu>
   );
-
-  return <CardMenu triggerIcon="ellipsis" items={menuItems} />;
 };

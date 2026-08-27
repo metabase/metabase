@@ -15,16 +15,16 @@
 
   &:focus-visible,
   &.selected {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-input-focus);
   }
 
   &:hover {
-    background-color: var(--mb-color-background-hover);
+    background-color: var(--mb-color-background_surface-hover);
   }
 
   &.active {
     color: var(--mb-color-text-brand);
-    background-color: var(--mb-color-background-selected);
+    background-color: var(--mb-color-background_surface-selected);
 
     .icon {
       opacity: 1;

@@ -38,24 +38,20 @@
              (mi/perms-objects-set dashboard :read)))
       (is (= (mi/perms-objects-set dashtab :write)
              (mi/perms-objects-set dashboard :write))))
-
     (testing (str "Check that if a Dashtab of a Dashboard is in a Collection, someone who would not be able to see it under the old "
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
       (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
         (mi/perms-objects-set dashtab :read)
         (is (true? (mi/can-read? dashtab)))
         (is (= false (mi/can-write? dashtab)))))
-
     (testing "Do we have *write* Permissions for a dashtab if we have *write* Permissions for the Collection it's in?"
       (binding [api/*current-user-permissions-set* (delay #{(perms/collection-readwrite-path collection)})]
         (is (true? (mi/can-read? dashtab)))
         (is (true? (mi/can-write? dashtab)))))
-
     (testing "A user that can't see the Collection that the Dashboard is in can't read and write the dashtab"
       (mt/with-current-user (mt/user->id :lucky)
         (is (= false (mi/can-read? dashboard)))
         (is (= false (mi/can-write? dashboard)))))
-
     (testing "A user that can see the Collection that the Dashboard is in can read and write the dashtab"
       (mt/with-current-user (mt/user->id :rasta)
         (is (true? (mi/can-read? dashboard)))
@@ -66,7 +62,6 @@
     (with-dashtab-in-personal-collection {:keys [dashtab dashcard]}
       (t2/delete! dashtab)
       (is (= nil (t2/select-one :model/DashboardCard :id (:id dashcard))))))
-
   (testing "Deleting a dashboard will delete all its dashcards"
     (with-dashtab-in-personal-collection {:keys [dashboard dashtab dashcard]}
       (t2/delete! dashboard)

@@ -1,8 +1,10 @@
 (ns metabase-enterprise.remote-sync.permissions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.permissions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.collections.models.collection :as collections]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -252,7 +254,6 @@
             (testing "remote-synced-collection? returns false for tenant collections by default"
               (is (false? (collections/remote-synced-collection? tenant-coll))
                   "Tenant collection should NOT be remote-synced by default"))
-
             (testing "Tenant collections are editable by superuser by default"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (true? (mi/can-write? tenant-coll))
@@ -270,7 +271,6 @@
             (testing "remote-synced-collection? returns true when is_remote_synced flag is set"
               (is (true? (collections/remote-synced-collection? tenant-coll))
                   "Tenant collection should be remote-synced when flag is set"))
-
             (testing "Tenant collections are NOT editable by superuser when remote-sync-type is read-only"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (false? (mi/can-write? tenant-coll))
@@ -288,7 +288,6 @@
             (testing "remote-synced-collection? returns true when is_remote_synced flag is set"
               (is (true? (collections/remote-synced-collection? tenant-coll))
                   "Tenant collection should be remote-synced when flag is set"))
-
             (testing "Tenant collections ARE editable by superuser when remote-sync-type is read-write"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (true? (mi/can-write? tenant-coll))
@@ -311,16 +310,13 @@
             (testing "Parent tenant collection is remote-synced"
               (is (true? (collections/remote-synced-collection? parent-coll))
                   "Parent tenant collection should be remote-synced"))
-
             (testing "Child tenant collection is remote-synced"
               (is (true? (collections/remote-synced-collection? child-coll))
                   "Child tenant collection should be remote-synced"))
-
             (testing "Parent tenant collection is not editable by superuser"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (false? (mi/can-write? parent-coll))
                     "Parent tenant collection should not be writable")))
-
             (testing "Child tenant collection is not editable by superuser"
               (mt/with-current-user (mt/user->id :crowberto)
                 (is (false? (mi/can-write? child-coll))
@@ -344,24 +340,19 @@
             (testing "Remote-synced tenant collection is remote-synced"
               (is (true? (collections/remote-synced-collection? remote-synced-tenant))
                   "Remote-synced tenant collection should be remote-synced"))
-
             (testing "Regular tenant collection is NOT remote-synced"
               (is (false? (collections/remote-synced-collection? regular-tenant))
                   "Regular tenant collection should NOT be remote-synced"))
-
             (testing "Regular collection is NOT remote-synced"
               (is (false? (collections/remote-synced-collection? regular-coll))
                   "Regular collection should NOT be remote-synced"))
-
             (mt/with-current-user (mt/user->id :crowberto)
               (testing "Remote-synced tenant collection is not editable by superuser"
                 (is (false? (mi/can-write? remote-synced-tenant))
                     "Remote-synced tenant collection should not be writable"))
-
               (testing "Regular tenant collection is editable by superuser"
                 (is (true? (mi/can-write? regular-tenant))
                     "Regular tenant collection should be writable"))
-
               (testing "Regular collection remains editable by superuser"
                 (is (true? (mi/can-write? regular-coll))
                     "Regular collection should be writable")))))))))
@@ -562,7 +553,7 @@
 
 (deftest transform-superuser-can-read-test
   (testing "can_read should be true for superusers"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
                                                         :namespace :transforms}
@@ -581,7 +572,7 @@
 
 (deftest transform-non-superuser-cannot-read-test
   (testing "can_read should be false for non-superusers"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
                                                         :namespace :transforms}
@@ -600,7 +591,7 @@
 
 (deftest transform-globally-read-only-when-remote-sync-enabled-test
   (testing "can_write should be false for ALL transforms when remote-sync is enabled and type is read-only"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-only]
@@ -621,7 +612,7 @@
 
 (deftest transform-writable-when-remote-sync-read-write-test
   (testing "can_write should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
@@ -642,7 +633,7 @@
 
 (deftest transform-writable-when-remote-sync-disabled-test
   (testing "can_write should be true for transforms when remote-sync is not enabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         ;; remote-sync-url is not set, so remote-sync-enabled returns false
         (mt/with-temporary-setting-values [settings/remote-sync-url nil
@@ -664,7 +655,7 @@
 
 (deftest transform-creation-blocked-in-read-only-mode-test
   (testing "can_create should be false for transforms when remote-sync is enabled and type is read-only"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-only]
@@ -684,7 +675,7 @@
 
 (deftest transform-creation-allowed-in-read-write-mode-test
   (testing "can_create should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
@@ -704,7 +695,7 @@
 
 (deftest transform-non-superuser-cannot-write-test
   (testing "can_write should be false for non-superusers even when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
           (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
@@ -722,9 +713,33 @@
             (is (false? (mi/can-write? (t2/select-one :model/Transform :id transform-id)))
                 "Non-superuser should not be able to write transforms even when remote-sync-type is read-write")))))))
 
+(deftest transform-write-endpoints-return-403-in-read-only-remote-sync-test
+  (testing "PUT/DELETE /api/transform/:id reject with 403 when remote-sync is enabled and read-only"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
+                                         settings/remote-sync-type :read-only]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                        :namespace :transforms}
+                       :model/Transform {transform-id :id} {:name "Read-only Transform"
+                                                            :collection_id coll-id
+                                                            :source {:type "query"
+                                                                     :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                                            :target {:database (mt/id)
+                                                                     :type "table"
+                                                                     :schema "public"
+                                                                     :name "target_table"}}]
+          (testing "PUT is rejected"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :crowberto :put 403 (str "transform/" transform-id) {:name "renamed"}))))
+          (testing "DELETE is rejected"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :crowberto :delete 403 (str "transform/" transform-id)))))
+          (testing "transform is untouched"
+            (is (= "Read-only Transform" (t2/select-one-fn :name :model/Transform :id transform-id)))))))))
+
 (deftest transform-non-superuser-cannot-create-test
   (testing "can_create should be false for non-superusers even when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
           (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"

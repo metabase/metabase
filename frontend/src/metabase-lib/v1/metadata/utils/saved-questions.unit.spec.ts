@@ -1,4 +1,9 @@
 import {
+  createMockCollection,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
+
+import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaId,
@@ -11,12 +16,13 @@ import {
 describe("saved question helpers", () => {
   describe("getCollectionVirtualSchemaName", () => {
     it("should return 'Everything else' for root collection", () => {
-      expect(getCollectionVirtualSchemaName({ id: null })).toBe(
-        "Everything else",
-      );
-      expect(getCollectionVirtualSchemaName({ id: "root" })).toBe(
-        "Everything else",
-      );
+      expect(getCollectionVirtualSchemaName(null)).toBe("Everything else");
+      expect(
+        getCollectionVirtualSchemaName({ id: null, name: "Our analytics" }),
+      ).toBe("Everything else");
+      expect(
+        getCollectionVirtualSchemaName({ id: "root", name: "Our analytics" }),
+      ).toBe("Everything else");
     });
 
     it("should return 'Everything else' if collection is not passed", () => {
@@ -48,11 +54,15 @@ describe("saved question helpers", () => {
         expectedName: encodeURIComponent("Everything else"),
       },
       {
-        collection: { id: null },
+        collection: null,
         expectedName: encodeURIComponent("Everything else"),
       },
       {
-        collection: { id: "root" },
+        collection: { id: null, name: "Our analytics" },
+        expectedName: encodeURIComponent("Everything else"),
+      },
+      {
+        collection: { id: "root" as const, name: "Our analytics" },
         expectedName: encodeURIComponent("Everything else"),
       },
       { collection: { id: 3, name: "Marketing" }, expectedName: "Marketing" },
@@ -87,14 +97,12 @@ describe("saved question helpers", () => {
       expect(isVirtualCardId(4)).toBe(false);
     });
 
-    it("should return false for garbage", () => {
+    it("should return false for non-virtual ids", () => {
       expect(isVirtualCardId()).toBe(false);
-      expect(isVirtualCardId(null)).toBe(false);
       expect(isVirtualCardId(null)).toBe(false);
       expect(isVirtualCardId(0)).toBe(false);
       expect(isVirtualCardId(-1)).toBe(false);
       expect(isVirtualCardId("1")).toBe(false);
-      expect(isVirtualCardId({ foo: "bar" })).toBe(false);
     });
   });
 
@@ -110,13 +118,7 @@ describe("saved question helpers", () => {
       });
     });
 
-    [
-      { id: undefined },
-      { id: null },
-      { id: 123 },
-      { id: true },
-      { id: { foo: "bar" } },
-    ].forEach((testCase) => {
+    [{ id: undefined }, { id: null }, { id: 123 }].forEach((testCase) => {
       const { id } = testCase;
 
       it(`should handle non string input (${id})`, () => {
@@ -136,19 +138,14 @@ describe("saved question helpers", () => {
       id: 11,
       name: "Q1",
       description: "Text",
-      moderated_status: "verified",
-      dataset_query: {
-        database: 4,
-      },
+      moderated_status: "verified" as const,
+      dataset_query: createMockStructuredDatasetQuery({ database: 4 }),
     };
 
     it("correctly converts questions in normal collections", () => {
       const question = {
         ...COMMON_QUESTION_DATA,
-        collection: {
-          id: 8,
-          name: "Marketing",
-        },
+        collection: createMockCollection({ id: 8, name: "Marketing" }),
       };
 
       expect(convertSavedQuestionToVirtualTable(question)).toEqual({

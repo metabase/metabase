@@ -1,11 +1,13 @@
 ---
-title: Metabase CLI
-description: CLI commands for managing your Metabase instance, including database migrations, serialization, and administrative tasks.
+title: Metabase JAR commands
+description: Commands built into the Metabase JAR for managing your instance, including database migrations, serialization, and administrative tasks.
 ---
 
-# Metabase CLI
+# Metabase JAR commands
 
-Metabase ships with some handy CLI commands for administration, maintenance, and automation tasks. These commands let you manage your Metabase instance, migrate databases, handle serialization, and generate documentation.
+> Looking for the `mb` command-line client that drives a Metabase instance over its API, on its own or through an AI agent? Check out the [Metabase CLI](./metabase-cli.md).
+
+Metabase ships with some handy commands for administration, maintenance, and automation tasks. These commands run on the server, built into the Metabase JAR, and let you manage your Metabase instance, migrate databases, handle serialization, and generate documentation.
 
 To view a list of commands, run the Metabase jar followed by `help`.
 
@@ -32,10 +34,6 @@ Generates a markdown file with some documentation and an example configuration f
 
 Print a list of all multimethods available for a driver to implement, optionally with their docstrings.
 
-## `drop-entity-ids`
-
-Drop entity IDs for instances of serializable models. Useful for migrating from v1 serialization (x.46 and earlier) to v2 (x.47+).
-
 ## `dump-to-h2 h2-filename opts`
 
 Transfer data from existing database to newly created H2 DB with specified filename. Target H2 file is deleted before dump, unless the --keep-existing flag is given.
@@ -60,7 +58,6 @@ Options:
 - `-S, --no-settings` - Do not export settings.yaml
 - `-D, --no-data-model` - Do not export any data model entities; useful for subsequent exports.
 - `-f, --include-field-values` - Include field values along with field metadata.
-- `-s, --include-database-secrets` - Include database connection details (in plain text; use caution).
 - `-e, --continue-on-error` - Do not break execution on errors.
 - `--full-stacktrace` - Output full stacktraces on errors.
 
@@ -100,10 +97,6 @@ Reset the password for a user with `email-address`.
 ## `rotate-encryption-key new-key`
 
 Rotate the encryption key of a metabase database. The MB_ENCRYPTION_SECRET_KEY environment variable has to be set to the current key, and the parameter `new-key` has to be the new key. `new-key` has to be at least 16 chars.
-
-## `seed-entity-ids`
-
-Add entity IDs for instances of serializable models that don't already have them.
 
 ## `version`
 

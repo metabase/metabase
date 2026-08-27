@@ -431,14 +431,6 @@ describe("issue 17160", () => {
     });
   }
 
-  function visitPublicSourceDashboard() {
-    cy.get("@sourceDashboardUUID").then((uuid) => {
-      cy.visit(`/public/dashboard/${uuid}`);
-
-      cy.findByTextEnsureVisible("Enormous Wool Car");
-    });
-  }
-
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
@@ -478,37 +470,6 @@ describe("issue 17160", () => {
 
     assertMultipleValuesFilterState();
   });
-
-  it(
-    "should pass multiple filter values to public questions and dashboards (metabase#17160-2)",
-    { tags: "@skip" },
-    () => {
-      // FIXME: setup public dashboards
-      setup();
-
-      // 1. Check click behavior connected to a public question
-      visitPublicSourceDashboard();
-
-      cy.findAllByText("click-behavior-question-label").eq(0).click();
-
-      cy.url().should("include", "/public/question");
-
-      assertMultipleValuesFilterState();
-
-      // 2. Check click behavior connected to a publicdashboard
-      visitPublicSourceDashboard();
-
-      cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
-
-      cy.url().should("include", "/public/dashboard");
-      cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(TARGET_DASHBOARD_NAME);
-
-      assertMultipleValuesFilterState();
-    },
-  );
 });
 
 describe("issue 18454", () => {
@@ -630,70 +591,8 @@ describe("issue 23137", () => {
   });
 });
 
-describe("issues 27020 and 27105: static-viz fails to render for certain date formatting options", () => {
-  const questionDetails27105 = {
-    name: "27105",
-    native: { query: "select current_date::date, 1", "template-tags": {} },
-    display: "table",
-    visualization_settings: {
-      column_settings: {
-        '["name","CAST(CURRENT_DATE AS DATE)"]': {
-          date_style: "dddd, MMMM D, YYYY",
-        },
-      },
-      "table.pivot_column": "CAST(CURRENT_DATE AS DATE)",
-      "table.cell_column": "1",
-    },
-  };
-
-  const questionDetails27020 = {
-    name: "27020",
-    native: {
-      query: 'select current_date as "created_at", 1 "val"',
-      "template-tags": {},
-    },
-    visualization_settings: {
-      column_settings: { '["name","created_at"]': { date_abbreviate: true } },
-      "table.pivot_column": "created_at",
-      "table.cell_column": "val",
-    },
-  };
-
-  function assertStaticVizRenders(questionDetails) {
-    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.request({
-        method: "GET",
-        url: `/api/pulse/preview_card_png/${id}`,
-        failOnStatusCode: false,
-      }).then(({ status, body }) => {
-        expect(status).to.eq(200);
-        expect(body).to.contain("PNG");
-      });
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should render static-viz when date formatting is abbreviated (metabase#27020)", () => {
-    // This is currently the default setting, anyway.
-    // But we want to explicitly set it in case something changes in the future,
-    // because it is a crucial step for this reproduction.
-    H.updateSetting("custom-formatting", {
-      "type/Temporal": {
-        date_style: "MMMM D, YYYY",
-      },
-    });
-
-    assertStaticVizRenders(questionDetails27020);
-  });
-
-  it("should render static-viz when date formatting contains day (metabase#27105)", () => {
-    assertStaticVizRenders(questionDetails27105);
-  });
-});
+// Tests for issues 27020 and 27105 (static-viz rendering with date formatting options)
+// have been moved to backend tests in metabase.channel.render.card-test
 
 describe("issue 29304", () => {
   // Couldn't import from `metabase/common/components/ExplicitSize` because dependency issue.
@@ -804,7 +703,7 @@ describe("issue 29304", () => {
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
-            expectedWidth * 0.1,
+            expectedWidth * 0.2, // 20% tolerance for font rendering differences across Chrome versions
           );
         });
       });
@@ -1135,7 +1034,7 @@ describe("issue 31628", () => {
         cy.findByRole("tooltip").should("not.exist");
 
         cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
+        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
 
         cy.log("should truncate title and show title tooltip on hover");
 
@@ -1191,7 +1090,7 @@ describe("issue 31628", () => {
         cy.findByRole("tooltip").should("not.exist");
 
         cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
+        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
 
         cy.log("should truncate title and show title tooltip on hover");
         cy.findByTestId("legend-caption-title")
@@ -1649,7 +1548,7 @@ describe("issue 63416", () => {
           },
         ],
       ],
-      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2024-01-01"],
+      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2027-01-01"],
     },
   };
 
@@ -1698,20 +1597,20 @@ describe("issue 63416", () => {
         ],
       });
 
+      cy.wrap(dashboard.id).as("dashboardId");
+
       H.visitDashboard(dashboard.id);
     });
   });
 
-  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", () => {
+  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", function () {
     H.editDashboard();
 
     H.showDashcardVisualizerModalSettings(0, {
       isVisualizerCard: false,
     });
-    H.modal()
-      .findByLabelText("Description")
-      .type("Make this a visualizer card");
 
+    cy.log("Make this a visualizer card");
     H.saveDashcardVisualizerModal();
 
     H.saveDashboard();
@@ -1722,8 +1621,42 @@ describe("issue 63416", () => {
       fileType: "csv",
       isDashboard: true,
       downloadMethod: "POST",
-      downloadUrl: "/api/dashboard/10/dashcard/*/card/*/query/csv",
+      downloadUrl: `/api/dashboard/${this.dashboardId}/dashcard/*/card/*/query/csv`,
       assertParameters: [{ type: "string/=", value: ["Doohickey"] }],
     });
+  });
+});
+
+describe("issue 76056", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    H.createDashboard().then(({ body: dashboard }) => {
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("the dashcard actions panel should not have redundant horizontal space (metabase#76056)", () => {
+    H.editDashboard();
+    cy.button("Add action").click();
+    cy.button("Close").click();
+
+    H.showDashboardCardActions();
+
+    cy.findByTestId("dashboardcard-actions-panel")
+      .should("be.visible")
+      .then(($panel) => {
+        const panelRect = $panel[0].getBoundingClientRect();
+        const buttonRects = Array.from($panel[0].querySelectorAll("a")).map(
+          (button) => button.getBoundingClientRect(),
+        );
+        const maxRight = Math.max(...buttonRects.map((rect) => rect.right));
+        const minLeft = Math.min(...buttonRects.map((rect) => rect.left));
+        const contentWidth = maxRight - minLeft;
+
+        expect(panelRect.width).to.be.closeTo(contentWidth, 10);
+      });
   });
 });

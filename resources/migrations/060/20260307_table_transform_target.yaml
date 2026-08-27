@@ -1,0 +1,35 @@
+## Add transform_target column to metabase_table and backfill existing transforms
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+  - changeSet:
+      id: v60.2026-03-07T00:00:03
+      author: christruter
+      comment: Add transform_target column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: transform_target
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+                  remarks: >-
+                    Whether any transform is configured to target this table. Conservative: eagerly set to true
+                    when a transform targets this table (never stale in this direction), cleared asynchronously
+                    when no transforms reference it anymore (may have false positives, never false negatives).
+      rollback:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: transform_target
+
+  - changeSet:
+      id: v60.2026-03-07T00:00:04
+      author: christruter
+      comment: Backfill transform target tables for existing transforms and workspace outputs
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.BackfillTransformTargetTables
+      rollback:

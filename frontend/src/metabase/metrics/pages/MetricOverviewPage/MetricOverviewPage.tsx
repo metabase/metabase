@@ -1,0 +1,92 @@
+import { useEffect } from "react";
+
+import { useGetMetricQuery } from "metabase/api/metric";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import type {
+  MetricPageParams,
+  MetricPageProps,
+  MetricUrls,
+} from "metabase/common/metrics/types";
+import { useNavigate, useParams } from "metabase/router";
+import { Center } from "metabase/ui";
+import type { Card } from "metabase-types/api";
+
+import { MetricDimensionGrid } from "../../components/MetricDimensionGrid";
+import { MetricPageCard } from "../../components/MetricPageCard";
+import { MetricPageShell } from "../../components/MetricPageShell";
+import { metricUrls as defaultUrls } from "../../urls";
+
+export function MetricOverviewPage({
+  urls = defaultUrls,
+  renderBreadcrumbs,
+  showAppSwitcher,
+  showDataStudioLink = true,
+}: MetricPageProps) {
+  const { cardId } = useParams<MetricPageParams>();
+
+  return (
+    <MetricPageCard cardId={cardId}>
+      {(card) => (
+        <MetricOverviewPageBody
+          card={card}
+          urls={urls}
+          renderBreadcrumbs={renderBreadcrumbs}
+          showAppSwitcher={showAppSwitcher}
+          showDataStudioLink={showDataStudioLink}
+        />
+      )}
+    </MetricPageCard>
+  );
+}
+
+interface MetricOverviewPageBodyProps extends MetricPageProps {
+  card: Card;
+  urls: MetricUrls;
+}
+
+function MetricOverviewPageBody({
+  card,
+  urls,
+  renderBreadcrumbs,
+  showAppSwitcher,
+  showDataStudioLink,
+}: MetricOverviewPageBodyProps) {
+  const navigate = useNavigate();
+  const { data: metric, isLoading: isMetricLoading } = useGetMetricQuery(
+    card.id,
+  );
+  const dimensions = metric?.dimensions ?? [];
+  const hasDimensions = dimensions.length > 0;
+
+  useEffect(() => {
+    if (!isMetricLoading && !hasDimensions) {
+      navigate(urls.about(card.id), { replace: true });
+    }
+  }, [card.id, isMetricLoading, hasDimensions, urls, navigate]);
+
+  if (isMetricLoading) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading />
+      </Center>
+    );
+  }
+
+  if (!hasDimensions) {
+    return null;
+  }
+
+  return (
+    <PageContainer data-testid="metric-overview-page" gap="xl">
+      <MetricPageShell
+        card={card}
+        urls={urls}
+        renderBreadcrumbs={renderBreadcrumbs}
+        showAppSwitcher={showAppSwitcher}
+        showDataStudioLink={showDataStudioLink}
+      />
+      <MetricDimensionGrid metricId={card.id} dimensions={dimensions} />
+    </PageContainer>
+  );
+}

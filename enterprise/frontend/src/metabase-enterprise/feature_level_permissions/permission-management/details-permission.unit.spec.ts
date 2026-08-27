@@ -1,5 +1,8 @@
-import { DataPermissionValue } from "metabase/admin/permissions/types";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+} from "metabase-types/api";
 
 import {
   DETAILS_PERMISSION_OPTIONS,
@@ -12,6 +15,7 @@ const groupId = 2;
 const databaseId = 1;
 
 const getPermissionGraph = (value = "yes"): GroupsPermissions =>
+  // Unjustified type cast. FIXME
   ({
     [defaultGroupId]: {
       [databaseId]: {
@@ -29,6 +33,7 @@ const isAdmin = true;
 const isNotAdmin = false;
 const isNotExternal = false;
 
+// Unjustified type cast. FIXME
 const defaultGroup: Group = {
   id: defaultGroupId,
   name: "All Users",

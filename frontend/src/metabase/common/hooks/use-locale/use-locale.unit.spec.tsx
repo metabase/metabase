@@ -1,9 +1,9 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { useLocale } from "./use-locale";
 

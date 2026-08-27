@@ -40,7 +40,6 @@
                 [:email-smtp-security-override {:optional true} [:or string? nil?]]
                 [:email-smtp-username-override {:optional true} [:or string? nil?]]]]
   (check-features)
-
   ;; Validations match validation in settings, but pre-checking here to avoid attempting network checks for invalid settings.
   (when (and (:email-smtp-port-override settings)
              (not (#{465 587 2525} (:email-smtp-port-override settings))))
@@ -50,7 +49,6 @@
              (not (#{:tls :ssl :starttls} (keyword (:email-smtp-security-override settings)))))
     (throw (ex-info (tru "Invalid email-smtp-security-override value")
                     {:status-code 400})))
-
   (u/prog1 (email/check-and-update-settings settings mb-to-smtp-override-settings (channel.settings/email-smtp-password-override))
     (when (nil? (:errors (:body <>))) (channel.settings/smtp-override-enabled! true))))
 

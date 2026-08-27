@@ -51,14 +51,24 @@
   [_searchable-documents]
   (oss-semantic-search-error))
 
+(defenterprise diagnose
+  "Engine-owned diagnostic stages (`missing-from-index` / `filtered` / `not-matching` / `candidate`) for the
+  semantic search index. See [[metabase.search.debug/diagnose]]."
+  metabase-enterprise.semantic-search.core
+  [_search-ctx _expected-model _expected-id]
+  (oss-semantic-search-error))
+
 ;; Search engine method implementations
 
 (defmethod search.engine/supported-engine? :search.engine/semantic [_]
   (try
     (supported?)
     (catch Exception e
-      (log/warn e "Semantic search engine not supported")
+      (log/warnf "Semantic search engine not supported: %s" (ex-message e))
       false)))
+
+(defmethod search.engine/dependencies :search.engine/semantic [_]
+  [:search.engine/appdb])
 
 (defmethod search.engine/results :search.engine/semantic
   [search-ctx]
@@ -68,38 +78,46 @@
   [_search-ctx]
   search.config/all-models)
 
+(defmethod search.engine/diagnose :search.engine/semantic
+  [search-ctx expected-model expected-id]
+  (diagnose search-ctx expected-model expected-id))
+
 (defmethod search.engine/update! :search.engine/semantic
   [_ document-reducible]
   (try
-    (log/info "Updating semantic search engine")
     (update-index! document-reducible)
     (catch Exception e
-      (log/error e "Error updating semantic search engine")
+      (log/errorf "Error updating semantic search engine: %s" (ex-message e))
       {})))
 
 (defmethod search.engine/delete! :search.engine/semantic
   [_ model ids]
   (try
-    (log/info "Deleting from semantic search engine")
     (delete-from-index! model ids)
     (catch Exception e
-      (log/error e "Error deleting from semantic search engine")
+      (log/errorf "Error deleting from semantic search engine: %s" (ex-message e))
       {})))
 
 (defmethod search.engine/init! :search.engine/semantic
   [_ opts]
   (try
-    (log/info "Initializing semantic search engine")
+    (log/debug "Initializing semantic search engine")
     (init! (search.ingestion/searchable-documents) opts)
     (catch Exception e
-      (log/error e "Error initializing semantic search engine")
+      (log/errorf "Error initializing semantic search engine: %s" (ex-message e))
       (throw e))))
 
 (defmethod search.engine/reindex! :search.engine/semantic
   [_ _opts]
-  (log/info "reindex! is not supported for semantic search engine")
+  (log/debug "reindex! is not supported for semantic search engine")
   nil)
 
 (defmethod search.engine/reset-tracking! :search.engine/semantic [_]
-  (log/info "reset-tracking! is not supported for semantic search engine")
+  (log/debug "reset-tracking! is not supported for semantic search engine")
   nil)
+
+(defmethod search.engine/sync-from-restored-db! :search.engine/semantic [_]
+  ;; Semantic search index lives outside the appdb snapshot.
+  ;; For now, fall back to reindex (which is already a no-op for this engine).
+  ;; TODO: If semantic embeddings are serialized alongside snapshots in the future, optimize this.
+  (search.engine/reindex! :search.engine/semantic {}))

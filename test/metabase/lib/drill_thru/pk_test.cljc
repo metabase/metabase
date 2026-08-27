@@ -25,8 +25,8 @@
   (canned/canned-test
    :drill-thru/pk
    (fn [_test-case _context {:keys [click]}]
-      ;; Tricky logic, so other tests check the cell clicks.
-      ;; Non-cell clicks are not available.
+     ;; Tricky logic, so other tests check the cell clicks.
+     ;; Non-cell clicks are not available.
      (if (= click :cell)
        ::canned/skip
        false))))
@@ -41,7 +41,6 @@
                                            :column-ref (lib/ref (meta/field-metadata :orders :id))
                                            :value      nil}]}]
       (is (not (find-drill query context)))
-
       (testing "but a nil clicked value with defined PKs is fine"
         (is (find-drill query {:column     (meta/field-metadata :orders :subtotal)
                                :column-ref (lib/ref (meta/field-metadata :orders :subtotal))

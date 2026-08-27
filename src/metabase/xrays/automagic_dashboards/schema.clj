@@ -30,7 +30,7 @@
                         (when (sequential? x)
                           (if (map? (second x))
                             x
-                            (lib/->pMBQL x))))}
+                            (lib/->mbql5 x))))}
    [:ref ::lib.schema.mbql-clause/clause]
    [:ref ::lib.schema.expression/boolean]])
 

@@ -1,0 +1,100 @@
+name: Question views per month
+entity_id: Vm-4GYORvVbGu9jHVLfg1
+created_at: '2023-06-15T02:08:19.283932Z'
+creator_id: internal@metabase.com
+display: line
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_view_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {}
+    breakout:
+    - - field
+      - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, temporal-unit: month}
+      - [Internal Metabase Database, public, v_view_log, timestamp]
+    filters:
+    - - =
+      - {}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_view_log, entity_type]
+      - card
+    joins:
+    - alias: People - User
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_view_log, user_id]
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - User}
+          - [Internal Metabase Database, public, v_users, user_id]
+      stages:
+      - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: 94ff4f18-d182-48a5-8759-58eec1288356}
+      lib/type: mbql/join
+    source-card: P6Ityjj7igswKh4NgZZjz
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  description: When the view happened
+  display_name: 'Timestamp: Month'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, timestamp]
+  - {temporal-unit: month}
+  id: [Internal Metabase Database, public, v_view_log, timestamp]
+  inherited_temporal_unit: month
+  name: timestamp
+  position: 1
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_view_log]
+  unit: month
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 120
+  lib/deduplicated-name: timestamp
+  lib/desired-column-alias: timestamp
+  lib/from-model?: true
+  lib/original-display-name: Timestamp
+  lib/original-name: timestamp
+  lib/source: source/previous-stage
+  lib/source-column-alias: timestamp
+  lib/temporal-unit: month
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings:
+  column_settings: null
+  graph.dimensions: [timestamp]
+  graph.metrics: [count]
+  graph.show_values: true
+card_schema: 23
+serdes/meta:
+- {id: Vm-4GYORvVbGu9jHVLfg1, label: question_views_per_month, model: Card}
+dashboard_id: DHMhMa1FYxiyIgM7_xdgR
+source_card_id: P6Ityjj7igswKh4NgZZjz
+type: question

@@ -1,7 +1,8 @@
 const { H } = cy;
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
-import { modal, popover } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import { modal, popover, selectScheduleTime } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
@@ -87,12 +88,15 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     );
 
     getSdkRoot().within(() => {
-      cy.findByTestId("native-query-editor").should("be.visible");
-      cy.findByLabelText("placeholder SELECT * FROM TABLE_NAME").should(
-        "be.visible",
-      );
+      cy.findByTestId("native-query-editor")
+        .should("be.visible")
+        .find(".cm-placeholder")
+        .should("be.visible");
 
       cy.wait("@schema");
+
+      // Wait for the Sample database to auto-select
+      cy.findByText("Sample Database").should("be.visible");
 
       H.NativeEditor.type("SELECT * from ORDERS LIMIT 10");
 
@@ -112,6 +116,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
 
     it("should be able to create, edit, and delete alerts", () => {
+      // The alerts modal stays in a null-render limbo until
+      // /api/notification?card_id=... resolves and QuestionAlertListModal
+      // picks "create-modal" vs "list-modal". On fetch (microtask resolution
+      // + SDK JWT bootstrap) the click can land before the user-recipients
+      // and channels queries have been issued; wait for the GET so the
+      // create modal is rendered when we assert its heading.
+      cy.intercept("GET", "/api/notification?card_id=*").as("listAlerts");
+
       cy.get<number>("@sqlQuestionId").then((sqlQuestionId) => {
         mountSdkContent(
           <InteractiveQuestion questionId={sqlQuestionId} withAlerts />,
@@ -122,6 +134,8 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       getSdkRoot().button("Alerts").should("be.visible").click();
 
       cy.log("alerts modal is open");
+      cy.wait("@listAlerts");
+      selectScheduleTime();
       modal().within(() => {
         cy.findByRole("heading", { name: "New alert" }).should("be.visible");
         cy.button("Done").click();
@@ -142,6 +156,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       });
 
       popover().findByRole("option", { name: "weekly" }).click();
+      selectScheduleTime();
       modal().within(() => {
         cy.button("Save changes").click();
         cy.findByRole("heading", { name: "Edit alerts" }).should("be.visible");
@@ -162,6 +177,70 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.log("the alert is deleted");
       getSdkRoot().button("Alerts").should("be.visible").click();
       modal().findByRole("heading", { name: "New alert" }).should("be.visible");
+    });
+  });
+
+  describe("NavigationBackButton component", () => {
+    it("should show NavigationBackButton after drilling and allow navigating back", () => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={ORDERS_QUESTION_ID}>
+          <InteractiveQuestion.NavigationBackButton />
+          <InteractiveQuestion.Title />
+          <InteractiveQuestion.QuestionVisualization />
+        </InteractiveQuestion>,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText("Orders").should("be.visible");
+
+        cy.log(
+          "NavigationBackButton should not be visible initially (no navigation history)",
+        );
+        cy.findByText(/Back to/).should("not.exist");
+
+        cy.log("Perform a drill on the first row's Product ID");
+        H.tableInteractiveBody().findAllByText("14").first().click();
+        H.popover().findByText("View this Product's Orders").click();
+
+        cy.log("NavigationBackButton should now be visible");
+        cy.findByText("Back to Orders").should("be.visible");
+
+        cy.log("Click the back button to return to the original question");
+        cy.findByText("Back to Orders").click();
+
+        cy.log("Should be back at the original question");
+        cy.findByText("Orders").should("be.visible");
+
+        cy.log("NavigationBackButton should be hidden again");
+        cy.findByText(/Back to/).should("not.exist");
+      });
+    });
+
+    it("should show NavigationBackButton after drilling even with title=false (metabase#68556)", () => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={ORDERS_QUESTION_ID} title={false} />,
+      );
+
+      getSdkRoot().within(() => {
+        cy.log("Title should not be visible");
+        cy.findByText("Orders").should("not.exist");
+
+        cy.log("NavigationBackButton should not be visible initially");
+        cy.findByText(/Back to/).should("not.exist");
+
+        cy.log("Perform a drill on the first row's Product ID");
+        H.tableInteractiveBody().findAllByText("14").first().click();
+        H.popover().findByText("View this Product's Orders").click();
+
+        cy.log("NavigationBackButton should be visible after drill");
+        cy.findByText("Back to Orders").should("be.visible");
+
+        cy.log("Click back");
+        cy.findByText("Back to Orders").click();
+
+        cy.log("NavigationBackButton should be hidden again");
+        cy.findByText(/Back to/).should("not.exist");
+      });
     });
   });
 });

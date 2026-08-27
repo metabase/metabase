@@ -1,25 +1,24 @@
-import dayjs from "dayjs";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { formatValue } from "metabase/lib/formatting";
-import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { isEmpty } from "metabase/lib/validate";
-import { computeChange } from "metabase/visualizations/lib/numeric";
-import type {
-  ColorGetter,
-  ColumnSettings,
-} from "metabase/visualizations/types";
-import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
+import { dayjs } from "metabase/dayjs";
+import type { ColorGetter } from "metabase/ui/colors/types";
+import { isNumber } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
 import {
-  formatChange,
+  formatDateTimeRangeWithUnit,
+  formatValue,
+} from "metabase/value-formatting";
+import { computeChange } from "metabase/visualizations/lib/numeric";
+import {
+  findPreviousNonEmptyRowIndex,
   formatPreviousPeriodOptionName,
-} from "metabase/visualizations/visualizations/SmartScalar/utils";
+} from "metabase/visualizations/lib/trend-helpers";
+import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
+import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { ClickObject } from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ColumnSettings,
   DatasetColumn,
   DateTimeAbsoluteUnit,
   LegacyDatasetQuery,
@@ -44,9 +43,27 @@ export type ComparisonResult = {
   comparisonValue: RowValue | undefined;
   display: {
     percentChange: string;
-    comparisonValue: string | number | JSX.Element | null;
+    comparisonValue: SmartScalarDisplayValue;
   };
   percentChange: number | undefined;
+};
+
+export type SmartScalarDisplayValue = string | number | JSX.Element | null;
+
+export type Trend = {
+  value: RowValue;
+  clicked: ClickObject;
+  formatOptions: ColumnSettings;
+  display: {
+    value: SmartScalarDisplayValue;
+    date: SmartScalarDisplayValue;
+  };
+  comparisons: ComparisonResult[];
+};
+
+export type ComputeTrendResult = {
+  trend?: Trend;
+  error?: Error;
 };
 
 interface DateUnitSettings {
@@ -74,7 +91,7 @@ export function computeTrend(
   insights: Insight[] | null | undefined,
   settings: VisualizationSettings,
   { getColor }: { getColor: ColorGetter },
-) {
+): ComputeTrendResult {
   try {
     const comparisons = settings["scalar.comparisons"] || [];
     const currentMetricData = getCurrentMetricData({
@@ -111,6 +128,7 @@ export function computeTrend(
     };
   } catch (error) {
     return {
+      // Unjustified type cast. FIXME
       error: error as Error,
     };
   }
@@ -138,9 +156,10 @@ function buildComparisonObject({
       series,
     }) || {};
 
-  const percentChange = !isEmpty(comparisonValue)
-    ? computeChange(comparisonValue, value)
-    : undefined;
+  const percentChange =
+    isNumber(comparisonValue) && isNumber(value)
+      ? computeChange(comparisonValue, value)
+      : undefined;
 
   const {
     changeType,
@@ -230,7 +249,6 @@ function getCurrentMetricData({
 }): MetricData {
   const [
     {
-      card,
       data: { rows, cols },
     },
   ] = series;
@@ -254,15 +272,16 @@ function getCurrentMetricData({
   }
 
   // get latest value and date
-  const latestRowIndex = _.findLastIndex(rows, (row) => {
-    const date = row[dimensionColIndex];
-    const value = row[metricColIndex];
-
-    return !isEmpty(value) && !isEmpty(date);
-  });
+  const latestRowIndex = findPreviousNonEmptyRowIndex(
+    rows,
+    dimensionColIndex,
+    metricColIndex,
+    rows.length,
+  );
   if (latestRowIndex === -1) {
     throw Error("No rows contain a valid value.");
   }
+  // Unjustified type cast. FIXME
   const date = rows[latestRowIndex][dimensionColIndex] as string;
   const value = rows[latestRowIndex][metricColIndex];
 
@@ -273,16 +292,31 @@ function getCurrentMetricData({
   );
   const dateUnit = metricInsight?.unit;
   const dateColumn = cols[dimensionColIndex];
+
+  const isNative = cols.some((col) => col.source === "native");
+
   const dateColumnWithUnit = { ...dateColumn };
-  dateColumnWithUnit.unit ??= dateUnit;
+  if (!isNative) {
+    dateColumnWithUnit.unit ??= dateUnit;
+  }
   const dateColumnSettings = settings?.column?.(dateColumnWithUnit) ?? {};
 
-  const question = new Question(card);
+  const { date_granularity } = dateColumnSettings;
+  const displayUnit = isAbsoluteDateTimeUnit(date_granularity)
+    ? date_granularity
+    : undefined;
+  const displaySettings = displayUnit
+    ? { ...dateColumnSettings, time_enabled: null }
+    : dateColumnSettings;
+  if (displayUnit) {
+    dateColumnWithUnit.unit = displayUnit;
+  }
+
   const dateUnitSettings: DateUnitSettings = {
     dateColumn: dateColumnWithUnit,
-    dateColumnSettings,
-    dateUnit,
-    queryType: question.isNative() ? "native" : "query",
+    dateColumnSettings: displaySettings,
+    dateUnit: displayUnit ?? dateUnit,
+    queryType: isNative ? "native" : "query",
   };
 
   const formatOptions = {
@@ -412,22 +446,19 @@ function computeComparisonPreviousValue({
   nextDate: string | undefined;
   dateUnitSettings: DateUnitSettings;
 }) {
-  const previousRowIndex = _.findLastIndex(rows, (row, i) => {
-    if (i >= nextValueRowIndex) {
-      return false;
-    }
-
-    const date = row[dimensionColIndex];
-    const value = row[metricColIndex];
-
-    return !isEmpty(value) && !isEmpty(date);
-  });
+  const previousRowIndex = findPreviousNonEmptyRowIndex(
+    rows,
+    dimensionColIndex,
+    metricColIndex,
+    nextValueRowIndex,
+  );
 
   // if no row exists with non-null date and non-null value
   if (previousRowIndex === -1) {
     return null;
   }
 
+  // Unjustified type cast. FIXME
   const prevDate = rows[previousRowIndex][dimensionColIndex] as string;
   const prevValue = rows[previousRowIndex][metricColIndex];
 
@@ -528,7 +559,8 @@ function computeComparisonPeriodsAgo({
   };
 
   const prevDate = !isEmpty(rowPeriodsAgo)
-    ? (rowPeriodsAgo?.[dimensionColIndex] as string)
+    ? // Unjustified type cast. FIXME
+      (rowPeriodsAgo?.[dimensionColIndex] as string)
     : computedPrevDate;
   const comparisonDescStr =
     dateUnitsAgo === 1
@@ -588,6 +620,7 @@ function getRowOfPeriodsAgo({
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
     const candidateRow = rows[i];
     const candidateDate = dayjs.parseZone(
+      // Unjustified type cast. FIXME
       candidateRow?.[dimensionColIndex] as string | undefined,
     );
     const candidateValue = candidateRow[metricColIndex];
@@ -673,7 +706,7 @@ function formatDateStr({
 }: {
   date: string;
   dateUnitSettings: DateUnitSettings;
-  options?: OptionsType;
+  options?: ColumnSettings;
 }) {
   const { dateColumn, dateColumnSettings, dateUnit, queryType } =
     dateUnitSettings;
@@ -767,12 +800,12 @@ function getArrowColor(
 ) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("success"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("error"),
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-positive"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-negative"),
       }
     : {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("error"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("success"),
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-negative"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-positive"),
       };
 
   return arrowIconColorNames[changeArrowIconName];

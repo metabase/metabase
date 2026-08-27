@@ -22,7 +22,7 @@ import {
   frenchNames,
   germanFieldNames,
   germanFieldValues,
-} from "./constants";
+} from "./helpers/constants";
 
 const { H } = cy;
 
@@ -31,7 +31,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Category", msgstr: "La catégorie" },
@@ -93,6 +93,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboardId as number },
             params: {},
           },
@@ -116,7 +117,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
@@ -176,6 +177,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboardId as number },
             params: {},
           },
@@ -207,7 +209,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
@@ -273,6 +275,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboardId as number },
             params: {},
           },
@@ -338,7 +341,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
       H.visitEmbeddedPage(
         {
-          resource: { dashboard: ORDERS_DASHBOARD_ID as number },
+          resource: { dashboard: ORDERS_DASHBOARD_ID },
           params: {},
         },
         {
@@ -376,7 +379,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       uploadTranslationDictionaryViaAPI([
         ...germanFieldNames,
@@ -391,6 +394,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
       cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
       cy.intercept("GET", "/api/embed/dashboard/**/search/*").as("searchQuery");
+      // Unjustified type cast. FIXME
       H.restore("with-translations" as any);
     });
 
@@ -408,6 +412,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
         display: "pivot",
         visualization_settings: {
           "pivot_table.column_split": {
+            // Unjustified type cast. FIXME
             rows: [ORDERS.CREATED_AT, ORDERS.QUANTITY] as any,
             columns: [],
             values: ["count"],
@@ -430,6 +435,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       }).then(({ body: { dashboard_id } }) => {
         H.visitEmbeddedPage(
           {
+            // Unjustified type cast. FIXME
             resource: { dashboard: dashboard_id as number },
             params: {},
           },
@@ -459,7 +465,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
 
         H.restore();
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
 
         uploadTranslationDictionaryViaAPI([
           ...germanFieldNames,
@@ -476,6 +482,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
         cy.intercept("GET", "/api/embed/dashboard/**/search/*").as(
           "searchQuery",
         );
+        // Unjustified type cast. FIXME
         H.restore("with-translations" as any);
       });
 
@@ -531,6 +538,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
               });
               H.visitEmbeddedPage(
                 {
+                  // Unjustified type cast. FIXME
                   resource: { dashboard: dashboard_id as number },
                   params: {},
                 },
@@ -669,6 +677,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           });
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboard_id as number },
               params: {},
             },
@@ -748,6 +757,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           });
           H.visitEmbeddedPage(
             {
+              // Unjustified type cast. FIXME
               resource: { dashboard: dashboard_id as number },
               params: {},
             },
@@ -805,6 +815,159 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           });
         });
       });
+
+      it("translates selected static-list filter label in guest embed", () => {
+        const staticListFilter = {
+          name: "Number",
+          slug: "number",
+          id: "static-list-id",
+          type: "number/=",
+          sectionId: "number",
+          values_source_type: "static-list" as const,
+          values_source_config: {
+            values: [
+              ["1", "Gadget"],
+              ["2", "Widget"],
+            ],
+          },
+        };
+
+        cy.signInAsAdmin();
+        H.createQuestionAndDashboard({
+          questionDetails: {
+            name: "Expression Question",
+            query: {
+              "source-table": PEOPLE_ID,
+            },
+          },
+          dashboardDetails: {
+            // Unjustified type cast. FIXME
+            parameters: [staticListFilter as any], // current API isn't set to accept string[][] as values
+            enable_embedding: true,
+            embedding_params: {
+              [staticListFilter.slug]: "enabled",
+            },
+          },
+        }).then(({ body: { id, card_id, dashboard_id } }) => {
+          // Map the parameter to an expression column so the filter widget
+          // is visible, but hasFields() returns false (testing the tc()
+          // fix in FormattedParameterValue)
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 9,
+                parameter_mappings: [
+                  {
+                    parameter_id: staticListFilter.id,
+                    card_id,
+                    target: [
+                      "dimension",
+                      ["expression", "Thing", { "base-type": "type/Integer" }],
+                      { "stage-number": 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+
+          H.visitEmbeddedPage(
+            {
+              // Unjustified type cast. FIXME
+              resource: { dashboard: dashboard_id as number },
+              params: {},
+            },
+            {
+              setFilters: { [staticListFilter.slug]: "1" },
+              additionalHashOptions: {
+                locale: "de",
+              },
+            },
+          );
+
+          H.filterWidget().findByText("Gerät").should("be.visible");
+        });
+      });
+
+      it("translates selected static-list filter label in guest embed for values without labels", () => {
+        const staticListFilter = {
+          name: "String",
+          slug: "string",
+          id: "static-list-id",
+          type: "string/=",
+          sectionId: "string",
+          values_source_type: "static-list" as const,
+          values_source_config: {
+            values: [["Gadget"], ["Widget"]],
+          },
+        };
+
+        cy.signInAsAdmin();
+        H.createQuestionAndDashboard({
+          questionDetails: {
+            name: "Expression Question",
+            query: {
+              "source-table": PEOPLE_ID,
+            },
+          },
+          dashboardDetails: {
+            // Unjustified type cast. FIXME
+            parameters: [staticListFilter as any], // current API isn't set to accept string[][] as values
+            enable_embedding: true,
+            embedding_params: {
+              [staticListFilter.slug]: "enabled",
+            },
+          },
+        }).then(({ body: { id, card_id, dashboard_id } }) => {
+          // Map the parameter to an expression column so the filter widget
+          // is visible, but hasFields() returns false (testing the tc()
+          // fix in FormattedParameterValue)
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 9,
+                parameter_mappings: [
+                  {
+                    parameter_id: staticListFilter.id,
+                    card_id,
+                    target: [
+                      "dimension",
+                      ["expression", "Thing", { "base-type": "type/Integer" }],
+                      { "stage-number": 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+
+          H.visitEmbeddedPage(
+            {
+              // Unjustified type cast. FIXME
+              resource: { dashboard: dashboard_id as number },
+              params: {},
+            },
+            {
+              setFilters: { [staticListFilter.slug]: "Gadget" },
+              additionalHashOptions: {
+                locale: "de",
+              },
+            },
+          );
+
+          H.filterWidget().findByText("Gerät").should("be.visible");
+        });
+      });
     });
   });
 
@@ -816,13 +979,15 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       { locale: "de", msgid: "Sample Text", msgstr: "Beispieltext" },
     ];
     type VisitWithLocale = (options?: { locale?: string }) => void;
+    // Unjustified type cast. FIXME
     let visitEmbeddedDashboard = null as unknown as VisitWithLocale,
+      // Unjustified type cast. FIXME
       visitNormalDashboard = null as unknown as VisitWithLocale;
 
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       uploadTranslationDictionaryViaAPI(translations);
       cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
         enable_embedding: true,
@@ -856,6 +1021,7 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
       cy.intercept("POST", "api/ee/content-translation/upload-dictionary").as(
         "uploadDictionary",
       );
+      // Unjustified type cast. FIXME
       H.restore("tab-names-and-text-cards" as any);
       cy.signInAsAdmin();
       visitEmbeddedDashboard = ({ locale = "de" } = {}) => {
@@ -912,4 +1078,79 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
   });
 
   describe("Boolean content", () => {});
+
+  describe("funnel chart with translated dimension values (metabase#71488)", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
+        { locale: "fr", msgid: "Doohickey", msgstr: "Le doohickey" },
+        { locale: "fr", msgid: "Gizmo", msgstr: "Le gizmo" },
+        { locale: "fr", msgid: "Widget", msgstr: "Le widget" },
+      ]);
+
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      cy.signInAsAdmin();
+    });
+
+    it("should render funnel with translated dimension labels in a static embed", () => {
+      H.createQuestion({
+        name: "Products Funnel",
+        display: "funnel",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+        visualization_settings: {
+          "funnel.metric": "count",
+          "funnel.dimension": "CATEGORY",
+        },
+      }).then(({ body: card }) => {
+        H.createDashboard({
+          name: "funnel_dashboard",
+        }).then(({ body: { id: dashboardId } }) => {
+          // Add the funnel card to the dashboard
+          H.addOrUpdateDashboardCard({
+            dashboard_id: dashboardId,
+            card_id: card.id,
+            card: { size_x: 16, size_y: 8 },
+          });
+          H.visitDashboard(dashboardId);
+          H.openLegacyStaticEmbeddingModal({
+            resource: "dashboard",
+            resourceId: dashboardId,
+          });
+          H.publishChanges("dashboard", () => {});
+          H.visitEmbeddedPage(
+            {
+              // Unjustified type cast. FIXME
+              resource: { dashboard: dashboardId as number },
+              params: {},
+            },
+            {
+              additionalHashOptions: {
+                locale: "fr",
+              },
+            },
+          );
+          // The funnel should render without crashing
+          cy.findByTestId("funnel-chart", { timeout: 10_000 }).should("exist");
+          // Dimension labels should be translated
+          cy.findAllByTestId("funnel-chart-header").should("have.length", 4);
+          cy.findByTestId("funnel-chart").within(() => {
+            cy.findByText("Le gadget").should("exist");
+            cy.findByText("Le doohickey").should("exist");
+            cy.findByText("Le gizmo").should("exist");
+            cy.findByText("Le widget").should("exist");
+          });
+        });
+      });
+    });
+  });
 });

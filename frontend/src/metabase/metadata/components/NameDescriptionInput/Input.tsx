@@ -3,11 +3,10 @@ import {
   type TextInputBlurChangeProps,
 } from "metabase/ui";
 
-interface Props
-  extends Omit<
-    TextInputBlurChangeProps,
-    "normalize" | "value" | "onBlurChange" | "onChange"
-  > {
+interface Props extends Omit<
+  TextInputBlurChangeProps,
+  "normalize" | "value" | "onBlurChange" | "onChange"
+> {
   normalize?: (
     value: string | number | readonly string[] | undefined,
   ) => string;

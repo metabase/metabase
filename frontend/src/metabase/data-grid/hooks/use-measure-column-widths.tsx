@@ -4,16 +4,13 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import React, { useCallback } from "react";
-import type { Root } from "react-dom/client";
+import { type Root, createRoot } from "react-dom/client";
 
 import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
 import { pickRowsToMeasure } from "metabase/data-grid/utils/column-sizing";
-import {
-  MeasurementProviders,
-  createMeasurementContainer,
-} from "metabase/data-grid/utils/measure-utils";
-import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
-import { isNotNull } from "metabase/lib/types";
+import { MeasurementProviders } from "metabase/ui/components/theme/MeasurementProviders";
+import { createMeasurementContainer } from "metabase/utils/measure-container";
+import { isNotNull } from "metabase/utils/types";
 
 import { DataGridThemeProvider } from "./use-table-theme";
 
@@ -42,7 +39,9 @@ export const useMeasureColumnWidths = <TData, TValue>(
 ) => {
   const measureColumnWidths = useCallback(
     (onMeasured: (columnSizingState: ColumnSizingState) => void) => {
-      const measureRoot = createMeasurementContainer();
+      const measureRoot = createMeasurementContainer({
+        fontSize: theme?.fontSize,
+      });
       let measureRootTree: Root | undefined = undefined;
 
       const onMeasureHeaderRender = (div: HTMLDivElement) => {
@@ -61,6 +60,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
               return null;
             }
 
+            // Unjustified type cast. FIXME
             const width = (element as HTMLElement).offsetWidth;
             return { columnId, width, type };
           })
@@ -89,7 +89,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
         onMeasured(measuredColumnSizingMap);
 
         setTimeout(() => {
-          unmountRoot(measureRootTree, measureRoot);
+          measureRootTree?.unmount();
           document.body.removeChild(measureRoot);
         }, 0);
       };
@@ -166,7 +166,8 @@ export const useMeasureColumnWidths = <TData, TValue>(
         ? measurementRenderWrapper(wrappedContent)
         : wrappedContent;
 
-      measureRootTree = renderRoot(content, measureRoot);
+      measureRootTree = createRoot(measureRoot);
+      measureRootTree.render(content);
     },
     [table, columnsOptions, theme, measurementRenderWrapper],
   );

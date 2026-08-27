@@ -7,15 +7,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import {
-  ActionIcon,
-  Box,
-  Group,
-  Icon,
-  type IconName,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { ActionIcon, Box, Group, Icon, Text, Tooltip } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./FilterFieldSet.module.css";
 
@@ -47,7 +40,7 @@ export const FilterFieldSet = forwardRef(function FilterWidget(
       pl="md"
       pr="xs"
       py="xs"
-      bg="background-primary"
+      bg="background_page-primary"
       aria-label={label}
     >
       {hasValue && (

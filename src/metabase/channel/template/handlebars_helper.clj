@@ -1,5 +1,4 @@
 (ns metabase.channel.template.handlebars-helper
-  (:refer-clojure :exclude [hash])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -101,7 +100,7 @@
 (defhelper initials
   "Return up to two uppercased initials from a full name. Splits by whitespace and hyphen."
   [name _params _kparams _options]
-  #_:clj-kondo/ignore
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (some->> name (re-seq #"\b(\w)") (take 2) (map second) (str/join "") str/upper-case))
 
 ;; Metabase specifics

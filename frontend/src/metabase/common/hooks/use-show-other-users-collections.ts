@@ -1,7 +1,6 @@
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
-
-import { useSetting } from "./use-setting";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 
 /**
  * Hook to determine if other users' collections are shown in the UI.

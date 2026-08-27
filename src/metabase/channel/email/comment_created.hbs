@@ -1,11 +1,11 @@
-{{> metabase/channel/email/_dashsub_alert_header.hbs }}
+{{> _dashsub_alert_header }}
   <body style="padding: 0px; margin: 0px">
     <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 48px; table-layout: fixed;">
       <tr>
         <td>
           <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 40px; border: 1px solid rgba(7, 23, 34, 0.14)">
-            <div style="text-align: center; height: 45px; margin-bottom: 32px;">
-              <img width="35.55" height="45" src="{{context.application_logo_url}}" alt="Metabase logo"/>
+            <div style="text-align: center; margin-bottom: 32px;">
+              <img style="max-height: 45px; max-width: 100%;" src="{{context.application_logo_url}}" alt="{{context.application_name}} logo"/>
             </div>
 
             <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 8px 0; color: #2F3C45;">
@@ -16,9 +16,9 @@
               {{/if}}
             </h1>
 
-            {{!-- Document link --}}
+            {{!-- Entity link --}}
             <div style="text-align: center; margin-bottom: 32px;">
-              <a href="{{context.site_url}}{{payload.event_info.document_href}}" style="font-size: 15px; line-height: 165%; font-weight: 700; color: {{context.application_color}}; text-decoration: none;">
+              <a href="{{context.site_url}}{{payload.event_info.entity_href}}" style="font-size: 15px; line-height: 165%; font-weight: 700; color: {{context.application_color}}; text-decoration: none;">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentcolor" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
                   <path d="M8.848 1.25c.451 0 .886.175 1.212.487l3.152 3.027c.344.33.538.786.538 1.262V12.8c0 .527-.219 1.026-.597 1.39-.377.362-.882.56-1.403.56h-7.5c-.52 0-1.026-.199-1.403-.56-.331-.318-.54-.74-.587-1.194l-.01-.196V3.2c0-.527.218-1.026.597-1.39.377-.361.882-.56 1.403-.56h4.598zM4.25 2.75a.528.528 0 0 0-.364.143.427.427 0 0 0-.136.307v9.6l.009.082c.017.081.059.16.127.225a.528.528 0 0 0 .364.143h7.5a.528.528 0 0 0 .364-.143.428.428 0 0 0 .136-.307V6.575H9.249A.575.575 0 0 1 8.674 6V2.75H4.25zm6.4 7.425a.576.576 0 0 1 0 1.15H5.4a.575.575 0 0 1 0-1.15h5.25zm0-2.25a.576.576 0 0 1 0 1.15H5.4a.575.575 0 0 1 0-1.15h5.25zm-3.651-2.25a.576.576 0 0 1 0 1.15h-1.6a.575.575 0 0 1 0-1.15H7zm2.825-.25h1.91L9.824 3.59v1.834z" />
                 </svg>

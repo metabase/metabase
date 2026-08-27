@@ -1,23 +1,32 @@
 import _ from "underscore";
 
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionValue,
-} from "metabase/admin/permissions/types";
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import type { GroupsPermissions } from "metabase-types/api";
+  type GroupsPermissions,
+  type PermissionsDatabase,
+  type SchemaName,
+  type TableId,
+} from "metabase-types/api";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
 import { hasPermissionValueInSubgraph } from "./has";
+
+const createDatabase = (
+  tablesBySchema: Record<SchemaName, TableId[]>,
+): PermissionsDatabase =>
+  createMockDatabase({
+    id: 1,
+    tables: Object.entries(tablesBySchema).flatMap(([schema, tableIds]) =>
+      tableIds.map((id) => createMockTable({ id, db_id: 1, schema })),
+    ),
+  });
 
 describe("data permissions", () => {
   describe("hasPermissionValueInSubgraph", () => {
     it("should handle database entity ids", async () => {
-      const schemas = [{ name: "", getTables: () => [{ id: 1 }, { id: 2 }] }];
-      const database = {
-        schemas,
-        schema: (name: string) =>
-          schemas.find((schema) => schema.name === name),
-      };
+      const database = createDatabase({ "": [1, 2] });
 
       const testPermissions: GroupsPermissions = {
         "1": {
@@ -72,15 +81,7 @@ describe("data permissions", () => {
     });
 
     it("should handle databases with multiple schemas", async () => {
-      const schemas = [
-        { name: "public", getTables: () => [{ id: 1 }] },
-        { name: "public2", getTables: () => [{ id: 2 }] },
-      ];
-      const database = {
-        schemas,
-        schema: (name: string) =>
-          schemas.find((schema) => schema.name === name),
-      };
+      const database = createDatabase({ public: [1], public2: [2] });
 
       const testPermissions: GroupsPermissions = {
         "1": {
@@ -108,15 +109,7 @@ describe("data permissions", () => {
     });
 
     it("should handle schema entity ids", async () => {
-      const schemas = [
-        { name: "public", getTables: () => [{ id: 1 }] },
-        { name: "public2", getTables: () => [{ id: 2 }] },
-      ];
-      const database = {
-        schemas,
-        schema: (name: string) =>
-          schemas.find((schema) => schema.name === name),
-      };
+      const database = createDatabase({ public: [1], public2: [2] });
 
       const testPermissions: GroupsPermissions = {
         "1": {
@@ -175,15 +168,7 @@ describe("data permissions", () => {
     });
 
     it("should handle default permissions omitted from the graph", async () => {
-      const schemas = [
-        { name: "public", getTables: () => [{ id: 1 }] },
-        { name: "public2", getTables: () => [{ id: 2 }] },
-      ];
-      const database = {
-        schemas,
-        schema: (name: string) =>
-          schemas.find((schema) => schema.name === name),
-      };
+      const database = createDatabase({ public: [1], public2: [2] });
 
       const testPermissions: GroupsPermissions = {
         "1": {

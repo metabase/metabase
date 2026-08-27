@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.presto-jdbc-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.presto-jdbc-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -10,13 +11,13 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
-   [metabase.warehouses-rest.api :as api.database]
+   [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -32,11 +33,11 @@
                       {:name "test_data_users" :schema "default"}
                       {:name "test_data_venues" :schema "default"}}}
            (-> (driver/describe-database :presto-jdbc (mt/db))
-               (update :tables (comp set (partial filter (comp #{"test_data_categories"
-                                                                 "test_data_venues"
-                                                                 "test_data_checkins"
-                                                                 "test_data_users"}
-                                                               :name)))))))))
+               (update :tables #(into #{} (filter (comp #{"test_data_categories"
+                                                          "test_data_venues"
+                                                          "test_data_checkins"
+                                                          "test_data_users"}
+                                                        :name)) %)))))))
 
 (deftest ^:parallel describe-table-test
   (mt/test-driver :presto-jdbc
@@ -230,7 +231,7 @@
       ;; the others (ex: :auto_run_queries and :refingerprint) are one level up (fields in the model, not in the details
       ;; JSON blob)
       (let [db-details (assoc (:details (mt/db)) :let-user-control-scheduling false)]
-        (is (nil? (api.database/test-database-connection :presto-jdbc db-details)))))))
+        (is (nil? (warehouses/test-database-connection :presto-jdbc db-details)))))))
 
 (deftest ^:parallel kerberos-properties-test
   (testing "Kerberos related properties are set correctly"
@@ -286,3 +287,18 @@
 (deftest bytes-to-varbinary-test
   (is (= ["FROM_BASE64(?)" "YSBzdHJpbmc="]
          (sql/format (sql.qp/->honeysql :presto-jdbc (.getBytes "a string"))))))
+
+(deftest column->field-test
+  (testing "no field comment with blank column"
+    (is (= {:name "foo"
+            :database-type "integer"
+            :base-type :type/Integer
+            :database-position 0}
+           (#'presto-jdbc/column->field 0 {:column "foo" :type "integer" :comment ""}))))
+  (testing "field comment included with non-blank column"
+    (is (= {:name "foo"
+            :database-type "integer"
+            :base-type :type/Integer
+            :database-position 0
+            :field-comment "foo comment"}
+           (#'presto-jdbc/column->field 0 {:column "foo" :type "integer" :comment "foo comment"})))))

@@ -90,6 +90,22 @@
   (is (= {:id "x", :type :text}
          (lib/normalize ::lib.schema.parameter/parameter {:id "x"}))))
 
+(deftest ^:parallel normalize-number-between-test
+  (testing "number/between normalization (#70311)"
+    (are [value expected-type expected-value]
+         (= {:type expected-type, :value expected-value}
+            (select-keys
+             (lib/normalize ::lib.schema.parameter/parameter {:type "number/between", :value value})
+             [:type :value]))
+      ;; both nil — should stay as number/between
+      [nil nil] :number/between [nil nil]
+      nil       :number/between nil
+      ;; one side set — should simplify
+      [5 nil]   :number/>=      [5]
+      [nil 10]  :number/<=      [10]
+      ;; both set — should stay as number/between
+      [5 10]    :number/between [5 10])))
+
 (deftest ^:parallel normalize-invalid-widget-type-test
   (testing "Decode an invalid namespaced widget type like `:category/=` to the matching unnamespaced type (`:category`)"
     (is (= :category
@@ -98,3 +114,26 @@
     (is (= :none
            (lib/normalize ::lib.schema.parameter/widget-type "broken/=")
            (lib/normalize ::lib.schema.parameter/widget-type "broken")))))
+
+(deftest ^:parallel normalize-invalid-parameter-default-test
+  (testing "A parameter with no value falls back to its `:default`, so a default is normalized like a value"
+    (are [parameter normalized] (= normalized
+                                   (lib/normalize ::lib.schema.parameter/parameter parameter))
+      {:type :category, :default {:k "v"}}   {:type :category, :default nil}
+      {:type :category, :default [{:k "v"}]} {:type :category, :default [nil]}
+      {:type :category, :default "A"}        {:type :category, :default "A"}
+      {:type :category, :default ["A" "B"]}  {:type :category, :default ["A" "B"]})))
+
+(deftest ^:parallel parameter-options-test
+  (testing ":options are spliced into the filter clause the parameter becomes, so a known option is typed"
+    (are [options valid?] (= valid?
+                             (mr/validate ::lib.schema.parameter/parameter
+                                          {:type :string/contains, :value ["A"], :options options}))
+      {:case-sensitive false}  true
+      {:include-current true}  true
+      {}                       true
+      {:case-sensitive "yes"}  false
+      ;; An unrecognized option is not a validation error: the map stays open so a new frontend option does not 400
+      ;; against an older backend. Such a key never reaches the clause either way, because request decoding strips
+      ;; it -- see `decode-strips-undeclared-keys-test` in [[metabase.api.macros-test]].
+      {:lib/uuid "not-yours"}  true)))

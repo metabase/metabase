@@ -54,19 +54,15 @@
    (do
      (defn- basic-map [m]
        (-> m (update-vals (constantly 1)) clj->js))
-
      (def ^:export known-date-styles-js
        "Vanilla JS object version of [[known-date-styles]] that can be used with keyof in TS."
        (basic-map known-date-styles))
-
      (def ^:export known-datetime-styles-js
        "Vanilla JS object version of [[known-datetime-formats]] that can be used with keyof in TS."
        (basic-map known-datetime-styles))
-
      (def ^:export known-time-styles-js
        "Vanilla JS object version of [[known-time-formats]] that can be used with keyof in TS."
        (basic-map known-time-styles))
-
      (def ^:export format-strings-js
        "Vanilla JS object version of [[builder/format-strings]] that can be used with keyof in TS."
        (basic-map builder/format-strings))))

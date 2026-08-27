@@ -36,6 +36,29 @@ describe("getModifiedGroupsPermissionsGraphParts", () => {
     });
   });
 
+  it("should only include databases with updated data permissions", async () => {
+    const update = getModifiedGroupsPermissionsGraphParts(
+      {
+        "1": {
+          "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.NO },
+          "2": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+        },
+      },
+      {
+        "1": {
+          "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+          "2": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+        },
+      },
+      ["1"],
+      [],
+    );
+
+    expect(update).toEqual({
+      "1": { "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.NO } },
+    });
+  });
+
   it("should include groups that have been externally modified", async () => {
     const externalUpdate = getModifiedGroupsPermissionsGraphParts(
       {

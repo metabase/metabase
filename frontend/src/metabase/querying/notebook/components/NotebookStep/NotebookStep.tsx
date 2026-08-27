@@ -10,7 +10,6 @@ import type * as Lib from "metabase-lib";
 
 import type {
   NotebookStep as INotebookStep,
-  NotebookDataPickerOptions,
   NotebookStepAction,
 } from "../../types";
 
@@ -31,7 +30,6 @@ interface NotebookStepProps {
   readOnly?: boolean;
   openStep: (id: string) => void;
   updateQuery: (query: Lib.Query) => Promise<void>;
-  dataPickerOptions?: NotebookDataPickerOptions;
 }
 
 export function NotebookStep({
@@ -42,7 +40,6 @@ export function NotebookStep({
   openStep,
   updateQuery,
   readOnly = false,
-  dataPickerOptions,
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
@@ -66,7 +63,9 @@ export function NotebookStep({
                 [CS.mr1]: !isLastStep || (isLastStep && !hasLargeActionButtons),
               })}
               large={hasLargeActionButtons}
-              {...stepUi}
+              icon={stepUi.icon}
+              color={stepUi.color}
+              secondary={stepUi.secondary}
               title={title}
               aria-label={title}
               onClick={() => action.action({ openStep })}
@@ -100,10 +99,7 @@ export function NotebookStep({
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
-      <Box
-        className={cx(CS.hoverParent, CS.hoverVisibility, S.StepRoot)}
-        data-testid={step.testID}
-      >
+      <Box className={S.StepRoot} data-testid={step.testID}>
         <Box w={`${(11 / 12) * 100}%`} maw="75rem">
           <StepHeader
             step={step}
@@ -125,7 +121,6 @@ export function NotebookStep({
               isLastOpened={isLastOpened}
               reportTimezone={reportTimezone}
               readOnly={readOnly}
-              dataPickerOptions={dataPickerOptions}
             />
           </Box>
           {!readOnly && (
@@ -137,7 +132,7 @@ export function NotebookStep({
                 component={NotebookActionButton}
                 icon="play"
                 title={t`Preview`}
-                color={"text-tertiary"}
+                color={"text-disabled"}
                 onClick={openPreview}
                 data-testid="step-preview-button"
               />

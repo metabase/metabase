@@ -6,8 +6,23 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(deftest create-library-endpoint-test
+  (mt/with-premium-features #{:library}
+    (mt/with-discard-model-updates! [:model/Collection]
+      (without-library
+       (testing "non-data-analysts cannot create the library"
+         (mt/user-http-request :rasta :post 403 "ee/library"))
+       (testing "POST /ee/library creates the Library root + Data/Metrics subcollections"
+         (let [response (mt/user-http-request :crowberto :post 200 "ee/library")]
+           (is (= "Library" (:name response)))
+           (is (some? (t2/select-one-pk :model/Collection :type collection/library-data-collection-type)))
+           (is (some? (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)))))
+       (testing "a second call rejects with 400 'Library already exists'"
+         (is (= "Library already exists"
+                (mt/user-http-request :crowberto :post 400 "ee/library"))))))))
+
 (deftest get-library-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (mt/with-discard-model-updates! [:model/Collection]
       (without-library
        (testing "When there is no library, returns a message but still 200"
@@ -35,3 +50,20 @@
                (is (= "Library" (:name response)))
                (is (= ["metric" "table"] (:below response)))
                (is (= ["collection"] (:here response)))))))))))
+
+(deftest disallow-cross-type-collection-move-via-api-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection data-parent    {:name "Data Parent"    :type collection/library-data-collection-type}
+                   :model/Collection metrics-parent {:name "Metrics Parent" :type collection/library-metrics-collection-type}
+                   :model/Collection data-child     {:name "Data Child"     :type collection/library-data-collection-type
+                                                     :location (str "/" (:id data-parent) "/")}
+                   :model/Collection metrics-child  {:name "Metrics Child"  :type collection/library-metrics-collection-type
+                                                     :location (str "/" (:id metrics-parent) "/")}]
+      (testing "Moving a library-data collection into a library-metrics parent returns 400"
+        (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" (:id data-child))
+                                             {:parent_id (:id metrics-parent)})]
+          (is (some? response))))
+      (testing "Moving a library-metrics collection into a library-data parent returns 400"
+        (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" (:id metrics-child))
+                                             {:parent_id (:id data-parent)})]
+          (is (some? response)))))))

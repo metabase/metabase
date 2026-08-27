@@ -1,0 +1,23 @@
+.tableRowSpacing::after {
+  line-height: var(--mantine-spacing-sm);
+  content: " ";
+  display: block;
+  white-space: pre;
+}
+
+.dataPointTable {
+  border-collapse: collapse;
+  margin: 0 0.75rem 0.75rem 0.75rem;
+}
+
+.dataPointTableBody {
+  border-top: 1px solid var(--mb-color-background_page-secondary-inverse);
+}
+
+.dataPointTableBody::before,
+.dataPointTableFooter::before {
+  line-height: var(--mantine-spacing-sm);
+  content: " ";
+  display: block;
+  white-space: pre;
+}

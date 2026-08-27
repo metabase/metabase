@@ -1,22 +1,50 @@
+import { c, msgid, ngettext, t } from "ttag";
+import _ from "underscore";
+
+import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
+import type {
+  ScheduleBuilderValue,
+  ScheduleValue,
+} from "metabase/common/components/Schedule/types";
+import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
+import { getScheduleDefaultsWithoutHour } from "metabase/common/components/Schedule/utils";
+import type { NotificationListItem } from "metabase/notifications/types";
+import { getScheduleExplanation } from "metabase/utils/cron";
+import { getEmailDomain, isEmail } from "metabase/utils/email";
+import MetabaseSettings from "metabase/utils/settings";
+import { formatFrame } from "metabase/utils/time-dayjs";
+import {
+  formatDateTimeWithUnit,
+  formatTimeWithUnit,
+} from "metabase/value-formatting";
+import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
   ChannelApiResponse,
+  ChannelType,
   CreateAlertNotificationRequest,
+  Notification,
+  NotificationCardSendCondition,
   NotificationChannel,
+  NotificationChannelType,
+  NotificationCronSubscription,
   NotificationHandler,
-  ScheduleSettings,
+  NotificationHandlerEmail,
+  NotificationHandlerHttp,
+  NotificationHandlerSlack,
+  NotificationRecipient,
+  NotificationRecipientRawValue,
+  UpdateAlertNotificationRequest,
+  User,
   UserId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import type { NotificationTriggerOption } from "./modals/CreateOrEditQuestionAlertModal/types";
 
-export const DEFAULT_ALERT_CRON_SCHEDULE = "0 0 8 * * ? *";
-export const DEFAULT_ALERT_SCHEDULE: ScheduleSettings = {
+export const DEFAULT_ALERT_SCHEDULE: ScheduleBuilderValue = {
   schedule_type: "daily",
-  schedule_day: null,
-  schedule_frame: null,
-  schedule_hour: 8,
-  schedule_minute: 0,
+  ...getScheduleDefaultsWithoutHour("daily"),
 };
 
 const getDefaultChannelConfig = ({
@@ -108,13 +136,390 @@ export const getDefaultQuestionAlertRequest = ({
       currentUserId,
       userCanAccessSettings,
     }),
-    subscriptions: [
-      {
-        type: "notification-subscription/cron",
-        event_name: null,
-        cron_schedule: DEFAULT_ALERT_CRON_SCHEDULE,
-        ui_display_type: "cron/builder",
-      },
-    ],
+    // A new alert has no subscription until the user picks a time
+    subscriptions: [],
   };
 };
+
+export const formatTitle = ({ item, type }: NotificationListItem) => {
+  switch (type) {
+    case "pulse":
+      return item.name;
+    case "question-notification":
+      return item.payload?.card?.name || t`Alert`;
+  }
+};
+
+export const formatCreatorMessage = (
+  item: NotificationListItem["item"],
+  userId: UserId,
+) => {
+  let creatorString = "";
+  const options = MetabaseSettings.formattingOptions();
+
+  if (userId === item.creator?.id) {
+    creatorString += t`Created by you`;
+  } else if (item.creator?.common_name) {
+    creatorString += t`Created by ${item.creator.common_name}`;
+  } else {
+    creatorString += t`Created`;
+  }
+
+  if (item.created_at) {
+    const createdAt = formatDateTimeWithUnit(item.created_at, "day", options);
+    creatorString += t` on ${createdAt}`;
+  }
+
+  return creatorString;
+};
+
+const getRecipientIdentity = (recipient: NotificationRecipient) => {
+  if (recipient.type === "notification-recipient/user") {
+    return recipient.user_id;
+  }
+
+  if (recipient.type === "notification-recipient/raw-value") {
+    return recipient.details.value; // email
+  }
+};
+
+export const canArchive = (item: Notification, user: User) => {
+  const recipients = item.handlers.flatMap((channel) => {
+    if (channel.recipients) {
+      return channel.recipients.map(getRecipientIdentity);
+    } else {
+      return [];
+    }
+  });
+
+  const isCreator = item.creator?.id === user.id;
+  const isSubscribed = recipients.includes(user.id);
+  const isOnlyRecipient = recipients.length === 1;
+
+  return isCreator && (!isSubscribed || isOnlyRecipient);
+};
+
+export function emailHandlerRecipientIsValid(recipient: NotificationRecipient) {
+  if (recipient.type === "notification-recipient/user") {
+    return !!recipient.user_id;
+  }
+
+  if (recipient.type === "notification-recipient/raw-value") {
+    const email = recipient.details.value;
+
+    const recipientDomain = getEmailDomain(email);
+    const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
+    return (
+      !!email &&
+      isEmail(email) &&
+      (_.isEmpty(allowedDomains) ||
+        !!(recipientDomain && allowedDomains.includes(recipientDomain)))
+    );
+  }
+}
+
+export function slackHandlerRecipientIsValid(
+  recipient: NotificationRecipientRawValue,
+) {
+  return !!recipient.details.value;
+}
+
+export function channelIsValid(handlers: NotificationHandler) {
+  switch (handlers.channel_type) {
+    case "channel/email":
+      return (
+        handlers.recipients &&
+        handlers.recipients.length > 0 &&
+        handlers.recipients.every(emailHandlerRecipientIsValid)
+      );
+    case "channel/slack":
+      return (
+        handlers.recipients &&
+        handlers.recipients.length > 0 &&
+        handlers.recipients.every(slackHandlerRecipientIsValid)
+      );
+    case "channel/http":
+      return handlers.channel_id;
+    default:
+      return false;
+  }
+}
+
+const notificationHandlerTypeToChannelMap: Record<
+  NotificationChannelType,
+  ChannelType
+> = {
+  ["channel/email"]: "email",
+  ["channel/slack"]: "slack",
+  ["channel/http"]: "http",
+};
+
+export const alertHasValidTarget = (
+  notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
+  channelSpec: ChannelApiResponse | undefined,
+) => {
+  const handlers = notification.handlers;
+
+  return Boolean(
+    channelSpec?.channels &&
+    handlers.length > 0 &&
+    handlers.every((handlers) => channelIsValid(handlers)) &&
+    handlers.every((c) => {
+      const handlerChannelType =
+        notificationHandlerTypeToChannelMap[c.channel_type];
+
+      return channelSpec?.channels[handlerChannelType]?.configured;
+    }),
+  );
+};
+
+export function alertIsValid(
+  notification: CreateAlertNotificationRequest | UpdateAlertNotificationRequest,
+  channelSpec: ChannelApiResponse | undefined,
+) {
+  return (
+    notification.subscriptions.length > 0 &&
+    alertHasValidTarget(notification, channelSpec)
+  );
+}
+
+function hasProperGoalForAlert({
+  question,
+  visualizationSettings,
+}: {
+  question: Question | undefined;
+  visualizationSettings?: VisualizationSettings;
+}): boolean {
+  if (!question) {
+    return false;
+  }
+
+  const alertType = getAlertType(question, visualizationSettings);
+
+  if (!alertType) {
+    return false;
+  }
+
+  return (
+    alertType === ALERT_TYPE_TIMESERIES_GOAL ||
+    alertType === ALERT_TYPE_PROGRESS_BAR_GOAL
+  );
+}
+
+export function getAlertTriggerOptions({
+  question,
+  visualizationSettings,
+}: {
+  question: Question | undefined;
+  visualizationSettings?: VisualizationSettings;
+}): NotificationCardSendCondition[] {
+  const hasValidGoal = hasProperGoalForAlert({
+    question,
+    visualizationSettings,
+  });
+
+  if (hasValidGoal) {
+    return ["has_result", "goal_above", "goal_below"];
+  }
+
+  return ["has_result"];
+}
+
+type NotificationEnabledChannelsMap = {
+  [key in NotificationChannelType]?: true;
+};
+export const getNotificationEnabledChannelsMap = (
+  notification: Notification,
+): NotificationEnabledChannelsMap => {
+  const result: NotificationEnabledChannelsMap = {};
+
+  notification.handlers.forEach((handler) => {
+    result[handler.channel_type] = true;
+  });
+
+  return result;
+};
+
+export const getNotificationHandlersGroupedByTypes = (
+  notificationHandlers: NotificationHandler[],
+) => {
+  let emailHandler: NotificationHandlerEmail | undefined;
+  let slackHandler: NotificationHandlerSlack | undefined;
+  let hookHandlers: NotificationHandlerHttp[] | undefined;
+
+  notificationHandlers.forEach((handler) => {
+    if (handler.channel_type === "channel/email") {
+      emailHandler = handler;
+      return;
+    }
+
+    if (handler.channel_type === "channel/slack") {
+      slackHandler = handler;
+      return;
+    }
+
+    if (handler.channel_type === "channel/http") {
+      if (!hookHandlers) {
+        hookHandlers = [];
+      }
+
+      hookHandlers.push(handler);
+      return;
+    }
+  });
+
+  return { emailHandler, slackHandler, hookHandlers };
+};
+
+export const formatNotificationSchedule = (
+  subscription: NotificationCronSubscription,
+): string | null => {
+  const value: ScheduleValue | null =
+    subscription.ui_display_type === "cron/raw"
+      ? { schedule_type: "cron", cron: subscription.cron_schedule }
+      : cronToBuilderValue(subscription.cron_schedule);
+
+  return (
+    (value &&
+      formatNotificationCheckSchedule(value, subscription.cron_schedule)) ||
+    null
+  );
+};
+
+export const formatNotificationCheckSchedule = (
+  value: ScheduleValue,
+  cronSchedule: string,
+) => {
+  const options = MetabaseSettings.formattingOptions();
+
+  if (isScheduleCronValue(value)) {
+    const explanation = getScheduleExplanation(cronSchedule);
+    return explanation
+      ? c(
+          "{0} is a human-readable schedule description, e.g. 'every day at 8:00 AM'",
+        ).t`Check ${explanation}`
+      : null;
+  }
+
+  const {
+    schedule_type,
+    schedule_minute,
+    schedule_hour,
+    schedule_day,
+    schedule_frame,
+  } = value;
+
+  switch (schedule_type) {
+    case "every_n_minutes":
+      // Converting to lowercase here, because 'minute` is used without pluralization on the backend.
+      // and it's impossible to have both pluralized and single form for the same string.
+      return t`Check every ${ngettext(msgid`Minute`, `${schedule_minute} Minutes`, schedule_minute || 0).toLocaleLowerCase()}`;
+    case "hourly":
+      return t`Check hourly`;
+    case "daily": {
+      if (schedule_hour != null) {
+        const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
+        return t`Check daily at ${ampm}`;
+      }
+      break;
+    }
+    case "weekly": {
+      if (schedule_hour != null && schedule_day != null) {
+        const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
+        const day = formatDateTimeWithUnit(
+          schedule_day,
+          "day-of-week",
+          options,
+        );
+        return t`Check on ${day} at ${ampm}`;
+      }
+      break;
+    }
+    case "monthly": {
+      if (schedule_hour != null && schedule_frame != null) {
+        const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
+        const day = schedule_day
+          ? formatDateTimeWithUnit(schedule_day, "day-of-week", options)
+          : t`day`;
+        const frame = formatFrame(schedule_frame);
+        return t`Check monthly on the ${frame} ${day} at ${ampm}`;
+      }
+      break;
+    }
+  }
+
+  return null;
+};
+
+export const formatNotificationScheduleDescription = ({
+  schedule_type,
+  schedule_hour,
+}: ScheduleBuilderValue) => {
+  switch (schedule_type) {
+    case "daily":
+    case "weekly":
+    case "monthly": {
+      if (schedule_hour != null) {
+        const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day");
+        return c("time with AM/PM label").t`at ${ampm}`;
+      }
+      break;
+    }
+    default:
+      return "";
+  }
+};
+
+export const ALERT_TYPE_ROWS = "alert-type-rows";
+export const ALERT_TYPE_TIMESERIES_GOAL = "alert-type-timeseries-goal";
+export const ALERT_TYPE_PROGRESS_BAR_GOAL = "alert-type-progress-bar-goal";
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
+const AlertTypes = [
+  ALERT_TYPE_ROWS,
+  ALERT_TYPE_TIMESERIES_GOAL,
+  ALERT_TYPE_PROGRESS_BAR_GOAL,
+] as const;
+
+export type NotificationTriggerType = (typeof AlertTypes)[number];
+
+/**
+ * Returns the type of alert that the question supports
+ *
+ * The `visualization_settings` in card object doesn't contain default settings,
+ * so you can provide the complete visualization settings object to `alertType`
+ * for taking those into account
+ */
+export function getAlertType(
+  question: Question,
+  visualizationSettings?: VisualizationSettings,
+) {
+  const display = question.display();
+
+  if (!question.canRun()) {
+    return null;
+  }
+
+  const isLineAreaBar =
+    display === "line" || display === "area" || display === "bar";
+
+  if (display === "progress") {
+    return ALERT_TYPE_PROGRESS_BAR_GOAL;
+  } else if (isLineAreaBar) {
+    const vizSettings = visualizationSettings
+      ? visualizationSettings
+      : question.card().visualization_settings;
+    const goalEnabled = vizSettings["graph.show_goal"];
+    const hasSingleYAxisColumn =
+      vizSettings["graph.metrics"] && vizSettings["graph.metrics"].length === 1;
+
+    // We don't currently support goal alerts for multiseries question
+    if (goalEnabled && hasSingleYAxisColumn) {
+      return ALERT_TYPE_TIMESERIES_GOAL;
+    } else {
+      return ALERT_TYPE_ROWS;
+    }
+  } else {
+    return ALERT_TYPE_ROWS;
+  }
+}

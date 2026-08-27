@@ -2,10 +2,11 @@ import 'dotenv/config';
 import fs from 'fs';
 
 import { WebClient } from '@slack/web-api';
+import type { Block, KnownBlock, MessageAttachment } from '@slack/web-api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import fetch from 'node-fetch';
-import _ from 'underscore';
+
 dayjs.extend(relativeTime);
 
 import _githubSlackMap from "../github-slack-map.json";
@@ -23,7 +24,7 @@ export function mentionUserByGithubLogin(githubLogin?: string | null) {
   if (githubLogin && githubLogin in githubSlackMap) {
     return `<@${githubSlackMap[githubLogin]}>`;
   }
-  return `@${githubLogin ?? 'unassigned'}`;
+  return githubLogin ? `@${githubLogin}` : '@unassigned';
 }
 
 export function mentionSlackTeam(teamName: string) {
@@ -79,7 +80,7 @@ export async function sendBackportReminder({
 
     const lines = text.split("\n");
     const chunkSize = Math.floor(lines.length / chunks);
-    const chunkedLines = _.chunk(lines, chunkSize);
+    const chunkedLines = chunk(lines, chunkSize);
 
     const attachments = [{
       "color": "#F9841A",
@@ -162,10 +163,17 @@ export async function sendPreReleaseStatus({
   });
 }
 
-export function sendSlackMessage({ channelName = SLACK_CHANNEL_NAME, message }: { channelName?: string, message: string }) {
+export function sendSlackMessage({ channelName = SLACK_CHANNEL_NAME, message, blocks, attachments }: {
+  channelName?: string,
+  message: string,
+  blocks?: (Block | KnownBlock)[],
+  attachments?: MessageAttachment[],
+}) {
   return slack.chat.postMessage({
     channel: channelName,
     text: message,
+    blocks,
+    attachments,
   });
 }
 
@@ -190,7 +198,11 @@ async function getSlackChannelId(
   return maybeChannelId;
 }
 
-async function getExistingSlackMessage(version: string, channelName: string) {
+export async function findSlackMessage({ channelName, text, limit = 100 }: {
+  channelName: string,
+  text: string,
+  limit?: number,
+}) {
   const channelId = await getSlackChannelId(channelName);
   if (!channelId) {
     throw new Error(`Could not find channel ${channelName}`);
@@ -198,10 +210,11 @@ async function getExistingSlackMessage(version: string, channelName: string) {
 
   const response = await slack.conversations.history({
     channel: channelId,
+    limit,
   });
 
   const existingMessage = response.messages?.find(
-    message => message.text?.includes(getReleaseTitle(version)),
+    message => message.text?.includes(text),
   );
 
   if (!existingMessage) {
@@ -212,6 +225,10 @@ async function getExistingSlackMessage(version: string, channelName: string) {
     id: existingMessage.ts ?? '',
     body: existingMessage.text ?? '',
   };
+}
+
+function getExistingSlackMessage(version: string, channelName: string) {
+  return findSlackMessage({ channelName, text: getReleaseTitle(version) });
 }
 
 export async function sendSlackReply({ channelName, message, messageId, broadcast }: {channelName: string, message: string, messageId?: string, broadcast?: boolean}) {
@@ -279,6 +296,57 @@ export function githubRunLink(
   );
 }
 
+export type ReleaseKind = "patch" | "minor";
+
+export type AutoReleaseSkipReason =
+  | "no-next-version"
+  | "no-green-commit"
+  | "already-released";
+
+type AutoReleaseSkipArgs = {
+  kind: ReleaseKind;
+  majorVersion: number;
+  reason: AutoReleaseSkipReason;
+  runId: string;
+  owner: string;
+  repo: string;
+};
+
+export function buildAutoReleaseSkipMessage({
+  kind,
+  majorVersion,
+  reason,
+  runId,
+  owner,
+  repo,
+}: AutoReleaseSkipArgs): string {
+  const runLink = githubRunLink("workflow run", runId, owner, repo);
+  const label = kind === "patch" ? "Auto-patch" : "Auto-minor";
+
+  const noNextVersion = kind === "patch"
+    ? `:x: ${label} for *v${majorVersion}* skipped: could not determine next patch version. ${runLink}`
+    : `:information_source: ${label} for *v${majorVersion}* skipped: no gold release yet — cut it manually. ${runLink}`;
+
+  const alreadyReleasedSuffix = kind === "patch" ? "nothing new to patch" : "nothing new to ship";
+
+  const messageByReason: Record<AutoReleaseSkipReason, string> = {
+    "no-green-commit": `:x: ${label} for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
+    "no-next-version": noNextVersion,
+    "already-released": `:information_source: ${label} for *v${majorVersion}* skipped: latest green commit has already been released — ${alreadyReleasedSuffix}. ${runLink}`,
+  };
+
+  return messageByReason[reason];
+}
+
+export async function sendAutoReleaseFailureMessage(
+  args: AutoReleaseSkipArgs & { channelName: string },
+) {
+  return sendSlackMessage({
+    channelName: args.channelName,
+    message: buildAutoReleaseSkipMessage(args),
+  });
+}
+
 export async function sendPreReleaseMessage({
   github,
   owner,
@@ -317,7 +385,7 @@ export async function sendPreReleaseMessage({
     releaseCommitLink,
     milestoneLink,
     githubBuildLink,
-    userName ? `started by ${mentionUserByGithubLogin(userName)}` : null
+    userName ? `started from ${owner}/${repo} by ${mentionUserByGithubLogin(userName)}` : null
   ].filter(Boolean).join(" - ");
 
   const message = `${title}\n${preReleaseMessage}`;
@@ -458,7 +526,7 @@ export async function sendFlakeStatusReport({
  * 2) make an http POST request to that url with the file
  * 3) make an api call to "complete" the upload and post it somewhere in slack
  */
-async function uploadFileToSlack({
+export async function uploadFileToSlack({
   channelName,
   thread_ts,
   fileName,
@@ -544,4 +612,13 @@ export async function sendMilestoneCheckMessage({
     file,
     message: fileMessage,
   });
+}
+
+function chunk<T>(array: T[], count: number): T[][] {
+  const result: T[][] = [];
+  let i = 0;
+  while (i < array.length) {
+    result.push(array.slice(i, (i += count)));
+  }
+  return result;
 }

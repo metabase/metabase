@@ -8,9 +8,11 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
@@ -39,6 +41,18 @@
    (org.mozilla.universalchardet UniversalDetector)))
 
 (set! *warn-on-reflection* true)
+
+(def max-upload-size-bytes
+  "Maximum size in bytes of a file that can be uploaded to create or update an upload table.
+  Keep in sync with `MAX_UPLOAD_SIZE` in `frontend/src/metabase/redux/uploads.ts`.
+  The limit documented in `docs/exploration-and-organization/uploads.md` must match as well."
+  (* 50 1024 1024))
+
+(def max-upload-part-count
+  "Maximum number of multipart parts accepted by the CSV upload endpoints.
+  Ring's :max-file-count option counts every part, form fields included, so this must allow for the
+  collection_id field the frontend sends alongside the file part."
+  2)
 
 ;; TODO: move these to a more appropriate namespace if they need to be reused
 (defmulti max-bytes
@@ -241,9 +255,7 @@
   [header-and-rows]
   (let [header (first header-and-rows)
         auto-pk-indices (auto-pk-column-indices header)]
-    (cond->> header-and-rows
-      auto-pk-indices
-      (map (partial remove-indices auto-pk-indices)))))
+    (map (partial remove-indices auto-pk-indices) header-and-rows)))
 
 (defn- file-size-mb [csv-file]
   (/ (.length ^File csv-file) 1048576.0))
@@ -364,6 +376,33 @@
     (mapv (comp keyword generator-fn)
           (for [h header] (normalize-column-name driver h)))))
 
+(defn- match-column-names
+  "Return the existing field name that each CSV `header` column should be written to.
+
+   - Columns are matched to fields by name, independent of the order they appear in the CSV.
+   - When several headers resolve to the same name, they are matched by display name so each value
+     lands in the column it came from.
+   - When columns can't be told apart even by display name, they are matched by the order they appear in."
+  [driver header name->field]
+  (let [positional (mapv name (derive-column-names driver header))
+        normalized (mapv #(normalize-column-name driver %) header)
+        collisions (into #{} (keep (fn [[col-name freq]] (when (> freq 1) col-name))) (frequencies normalized))]
+    (if (empty? collisions)
+      positional
+      ;; Map each colliding field's display name (scoped to its normalized name) back to its positional
+      ;; name, then re-match the colliding columns by display name.
+      (let [display->name (into {}
+                                (for [[norm pos] (map vector normalized positional)
+                                      :when (collisions norm)
+                                      :let  [field (name->field pos)]
+                                      :when field]
+                                  [[norm (:display_name field)] pos]))]
+        (mapv (fn [norm pos display]
+                (if (collisions norm)
+                  (get display->name [norm display] pos)
+                  pos))
+              normalized positional (derive-display-names driver header))))))
+
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
@@ -474,11 +513,10 @@
                  {:status-code 422})
         (not
          (and
-          (= :unrestricted (perms/full-db-permission-for-user api/*current-user-id*
-                                                              :perms/view-data
-                                                              (u/the-id db)))
-          ;; previously this required `unrestricted` data access, i.e. not `no-self-service`, which corresponds to *both*
-          ;; (at least) `:query-builder` plus unrestricted view-data
+          (= :unrestricted (perms/full-schema-permission-for-user api/*current-user-id*
+                                                                  :perms/view-data
+                                                                  (u/the-id db)
+                                                                  schema-name))
           (contains? #{:query-builder :query-builder-and-native}
                      (perms/full-schema-permission-for-user api/*current-user-id*
                                                             :perms/create-queries
@@ -522,28 +560,29 @@
 (defn- create-from-csv-and-sync!
   "This is separated from `create-csv-upload!` for testing"
   [{:keys [db filename file schema table-name display-name]}]
-  (let [driver            (driver.u/database->driver db)
-        schema            (some->> schema (ddl.i/format-name driver))
-        table-name        (some->> table-name (ddl.i/format-name driver))
-        schema+table-name (table-identifier {:schema schema :name table-name})
-        {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
-        ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
-        table             (sync/create-table! db {:name         table-name
-                                                  :schema       (not-empty schema)
-                                                  :display_name display-name})
-        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true
-                                                                :data_authority :authoritative
-                                                                :data_source :upload
-                                                                :is_writable true})
-        _sync             (scan-and-sync-table! db table)
-        _set_names        (set-display-names! (:id table) columns)
-        ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
-        ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
-        _ (when (auto-pk-column? driver db)
-            (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-              (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))]
-    {:table table
-     :stats stats}))
+  (driver.conn/with-write-connection
+    (let [driver                  (driver.u/database->driver db)
+          schema                  (some->> schema (ddl.i/format-name driver))
+          table-name              (some->> table-name (ddl.i/format-name driver))
+          schema+table-name       (table-identifier {:schema schema :name table-name})
+          {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
+          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+          table                   (sync/create-table! db {:name         table-name
+                                                          :schema       (not-empty schema)
+                                                          :display_name display-name})
+          _set_is_upload          (t2/update! :model/Table (:id table) {:is_upload      true
+                                                                        :data_authority :authoritative
+                                                                        :data_source    :upload
+                                                                        :is_writable    true})
+          _sync                   (scan-and-sync-table! db table)
+          _set_names              (set-display-names! (:id table) columns)
+          ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+          ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+          _                       (when (auto-pk-column? driver db)
+                                    (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
+                                      (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))]
+      {:table table
+       :stats stats})))
 
 (defn- check-filetype [filename file]
   (let [extension (file-extension filename)]
@@ -626,7 +665,6 @@
                                @api/*current-user*)
             upload-seconds    (/ (u/since-ms timer) 1e3)
             stats             (assoc stats :upload-seconds upload-seconds)]
-
         (events/publish-event! :event/upload-create
                                {:user-id  (:id @api/*current-user*)
                                 :model-id (:id table)
@@ -636,17 +674,15 @@
                                            :table-name  table-name
                                            :model-id    (:id card)
                                            :stats       stats}})
-
-        (analytics/track-event! :snowplow/csvupload
-                                (assoc stats
-                                       :event    :csv-upload-successful
-                                       :model-id (:id card)))
+        (analytics.core/track-event! :snowplow/csvupload
+                                     (assoc stats
+                                            :event    :csv-upload-successful
+                                            :model-id (:id card)))
         (assoc card :table-id (:id table)))
       (catch Throwable e
         (analytics/inc! :metabase-csv-upload/failed)
-        (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
-                                                           :event :csv-upload-failed))
-
+        (analytics.core/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
+                                                                :event :csv-upload-failed))
         (throw e)))))
 
 ;;; +-----------------------------
@@ -741,7 +777,7 @@
   ; dataset_query can be empty in tests
   (when-let [query (not-empty query)]
     (when (and (mbql? model) (no-joins? query))
-      (lib/source-table-id query))))
+      (lib/primary-source-table-id query))))
 
 (defn- invalidate-cached-models!
   "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
@@ -754,7 +790,7 @@
                             (filter (comp #{(:id table)} only-table-id))
                             (map :id)
                             seq)]
-    ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
+    ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage Lib.
     (model-persistence/invalidate! {:card_id [:in model-ids]})
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
     (doseq [id model-ids]
@@ -774,96 +810,86 @@
    m))
 
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
-  (try
-    (let [parse (infer-parser filename file)]
-      (with-open [reader (->reader file)]
-        (let [timer              (u/start-timer)
-              driver             (driver.u/database->driver database)
-              auto-pk?           (auto-pk-column? driver database)
-              [header & rows]    (cond-> (parse reader)
-                                   auto-pk?
-                                   without-auto-pk-columns)
-              name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
-              ;; Gotcha: Long column names, which get sanitized and truncated to the same string, will be match to the
-              ;; database columns based on their order. If their order in the new upload differs from that in previous
-              ;; uploads, they will be matched incorrectly.
-              ;; We accept this edge case (customers can reorder CSV columns to fix) rather than rejecting uploads
-              ;; with ambiguous column names even when the order is consistent (see #44926/#issuecomment-3524373073).
-              ;; Future idea: match on display names for smart re-ordering.
-              column-names       (map name (derive-column-names driver header))
-              display-names      (for [h header] (normalize-display-name h))
-              create-auto-pk?    (and
-                                  auto-pk?
-                                  (driver/create-auto-pk-with-append-csv? driver)
-                                  (not (contains? name->field auto-pk-column-name)))
-              name->field        (cond-> name->field auto-pk? (dissoc auto-pk-column-name))
-              _                  (check-schema (keys name->field) column-names header)
-              settings           (upload-parsing/get-settings)
-              ;; TODO: Add a method for drivers to override types here. See https://github.com/metabase/metabase/pull/55209.
-              old-types          (map (comp upload-types/base-type->upload-type :base_type name->field) column-names)
-              ;; in the happy, and most common, case all the values will match the existing types
-              ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
-              ;; we can come back and optimize this to an optimistic-with-fallback approach later.
-              detected-types     (upload-types/column-types-from-rows settings old-types rows)
-              allowed-promotions (translate-type-keywords (driver/allowed-promotions driver))
-              new-types          (map #(upload-types/new-type %1 %2 allowed-promotions) old-types detected-types)
-              ;; avoid any schema modification unless all the promotions required by the file are supported,
-              ;; choosing to not promote means that we will defer failure until we hit the first value that cannot
-              ;; be parsed as its existing type - there is scope to improve these error messages in the future.
-              modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
-              _                  (when modify-schema?
-                                   (let [changes   (field-changes column-names old-types new-types)
-                                         old-types (old-column-types driver column-names old-types)]
-                                     (add-columns! driver database table (:added changes))
-                                     (alter-columns! driver database table (:updated changes) :old-types old-types)))
-              ;; this will fail if any of our required relaxations were rejected.
-              parsed-rows        (parse-rows settings new-types rows)
-              row-count          (count parsed-rows)
-              stats              {:num-rows          row-count
-                                  :num-columns       (count new-types)
-                                  :generated-columns (if create-auto-pk? 1 0)
-                                  :size-mb           (file-size-mb file)
-                                  :upload-seconds    (u/since-ms timer)}]
-          (try
-            (when replace-rows?
-              (driver/truncate! driver (:id database) (table-identifier table)))
-            (driver/insert-into! driver (:id database) (table-identifier table) column-names parsed-rows)
-            (catch Throwable e
-              (throw (ex-info (ex-message e) {:status-code 422}))))
-
-          (when create-auto-pk?
-            (add-columns! driver database table
-                          {auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk}
-                          :primary-key [auto-pk-column-keyword]))
-
-          (scan-and-sync-table! database table)
-          (set-display-names! (:id table) (zipmap column-names display-names))
-
-          (when create-auto-pk?
-            (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
-              (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
-
-          (invalidate-cached-models! table)
-
-          (events/publish-event! (if replace-rows?
-                                   :event/upload-replace
-                                   :event/upload-append)
-                                 {:user-id  (:id @api/*current-user*)
-                                  :model-id (:id table)
-                                  :model    :model/Table
-                                  :details  {:db-id       (:id database)
-                                             :schema-name (:schema table)
-                                             :table-name  (:name table)
-                                             :stats       stats}})
-
-          (analytics/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
-
-          {:row-count row-count})))
-    (catch Throwable e
-      (analytics/inc! :metabase-csv-upload/failed)
-      (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
-                                                         :event :csv-append-failed))
-      (throw e))))
+  (driver.conn/with-write-connection
+    (try
+      (let [parse (infer-parser filename file)]
+        (with-open [reader (->reader file)]
+          (let [timer              (u/start-timer)
+                driver             (driver.u/database->driver database)
+                auto-pk?           (auto-pk-column? driver database)
+                [header & rows]    (cond-> (parse reader)
+                                     auto-pk?
+                                     without-auto-pk-columns)
+                name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
+                ;; Match colliding columns to existing fields by display name so reordering them between
+                ;; uploads doesn't write data to the wrong column. See [[match-column-names]] (GDGT-2233).
+                column-names       (match-column-names driver header name->field)
+                display-names      (for [h header] (normalize-display-name h))
+                create-auto-pk?    (and
+                                    auto-pk?
+                                    (driver/create-auto-pk-with-append-csv? driver)
+                                    (not (contains? name->field auto-pk-column-name)))
+                name->field        (cond-> name->field auto-pk? (dissoc auto-pk-column-name))
+                _                  (check-schema (keys name->field) column-names header)
+                settings           (upload-parsing/get-settings)
+                ;; TODO: Add a method for drivers to override types here. See https://github.com/metabase/metabase/pull/55209.
+                old-types          (map (comp upload-types/base-type->upload-type :base_type name->field) column-names)
+                ;; in the happy, and most common, case all the values will match the existing types
+                ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
+                ;; we can come back and optimize this to an optimistic-with-fallback approach later.
+                detected-types     (upload-types/column-types-from-rows settings old-types rows)
+                allowed-promotions (translate-type-keywords (driver/allowed-promotions driver))
+                new-types          (map #(upload-types/new-type %1 %2 allowed-promotions) old-types detected-types)
+                ;; avoid any schema modification unless all the promotions required by the file are supported,
+                ;; choosing to not promote means that we will defer failure until we hit the first value that cannot
+                ;; be parsed as its existing type - there is scope to improve these error messages in the future.
+                modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
+                _                  (when modify-schema?
+                                     (let [changes   (field-changes column-names old-types new-types)
+                                           old-types (old-column-types driver column-names old-types)]
+                                       (add-columns! driver database table (:added changes))
+                                       (alter-columns! driver database table (:updated changes) :old-types old-types)))
+                ;; this will fail if any of our required relaxations were rejected.
+                parsed-rows        (parse-rows settings new-types rows)
+                row-count          (count parsed-rows)
+                stats              {:num-rows          row-count
+                                    :num-columns       (count new-types)
+                                    :generated-columns (if create-auto-pk? 1 0)
+                                    :size-mb           (file-size-mb file)
+                                    :upload-seconds    (u/since-ms timer)}]
+            (try
+              (when replace-rows?
+                (driver/truncate! driver (:id database) (table-identifier table)))
+              (driver/insert-into! driver (:id database) (table-identifier table) column-names parsed-rows)
+              (catch Throwable e
+                (throw (ex-info (ex-message e) {:status-code 422}))))
+            (when create-auto-pk?
+              (add-columns! driver database table
+                            {auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk}
+                            :primary-key [auto-pk-column-keyword]))
+            (scan-and-sync-table! database table)
+            (set-display-names! (:id table) (zipmap column-names display-names))
+            (when create-auto-pk?
+              (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
+                (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+            (invalidate-cached-models! table)
+            (events/publish-event! (if replace-rows?
+                                     :event/upload-replace
+                                     :event/upload-append)
+                                   {:user-id  (:id @api/*current-user*)
+                                    :model-id (:id table)
+                                    :model    :model/Table
+                                    :details  {:db-id       (:id database)
+                                               :schema-name (:schema table)
+                                               :table-name  (:name table)
+                                               :stats       stats}})
+            (analytics.core/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
+            {:row-count row-count})))
+      (catch Throwable e
+        (analytics/inc! :metabase-csv-upload/failed)
+        (analytics.core/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
+                                                                :event :csv-append-failed))
+        (throw e)))))
 
 (defn- can-update-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
@@ -874,7 +900,7 @@
         (ex-info (tru "The table must be an uploaded table.")
                  {:status-code 422})
 
-        (not (mi/can-read? table))
+        (not (mi/can-query? table))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403}))))
 
@@ -892,13 +918,17 @@
 (defn- can-delete-error
   "Returns an ExceptionInfo object if the user cannot delete the given upload. Returns nil otherwise."
   [table database]
-  (when-not (:is_attached_dwh database) ;; gsheets uploads: deletable, but we cannot write + they aren't is_upload
+  (if (:is_attached_dwh database)
+    ;; gsheets uploads: deletable, but we cannot write + they aren't is_upload
+    (when-not api/*is-superuser?*
+      (ex-info (tru "You don''t have permissions to do that.")
+               {:status-code 403}))
     (cond
       (not (:is_upload table))
       (ex-info (tru "The table must be an uploaded table.")
                {:status-code 422})
 
-      (not (mi/can-write? table))
+      (not (and (mi/can-query? table) (mi/can-write? table)))
       (ex-info (tru "You don''t have permissions to do that.")
                {:status-code 403}))))
 
@@ -920,22 +950,19 @@
         driver     (driver.u/database->driver database)
         table-name (table-identifier table)]
     (check-can-delete table database)
-
     ;; Attempt to delete the underlying data from the customer database.
     ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
     ;; visible to administrators, and the operation is easy to retry again later.
-    (driver/drop-table! driver (:id database) table-name)
-
+    (driver.conn/with-write-connection
+      (driver/drop-table! driver (:id database) table-name))
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
     (t2/update! :model/Table :id (:id table) {:active false})
-
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.
     ;; TODO update the [[metabase.sync]] module to support direct per-table clean-up
     ;; Ideally this will also clean up more the metadata which we had created around it, e.g. advanced field values.
     #_(future (sync/retire-table! (assoc table :active false)))
-
     ;; Archive the related cards if the customer opted in.
     ;;
     ;; For now, this only covers instances where the card has this as its "primary table", i.e.
@@ -946,7 +973,6 @@
       (t2/update-returning-pks! :model/Card
                                 {:table_id (:id table) :archived false}
                                 {:archived true}))
-
     :done))
 
 (def update-action-schema

@@ -1,5 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
-import { SAMPLE_DATABASE, createQuery } from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import {
+  SAMPLE_DATABASE,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockField,
@@ -79,15 +83,17 @@ describe("suggestMetrics", () => {
       questions: [METRIC_FOO],
     });
 
-    const query = createQuery({
+    const provider = createMetadataProvider({
       metadata,
-      query: {
-        database: DATABASE.id,
-        type: "query",
-        query: {
-          "source-table": TABLE.id,
+      databaseId: DATABASE.id,
+    });
+
+    const query = Lib.createTestQuery(provider, {
+      stages: [
+        {
+          source: { type: "table", id: TABLE.id },
         },
-      },
+      ],
     });
 
     const source = suggestMetrics({

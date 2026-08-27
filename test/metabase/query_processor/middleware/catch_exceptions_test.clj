@@ -1,11 +1,13 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
   "There are additional tests in [[metabase.query-processor.failure-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.catch-exceptions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions
@@ -13,6 +15,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users])
   (:import
@@ -57,7 +60,7 @@
                                     (update cause :stacktrace sequential?))))))))))
   (testing "SQLExceptions that include stack traces should have them removed"
     (let [e1 (ex-info "mock databricks jdbc driver exception" {:level 1})
-          e2 (SQLException. "mock sql exception\n\tat line1\n\tat line2\n\tat line3" e1)
+          e2 (SQLException. "mock sql exception\n\tat line1\n\tat line2\n\tat line3" ^Throwable e1)
           e3 (ex-info "mock exception" {:level 3} e2)]
       (is (= {:status     :failed
               :class      clojure.lang.ExceptionInfo
@@ -108,8 +111,8 @@
   (testing "compile and preprocess should not be called if no exception occurs"
     (let [compile-call-count (atom 0)
           preprocess-call-count (atom 0)]
-      (with-redefs [qp.compile/compile       (fn [_] (swap! compile-call-count inc))
-                    qp.preprocess/preprocess (fn [_] (swap! preprocess-call-count inc))]
+      (mt/with-dynamic-fn-redefs [qp.compile/compile       (fn [_] (swap! compile-call-count inc))
+                                  qp.preprocess/preprocess (fn [_] (swap! preprocess-call-count inc))]
         (is (= {:data {}, :row_count 0, :status :completed}
                (catch-exceptions (fn run []))))
         (is (= 0 @compile-call-count))
@@ -125,6 +128,43 @@
              :row_count  0
              :data       {:cols []}}
             (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))))))
+
+(deftest ^:synchronized connection-pool-saturated-not-logged-test
+  (testing "connection-pool saturation is transient load shedding: fail the query (503 for clients) but don't log an error"
+    (doseq [error-type [qp.error-type/connection-pool-checkout-timeout
+                        qp.error-type/connection-pool-checkout-queue-full]]
+      (testing error-type
+        (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+          (is (=? {:status     :failed
+                   :error_type error-type
+                   :error      "The pool is full"}
+                  (catch-exceptions (fn [] (throw (ex-info "The pool is full" {:type error-type}))))))
+          (is (empty? (messages)))))))
+  (testing "control: other errors still log"
+    (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+      (is (=? {:status :failed}
+              (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))))
+      (is (=? [{:level :error, :message #"(?s)^Error processing query.*"}]
+              (messages))))))
+
+(deftest ^:synchronized error-log-excludes-stack-trace-and-query-test
+  (testing "the error log carries only the error message — no stack trace and nothing carrying the query/user data"
+    (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+      (let [mp     (mt/metadata-provider)
+            query  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :name)) "hunter2-query")))
+            result (catch-exceptions
+                    (fn [] (throw (ex-info "boom" {:secret-in-ex-data "hunter2-ex-data"})))
+                    query)]
+        (is (=? [{:level :error, :message "Error processing query: boom"}]
+                (messages)))
+        (testing "the userland response still has the full detail"
+          (is (=? {:status     :failed
+                   :error      "boom"
+                   :stacktrace vector?
+                   :ex-data    {:secret-in-ex-data "hunter2-ex-data"}
+                   :json_query map?}
+                  result)))))))
 
 (deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"
@@ -179,7 +219,6 @@
                   (qp/process-query
                    (qp/userland-query
                     (mt/mbql-query venues {:fields [!month.id]})))))))
-
       (testing "They should see it if they have ad-hoc native query perms"
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)

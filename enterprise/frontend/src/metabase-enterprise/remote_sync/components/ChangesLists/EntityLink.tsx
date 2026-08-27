@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 
-import { type IconData, type IconModel, getIcon } from "metabase/lib/icon";
-import { modelToUrl } from "metabase/lib/urls";
+import type { IconData, IconModel } from "metabase/common/utils/icon";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Anchor, Group, Icon } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { getSyncStatusColor, getSyncStatusIcon } from "../../utils";
@@ -14,17 +15,19 @@ interface EntityLinkProps {
 }
 
 export const EntityLink = ({ entity }: EntityLinkProps) => {
+  const getIcon = useGetIcon();
   const entityIcon = useMemo((): IconData => {
     if (entity.model === "field") {
       return { name: "field" };
     }
 
     return getIcon({
+      // Unjustified type cast. FIXME
       model: entity.model as IconModel,
       id: entity.id,
       display: entity.display,
     });
-  }, [entity]);
+  }, [entity, getIcon]);
 
   const url = useMemo(() => modelToUrl(entity), [entity]);
   if (url == null) {

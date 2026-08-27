@@ -1,7 +1,7 @@
 import type { MantineColorsTuple } from "@mantine/core";
 
 import type { EmbeddingThemeOptions } from "metabase/embedding-sdk/theme/private";
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 import type { ColorSettings } from "metabase-types/api/settings";
 
 interface _EmotionCompatibilityTheme {

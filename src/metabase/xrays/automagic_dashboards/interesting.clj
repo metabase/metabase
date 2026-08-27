@@ -80,7 +80,7 @@
       (let [duration   (u.date/period-duration earliest latest)
             less-than? #(u.date/greater-than-period-duration? % duration)]
         (cond
-         ;; e.g. if [duration between earliest and latest] < 3 hours then use `:minute` resolution
+          ;; e.g. if [duration between earliest and latest] < 3 hours then use `:minute` resolution
           (and (less-than? (t/hours 3))  (can-use? :minute)) :minute
           (and (less-than? (t/days 7))   (can-use? :hour))   :hour
           (and (less-than? (t/months 6)) (can-use? :day))    :day

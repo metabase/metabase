@@ -14,23 +14,24 @@ import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
-  isQuestionCard,
-  isQuestionDashCard,
 } from "metabase/dashboard/utils";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
+import type { StoreDashcard } from "metabase/redux/store";
+import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
+import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
+import type { CardSlownessStatus } from "metabase/visualizations/types";
 import {
   getInitialStateForCardDataSource,
   getInitialStateForMultipleSeries,
   getInitialStateForVisualizerCard,
-  isVisualizerDashboardCard,
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -40,16 +41,13 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { StoreDashcard } from "metabase-types/store";
-import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
-import type {
-  CardSlownessStatus,
-  DashCardOnChangeCardAndRunHandler,
-} from "./types";
+import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import { useAutoScrollIntoView } from "./use-auto-scroll-into-view";
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -138,11 +136,12 @@ function DashCardInner({
       cardRootRef?.current?.scrollIntoView({ block: "nearest" });
       markNewCardSeen(dashcard.id);
     }
+  });
 
-    if (autoScroll) {
-      cardRootRef?.current?.scrollIntoView({ block: "nearest" });
-      reportAutoScrolledToDashcard?.();
-    }
+  useAutoScrollIntoView({
+    ref: cardRootRef,
+    enabled: Boolean(autoScroll),
+    onScrolled: () => reportAutoScrolledToDashcard?.(),
   });
 
   useUpdateEffect(() => {

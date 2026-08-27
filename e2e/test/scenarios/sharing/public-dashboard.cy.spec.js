@@ -133,31 +133,6 @@ describe("scenarios > public > dashboard", () => {
     });
   });
 
-  it("should only allow non-admin users to see a public link if one has already been created", () => {
-    cy.get("@dashboardId").then((id) => {
-      H.createPublicDashboardLink(id);
-      cy.signOut();
-    });
-
-    cy.signInAsNormalUser().then(() => {
-      H.visitDashboard("@dashboardId");
-      H.openSharingMenu("Public link");
-
-      cy.findByTestId("public-link-popover-content").within(() => {
-        cy.findByText("Public link").should("be.visible");
-        cy.findByTestId("public-link-input").should(
-          "not.have.attr",
-          "placeholder",
-          "Loading…",
-        );
-        cy.findByTestId("public-link-input").should(($input) => {
-          expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
-        });
-        cy.findByText("Remove public URL").should("not.exist");
-      });
-    });
-  });
-
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it("should be able to view public dashboards", () => {

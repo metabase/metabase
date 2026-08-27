@@ -2,9 +2,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { IconName } from "metabase/embedding-sdk/types/icon";
-import { isNotNull } from "metabase/lib/types";
-import { Icon, Menu, type MenuProps } from "metabase/ui";
-import visualizations from "metabase/visualizations";
+import { Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
+import {
+  getIconForVisualizationType,
+  visualizations,
+} from "metabase/visualizations";
 import type { Visualization } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
 
@@ -17,7 +20,11 @@ import { ToolbarButton } from "../util/ToolbarButton";
  * @expand
  * @category InteractiveQuestion
  */
-export type ChartTypeDropdownProps = MenuProps;
+export interface ChartTypeDropdownProps {
+  opened?: boolean;
+  defaultOpened?: boolean;
+  onOpenChange?: (opened: boolean) => void;
+}
 
 /**
  * Dropdown for selecting the visualization type (bar chart, line chart, table, etc.).
@@ -27,7 +34,7 @@ export type ChartTypeDropdownProps = MenuProps;
  * @category InteractiveQuestion
  * @param props
  */
-export const ChartTypeDropdown = ({ ...menuProps }: ChartTypeDropdownProps) => {
+export const ChartTypeDropdown = (props: ChartTypeDropdownProps) => {
   const { selectedVisualization, updateQuestionVisualization } =
     useQuestionVisualization();
 
@@ -40,7 +47,7 @@ export const ChartTypeDropdown = ({ ...menuProps }: ChartTypeDropdownProps) => {
       updateQuestionVisualization={updateQuestionVisualization}
       sensibleVisualizations={sensibleVisualizations}
       nonSensibleVisualizations={nonSensibleVisualizations}
-      {...menuProps}
+      {...props}
     />
   );
 };
@@ -54,7 +61,7 @@ interface ChartTypeDropdownInnerProps extends ChartTypeDropdownProps {
 
 /**
  * Exported for testing purposes
- * Renders a menu with a list of visualizations to choose from
+ * Renders a combobox with a list of visualizations to choose from
  *
  * @internal
  * @param props ChartTypeDropdownInnerProps
@@ -65,8 +72,20 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
     updateQuestionVisualization,
     sensibleVisualizations,
     nonSensibleVisualizations,
-    ...menuProps
+    opened,
+    defaultOpened,
+    onOpenChange,
   } = props;
+
+  const combobox = useCombobox({
+    opened,
+    defaultOpened,
+    onDropdownOpen: () => onOpenChange?.(true),
+    onDropdownClose: () => {
+      onOpenChange?.(false);
+      combobox.resetSelectedOption();
+    },
+  });
 
   const getVisualizationItems = (
     visualizationType: CardDisplayType,
@@ -74,16 +93,20 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
     value: CardDisplayType;
     label: ReturnType<Visualization["getUiName"]>;
     iconName: IconName;
+    iconUrl?: string;
   } | null => {
     const visualization = visualizations.get(visualizationType);
     if (!visualization) {
       return null;
     }
 
+    const icon = getIconForVisualizationType(visualizationType);
+
     return {
       value: visualizationType,
       label: visualization.getUiName(),
-      iconName: visualization.iconName,
+      iconName: icon.name,
+      iconUrl: icon.iconUrl,
     };
   };
 
@@ -106,44 +129,88 @@ export const ChartTypeDropdownInner = (props: ChartTypeDropdownInnerProps) => {
   );
 
   return (
-    <Menu position="bottom-start" {...menuProps}>
-      <Menu.Target>
+    <Combobox
+      store={combobox}
+      position="bottom-start"
+      onOptionSubmit={(value) => {
+        // Unjustified type cast. FIXME
+        updateQuestionVisualization(value as CardDisplayType);
+        combobox.closeDropdown();
+      }}
+    >
+      <Combobox.DropdownTarget>
         <ToolbarButton
           data-testid="chart-type-selector-button"
           disabled={!selectedElement}
           label={selectedElement?.label}
           icon={selectedElement?.iconName}
+          iconUrl={selectedElement?.iconUrl}
           isHighlighted={false}
           variant="default"
           px={undefined}
           pr="md"
           rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
           className={ToolbarButtonS.PrimaryToolbarButton}
+          onClick={() => combobox.toggleDropdown()}
         />
-      </Menu.Target>
-      {/* Using  overflow: "auto" because Menus have a default overflow: "visible" */}
-      <Menu.Dropdown h="30rem" style={{ overflow: "auto" }}>
-        {sensibleItems.map(({ iconName, label, value }, index) => (
-          <Menu.Item
-            key={`${value}/${index}`}
-            onClick={() => updateQuestionVisualization(value)}
-            leftSection={iconName ? <Icon name={iconName} /> : null}
-          >
-            {label}
-          </Menu.Item>
-        ))}
-
-        <Menu.Label>{t`Other charts`}</Menu.Label>
-        {nonsensibleItems.map(({ iconName, label, value }, index) => (
-          <Menu.Item
-            key={`${value}/${index}`}
-            onClick={() => updateQuestionVisualization(value)}
-            leftSection={iconName ? <Icon name={iconName} /> : null}
-          >
-            {label}
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
+      </Combobox.DropdownTarget>
+      <Combobox.Dropdown miw={200}>
+        <Combobox.Options mah="30rem">
+          {sensibleItems.map((item, index) => (
+            <Option
+              key={index}
+              selected={item.value === selectedVisualization}
+              {...item}
+            />
+          ))}
+          <Text
+            c="text-disabled"
+            size="sm"
+            py="xs"
+            px="sm"
+          >{t`More charts`}</Text>
+          {nonsensibleItems.map((item, index) => (
+            <Option
+              key={index}
+              selected={item.value === selectedVisualization}
+              {...item}
+            />
+          ))}
+        </Combobox.Options>
+      </Combobox.Dropdown>
+    </Combobox>
   );
 };
+
+interface OptionProps {
+  value: CardDisplayType;
+  label: ReturnType<Visualization["getUiName"]>;
+  iconName: IconName;
+  iconUrl?: string;
+  selected: boolean;
+}
+
+function Option(props: OptionProps) {
+  const { value, selected, iconName, iconUrl, label } = props;
+
+  return (
+    <Combobox.Option px="sm" py="xs" value={value} selected={selected}>
+      <Flex align="center" gap="sm">
+        {iconUrl ? (
+          <img
+            src={iconUrl}
+            alt=""
+            width={16}
+            height={16}
+            style={{ flex: "0 0 1rem" }}
+          />
+        ) : iconName ? (
+          <Icon name={iconName} flex="0 0 1rem" />
+        ) : null}
+        <Text c="inherit" style={{ whiteSpace: "nowrap" }}>
+          {label}
+        </Text>
+      </Flex>
+    </Combobox.Option>
+  );
+}

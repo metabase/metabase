@@ -44,7 +44,6 @@
         (is (string? user))
         (is (int? port))
         (is (string? dbname)))
-
       (testing "using broken-out details"
         (testing "Can create DataSource with AWS IAM enabled"
           (let [details {:host     host
@@ -54,16 +53,13 @@
                          :aws-iam  true}
                 datasource (mdb.data-source/broken-out-details->DataSource :postgres details)]
             (is (instance? javax.sql.DataSource datasource))
-
             (testing "Can establish connection using AWS IAM"
               (is (true? (get-connection-and-close! datasource)))))))
-
       (testing "using uri"
         (testing "Can create DataSource with AWS IAM enabled"
           (let [datasource (mdb.data-source/raw-connection-string->DataSource
                             uri nil nil nil true)]
             (is (instance? javax.sql.DataSource datasource))
-
             (testing "Can establish connection using AWS IAM"
               (is (true? (get-connection-and-close! datasource))))))))
     (log/info "Skipping test: MB_POSTGRES_AWS_IAM_TEST not set")))
@@ -85,10 +81,8 @@
           (is (string? user))
           (is (int? port))
           (is (string? dbname)))
-
         (testing "SSL certificate is configured"
           (is (string? ssl-cert)))
-
         (testing "using broken-out details"
           (testing "Can create DataSource with AWS IAM enabled"
             (let [details {:host     host
@@ -99,16 +93,13 @@
                            :aws-iam  true}
                   datasource (mdb.data-source/broken-out-details->DataSource :mysql details)]
               (is (instance? javax.sql.DataSource datasource))
-
               (testing "Can establish connection using AWS IAM"
                 (is (true? (get-connection-and-close! datasource)))))))
-
         (testing "using uri"
           (testing "Can create DataSource with AWS IAM enabled"
             (let [datasource (mdb.data-source/raw-connection-string->DataSource
                               uri nil nil nil true)]
               (is (instance? javax.sql.DataSource datasource))
-
               (testing "Can establish connection using AWS IAM"
                 (is (true? (get-connection-and-close! datasource))))))))
       (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST not set"))))

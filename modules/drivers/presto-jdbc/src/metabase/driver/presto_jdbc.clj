@@ -11,6 +11,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -46,8 +47,15 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :presto-jdbc, :parent #{:sql-jdbc
-                                          ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :presto-jdbc, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/host-carrying-parameters :presto-jdbc
+  [_driver]
+  ["httpProxy" "socksProxy"])
+
+(defmethod driver/non-host-parameters :presto-jdbc
+  [_driver]
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
 
 (doseq [[feature supported?] {:basic-aggregations               true
                               :binning                          true
@@ -57,6 +65,7 @@
                               :expressions                      true
                               :metadata/key-constraints         false
                               :native-parameters                true
+                              :native-pivot-tables              true
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :set-timezone                     true
@@ -151,8 +160,8 @@
                                [:from_utf8 expr]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc Boolean]
   [_ bool]
@@ -162,20 +171,16 @@
   [_driver bs]
   [:from_base64 (u/encode-base64-bytes bs)])
 
-(defmethod sql.qp/->honeysql [:presto-jdbc :time]
-  [_ [_ t]]
-  (h2x/cast :time (u.date/format-sql (t/local-time t))))
-
 (defmethod sql.qp/->honeysql [:presto-jdbc :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :percentile]
-  [driver [_ arg p]]
+  [driver [_ _opts arg p]]
   [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 ;;; Presto mod is a function like mod(x, y) rather than an operator like x mod y
@@ -200,7 +205,7 @@
 (defmethod sql.qp/inline-value [:presto-jdbc String]
   [_ ^String s]
   (case *inline-param-style*
-    :friendly (str \' (sql.u/escape-sql s :ansi) \')
+    :friendly (sql.u/quote-literal s :ansi)
     :paranoid (format "from_utf8(from_hex('%s'))" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
@@ -308,18 +313,17 @@
 (def ^:private ^:const timestamp-with-time-zone-db-type "timestamp with time zone")
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :log]
-  [driver [_ field]]
-  ;; recent Presto versions have a `log10` function (not `log`)
+  [driver [_ _opts field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :count-where]
-  [driver [_ pred]]
+  [driver [_ _opts pred]]
   ;; Presto will use the precision given here in the final expression, which chops off digits
   ;; need to explicitly provide two digits after the decimal
-  (sql.qp/->honeysql driver [:sum-where 1.00M pred]))
+  (sql.qp/->honeysql driver [:sum-where {} 1.00M pred]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
-  [_driver [_ t]]
+  [_driver [_ _opts t]]
   ;; make time in UTC to avoid any interpretation by Presto in the connection (i.e. report) time zone
   [:inline (t/offset-time (t/local-time t) 0)])
 
@@ -567,7 +571,7 @@
   [driver conn schema table-name]
   (try
     (let [sql (sql-jdbc.describe-database/simple-select-probe-query driver schema table-name)]
-        ;; if the query completes without throwing an Exception, we can SELECT from this table
+      ;; if the query completes without throwing an Exception, we can SELECT from this table
       (jdbc/reducible-query {:connection conn} sql)
       true)
     (catch Throwable _
@@ -578,7 +582,7 @@
   implementation."
   [driver conn catalog schema]
   (let [sql (describe-schema-sql driver catalog schema)]
-    (log/tracef "Running statement in describe-schema: %s" sql)
+    (log/tracef "Running statement in describe-schema for %s.%s" catalog schema)
     (into #{} (comp (filter (fn [{table-name :table}]
                               (have-select-privilege? driver conn schema table-name)))
                     (map (fn [{table-name :table}]
@@ -591,7 +595,7 @@
   implementation."
   [driver conn catalog]
   (let [sql (describe-catalog-sql driver catalog)]
-    (log/tracef "Running statement in all-schemas: %s" sql)
+    (log/tracef "Running statement in all-schemas for catalog %s" catalog)
     (into []
           (map (fn [{:keys [schema]}]
                  (when-not (contains? excluded-schemas schema)
@@ -599,41 +603,46 @@
           (jdbc/reducible-query {:connection conn} sql))))
 
 (defmethod driver/describe-database* :presto-jdbc
-  [driver {{:keys [catalog schema] :as _details} :details :as database}]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
-                       (all-schemas driver conn catalog))]
-       {:tables (reduce set/union #{} schemas)}))))
+  [driver database]
+  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
+                         (all-schemas driver conn catalog))]
+         {:tables (reduce set/union #{} schemas)})))))
+
+(defn- column->field
+  [database-pos {:keys [column type comment]}]
+  (cond-> {:name              column
+           :database-type     type
+           :base-type         (presto-type->base-type type)
+           :database-position database-pos}
+    (not (str/blank? comment)) (assoc :field-comment comment)))
 
 (defmethod driver/describe-table :presto-jdbc
-  [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (let [sql (describe-table-sql driver catalog schema table-name)]
-       (log/tracef "Running statement in describe-table: %s" sql)
-       {:schema schema
-        :name   table-name
-        :fields (into
-                 #{}
-                 (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                {:name              column
-                                 :database-type     type
-                                 :base-type         (presto-type->base-type type)
-                                 :database-position idx}))
-                 (jdbc/reducible-query {:connection conn} sql))}))))
+  [driver database {schema :schema, table-name :name}]
+  (let [{:keys [catalog]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [sql (describe-table-sql driver catalog schema table-name)]
+         (log/tracef "Running statement in describe-table for %s.%s.%s" catalog schema table-name)
+         {:schema schema
+          :name   table-name
+          :fields (into
+                   #{}
+                   (map-indexed column->field)
+                   (jdbc/reducible-query {:connection conn} sql))})))))
 
 ;;; The Presto JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the `:sql-jdbc`
 ;;; implementation doesn't try to use it.
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :presto-jdbc
-  [_driver _database _table]
+(defmethod driver/describe-fks :presto-jdbc
+  [_driver _database & {:as _options}]
   nil)
 
 (defmethod driver/can-connect? :presto-jdbc
@@ -660,7 +669,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
+          (log/debugf "Error setting prepared statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
       (sql-jdbc.execute/set-parameters! driver stmt params)
       stmt
       (catch Throwable e
@@ -676,7 +685,7 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (catch Throwable e
-        (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
+        (log/debugf "Error setting statement fetch direction to FETCH_FORWARD: %s" (ex-message e))))
     stmt))
 
 (defn- pooled-conn->presto-conn
@@ -702,7 +711,7 @@
       (try
         (.setReadOnly conn read-only?)
         (catch Throwable e
-          (log/debugf e "Error setting connection read-only to %s" (pr-str read-only?)))))))
+          (log/debugf "Error setting connection read-only to %s: %s" (pr-str read-only?) (ex-message e)))))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :presto-jdbc
   [driver db-or-id-or-spec options f]
@@ -823,7 +832,7 @@
             (or (instance? OffsetDateTime t)
                 (instance? ZonedDateTime t))
             (-> (t/offset-date-time t)
-              ;; tests are expecting this to be in the UTC offset, so convert to that
+                ;; tests are expecting this to be in the UTC offset, so convert to that
                 (t/with-offset-same-instant (t/zone-offset 0)))
 
             ;; presto "helpfully" returns local results already adjusted to session time zone offset for us, e.g.

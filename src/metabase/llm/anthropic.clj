@@ -5,7 +5,6 @@
    using tool_use for structured output."
   (:require
    [clj-http.client :as http]
-   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.util :as u]
@@ -79,28 +78,6 @@
                       {:type :llm-not-configured})))
     api-key))
 
-(def ^:private list-models*
-  "Memoized implementation of list-models with 5-minute TTL."
-  (memoize/ttl
-   (fn [api-key]
-     (try
-       (let [url (str (llm.settings/llm-anthropic-api-url) "/v1/models")
-             response (http/get url
-                                {:headers {"x-api-key"         api-key
-                                           "anthropic-version" (llm.settings/llm-anthropic-api-version)}})
-             body (json/decode+kw (:body response))
-             models (reverse (sort-by :created_at (:data body)))]
-         {:models (map #(select-keys % [:id :display_name]) models)})
-       (catch Exception e
-         (handle-api-error e))))
-   :ttl/threshold (* 5 60 1000)))
-
-(defn list-models
-  "Send a list models request to Anthropic.
-   Returns a map with :models. Results are cached for 5 minutes."
-  []
-  (list-models* (get-api-key-or-throw)))
-
 (defn chat-completion
   "Send a chat completion request to Anthropic.
    Returns a map with:
@@ -109,7 +86,7 @@
    - :duration-ms - Request duration in milliseconds
 
    Options:
-   - :model    - Model to use (default: configured model or claude-sonnet-4-20250514)
+   - :model    - Model to use; defaults to the `llm-anthropic-model` setting
    - :system   - System prompt
    - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]
@@ -117,10 +94,13 @@
         request    {:model    model
                     :system   system
                     :messages messages}
-        start-time (u/start-timer)]
+        start-time (u/start-timer)
+        url        (str (llm.settings/llm-anthropic-api-base-url) "/v1/messages")]
+    ;; Outside the try so the e2e guard fails loudly instead of being routed
+    ;; through `handle-api-error` (mirrors `metabase.metabot.self.core/request`).
+    (llm.settings/assert-llm-host-allowed! url)
     (try
-      (let [url      (str (llm.settings/llm-anthropic-api-url) "/v1/messages")
-            response (http/post url
+      (let [response (http/post url
                                 {:headers            (build-request-headers (get-api-key-or-throw))
                                  :body               (json/encode (build-request-body request))
                                  :as                 :json

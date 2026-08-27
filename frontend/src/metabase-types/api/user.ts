@@ -1,7 +1,10 @@
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
-import type { DependencyListUserParams } from "./dependencies";
+import type { DatabaseId } from "./database";
+import type { DependencyDiagnosticsUserParams } from "./dependencies";
+import type { ExportFormat, TableExportFormat } from "./export-format";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
+import type { ConcreteTableId, SchemaName } from "./table";
 
 export type UserId = number;
 export type UserAttributeKey = string;
@@ -69,9 +72,9 @@ export interface User extends BaseUser {
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
   can_write_any_collection: boolean;
-  personal_collection_id: CollectionId;
+  personal_collection_id: CollectionId | null;
   tenant_collection_id: CollectionId | null;
-  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | null;
+  sso_source: "jwt" | "ldap" | "google" | "scim" | "saml" | "oidc" | null;
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
@@ -84,7 +87,11 @@ export interface UserListResult {
   last_name: string | null;
   common_name: string;
   email: string;
-  personal_collection_id: CollectionId;
+  /**
+   * `null` for API-key users (see `include-personal-collection-ids`
+   * in `collections/models/collection.clj`).
+   */
+  personal_collection_id: CollectionId | null;
   structured_attributes?: StructuredUserAttributes;
 }
 
@@ -104,6 +111,7 @@ export type UserInfo = Pick<
   | "last_login"
   | "is_superuser"
   | "is_qbnewb"
+  | "is_active"
 >;
 
 export type UserListQuery = {
@@ -121,6 +129,12 @@ export type UserLoginHistoryItem = {
 
 export type UserLoginHistory = UserLoginHistoryItem[];
 
+export type InviteTarget = {
+  type: "dashboard" | "question";
+  id: number;
+  name: string;
+};
+
 export type CreateUserRequest = {
   email: string;
   first_name?: string;
@@ -129,6 +143,7 @@ export type CreateUserRequest = {
   login_attributes?: UserAttributeMap;
   password?: string;
   source?: "setup" | "admin";
+  invite_target?: InviteTarget;
 };
 
 export type UpdatePasswordRequest = {
@@ -174,8 +189,8 @@ export type UserKeyValue =
       namespace: "last_download_format";
       key: string;
       value: {
-        last_download_format: "csv" | "xlsx" | "json" | "png";
-        last_table_download_format: "csv" | "xlsx" | "json";
+        last_download_format: ExportFormat;
+        last_table_download_format: TableExportFormat;
       };
     }
   | {
@@ -185,13 +200,33 @@ export type UserKeyValue =
     }
   | {
       namespace: "data_studio";
-      key: string;
+      key: "isNavbarOpened" | "hasSeenGuide";
       value: boolean;
     }
   | {
-      namespace: "dependency_list";
+      namespace: "monitor";
+      key: "isNavbarOpened";
+      value: boolean;
+    }
+  | {
+      namespace: "dependency_diagnostics";
       key: string;
-      value: DependencyListUserParams;
+      value: DependencyDiagnosticsUserParams;
+    }
+  | {
+      namespace: "schema_viewer";
+      key: "last_database";
+      value: {
+        databaseId: DatabaseId;
+        schema?: SchemaName;
+      };
+    }
+  | {
+      namespace: "schema_viewer";
+      key: `${DatabaseId}__${SchemaName}`;
+      value: {
+        table_ids: ConcreteTableId[];
+      };
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;

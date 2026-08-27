@@ -11,7 +11,6 @@ import type {
   DependencyEntry,
   DependencyNode,
   SearchModel,
-  SearchResponse,
 } from "metabase-types/api";
 
 import { getDependencyType } from "../../../../utils";
@@ -124,16 +123,9 @@ export function getEntryPickerValue(
     return;
   }
 
+  // Unjustified type cast. FIXME
   const groupType = SEARCH_MODEL_TO_GROUP_TYPE[item.model as SearchModel];
   if (groupType != null) {
     return { id: item.id, type: getDependencyType(groupType) };
   }
-}
-
-export function hasAvailableModels(
-  response: SearchResponse | undefined,
-  models: SearchModel[],
-) {
-  const availableModels = response?.available_models ?? [];
-  return models.some((model) => availableModels.includes(model));
 }

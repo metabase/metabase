@@ -1,32 +1,29 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import type { QueryBuilderMode } from "metabase/redux/store";
 import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { QueryBuilderMode } from "metabase-types/store";
 
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 interface QuestionSummarizeWidgetProps {
   isShowingSummarySidebar: boolean;
-  onEditSummary: () => void;
+  editSummary: () => void;
   onCloseSummary: () => void;
-  className?: string;
 }
 
 export function QuestionSummarizeWidget({
   isShowingSummarySidebar,
-  onEditSummary,
+  editSummary,
   onCloseSummary,
-  className,
 }: QuestionSummarizeWidgetProps) {
   const handleClick = () => {
     if (isShowingSummarySidebar) {
       onCloseSummary();
     } else {
-      onEditSummary();
+      editSummary();
     }
   };
 
@@ -42,12 +39,17 @@ export function QuestionSummarizeWidget({
 
   return (
     <Button
-      color="summarize"
+      color="core-summarize"
       variant={isShowingSummarySidebar ? "filled" : "default"}
       leftSection={<Icon name="sum" />}
       onClick={handleClick}
       data-active={isShowingSummarySidebar}
-      className={cx(className, ViewTitleHeaderS.SummarizeButton)}
+      className={ViewTitleHeaderS.SummarizeButton}
+      classNames={{
+        root: ViewTitleHeaderS.ActionButtonRoot,
+        label: ViewTitleHeaderS.ActionButtonLabel,
+        section: ViewTitleHeaderS.ActionButtonSection,
+      }}
     >
       {t`Summarize`}
     </Button>

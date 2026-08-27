@@ -1,19 +1,21 @@
-import type { ContentTranslationFunction } from "metabase/i18n/types";
-import registerVisualizations from "metabase/visualizations/register";
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
-  MaybeTranslatedSeries,
   Series,
   SeriesSettings,
   SingleSeries,
   VisualizationDisplay,
 } from "metabase-types/api";
-import { createMockDatasetData } from "metabase-types/api/mocks";
+import {
+  createMockDatasetData,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 import { leaveUntranslated } from "./use-translate-content";
 import {
-  getTranslatedFilterDisplayName,
   translateColumnDisplayName,
   translateFieldValuesInSeries,
+  translateSeriesNames,
 } from "./utils";
 
 registerVisualizations();
@@ -31,6 +33,7 @@ const mockTranslateWithoutTranslations: ContentTranslationFunction =
 describe("translateFieldValuesInSeries", () => {
   it("should return original series when translation function has no translations", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [
@@ -42,23 +45,22 @@ describe("translateFieldValuesInSeries", () => {
     ];
 
     const result = translateFieldValuesInSeries(
-      series,
       mockTranslateWithoutTranslations,
-    );
+    )(series);
 
     expect(result).toBe(series);
   });
 
   it("should return original series item when it has no data", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         card: { name: "Test Chart" },
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
     );
 
     expect(result).toEqual([
@@ -70,6 +72,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should translate field values in regular series data", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [
@@ -81,10 +84,9 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result[0].data?.rows).toEqual([
       ["translated_apple", 10],
@@ -100,6 +102,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should handle mixed data types in rows", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [
@@ -110,10 +113,9 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result[0].data?.rows).toEqual([
       ["translated_text", 123, null, true],
@@ -124,6 +126,7 @@ describe("translateFieldValuesInSeries", () => {
   describe("for pies", () => {
     it("should handle pie.rows visualization settings", () => {
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: "pie",
@@ -147,9 +150,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 10],
@@ -161,6 +163,7 @@ describe("translateFieldValuesInSeries", () => {
 
     it("should handle NO pie.rows visualization settings", () => {
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: "pie",
@@ -176,9 +179,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_apple", 10],
@@ -202,6 +204,7 @@ describe("translateFieldValuesInSeries", () => {
       };
 
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: displayType,
@@ -220,9 +223,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 100, 30],
@@ -233,6 +235,7 @@ describe("translateFieldValuesInSeries", () => {
 
     it("should handle NO series_settings visualization settings", () => {
       const series: Series = [
+        // Unjustified type cast. FIXME
         {
           card: {
             display: displayType,
@@ -249,9 +252,8 @@ describe("translateFieldValuesInSeries", () => {
       ];
 
       const result = translateFieldValuesInSeries(
-        series,
         mockTranslateWithTranslations,
-      ) as MaybeTranslatedSeries;
+      )(series);
 
       expect(result[0].data?.rows).toEqual([
         ["translated_Apple", 100, 30],
@@ -263,11 +265,13 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should handle multiple series", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [["apple", 10]],
         },
       } as SingleSeries,
+      // Unjustified type cast. FIXME
       {
         data: {
           rows: [["banana", 20]],
@@ -275,10 +279,9 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result).toHaveLength(2);
     expect(result[0].data?.rows).toEqual([["translated_apple", 10]]);
@@ -287,6 +290,7 @@ describe("translateFieldValuesInSeries", () => {
 
   it("should handle empty rows", () => {
     const series: Series = [
+      // Unjustified type cast. FIXME
       {
         data: createMockDatasetData({
           rows: [],
@@ -294,95 +298,12 @@ describe("translateFieldValuesInSeries", () => {
       } as SingleSeries,
     ];
 
-    const result = translateFieldValuesInSeries(
+    const result = translateFieldValuesInSeries(mockTranslateWithTranslations)(
       series,
-      mockTranslateWithTranslations,
-    ) as MaybeTranslatedSeries;
+    );
 
     expect(result[0].data?.rows).toEqual([]);
     expect(result[0].data?.untranslatedRows).toEqual([]);
-  });
-});
-
-describe("getTranslatedFilterDisplayName", () => {
-  const tcWithPlanTranslation: ContentTranslationFunction = (str) =>
-    str === "Plan" ? "My new name" : str;
-
-  const tcWithStatusTranslation: ContentTranslationFunction = (str) =>
-    str === "Status" ? "Estado" : str;
-
-  const tcWithPriceTranslation: ContentTranslationFunction = (str) =>
-    str === "Price" ? "Preis" : str;
-
-  it("should only replace the first occurrence of column name - 'Plan is Plan' becomes 'My new name is Plan'", () => {
-    const result = getTranslatedFilterDisplayName(
-      "Plan is Plan",
-      tcWithPlanTranslation,
-      "Plan",
-    );
-
-    expect(result).toBe("My new name is Plan");
-  });
-
-  it("should preserve the value when column name appears multiple times", () => {
-    const result = getTranslatedFilterDisplayName(
-      "Status is Status",
-      tcWithStatusTranslation,
-      "Status",
-    );
-
-    expect(result).toBe("Estado is Status");
-  });
-
-  it("should handle column name at the start of the string", () => {
-    const result = getTranslatedFilterDisplayName(
-      "Price is between 10 and 20",
-      tcWithPriceTranslation,
-      "Price",
-    );
-
-    expect(result).toBe("Preis is between 10 and 20");
-  });
-
-  it("should not replace anything if column name is not in display name", () => {
-    const tcWithQuantityTranslation: ContentTranslationFunction = (str) =>
-      str === "Quantity" ? "Menge" : str;
-
-    const result = getTranslatedFilterDisplayName(
-      "Total is greater than 100",
-      tcWithQuantityTranslation,
-      "Quantity",
-    );
-
-    expect(result).toBe("Total is greater than 100");
-  });
-
-  it("should return displayName unchanged when tc returns same value (no translations)", () => {
-    const result = getTranslatedFilterDisplayName(
-      "Total is greater than 100",
-      mockTranslateWithoutTranslations,
-      "Total",
-    );
-
-    expect(result).toBe("Total is greater than 100");
-  });
-
-  it("should return empty string when displayName is empty", () => {
-    const result = getTranslatedFilterDisplayName("", tcWithPlanTranslation);
-
-    expect(result).toBe("");
-  });
-
-  it("should fallback to translating the whole string when no columnDisplayName provided", () => {
-    const tcWithFullTranslation: ContentTranslationFunction = (str) =>
-      str === "Some filter" ? "Ein Filter" : str;
-
-    const result = getTranslatedFilterDisplayName(
-      "Some filter",
-      tcWithFullTranslation,
-    );
-
-    expect(result).toBe("Ein Filter");
   });
 });
 
@@ -398,19 +319,21 @@ describe("translateColumnDisplayName", () => {
   };
 
   it("should return displayName unchanged when tc has no translations", () => {
-    const result = translateColumnDisplayName(
-      "Sum of Total",
-      mockTranslateWithoutTranslations,
-    );
+    const result = translateColumnDisplayName({
+      displayName: "Sum of Total",
+      tc: mockTranslateWithoutTranslations,
+      locale: "en",
+    });
 
     expect(result).toBe("Sum of Total");
   });
 
   it("should translate a simple column name without aggregation pattern", () => {
-    const result = translateColumnDisplayName(
-      "Total",
-      tcWithColumnTranslations,
-    );
+    const result = translateColumnDisplayName({
+      displayName: "Total",
+      tc: tcWithColumnTranslations,
+      locale: "en",
+    });
 
     expect(result).toBe("Gesamtsumme");
   });
@@ -434,10 +357,11 @@ describe("translateColumnDisplayName", () => {
   ])(
     "should translate column name inside aggregation pattern: %s -> %s",
     (input, expected) => {
-      const result = translateColumnDisplayName(
-        input,
-        tcWithColumnTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: input,
+        tc: tcWithColumnTranslations,
+        locale: "en",
+      });
       expect(result).toBe(expected);
     },
   );
@@ -446,83 +370,32 @@ describe("translateColumnDisplayName", () => {
     ["Sum of Min of Total", "Sum of Min of Gesamtsumme"],
     ["Average of Sum of Min of Price", "Average of Sum of Min of Preis"],
   ])("should handle nested aggregations: %s -> %s", (input, expected) => {
-    const result = translateColumnDisplayName(input, tcWithColumnTranslations);
+    const result = translateColumnDisplayName({
+      displayName: input,
+      tc: tcWithColumnTranslations,
+      locale: "en",
+    });
     expect(result).toBe(expected);
   });
 
   it("should return original string when column name has no translation", () => {
-    const result = translateColumnDisplayName(
-      "Sum of UnknownColumn",
-      tcWithColumnTranslations,
-    );
+    const result = translateColumnDisplayName({
+      displayName: "Sum of UnknownColumn",
+      tc: tcWithColumnTranslations,
+      locale: "en",
+    });
 
     expect(result).toBe("Sum of UnknownColumn");
   });
 
   it("should handle empty string", () => {
-    const result = translateColumnDisplayName("", tcWithColumnTranslations);
+    const result = translateColumnDisplayName({
+      displayName: "",
+      tc: tcWithColumnTranslations,
+      locale: "en",
+    });
 
     expect(result).toBe("");
-  });
-
-  describe("RTL and wrapped patterns", () => {
-    // RTL pattern: value comes first, then the aggregation text
-    // e.g., Hebrew: "{value} של סכום" (Sum of {value})
-    const rtlPatterns = [(value: string) => `${value} של סכום`];
-
-    // Wrapped pattern: value is surrounded by prefix and suffix
-    // e.g., hypothetical French: "Somme de {value} totale"
-    const wrappedPatterns = [(value: string) => `Somme de ${value} totale`];
-
-    it("should handle RTL patterns where value comes first", () => {
-      const result = translateColumnDisplayName(
-        "Total של סכום",
-        tcWithColumnTranslations,
-        rtlPatterns,
-      );
-
-      expect(result).toBe("Gesamtsumme של סכום");
-    });
-
-    it("should handle wrapped patterns where value is in the middle", () => {
-      const result = translateColumnDisplayName(
-        "Somme de Total totale",
-        tcWithColumnTranslations,
-        wrappedPatterns,
-      );
-
-      expect(result).toBe("Somme de Gesamtsumme totale");
-    });
-
-    it("should handle nested RTL patterns", () => {
-      const nestedRtlPatterns = [
-        (value: string) => `${value} של סכום`,
-        (value: string) => `${value} של מינימום`,
-      ];
-
-      const result = translateColumnDisplayName(
-        "Total של מינימום של סכום",
-        tcWithColumnTranslations,
-        nestedRtlPatterns,
-      );
-
-      expect(result).toBe("Gesamtsumme של מינימום של סכום");
-    });
-
-    it("should handle nested wrapped patterns", () => {
-      const nestedWrappedPatterns = [
-        (value: string) => `Somme de ${value} totale`,
-        (value: string) => `Minimum de ${value} local`,
-      ];
-
-      const result = translateColumnDisplayName(
-        "Somme de Minimum de Total local totale",
-        tcWithColumnTranslations,
-        nestedWrappedPatterns,
-      );
-
-      expect(result).toBe("Somme de Minimum de Gesamtsumme local totale");
-    });
   });
 
   describe("binning patterns", () => {
@@ -538,10 +411,11 @@ describe("translateColumnDisplayName", () => {
     ])(
       "should translate column name inside binning pattern: %s -> %s",
       (input, expected) => {
-        const result = translateColumnDisplayName(
-          input,
-          tcWithColumnTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: input,
+          tc: tcWithColumnTranslations,
+          locale: "en",
+        });
         expect(result).toBe(expected);
       },
     );
@@ -567,19 +441,21 @@ describe("translateColumnDisplayName", () => {
     ])(
       "should translate column name inside temporal bucket pattern: %s -> %s",
       (input, expected) => {
-        const result = translateColumnDisplayName(
-          input,
-          tcWithColumnTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: input,
+          tc: tcWithColumnTranslations,
+          locale: "en",
+        });
         expect(result).toBe(expected);
       },
     );
 
     it("should handle combined aggregation and temporal bucket patterns", () => {
-      const result = translateColumnDisplayName(
-        "Sum of Total: Month",
-        tcWithColumnTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Sum of Total: Month",
+        tc: tcWithColumnTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Sum of Gesamtsumme: Month");
     });
   });
@@ -596,20 +472,22 @@ describe("translateColumnDisplayName", () => {
         return typeof str === "string" ? (translations[str] ?? str) : str;
       };
 
-      const result = translateColumnDisplayName(
-        "Note: Important",
-        tcWithColonColumn,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Note: Important",
+        tc: tcWithColonColumn,
+        locale: "en",
+      });
       expect(result).toBe("Notiz: Wichtig");
     });
 
     it("should split on colon and translate column if column has a translation", () => {
       // This handles backend-translated temporal bucket suffixes like "Monat", "Tag", etc.
       // where the suffix is already translated by the backend
-      const result = translateColumnDisplayName(
-        "Total: SomeRandomSuffix",
-        tcWithColumnTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Total: SomeRandomSuffix",
+        tc: tcWithColumnTranslations,
+        locale: "en",
+      });
       // "Total" has a translation, so it splits and translates the column part
       expect(result).toBe("Gesamtsumme: SomeRandomSuffix");
     });
@@ -617,10 +495,11 @@ describe("translateColumnDisplayName", () => {
     it("should handle backend-translated temporal bucket suffixes", () => {
       // The backend translates temporal unit names (e.g., "Month" -> "Monat" in German)
       // before the FE receives them. This test verifies that we still translate the column part.
-      const result = translateColumnDisplayName(
-        "Total: Monat", // German for "Month" - already translated by backend
-        tcWithColumnTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Total: Monat", // German for "Month" - already translated by backend
+        tc: tcWithColumnTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Gesamtsumme: Monat");
     });
   });
@@ -646,43 +525,48 @@ describe("translateColumnDisplayName", () => {
     ])(
       "should translate joined table column names: %s -> %s",
       (input, expected) => {
-        const result = translateColumnDisplayName(
-          input,
-          tcWithJoinTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: input,
+          tc: tcWithJoinTranslations,
+          locale: "en",
+        });
         expect(result).toBe(expected);
       },
     );
 
     it("should translate joined table with temporal bucket", () => {
-      const result = translateColumnDisplayName(
-        "Products → Created At: Month",
-        tcWithJoinTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Products → Created At: Month",
+        tc: tcWithJoinTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Produkte → Erstellt am: Month");
     });
 
     it("should translate joined table with aggregation pattern", () => {
-      const result = translateColumnDisplayName(
-        "Distinct values of Products → Total",
-        tcWithJoinTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Distinct values of Products → Total",
+        tc: tcWithJoinTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Distinct values of Produkte → Gesamtsumme");
     });
 
     it("should translate complex nested pattern with join, aggregation, and temporal bucket", () => {
-      const result = translateColumnDisplayName(
-        "Distinct values of Products → Created At: Month",
-        tcWithJoinTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Distinct values of Products → Created At: Month",
+        tc: tcWithJoinTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Distinct values of Produkte → Erstellt am: Month");
     });
 
     it("should handle nested joins with temporal bucket", () => {
-      const result = translateColumnDisplayName(
-        "Orders → Products → Created At: Month",
-        tcWithJoinTranslations,
-      );
+      const result = translateColumnDisplayName({
+        displayName: "Orders → Products → Created At: Month",
+        tc: tcWithJoinTranslations,
+        locale: "en",
+      });
       expect(result).toBe("Bestellungen → Produkte → Erstellt am: Month");
     });
 
@@ -694,7 +578,7 @@ describe("translateColumnDisplayName", () => {
         const translations: Record<string, string> = {
           Total: "Gesamtsumme",
           Products: "Produkte",
-          Product: "Produkt", // Singular form used in FK names
+          Product: "Produkt",
           Orders: "Bestellungen",
           People: "Personen",
           "Created At": "Erstellt am",
@@ -705,26 +589,30 @@ describe("translateColumnDisplayName", () => {
 
       it("should translate implicit join alias with dash separator", () => {
         // "People - Product → Created At" has implicit join alias "People - Product"
-        const result = translateColumnDisplayName(
-          "People - Product → Created At",
-          tcWithImplicitJoinTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: "People - Product → Created At",
+          tc: tcWithImplicitJoinTranslations,
+          locale: "en",
+        });
         expect(result).toBe("Personen - Produkt → Erstellt am");
       });
 
       it("should translate implicit join with temporal bucket", () => {
-        const result = translateColumnDisplayName(
-          "People - Product → Created At: Month",
-          tcWithImplicitJoinTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName: "People - Product → Created At: Month",
+          tc: tcWithImplicitJoinTranslations,
+          locale: "en",
+        });
         expect(result).toBe("Personen - Produkt → Erstellt am: Month");
       });
 
       it("should translate aggregation with implicit join and temporal bucket", () => {
-        const result = translateColumnDisplayName(
-          "Distinct values of People - Product → Created At: Month",
-          tcWithImplicitJoinTranslations,
-        );
+        const result = translateColumnDisplayName({
+          displayName:
+            "Distinct values of People - Product → Created At: Month",
+          tc: tcWithImplicitJoinTranslations,
+          locale: "en",
+        });
         expect(result).toBe(
           "Distinct values of Personen - Produkt → Erstellt am: Month",
         );
@@ -739,12 +627,215 @@ describe("translateColumnDisplayName", () => {
           return typeof str === "string" ? (translations[str] ?? str) : str;
         };
 
-        const result = translateColumnDisplayName(
-          "My Question - Part 2",
-          tcWithQuestionName,
-        );
+        const result = translateColumnDisplayName({
+          displayName: "My Question - Part 2",
+          tc: tcWithQuestionName,
+          locale: "en",
+        });
         expect(result).toBe("Meine Frage - Teil 2");
       });
     });
+  });
+
+  describe("filter display name patterns", () => {
+    const tcWithFilterTranslations: ContentTranslationFunction = (str) => {
+      const translations: Record<string, string> = {
+        Total: "Gesamtsumme",
+        Price: "Preis",
+        "Created At": "Erstellt am",
+        Products: "Produkte",
+        Status: "Status",
+        "Review Requested At": "Überprüfung angefordert am",
+        "Reviewed At": "Überprüft am",
+        Category: "Kategorie",
+      };
+
+      return typeof str === "string" ? (translations[str] ?? str) : str;
+    };
+
+    it.each([
+      ["Total is greater than 100", "Gesamtsumme is greater than 100"],
+      [
+        "Created At is in the previous 3 months",
+        "Erstellt am is in the previous 3 months",
+      ],
+      ["Status is Active", "Status is Active"],
+      ["Price is between 10 and 100", "Preis is between 10 and 100"],
+      ["Total is empty", "Gesamtsumme is empty"],
+      ["Total is not empty", "Gesamtsumme is not empty"],
+      ["Status contains Active", "Status contains Active"],
+      [
+        "Sum of Total is greater than 100",
+        "Sum of Gesamtsumme is greater than 100",
+      ],
+      [
+        "Products → Price is greater than 50",
+        "Produkte → Preis is greater than 50",
+      ],
+      ["Created At: Month is today", "Erstellt am: Month is today"],
+      [
+        "Unknown Column is greater than 100",
+        "Unknown Column is greater than 100",
+      ],
+      [
+        "Review Requested At is not empty or Reviewed At is not empty",
+        "Überprüfung angefordert am is not empty or Überprüft am is not empty",
+      ],
+      [
+        "Total is empty, Price is empty, and Status is empty",
+        "Gesamtsumme is empty, Preis is empty, and Status is empty",
+      ],
+      [
+        "Total is empty, Price is empty, Status is empty, and Category is empty",
+        "Gesamtsumme is empty, Preis is empty, Status is empty, and Kategorie is empty",
+      ],
+    ])(
+      "should translate column name in filter: %s -> %s",
+      (input, expected) => {
+        const result = translateColumnDisplayName({
+          displayName: input,
+          tc: tcWithFilterTranslations,
+          locale: "en",
+        });
+        expect(result).toBe(expected);
+      },
+    );
+  });
+});
+
+describe("translateSeriesNames", () => {
+  it("should return original series unchanged when tc has no translations", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: { metric1: { title: "Revenue" } },
+          "graph.metrics": ["metric1"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithoutTranslations)(
+      series,
+    );
+
+    expect(result).toBe(series);
+  });
+
+  it("should return series item unchanged when visualization_settings has no series_settings", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          "graph.metrics": ["metric1"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    expect(result[0]).toBe(series[0]);
+  });
+
+  it("should return series item unchanged when visualization_settings has no graph.metrics", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: { metric1: { title: "Revenue" } },
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    expect(result[0]).toBe(series[0]);
+  });
+
+  it("should translate titles of metric series settings", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: {
+            metric1: { title: "Revenue" },
+            metric2: { title: "Profit" },
+          },
+          "graph.metrics": ["metric1", "metric2"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric1?.title,
+    ).toBe("translated_Revenue");
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric2?.title,
+    ).toBe("translated_Profit");
+  });
+
+  it("should skip metrics without corresponding series_settings entry", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: {
+            metric1: { title: "Revenue" },
+          },
+          "graph.metrics": ["metric1", "metric_missing"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric1?.title,
+    ).toBe("translated_Revenue");
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric_missing,
+    ).toBeUndefined();
+  });
+
+  it("should preserve other settings properties like color", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: {
+            metric1: { title: "Revenue", color: "#ff0000" },
+          },
+          "graph.metrics": ["metric1"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    const settings =
+      result[0].card.visualization_settings.series_settings?.metric1;
+    expect(settings?.title).toBe("translated_Revenue");
+    expect(settings?.color).toBe("#ff0000");
+  });
+
+  it("should preserve settings for non-metric keys", () => {
+    const series: Series = [
+      createMockSingleSeries({
+        visualization_settings: {
+          series_settings: {
+            metric1: { title: "Revenue" },
+            non_metric: { title: "Other", color: "#00ff00" },
+          },
+          "graph.metrics": ["metric1"],
+        },
+      }),
+    ];
+
+    const result = translateSeriesNames(mockTranslateWithTranslations)(series);
+
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric1?.title,
+    ).toBe("translated_Revenue");
+    // non_metric should be preserved untouched
+    const nonMetric =
+      result[0].card.visualization_settings.series_settings?.non_metric;
+    expect(nonMetric?.title).toBe("Other");
+    expect(nonMetric?.color).toBe("#00ff00");
   });
 });

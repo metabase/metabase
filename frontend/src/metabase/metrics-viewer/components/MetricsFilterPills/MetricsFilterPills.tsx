@@ -1,0 +1,157 @@
+import { useCallback, useMemo } from "react";
+
+import { Group } from "metabase/ui";
+import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
+import type { IconName } from "metabase-types/api";
+
+import type { SourceColorMap } from "../../types/viewer-state";
+import { isExpressionEntry } from "../../types/viewer-state";
+import type { DefinitionSource } from "../../utils/definition-sources";
+import {
+  getDefinitionSourceIcon,
+  getDefinitionSourceName,
+} from "../../utils/definition-sources";
+
+import { MetricsFilterPillPopover } from "./MetricsFilterPillPopover";
+import { MetricsSegmentFilterPillPopover } from "./MetricsSegmentFilterPillPopover";
+
+interface MetricsFilterPillsProps {
+  definitionSources: DefinitionSource[];
+  sourceColors: SourceColorMap;
+  onSourceDefinitionChange: (
+    source: DefinitionSource,
+    definition: MetricDefinition,
+  ) => void;
+}
+
+type FlattenedFilter = {
+  source: DefinitionSource;
+  filter: LibMetric.FilterClause;
+  colors: string[];
+  icon?: IconName;
+  key: string;
+  metricName?: string;
+  metricCount?: number;
+  isSegment: boolean;
+  segmentName?: string;
+};
+
+export function MetricsFilterPills({
+  definitionSources,
+  sourceColors,
+  onSourceDefinitionChange,
+}: MetricsFilterPillsProps) {
+  const flatFilters = useMemo(
+    () => getFlatFilters(definitionSources, sourceColors),
+    [definitionSources, sourceColors],
+  );
+
+  const handleUpdate = useCallback(
+    (
+      source: DefinitionSource,
+      oldFilter: LibMetric.FilterClause,
+      newFilter: LibMetric.FilterClause,
+    ) => {
+      const newDef = LibMetric.replaceClause(
+        source.definition,
+        oldFilter,
+        newFilter,
+      );
+      onSourceDefinitionChange(source, newDef);
+    },
+    [onSourceDefinitionChange],
+  );
+
+  const handleRemove = useCallback(
+    (source: DefinitionSource, filter: LibMetric.FilterClause) => {
+      const newDef = LibMetric.removeClause(source.definition, filter);
+      onSourceDefinitionChange(source, newDef);
+    },
+    [onSourceDefinitionChange],
+  );
+
+  if (flatFilters.length === 0) {
+    return null;
+  }
+
+  return (
+    <Group gap="sm">
+      {flatFilters.map((item) =>
+        item.isSegment ? (
+          <MetricsSegmentFilterPillPopover
+            key={item.key}
+            definitionSource={item.source}
+            oldFilter={item.filter}
+            colors={item.colors}
+            metricColors={sourceColors}
+            metricName={item.metricName}
+            metricCount={item.metricCount}
+            segmentName={item.segmentName}
+            onSourceDefinitionChange={onSourceDefinitionChange}
+            onRemove={() => handleRemove(item.source, item.filter)}
+          />
+        ) : (
+          <MetricsFilterPillPopover
+            key={item.key}
+            definition={item.source.definition}
+            filter={item.filter}
+            colors={item.colors}
+            icon={item.icon}
+            metricName={item.metricName}
+            metricCount={item.metricCount}
+            onUpdate={(newFilter) =>
+              handleUpdate(item.source, item.filter, newFilter)
+            }
+            onRemove={() => handleRemove(item.source, item.filter)}
+          />
+        ),
+      )}
+    </Group>
+  );
+}
+
+function getFlatFilters(
+  sources: DefinitionSource[],
+  sourceColors: SourceColorMap,
+): FlattenedFilter[] {
+  return sources.flatMap((source) => {
+    const colors = sourceColors[source.entityIndex] ?? [
+      "var(--mb-color-text-primary)",
+    ];
+    const icon = getDefinitionSourceIcon(source);
+    const shouldDisplayMetricName =
+      isExpressionEntry(source.entity) &&
+      source.entity.tokens.filter((token) => token.type === "metric").length >
+        1;
+    return LibMetric.filters(source.definition).map((filter, filterIndex) => {
+      const isSegment = LibMetric.isSegmentFilter(filter);
+      let segmentName: string | undefined;
+      if (isSegment) {
+        const segmentMetadata = LibMetric.segmentMetadataForFilter(
+          source.definition,
+          filter,
+        );
+        if (segmentMetadata) {
+          segmentName = LibMetric.displayInfo(
+            source.definition,
+            segmentMetadata,
+          ).displayName;
+        }
+      }
+      return {
+        source,
+        filter,
+        colors,
+        icon,
+        key: `${source.index}-${filterIndex}`,
+        metricName: shouldDisplayMetricName
+          ? getDefinitionSourceName(source)
+          : undefined,
+        metricCount: source.token?.occurrenceCount,
+        isSegment,
+        segmentName,
+      };
+    });
+  });
+}

@@ -1,8 +1,10 @@
 (ns metabase-enterprise.dependencies.models.dependency-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.models.dependency-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
    [metabase.queries.models.card :as card]
@@ -43,26 +45,26 @@
                              {:source-table (str "card__" (:id inner-card))})
    :visualization_settings {}})
 
-(deftest ^:sequential card-deps-maintenance-test-1-new-card
+(deftest ^:synchronized card-deps-maintenance-test-1-new-card
   (testing "upstream deps of a card are updated correctly"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
         (mt/with-premium-features #{:dependencies}
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
             (let [card1 (card/create-card! (basic-orders) user)]
+              (deps.test/synchronously-run-backfill!)
               (is (integer? (:id card1)))
               (testing "when creating a new card"
                 (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
                         (upstream-of :card (:id card1))))
-
                 (testing "that depends on another card"
                   (let [card2 (card/create-card! (wrap-card card1) user)]
+                    (deps.test/synchronously-run-backfill!)
                     (is (=? #{(depends-on-> :card (:id card2) :card (:id card1))}
                             (upstream-of :card (:id card2))))
                     (testing "but that doesn't affect the upstream deps of the inner card"
                       (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
                               (upstream-of :card (:id card1))))))))
-
               (testing "when updating an existing card"
                 (testing "to add a new table dep"
                   (card/update-card! {:card-before-update card1
@@ -71,6 +73,7 @@
                                                         {:joins [{:alias "Products"
                                                                   :source-table (mt/id :products)
                                                                   :condition [:= $id &Products.$products.id]}]})}})
+                  (deps.test/synchronously-run-backfill!)
                   (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
                             (depends-on-> :card (:id card1) :table (mt/id :products))}
                           (upstream-of :card (:id card1)))))
@@ -78,23 +81,24 @@
                   (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id card1))
                                       :card-updates
                                       {:dataset_query (mt/mbql-query products)}})
+                  (deps.test/synchronously-run-backfill!)
                   (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
                           (upstream-of :card (:id card1)))))))))))))
 
-(deftest ^:sequential card-deps-graph-test-1-mbql-card-chain
+(deftest ^:synchronized card-deps-graph-test-1-mbql-card-chain
   (testing "deps graph is connected properly for a chain of MBQL cards"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
         (mt/with-premium-features #{:dependencies}
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
             (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
                   {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
                   {id3 :id :as card3} (card/create-card! (wrap-card card2) user)]
+              (deps.test/synchronously-run-backfill!)
               (testing "raw deps are recorded correctly"
                 (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
                 (is (=? #{(depends-on-> :card id2 :card id1)} (upstream-of :card id2)))
                 (is (=? #{(depends-on-> :card id3 :card id2)} (upstream-of :card id3))))
-
               (testing "transitive deps are computed correctly"
                 (testing "for each card"
                   (is (=? {:card #{id2 id3}}
@@ -119,16 +123,17 @@
                                lib/->legacy-MBQL)
    :visualization_settings {}})
 
-(deftest ^:sequential card-deps-graph-test-2-native-card-chain
+(deftest ^:synchronized card-deps-graph-test-2-native-card-chain
   (testing "deps graph is connected properly for a chain of native cards"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
         (mt/with-premium-features #{:dependencies}
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
             (let [mp (mt/metadata-provider)
                   {id1 :id :as card1} (card/create-card! (sql-card mp "SELECT * FROM orders;") user)
                   {id2 :id :as card2} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id1 "}}")) user)
                   {id3 :id :as card3} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id2 "}}")) user)]
+              (deps.test/synchronously-run-backfill!)
               (testing "raw deps are recorded correctly"
                 (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
                 (is (=? #{(depends-on-> :card id2 :table (mt/id :orders))
@@ -149,12 +154,12 @@
                                        deps.graph/transitive-dependents
                                        :card))))))))))))
 
-(deftest ^:sequential card-deps-graph-metric-test
+(deftest ^:synchronized card-deps-graph-metric-test
   (testing "deps graph is connected properly for a question using a metric"
     (mt/dataset test-data
       (mt/with-temp [:model/User user {:email "me@wherever.com"}]
         (mt/with-premium-features #{:dependencies}
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
             (let [metric-card (card/create-card! {:name "Test Metric"
                                                   :database_id (mt/id)
                                                   :table_id (mt/id :orders)
@@ -173,66 +178,60 @@
                                                                      {:aggregation [[:metric (:id metric-card)]]})
                                                     :visualization_settings {}}
                                                    user)]
+              (deps.test/synchronously-run-backfill!)
               (testing "raw deps are recorded correctly for question using metric"
                 (is (=? #{(depends-on-> :card (:id question-card) :table (mt/id :orders))
                           (depends-on-> :card (:id question-card) :card (:id metric-card))}
                         (upstream-of :card (:id question-card))))))))))))
 
-(deftest dependency-analysis-version-test
-  (testing "dependency_analysis_version is updated when entities are created or updated"
-    (testing "cards"
-      (mt/with-model-cleanup [:model/Dependency]
-        (mt/with-temp [:model/Card card {:dependency_analysis_version 0}]
-          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/Card (:id card))))
-          (mt/with-premium-features #{:dependencies}
-            (card/update-card! {:card-before-update card
-                                :card-updates {:dataset_query (mt/mbql-query orders)}}))
-          (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/Card (:id card)))))))
-    (testing "transforms create"
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Transform transform]
-          (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform)))))))
-    (testing "transforms update"
-      (mt/with-premium-features #{}
-        (mt/with-temp [:model/Transform transform]
-          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform))))
-          (mt/with-premium-features #{:dependencies}
-            (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}}))
-          (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform)))))))
-    (testing "snippets create"
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/NativeQuerySnippet snippet]
-          (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet)))))))
-    (testing "snippets update"
-      (mt/with-premium-features #{}
-        (mt/with-temp [:model/NativeQuerySnippet snippet]
-          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet))))
-          (mt/with-premium-features #{:dependencies}
-            (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"}))
-          (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet)))))))))
+(deftest dependency-status-marked-stale-test
+  (testing "dependency_status is marked stale when entities are created or updated"
+    (mt/with-model-cleanup [:model/DependencyStatus]
+      (testing "cards"
+        (mt/with-model-cleanup [:model/Dependency]
+          (mt/with-temp [:model/Card card {}]
+            (mt/with-premium-features #{:dependencies}
+              (card/update-card! {:card-before-update card
+                                  :card-updates {:dataset_query (mt/mbql-query orders)}}))
+            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card) :stale true)))))
+      (testing "transforms create"
+        (mt/with-premium-features #{:dependencies}
+          (mt/with-temp [:model/Transform transform]
+            (is (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform) :stale true)))))
+      (testing "transforms update"
+        (mt/with-premium-features #{}
+          (mt/with-temp [:model/Transform transform]
+            (mt/with-premium-features #{:dependencies}
+              (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}}))
+            (is (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform) :stale true)))))
+      (testing "snippets create"
+        (mt/with-premium-features #{:dependencies}
+          (mt/with-temp [:model/NativeQuerySnippet snippet]
+            (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet) :stale true)))))
+      (testing "snippets update"
+        (mt/with-premium-features #{}
+          (mt/with-temp [:model/NativeQuerySnippet snippet]
+            (mt/with-premium-features #{:dependencies}
+              (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"}))
+            (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet) :stale true))))))))
 
-(deftest dependency-analysis-version-create-card-test
-  (testing "dependency_analysis_version is updated when a card is created"
+(deftest dependency-status-marked-stale-on-card-create-test
+  (testing "dependency_status is marked stale when a card is created"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/Card :model/Dependency]
+      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user]
           (let [card (card/create-card! (basic-orders) user)]
-            (is (= deps.graph/current-dependency-analysis-version
-                   (t2/select-one-fn :dependency_analysis_version :model/Card :id (:id card))))))))))
+            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card) :stale true))))))))
 
 (deftest filtered-graph-dependencies-test
   (testing "filtered-graph-dependencies respects filter clause"
     (mt/with-temp [:model/User user {:email "me@wherever.com"}]
       (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/Card :model/Dependency]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
           (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
                 {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
                 {id3 :id :as _card3} (card/create-card! (wrap-card card2) user)]
+            (deps.test/synchronously-run-backfill!)
             (testing "without filter, returns all dependencies"
               (let [graph (deps.graph/graph-dependencies)
                     deps (graph/transitive graph [[:card id3]])]
@@ -263,10 +262,11 @@
   (testing "filtered-graph-dependents respects filter clause"
     (mt/with-temp [:model/User user {:email "me@wherever.com"}]
       (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/Card :model/Dependency]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
           (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
                 {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
                 {id3 :id :as _card3} (card/create-card! (wrap-card card2) user)]
+            (deps.test/synchronously-run-backfill!)
             (testing "without filter, returns all dependents"
               (let [graph (deps.graph/graph-dependents)
                     deps (graph/transitive graph [[:card id1]])]
@@ -292,3 +292,74 @@
                 (is (= #{}
                        (set deps))
                     "Should be empty, chain is broken at card2")))))))))
+
+(deftest swap-dependency!-test
+  (testing "swap-dependency! handles the various cases correctly"
+    (mt/with-temp [:model/Card card1 {}
+                   :model/Card card2 {}
+                   :model/Table table1 {:db_id (mt/id)}
+                   :model/Table table2 {:db_id (mt/id)}]
+      (mt/with-model-cleanup [:model/Dependency]
+        (testing "basic swap - old dep exists, new dep doesn't"
+          (t2/insert! :model/Dependency {:from_entity_type :card
+                                         :from_entity_id (:id card1)
+                                         :to_entity_type :table
+                                         :to_entity_id (:id table1)})
+          (deps.graph/swap-dependency! :card (:id card1) [:table (:id table1)] [:table (:id table2)])
+          (deps.test/synchronously-run-backfill!)
+          (is (not (t2/exists? :model/Dependency
+                               :from_entity_type :card
+                               :from_entity_id (:id card1)
+                               :to_entity_type :table
+                               :to_entity_id (:id table1)))
+              "Old dependency should be gone")
+          (is (t2/exists? :model/Dependency
+                          :from_entity_type :card
+                          :from_entity_id (:id card1)
+                          :to_entity_type :table
+                          :to_entity_id (:id table2))
+              "New dependency should exist"))
+        (testing "swap when new dep already exists - should just delete old"
+          ;; Set up: card2 depends on both table1 and table2
+          (t2/insert! :model/Dependency [{:from_entity_type :card
+                                          :from_entity_id (:id card2)
+                                          :to_entity_type :table
+                                          :to_entity_id (:id table1)}
+                                         {:from_entity_type :card
+                                          :from_entity_id (:id card2)
+                                          :to_entity_type :table
+                                          :to_entity_id (:id table2)}])
+          ;; This would fail with duplicate key error before the fix
+          (deps.graph/swap-dependency! :card (:id card2) [:table (:id table1)] [:table (:id table2)])
+          (deps.test/synchronously-run-backfill!)
+          (is (not (t2/exists? :model/Dependency
+                               :from_entity_type :card
+                               :from_entity_id (:id card2)
+                               :to_entity_type :table
+                               :to_entity_id (:id table1)))
+              "Old dependency should be deleted")
+          (is (t2/exists? :model/Dependency
+                          :from_entity_type :card
+                          :from_entity_id (:id card2)
+                          :to_entity_type :table
+                          :to_entity_id (:id table2))
+              "New dependency should still exist (only one copy)")
+          (is (= 1 (t2/count :model/Dependency
+                             :from_entity_type :card
+                             :from_entity_id (:id card2)
+                             :to_entity_type :table
+                             :to_entity_id (:id table2)))
+              "Should have exactly one dependency to table2"))))))
+
+(deftest replace-dependencies!-rejects-non-integer-ids-test
+  (testing "a non-integer to-entity-id is rejected before it is inserted"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"must be a positive integer"
+         (deps.graph/replace-dependencies! "document" 1 {"card" #{{:raw "x"}}}))))
+  (testing "legitimate integer ids are accepted and inserted"
+    (mt/with-temp [:model/Card card {}]
+      (mt/with-model-cleanup [:model/Dependency]
+        (deps.graph/replace-dependencies! "card" (:id card) {"card" #{(:id card)}})
+        (is (pos? (t2/count :model/Dependency
+                            :from_entity_type "card"
+                            :from_entity_id (:id card))))))))

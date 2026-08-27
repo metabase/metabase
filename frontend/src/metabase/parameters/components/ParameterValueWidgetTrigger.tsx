@@ -1,5 +1,10 @@
 import cx from "classnames";
-import { type ReactNode, type Ref, forwardRef } from "react";
+import {
+  type HTMLAttributes,
+  type ReactNode,
+  type Ref,
+  forwardRef,
+} from "react";
 
 import { Box, Flex, UnstyledButton } from "metabase/ui";
 
@@ -9,6 +14,15 @@ export const ParameterValueWidgetTrigger = forwardRef(
   ParameterValueWidgetTriggerInner,
 );
 
+type ParameterValueWidgetTriggerProps = {
+  children: ReactNode;
+  hasValue: boolean;
+  ariaLabel?: string;
+  className?: string;
+  mimicMantine?: boolean;
+  hasPopover?: boolean;
+} & Omit<HTMLAttributes<HTMLElement>, "children">;
+
 function ParameterValueWidgetTriggerInner(
   {
     children,
@@ -17,14 +31,8 @@ function ParameterValueWidgetTriggerInner(
     className,
     mimicMantine = false,
     hasPopover = false,
-  }: {
-    children: ReactNode;
-    hasValue: boolean;
-    ariaLabel?: string;
-    className?: string;
-    mimicMantine?: boolean;
-    hasPopover?: boolean;
-  },
+    ...htmlProps
+  }: ParameterValueWidgetTriggerProps,
   ref: Ref<HTMLButtonElement | HTMLButtonElement>,
 ) {
   const attributes = hasPopover
@@ -34,11 +42,12 @@ function ParameterValueWidgetTriggerInner(
         // are not compatible with Ref<HTMLButtonElement> and we need to cast it to "button"
         // to sidestep this issue.
         component: UnstyledButton as unknown as "button",
-        ref: ref as Ref<HTMLButtonElement>,
+        ref: ref,
         type: "button" as const,
       }
     : {
         component: "div" as const,
+        // Unjustified type cast. FIXME
         ref: ref as Ref<HTMLDivElement>,
       };
 
@@ -52,6 +61,7 @@ function ParameterValueWidgetTriggerInner(
           [S.hasValue]: hasValue,
         })}
         aria-label={ariaLabel}
+        {...htmlProps}
         {...attributes}
       >
         {children}
@@ -66,6 +76,7 @@ function ParameterValueWidgetTriggerInner(
       })}
       aria-label={ariaLabel}
       maw="100%"
+      {...htmlProps}
       {...attributes}
     >
       {children}

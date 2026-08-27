@@ -1,0 +1,10 @@
+.input {
+  height: 3rem;
+  min-height: 3rem;
+  /* 8px block, 16px inline-start; extra inline-end leaves room for the copy button */
+  padding: var(--mantine-spacing-sm) 2.5rem var(--mantine-spacing-sm)
+    var(--mantine-spacing-md);
+  border: none;
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background_page-secondary);
+}

@@ -47,6 +47,19 @@ To number the rows of a table, click on the **gear** icon in bottom left to brin
 
 To change the width of a column, you can click and drag the edges of the column's header.
 
+## Freeze columns or rows
+
+You can freeze a number of columns and/or rows, so that they'd stay on the screen while you scroll. Sticky columns are especially useful when viewing wide tables, as you can keep the column that identifies the row (like `account_name`) on the screen as you scroll across the columns.
+
+To freeze rows or columns when viewing a table:
+
+1. Click the **gear** icon in the bottom left to open visualization settings.
+2. Switch to the **Display** tab.
+3. Toggle on **Freeze rows** and/or **Freeze columns**.
+4. Enter the number of columns or rows you want to freeze. You can [rearrange columns](#rearranging-adding-and-hiding-columns) to make sure the columns you want to freeze appear first.
+
+![Freeze columns](../images/freeze-columns.png)
+
 ## Column heading options for filtering and summarizing
 
 ![Column actions](../images/column-actions.png)
@@ -267,7 +280,7 @@ Lets you change the unit of currency from whatever the system default is.
 
 Choose how to display the currency label. For example, for Canadian dollars:
 
-- **Symbol**: `CA$` 
+- **Symbol**: `CA$`
 - **Local symbol**: `$`
 - **Code**: `CAD`
 - **Name**: `Canadian dollars`
@@ -295,7 +308,7 @@ When you add a table to a dashboard, you can add [custom destinations](../../das
 
 ## Table pagination on dashboard cards
 
-When you add a table to dashboard, the table will be scrollable by default. You can paginate the rows by:
+When you add a table to a dashboard, the table will be scrollable by default. You can paginate the rows by:
 
 1. Clicking on the **Pencil** icon to edit the dashboard.
 2. Hovering over the dashcard containing the table, and clicking the **Visualization** icon.

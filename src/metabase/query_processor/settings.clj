@@ -11,6 +11,13 @@
   :visibility :authenticated
   :audit      :getter)
 
+(defsetting use-native-pivot-tables
+  (deferred-tru "When enabled, run pivot queries as a single native GROUPING SETS query on drivers that support it, instead of running one query per breakout combination.")
+  :type       :boolean
+  :default    false
+  :export?    false
+  :visibility :internal)
+
 ;;; the default values for the next two settings live in [[metabase.query-processor.middleware.constraints]] instead of
 ;;; as setting `:default`s... there is some sort of reason for this but I don't understand it -- Cam
 
@@ -65,3 +72,12 @@
                   (if (nil? limit)
                     limit
                     (max limit *minimum-download-row-limit*)))))
+
+(defsetting csv-field-separator
+  (deferred-tru "Character to use as field separator in CSV exports. Defaults to comma (,). Common alternatives include semicolon (;) for European locales and tab (\\t).")
+  :type       :string
+  :default    ","
+  :visibility :public
+  :export?    true
+  :encryption :no
+  :audit      :getter)

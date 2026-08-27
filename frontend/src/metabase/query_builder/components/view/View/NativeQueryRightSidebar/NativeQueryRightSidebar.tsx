@@ -1,18 +1,21 @@
 import { match } from "ts-pattern";
 
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
-import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
-import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import { setTemplateTagConfig } from "metabase/query_builder/actions";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { TimelineSidebar } from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
+import { getOriginalQuestion } from "metabase/query_builder/selectors";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
+import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
+import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type {
-  DatabaseId,
+  CollectionId,
+  EmbeddingParameterVisibility,
   NativeDatasetQuery,
+  NativeQuerySnippet,
   RowValue,
   TemplateTag,
   TemplateTagId,
@@ -27,30 +30,35 @@ interface NativeQueryRightSidebarProps {
   toggleTemplateTagsEditor: () => void;
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
-  showTimelineEvents: () => void;
-  hideTimelineEvents: () => void;
-  selectTimelineEvents: () => void;
+  setModalSnippet: (snippet: NativeQuerySnippet) => void;
+  openSnippetModalWithSelectedText: () => void;
+  insertSnippet: (snippet: NativeQuerySnippet) => void;
+  snippetCollectionId: CollectionId | null;
+  setSnippetCollectionId?: (id: CollectionId | null) => void;
+  showTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
+  hideTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
+  selectTimelineEvents: (timelineEvents: TimelineEvent[]) => void;
   deselectTimelineEvents: () => void;
   onCloseTimelines: () => void;
-  onSave: (question: Question) => Promise<Question>;
+  onSave: (question: Question) => Promise<void>;
   isShowingTemplateTagsEditor: boolean;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
   isShowingTimelineSidebar: boolean;
   isShowingQuestionInfoSidebar: boolean;
   isShowingQuestionSettingsSidebar: boolean;
-  isShowingAIQuestionAnalysisSidebar: boolean;
-  onCloseAIQuestionAnalysisSidebar: () => void;
   visibleTimelineEventIds: number[];
   selectedTimelineEventIds: number[];
-  databases: Database[];
-  sampleDatabaseId: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: (
     slug: string,
   ) => EmbeddingParameterVisibility;
+
+  dataReferenceStack: DataReferenceItem[];
+  pushDataReferenceStack: (item: DataReferenceItem) => void;
+  popDataReferenceStack: () => void;
 }
 
 export const NativeQueryRightSidebar = (
@@ -58,8 +66,6 @@ export const NativeQueryRightSidebar = (
 ) => {
   const {
     question,
-    timelineEvents,
-    timelines,
     toggleTemplateTagsEditor,
     toggleDataReference,
     toggleSnippetSidebar,
@@ -75,9 +81,10 @@ export const NativeQueryRightSidebar = (
     isShowingTimelineSidebar,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
-    isShowingAIQuestionAnalysisSidebar,
-    onCloseAIQuestionAnalysisSidebar,
   } = props;
+
+  const dispatch = useDispatch();
+  const originalQuestion = useSelector(getOriginalQuestion);
 
   return match({
     isShowingTemplateTagsEditor,
@@ -86,7 +93,6 @@ export const NativeQueryRightSidebar = (
     isShowingTimelineSidebar,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
-    isShowingAIQuestionAnalysisSidebar,
   })
     .with({ isShowingTemplateTagsEditor: true }, () => {
       const query = question.legacyNativeQuery();
@@ -94,12 +100,20 @@ export const NativeQueryRightSidebar = (
         <TagEditorSidebar
           {...props}
           query={query}
+          originalQuestion={originalQuestion}
+          setTemplateTagConfig={(tag, config) =>
+            dispatch(setTemplateTagConfig(tag, config))
+          }
           onClose={toggleTemplateTagsEditor}
         />
       ) : null;
     })
     .with({ isShowingDataReference: true }, () => (
-      <DataReference {...props} onClose={toggleDataReference} />
+      <DataReference
+        {...props}
+        databaseId={question.databaseId() ?? undefined}
+        onClose={toggleDataReference}
+      />
     ))
     .with({ isShowingSnippetSidebar: true }, () => (
       <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />
@@ -107,6 +121,7 @@ export const NativeQueryRightSidebar = (
     .with({ isShowingTimelineSidebar: true }, () => (
       <TimelineSidebar
         {...props}
+        collectionId={question.collectionId()}
         onShowTimelineEvents={showTimelineEvents}
         onHideTimelineEvents={hideTimelineEvents}
         onSelectTimelineEvents={selectTimelineEvents}
@@ -119,14 +134,6 @@ export const NativeQueryRightSidebar = (
     ))
     .with({ isShowingQuestionSettingsSidebar: true }, () => (
       <QuestionSettingsSidebar question={question} />
-    ))
-    .with({ isShowingAIQuestionAnalysisSidebar: true }, () => (
-      <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisSidebar
-        question={question}
-        visibleTimelineEvents={timelineEvents}
-        timelines={timelines}
-        onClose={onCloseAIQuestionAnalysisSidebar}
-      />
     ))
     .otherwise(() => null);
 };

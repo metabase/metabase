@@ -2,19 +2,29 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import ActionViz from "metabase/actions/components/ActionViz";
-import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
 import { isActionDashCard } from "metabase/actions/utils";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { FormField } from "metabase/common/components/FormField/FormField";
+import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
-import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import ActionViz from "metabase/dashboard/components/ActionViz";
+import { ActionDashcardSettings } from "metabase/dashboard/components/ActionViz/ActionDashcardSettings";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Form, FormProvider, FormSelect, FormTextInput } from "metabase/forms";
-import { Box, Button, Divider, Flex, Modal, Stack, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Ellipsified,
+  Flex,
+  Modal,
+  Stack,
+  Title,
+} from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import type { ActionDashboardCard } from "metabase-types/api";
 
-const buttonVariantOptions = ActionViz.settings["button.variant"].props.options;
+const settings = checkNotNull(ActionViz.settings);
+const buttonVariantOptions = settings["button.variant"].getProps().options;
 
 export function ActionSidebar() {
   const {
@@ -35,6 +45,7 @@ export function ActionSidebar() {
     if (!dashboard?.dashcards || !dashcardId) {
       return null;
     }
+    // Unjustified type cast. FIXME
     return dashboard.dashcards.find(
       (dc) => dc?.id === dashcardId && isActionDashCard(dc),
     ) as ActionDashboardCard | undefined;
@@ -122,9 +133,9 @@ export function ActionSidebar() {
         >
           <Modal.Overlay />
           <Modal.Content>
-            <ConnectedActionDashcardSettings
+            <ActionDashcardSettings
               dashboard={dashboard}
-              dashcard={dashcard as ActionDashboardCard}
+              dashcard={dashcard}
               onClose={closeActionModal}
             />
           </Modal.Content>

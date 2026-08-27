@@ -35,7 +35,7 @@ The examples below use the Sample database included with Metabase. Here's the ba
 
 In this example, we’ll secure our `Orders` table so that anyone in our Customers group will only be able to see rows in the Orders table where the `User ID` column matches the person's `user_id` attribute.
 
-1. **Go to the Admin settings > Permissions > data**. Click on the "Customers" group.
+1. **Go to the Admin > Permissions > data**. Click on the "Customers" group.
 
 2. **Set View data to Granular**. For the Sample Database, set the Customer group's [View data](./data.md#view-data-permissions) to "Granular". Setting to "Granular" will allow us to set up permissions on individual tables for the Customer group.
 

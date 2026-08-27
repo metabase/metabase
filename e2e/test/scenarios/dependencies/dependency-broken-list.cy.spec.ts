@@ -1,6 +1,6 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { TransformId } from "metabase-types/api";
+import type { DependencyNode, TransformId } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -28,7 +28,9 @@ const MODEL_BASED_MODEL_BROKEN_AGGREGATION =
 
 const BROKEN_TABLE_DEPENDENCIES = [TABLE_DISPLAY_NAME];
 const BROKEN_TABLE_DEPENDENTS = [
-  TABLE_BASED_QUESTION_BROKEN_FIELD,
+  // NOTE: TABLE_BASED_QUESTION_BROKEN_FIELD is *not* listed here because it's only broken in the `:fields` ref.
+  // These are considered "soft" refs that don't break the query, since the QP will quietly drop a bad ref from a
+  // `:fields` clause and the query will run successfully.
   TABLE_BASED_QUESTION_BROKEN_EXPRESSION,
   TABLE_BASED_QUESTION_BROKEN_FILTER,
   TABLE_BASED_QUESTION_BROKEN_BREAKOUT,
@@ -61,7 +63,7 @@ const BROKEN_DEPENDENCIES_SORTED_BY_LOCATION = [
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS = [
   TABLE_BASED_QUESTION, // 1 error: PRICE
   TABLE_BASED_MODEL, // 1 error: AMOUNT
-  TABLE_DISPLAY_NAME, // 2 errors: SCORE, STATUS
+  TABLE_DISPLAY_NAME, // 1 error: SCORE; plus 1 "soft" error on STATUS, which is only in a `:fields` list.
 ];
 
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS = [
@@ -80,12 +82,15 @@ describe("scenarios > dependencies > broken list", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     createContent();
+    H.resetSnowplow();
   });
 
   afterEach(() => {
     dropTransformTable();
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("analysis", () => {
@@ -98,8 +103,8 @@ describe("scenarios > dependencies > broken list", () => {
     });
   });
 
-  describe("sidebar", () => {
-    it("should show broken dependents", () => {
+  describe("selecting entities", () => {
+    it("should show sidebar for broken dependents and trigger snowplow event", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
 
       cy.log("table dependents");
@@ -107,8 +112,13 @@ describe("scenarios > dependencies > broken list", () => {
       checkSidebar({
         title: TABLE_DISPLAY_NAME,
         transform: TABLE_TRANSFORM,
-        missingColumns: ["score", "status"],
+        missingColumns: ["score"],
         brokenDependents: BROKEN_TABLE_DEPENDENTS,
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_diagnostics_entity_selected",
+        triggered_from: "broken",
+        event_detail: "table",
       });
 
       cy.log("question dependents");
@@ -125,6 +135,14 @@ describe("scenarios > dependencies > broken list", () => {
         title: TABLE_BASED_MODEL,
         missingColumns: ["AMOUNT"],
         brokenDependents: BROKEN_MODEL_DEPENDENTS,
+      });
+
+      cy.log("snowplow event when dependency graph link is clicked");
+      cy.findByRole("link", { name: "View in dependency graph" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "diagnostics-broken-list",
+        event_detail: "card",
       });
     });
   });
@@ -487,9 +505,22 @@ function createModelContent() {
 }
 
 function waitForBreakingDependencies() {
-  H.waitForBreakingDependencies(
-    (nodes) => nodes.length >= BROKEN_DEPENDENCIES.length,
+  // The instance already has unrelated (Usage Analytics) breaking dependencies,
+  // so a bare count check can pass before the test's own entities are analyzed.
+  // Wait until every expected entity is present by name instead.
+  H.waitForBreakingDependencies((nodes) =>
+    BROKEN_DEPENDENCIES.every((name) =>
+      nodes.some((node) => getNodeName(node) === name),
+    ),
   );
+}
+
+function getNodeName(node: DependencyNode): string | undefined {
+  const { data } = node;
+  if ("display_name" in data && data.display_name) {
+    return data.display_name;
+  }
+  return "name" in data ? data.name : undefined;
 }
 
 function checkList({

@@ -1,10 +1,21 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { createQuery } from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { MeasureEditor } from "./MeasureEditor";
 
+const MARKDOWN_DESCRIPTION = "A **bold** [link](https://metabase.com)";
+
+function expectFormattedMarkdown() {
+  expect(screen.getByText("bold").tagName).toBe("STRONG");
+  expect(screen.getByRole("link", { name: "link" })).toHaveAttribute(
+    "href",
+    "https://metabase.com",
+  );
+}
+
 describe("MeasureEditor", () => {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const description = "A sample description";
   const onQueryChange = jest.fn();
   const onDescriptionChange = jest.fn();
@@ -27,7 +38,7 @@ describe("MeasureEditor", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows description as plain text when read-only", () => {
+  it("shows description when read-only", () => {
     renderWithProviders(
       <MeasureEditor
         query={query}
@@ -46,5 +57,32 @@ describe("MeasureEditor", () => {
     expect(
       screen.queryByText("Pick an aggregation function"),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders markdown formatting when editable", () => {
+    renderWithProviders(
+      <MeasureEditor
+        query={query}
+        description={MARKDOWN_DESCRIPTION}
+        onQueryChange={onQueryChange}
+        onDescriptionChange={onDescriptionChange}
+      />,
+    );
+
+    expectFormattedMarkdown();
+  });
+
+  it("renders markdown formatting when read-only", () => {
+    renderWithProviders(
+      <MeasureEditor
+        query={query}
+        description={MARKDOWN_DESCRIPTION}
+        onQueryChange={onQueryChange}
+        onDescriptionChange={onDescriptionChange}
+        readOnly
+      />,
+    );
+
+    expectFormattedMarkdown();
   });
 });

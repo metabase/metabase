@@ -1,0 +1,27 @@
+.link {
+  cursor: pointer;
+  color: var(--mb-color-text-primary);
+
+  &:hover,
+  &:focus {
+    color: var(--mb-color-core-brand);
+  }
+
+  &:disabled {
+    cursor: default;
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+.card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  font-weight: 700;
+  line-height: 1rem;
+  background-color: var(--mb-color-background_page-primary);
+  box-shadow: 0 3px 10px var(--mb-color-shadow-default);
+  border-radius: 6px;
+}

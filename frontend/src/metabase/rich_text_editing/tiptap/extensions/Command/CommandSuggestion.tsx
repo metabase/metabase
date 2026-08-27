@@ -11,17 +11,17 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/redux";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import {
   CreateNewQuestionFooter,
   MenuItemComponent,
   SearchResultsFooter,
-} from "metabase/documents/components/Editor/shared/MenuComponents";
+} from "metabase/rich_text_editing/tiptap/extensions/shared/MenuComponents";
 import {
   LoadingSuggestionPaper,
   SuggestionPaper,
-} from "metabase/documents/components/Editor/shared/SuggestionPaper";
-import { getCurrentDocument } from "metabase/documents/selectors";
-import { useSelector } from "metabase/lib/redux";
+} from "metabase/rich_text_editing/tiptap/extensions/shared/SuggestionPaper";
 import { getBrowseAllItemIndex } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import type { SuggestionPickerViewMode } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -42,9 +42,14 @@ import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 import type { CommandProps } from "./CommandExtension";
 import CommandS from "./CommandSuggestion.module.css";
 import { NewQuestionTypeMenuView } from "./NewQuestionTypeMenuView";
-import type { CommandOption, CommandSection } from "./types";
-import { useCreateQuestionsMenuItems } from "./use-create-questions-menu-items";
-import { getAllCommandSections } from "./utils";
+import type {
+  CommandOption,
+  CommandSection,
+  NewQuestionMenuItem,
+  NewQuestionModals,
+  NewQuestionOption,
+} from "./types";
+import { type MetabotCommandConfig, getAllCommandSections } from "./utils";
 
 export interface CommandSuggestionProps {
   items: SearchResult[];
@@ -52,9 +57,12 @@ export interface CommandSuggestionProps {
   editor: Editor;
   range: Range;
   query: string;
+  metabotCommand?: MetabotCommandConfig | null;
+  newQuestionOptions: NewQuestionOption[];
+  newQuestionModals: NewQuestionModals;
 }
 
-interface SuggestionRef {
+export interface CommandSuggestionRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
@@ -97,10 +105,21 @@ const CommandMenuItem = forwardRef<
 });
 
 export const CommandSuggestion = forwardRef<
-  SuggestionRef,
+  CommandSuggestionRef,
   CommandSuggestionProps
->(function CommandSuggestionComponent({ command, editor, query }, ref) {
-  const document = useSelector(getCurrentDocument);
+>(function CommandSuggestionComponent(
+  {
+    command,
+    editor,
+    query,
+    metabotCommand,
+    newQuestionOptions,
+    newQuestionModals,
+  },
+  ref,
+) {
+  const host = useEditorHost();
+  const document = useSelector(host.selectors.getCurrentDocument);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);
@@ -110,9 +129,11 @@ export const CommandSuggestion = forwardRef<
 
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  const { capabilities } = host;
+
   const allCommandSections: CommandSection[] = useMemo(
-    getAllCommandSections,
-    [],
+    () => getAllCommandSections(metabotCommand, capabilities),
+    [metabotCommand, capabilities],
   );
 
   const allCommandOptions = useMemo(
@@ -141,11 +162,17 @@ export const CommandSuggestion = forwardRef<
     );
   }, [viewMode, query, allowedCommandOptions]);
 
-  const createQuestionsMenuItems = useCreateQuestionsMenuItems({
-    onSelectItem: setNewQuestionType,
-  });
+  const createQuestionsMenuItems: NewQuestionMenuItem[] = useMemo(
+    () =>
+      newQuestionOptions.map((option) => ({
+        ...option,
+        action: () => setNewQuestionType(option.value),
+      })),
+    [newQuestionOptions],
+  );
 
-  const areChartsAllowed = !editor.isActive("supportingText");
+  const areChartsAllowed =
+    !editor.isActive("supportingText") && capabilities.canEmbedCharts;
   const canBrowseAll = areChartsAllowed || viewMode === "linkTo";
 
   const canCreateNewQuestion =
@@ -160,18 +187,22 @@ export const CommandSuggestion = forwardRef<
           selectItem: true,
           entityId: item.id,
           model: item.model,
-          document,
         });
+        if (document) {
+          host.analytics.trackAddSmartLink(document);
+        }
       } else {
         command({
           embedItem: true,
           entityId: item.id,
           model: item.model,
-          document,
         });
+        if (document) {
+          host.analytics.trackAddCard(document);
+        }
       }
     },
-    [viewMode, command, document],
+    [viewMode, command, document, host],
   );
 
   const onTriggerCreateNewQuestion = useCallback(() => {
@@ -224,8 +255,10 @@ export const CommandSuggestion = forwardRef<
     if (commandName === "metabot") {
       command({
         command: "metabot",
-        document,
       });
+      if (document) {
+        host.analytics.trackAskMetabot(document);
+      }
       return;
     }
 
@@ -388,6 +421,7 @@ export const CommandSuggestion = forwardRef<
 
       {viewMode === "newQuestionType" && (
         <NewQuestionTypeMenuView
+          modals={newQuestionModals}
           menuItems={createQuestionsMenuItems}
           selectedIndex={selectedIndex}
           setSelectedIndex={setSelectedIndex}

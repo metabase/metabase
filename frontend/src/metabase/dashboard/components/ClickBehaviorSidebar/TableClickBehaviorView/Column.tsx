@@ -1,15 +1,15 @@
-import type * as React from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
-import { Dashboards } from "metabase/entities/dashboards";
-import { Questions } from "metabase/entities/questions";
-import type { IconName } from "metabase/ui";
+import { DashboardName } from "metabase/common/components/DashboardName";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
+  CardId,
   ClickBehavior,
   CustomDestinationClickBehavior,
   DatasetColumn,
   EntityCustomDestinationClickBehavior,
+  IconName,
 } from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";
@@ -25,6 +25,7 @@ function Quoted({ children }: { children: React.ReactNode }) {
 }
 
 const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
+  // Unjustified type cast. FIXME
   const { targetId } = clickBehavior as EntityCustomDestinationClickBehavior;
   if (clickBehavior.linkType === "url") {
     return t`URL`;
@@ -32,14 +33,15 @@ const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
   if (clickBehavior.linkType === "question") {
     return (
       <Quoted key="link-question">
-        <Questions.Name id={targetId} />
+        {/* Unjustified type cast. FIXME */}
+        <QuestionName id={targetId as CardId} />
       </Quoted>
     );
   }
   if (clickBehavior.linkType === "dashboard") {
     return (
       <Quoted key="link-dashboard">
-        <Dashboards.Name id={targetId} />
+        <DashboardName id={targetId} />
       </Quoted>
     );
   }
@@ -85,8 +87,9 @@ interface ColumnProps {
 export const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
+      // Unjustified type cast. FIXME
       name={getIconForField(column) as unknown as IconName}
-      c="brand"
+      c="core-brand"
       size={18}
     />
     <div>

@@ -15,6 +15,8 @@ To use the SDK in your app, you need to import the `MetabaseProvider` component 
 
 A component that configures the SDK and provides the Metabase SDK's context and theme.
 
+To pass a theme, use `defineMetabaseTheme`. See [Reuse a saved theme in the SDK](../appearance.md#reuse-a-saved-theme-in-the-sdk).
+
 #### API Reference
 
 - [Component](./api/MetabaseProvider.html)
@@ -29,6 +31,10 @@ A component that configures the SDK and provides the Metabase SDK's context and 
 #### Props
 
 {% include_file "{{ dirname }}/api/snippets/MetabaseProviderProps.md" snippet="properties" %}
+
+## Custom visualizations
+
+The SDK can render [custom visualizations](../../questions/visualizations/custom.md) that you allowlist with the `allowedCustomVisualizations` prop on `MetabaseProvider`. See [Custom visualizations in embeds](../custom-visualizations.md).
 
 ## Global event handlers
 

@@ -15,6 +15,7 @@
    [metabase.query-processor.middleware.pivot-export :as pivot-export]
    [metabase.query-processor.middleware.results-metadata :as results-metadata]
    [metabase.query-processor.middleware.visualization-settings :as viz-settings]
+   [metabase.query-processor.pivot.middleware :as qp.pivot.middleware]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
@@ -31,7 +32,9 @@
     (f metadata) -> rf
 
   All of these middlewares assume MBQL 5."
-  [#'format-rows/format-rows
+  [#'qp.pivot.middleware/add-pivot-grouping
+   #'qp.pivot.middleware/project-pivot-subquery-rows
+   #'format-rows/format-rows
    #'results-metadata/record-and-return-metadata!
    #'limit/limit-result-rows
    #'qp.middleware.enterprise/limit-download-result-rows

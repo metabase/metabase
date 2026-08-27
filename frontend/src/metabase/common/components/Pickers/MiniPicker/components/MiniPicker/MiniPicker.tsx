@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { type Ref, useCallback, useEffect, useMemo } from "react";
 
 import { PLUGIN_LIBRARY } from "metabase/plugins";
+import type { MenuDropdownProps, MenuProps } from "metabase/ui";
 import { Box, Menu } from "metabase/ui";
 
 import type { DataPickerValue } from "../../../DataPicker";
 import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
-import { MiniPickerContext } from "../../context";
+import { MiniPickerContext, type MiniPickerSearchParams } from "../../context";
 import type { MiniPickerItem, MiniPickerPickableItem } from "../../types";
 import {
   focusFirstMiniPickerItem,
@@ -25,7 +26,19 @@ export type MiniPickerProps = {
   models: MiniPickerPickableItem["model"][];
   onBrowseAll?: () => void;
   shouldHide?: (item: MiniPickerItem | unknown) => boolean;
+  includeHiddenSchemas?: boolean;
   shouldShowLibrary?: boolean;
+  forceSearch?: boolean;
+  showSearchInput?: boolean;
+  searchInputPlaceholder?: string;
+  searchParams?: MiniPickerSearchParams;
+  onSearchResults?: (results: MiniPickerPickableItem[]) => void;
+  children?: React.ReactNode;
+  menuProps?: MenuProps;
+  menuDropdownProps?: MenuDropdownProps;
+  closeOnClickOutside?: boolean;
+  menuDropdownRef?: Ref<HTMLDivElement>;
+  className?: string;
 };
 
 export function MiniPicker({
@@ -39,6 +52,18 @@ export function MiniPicker({
   trapFocus = false,
   shouldHide,
   shouldShowLibrary = true,
+  forceSearch = false,
+  showSearchInput = false,
+  includeHiddenSchemas = false,
+  searchInputPlaceholder,
+  searchParams,
+  onSearchResults,
+  children = <Box />,
+  menuProps,
+  menuDropdownProps,
+  closeOnClickOutside = true,
+  menuDropdownRef,
+  className,
 }: MiniPickerProps) {
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
 
@@ -46,6 +71,7 @@ export function MiniPicker({
     value,
     opened,
     libraryCollection,
+    models,
   });
 
   const { isFolder, isHidden } = useMemo(() => {
@@ -83,6 +109,12 @@ export function MiniPicker({
         canBrowse: !!onBrowseAll,
         libraryCollection,
         shouldShowLibrary,
+        forceSearch,
+        showSearchInput,
+        searchInputPlaceholder,
+        searchParams,
+        onSearchResults,
+        includeHiddenSchemas,
       }}
     >
       <Menu
@@ -90,22 +122,26 @@ export function MiniPicker({
         onChange={onClose}
         closeOnItemClick={false}
         clickOutsideEvents={["mousedown", "touchstart"]}
+        closeOnClickOutside={closeOnClickOutside}
         position="bottom-start"
         // menuItemTabIndex={-1}
         trapFocus={false}
+        {...menuProps}
       >
-        <Menu.Target>
-          <Box />
-        </Menu.Target>
+        <Menu.Target>{children}</Menu.Target>
 
         <Menu.Dropdown
-          mt="xl"
-          ml="-1rem"
           px={0}
           py="sm"
           data-testid="mini-picker"
+          {...menuDropdownProps}
+          ref={menuDropdownRef}
         >
-          {isLoadingPath ? <MiniPickerListLoader /> : <MiniPickerPane />}
+          {isLoadingPath ? (
+            <MiniPickerListLoader />
+          ) : (
+            <MiniPickerPane className={className} />
+          )}
         </Menu.Dropdown>
       </Menu>
     </MiniPickerContext.Provider>

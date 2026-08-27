@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.streaming.csv-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.streaming.csv-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.string :as str]
@@ -6,10 +7,11 @@
    [metabase.driver :as driver]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions :as defs])
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.util :as u])
   (:import
    (java.io BufferedOutputStream ByteArrayOutputStream)))
 
@@ -130,11 +132,63 @@
         (let [bytea (.toByteArray bos)]
           (rest (csv/read-csv (String. bytea))))))))
 
+(deftest csv-export-includes-utf8-bom-test
+  (testing "CSV exports start with a UTF-8 BOM so Excel renders non-ASCII chars like £ correctly"
+    (driver/with-driver :h2
+      (mt/with-metadata-provider (mt/id)
+        (with-open [bos (ByteArrayOutputStream.)
+                    os  (BufferedOutputStream. bos)]
+          (let [results-writer (qp.si/streaming-results-writer :csv os)]
+            (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}]}} {})
+            (qp.si/write-row! results-writer ["£37.65"] 0 [] {})
+            (qp.si/finish! results-writer {:row_count 1}))
+          (is (= [(unchecked-byte 0xEF) (unchecked-byte 0xBB) (unchecked-byte 0xBF)]
+                 (take 3 (seq (.toByteArray bos))))))))))
+
+(deftest csv-export-omits-utf8-bom-when-disabled-test
+  (testing "CSV exports omit the UTF-8 BOM when `:csv-include-bom?` is false (#75875)"
+    (driver/with-driver :h2
+      (mt/with-metadata-provider (mt/id)
+        (with-open [bos (ByteArrayOutputStream.)
+                    os  (BufferedOutputStream. bos)]
+          (let [results-writer (qp.si/streaming-results-writer :csv os)]
+            (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}] :csv-include-bom? false}} {})
+            (qp.si/write-row! results-writer ["£37.65"] 0 [] {})
+            (qp.si/finish! results-writer {:row_count 1}))
+          (let [bytes (seq (.toByteArray bos))]
+            (is (not= [(unchecked-byte 0xEF) (unchecked-byte 0xBB) (unchecked-byte 0xBF)]
+                      (take 3 bytes))
+                "should not start with a BOM")
+            ;; first byte should be the start of the (empty) header line, not the BOM
+            (is (not= (unchecked-byte 0xEF) (first bytes)))))))))
+
+(deftest csv-export-bom-respects-csv-include-bom-param-test
+  (testing "the csv_include_bom API param controls whether the downloaded CSV starts with a UTF-8 BOM (#75875)"
+    (let [bom-prefix? (fn [^String s] (str/starts-with? s u/utf8-bom))
+          download    (fn [params]
+                        (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                              (merge {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 1})}
+                                                     params)))]
+      (testing "omitted by default so external API consumers don't get an unexpected BOM"
+        (is (false? (bom-prefix? (download {})))))
+      (testing "included when explicitly true"
+        (is (true? (bom-prefix? (download {:csv_include_bom true})))))
+      (testing "omitted when false"
+        (is (false? (bom-prefix? (download {:csv_include_bom false})))))
+      (testing "the card query endpoint also honors the param"
+        ;; allowing `with-temp` here since it tests against the REST API
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 1})}]
+          (let [download-card (fn [params]
+                                (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv" card-id) params))]
+            (is (false? (bom-prefix? (download-card {}))))
+            (is (true? (bom-prefix? (download-card {:csv_include_bom true}))))
+            (is (false? (bom-prefix? (download-card {:csv_include_bom false}))))))))))
+
 (deftest lazy-seq-realized-test
   (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
     (let [row (first (csv-export [[(lazy-seq [1 2 3])]]))]
       (is (= ["[1 2 3]"] row))))
-
   (testing "LocalDate in a lazy seq (checking that elements in a lazy seq are formatted correctly as strings)"
     (let [row (first (csv-export [[(lazy-seq [#t "2021-03-30T"])]]))]
       (is (= ["[\"2021-03-30\"]"] row)))))
@@ -146,3 +200,50 @@
           results (qp/process-query (assoc (mt/native-query {:query query}) :middleware {:format-rows? false}))]
       (is (= [["2020-06-03" "2020-06-03T23:41:23"]]
              (csv-export (mt/rows results)))))))
+
+(deftest csv-field-separator-default-test
+  (testing "Default comma separator works correctly"
+    (let [rows   [["ID" "Name" "Value"]
+                  ["1" "Test" "100"]
+                  ["2" "Data" "200"]]
+          result (csv-export rows)
+          header (first result)]
+      (is (= ["ID" "Name" "Value"] header)))))
+
+(deftest csv-field-separator-semicolon-test
+  (testing "Semicolon separator via HTTP API"
+    (mt/with-temporary-setting-values [csv-field-separator ";"]
+      (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                         {:query       (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
+                                          :format_rows true})
+            lines  (str/split-lines result)
+            header (first lines)]
+        (is (str/includes? header ";")
+            "Header should use semicolon separator")
+        (is (not (re-find #"(?<![\"\\]),(?![\"\\])" header))
+            "Header should not contain unquoted commas as separators")))))
+
+(deftest csv-field-separator-tab-test
+  (testing "Tab separator via HTTP API"
+    (mt/with-temporary-setting-values [csv-field-separator "\\t"]
+      (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                         {:query       (mt/mbql-query venues {:order-by [[:asc $id]], :limit 2})
+                                          :format_rows true})
+            lines  (str/split-lines result)
+            header (first lines)]
+        (is (str/includes? header "\t")
+            "Header should use tab separator")))))
+
+(deftest csv-separator-quoting-test
+  (testing "Values containing the separator should be properly quoted"
+    (mt/with-temporary-setting-values [csv-field-separator ";"]
+      (let [result (mt/user-http-request
+                    :crowberto :post 200 "dataset/csv"
+                    {:query {:database (mt/id)
+                             :type     :native
+                             :native   {:query "SELECT 'Test' as name, 'Value;with;semicolons' as description"}}
+                     :format_rows false})
+            lines  (str/split-lines result)]
+        (is (= 2 (count lines)) "Should have header and one data row")
+        (is (str/includes? (second lines) "\"")
+            "Value containing separator should be quoted")))))

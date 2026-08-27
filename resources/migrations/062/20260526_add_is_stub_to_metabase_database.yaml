@@ -1,0 +1,29 @@
+## Add is_stub column to metabase_database for placeholder databases (GHY-3686)
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v62.2026-05-26T00:00:00
+      author: ericnormand
+      comment: Add is_stub column to metabase_database for placeholder databases created during deserialization
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: is_stub
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_stub
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Placeholder database created during deserialization; cleared when real details are supplied and the connection test passes
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: is_stub

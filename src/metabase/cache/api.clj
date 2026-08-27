@@ -4,10 +4,12 @@
    [metabase.api.macros :as api.macros]
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.config.core :as config]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :refer [tru trun]]
+   [metabase.util.i18n :refer [deferred-tru tru trun]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -17,17 +19,22 @@
 
 ;;; TODO (Cam 10/3/25) -- move these schemas into a `.schemas` namespace to follow module shape guidelines
 
-(mr/def ::cache-strategy.base.oss
-  [:map
-   [:type [:enum :nocache :ttl]]])
+(defn- cache-strategy-dispatch
+  "`:multi` dispatch for a cache strategy.
 
-(mr/def ::cache-strategy.base.ee
-  [:map
-   [:type [:enum :nocache :ttl :duration :schedule]]])
+  `:type` arrives from JSON as a string, and `:multi` dispatches before the branch that would coerce it to a keyword
+  runs, so the dispatch has to do the coercion itself. A sibling `[:map [:type [:enum ...]]]` guard can't do it for
+  us: request decoding would then strip every key the guard doesn't name, emptying out the strategy."
+  [strategy]
+  (let [strategy-type (:type strategy)]
+    (when (or (keyword? strategy-type) (string? strategy-type))
+      (keyword strategy-type))))
 
 (mr/def ::cache-strategy.nocache
-  [:map ; not closed due to a way it's used in tests for clarity
-   [:type [:= :nocache]]])
+  [:map
+   [:type [:= :nocache]]
+   ;; a free-form label round-tripped through `:config`; tests use it to tell configs apart
+   [:name {:optional true} [:maybe :string]]])
 
 (mr/def ::cache-strategy.ttl
   [:map {:closed true}
@@ -37,11 +44,14 @@
 
 (mr/def ::cache-strategy.oss
   "Schema for a caching strategy (OSS)"
-  [:and
-   ::cache-strategy.base.oss
-   [:multi {:dispatch :type}
-    [:nocache ::cache-strategy.nocache]
-    [:ttl     ::cache-strategy.ttl]]])
+  [:multi {:description      (deferred-tru "cache strategy :type must be one of :nocache, :ttl")
+           :decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         cache-strategy-dispatch
+           :error/fn    (fn [{:keys [value]} _]
+                          (tru "invalid cache strategy :type {0}, must be one of :nocache, :ttl"
+                               (pr-str (:type value))))}
+   [:nocache ::cache-strategy.nocache]
+   [:ttl     ::cache-strategy.ttl]])
 
 (mr/def ::cache-strategy.ee.duration
   [:map {:closed true}
@@ -61,13 +71,16 @@
 ;;; the optional `:invalidated-at` keys
 (mr/def ::cache-strategy.ee
   "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`."
-  [:and
-   ::cache-strategy.base.ee
-   [:multi {:dispatch :type}
-    [:nocache     ::cache-strategy.nocache]
-    [:ttl         ::cache-strategy.ttl]
-    [:duration    ::cache-strategy.ee.duration]
-    [:schedule    ::cache-strategy.ee.schedule]]])
+  [:multi {:description      (deferred-tru "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule")
+           :decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         cache-strategy-dispatch
+           :error/fn    (fn [{:keys [value]} _]
+                          (tru "invalid cache strategy :type {0}, must be one of :nocache, :ttl, :duration, :schedule"
+                               (pr-str (:type value))))}
+   [:nocache     ::cache-strategy.nocache]
+   [:ttl         ::cache-strategy.ttl]
+   [:duration    ::cache-strategy.ee.duration]
+   [:schedule    ::cache-strategy.ee.schedule]])
 
 (mr/def ::cache-strategy
   (if config/ee-available?
@@ -97,6 +110,35 @@
                                     "question"  :model/Card)
                                   :id [:in ids]))))
 
+(mr/def ::cache-config-item
+  [:map
+   [:model    cache-config/CachingModel]
+   [:model_id ms/IntGreaterThanOrEqualToZero]
+   [:strategy [:map [:type :keyword]]]
+   [:name       {:optional true} [:maybe :string]]
+   [:collection {:optional true} [:maybe [:map
+                                          [:id   ms/PositiveInt]
+                                          [:name [:maybe :string]]
+                                          [:authority_level {:optional true} [:maybe :string]]
+                                          [:type {:optional true} [:maybe :string]]]]]])
+
+(mr/def ::cache-config-list-response
+  [:map
+   [:data  [:sequential ::cache-config-item]]
+   [:total {:optional true} ms/IntGreaterThanOrEqualToZero]
+   [:limit  {:optional true} [:maybe ms/PositiveInt]]
+   [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]])
+
+(mr/def ::cache-config-store-response
+  [:map [:id ms/PositiveInt]])
+
+(mr/def ::cache-invalidate-response
+  [:map
+   [:status [:= 200]]
+   [:body   [:map
+             [:count   :int]
+             [:message :string]]]])
+
 (defn- check-cache-access [model id]
   (if (or (nil? id)
           ;; sometimes its a sequence and we're going to check for settings access anyway
@@ -104,17 +146,11 @@
           (zero? id))
     ;; if you're not accessing a concrete entity, you have to be an admin
     (api/check-superuser)
-    (api/write-check (case model
-                       "database" :model/Database
-                       "dashboard" :model/Dashboard
-                       "question" :model/Card)
-                     id)))
+    ;; Use CacheConfig's can-write? which checks collection permissions directly,
+    ;; bypassing the remote-sync content lock on Dashboards/Cards.
+    (api/check-403 (mi/can-write? (t2/instance :model/CacheConfig {:model model :model_id id})))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/"
+(api.macros/defendpoint :get "/" :- ::cache-config-list-response
   "Return cache configuration. Supports pagination via `limit` and `offset` query parameters,
    and sorting via `sort_column` and `sort_direction`."
   [_route-params
@@ -143,11 +179,7 @@
        :offset offset}
       {:data data})))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/"
+(api.macros/defendpoint :put "/" :- ::cache-config-store-response
   "Store cache configuration."
   [_route-params
    _query-params
@@ -159,11 +191,7 @@
   (check-cache-access model model_id)
   {:id (cache-config/store! api/*current-user-id* config)})
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/"
+(api.macros/defendpoint :delete "/" :- :nil
   "Delete cache configurations."
   [_route-params
    _query-params
@@ -175,11 +203,7 @@
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/invalidate"
+(api.macros/defendpoint :post "/invalidate" :- ::cache-invalidate-response
   "Invalidate cache entries.
 
   Use it like `/api/cache/invalidate?database=1&dashboard=15` (any number of database/dashboard/question can be
@@ -200,6 +224,12 @@
                                      (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (when-not (premium-features/enable-cache-granular-controls?)
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
+  ;; Require at least one target. Without a filter there is nothing to invalidate, so the request is
+  ;; malformed rather than not-found: returning 404 here misled callers into thinking the endpoint
+  ;; itself did not exist (see #66499), and a 200 would falsely imply something was invalidated.
+  (when (every? empty? [database dashboard question])
+    (throw (ex-info (tru "At least one of `database`, `dashboard`, or `question` is required.")
+                    {:status-code 400})))
   (doseq [db-id database] (api/write-check :model/Database db-id))
   (doseq [dashboard-id dashboard] (api/write-check :model/Dashboard dashboard-id))
   (doseq [question-id question] (api/write-check :model/Card question-id))
@@ -207,9 +237,12 @@
                                        :dashboards      dashboard
                                        :questions       question
                                        :with-overrides? (= include :overrides)})]
-    {:status (if (= cnt -1) 404 200)
+    ;; A well-formed filter that simply matched no cached results is a successful no-op (200); the
+    ;; `:message` below explains what happened.
+    {:status 200
      :body   {:count   cnt
-              :message (case [(= include :overrides) (if (pos? cnt) 1 cnt)]
+              ;; Use condp instead of case to avoid Clojure compiler warnings.
+              :message (condp = [(= include :overrides) (if (pos? cnt) 1 cnt)]
                          [true -1]  (tru "Could not find any questions for the criteria you specified.")
                          [true 0]   (tru "No cached results to clear.")
                          [true 1]   (trun "Cleared a cached result." "Cleared {0} cached results." cnt)

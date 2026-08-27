@@ -5,7 +5,7 @@ PENDING CI / PENDING REVIEW / READY _(choose one and update accordingly)_
 - Reproduces #XXXXX
 
 ### How to test this manually?
-- `yarn test-cypress`
+- `bun run test-cypress`
 - `relative/path/to/the/file`
 > _(For still unfixed bug)_
 - Replace `it.skip()` with `it.only()` to run the test in isolation

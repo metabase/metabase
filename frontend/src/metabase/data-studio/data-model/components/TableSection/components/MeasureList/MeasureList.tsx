@@ -2,11 +2,12 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { trackMeasureCreateStarted } from "metabase/common/data-studio/analytics";
+import { getUserCanWriteMeasures } from "metabase/common/data-studio/selectors";
+import { useSelector } from "metabase/redux";
 import { Button, Group, Icon, Stack } from "metabase/ui";
-import type { Table } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import type { ConcreteTableId, Table } from "metabase-types/api";
 
 import S from "../../TableSection.module.css";
 import { MeasureItem } from "../MeasureItem";
@@ -27,6 +28,15 @@ export function MeasureList({ table }: MeasureListProps) {
   const canWriteMeasures = useSelector((state) =>
     getUserCanWriteMeasures(state, table.is_published),
   );
+  const onNewMeasureClick = () => {
+    // Unjustified type cast. FIXME
+    trackMeasureCreateStarted(table.id as ConcreteTableId);
+  };
+  const newMeasureUrl = Urls.newDataStudioDataModelMeasure({
+    databaseId: table.db_id,
+    schemaName: table.schema,
+    tableId: table.id,
+  });
 
   return (
     <Stack gap="md" data-testid="table-measures-page">
@@ -34,17 +44,17 @@ export function MeasureList({ table }: MeasureListProps) {
         <Group gap="md" justify="flex-start" wrap="nowrap">
           <Button
             component={ForwardRefLink}
-            to={Urls.newDataStudioDataModelMeasure({
-              databaseId: table.db_id,
-              schemaName: table.schema,
-              tableId: table.id,
-            })}
             h={32}
+            leftSection={<Icon name="add" />}
+            onAuxClick={onNewMeasureClick}
+            onClickCapture={onNewMeasureClick}
             px="sm"
             py="xs"
             size="xs"
-            leftSection={<Icon name="add" />}
-          >{t`New measure`}</Button>
+            to={newMeasureUrl}
+          >
+            {t`New measure`}
+          </Button>
         </Group>
       )}
 
@@ -52,7 +62,9 @@ export function MeasureList({ table }: MeasureListProps) {
         <EmptyState
           className={S.EmptyState}
           spacing="sm"
-          illustrationElement={<Icon name="sum" size={32} c="text-secondary" />}
+          illustrationElement={
+            <Icon name="ruler" size={32} c="text-secondary" />
+          }
           title={t`No measures yet`}
           message={t`Create a measure to define a reusable aggregation for this table.`}
         />

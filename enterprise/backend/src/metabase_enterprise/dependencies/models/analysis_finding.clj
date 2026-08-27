@@ -3,6 +3,7 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -24,15 +25,18 @@
   - 3: Initial version
   - 4: Disable naive sql validation
   - 5: Added source entity tracking in analysis_finding_error table
-  - 6: Removed validate prefix from error_type in analysis_finding_error"
-  6)
+  - 6: Removed validate prefix from error_type in analysis_finding_error
+  - 7: Only mark inactive (not missing) field refs in :fields as soft (GHY-3157)
+  - 8: Flag MBQL queries whose source-table is missing/inactive (e.g. dropped during sync)"
+  8)
 
 (defn- error->finding-error-row
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.
    We use `:message` for the error detail if there was an `validation-exception-error`."
   [error]
   {:error-type          (:type error)
-   :error-detail        (or (:name error) (:message error))
+   ;; error-detail cannot be longer than 254
+   :error-detail        (some-> (or (:name error) (:message error)) (u/truncate 254))
    :source-entity-type  (:source-entity-type error)
    :source-entity-id    (:source-entity-id error)})
 
@@ -78,6 +82,12 @@
   []
   (t2/exists? :model/AnalysisFinding :stale true))
 
+(defn stale-entity-count
+  "Number of analysis findings currently marked stale, across all entity types. Used by the entity-check drain loop to
+  detect whether it is still making progress."
+  []
+  (t2/count :model/AnalysisFinding :stale true))
+
 (defn instances-for-analysis
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` with missing, outdated,
   or stale AnalysisFindings.
@@ -98,6 +108,8 @@
                         [:<                               ; missing or outdated analysis
                          [:coalesce :analysis_finding.analysis_version 0]
                          *current-analysis-finding-version*]]
-                ;; stale entities first
-                :order-by [[[:case [:= :analysis_finding.stale true] [:inline 0] :else [:inline 1]]]]
+                ;; stale first, then oldest-analyzed first so a sub-backlog batch round-robins through
+                ;; the stale set instead of starving a DB-arbitrary subset.
+                :order-by [[[:case [:= :analysis_finding.stale true] [:inline 0] :else [:inline 1]]]
+                           [:analysis_finding.analyzed_at :asc]]
                 :limit batch-size})))

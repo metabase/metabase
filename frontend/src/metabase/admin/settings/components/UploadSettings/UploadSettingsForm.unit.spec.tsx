@@ -18,6 +18,7 @@ import {
   within,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -25,13 +26,13 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import type { UploadsSettings } from "metabase-types/api/settings";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   UploadSettingsForm,
   UploadSettingsFormView,
 } from "./UploadSettingsForm";
 
+// Unjustified type cast. FIXME
 const TEST_DATABASES = [
   createMockDatabase({
     id: 1,
@@ -146,6 +147,16 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
     setup();
     expect(
       screen.getByText("Allow people to upload data to collections"),
+    ).toBeInTheDocument();
+  });
+
+  it("should show the supported databases in a tooltip on the dropdown label", async () => {
+    setup();
+    await userEvent.hover(screen.getByTestId("uploads-db-info-icon"));
+    expect(
+      await screen.findByText(
+        "PostgreSQL, MySQL, Redshift, ClickHouse, and Snowflake databases are supported for file storage.",
+      ),
     ).toBeInTheDocument();
   });
 

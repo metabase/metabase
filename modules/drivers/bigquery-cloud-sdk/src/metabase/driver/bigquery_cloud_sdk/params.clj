@@ -8,7 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- param ^QueryParameterValue [type-name v]
+(defn param
+  "Constructs a QueryParameterValue wrapper that hints a sql type via the type-name (mapping to StandardSQLTypeName)."
+  ^QueryParameterValue [type-name v]
   (.build (doto (QueryParameterValue/newBuilder)
             (.setType (StandardSQLTypeName/valueOf type-name))
             (.setValue (some-> v str)))))
@@ -16,6 +18,8 @@
 (defmulti ^:private ->QueryParameterValue
   {:arglists '(^QueryParameterValue [v])}
   class)
+
+(defmethod ->QueryParameterValue QueryParameterValue [v] v)
 
 (defmethod ->QueryParameterValue :default
   [v]
@@ -39,6 +43,7 @@
 (defmethod ->QueryParameterValue Short                [v] (param "INT64" v))
 (defmethod ->QueryParameterValue Byte                 [v] (param "INT64" v))
 (defmethod ->QueryParameterValue clojure.lang.BigInt  [v] (param "INT64" v))
+(defmethod ->QueryParameterValue java.math.BigInteger [v] (param "INT64" v))
 (defmethod ->QueryParameterValue Float                [v] (param "FLOAT64" v))
 (defmethod ->QueryParameterValue Double               [v] (param "FLOAT64" v))
 
@@ -70,7 +75,7 @@
 
 (defn- query-parameter ^QueryParameterValue [value]
   (let [param (->QueryParameterValue value)]
-    (log/tracef "Set parameter ^%s %s -> %s" (some-> value class .getCanonicalName) (pr-str value) (pr-str param))
+    (log/tracef "Set parameter of class %s" (some-> value class .getCanonicalName))
     param))
 
 (defn set-parameters!

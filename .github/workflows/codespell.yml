@@ -8,13 +8,14 @@ on:
 
 jobs:
   codespell:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install codespell
         run: pip install codespell
@@ -26,7 +27,7 @@ jobs:
 
       - name: Get current date
         id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
 
       - name: Run codespell check
         id: codespell_check
@@ -43,27 +44,35 @@ jobs:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
+      - name: Build Claude prompt
+        if: steps.codespell_check.outcome == 'failure'
+        run: |
+          cat > /tmp/claude_prompt.txt << 'PROMPT_HEADER'
+          You are tasked with fixing spelling errors detected by codespell in this repository.
+
+          ## Codespell Output
+          The following spelling errors were detected:
+          ```
+          PROMPT_HEADER
+          cat codespell_output.txt >> /tmp/claude_prompt.txt
+          cat >> /tmp/claude_prompt.txt << 'PROMPT_FOOTER'
+          ```
+
+          ## Instructions
+          1. **Review the codespell output and identify reported spelling errors** - The usual format codespell uses is `typo ==> correction`
+          2. **Fix every spelling error** - Use the Edit tool to fix each misspelling with the suggested correction
+             - If codespell suggests multiple corrections, choose the most appropriate one based on context
+
+          Human reviewers will verify the changes before merging, so fix all errors reported by codespell.
+          PROMPT_FOOTER
+
       - name: Fix spelling errors with Claude Code
         if: steps.codespell_check.outcome == 'failure'
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
-          prompt: |
-            You are tasked with fixing spelling errors detected by codespell in this repository.
-
-            ## Codespell Output
-            The following spelling errors were detected:
-            ```
-            $(cat codespell_output.txt)
-            ```
-
-            ## Instructions
-            1. **Review the codespell output and identify reported spelling errors** - The usual format codespell uses is `typo ==> correction`
-            2. **Fix every spelling error** - Use the Edit tool to fix each misspelling with the suggested correction
-               - If codespell suggests multiple corrections, choose the most appropriate one based on context
-
-            Human reviewers will verify the changes before merging, so fix all errors reported by codespell.
+          prompt_file: /tmp/claude_prompt.txt
           claude_args: |
             --allowedTools "Write,Read,Glob,Grep,Edit,MultiEdit,Bash(cat*),Bash(ls*)"
             --disallowedTools "Bash(git commit*),Bash(git push*),Bash(gh*)"
@@ -74,7 +83,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.codespell_check.outcome == 'failure'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: claude-fix/codespell-${{ steps.date.outputs.date }}

@@ -11,7 +11,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (nippy/extend-freeze com.clickhouse.data.value.UnsignedByte :clickhouse/UnsignedByte
   [^com.clickhouse.data.value.UnsignedByte x ^DataOutput data-output]
-                     ;; can't enable *warn-on-reflection* because of this call
+  ;; can't enable *warn-on-reflection* because of this call
   (nippy/freeze-to-out! data-output (.toString x)))
 
 (nippy/extend-thaw :clickhouse/UnsignedByte

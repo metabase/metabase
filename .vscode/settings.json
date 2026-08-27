@@ -4,5 +4,16 @@
   "jake.autoDetect": "off",
   "gulp.autoDetect": "off",
   "npm.autoDetect": "off",
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.tsserver.maxTsServerMemory": 8192,
+  "cssVariables.lookupFiles": ["**/*.d.css", "node_modules/@mantine/core/*.css"],
+  "files.watcherExclude": {
+    "**/.claude/worktrees/**": true,
+    "**/node_modules/**": true,
+    "**/.cpcache/**": true,
+    "**/target/**": true
+  },
+  "search.exclude": {
+    "**/.claude/worktrees": true
+  }
 }

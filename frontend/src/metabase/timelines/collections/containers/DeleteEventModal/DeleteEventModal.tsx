@@ -1,42 +1,36 @@
-import { push } from "react-router-redux";
-import _ from "underscore";
-
-import { TimelineEvents } from "metabase/entities/timeline-events";
-import { Timelines } from "metabase/entities/timelines";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import {
+  skipToken,
+  useDeleteTimelineEventMutation,
+  useGetTimelineEventQuery,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import * as Urls from "metabase/urls";
+import type { TimelineEvent } from "metabase-types/api";
 
-import type { ModalParams } from "../../types";
+function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
+  const eventId = Urls.extractEntityId(params.timelineEventId);
+  const {
+    data: event,
+    isLoading,
+    error,
+  } = useGetTimelineEventQuery(eventId ?? skipToken);
+  const [deleteTimelineEvent] = useDeleteTimelineEventMutation();
 
-interface DeleteEventModalProps {
-  params: ModalParams;
+  const onSubmit = async (event: TimelineEvent) => {
+    await deleteTimelineEvent(event.id).unwrap();
+    onClose();
+  };
+
+  if (isLoading || error || !event) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  return (
+    <DeleteEventModal event={event} onSubmit={onSubmit} onClose={onClose} />
+  );
 }
 
-const timelineProps = {
-  id: (state: State, props: DeleteEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineId),
-  query: { include: "events" },
-};
-
-const timelineEventProps = {
-  id: (state: State, props: DeleteEventModalProps) =>
-    Urls.extractEntityId(props.params.timelineEventId),
-  entityAlias: "event",
-};
-
-const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (event: TimelineEvent, timeline: Timeline) => {
-    await dispatch(TimelineEvents.actions.delete(event));
-    dispatch(push(Urls.timelineArchiveInCollection(timeline)));
-  },
-});
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Timelines.load(timelineProps),
-  TimelineEvents.load(timelineEventProps),
-  connect(null, mapDispatchToProps),
-)(DeleteEventModal);
+export default DeleteEventModalContainer;

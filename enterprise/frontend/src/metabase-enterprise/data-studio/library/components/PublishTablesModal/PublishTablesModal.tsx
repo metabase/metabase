@@ -1,19 +1,18 @@
-import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetTableSelectionInfoQuery } from "metabase/api";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { trackDataStudioTablePublished } from "metabase/data-studio/analytics";
+import { trackDataStudioTablePublished } from "metabase/common/data-studio/analytics";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import type { PublishTablesModalProps } from "metabase/plugins";
+import { PLUGIN_LIBRARY, type PublishTablesModalProps } from "metabase/plugins";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Button,
@@ -24,9 +23,11 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type {
   BulkTableInfo,
+  BulkTableRequest,
   DatabaseId,
   SchemaId,
   TableId,
@@ -106,25 +107,35 @@ function ModalBody({
   });
   const [publishTables] = usePublishTablesMutation();
   const { sendSuccessToast } = useMetadataToasts();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { data: dataCollection, isLoading: isLoadingDataCollection } =
+    PLUGIN_LIBRARY.useGetLibraryChildCollectionByType({
+      type: "library-data",
+    });
 
-  if (isLoading || error != null || data == null) {
-    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (isLoading || error != null || data == null || dataCollection == null) {
+    return (
+      <DelayedLoadingAndErrorWrapper
+        loading={isLoading || isLoadingDataCollection || dataCollection == null}
+        error={error}
+      />
+    );
   }
 
   const { selected_table, unpublished_upstream_tables } = data;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async ({ collection_id }: BulkTableRequest) => {
     const { target_collection: collection } = await publishTables({
       database_ids: databaseIds,
       schema_ids: schemaIds,
       table_ids: tableIds,
+      collection_id,
     }).unwrap();
 
     if (collection != null) {
       sendSuccessToast(
         t`Published`,
-        () => dispatch(push(Urls.dataStudioLibrary())),
+        () => navigate(Urls.dataStudioLibrary()),
         t`Go to ${collection.name}`,
       );
     } else {
@@ -137,7 +148,11 @@ function ModalBody({
   };
 
   return (
-    <FormProvider initialValues={{}} onSubmit={handleSubmit}>
+    <FormProvider<BulkTableRequest>
+      enableReinitialize
+      initialValues={{ collection_id: dataCollection.id }}
+      onSubmit={handleSubmit}
+    >
       <Form>
         <Stack gap="sm">
           <Text>{t`Publishing a table saves it to the Library.`}</Text>
@@ -153,6 +168,23 @@ function ModalBody({
               </List>
             </>
           )}
+          <FormCollectionPicker
+            mt="md"
+            name="collection_id"
+            title={t`Publish to`}
+            entityType="table"
+            collectionPickerModalProps={{
+              options: {
+                hasLibrary: true,
+                hasRootCollection: false,
+                hasPersonalCollections: false,
+                hasSearch: true,
+                hasRecents: false,
+                hasConfirmButtons: true,
+                canCreateCollections: true,
+              },
+            }}
+          />
         </Stack>
         <Group mt="xl" gap="sm" wrap="nowrap">
           <Box flex={1}>

@@ -6,7 +6,7 @@ import { match } from "ts-pattern";
  *
  * `IS_ENTERPRISE` means enterprise instance without a token and `isOSS` means open-source instance.
  */
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
 const throwIfNotEnterprise = () => {
   if (!IS_ENTERPRISE) {
@@ -14,6 +14,40 @@ const throwIfNotEnterprise = () => {
       "You must run Metabase® Enterprise Edition™ for token to make sense.\nMake sure you have `MB_EDITION=ee` in your environment variables.",
     );
   }
+};
+
+const TOKEN_ACTIVATION_ATTEMPTS = 3;
+
+const putTokenWithRetry = (
+  token: string,
+  attempt = 1,
+): Cypress.Chainable<Cypress.Response<unknown>> => {
+  return cy
+    .request({
+      method: "PUT",
+      url: "/api/setting/premium-embedding-token",
+      failOnStatusCode: false,
+      body: {
+        value: token,
+      },
+    })
+    .then((response) => {
+      if (response.status >= 200 && response.status < 300) {
+        return cy.wrap(response, { log: false });
+      }
+
+      if (attempt >= TOKEN_ACTIVATION_ATTEMPTS) {
+        throw new Error(
+          `Failed to activate the token after ${attempt} attempts: ` +
+            `${response.status} ${JSON.stringify(response.body)}`,
+        );
+      }
+
+      cy.log(
+        `Token activation failed with status ${response.status}, retrying`,
+      );
+      return putTokenWithRetry(token, attempt + 1);
+    });
 };
 
 export const activateToken = (
@@ -28,29 +62,18 @@ export const activateToken = (
     .with("pro-self-hosted", () => "MB_PRO_SELF_HOSTED_TOKEN")
     .exhaustive();
 
-  const fallbackToken =
-    tokenReference === "starter" ? "NO_FEATURES_TOKEN" : "ALL_FEATURES_TOKEN";
-  const token = Cypress.env(tokenReference) || Cypress.env(fallbackToken);
+  // Use cy.env() for sensitive token values (async API)
+  return cy.env([tokenReference]).then((envVars) => {
+    const token = envVars[tokenReference];
 
-  if (!token) {
-    const errorMessage = `
-    Please make sure you have correctly set the following tokens in your environment variables:
-      - CYPRESS_MB_ALL_FEATURES_TOKEN
-      - CYPRESS_MB_STARTER_CLOUD_TOKEN
-      - CYPRESS_MB_PRO_CLOUD_TOKEN
-      - CYPRESS_MB_PRO_SELF_HOSTED_TOKEN
-    `;
-    throw new Error(errorMessage);
-  }
+    if (!token) {
+      throw new Error(
+        `Missing CYPRESS_${tokenReference} environment variable for "${tokenName}" token`,
+      );
+    }
 
-  cy.log(`Set the "${tokenReference}" token`);
-  return cy.request({
-    method: "PUT",
-    url: "/api/setting/premium-embedding-token",
-    failOnStatusCode: false,
-    body: {
-      value: token,
-    },
+    cy.log(`Set the "${tokenName}" token`);
+    return putTokenWithRetry(token);
   });
 };
 

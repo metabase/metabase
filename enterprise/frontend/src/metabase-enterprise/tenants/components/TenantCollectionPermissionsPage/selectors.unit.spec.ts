@@ -1,12 +1,13 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import type { CollectionPermissions } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 import {
   createMockAdminState,
+  createMockPermissionsState,
   createMockState,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import type { CollectionPermissions } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import {
   getCurrentTenantCollectionId,
@@ -34,20 +35,14 @@ const createMockStateWithPermissions = ({
       "token-features": createMockTokenFeatures({ tenants: true }),
     }),
     admin: createMockAdminState({
-      permissions: {
-        dataPermissions: {},
-        originalDataPermissions: {},
-        collectionPermissions: {},
-        originalCollectionPermissions: {},
+      permissions: createMockPermissionsState({
         tenantCollectionPermissions,
         originalTenantCollectionPermissions,
-        isHelpReferenceOpen: false,
-        hasRevisionChanged: { revision: null, hasChanged: false },
-      },
+      }),
     }),
   });
 
-  return state as unknown as State;
+  return state;
 };
 
 describe("TenantCollectionPermissionsPage selectors", () => {
@@ -58,7 +53,6 @@ describe("TenantCollectionPermissionsPage selectors", () => {
   describe("tenantCollectionsQuery", () => {
     it("should have correct query parameters", () => {
       expect(tenantCollectionsQuery).toEqual({
-        tree: true,
         "exclude-other-user-collections": true,
         "exclude-archived": true,
         namespace: "shared-tenant-collection",
@@ -122,6 +116,7 @@ describe("TenantCollectionPermissionsPage selectors", () => {
   describe("getCurrentTenantCollectionId", () => {
     it("should return undefined when collectionId is null", () => {
       const state = createMockStateWithPermissions();
+      // Unjustified type cast. FIXME
       const props = { params: { collectionId: null as any } };
 
       expect(getCurrentTenantCollectionId(state, props)).toBeUndefined();
@@ -129,6 +124,7 @@ describe("TenantCollectionPermissionsPage selectors", () => {
 
     it("should return undefined when collectionId is undefined", () => {
       const state = createMockStateWithPermissions();
+      // Unjustified type cast. FIXME
       const props = { params: { collectionId: undefined as any } };
 
       expect(getCurrentTenantCollectionId(state, props)).toBeUndefined();
@@ -150,6 +146,7 @@ describe("TenantCollectionPermissionsPage selectors", () => {
 
     it("should handle numeric collection id", () => {
       const state = createMockStateWithPermissions();
+      // Unjustified type cast. FIXME
       const props = { params: { collectionId: 100 as any } };
 
       expect(getCurrentTenantCollectionId(state, props)).toBe(100);

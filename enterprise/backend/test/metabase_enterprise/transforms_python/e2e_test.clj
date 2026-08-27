@@ -15,7 +15,7 @@
 (deftest transforms-python-with-library-test
   (testing "Python transform execution with common library"
     (mt/test-drivers #{:postgres}
-      (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
         (mt/dataset transforms-dataset/transforms-test
           (mt.util/with-discard-model-updates! [:model/PythonLibrary]
             ;; Create or update the python library
@@ -44,7 +44,7 @@
                       transform-payload {:name   "Library Test Transform"
                                          :source {:type  "python"
                                                   :source-database (mt/id)
-                                                  :source-tables {}
+                                                  :source-tables []
                                                   :body transform-body}
                                          :target (assoc target :database (mt/id))}
                       {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform"
@@ -52,7 +52,6 @@
                   (transforms.tu/test-run transform-id)
                   (transforms.tu/wait-for-table table-name 5000)
                   (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
-
                   (let [rows (transforms.tu/table-rows table-name)]
                     (is (= 5 (count rows)))
                     (is (every? #(= (* 2 (first %)) (second %)) rows))
@@ -62,7 +61,7 @@
 (deftest execute-transforms-python-test
   (testing "transform execution with :transforms/table target"
     (mt/test-drivers #{:postgres}
-      (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
@@ -71,7 +70,7 @@
               (let [original           {:name   "Gadget Products"
                                         :source {:type  "python"
                                                  :source-database (mt/id)
-                                                 :source-tables {"transforms_customers" (mt/id :transforms_customers)}
+                                                 :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                  :body  (str "import pandas as pd\n"
                                                              "\n"
                                                              "def transform():\n"

@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
@@ -10,6 +8,11 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import {
+  createMockSetupState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCard,
@@ -20,10 +23,6 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
-import {
-  createMockSetupState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { BrowseMetrics } from "../BrowseMetrics";
 import { createMockMetricResult, createMockRecentMetric } from "../test-utils";
@@ -243,6 +242,7 @@ export function setup({
 
   const mockMetricResults = mockMetrics.map(createMockMetricResult);
   const mockRecentMetrics = mockMetrics.map((metric) =>
+    // Unjustified type cast. FIXME
     createMockRecentMetric(metric as RecentMetric),
   );
 
@@ -264,10 +264,10 @@ export function setup({
 
   return renderWithProviders(
     <>
-      <Route path="/" component={() => <BrowseMetrics />} />
+      <Route path="/" element={<BrowseMetrics />} />
       <Route
-        path="/metric/:slug"
-        component={() => <div data-testid="metric-detail-page" />}
+        path="/metric/:cardId"
+        element={<div data-testid="metric-detail-page" />}
       />
     </>,
     {

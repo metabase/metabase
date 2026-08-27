@@ -21,9 +21,7 @@ export function isConcreteTableId(
 
 export type TableVisibilityType =
   | null
-  | "details-only"
   | "hidden"
-  | "normal"
   | "retired"
   | "sensitive"
   | "technical"
@@ -74,11 +72,11 @@ export type Table = {
   data_layer: TableDataLayer | null;
   owner_email: string | null;
   owner_user_id: UserId | null;
-  owner?: TableOwner | null;
+  owner?: TableOwner | { email: string } | null;
   estimated_row_count?: number | null;
   transform_id: TransformId | null; // readonly
   view_count: number;
-  transform?: Transform;
+  transform?: Transform | null;
 
   collection_id: CollectionId | null;
   is_published: boolean;
@@ -109,7 +107,7 @@ export interface TableMetadataQuery {
   include_editable_data_model?: boolean;
 }
 
-export interface TableListQuery {
+export type TableListQuery = {
   dbId?: DatabaseId;
   schemaName?: string;
   include_hidden?: boolean;
@@ -125,7 +123,8 @@ export interface TableListQuery {
   "owner-email"?: string | null;
   "unused-only"?: boolean | null;
   "orphan-only"?: boolean;
-}
+  "published-only"?: boolean | null;
+};
 
 export interface ForeignKey {
   origin?: Field;
@@ -162,6 +161,7 @@ export interface UpdateTableRequest {
   entity_type?: string | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
+  collection_id?: CollectionId | null;
 }
 
 export interface UpdateTableListRequest {
@@ -257,10 +257,11 @@ export interface BulkTableInfo {
   is_published: boolean;
 }
 
-export interface BulkTableSelection {
+export interface BulkTableRequest {
   database_ids?: DatabaseId[];
   schema_ids?: SchemaId[];
   table_ids?: TableId[];
+  collection_id?: CollectionId;
 }
 
 export interface BulkTableSelectionInfo {

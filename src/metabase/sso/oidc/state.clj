@@ -106,7 +106,7 @@
    This prevents open redirect attacks by ensuring redirects stay within the application."
   [redirect-url]
   (when-not (valid-redirect-url? redirect-url)
-    (log/warnf "OIDC redirect URL validation failed: %s" redirect-url)
+    (log/warn "OIDC redirect URL validation failed")
     (throw (ex-info (tru "Invalid redirect URL. Redirect must be a relative path or same-origin URL.")
                     {:status-code 400
                      :redirect-url redirect-url}))))
@@ -206,14 +206,14 @@
            ;; Browser-id mismatch (if validation requested)
            (and validate-browser-id
                 (not= validate-browser-id (:browser-id state-map)))
-           (do (log/warnf "OIDC state browser-id mismatch: expected %s" validate-browser-id)
+           (do (log/warn "OIDC state browser-id mismatch")
                nil)
 
            ;; Valid
            :else
            state-map))
        (catch Exception e
-         (log/warn e "Failed to decrypt OIDC state")
+         (log/warnf "Failed to decrypt OIDC state: %s" (ex-message e))
          nil)))))
 
 ;;; -------------------------------------------------- Cookie Management --------------------------------------------------

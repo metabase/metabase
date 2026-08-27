@@ -1,32 +1,27 @@
 import type { Store } from "@reduxjs/toolkit";
-import FakeTimers from "@sinonjs/fake-timers";
 import type { Meta, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { merge } from "icepick";
 import { type ComponentProps, useEffect } from "react";
 
-import { getStore } from "__support__/entities-store";
+import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
-import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { Box, Popover } from "metabase/ui";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { DatePicker } from "./DatePicker";
 
-import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import "metabase/embedding/theme.module.css";
 
 const storeInitialState = createMockState({
   settings: mockSettings(),
   entities: createMockEntitiesState({}),
 });
-const store = getStore(
-  publicReducers,
-  storeInitialState,
-  [],
-) as unknown as Store<State>;
+// Unjustified type cast. FIXME
+const store = getPublicStore(storeInitialState, []) as unknown as Store<State>;
 
 const ReduxDecorator = (Story: StoryFn) => {
   return (
@@ -36,26 +31,31 @@ const ReduxDecorator = (Story: StoryFn) => {
   );
 };
 
+// Unjustified type cast. FIXME
 export default {
   title: "Components/Parameters/DatePicker",
   component: DatePicker,
   decorators: [ReduxDecorator],
 } as Meta<typeof DatePicker>;
 
-let clock: FakeTimers.InstalledClock | undefined;
+const MOCKED_NOW = new Date("2025-01-01T00:00:00.000Z").getTime();
+const OriginalDate = Date;
+
+const MockedDate: DateConstructor = new Proxy(OriginalDate, {
+  construct: (target, args: unknown[]) =>
+    Reflect.construct(target, args.length ? args : [MOCKED_NOW]),
+  get: (target, property, receiver) =>
+    property === "now"
+      ? () => MOCKED_NOW
+      : Reflect.get(target, property, receiver),
+});
+
 function WithMockDate(StoryFn: StoryFn) {
-  if (!clock) {
-    clock = FakeTimers.install({
-      toFake: ["Date"],
-      // Happy new year 2025! 🥳
-      now: new Date("2025-01-01T00:00:00.000Z"),
-    });
-  }
+  window.Date = MockedDate;
 
   useEffect(() => {
     return () => {
-      clock?.uninstall();
-      clock = undefined;
+      window.Date = OriginalDate;
     };
   }, []);
 

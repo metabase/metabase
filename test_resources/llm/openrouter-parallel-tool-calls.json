@@ -1,0 +1,145 @@
+[
+  {
+    "id": "chatcmpl-par789",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "index": 0,
+              "id": "call_first",
+              "type": "function",
+              "function": {
+                "name": "get-time",
+                "arguments": ""
+              }
+            }
+          ]
+        },
+        "finish_reason": null
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-par789",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "tool_calls": [
+            {
+              "index": 0,
+              "function": {
+                "arguments": "{\"tz\":\"Europe/Kyiv\"}"
+              }
+            }
+          ]
+        },
+        "finish_reason": null
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-par789",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "tool_calls": [
+            {
+              "index": 1,
+              "id": "call_second",
+              "type": "function",
+              "function": {
+                "name": "convert-currency",
+                "arguments": ""
+              }
+            }
+          ]
+        },
+        "finish_reason": null
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-par789",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "tool_calls": [
+            {
+              "index": 1,
+              "function": {
+                "arguments": "{\"amount\":100"
+              }
+            }
+          ]
+        },
+        "finish_reason": null
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-par789",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {
+          "tool_calls": [
+            {
+              "index": 1,
+              "function": {
+                "arguments": ",\"from\":\"EUR\",\"to\":\"USD\"}"
+              }
+            }
+          ]
+        },
+        "finish_reason": null
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-par789",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [
+      {
+        "index": 0,
+        "delta": {},
+        "finish_reason": "tool_calls"
+      }
+    ]
+  },
+  {
+    "id": "chatcmpl-par789",
+    "object": "chat.completion.chunk",
+    "created": 1700000000,
+    "model": "anthropic/claude-haiku-4-5",
+    "choices": [],
+    "usage": {
+      "prompt_tokens": 80,
+      "completion_tokens": 45,
+      "total_tokens": 125
+    }
+  }
+]

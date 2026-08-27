@@ -1,11 +1,11 @@
-import type { Location } from "history";
 import { useContext } from "react";
 
 import { skipToken } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { useSearchParams } from "metabase/router";
 import { Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 
 import { DependencyGraph } from "../../components/DependencyGraph";
@@ -14,17 +14,12 @@ import { isSameNode } from "../../utils";
 import S from "./DependencyGraphPage.module.css";
 import { parseDependencyEntry } from "./utils";
 
-export type DependencyGraphPageQuery = {
-  id?: string;
-  type?: string;
-};
-
-type DependencyGraphPageProps = {
-  location?: Location<DependencyGraphPageQuery>;
-};
-
-export function DependencyGraphPage({ location }: DependencyGraphPageProps) {
-  const entry = parseDependencyEntry(location?.query?.id, location?.query.type);
+export function DependencyGraphPage() {
+  const [searchParams] = useSearchParams();
+  const entry = parseDependencyEntry(
+    searchParams.get("id") ?? undefined,
+    searchParams.get("type") ?? undefined,
+  );
   const { defaultEntry, baseUrl } = useContext(
     PLUGIN_DEPENDENCIES.DependencyGraphPageContext,
   );
@@ -46,8 +41,12 @@ export function DependencyGraphPage({ location }: DependencyGraphPageProps) {
         error={error}
         getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
         withEntryPicker={withEntryPicker}
+        headerRightSide={
+          baseUrl === undefined ? (
+            <AppSwitcher className={S.appSwitcher} />
+          ) : null
+        }
       />
-      {baseUrl === undefined && <AppSwitcher className={S.ProfileLink} />}
     </Stack>
   );
 }

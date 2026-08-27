@@ -19,6 +19,7 @@
   (deferred-tru "API token for authorizing with the python-runner service.")
   :type       :string
   :visibility :admin
+  :sensitive? true
   :default    (when (not config/is-prod?) "dev-token-12345")
   :feature    :transforms-python
   :doc        false
@@ -76,6 +77,7 @@
   :visibility :admin
   :feature    :transforms-python
   :default    (when (not config/is-prod?) "test")
+  :sensitive? true
   :doc        false
   :export?    false
   :encryption :no
@@ -85,6 +87,7 @@
   (deferred-tru "AWS secret access key for S3 authentication.")
   :type       :string
   :visibility :admin
+  :sensitive? true
   :feature    :transforms-python
   :default    (when (not config/is-prod?) "test")
   :doc        false

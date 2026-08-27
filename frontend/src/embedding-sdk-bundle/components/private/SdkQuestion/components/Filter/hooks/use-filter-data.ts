@@ -5,6 +5,8 @@ import type { FilterItem } from "metabase/querying/filters/components/FilterPane
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import * as Lib from "metabase-lib";
 
+import { LAST_STAGE_INDEX } from "../../../utils/stages";
+
 import { useFilterHandlers } from "./use-filter-handlers";
 
 type FilterItemWithDisplay = FilterItem & Lib.ClauseDisplayInfo;
@@ -19,7 +21,6 @@ export const useFilterData = (): SDKFilterItem[] => {
   const { question, updateQuestion } = useSdkQuestionContext();
 
   const query = question?.query();
-  const stageIndex = -1;
   const onQueryChange = useCallback(
     (newQuery: Lib.Query) => {
       if (question) {
@@ -34,7 +35,7 @@ export const useFilterData = (): SDKFilterItem[] => {
     onUpdateFilter: handleUpdateFilter,
   } = useFilterHandlers({
     query,
-    stageIndex,
+    stageIndex: LAST_STAGE_INDEX,
     onQueryChange,
   });
 

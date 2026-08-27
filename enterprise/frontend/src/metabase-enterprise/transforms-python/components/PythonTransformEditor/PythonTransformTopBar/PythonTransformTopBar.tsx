@@ -1,17 +1,14 @@
-import { hasFeature } from "metabase/admin/databases/utils";
 import {
   skipToken,
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
-import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
+import { hasFeature } from "metabase/databases";
+import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import { Flex } from "metabase/ui";
-import { EditTransformMenu } from "metabase-enterprise/data-studio/workspaces/components/EditTransformMenu";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
 import type { Database, DatabaseId, Transform } from "metabase-types/api";
 
 import S from "./PythonTransformTopBar.module.css";
@@ -33,18 +30,15 @@ export function PythonTransformTopBar({
   onDatabaseChange,
   canChangeDatabase = true,
 }: PythonTransformTopBarProps) {
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-  const showEditButton =
-    !isEditMode && transform && !isRemoteSyncReadOnly && !readOnly;
+  const showEditButton = !isEditMode && transform && !readOnly;
 
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
   const { data: databases } = useListDatabasesQuery();
 
-  const handleDatabaseChange = (value: string | null) => {
-    const newDatabaseId = value ? parseInt(value) : undefined;
-    if (newDatabaseId != null && newDatabaseId !== databaseId) {
+  const handleDatabaseChange = (newDatabaseId: DatabaseId) => {
+    if (newDatabaseId !== databaseId) {
       onDatabaseChange?.(newDatabaseId);
     }
   };
@@ -52,7 +46,7 @@ export function PythonTransformTopBar({
   return (
     <Flex
       align="flex-start"
-      bg="background-secondary"
+      bg="background_page-secondary"
       data-testid="python-transform-top-bar"
       className={S.TopBar}
     >
@@ -62,11 +56,22 @@ export function PythonTransformTopBar({
             className={S.databaseSelector}
             selectedDatabaseId={databaseId}
             setDatabaseFn={handleDatabaseChange}
-            databases={databases?.data ?? []}
+            // DataSelector is typed against metabase-lib entities; here we feed
+            // it plain API databases, which carry the fields it actually reads.
+            // TODO(dataselector-api-vs-metabase-lib-casts): remove this cast once
+            // DataSelector's entity props use structural interfaces.
+            databases={(databases?.data ?? []) as unknown as MetadataDatabase[]}
             readOnly={!isEditMode}
-            databaseIsDisabled={(database: Database) =>
-              !doesDatabaseSupportTransforms(database) ||
-              !hasFeature(database, "transforms/python")
+            databaseIsDisabled={
+              // DataSelector types this callback against metabase-lib databases;
+              // the predicate only reads plain API database fields.
+              // TODO(dataselector-api-vs-metabase-lib-casts): remove this cast
+              // once DataSelector's entity props use structural interfaces.
+              ((database: Database) =>
+                !doesDatabaseSupportTransforms(database) ||
+                !hasFeature(database, "transforms/python")) as unknown as (
+                database: MetadataDatabase,
+              ) => boolean
             }
           />
         </Flex>
@@ -83,18 +88,14 @@ export function PythonTransformTopBar({
       )}
       {showEditButton && (
         <Flex ml="auto" mr="lg" align="center" h="3rem">
-          {hasPremiumFeature("workspaces") ? (
-            <EditTransformMenu transform={transform} />
-          ) : (
-            <EditDefinitionButton
-              bg="transparent"
-              fz="sm"
-              h="1.5rem"
-              px="sm"
-              size="xs"
-              transformId={transform.id}
-            />
-          )}
+          <EditDefinitionButton
+            bg="transparent"
+            fz="sm"
+            h="1.5rem"
+            px="sm"
+            size="xs"
+            transformId={transform.id}
+          />
         </Flex>
       )}
     </Flex>

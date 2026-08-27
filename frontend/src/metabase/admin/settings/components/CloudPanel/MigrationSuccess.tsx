@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import type { Plan } from "metabase/common/utils/plan";
-import { color } from "metabase/lib/colors";
+import type { Plan } from "metabase/settings";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";
@@ -31,7 +31,7 @@ export const MigrationSuccess = ({
     <>
       <MigrationCard>
         <Flex gap="md">
-          <LargeIconContainer color={color("success")}>
+          <LargeIconContainer color={color("feedback-positive")}>
             <Icon size="1.5rem" name="check" />
           </LargeIconContainer>
 

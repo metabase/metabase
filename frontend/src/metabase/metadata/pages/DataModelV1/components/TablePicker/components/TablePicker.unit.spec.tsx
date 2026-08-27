@@ -129,6 +129,12 @@ const DATABASE_WITH_UNNAMED_SCHEMA = createMockDatabase({
   tables: [CORGE, GRAULT, GLORP],
 });
 
+const DATABASE_WITH_NO_TABLES = createMockDatabase({
+  id: nextId(),
+  name: "DATABASE_WITH_NO_TABLES",
+  tables: [],
+});
+
 const MOCK_DATABASES = [
   DATABASE_WITH_MULTIPLE_SCHEMAS,
   DATABASE_WITH_SINGLE_SCHEMA,
@@ -253,6 +259,38 @@ describe("TablePicker", () => {
       // the schema is flattened into the parent
       expect(item(QUU)).toBeInTheDocument();
       expect(item(QUX)).toBeInTheDocument();
+    });
+
+    it("does not show a loading skeleton forever when an expanded database has no tables (metabase#74508)", async () => {
+      const { onChange } = setup({
+        path: {},
+        databases: [DATABASE_WITH_MULTIPLE_SCHEMAS, DATABASE_WITH_NO_TABLES],
+      });
+
+      await waitLoading();
+
+      expect(item(DATABASE_WITH_NO_TABLES)).toBeInTheDocument();
+      await clickItem(DATABASE_WITH_NO_TABLES);
+      await waitLoading();
+
+      expect(onChange).toHaveBeenCalledWith({
+        databaseId: DATABASE_WITH_NO_TABLES.id,
+      });
+
+      // Once the (empty) schema list has loaded, no skeleton should remain
+      expect(
+        screen.queryByTestId("loading-placeholder"),
+      ).not.toBeInTheDocument();
+      // The empty database is still rendered, just with nothing nested under it
+      expect(item(DATABASE_WITH_NO_TABLES)).toBeInTheDocument();
+
+      // Instead of a skeleton or a blank gap, an inert "Empty" row is shown
+      expect(screen.getByText("Empty")).toBeInTheDocument();
+
+      // The "Empty" row is display-only: not focusable and not clickable
+      const emptyRow = item("Empty");
+      expect(emptyRow).toHaveAttribute("tabindex", "-1");
+      expect(emptyRow).toHaveStyle({ pointerEvents: "none" });
     });
 
     it("should be possible to navigate with the keyboard", async () => {
@@ -413,6 +451,7 @@ function item(input: string | { display_name?: string; name: string } | null) {
   }
   const name =
     typeof input === "string" ? input : (input.display_name ?? input.name);
+  // Unjustified type cast. FIXME
   return (screen.queryByText(name)?.parentNode?.parentNode?.parentNode ??
     null) as HTMLAnchorElement | null;
 }

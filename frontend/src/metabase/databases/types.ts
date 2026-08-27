@@ -1,6 +1,18 @@
 import type { ComponentType, JSX, ReactNode } from "react";
 
-import type { EngineFieldOption, EngineFieldType } from "metabase-types/api";
+import type {
+  DatabaseData,
+  EngineFieldOption,
+  EngineFieldType,
+} from "metabase-types/api";
+
+/**
+ * `connection-string` is a FE only field used to prefill the form, so it is not
+ * part of the database itself.
+ */
+export type DatabaseFormValues = DatabaseData & {
+  "connection-string"?: string;
+};
 
 export interface EngineOption {
   name: string;
@@ -26,17 +38,16 @@ export interface EngineFieldProps {
 
 export type FormLocation = "admin" | "setup" | "embedding_setup" | "full-page";
 
-export type EngineFieldState = "default" | "hidden" | "disabled";
+export type FieldState = "default" | "hidden" | "disabled";
 
 export interface DatabaseFormConfig {
   /** present the form with advanced configuration options */
   isAdvanced?: boolean;
   engine?: {
-    /** present the engine field as normal, disabled, or hidden */
-    fieldState?: EngineFieldState | undefined;
+    fieldState?: FieldState;
   };
   name?: {
-    /** present the name field as a slug */
+    fieldState?: FieldState;
     isSlug?: boolean;
   };
 }

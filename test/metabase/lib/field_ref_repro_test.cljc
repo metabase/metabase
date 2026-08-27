@@ -99,7 +99,7 @@
                {:id                           (meta/id :categories :name)
                 :name                         "NAME"
                 :lib/source                   :source/joins
-                :metabase.lib.join/join-alias "Cat"
+                :lib/join-alias "Cat"
                 :lib/source-column-alias      "NAME"
                 :lib/desired-column-alias     "Cat__NAME"}]
               (lib/returned-columns query 0))))
@@ -107,7 +107,7 @@
       (is (=? [{:id                           (meta/id :categories :name)
                 :name                         "NAME"
                 :lib/source                   :source/previous-stage
-                :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                :lib/join-alias (symbol "nil #_\"key is not present.\"")
                 :lib/source-column-alias      "Cat__NAME"
                 :lib/desired-column-alias     "Cat__NAME"}]
               (lib/returned-columns query))))))

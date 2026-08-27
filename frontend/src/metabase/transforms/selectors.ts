@@ -1,10 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { getPlan } from "metabase/common/utils/plan";
-import { getSetting } from "metabase/selectors/settings";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { getIsHosted, getTokenFeature } from "metabase/setup";
-import type { State } from "metabase-types/store";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
+import type { State } from "metabase/redux/store";
+import { getPlan, getSetting, getTokenFeature } from "metabase/settings";
 
 export const canAccessTransforms = (state: State): boolean => {
   if (getUserIsAdmin(state)) {
@@ -14,27 +12,16 @@ export const canAccessTransforms = (state: State): boolean => {
   return user?.permissions?.can_access_transforms ?? false;
 };
 
-export const getTransformsFeatureAvailable = createSelector(
-  (state: State) => getPlan(getSetting(state, "token-features")),
-  (state: State) => getTokenFeature(state, "transforms"),
-  (plan, feature) => {
-    if (plan === "oss") {
-      return true;
-    }
-
-    return feature;
-  },
-);
-
 export const getShouldShowTransformsUpsell = createSelector(
-  getIsHosted,
-  (state: State) => getTokenFeature(state, "transforms"),
+  (state: State) => getSetting(state, "is-hosted?"),
+  (state: State) => getTokenFeature(state, "transforms-basic"),
   (isHosted, hasTransformsFeature) => isHosted && !hasTransformsFeature,
 );
 
 export const getShouldShowPythonTransformsUpsell = createSelector(
-  getIsHosted,
   (state: State) => getTokenFeature(state, "transforms-python"),
-  (isHosted, hasPythonTransformsFeature) =>
-    isHosted && !hasPythonTransformsFeature,
+  (state: State) => getPlan(getSetting(state, "token-features")),
+  (hasPythonTransformsFeature, plan) => {
+    return !hasPythonTransformsFeature && plan !== "oss";
+  },
 );

@@ -3,6 +3,6 @@ export * from "./click-behavior";
 export * from "./common";
 export * from "./dom";
 export * from "./parameters";
-export * from "./react";
+export * from "./remote-sync";
 export * from "./settings";
-export * from "./workspace";
+export * from "./visualization";

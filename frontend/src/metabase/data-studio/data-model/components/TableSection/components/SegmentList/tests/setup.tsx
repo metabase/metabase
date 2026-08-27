@@ -1,17 +1,16 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { EnterpriseSettings, Segment, Table } from "metabase-types/api";
 import {
   createMockTable,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { SegmentList } from "../SegmentList";
 
@@ -46,7 +45,7 @@ export function setup({
       "remote-sync-type": remoteSyncType,
       "remote-sync-enabled": !!remoteSyncType,
       "token-features": createMockTokenFeatures({
-        data_studio: true,
+        library: true,
         remote_sync: true,
       }),
     });
@@ -67,7 +66,7 @@ export function setup({
   }
 
   renderWithProviders(
-    <Route path="/" component={() => <SegmentList table={mockTable} />} />,
+    <Route path="/" element={<SegmentList table={mockTable} />} />,
     {
       withRouter: true,
       storeInitialState: state,

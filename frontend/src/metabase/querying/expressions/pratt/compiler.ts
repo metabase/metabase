@@ -1,19 +1,12 @@
 import { t } from "ttag";
 
-import { type NumberValue, parseNumber } from "metabase/lib/number";
+import { type NumberValue, parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 
 import { getClauseDefinition, getMBQLName, isDefinedClause } from "../clause";
 import { CompileError, isExpressionError } from "../errors";
-import {
-  isBigIntLiteral,
-  isBooleanLiteral,
-  isFloatLiteral,
-  isIntegerLiteral,
-  isStringLiteral,
-} from "../literal";
+import { isBigIntLiteral, isStringLiteral } from "../literal";
 import type { Resolver } from "../resolver";
-import type { ExpressionType } from "../types";
 import { assert, check } from "../utils";
 
 import type { Node, NodeType } from "./node";
@@ -49,7 +42,7 @@ type Options = {
 };
 
 type Context = {
-  type: ExpressionType;
+  type: Lib.ExpressionType;
   resolver: Resolver;
 };
 
@@ -62,15 +55,20 @@ export function compile(node: Node, options: Options) {
 
 function getTypeForExpressionMode(
   expressionMode: Lib.ExpressionMode,
-): ExpressionType {
+): Lib.ExpressionType {
   if (expressionMode === "filter") {
     return "boolean";
   }
   return expressionMode;
 }
 
-function fallbackResolver(_type: ExpressionType, name: string, _node?: Node) {
+function fallbackResolver(
+  _type: Lib.ExpressionType,
+  name: string,
+  _node?: Node,
+) {
   return {
+    // Unjustified type cast. FIXME
     operator: "dimension" as Lib.ExpressionOperator,
     options: {},
     args: [name],
@@ -91,6 +89,7 @@ function compileRoot(
   ctx: Context,
 ):
   | Lib.ExpressionParts
+  | Lib.ExpressionArg
   | Lib.ColumnMetadata
   | Lib.MeasureMetadata
   | Lib.MetricMetadata
@@ -99,18 +98,16 @@ function compileRoot(
   assert(node.children.length === 1, t`Root must have one child`);
 
   const value = compileNode(node.children[0], ctx);
-  if (isStringLiteral(value)) {
-    return compileValue(value, "type/Text");
-  } else if (isBooleanLiteral(value)) {
-    return compileValue(value, "type/Boolean");
-  } else if (isIntegerLiteral(value)) {
-    return compileValue(value, "type/Integer");
-  } else if (isFloatLiteral(value)) {
-    return compileValue(value, "type/Float");
-  } else if (isBigIntLiteral(value)) {
+
+  // Bigints need to be wrapped in :value because they must be serialized as strings
+  // and need type info to be parsed correctly
+  if (isBigIntLiteral(value)) {
     return compileValue(value, "type/BigInteger");
   }
 
+  // All other literals (strings, numbers, booleans) are returned as raw values.
+  // This matches how filter clauses are created and allows the wrap-value-literals
+  // QP middleware to add proper type info from the column being compared.
   return value;
 }
 

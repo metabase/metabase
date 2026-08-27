@@ -9,11 +9,12 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [select-keys some]]))
 
 ;; Mark all Fields at the new top level as `:qp/ignore-coercion` so QP implementations know not to apply coercion
@@ -22,7 +23,7 @@
 ;; fail, but it might still make sense. For example, #48721 would have been avoided by unconditional marking.
 
 (defn- contains-expression-refs? [location]
-  (lib.util.match/match-one location :expression))
+  (match/match-one location [:expression & _] true))
 
 (defn- should-nest-expressions? [query path]
   (and (lib.walk/apply-f-for-stage-at-path lib/mbql-stage? query path)
@@ -57,7 +58,6 @@
                                       ;; allowed if the binning/bucketing is happening at this stage but they're no
                                       ;; longer happening here so leaving them in place would be incorrect.
                                       (lib/update-options dissoc
-                                                          :metabase.lib.field/original-temporal-unit
                                                           :original-temporal-unit
                                                           :lib/original-binning))]
                (vswap! refs conj! unbucketed-ref)))))))
@@ -92,7 +92,10 @@
                     lib/update-keys-for-col-from-previous-stage
                     (lib/with-binning (lib/binning col))
                     (lib/with-temporal-bucket (lib/raw-temporal-bucket col))
-                    lib/ref)))]
+                    lib/ref
+                    ;; Preserve the pre-nest ref's `:lib/uuid`. Downstream systems (notably the SQL pivot
+                    ;; compiler's `:pivot :rows`/`:columns` uuid lookups) track refs by uuid.
+                    (lib.options/update-options assoc :lib/uuid (lib.options/uuid a-ref)))))]
       ;; temporarily disable enforcement since this stage will be invalid while we're messing with it... it will look
       ;; pretty nice when we're done tho.
       (binding [lib.schema/*HACK-disable-ref-validation* true]

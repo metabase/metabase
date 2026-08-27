@@ -1,3 +1,5 @@
+import type { DateFormattingSettings } from "metabase-types/api";
+
 import type {
   DATE_PICKER_DIRECTIONS,
   DATE_PICKER_EXTRACTION_UNITS,
@@ -92,3 +94,8 @@ export type DateFilterValue =
   | QuarterYearPickerValue;
 
 export type BooleanFilterValue = "true" | "false" | "is-null" | "not-null";
+
+export type DateFilterDisplayOpts = {
+  withPrefix?: boolean;
+  formattingSettings?: DateFormattingSettings;
+};

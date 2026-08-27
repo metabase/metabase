@@ -15,6 +15,11 @@
    identity
    (fn [e] (throw e))))
 
+(defmacro ^:private with-fresh-instance!
+  [& body]
+  `(mt/with-temporary-setting-values [~'has-user-setup false]
+     ~@body))
+
 (defn- mock-request
   [uri origin-header x-forwarded-host-header host-header]
   (cond-> (m/dissoc-in (ring.mock/request :get uri) [:headers "host"])
@@ -23,33 +28,74 @@
     host-header             (ring.mock/header "Host" host-header)))
 
 (deftest maybe-set-site-url-test
-  (testing "Make sure `maybe-set-site-url` middleware looks at the correct headers in the correct order (#12528)"
-    (doseq [origin-header           ["https://mb1.example.com" nil]
-            x-forwarded-host-header ["https://mb2.example.com" nil]
-            host-header             ["https://mb3.example.com" nil]
-            :let                    [request (mock-request "/" origin-header x-forwarded-host-header host-header)]]
-      (testing (format "headers = %s" (pr-str (:headers request)))
-        (mt/with-temporary-setting-values [site-url nil]
-          (maybe-set-site-url request)
-          (is (= (or origin-header x-forwarded-host-header host-header)
-                 (system/site-url)))))))
-  (testing "Site URL should not be inferred from healthcheck requests"
-    (mt/with-temporary-setting-values [site-url nil]
-      (doseq [uri ["/api/health" "/livez" "/readyz"]]
-        (let [request (mock-request uri "https://mb1.example.com" nil nil)]
-          (maybe-set-site-url request)
-          (is (nil? (system/site-url)))))))
-  (testing "Site URL should not be inferred if already set in DB"
-    (mt/with-temporary-setting-values [site-url "https://mb1.example.com"]
-      (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
-        (maybe-set-site-url request)
-        (is (= "https://mb1.example.com" (system/site-url))))))
-  (testing "Site URL should not be inferred if already set by env variable"
-    (mt/with-temporary-setting-values [site-url nil]
-      (mt/with-temp-env-var-value! [mb-site-url "https://mb1.example.com"]
+  (with-fresh-instance!
+    (testing "Make sure `maybe-set-site-url` middleware looks at the correct headers in the correct order (#12528)"
+      (doseq [origin-header           ["https://mb1.example.com" nil]
+              x-forwarded-host-header ["https://mb2.example.com" nil]
+              host-header             ["https://mb3.example.com" nil]
+              :let                    [request (mock-request "/" origin-header x-forwarded-host-header host-header)]]
+        (testing (format "headers = %s" (pr-str (:headers request)))
+          (mt/with-temporary-setting-values [site-url nil]
+            (maybe-set-site-url request)
+            (is (= (or origin-header x-forwarded-host-header host-header)
+                   (system/site-url)))))))
+    (testing "Site URL should not be inferred from healthcheck requests"
+      (mt/with-temporary-setting-values [site-url nil]
+        (doseq [uri ["/api/health" "/livez" "/readyz"]]
+          (let [request (mock-request uri "https://mb1.example.com" nil nil)]
+            (maybe-set-site-url request)
+            (is (nil? (system/site-url)))))))
+    (testing "Site URL should not be inferred if already set in DB"
+      (mt/with-temporary-setting-values [site-url "https://mb1.example.com"]
         (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
           (maybe-set-site-url request)
-          (is (= "https://mb1.example.com" (system/site-url))))))))
+          (is (= "https://mb1.example.com" (system/site-url))))))
+    (testing "Site URL should not be inferred if already set by env variable"
+      (mt/with-temporary-setting-values [site-url nil]
+        (mt/with-temp-env-var-value! [mb-site-url "https://mb1.example.com"]
+          (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
+            (maybe-set-site-url request)
+            (is (= "https://mb1.example.com" (system/site-url)))))))))
+
+(deftest maybe-set-site-url-forwarded-proto-test
+  (with-fresh-instance!
+    (testing "scheme-less `*-host` headers get the scheme from `X-Forwarded-Proto` (BOT-1617)"
+      (doseq [host-header ["X-Forwarded-Host" "Host"]]
+        (testing host-header
+          (mt/with-temporary-setting-values [site-url nil]
+            (maybe-set-site-url (-> (m/dissoc-in (ring.mock/request :get "/") [:headers "host"])
+                                    (ring.mock/header host-header "mb.example.com")
+                                    (ring.mock/header "X-Forwarded-Proto" "https")))
+            (is (= "https://mb.example.com" (system/site-url)))))))
+    (testing "`X-Forwarded-Proto` is matched case-insensitively (RFC 3986)"
+      (mt/with-temporary-setting-values [site-url nil]
+        (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
+                                (ring.mock/header "X-Forwarded-Proto" "HTTPS")))
+        (is (= "https://mb.example.com" (system/site-url)))))
+    (testing "the first hop wins when `X-Forwarded-Proto` is a comma-separated chain"
+      (mt/with-temporary-setting-values [site-url nil]
+        (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
+                                (ring.mock/header "X-Forwarded-Proto" "https, http")))
+        (is (= "https://mb.example.com" (system/site-url)))))
+    (testing "the alternate HTTPS-indicator headers `u/https?` recognizes also seed the scheme"
+      (doseq [[header value] [["X-Forwarded-Protocol" "https"]
+                              ["X-URL-Scheme"         "https"]
+                              ["X-Forwarded-Ssl"      "on"]
+                              ["Front-End-Https"      "on"]]]
+        (testing header
+          (mt/with-temporary-setting-values [site-url nil]
+            (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
+                                    (ring.mock/header header value)))
+            (is (= "https://mb.example.com" (system/site-url)))))))
+    (testing "without `X-Forwarded-Proto`, a scheme-less host falls back to http:// (unchanged behavior)"
+      (mt/with-temporary-setting-values [site-url nil]
+        (maybe-set-site-url (mock-request "/" nil "mb.example.com" nil))
+        (is (= "http://mb.example.com" (system/site-url)))))
+    (testing "a scheme-bearing host header is left untouched, even alongside `X-Forwarded-Proto` (no double scheme)"
+      (mt/with-temporary-setting-values [site-url nil]
+        (maybe-set-site-url (-> (mock-request "/" nil "https://mb.example.com" nil)
+                                (ring.mock/header "X-Forwarded-Proto" "https")))
+        (is (= "https://mb.example.com" (system/site-url)))))))
 
 (deftest add-version-header-test
   (testing "x-metabase-version is only added on API calls"
@@ -72,3 +118,54 @@
             (is (nil?
                  (get-in @captured [:headers "x-metabase-version"]))
                 "header should not be set for non-API calls")))))))
+
+(defn- call-add-content-type
+  "Helper: wrap `response` with `add-content-type` middleware, send `request`, return the response."
+  [request response]
+  (let [handler  (mw.misc/add-content-type (fn [_ respond _] (respond response)))
+        captured (atom nil)]
+    (handler request
+             (fn [resp] (reset! captured resp))
+             (fn [_] (is false "should not go to raise")))
+    @captured))
+
+(deftest ^:parallel add-content-type-api-string-body-test
+  (testing "API request with string body gets text/plain"
+    (is (= "text/plain"
+           (get-in (call-add-content-type (ring.mock/request :get "/api/foo")
+                                          {:status 200 :headers {} :body "ok"})
+                   [:headers "Content-Type"])))))
+
+(deftest ^:parallel add-content-type-api-collection-body-test
+  (testing "API request with collection body gets application/json"
+    (is (= "application/json; charset=utf-8"
+           (get-in (call-add-content-type (ring.mock/request :get "/api/foo")
+                                          {:status 200 :headers {} :body {:a 1}})
+                   [:headers "Content-Type"])))))
+
+(deftest ^:parallel add-content-type-auth-string-body-test
+  (testing "auth request with string body gets text/plain"
+    (is (= "text/plain"
+           (get-in (call-add-content-type (ring.mock/request :get "/auth/sso")
+                                          {:status 200 :headers {} :body "ok"})
+                   [:headers "Content-Type"])))))
+
+(deftest ^:parallel add-content-type-auth-collection-body-test
+  (testing "auth request with collection body gets application/json"
+    (is (= "application/json; charset=utf-8"
+           (get-in (call-add-content-type (ring.mock/request :get "/auth/sso")
+                                          {:status 200 :headers {} :body {:a 1}})
+                   [:headers "Content-Type"])))))
+
+(deftest ^:parallel add-content-type-preserves-existing-header-test
+  (testing "auth request with existing Content-Type is preserved"
+    (is (= "text/html"
+           (get-in (call-add-content-type (ring.mock/request :get "/auth/sso")
+                                          {:status 200 :headers {"Content-Type" "text/html"} :body "ok"})
+                   [:headers "Content-Type"])))))
+
+(deftest ^:parallel add-content-type-skips-non-api-non-auth-test
+  (testing "non-API, non-auth request does not get Content-Type"
+    (is (nil? (get-in (call-add-content-type (ring.mock/request :get "/app/foo")
+                                             {:status 200 :headers {} :body "ok"})
+                      [:headers "Content-Type"])))))

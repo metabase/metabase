@@ -22,6 +22,7 @@
                  pk-table-schema
                  pk-column-name]}]
   (let [field-id-query (fn [db-id table-schema table-name column-name]
+                         ^:allow-subquery
                          {:select [[[:min :f.id] :id]]
                           ;; Cal 2024-03-04: We use `min` to limit this subquery to one result (limit 1 isn't allowed
                           ;; in subqueries in MySQL) because it's possible for schema, table, or column names to be
@@ -35,7 +36,6 @@
                                    ;; ensure we are not overriding user-set fks
                                    [:= :u.fk_target_field_id nil]
                                    [:= :u.semantic_type nil]
-
                                    [:= :t.db_id db-id]
                                    [:= [:lower :f.name] (u/lower-case-en column-name)]
                                    [:= [:lower :t.name] (u/lower-case-en table-name)]
@@ -119,11 +119,10 @@
 
 (mu/defn sync-fks!
   "Sync the foreign keys in a `database`. This sets appropriate values for relevant Fields in the Metabase application
-  DB based on values returned by [[metabase.driver/describe-table-fks]].
+  DB based on values returned by [[metabase.driver/describe-fks]].
 
-  If the driver supports the `:describe-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata.
-
-  This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is done."
+  This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is
+  done."
   [database :- i/DatabaseInstance]
   (u/prog1 (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
              (let [driver       (driver.u/database->driver database)
@@ -133,7 +132,7 @@
                (transduce (map (fn [x]
                                  (let [[updated failed] (try [(mark-fk! database x) 0]
                                                              (catch Exception e
-                                                               (log/error e)
+                                                               (log/error (ex-message e))
                                                                [0 1]))]
                                    {:total-fks    1
                                     :updated-fks  updated

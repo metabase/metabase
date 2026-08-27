@@ -1,14 +1,20 @@
-import { type MouseEvent, forwardRef, useState } from "react";
-import { Link, type LinkProps, withRouter } from "react-router";
-import type { WithRouterProps } from "react-router/lib/withRouter";
+import { type MouseEvent, forwardRef, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
+import { Link, type LinkProps } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
+import { useLocation } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
+import { parseSearchQuery } from "metabase/utils/browser";
+
+import {
+  AutoRefreshMenuItem,
+  AutoRefreshMenuOptions,
+} from "../../RefreshWidget";
 
 type DashboardActionMenuProps = {
   canResetFilters: boolean;
@@ -31,16 +37,29 @@ const DashboardActionMenuInner = ({
   canResetFilters,
   onResetFilters,
   canEdit,
-  location,
   openSettingsSidebar,
-}: DashboardActionMenuProps & WithRouterProps) => {
+}: DashboardActionMenuProps) => {
+  const location = useLocation();
   const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
     useDashboardContext();
   const [opened, setOpened] = useState(false);
+  const [showAutoRefreshOptions, setShowAutoRefreshOptions] = useState(false);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpened(isOpen);
+    if (!isOpen) {
+      setShowAutoRefreshOptions(false);
+    }
+  };
+
+  const parameterQueryParams = useMemo(
+    () => parseSearchQuery(location?.search ?? ""),
+    [location?.search],
+  );
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard?.id ?? null,
-    parameterQueryParams: location?.query,
+    parameterQueryParams,
   });
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
@@ -68,8 +87,11 @@ const DashboardActionMenuInner = ({
     return null;
   }
 
+  const canConfigureCaching =
+    dashboard.can_set_cache_policy && PLUGIN_CACHING.isGranularCachingEnabled();
+
   return (
-    <Menu position="bottom-end" opened={opened} onChange={setOpened}>
+    <Menu position="bottom-end" opened={opened} onChange={handleOpenChange}>
       <Menu.Target>
         <div>
           <ToolbarButton
@@ -80,63 +102,71 @@ const DashboardActionMenuInner = ({
         </div>
       </Menu.Target>
       <Menu.Dropdown>
-        {canResetFilters && (
-          <Menu.Item
-            leftSection={<Icon name="revert" />}
-            onClick={onResetFilters}
-          >
-            {t`Reset all filters`}
-          </Menu.Item>
-        )}
-
-        <Menu.Item
-          leftSection={<Icon name="expand" />}
-          onClick={(e: MouseEvent) =>
-            onFullscreenChange(!isFullscreen, !e.altKey)
-          }
-        >
-          {t`Enter fullscreen`}
-        </Menu.Item>
-
-        {canEdit && (
+        {showAutoRefreshOptions ? (
+          <AutoRefreshMenuOptions onSelect={() => handleOpenChange(false)} />
+        ) : (
           <>
+            {canResetFilters && (
+              <Menu.Item
+                leftSection={<Icon name="revert" />}
+                onClick={onResetFilters}
+              >
+                {t`Reset all filters`}
+              </Menu.Item>
+            )}
+
             <Menu.Item
-              leftSection={<Icon name="gear" />}
-              onClick={openSettingsSidebar}
+              leftSection={<Icon name="expand" />}
+              onClick={(e: MouseEvent) =>
+                onFullscreenChange(!isFullscreen, !e.altKey)
+              }
             >
-              {t`Edit settings`}
+              {t`Enter fullscreen`}
             </Menu.Item>
 
-            {moderationItems}
-          </>
-        )}
+            <AutoRefreshMenuItem
+              onClick={() => setShowAutoRefreshOptions(true)}
+            />
 
-        {canEdit && (
-          <>
-            <Menu.Divider />
+            {(canEdit || canConfigureCaching) && (
+              <Menu.Item
+                leftSection={<Icon name="gear" />}
+                onClick={openSettingsSidebar}
+              >
+                {t`Edit settings`}
+              </Menu.Item>
+            )}
+
+            {canEdit && moderationItems}
+
+            {canEdit && (
+              <>
+                <Menu.Divider />
+
+                <Menu.Item
+                  leftSection={<Icon name="move" />}
+                  component={ForwardRefLink}
+                  to={`${location?.pathname}/move`}
+                >{c("A verb, not a noun").t`Move`}</Menu.Item>
+              </>
+            )}
 
             <Menu.Item
-              leftSection={<Icon name="move" />}
+              leftSection={<Icon name="clone" />}
               component={ForwardRefLink}
-              to={`${location?.pathname}/move`}
-            >{c("A verb, not a noun").t`Move`}</Menu.Item>
-          </>
-        )}
+              to={`${location?.pathname}/copy`}
+            >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
 
-        <Menu.Item
-          leftSection={<Icon name="clone" />}
-          component={ForwardRefLink}
-          to={`${location?.pathname}/copy`}
-        >{c("A verb, not a noun").t`Duplicate`}</Menu.Item>
-
-        {canEdit && (
-          <>
-            <Menu.Divider />
-            <Menu.Item
-              leftSection={<Icon name="trash" />}
-              component={ForwardRefLink}
-              to={`${location?.pathname}/archive`}
-            >{t`Move to trash`}</Menu.Item>
+            {canEdit && (
+              <>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<Icon name="trash" />}
+                  component={ForwardRefLink}
+                  to={`${location?.pathname}/archive`}
+                >{t`Move to trash`}</Menu.Item>
+              </>
+            )}
           </>
         )}
       </Menu.Dropdown>
@@ -144,4 +174,4 @@ const DashboardActionMenuInner = ({
   );
 };
 
-export const DashboardActionMenu = withRouter(DashboardActionMenuInner);
+export const DashboardActionMenu = DashboardActionMenuInner;

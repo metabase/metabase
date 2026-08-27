@@ -1,13 +1,13 @@
 import { useMemo } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
-import { getEntityTypeFromCardType } from "metabase/collections/utils";
+import { FormCollectionAndDashboardPicker } from "metabase/common/collections/containers/FormCollectionAndDashboardPicker";
+import { getEntityTypeFromCardType } from "metabase/common/collections/utils";
+import { FormDashboardTabSelect } from "metabase/common/components/FormDashboardTabSelect";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
 import {
   Form,
   FormErrorMessage,
@@ -16,9 +16,9 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
 import { Button, Stack } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
 import type {
   Card,
   CardType,
@@ -147,7 +147,10 @@ export const CopyCardForm = ({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton label={t`Duplicate`} variant="filled" />
+            <FormSubmitButton
+              label={c(`A verb, not a noun`).t`Duplicate`}
+              variant="filled"
+            />
           </FormFooter>
         </Form>
       )}

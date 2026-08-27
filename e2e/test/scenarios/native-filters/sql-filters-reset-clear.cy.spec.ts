@@ -129,7 +129,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         "display-name": DEFAULT_NON_REQUIRED,
         id: "75d67d38",
         type: "date",
-        default: "2024-01-01",
+        default: "2027-01-01",
       },
       default_required: {
         name: "default_required",
@@ -137,12 +137,12 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         id: "60f12ac8",
         type: "date",
         required: true,
-        default: "2024-01-01",
+        default: "2027-01-01",
       },
     });
 
     checkNativeParametersDropdown({
-      defaultValueFormatted: "January 1, 2024",
+      defaultValueFormatted: "January 1, 2027",
       otherValue: "01/01/2020",
       otherValueFormatted: "January 1, 2020",
       setValue: (value) => {
@@ -154,7 +154,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
 
     checkParameterSidebarDefaultValueDate({
-      defaultValueFormatted: "January 1, 2024",
+      defaultValueFormatted: "January 1, 2027",
       otherValue: "01/01/2020",
       otherValueFormatted: "January 1, 2020",
     });

@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 
-import { useTranslateContent } from "metabase/i18n/hooks";
+import { useLocale } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   type AggregationItem,
@@ -16,19 +17,23 @@ export interface SDKAggregationItem extends AggregationItem {
 }
 
 export const useSummarizeData = () => {
-  const { question, updateQuestion } = useSdkQuestionContext();
+  const {
+    question,
+    updateAndNormalizeQuestion,
+    lastVisibleStageIndex: stageIndex,
+  } = useSdkQuestionContext();
   const tc = useTranslateContent();
+  const { locale } = useLocale();
 
   const query = question?.query();
-  const stageIndex = -1;
 
   const onQueryChange = useCallback(
     (newQuery: Lib.Query) => {
       if (question) {
-        updateQuestion(question.setQuery(newQuery), { run: true });
+        updateAndNormalizeQuestion(question.setQuery(newQuery), { run: true });
       }
     },
-    [question, updateQuestion],
+    [question, updateAndNormalizeQuestion],
   );
 
   const aggregationItems: SDKAggregationItem[] = useMemo(
@@ -59,16 +64,17 @@ export const useSummarizeData = () => {
             return {
               ...aggregationItem,
               displayName:
-                PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-                  aggregationItem.displayName,
+                PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+                  displayName: aggregationItem.displayName,
                   tc,
-                ),
+                  locale,
+                }),
               onRemoveAggregation,
               onUpdateAggregation,
             };
           })
         : [],
-    [onQueryChange, query, stageIndex, tc],
+    [onQueryChange, query, stageIndex, tc, locale],
   );
 
   return aggregationItems;

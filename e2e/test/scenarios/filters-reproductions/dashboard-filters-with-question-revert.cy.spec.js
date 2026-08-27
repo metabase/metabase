@@ -101,7 +101,7 @@ describe("issue 35954", () => {
           cy.findByRole("tab", { name: "History" }).click();
 
           cy.findByTestId("saved-question-history-list")
-            .find("li")
+            .findAllByTestId("revision-history-event")
             .filter(":contains(You created this)")
             .findByTestId("question-revert-button")
             .click();
@@ -173,7 +173,7 @@ describe("issue 35954", () => {
         H.questionInfoButton().click();
         cy.findByRole("tab", { name: "History" }).click();
         cy.findByTestId("saved-question-history-list")
-          .find("li")
+          .findAllByTestId("revision-history-event")
           .filter(":contains(You edited this)")
           .findByTestId("question-revert-button")
           .click();

@@ -1,19 +1,20 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type {
   EnterpriseSettings,
   NativeQuerySnippet,
   TokenFeatures,
 } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockNativeQuerySnippet,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { SnippetHeader } from "./SnippetHeader";
 
@@ -24,6 +25,17 @@ type SetupOps = {
 
 const setup = ({ snippet = {}, remoteSyncType }: SetupOps) => {
   const mockSnippet = createMockNativeQuerySnippet(snippet);
+
+  setupCollectionByIdEndpoint({
+    collections: [
+      createMockCollection({ id: "root", name: "Our analytics" }),
+      createMockCollection({
+        id: 10,
+        name: "My folder",
+        effective_ancestors: [createMockCollection({ id: "root" })],
+      }),
+    ],
+  });
 
   const tokenFeatures: Partial<TokenFeatures> = {
     remote_sync: !!remoteSyncType,
@@ -43,12 +55,12 @@ const setup = ({ snippet = {}, remoteSyncType }: SetupOps) => {
   renderWithProviders(
     <Route
       path="/"
-      component={() => (
+      element={
         <SnippetHeader
           snippet={mockSnippet}
           actions={<div data-testid="custom-actions" />}
         />
-      )}
+      }
     />,
     {
       storeInitialState: state,
@@ -67,6 +79,33 @@ describe("SnippetHeader", () => {
       screen.getByRole("button", { name: "Snippet menu options" }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("custom-actions")).toBeInTheDocument();
+  });
+
+  describe("breadcrumbs", () => {
+    it("does not show 'Our analytics' for a snippet in the root folder (metabase#UXW-4170)", async () => {
+      setup({ snippet: { name: "My Snippet", collection_id: null } });
+
+      expect(
+        await screen.findByRole("link", { name: "SQL snippets" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Our analytics" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the folder path for a snippet inside a folder", async () => {
+      setup({ snippet: { name: "My Snippet", collection_id: 10 } });
+
+      expect(
+        await screen.findByRole("link", { name: "SQL snippets" }),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByRole("link", { name: "My folder" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Our analytics" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("when remote sync is set to read-only", () => {

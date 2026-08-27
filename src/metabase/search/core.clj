@@ -1,15 +1,20 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
-   [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
+   [environ.core :as env]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.config :as search.config]
+   [metabase.search.debug :as search.debug]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
+   [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]))
@@ -24,24 +29,24 @@
 (p/import-vars
  [search.config
   SearchableModel]
-
+ [search.debug
+  diagnose]
  [search.engine
   model-set]
-
  [search.impl
   search
+  ranked-results
+  search-results
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context]
-
  [search.ingestion
   bulk-ingest!
   max-searchable-value-length
   searchable-value-trim-sql]
-
  [search.spec
   spec
+  specifications
   define-spec]
-
  [search.util
   collapse-id
   indexed-entity-id->model-index-id
@@ -50,85 +55,150 @@
   to-tsquery-expr
   weighted-tsvector])
 
-(defmethod analytics/known-labels :metabase-search/index-updates
+(defmethod analytics.core/known-labels :metabase-search/index-updates
   [_]
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
-(defmethod analytics/known-labels :metabase-search/index-reindexes
+(defmethod analytics.core/known-labels :metabase-search/index-reindexes
   [_]
   (for [model (keys (search.spec/specifications))]
     {:model model}))
 
-(defmethod analytics/known-labels :metabase-search/engine-default
+(defmethod analytics.core/known-labels :metabase-search/appdb-index-batches-skipped
   [_]
-  (analytics/known-labels :metabase-search/engine-active))
+  [{:table-type :active} {:table-type :pending}])
 
-(defmethod analytics/known-labels :metabase-search/engine-active
+(defmethod analytics.core/known-labels :metabase-search/index-documents-skipped
+  [_]
+  (for [model (keys (search.spec/specifications))]
+    {:model model}))
+
+(defmethod analytics.core/known-labels :metabase-search/engine-default
+  [_]
+  (analytics.core/known-labels :metabase-search/engine-active))
+
+(defmethod analytics.core/known-labels :metabase-search/engine-active
   [_]
   (for [e (search.engine/known-engines)]
     {:engine (name e)}))
 
-(defmethod analytics/initial-value :metabase-search/engine-default
+(defmethod analytics.core/initial-value :metabase-search/engine-default
   [_ {:keys [engine]}]
   (if (= engine (name (search.engine/default-engine))) 1 0))
 
-(defmethod analytics/initial-value :metabase-search/engine-active
+(defmethod analytics.core/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
-  (if (search.engine/supported-engine? (keyword "search.engine" engine)) 1 0))
+  ;; Can the engine serve queries: in-place always can, indexed engines only while their index is maintained.
+  (if (= :ok (search.engine/engine-status (keyword "search.engine" engine)))
+    1
+    0))
 
 (defn supports-index?
   "Does this instance support a search index, of any sort?"
   []
   (seq (search.engine/active-engines)))
 
+(defn check-for-removed-env-vars!
+  "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is false, and would have been
+  required to disable the engine, naming the exact configuration change that keeps semantic search off.
+  Otherwise log a warning, with migration guidance when a true value does not match the active engines."
+  []
+  (when-some [legacy-value (env/env :mb-semantic-search-enabled)]
+    (let [base-msg      "MB_SEMANTIC_SEARCH_ENABLED is no longer supported."
+          remove-detail "Remove it from your configuration."]
+      ;; An empty value has no boolean meaning, but its presence still warrants removing the obsolete variable.
+      (if (empty? legacy-value)
+        (log/warn (str base-msg " " remove-detail))
+        (let [enabled?             (setting/string->boolean legacy-value)
+              engines              (search.engine/supported-engines)
+              semantic-default?    (= :search.engine/semantic (first engines))
+              semantic-additional? (contains? (set (search.engine/additional-engines))
+                                              :search.engine/semantic)
+              semantic-supported?  (contains? (set engines) :search.engine/semantic)
+              semantic-active?     (or semantic-default? semantic-additional?)
+              fallback             (when semantic-default? (second engines))
+              ;; Each case is a complete sentence so the remediation remains actionable.
+              error-detail         (when-not enabled?
+                                     (cond
+                                       (and semantic-default? (not fallback))
+                                       "Semantic search is the only supported engine and cannot be disabled; remove MB_SEMANTIC_SEARCH_ENABLED."
+
+                                       (and fallback semantic-additional?)
+                                       (format "To keep semantic search off, set MB_SEARCH_ENGINE=%s and remove semantic from additional-search-engines, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                                               (name fallback))
+
+                                       fallback
+                                       (format "To keep semantic search off, set MB_SEARCH_ENGINE=%s, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                                               (name fallback))
+
+                                       semantic-additional?
+                                       "To keep semantic search off, remove semantic from additional-search-engines, then remove MB_SEMANTIC_SEARCH_ENABLED."))
+              warning-detail       (when (and enabled? (not semantic-active?))
+                                     (if semantic-supported?
+                                       "To enable semantic search, set MB_SEARCH_ENGINE=semantic, then remove MB_SEMANTIC_SEARCH_ENABLED."
+                                       "Semantic search is not supported by this instance; remove MB_SEMANTIC_SEARCH_ENABLED."))
+              msg                  (str base-msg " "
+                                        (or error-detail
+                                            warning-detail
+                                            remove-detail))]
+          (if error-detail
+            (throw (ex-info msg {:env-var "MB_SEMANTIC_SEARCH_ENABLED"}))
+            (log/warn msg)))))))
+
+(defmethod startup/def-startup-validation! ::check-for-removed-env-vars [_]
+  (check-for-removed-env-vars!))
+
 (defn init-index!
   "Ensure there is an index ready to be populated."
   [& {:as opts}]
-  (when (supports-index?)
+  (search.engine/log-resolution!)
+  (when-let [engines (seq (search.engine/active-engines))]
     (log/info "Initializing search indexes")
-    (lib-be/with-metadata-provider-cache
-      ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
-      (try
-        (let [timer    (u/start-timer)
-              report   (reduce (partial merge-with max)
-                               nil
-                               (for [e (search.engine/active-engines)]
-                                 (search.engine/init! e opts)))
-              duration (u/since-ms timer)]
-          (if (seq report)
-            (do
-              (analytics/inc! :metabase-search/index-reindex-ms duration)
-              (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
-              (doseq [[model cnt] report]
-                (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
-              (log/infof "Index initialized in %.0fms %s" duration (sort-by (comp - val) report))
-              report)
-            (log/info "Found existing search index, and using it.")))
-        (catch Exception e
-          (analytics/inc! :metabase-search/index-error)
-          (throw e))))))
+    (tracing/with-span :search "search.init-index" {}
+      (lib-be/with-metadata-provider-cache
+        ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
+        (try
+          (let [timer    (u/start-timer)
+                report   (reduce (partial merge-with max)
+                                 nil
+                                 (for [e engines]
+                                   (search.engine/init! e opts)))
+                duration (u/since-ms timer)]
+            (if (seq report)
+              (do
+                (analytics/inc! :metabase-search/index-reindex-ms duration)
+                (analytics/observe! :metabase-search/index-reindex-duration-ms duration)
+                (doseq [[model cnt] report]
+                  (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+                (log/infof "Index initialized in %.0fms %s" duration (sort-by (comp - val) report))
+                report)
+              (log/info "Found existing search index, and using it.")))
+          (catch Exception e
+            (analytics/inc! :metabase-search/index-error)
+            (throw e)))))))
 
 (defn- reindex-logic! [opts]
-  (when (supports-index?)
-    (lib-be/with-metadata-provider-cache
-      (try
-        (log/info "Reindexing searchable entities")
-        (let [timer    (u/start-timer)
-              report   (reduce (partial merge-with max)
-                               nil
-                               (for [e (search.engine/active-engines)]
-                                 (search.engine/reindex! e opts)))
-              duration (u/since-ms timer)]
-          (analytics/inc! :metabase-search/index-reindex-ms duration)
-          (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
-          (doseq [[model cnt] report]
-            (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
-          (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
-          report)
-        (catch Exception e
-          (analytics/inc! :metabase-search/index-error)
-          (throw e))))))
+  (when-let [engines (seq (search.engine/active-engines))]
+    (tracing/with-span :search "search.reindex" {}
+      (lib-be/with-metadata-provider-cache
+        (try
+          (log/info "Reindexing searchable entities")
+          (let [timer    (u/start-timer)
+                report   (reduce (partial merge-with max)
+                                 nil
+                                 (for [e engines]
+                                   (search.engine/reindex! e opts)))
+                duration (u/since-ms timer)]
+            (analytics/inc! :metabase-search/index-reindex-ms duration)
+            (analytics/observe! :metabase-search/index-reindex-duration-ms duration)
+            (doseq [[model cnt] report]
+              (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+            (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
+            report)
+          (catch Exception e
+            (analytics/inc! :metabase-search/index-error)
+            (throw e)))))))
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index.
@@ -140,7 +210,7 @@
             (try
               (reindex-logic! opts)
               (catch Exception e
-                (log/error e "Reindex failed")
+                (log/errorf "Reindex failed: %s" (ex-message e))
                 (analytics/inc! :metabase-search/index-error)
                 (throw e))))]
     (if (or search.ingestion/*force-sync* (not async?))
@@ -153,6 +223,14 @@
   (when (supports-index?)
     (doseq [e (search.engine/active-engines)]
       (search.engine/reset-tracking! e))))
+
+(defn sync-from-restored-db!
+  "Reconcile all search engine state with the current database.
+   Use after snapshot restore instead of reindex! to avoid redundant work."
+  []
+  (when (supports-index?)
+    (doseq [e (search.engine/active-engines)]
+      (search.engine/sync-from-restored-db! e))))
 
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."

@@ -2,6 +2,7 @@ import cx from "classnames";
 import type { LegacyRef } from "react";
 import { t } from "ttag";
 
+import { useMetabotAgent } from "metabase/metabot/hooks";
 import {
   Flex,
   Icon,
@@ -11,7 +12,6 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import S from "./MetabotQuestion.module.css";
 
@@ -28,13 +28,13 @@ export function MetabotChatInput() {
       px="md"
       align="center"
       justify="center"
-      style={{ borderTop: "1px solid var(--mb-color-border)" }}
+      style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
     >
       <Flex justify="center" align="center" style={{ flexShrink: 0 }}>
         {metabot.isDoingScience ? (
           <Loader size="sm" />
         ) : (
-          <Icon name="ai" c="brand" size="1rem" />
+          <Icon name="ai" c="core-brand" size="1rem" />
         )}
       </Flex>
 
@@ -47,10 +47,11 @@ export function MetabotChatInput() {
         autosize
         minRows={1}
         maxRows={4}
+        // Unjustified type cast. FIXME
         ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
         autoFocus
         value={metabot.prompt}
-        disabled={metabot.isDoingScience}
+        readOnly={metabot.isDoingScience}
         placeholder={placeholder}
         onChange={(e) => metabot.setPrompt(e.target.value)}
         classNames={{ input: S.chatInput }}
@@ -107,7 +108,7 @@ export function MetabotChatInput() {
           <Menu.Dropdown>
             <Menu.Item
               leftSection={<Icon name="edit_document_outlined" size="1rem" />}
-              onClick={metabot.resetConversation}
+              onClick={metabot.createNewConversation}
             >
               {t`Start new chat`}
             </Menu.Item>

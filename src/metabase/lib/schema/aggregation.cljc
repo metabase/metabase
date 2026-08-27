@@ -127,19 +127,38 @@
              :measure]]
   (lib.hierarchy/derive tag ::aggregation-clause-tag))
 
+;; Window-function aggregations: clauses whose value at a given row depends on other rows in the result set (running
+;; totals, offsets, etc.). Consumers that need to reason about "does this aggregation compose with GROUPING SETS / row
+;; splitting / etc." should test for this hierarchy tag.
+(doseq [tag [:cum-count
+             :cum-sum
+             :offset]]
+  (lib.hierarchy/derive tag ::window-aggregation-clause-tag))
+
+(defn- contains-clause-with-tag?
+  "True if `x` is a clause whose tag derives from `hierarchy-tag`, or an expression that transitively contains one."
+  [hierarchy-tag x]
+  (letfn [(walk [x]
+            (when-let [[tag _opts & args] (when (vector? x) x)]
+              (or (lib.hierarchy/isa? tag hierarchy-tag)
+                  ;; Case has shape [:case opts [[cond expr]...] default-expr?].
+                  ;; `:if` is an alias for `:case`.
+                  (if (#{:case :if} tag)
+                    (or (some walk (ffirst args))
+                        (some walk (fnext args)))
+                    (some walk args)))))]
+    (walk x)))
+
 (defn- aggregation-expression?
   "A clause is a valid aggregation if it is an aggregation clause, or it is an expression that transitively contains
   a single aggregation clause."
   [x]
-  (when-let [[tag _opts & args] (when (vector? x) x)]
-    (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
-        ;; Case has the following shape [:case opts [[cond expr]...] default-expr?]
-        ;;
-        ;; `:if` is an alias for `:case`
-        (if (#{:case :if} tag)
-          (or (some aggregation-expression? (ffirst args))
-              (some aggregation-expression? (fnext args)))
-          (some aggregation-expression? args)))))
+  (contains-clause-with-tag? ::aggregation-clause-tag x))
+
+(defn window-aggregation-expression?
+  "True if `x` is a window-function aggregation clause, or an expression that transitively contains one."
+  [x]
+  (contains-clause-with-tag? ::window-aggregation-clause-tag x))
 
 (mr/def ::aggregation
   [:and
@@ -151,6 +170,39 @@
 
 (mr/def ::aggregations
   [:sequential {:min 1} [:ref ::aggregation]])
+
+(defn- has-unaggregated-ref?
+  "Checks if `x` contains a column reference that is not wrapped in an aggregation
+  function, e.g. the `[:field 2]` in `[:+ [:sum [:field 1]] [:field 2]]`."
+  [x]
+  (when (vector? x)
+    (let [[tag _opts & args] x]
+      (cond
+        (#{:field :expression} tag)
+        true
+
+        (lib.hierarchy/isa? tag ::aggregation-clause-tag)
+        false
+
+        ;; case/if conditions can reference unaggregated refs, we
+        ;; only need to check the result branches are aggregated
+        (#{:case :if} tag)
+        (let [[pairs default] args]
+          (boolean (or (some (fn [[_cond expr]] (has-unaggregated-ref? expr)) pairs)
+                       (has-unaggregated-ref? default))))
+
+        :else
+        (boolean (some has-unaggregated-ref? args))))))
+
+(mr/def ::aggregation-with-no-unaggregated-refs
+  "Stricter variant of ::aggregation used for query builder verification. Not enforced
+  on whole queries, so saved questions with unaggregated fields keep working."
+  [:and
+   [:ref ::aggregation]
+   [:fn
+    {:error/message #(i18n/tru "Fields in custom aggregations must be wrapped with a function like Sum.")
+     :error/friendly true}
+    (complement has-unaggregated-ref?)]])
 
 (def aggregation-operators
   "The list of available aggregation operator.

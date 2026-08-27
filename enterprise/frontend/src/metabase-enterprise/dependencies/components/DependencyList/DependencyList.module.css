@@ -1,7 +1,12 @@
-.main {
-  overflow: hidden;
-}
+.item {
+  cursor: pointer;
 
-.resizing {
-  user-select: none;
+  &:hover,
+  &.active {
+    background-color: var(--mb-color-background_page-secondary);
+  }
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-border-neutral);
+  }
 }

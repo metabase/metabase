@@ -1,5 +1,12 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type { DashboardId } from "metabase-types/api";
+
+export const trackStackedSeriesEnabled = () => {
+  trackSimpleEvent({
+    event: "stack_series_enabled",
+    triggered_from: "viz_settings",
+  });
+};
 
 export const trackCardSetToHideWhenNoResults = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", {

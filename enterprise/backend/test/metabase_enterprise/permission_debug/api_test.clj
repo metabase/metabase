@@ -1,4 +1,5 @@
 (ns metabase-enterprise.permission-debug.api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.permission-debug.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.permissions.core :as perms]
@@ -34,7 +35,6 @@
           (is (seq (:message response)))
           (is (= {} (:data response)))
           (is (= {} (:suggestions response)))))
-
       (testing "should return denied when user lacks read permission"
         (mt/with-temp [:model/Collection private-collection {}
                        :model/Card private-card {:collection_id (:id private-collection)}]
@@ -63,7 +63,6 @@
           (is (= "card" (:model-type response)))
           (is (= '() (:segment response)))
           (is (= {} (:data response)))))
-
       (testing "should return denied when table access is blocked"
         (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
         (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
@@ -89,7 +88,6 @@
           (is (= "card" (:model-type response)))
           (is (= '() (:segment response)))
           (is (seq (:message response)))))
-
       (testing "should return limited when user has limited download permission"
         (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
         (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/download-results :ten-thousand-rows)
@@ -110,7 +108,6 @@
                                    :user_id "1"
                                    :model_id "999"
                                    :action_type "unknown/permission"))))
-
     (testing "should require valid parameters"
       (is (= {:errors {:user_id "integer greater than 0"},
               :specific-errors {:user_id ["should be a positive int, received: \"invalid\""]}}
@@ -135,16 +132,12 @@
           (is (contains? response :message))
           (is (contains? response :data))
           (is (contains? response :suggestions)))
-
         (testing "decision should be valid enum value"
           (is (contains? #{"allow" "denied" "limited"} (:decision response))))
-
         (testing "segment should be a sequence"
           (is (sequential? (:segment response))))
-
         (testing "message should be a sequence"
           (is (sequential? (:message response))))
-
         (testing "data and suggestions should be maps"
           (is (map? (:data response)))
           (is (map? (:suggestions response))))))))

@@ -5,19 +5,24 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (java.io File)
+   (java.net URI)
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
-   (org.eclipse.jgit.dircache DirCache DirCacheEntry)
-   (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent Ref)
-   (org.eclipse.jgit.revwalk RevCommit RevWalk)
+   (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEditor DirCacheEditor$DeletePath
+                              DirCacheEditor$DeleteTree DirCacheEditor$PathEdit DirCacheEntry)
+   (org.eclipse.jgit.lib CommitBuilder Constants FileMode ObjectId PersonIdent ProgressMonitor Ref Repository)
+   (org.eclipse.jgit.lib ObjectInserter ObjectReader)
+   (org.eclipse.jgit.revwalk RevCommit RevTree RevWalk)
    (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
                                RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
-   (org.eclipse.jgit.treewalk TreeWalk)))
+   (org.eclipse.jgit.treewalk TreeWalk)
+   (org.eclipse.jgit.treewalk.filter TreeFilter)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,23 +41,42 @@
 (defn- call-command [^GitCommand command]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote false}]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
-
     (try
       (.call command)
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
         (throw (clean-git-exception e command false))))))
 
-(defn- call-remote-command [^TransportCommand command {:keys [^String token]}]
+(defmulti credentials-provider
+  "Creates a JGit CredentialsProvider based on the authentication method.
+
+  Dispatches on auth-method keyword. The credentials argument is method-specific
+  and can be any data structure appropriate for that authentication method.
+
+  Returns a CredentialsProvider instance or nil if no authentication is needed."
+  {:arglists '([remote-url credentials])}
+  (fn [remote-url _credentials] (keyword (u/lower-case-en (.getHost (URI. remote-url))))))
+
+(defmethod credentials-provider :default
+  [_remote-url ^String token]
+  (UsernamePasswordCredentialsProvider. "x-access-token" token))
+
+(defmethod credentials-provider :bitbucket.org
+  [_auth-method ^String token]
+  (when token
+    (UsernamePasswordCredentialsProvider. "x-token-auth" token)))
+
+(defn- call-remote-command [^TransportCommand command {:keys [^String token ^String remote-url]}]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote true}
         ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
         ;; For Gitlab any values can be used as the user name so x-access-token works just as well
-        credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
+        credentials-provider (when token (credentials-provider remote-url token))]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
-
     (try
-      (-> command
-          (.setCredentialsProvider credentials-provider)
+      (-> (doto command
+            ;; bound the network operation so a stalled connection can't hang the sync forever (GHY-3727)
+            (.setTimeout (int (setting/get :remote-sync-git-timeout-seconds)))
+            (.setCredentialsProvider credentials-provider))
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
@@ -68,13 +92,15 @@
 
   Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
   of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
+  Prunes local refs that no longer exist on the remote so deleted branches are reflected locally.
 
   Throws ExceptionInfo if the fetch operation fails."
   [{:keys [^Git git] :as git-source}]
   (when (some? git)
     (log/info "Fetching repository" {:repo (str git)})
-    (u/prog1 (call-remote-command (.fetch git) git-source))
-    (log/info "Successfully fetched repository")))
+    (u/prog1 (call-remote-command (.. git fetch (setRemoveDeletedRefs true))
+                                  git-source)
+      (log/info "Successfully fetched repository"))))
 
 (defn- repo-path [{:keys [^String remote-url ^String token]}]
   (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
@@ -94,7 +120,7 @@
     (u/prog1 (call-remote-command (-> (Git/cloneRepository)
                                       (.setDirectory repo-path)
                                       (.setURI remote-url)
-                                      (.setBare true)) {:token token})
+                                      (.setBare true)) {:token token :remote-url remote-url})
       (log/info "Successfully cloned repository" {:repo-path repo-path}))
     (catch Exception e
       (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
@@ -132,10 +158,15 @@
   Takes a source map containing a :git Git instance and :commit-ish (the ref to resolve). Can optionally take a
   second commit-ish argument which overrides the :commit-ish from the source map.
 
-  Returns the full commit SHA string, or nil if the commit-ish cannot be resolved."
+  Returns the full commit SHA string, or nil if the commit-ish cannot be resolved — including a full SHA
+  whose object is absent from the local clone (e.g. a base commit orphaned by an upstream force-push or
+  rebase). JGit parses a complete SHA into an ObjectId without checking the object exists, so the
+  existence check is what makes orphaned bases resolve to nil rather than blowing up on a later read."
   [{:keys [^Git git]} ^String commit-ish]
-  (when-let [ref (.resolve (.getRepository git) commit-ish)]
-    (.name ref)))
+  (let [repo (.getRepository git)]
+    (when-let [object-id (.resolve repo commit-ish)]
+      (when (.has (.getObjectDatabase repo) object-id)
+        (.name object-id)))))
 
 (defn log
   "Retrieves the commit history log for a branch.
@@ -175,6 +206,55 @@
               (recur (conj files (.getPathString tree-walk)))
               files)))))
 
+(defn- tree-children
+  "Paths of the entries at the walk's current depth, consuming the walk. `next` climbs back out of a
+  subtree once it's exhausted, so a drop in depth is what marks the end of the children.
+
+  Sorted rather than left in tree order: git orders a tree's entries as if directories ended in `/`, so
+  raw order puts a sibling `a-b` before the directory `a` (`\\-` < `\\/`). Sorting gives plain
+  lexicographic order instead — the one rule the flat snapshots can honour too, since they have no tree
+  order to inherit."
+  [^TreeWalk tree-walk]
+  (let [depth (.getDepth tree-walk)]
+    (loop [paths []]
+      (if (and (.next tree-walk) (= depth (.getDepth tree-walk)))
+        (recur (conj paths (.getPathString tree-walk)))
+        (vec (sort paths))))))
+
+(defn list-dir
+  "Lists the immediate children of one directory in the git repository at the snapshot.
+
+  Takes a GitSnapshot containing a :git Git instance and :version specifying which commit to read, and a
+  repo-root relative directory path (no trailing slash).
+
+  Resolves the commit's root tree, looks `path` up in it and reads that single tree object, iterating its
+  entries non-recursively — so the cost is proportional to the depth of `path` plus the number of entries
+  it holds, not to the size of the repository. The clone is bare (git objects, no working tree), which is
+  exactly what this walks.
+
+  `.isSubtree` is what makes a non-directory return `[]`: a symlink and a submodule are entries with
+  their own modes, not trees, so neither can be descended into (and a submodule's tree isn't in this
+  repository at all).
+
+  See [[metabase-enterprise.remote-sync.source.protocol/list-dir]] for the contract this implements and
+  why it takes the shape it does."
+  [{:keys [^Git git ^String version]} ^String path]
+  (let [repo (.getRepository git)]
+    (with-open [rev-walk (RevWalk. repo)]
+      (or (when-let [commit-id (.resolve repo version)]
+            (let [tree (.getTree (.parseCommit rev-walk commit-id))]
+              (if (str/blank? path)
+                (with-open [^TreeWalk tree-walk (TreeWalk. repo)]
+                  (.addTree tree-walk tree)
+                  (tree-children tree-walk))
+                ;; one binary search per path segment down to the entry, then a single tree object read
+                (when-let [found (TreeWalk/forPath repo path tree)]
+                  (with-open [^TreeWalk tree-walk found]
+                    (when (.isSubtree tree-walk)
+                      (.enterSubtree tree-walk)
+                      (tree-children tree-walk)))))))
+          []))))
+
 (defn read-file
   "Reads the contents of a specific file from the git snapshot.
 
@@ -188,44 +268,107 @@
       (let [loader (.open repo object-id)]
         (String. (.getBytes loader) "UTF-8")))))
 
+(defn changed-files
+  "Paths whose blob differs between commit `from-version` and this snapshot's `version`, classified into
+  `{:added #{} :modified #{} :deleted #{}}`. jgit prunes unchanged subtrees as it walks, so the cost is
+  proportional to the number of changed entries, not the size of the tree.
+
+  Takes a GitSnapshot (:git instance and current :version) and a `from-version` commit-ish to diff against.
+
+  Returns nil when `from-version` cannot be resolved or is no longer present in the local object store
+  (e.g. orphaned by a force-push or rebase), signalling the caller to fall back to a full import."
+  [{:keys [^Git git ^String version]} ^String from-version]
+  (let [^Repository repo (.getRepository git)
+        objects (.getObjectDatabase repo)
+        old-id (.resolve repo from-version)
+        new-id (.resolve repo version)]
+    (when (and old-id new-id (.has objects old-id) (.has objects new-id))
+      (with-open [rw (RevWalk. repo)
+                  ^TreeWalk tw (TreeWalk. repo)]
+        (.addTree tw (.getTree (.parseCommit rw old-id)))
+        (.addTree tw (.getTree (.parseCommit rw new-id)))
+        (.setRecursive tw true)
+        (.setFilter tw TreeFilter/ANY_DIFF)
+        (let [zero (ObjectId/zeroId)]
+          (loop [acc {:added #{} :modified #{} :deleted #{}}]
+            (if (.next tw)
+              (let [in-old? (not (.equals zero (.getObjectId tw 0)))
+                    in-new? (not (.equals zero (.getObjectId tw 1)))
+                    bucket  (cond (not in-old?) :added
+                                  (not in-new?) :deleted
+                                  :else         :modified)]
+                (recur (update acc bucket conj (.getPathString tw))))
+              acc)))))))
+
+(def ^:private commit-progress-checkpoint
+  "Export progress fraction reported once the local commit is durable, just before the network push begins."
+  0.8)
+
+(def ^:private push-progress-start
+  "Progress fraction at which the network push begins."
+  0.8)
+
+(def ^:private push-progress-end
+  "Progress fraction the network push approaches as it completes; the final 1.0 is reported elsewhere."
+  0.99)
+
+(defn- ->push-progress-monitor
+  "A JGit ProgressMonitor that maps the client-side \"Writing objects\" phase onto
+  [push-progress-start, push-progress-end] and calls `report-progress` (a 1-arg fraction fn) on every
+  `update` tick — even outside the writing phase, falling back to `push-progress-start` — so the push
+  always heartbeats regardless of JVM locale (which can rename or suppress the \"Writing objects\" title)
+  or an unknown (zero) total. Upstream throttling/monotonicity is handled by the reporter, so the repeated
+  fallback values are cheap and safe."
+  ^ProgressMonitor [report-progress]
+  (let [writing? (volatile! false)
+        total    (volatile! 0)
+        done     (volatile! 0)
+        report!  (fn []
+                   (report-progress
+                    (if (and @writing? (pos? @total))
+                      (+ push-progress-start
+                         (* (- push-progress-end push-progress-start)
+                            (min 1.0 (/ (double @done) @total))))
+                      push-progress-start)))]
+    (reify ProgressMonitor
+      (start [_ _total-tasks])
+      (beginTask [_ title tot]
+        (vreset! writing? (= title "Writing objects"))
+        (vreset! total (max 0 tot))
+        (vreset! done 0)
+        (report!))
+      (update [_ completed]
+        (vswap! done + completed)
+        (report!))
+      (endTask [_]
+        (vreset! writing? false))
+      (isCancelled [_] false)
+      (showDuration [_ _]))))
+
 (defn push-branch!
-  "Pushes a local branch to the remote repository.
+  "Pushes a local branch to the remote repository. Optional `progress-monitor` (a JGit ProgressMonitor)
+  reports push progress.
 
   Takes a git-source map containing a :git Git instance, :branch, and optional :token for
   authentication. Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
   non-OK/UP_TO_DATE status."
-  [{:keys [^Git git ^String branch] :as git-source}]
-  (let [branch-name (qualify-branch branch)
-        push-response (call-remote-command
-                       (-> (.push git)
-                           (.setRefSpecs (doto (java.util.ArrayList.)
-                                           (.add (RefSpec. (str branch-name ":" branch-name))))))
-                       git-source)
-        push-results (->> push-response
-                          (map #(into [] (.getRemoteUpdates ^PushResult %)))
-                          flatten)]
-
-    (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %) (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
-      (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
-    push-response))
-
-(defn- path-prefix
-  "Extracts the unique collection identifier from a serialized file path.
-
-  Takes a path string like \"collections/abc123_CollectionName/...\" and returns the collection prefix (e.g.,
-  \"collections/abc123\") which remains stable even when collection names change.
-
-  Returns the original path if no collection prefix is found."
-  [path]
-  (let [matcher (re-matcher #"^(collections/[^/]{21})_[^/]+/" path)]
-    (if (re-find matcher)
-      (second (re-groups matcher))
-      path)))
-
-(defn- matches-prefix [path prefixes]
-  (some #(or (= % path) (str/starts-with? path %)) prefixes))
+  ([git-source] (push-branch! git-source nil))
+  ([{:keys [^Git git ^String branch] :as git-source} ^ProgressMonitor progress-monitor]
+   (let [branch-name (qualify-branch branch)
+         push-cmd    (cond-> (-> (.push git)
+                                 (.setRefSpecs (doto (java.util.ArrayList.)
+                                                 (.add (RefSpec. (str branch-name ":" branch-name))))))
+                       progress-monitor (.setProgressMonitor progress-monitor))
+         push-response (call-remote-command push-cmd git-source)
+         push-results  (->> push-response
+                            (map #(into [] (.getRemoteUpdates ^PushResult %)))
+                            flatten)]
+     (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %)
+                                      (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
+       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
+     push-response)))
 
 (defn default-branch
   "Retrieves the default branch name of the git repository.
@@ -244,98 +387,93 @@
               (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
         (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
-(defn write-files!
-  "Writes multiple files to the git repository and commits the changes.
+(defn- close-commit-resources! [inserter reader rev-walk]
+  (.close ^ObjectInserter inserter)
+  (.close ^ObjectReader reader)
+  (.close ^RevWalk rev-walk))
 
-  Takes a snapshot map containing a :git Git instance and :version, a commit message string,
-  and a sequence of file specs (paths should be relative to the repository root).
+(defn- written-tree-id
+  "Finalize the editor and write the staged tree, memoizing it in `tree-id` so repeated calls (e.g.
+  `empty-commit?` then `finish-commit!`) finalize and write the tree only once."
+  ^ObjectId [{:keys [^DirCacheEditor editor ^DirCache index ^ObjectInserter inserter tree-id]}]
+  (or @tree-id
+      (do (.finish editor)
+          (reset! tree-id (.writeTree index inserter)))))
 
-  Each file spec is a map with either:
-  - :path and :content keys for writing/updating a file
-  - :path and :remove? true for recursively removing all files at that path
+;; A commit being built incrementally against a GitSnapshot. Holds the open JGit resources (inserter, reader,
+;; rev-walk) and the in-core index/editor; blobs are inserted as files are staged and the tree is written and
+;; pushed at finish. Edits the branch tip's tree in place — unchanged entries/subtrees carry forward by object
+;; id — so writeTree's work is proportional to the number of changes, not the repo size.
+(defrecord GitCommit [snapshot inserter reader rev-walk index editor parent-id parent-tree-id tree-id]
+  source.p/CommitBuilder
+  (stage-upsert! [_ {:keys [^String path content]}]
+    (let [blob-id (.insert ^ObjectInserter inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))]
+      (.add ^DirCacheEditor editor
+            (proxy [DirCacheEditor$PathEdit] [path]
+              (apply [^DirCacheEntry entry]
+                (.setFileMode entry FileMode/REGULAR_FILE)
+                (.setObjectId entry blob-id)))))
+    nil)
 
-  For writes within collection directories, ALL files in the same collection are replaced
-  (using the collection entity_id prefix to identify the collection scope). This ensures
-  that stale files don't remain when a collection's contents change.
+  (stage-delete! [_ path]
+    (.add ^DirCacheEditor editor (DirCacheEditor$DeletePath. ^String path))
+    nil)
 
-  For removals, all files matching the path as a prefix are deleted (allowing recursive
-  directory deletion). Removal entries with empty paths are no-ops. Removing non-existent
-  paths is also a no-op (idempotent).
+  (replace-all! [_]
+    (doseq [^String dir (:managed-dirs snapshot)]
+      (.add ^DirCacheEditor editor (DirCacheEditor$DeleteTree. dir)))
+    nil)
 
-  Returns the version written. Throws ExceptionInfo if the write or push
-  operation fails."
-  [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message files]
-  (let [repo (.getRepository git)
-        branch-ref (qualify-branch branch)
-        parent-id (.resolve repo version)]
+  (empty-commit? [this]
+    (boolean (when parent-tree-id
+               (.equals (written-tree-id this) ^ObjectId parent-tree-id))))
 
-    (with-open [inserter (.newObjectInserter repo)]
-      (let [index (DirCache/newInCore)
-            builder (.builder index)
-            ;; Extract collection prefixes from written paths - all files in these
-            ;; collections will be deleted and replaced with the new files
-            write-prefixes (into #{}
-                                 (comp
-                                  (remove :remove?)
-                                  (map :path)
-                                  (remove str/blank?)
-                                  (map path-prefix))
-                                 files)
-            ;; Collect removal paths/prefixes for explicit deletions
-            removal-prefixes (into #{}
-                                   (comp
-                                    (filter :remove?)
-                                    (map :path)
-                                    (remove str/blank?))
-                                   files)]
+  (finish-commit! [this message]
+    (source.p/finish-commit! this message nil))
 
-        ;; Add new/updated files to the index
-        (doseq [{:keys [path content remove?]} files
-                :when (and (not remove?) (not (str/blank? path)))]
-          (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
-                entry (doto (DirCacheEntry. ^String path)
-                        (.setFileMode FileMode/REGULAR_FILE)
-                        (.setObjectId blob-id))]
-            (.add builder entry)))
+  (finish-commit! [this message report-progress]
+    (let [^Git git   (:git snapshot)
+          repo       (.getRepository git)
+          branch-ref (qualify-branch (:branch snapshot))
+          tree-id    (written-tree-id this)
+          commit-builder (doto (CommitBuilder.)
+                           (.setTreeId tree-id)
+                           (.setAuthor (PersonIdent. "Metabase Library" "library@metabase.com"))
+                           (.setCommitter (PersonIdent. "Metabase Library" "library@metabase.com"))
+                           (.setMessage ^String message))]
+      (when parent-id
+        (.setParentId commit-builder parent-id))
+      (let [commit-id (.insert ^ObjectInserter inserter commit-builder)]
+        (.flush ^ObjectInserter inserter)
+        (doto (.updateRef repo branch-ref)
+          (.setNewObjectId commit-id)
+          (.update))
+        ;; local commit durable; push about to start — force this one-shot checkpoint past the throttle
+        (when report-progress (report-progress commit-progress-checkpoint {:force? true}))
+        (push-branch! snapshot (when report-progress (->push-progress-monitor report-progress)))
+        (close-commit-resources! inserter reader rev-walk)   ; close only after a successful push
+        (.name commit-id))))
 
-        ;; Copy existing tree entries, excluding:
-        ;; 1. Files in collections being written to (using write-prefixes)
-        ;; 2. Files matching explicit removal prefixes
-        (when parent-id
-          (with-open [rev-walk (RevWalk. repo)
-                      tree-walk (TreeWalk. repo)]
-            (let [commit (.parseCommit rev-walk parent-id)]
-              (.addTree tree-walk (.getTree commit))
-              (.setRecursive tree-walk true)
-              (while (.next tree-walk)
-                (let [path (.getPathString tree-walk)
-                      existing-prefix (path-prefix path)]
-                  (when-not (or (contains? write-prefixes existing-prefix)
-                                (matches-prefix path removal-prefixes))
-                    (let [entry (doto (DirCacheEntry. path)
-                                  (.setFileMode (.getFileMode tree-walk 0))
-                                  (.setObjectId (.getObjectId tree-walk 0)))]
-                      (.add builder entry))))))))
+  (abort-commit! [_]
+    (close-commit-resources! inserter reader rev-walk)
+    nil))
 
-        (.finish builder)
-
-        ;; Create commit
-        (let [tree-id (.writeTree index inserter)
-              commit-builder (doto (CommitBuilder.)
-                               (.setTreeId tree-id)
-                               (.setAuthor (PersonIdent. "Metabase Library" "library@metabase.com"))
-                               (.setCommitter (PersonIdent. "Metabase Library" "library@metabase.com"))
-                               (.setMessage message))]
-          (when parent-id
-            (.setParentId commit-builder parent-id))
-
-          (let [commit-id (.insert inserter commit-builder)]
-            (.flush inserter)
-            (doto (.updateRef repo branch-ref)
-              (.setNewObjectId commit-id)
-              (.update))
-            (push-branch! snapshot)
-            (.name commit-id)))))))
+(defn- open-commit*
+  "Begin a GitCommit against `snapshot`, seeding the in-core index from the parent tree."
+  [{:keys [^Git git ^String version] :as snapshot}]
+  (let [repo        (.getRepository git)
+        parent-id   (.resolve repo version)
+        inserter    (.newObjectInserter repo)
+        reader      (.newObjectReader repo)
+        rev-walk    (RevWalk. repo)
+        index       (DirCache/newInCore)
+        parent-tree (when parent-id (.getTree (.parseCommit rev-walk parent-id)))]
+    (let [^DirCacheBuilder builder (.builder index)]
+      (when parent-tree
+        (.addTree builder (byte-array 0) DirCacheEntry/STAGE_0 reader ^RevTree parent-tree))
+      (.finish builder))
+    (->GitCommit snapshot inserter reader rev-walk index (.editor index) parent-id
+                 (when parent-tree (.copy ^RevTree parent-tree)) (atom nil))))
 
 (defn branches
   "Retrieves all branch names from the remote repository.
@@ -405,20 +543,27 @@
     (push-branch! (assoc source :branch branch-name))
     branch-name))
 
-(defrecord GitSnapshot [git remote-url branch version token]
+(defrecord GitSnapshot [git remote-url branch version token managed-dirs]
   source.p/SourceSnapshot
 
   (list-files [this]
     (list-files this))
 
+  (list-dir [this path]
+    (list-dir this path))
+
   (read-file [this path]
     (read-file this path))
 
-  (write-files! [this message files]
-    (write-files! this message files))
+  (open-commit [this]
+    (open-commit* this))
 
   (version [this]
-    (:version this)))
+    (:version this))
+
+  source.p/Diffable
+  (changed-files* [this from-version]
+    (changed-files this from-version)))
 
 (def ^:private jgit (atom {}))
 
@@ -435,7 +580,7 @@
   (FileUtils/deleteDirectory repo-path))
 
 (defn- get-jgit [^File path {:keys [remote-url token] :as args}]
-  (if-let [obj (get @jgit (.getPath path))]
+  (if-let [obj (when (.exists path) (get @jgit (.getPath path)))]
     obj
     (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
                                                                      :token      token})
@@ -450,8 +595,10 @@
   (fetch! source)
   (let [version (commit-sha source (:branch source))]
     (if version
-      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source))
-      (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
+      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
+      (throw (ex-info (str "Invalid branch: " (:branch source))
+                      {:error-type :missing-branch
+                       :branch (:branch source)})))))
 
 (defn- snapshot
   "Creates a snapshot, recovering from stale cache errors by re-cloning."
@@ -468,7 +615,15 @@
             (snapshot* fresh-source)))
         (throw e)))))
 
-(defrecord GitSource [git remote-url branch token]
+(defn snapshot-at-version
+  "Builds a GitSnapshot for `source` at an already-fetched `version` (commit-ish), or nil if the version
+  cannot be resolved against local state (e.g. it was orphaned by a force-push or rebase). Does not fetch."
+  [source version]
+  (when version
+    (when-let [sha (commit-sha source version)]
+      (->GitSnapshot (:git source) (:remote-url source) (:branch source) sha (:token source) (:managed-dirs source)))))
+
+(defrecord GitSource [git remote-url branch token managed-dirs]
   source.p/Source
   (branches [source] (branches source))
 
@@ -479,15 +634,20 @@
     (default-branch this))
 
   (snapshot [this]
-    (snapshot this)))
+    (snapshot this))
+
+  (snapshot-at [this version]
+    (snapshot-at-version this version)))
 
 (defn git-source
   "Creates a new GitSource instance for a git repository.
 
-  Takes a URL string (the git repository URL), a branch, and an
-  optional token string (authentication token for private repositories).
+  Takes a URL string (the git repository URL), a branch, an
+  optional token string (authentication token for private repositories),
+  and a set of managed top-level directory names. Files in managed directories
+  are fully replaced during writes — any existing file not in the write set is removed.
 
   Returns a GitSource record implementing the Source protocol."
-  [url branch token]
+  [url branch token managed-dirs]
   (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
-               url branch token))
+               url branch token managed-dirs))

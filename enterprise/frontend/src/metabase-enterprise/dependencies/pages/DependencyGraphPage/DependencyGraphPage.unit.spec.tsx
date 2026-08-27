@@ -1,26 +1,25 @@
-import { Route } from "react-router";
-
-import { setupDependecyGraphEndpoint } from "__support__/server-mocks";
+import {
+  setupDependencyGraphEndpoint,
+  setupRecentViewsAndSelectionsEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Route } from "metabase/router";
 import { createMockDependencyGraph } from "metabase-types/api/mocks";
 
 import { DependencyGraphPage } from "./DependencyGraphPage";
 
-jest.mock("../../components/DependencyGraph", () => ({
-  DependencyGraph: () => <p>Dependency Graph</p>,
-}));
-
 describe("DependencyGraphPage", () => {
   beforeEach(() => {
-    setupDependecyGraphEndpoint(createMockDependencyGraph());
+    setupDependencyGraphEndpoint(createMockDependencyGraph());
+    setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   });
   it("should show an app switcher if there is no context", async () => {
-    renderWithProviders(<Route path="/" component={DependencyGraphPage} />, {
+    renderWithProviders(<Route path="/" element={<DependencyGraphPage />} />, {
       withRouter: true,
     });
 
-    expect(await screen.findByText("Dependency Graph")).toBeInTheDocument();
+    expect(await screen.findByTestId("dependency-graph")).toBeInTheDocument();
     expect(screen.getByTestId("app-switcher-target")).toBeInTheDocument();
   });
 
@@ -28,7 +27,7 @@ describe("DependencyGraphPage", () => {
     renderWithProviders(
       <Route
         path="/"
-        component={() => (
+        element={
           <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
             value={{
               baseUrl: "any-url",
@@ -37,14 +36,14 @@ describe("DependencyGraphPage", () => {
           >
             <DependencyGraphPage />
           </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
-        )}
+        }
       />,
       {
         withRouter: true,
       },
     );
 
-    expect(await screen.findByText("Dependency Graph")).toBeInTheDocument();
+    expect(await screen.findByTestId("dependency-graph")).toBeInTheDocument();
     expect(screen.queryByTestId("app-switcher-target")).not.toBeInTheDocument();
   });
 });

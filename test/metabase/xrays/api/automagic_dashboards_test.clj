@@ -1,19 +1,23 @@
 (ns metabase.xrays.api.automagic-dashboards-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.xrays.api.automagic-dashboards-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [malli.core :as mc]
+   [metabase.api.macros :as api.macros]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.api.automagic-dashboards :as api.magic]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
    [metabase.xrays.test-util.domain-entities :as test.de]
@@ -77,7 +81,6 @@
 (deftest table-xray-test
   (testing "GET /api/automagic-dashboards/table/:id"
     (is (some? (api-call! "table/%s" [(mt/id :venues)]))))
-
   (testing "GET /api/automagic-dashboards/table/:id/rule/example/indepth"
     (is (some? (api-call! "table/%s/rule/example/indepth" [(mt/id :venues)])))))
 
@@ -143,13 +146,11 @@
               [(fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id"
                    (is (some? (api-call! "question/%s" [card-id] #(revoke-collection-permissions! collection-id))))))
-
                (fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id/cell/:cell-query"
                    (is (some? (api-call! "question/%s/cell/%s"
                                          [card-id cell-query]
                                          #(revoke-collection-permissions! collection-id))))))
-
                (fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id/cell/:cell-query/rule/example/indepth"
                    (is (some? (api-call! "question/%s/cell/%s/rule/example/indepth"
@@ -172,13 +173,11 @@
                 [(fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id"
                      (is (some? (api-call! "model/%s" [card-id] #(revoke-collection-permissions! collection-id))))))
-
                  (fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id/cell/:cell-query"
                      (is (some? (api-call! "model/%s/cell/%s"
                                            [card-id cell-query]
                                            #(revoke-collection-permissions! collection-id))))))
-
                  (fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id/cell/:cell-query/rule/example/indepth"
                      (is (some? (api-call! "model/%s/cell/%s/rule/example/indepth"
@@ -218,10 +217,8 @@
                     [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
       (is (some? (api-call! "adhoc/%s" [query]))))
-
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query"
       (is (some? (api-call! "adhoc/%s/cell/%s" [query cell-query]))))
-
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query/rule/example/indepth"
       (is (some? (api-call! "adhoc/%s/cell/%s/rule/example/indepth" [query cell-query]))))))
 
@@ -310,13 +307,6 @@
                                       :card
                                       :dataset_query
                                       qp/process-query))))))))))))
-
-(deftest cards-have-can-run-adhoc-query-test
-  (api-call! "table/%s" [(mt/id :venues)]
-             (constantly true)
-             (fn [dashboard]
-               (is (every? #(get-in % [:card :can_run_adhoc_query])
-                           (filter :card (:dashcards dashboard)))))))
 
 ;;; ------------------- Index Entities Xrays -------------------
 
@@ -617,3 +607,29 @@
         (let [pattern (:api/regex (mc/properties (mr/resolve-schema schema)))]
           (assert (instance? java.util.regex.Pattern pattern))
           (is (re= pattern "0IjoieWVhciJ9XV19LCJkYXRhYmFzZSI6MX0=")))))))
+
+(deftest ^:parallel cell-query-decode-strips-extra-properties-test
+  (testing "the ::cell-query schema decodes a base64 JSON filter clause, validates it, and strips undeclared properties"
+    (let [encoded (u/encode-base64 (json/encode [">" {:a 1 :a/b 2} ["field" {} 1] 10]))
+          result  (api.macros/decode-and-validate-params :query ::api.magic/cell-query encoded)]
+      (is (mr/validate ::ads/root.cell-query result)
+          "decoded cell query is a valid filter clause")
+      (is (= :> (first result)))
+      (let [opts (second result)]
+        (is (map? opts))
+        (is (not (contains? opts :a)))
+        (is (not (contains? opts :a/b)))))))
+
+(deftest adhoc-query-decode-strips-extra-keys-test
+  (testing "adhoc queries are validated and stripped of undeclared properties"
+    (mt/with-test-user :rasta
+      (let [q      {:database (mt/id)
+                    :type     "query"
+                    :query    {:source-table (mt/id :venues)
+                               :a            1
+                               :a/b          2}}
+            dq     (:dataset_query (#'api.magic/adhoc-query-instance q))]
+        (is (mr/validate ::ads/query dq)
+            "decoded adhoc query is a valid MBQL query")
+        (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages dq))
+            "undeclared properties are stripped from every stage")))))

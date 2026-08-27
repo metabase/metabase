@@ -14,7 +14,7 @@
                            :user_group_memberships
                            (->> (map :id)))
           all-users-id (t2/select-one-pk :model/PermissionsGroup :name "All Users")]
-      (is [all-users-id] memberships))))
+      (is all-users-id memberships))))
 
 (deftest internal-user-is-unmodifiable-via-api-test
   (testing "GET /api/user"
@@ -25,7 +25,6 @@
         (is (not-any? (comp #{internal-user-email} :email) data)))
       (testing "does not count the internal user"
         (is (= total (count data))))))
-
   (testing "User Endpoints with :id"
     (doseq [[method endpoint status-code] [[:put "user/:id" 400]
                                            [:put "user/:id/reactivate" 400]

@@ -1,14 +1,14 @@
-import type { Dayjs } from "dayjs";
-import dayjs from "dayjs";
-
+import { type Dayjs, dayjs } from "metabase/dayjs";
 import type { ContinuousDomain } from "metabase/visualizations/shared/types/scale";
 
+import type { ChartLayout } from "../layout/types";
 import type {
   TimeSeriesAxisFormatter,
   TimeSeriesXAxisModel,
 } from "../model/types";
 import {
   computeTimeseriesTicksInterval,
+  getFormatter,
   getLargestInterval,
   getTimeSeriesIntervalDuration,
 } from "../utils/timeseries";
@@ -17,7 +17,7 @@ import {
 // For example, when a dataset has two days and minInterval is 1 day in milliseconds datasets like ["2022-01-01", "2022-01-02"]
 // will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would correctly render two ticks as needed.
 // The workaround is to add more padding on sides for this corner case.
-const getPadding = (intervalsCount: number) => {
+export const getPadding = (intervalsCount: number) => {
   if (intervalsCount <= 1) {
     return 5 / 6;
   }
@@ -27,7 +27,7 @@ const getPadding = (intervalsCount: number) => {
 
 export const getTicksOptions = (
   xAxisModel: TimeSeriesXAxisModel,
-  chartWidth: number,
+  chartLayout: ChartLayout,
 ) => {
   const { range, toEChartsAxisValue, interval, intervalsCount } = xAxisModel;
 
@@ -35,6 +35,7 @@ export const getTicksOptions = (
   let minInterval: number | undefined;
   let maxInterval: number | undefined;
 
+  // Unjustified type cast. FIXME
   const xDomain = range.map((day) => {
     const adjustedDate = dayjs(toEChartsAxisValue(day.toISOString()));
     if (!adjustedDate) {
@@ -56,18 +57,12 @@ export const getTicksOptions = (
   const computedInterval = computeTimeseriesTicksInterval(
     xDomain,
     interval,
-    chartWidth,
-    xAxisModel.formatter,
+    chartLayout,
+    formatter,
   );
   const largestInterval = getLargestInterval([computedInterval, interval]);
 
-  // If the data interval is week but due to available space and the range of the chart
-  // we decide to show monthly, yearly or even larger ticks, we should format ticks values as months.
-  if (interval.unit === "week" && largestInterval.unit !== "week") {
-    formatter = (value) => {
-      return xAxisModel.formatter(value, "month");
-    };
-  }
+  formatter = getFormatter(formatter, interval.unit, largestInterval.unit);
 
   const isWithinRange = (date: Dayjs) => {
     return date.isAfter(paddedMin) && date.isBefore(paddedMax);
@@ -82,7 +77,9 @@ export const getTicksOptions = (
   if (largestInterval.unit === "week") {
     const startOfWeek = range[0].day();
     canRender = (date: Dayjs) =>
-      isWithinRange(date) && date.day() === startOfWeek;
+      isWithinRange(date) &&
+      date.day() === startOfWeek &&
+      date.week() % largestInterval.count === 0;
     const effectiveTicksUnit = "day";
     maxInterval = getTimeSeriesIntervalDuration({
       count: 1,
@@ -95,7 +92,10 @@ export const getTicksOptions = (
   // (like February with 28 days) are shorter than others (31 days).
   // Instead, we force ECharts to generate daily ticks and filter to month starts.
   if (largestInterval.unit === "month") {
-    canRender = (date: Dayjs) => isWithinRange(date) && date.date() === 1;
+    canRender = (date: Dayjs) =>
+      isWithinRange(date) &&
+      date.date() === 1 &&
+      date.month() % largestInterval.count === 0;
     maxInterval = getTimeSeriesIntervalDuration({
       count: 1,
       unit: "day",
@@ -109,11 +109,22 @@ export const getTicksOptions = (
   if (!isSingleItem && largestInterval.unit === "quarter") {
     const effectiveTicksUnit = "month";
     canRender = (date: Dayjs) =>
-      isWithinRange(date) && date.startOf("quarter").isSame(date, "month");
+      isWithinRange(date) &&
+      date.startOf("quarter").isSame(date, "month") &&
+      (date.quarter() - 1) % largestInterval.count === 0;
     maxInterval = getTimeSeriesIntervalDuration({
       count: 1,
       unit: effectiveTicksUnit,
     });
+  }
+
+  // HACK: ECharts 6.1.0 emits intermediate (mid-year) ticks within the padded
+  // single-point year domain. Unlike week/month/quarter, the year path had no
+  // boundary guard, so two ticks in the same year both format as that year and
+  // duplicate the label (metabase#63671). Filter to start-of-year ticks only.
+  if (largestInterval.unit === "year") {
+    canRender = (date: Dayjs) =>
+      isWithinRange(date) && date.month() === 0 && date.date() === 1;
   }
 
   if (!maxInterval) {

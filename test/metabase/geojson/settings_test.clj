@@ -22,8 +22,24 @@
 (deftest ^:parallel geojson-schema-test
   (is (@#'geojson.settings/CustomGeoJSONValidator test-custom-geojson)))
 
+(deftest ^:parallel builtin-region-geojson-test
+  (testing "Built-in regions resolve to parsed GeoJSON data read from the classpath"
+    (let [us (geojson.settings/builtin-region-geojson "us_states")]
+      (is (= "STATE" (:region_key us)))
+      (is (= "NAME" (:region_name us)))
+      (is (= "FeatureCollection" (get-in us [:data "type"])))
+      (is (pos? (count (get-in us [:data "features"])))))
+    (let [world (geojson.settings/builtin-region-geojson "world_countries")]
+      (is (= "ISO_A2" (:region_key world)))
+      (is (pos? (count (get-in world [:data "features"]))))))
+  (testing "Keyword region keys are accepted"
+    (is (some? (geojson.settings/builtin-region-geojson :us_states))))
+  (testing "Unknown / non-built-in regions return nil"
+    (is (nil? (geojson.settings/builtin-region-geojson "narnia")))
+    (is (nil? (geojson.settings/builtin-region-geojson nil)))))
+
 (deftest ^:parallel validate-geojson-test
-  (testing "It validates URLs and files appropriately"
+  (testing "It validates URLs and files appropriately (classpath resources disabled by default)"
     (let [examples {;; Internal metadata for GCP
                     "metadata.google.internal"                 false
                     "https://metadata.google.internal"         false
@@ -33,6 +49,10 @@
                     "http://fe80::"                            false
                     "169.254.169.254"                          false
                     "http://169.254.169.254/secret-stuff.json" false
+                    "http://0.0.0.0"                           false
+                    "http://[::]"                              false
+                    "http://100.64.0.1"                        false
+                    "http://[fc00::1]"                         false
                     ;; alternate IPv4 encodings (hex, octal, integer)
                     "http://0xa9fea9fe"                        false
                     "https://0xa9fea9fe"                       false
@@ -54,8 +74,8 @@
                     "http://192.0.2.0"                         true
                     ;; this following test flakes in CI for unknown reasons
                     ;;"http://0xc0000200"                        true
-                    ;; Resources (files on classpath) are valid
-                    "c3p0.properties"                          true
+                    ;; Classpath resources are NOT valid when env var is not set
+                    "test.geojson"                             false
                     ;; Other files are not
                     "./README.md"                              false
                     "file:///tmp"                              false
@@ -72,6 +92,16 @@
           (if should-pass?
             (is (valid? geojson geojson) (str url))
             (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson)) (str url))))))))
+
+(deftest classpath-geojson-env-var-test
+  (testing "When MB_ALLOW_CLASSPATH_GEOJSON is true"
+    (mt/with-temp-env-var-value! [mb-allow-classpath-geojson "true"]
+      (testing "classpath resources are accepted"
+        (let [geojson {:deadb33f {:name "Test" :url "test.geojson" :region_key nil :region_name nil}}]
+          (is (#'geojson.settings/validate-geojson geojson geojson))))))
+  (testing "When MB_ALLOW_CLASSPATH_GEOJSON is not set, classpath resources are rejected"
+    (let [geojson {:deadb33f {:name "Test" :url "test.geojson" :region_key nil :region_name nil}}]
+      (is (thrown? clojure.lang.ExceptionInfo (#'geojson.settings/validate-geojson geojson geojson))))))
 
 (deftest custom-geojson-disallow-overriding-builtins-test
   (testing "We shouldn't let people override the builtin GeoJSON and put weird stuff in there; ignore changes to them"

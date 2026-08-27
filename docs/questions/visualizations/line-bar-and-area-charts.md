@@ -52,7 +52,7 @@ These three charting types have similar options, which are broken up into the fo
 
 ## Data settings
 
-Here you can configure settings for the how the data is displayed.
+Here you can configure settings for how the data is displayed.
 
 For each series on the chart, you can:
 
@@ -68,7 +68,7 @@ For each series on the chart, you can:
 - Line shape
 - Line style
 - Line size: Small, Medium, or Large
-- Whether to show docs on the lines (the dots represent the actual data points plotted on the chart)
+- Whether to show dots on the lines (the dots represent the actual data points plotted on the chart)
 - Whether to show values for the series. This option is only available if you've toggled on [Show value on data points](#values-on-data-points).
 - How to replace missing values: Zero, Nothing (just a break in the line), or Linear interpolated
 
@@ -87,13 +87,14 @@ Here you set things like:
 
 - [Goal line](#goal-lines)
 - [Stack a bar chart](#stacked-bar-chart)
+- [Stack series](#stack-series)
 - [Whether to show values on data points](#values-on-data-points)
 
 ### Goal lines
 
 ![Goal line on chart](../images/goal-line.png)
 
-Goal lines can be used in conjunction with [alerts](../alerts.md) to send an email or a Slack message when your metric cross this line.
+Goal lines can be used in conjunction with [alerts](../alerts.md) to send an email or a Slack message when your metric crosses this line.
 
 ### Trend lines
 
@@ -103,13 +104,29 @@ Goal lines can be used in conjunction with [alerts](../alerts.md) to send an ema
 
 ### Stacked bar chart
 
-If you have multiple series, you can stack them on bar chart.
+If you have multiple series, you can stack them on a bar chart.
 
 ![Stacked bar chart](../images/stacked-bar-chart.png)
 
 As well as stack them as a percentage:
 
 ![Stacked bar chart 100%](../images/stacked-100.png)
+
+### Stack series
+
+To stack series, one chart on top of the other, your query must include **either**:
+
+**Multiple breakouts**: at least two entries in the grouping block in the query builder or `GROUP BY` clause in SQL.
+
+OR
+
+**Multiple metrics**: at least two entries in the summarize block, or two aggregation functions in the `SELECT` statement.
+
+![Stacked series](../images/stacked-series.png)
+
+You can mix and match bar, line, and areas in stacked series - select the right visualization type for each series in the **Data** tab:
+
+![Stacked series mixed types](../images/stacked-series-mix.png)
 
 ### Values on data points
 
@@ -137,7 +154,7 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 - Show label (the label for the axis).
 - Rename the axis
 - Split y-axis when necessary
-- Auto y-axis range. When not toggled on, you can set the y-axis range (it's min and max values).
+- Auto y-axis range. When not toggled on, you can set the y-axis range (its min and max values).
 - Scale: Linear, power, or log.
 - Show lines and marks
 - Unpin from zero. Allows you to "Zoom in" on charts with values well above zero. Here's an example (note the y-axis starts at 20,000):
@@ -145,7 +162,7 @@ Here you'll find additional settings for configuring your x and y axes (as in ax
 
 ## Chart legend
 
-For charts with multiple series or breakouts, chart legend displays the label and color of each series.
+For charts with multiple series or breakouts, the chart legend displays the label and color of each series.
 
 ![Legend](../images/legend.png)
 

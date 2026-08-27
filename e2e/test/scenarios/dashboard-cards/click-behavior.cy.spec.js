@@ -28,8 +28,8 @@ const CREATED_AT_COLUMN_SOURCE = {
 };
 const FILTER_VALUE = "123";
 const POINT_COUNT = 64;
-const POINT_CREATED_AT = "2022-07";
-const POINT_CREATED_AT_FORMATTED = "July 2022";
+const POINT_CREATED_AT = "2025-07";
+const POINT_CREATED_AT_FORMATTED = "July 2025";
 const POINT_INDEX = 3;
 const RESTRICTED_COLLECTION_NAME = "Restricted collection";
 const COLUMN_INDEX = {
@@ -248,7 +248,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").findByText("No available targets").should("exist");
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       cy.intercept(
         "GET",
@@ -313,7 +313,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -369,7 +369,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTimeParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -442,7 +442,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -518,7 +518,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("not.exist");
       cy.button("Done").should("be.enabled").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.get("@targetDashboardId").then((targetDashboardId) => {
@@ -557,11 +557,21 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.editDashboard();
       H.getDashboardCard().realHover().icon("click").click();
+
+      // Wait for the click behavior sidebar to finish loading the target
+      // dashboard before saving. The `migrateDeletedTab` effect that falls the
+      // now-invalid tabId back to the first tab — which is what dirties the
+      // dashboard and triggers the save request — only runs once the target
+      // dashboard has loaded. Asserting the tab selector is absent passes
+      // trivially before that load, so we anchor on a positive signal first.
+      cy.get("aside")
+        .findByText("Pass values to this dashboard's filters (optional)")
+        .should("be.visible");
       cy.get("aside")
         .findByLabelText("Select a dashboard tab")
         .should("not.exist");
-      cy.button("Done").should("be.enabled").click();
-      H.saveDashboard({ waitMs: 250 });
+      cy.get("aside").button("Done").should("be.enabled").click();
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.get("@targetDashboardId").then((targetDashboardId) => {
@@ -626,7 +636,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.modal().button("Discard changes").click();
       cy.button("Cancel").should("not.exist");
       cy.findByTestId("visualization-root")
-        .findByText("May 2022")
+        .findByText("May 2025")
         .should("exist");
       clickLineChartPoint();
       cy.get("@targetDashboardId").then((targetDashboardId) => {
@@ -693,7 +703,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
 
@@ -784,7 +794,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextWithDefaultParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -850,7 +860,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addSavedQuestionDestination();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       cy.intercept(
         "GET",
@@ -895,12 +905,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addSavedQuestionCreatedAtParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findByTestId("qb-filters-panel").should(
         "have.text",
-        "Created At is Jul 1–31, 2022",
+        "Created At is Jul 1–31, 2025",
       );
 
       cy.location("pathname").should("equal", "/question");
@@ -913,7 +923,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.openNotebook();
       H.verifyNotebookQuery("Orders", [
         {
-          filters: ["Created At is Jul 1–31, 2022"],
+          filters: ["Created At is Jul 1–31, 2025"],
           aggregations: ["Count"],
           breakouts: ["Created At: Month"],
           limit: 5,
@@ -942,12 +952,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addSavedQuestionQuantityParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.wait("@dataset");
       cy.findByTestId("qb-filters-panel")
-        .should("contain.text", "Created At is Jul 1–31, 2022")
+        .should("contain.text", "Created At is Jul 1–31, 2025")
         .should("contain.text", "Quantity is equal to 64");
 
       cy.location("pathname").should("equal", "/question");
@@ -960,7 +970,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.openNotebook();
       H.verifyNotebookQuery("Orders", [
         {
-          filters: ["Created At is Jul 1–31, 2022", "Quantity is equal to 64"],
+          filters: ["Created At is Jul 1–31, 2025", "Quantity is equal to 64"],
           aggregations: ["Count"],
           breakouts: ["Created At: Month"],
           limit: 5,
@@ -1019,7 +1029,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       H.onNextAnchorClick((anchor) => {
         expect(anchor).to.have.attr("href", URL);
@@ -1070,7 +1080,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       H.dashboardParametersPopover().within(() => {
@@ -1132,7 +1142,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addNumericParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -1189,7 +1199,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("contain.text", COUNT_COLUMN_NAME);
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       H.editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
@@ -1197,7 +1207,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .click();
       cy.get("aside").button("Remove").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -1252,7 +1262,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTimeParameter();
       cy.get("aside").button("Done").click();
 
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       clickLineChartPoint();
       cy.findAllByTestId("parameter-widget")
@@ -1371,7 +1381,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       })();
 
       cy.get("aside").button("Done").click();
-      H.saveDashboard({ waitMs: 500 });
+      H.saveDashboard();
 
       (function testDashboardDestinationClick() {
         cy.log("it handles 'Count' column click");
@@ -1405,7 +1415,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           .click();
         cy.wait("@dataset");
         cy.findByTestId("qb-filters-panel")
-          .should("contain.text", "Created At is Jul 1–31, 2022")
+          .should("contain.text", "Created At is Jul 1–31, 2025")
           .should("contain.text", "Quantity is equal to 64");
 
         cy.location("pathname").should("equal", "/question");
@@ -1419,7 +1429,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         H.verifyNotebookQuery("Orders", [
           {
             filters: [
-              "Created At is Jul 1–31, 2022",
+              "Created At is Jul 1–31, 2025",
               "Quantity is equal to 64",
             ],
             aggregations: ["Count"],
@@ -1495,7 +1505,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.text", "1 column has custom behavior");
 
       cy.get("aside").button("Done").click();
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       getTableCell(COLUMN_INDEX.COUNT)
         .should("have.text", String(POINT_COUNT))
@@ -1613,7 +1623,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.text", "2 columns have custom behavior");
 
       cy.get("aside").button("Done").click();
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       (function testUpdateDashboardFiltersClick() {
         cy.log("it handles 'Count' column click");
@@ -1647,7 +1657,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(anchor).to.have.attr("target", "_blank");
         });
         getTableCell(COLUMN_INDEX.CREATED_AT)
-          .should("have.text", "Created at: October 2023")
+          .should("have.text", "Created at: October 2026")
           .click();
       })();
     });
@@ -2105,53 +2115,53 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       // 1st stage - Orders
       getClickMapping("ID").click();
-      H.popover().findByText("ID").click();
+      selectClickMappingSource("ID");
 
       // 1st stage - Custom columns
       getClickMapping("Net").click();
-      H.popover().findByText("User → Longitude: 10°").click();
+      selectClickMappingSource("User → Longitude: 10°");
 
       // 1st stage - Reviews #1 (explicit join)
       getClickMapping("Reviews - Product → Reviewer").click();
-      H.popover().findByText("Product → Category").click();
+      selectClickMappingSource("Product → Category");
 
       // 1st stage - Products (implicit join with Orders)
       getClickMapping("Product → Title").first().click();
-      H.popover().findByText("Product → Category").click();
+      selectClickMappingSource("Product → Category");
 
       // 1st stage - People (implicit join with Orders)
       getClickMapping("User → Longitude").click();
-      H.popover().findByText("User → Longitude: 10°").click();
+      selectClickMappingSource("User → Longitude: 10°");
 
       // 1st stage - Products (implicit join with Reviews)
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getClickMapping("Product → Vendor").last().click();
-      H.popover().findByText("Product → Category").click();
+      selectClickMappingSource("Product → Category");
 
       // 1st stage - Aggregations & breakouts
       getClickMapping("Product → Category").eq(2).click();
-      H.popover().findByText("Product → Category").click();
+      selectClickMappingSource("Product → Category");
 
       // 2nd stage - Custom columns
       getClickMapping("5 * Count").click();
-      H.popover().findByText("Count").click();
+      selectClickMappingSource("Count");
 
       // 2nd stage - Reviews #2 (explicit join)
       getClickMapping("Reviews - Created At: Month → Rating").click();
-      H.popover().findByText("ID").click();
+      selectClickMappingSource("ID");
 
       // 2nd stage - Aggregations & breakouts
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getClickMapping("Count").last().click();
-      H.popover().findByText("User → Longitude: 10°").click();
+      selectClickMappingSource("User → Longitude: 10°");
 
       customizeLinkText(`Created at: {{${CREATED_AT_COLUMN_ID}}} - {{count}}`);
 
       cy.get("aside").button("Done").click();
-      H.saveDashboard({ waitMs: 250 });
+      H.saveDashboard();
 
       H.getDashboardCard()
-        .findAllByText("Created at: May 2022 - 1")
+        .findAllByText("Created at: May 2025 - 1")
         .first()
         .click();
 
@@ -2167,7 +2177,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       // queryBuilderMain()
       //   .findByText("There was a problem with your question")
       //   .should("not.exist");
-      // queryBuilderMain().findByText("No results!").should("be.visible");
+      // queryBuilderMain().findByText("No results").should("be.visible");
 
       H.openNotebook();
       H.verifyNotebookQuery("Orders", [
@@ -2188,12 +2198,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           ],
           expressions: ["Net"],
           filters: [
+            "Product → Title is Doohickey",
             "Reviews - Product → Reviewer is Doohickey",
             "Product → Vendor is Doohickey",
-            "User → Longitude is equal to -80",
             "ID is 7021",
+            "User → Longitude is equal to -80",
             "Net is equal to -80",
-            "Product → Title is Doohickey",
           ],
           aggregations: ["Count", "Sum of Total"],
           breakouts: [
@@ -2312,7 +2322,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     H.popover().findByText(FILTER_MAPPING_COLUMN).click();
 
     cy.get("aside").button("Done").click();
-    H.saveDashboard({ waitMs: 250 });
+    H.saveDashboard();
 
     // test click behavior routing to same dashboard, different tab
     getTableCell(1).click();
@@ -2699,7 +2709,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").button("Done").click();
 
       H.saveDashboard({ awaitRequest: false });
-      cy.wait("@saveDashboard-getDashboard");
+      cy.wait("@saveDashboard-getDashboardMetadata");
 
       clickLineChartPoint();
 
@@ -2917,10 +2927,7 @@ const testChangingBackToDefaultBehavior = () => {
   cy.get("aside").findByText("Open the Metabase drill-through menu").click();
   cy.get("aside").button("Done").click();
 
-  H.saveDashboard({ waitMs: 250 });
-  // this is necessary due to query params being reset after saving dashboard
-  // with filter applied, which causes dashcard to be refetched
-  cy.wait(1);
+  H.saveDashboard();
 
   clickLineChartPoint();
   assertDrillThroughMenuOpen();
@@ -2928,7 +2935,7 @@ const testChangingBackToDefaultBehavior = () => {
 
 const getTableCell = (index) => {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  return cy
+  return H.tableInteractiveBody()
     .findAllByRole("row")
     .eq(POINT_INDEX)
     .findAllByTestId("cell-data")
@@ -2996,6 +3003,21 @@ function getClickMapping(columnName) {
     .get("aside")
     .findByTestId("unset-click-mappings")
     .findAllByText(columnName);
+}
+
+// Picks a source from the open click-mapping popover and waits for it to close.
+// Applying a mapping re-renders the unset-mappings list; without this barrier the
+// next index-based lookup (.first()/.last()/.eq()) can resolve mid-re-render and
+// land on the wrong target, producing a stable-but-wrong filter set.
+//
+// The barrier scopes to the *visible* popover: a bare
+// `cy.get(POPOVER_ELEMENT).should("not.exist")` never settles here because the
+// click-behavior sidebar keeps ~60 mantine popover/combobox dropdowns
+// mounted-but-hidden, so they are "continuously found" in the DOM. Filtering to
+// `:visible` leaves only the open source picker, which disappears once selected.
+function selectClickMappingSource(sourceName) {
+  H.popover().findByText(sourceName).click();
+  cy.get(H.POPOVER_ELEMENT).filter(":visible").should("not.exist");
 }
 
 function verifyAvailableClickTargetColumns(columns) {

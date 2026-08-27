@@ -1,14 +1,10 @@
-import type { EntityId } from "metabase/admin/permissions/types";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "metabase/admin/permissions/utils/urls";
-import type { GroupId, Impersonation } from "metabase-types/api";
+import type { GroupId, PermissionEntityId } from "metabase-types/api";
 
 import type { ImpersonationModalParams } from "./types";
-
-export const getImpersonationKey = (impersonation: Impersonation) =>
-  `${impersonation.db_id}:${impersonation.group_id}`;
 
 export const getImpersonatedDatabaseId = ({
   databaseId,
@@ -25,7 +21,7 @@ export const getImpersonatedDatabaseId = ({
 };
 
 const getDatabaseViewImpersonationModalUrl = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: GroupId,
 ) => {
   const baseUrl = getDatabaseFocusPermissionsUrl(entityId);
@@ -33,7 +29,7 @@ const getDatabaseViewImpersonationModalUrl = (
 };
 
 const getGroupViewImpersonationModalUrl = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: GroupId,
 ) => {
   const baseUrl = getGroupFocusPermissionsUrl(groupId);
@@ -42,7 +38,7 @@ const getGroupViewImpersonationModalUrl = (
 };
 
 export const getEditImpersonationUrl = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: GroupId,
   view: "database" | "group",
 ) =>

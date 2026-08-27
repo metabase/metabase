@@ -1,4 +1,4 @@
-import { type FocusEvent, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,8 +10,15 @@ import { getCompatibleSemanticTypes } from "./utils";
 const NO_SEMANTIC_TYPE = null;
 const NO_SEMANTIC_TYPE_STRING = "null";
 
+// Only the type-classification properties of `Field` are read; widening to
+// this minimal shape lets callers pass normalized/stub shapes without casting.
+export type SemanticTypePickerField = {
+  base_type?: Field["base_type"];
+  effective_type?: Field["effective_type"];
+};
+
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
-  field: Field;
+  field: SemanticTypePickerField;
   value: string | null;
   onChange: (value: string | null) => void;
 }
@@ -21,7 +28,6 @@ export const SemanticTypePicker = ({
   field,
   value,
   onChange,
-  onFocus,
   ...props
 }: Props) => {
   const data = useMemo(() => getData({ field, value }), [field, value]);
@@ -29,11 +35,6 @@ export const SemanticTypePicker = ({
   const handleChange = (value: string) => {
     const parsedValue = parseValue(value);
     onChange(parsedValue);
-  };
-
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    event.target.select();
-    onFocus?.(event);
   };
 
   return (
@@ -54,7 +55,6 @@ export const SemanticTypePicker = ({
       searchable
       value={stringifyValue(value)}
       onChange={handleChange}
-      onFocus={handleFocus}
       {...props}
     />
   );

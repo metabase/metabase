@@ -11,22 +11,22 @@ import { type FileRejection, useDropzone } from "react-dropzone";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { getComposedDragProps } from "metabase/collections/components/CollectionContent/utils";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { getComposedDragProps } from "metabase/common/collections/dropzone";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { CollectionName } from "metabase/common/components/CollectionName";
 import {
   CollectionPickerModal,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { UploadInput } from "metabase/common/components/upload";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
+import { UploadMode } from "metabase/redux/store/upload";
 import {
   MAX_UPLOAD_SIZE,
   MAX_UPLOAD_STRING,
   uploadFile,
 } from "metabase/redux/uploads";
 import { Box, Button, Center, Group, Icon, Stack, Text } from "metabase/ui";
-import { UploadMode } from "metabase-types/store/upload";
 
 import S from "../AddDataModal.module.css";
 import { trackCSVFileInputSelect } from "../analytics";
@@ -218,7 +218,7 @@ export const CSVUpload = ({
               <Box component={IconCSVWarning} h={50} />
             ) : (
               <Box
-                c={uploadState.file ? "brand" : "text-secondary-inverse"}
+                c={uploadState.file ? "core-brand" : "text-secondary-inverse"}
                 component={IconCSV}
                 h={50}
               />
@@ -227,7 +227,7 @@ export const CSVUpload = ({
             <div>
               <Text fw="bold">{primaryText}</Text>
               {!uploadState.file && (
-                <Text c="text-tertiary">
+                <Text c="text-disabled">
                   {c("{0} is the allowed size of a file in MB")
                     .t`.csv or .tsv files, ${MAX_UPLOAD_STRING} MB max`}
                 </Text>

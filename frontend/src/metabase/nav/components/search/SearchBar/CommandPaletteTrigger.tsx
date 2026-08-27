@@ -1,9 +1,9 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { METAKEY } from "metabase/lib/browser";
 import { Button, Tooltip } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
+import { METAKEY } from "metabase/utils/browser";
 
 export const CommandPaletteTrigger = ({
   onClick,
@@ -16,14 +16,14 @@ export const CommandPaletteTrigger = ({
         tabIndex={-1}
         onClick={onClick}
         p="0.25rem"
-        bg="background-secondary"
+        bg="background_page-secondary"
         fw={700}
         fz="8pt"
         lh="8pt"
         mr="0.5rem"
         style={{
           borderRadius: "0.25rem",
-          border: "1px solid var(--mb-color-border)",
+          border: "1px solid var(--mb-color-border-neutral)",
         }}
         styles={{
           root: {

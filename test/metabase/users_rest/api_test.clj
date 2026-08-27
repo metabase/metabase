@@ -1,11 +1,14 @@
 (ns metabase.users-rest.api-test
   "Tests for /api/user endpoints."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
@@ -25,7 +28,7 @@
 
 (use-fixtures
   :once
-  (fixtures/initialize :test-users-personal-collections))
+  (fixtures/initialize :test-users-personal-collections :notifications))
 
 (def ^:private user-defaults
   (delay
@@ -87,6 +90,30 @@
                (mt/user-http-request :lucky :get 403 "user")))
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :get 403 "user" :query "rasta")))))))
+
+(deftest user-list-for-data-analysts-test
+  (testing "GET /api/user"
+    (testing "A data analyst can get a list of all active users"
+      (mt/with-temp [:model/User {analyst-id :id :as analyst} {:first_name "Analyst"
+                                                               :last_name  "Testuser"
+                                                               :email      "analyst-list@metabase.com"
+                                                               :is_data_analyst true}]
+        (let [result (->> (:data (mt/user-http-request analyst :get 200 "user"))
+                          (filter #(or (mt/test-user? %) (= (:id %) analyst-id))))]
+          (is (= #{"crowberto@metabase.com"
+                   "lucky@metabase.com"
+                   "rasta@metabase.com"
+                   "analyst-list@metabase.com"}
+                 (set (map :email result)))))))
+    (testing "A sandboxed data analyst only sees themselves"
+      (mt/with-temp [:model/User {_ :id :as analyst} {:first_name "Sandboxed"
+                                                      :last_name  "Analyst"
+                                                      :email      "sandboxed-analyst@metabase.com"
+                                                      :is_data_analyst true}]
+        (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+          (let [result (:data (mt/user-http-request analyst :get 200 "user"))]
+            (is (= ["sandboxed-analyst@metabase.com"]
+                   (map :email result)))))))))
 
 (deftest user-list-for-group-managers-test
   (testing "Group Managers"
@@ -186,7 +213,6 @@
               (mt/with-temporary-setting-values [user-visibility visibility-value]
                 (testing "`user-visibility` setting returns the default value"
                   (is (= :all (users.settings/user-visibility))))
-
                 (testing "return all user by default"
                   (is (= [crowberto lucky rasta]
                          (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
@@ -206,14 +232,12 @@
                      (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                           (filter mt/test-user?)
                           (map :email))))))
-
           (testing "Returns all users when admin"
             (mt/with-temporary-setting-values [user-visibility "none"]
               (is (= [crowberto lucky rasta]
                      (->> ((mt/user-http-request :crowberto :get 200 "user/recipients") :data)
                           (filter mt/test-user?)
                           (map :email))))))
-
           (testing "Returns users in the group when user-visibility is same group"
             (mt/with-temporary-setting-values [user-visibility :group]
               (mt/with-temp
@@ -226,13 +250,11 @@
                 (is (= [crowberto rasta]
                        (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
                             (map :email))))
-
                 (testing "But returns self if the user is sandboxed"
-                  (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+                  (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
                     (is (= [rasta]
                            (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
                                 (map :email)))))))))
-
           (testing "Returns only self when user-visibility is none"
             (mt/with-temporary-setting-values [user-visibility :none]
               (is (= [rasta]
@@ -514,7 +536,6 @@
           (is (partial= {:can_create_queries        true
                          :can_create_native_queries true}
                         (user-permissions :crowberto))))
-
         (testing "user with query-builder-and-native on a non-sample DB"
           (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
             (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
@@ -522,7 +543,6 @@
               (is (partial= {:can_create_queries        true
                              :can_create_native_queries true}
                             (user-permissions :rasta))))))
-
         (testing "user with only query-builder (no native) on a non-sample DB"
           (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
             (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
@@ -530,7 +550,6 @@
               (is (partial= {:can_create_queries        true
                              :can_create_native_queries false}
                             (user-permissions :rasta))))))
-
         (testing "user with no query permissions on non-sample DBs"
           (mt/with-temp [:model/Database {db-id :id} {:is_sample false}]
             (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
@@ -538,7 +557,6 @@
               (is (partial= {:can_create_queries        false
                              :can_create_native_queries false}
                             (user-permissions :rasta))))))
-
         (testing "at least one non-sample DB with native permission is enough"
           (mt/with-temp [:model/Database {db1-id :id} {:is_sample false}
                          :model/Database {db2-id :id} {:is_sample false}]
@@ -610,15 +628,14 @@
                                        :password "p@ssw0rd"
                                        :login_attributes {"role" "admin"
                                                           "department" "engineering"}}]
+        (auth-identity/set-password! (:id user) "p@ssw0rd")
         (let [response (mt/user-http-request :crowberto :get 200 (str "user/" (:id user)))]
           (testing "response includes structured_attributes"
             (is (contains? response :structured_attributes)))
-
           (testing "structured_attributes has correct format for login attributes"
             (is (= {:role {:source "user" :frozen false :value "admin"}
                     :department {:source "user" :frozen false :value "engineering"}}
                    (:structured_attributes response))))
-
           (testing "structured_attributes is included for self-fetch"
             (let [self-response (mt/client {:username "structured@test.com" :password "p@ssw0rd"}
                                            :get 200 (str "user/" (:id user)))]
@@ -634,6 +651,7 @@
                                                         "env" "production"}
                                        :login_attributes {"role" "admin"
                                                           "department" "engineering"}}]
+        (auth-identity/set-password! (:id user) "p@ssw0rd")
         (let [response (mt/user-http-request :crowberto :get 200 (str "user/" (:id user)))]
           (testing "User attributes override jwt attributes when keys conflict"
             (is (= {:role {:source "user" :frozen false :value "admin"
@@ -641,7 +659,6 @@
                     :env {:source "jwt" :frozen false :value "production"}
                     :department {:source "user" :frozen false :value "engineering"}}
                    (:structured_attributes response)))))))
-
     (testing "with only login attributes"
       (mt/with-temp [:model/User user {:first_name "Test"
                                        :last_name "User"
@@ -653,7 +670,6 @@
           (is (= {:key1 {:source "user" :frozen false :value "value1"}
                   :key2 {:source "user" :frozen false :value "value2"}}
                  (:structured_attributes response))))))
-
     (testing "with no attributes"
       (mt/with-temp [:model/User user {:first_name "Test"
                                        :last_name "User"
@@ -663,7 +679,6 @@
         (let [response (mt/user-http-request :crowberto :get 200 (str "user/" (:id user)))]
           (is (= {}
                  (:structured_attributes response))))))
-
     (testing "with empty attribute maps"
       (mt/with-temp [:model/User user {:first_name "Test"
                                        :last_name "User"
@@ -673,7 +688,6 @@
         (let [response (mt/user-http-request :crowberto :get 200 (str "user/" (:id user)))]
           (is (= {}
                  (:structured_attributes response))))))
-
     (testing "JWT attributes preserve original value when overriding"
       (mt/with-temp [:model/User user {:first_name "Test"
                                        :last_name "User"
@@ -717,7 +731,6 @@
              (#'api.user/combine {:user {"key1" "value1"}
                                   :jwt {"key2" "value2"}}
                                  nil))))
-
     (testing "User overrides user attributes"
       (is (= {"key" {:source :user
                      :frozen false
@@ -726,12 +739,10 @@
              (#'api.user/combine {:user {"key" "user-value"}
                                   :jwt {"key" "jwt-value"}}
                                  nil))))
-
     (testing "system attributes are frozen"
       (is (= {"@system.key" {:source :system :frozen true :value "system-value"}}
              (#'api.user/combine {}
                                  {"@system.key" "system-value"}))))
-
     (testing "empty inputs produce empty output"
       (is (= {}
              (#'api.user/combine {:user nil :jwt nil} nil)))
@@ -793,7 +804,6 @@
               (mt/user-http-request :crowberto :post 400 "user"
                                     {:first_name "whatever"
                                      :last_name "whatever"})))
-
       (is (=? {:errors {:email "value must be a valid email address."}}
               (mt/user-http-request :crowberto :post 400 "user"
                                     {:first_name "whatever"
@@ -822,6 +832,19 @@
             (is (=? [{:id (:id (perms-group/all-users))} {:id (:id (perms-group/admin))}]
                     (:user_group_memberships resp)))
             (is (true? (:is_superuser resp)))))))))
+
+(deftest create-user-invite-target-validation-test
+  (testing "POST /api/user rejects a malformed invite_target"
+    (let [base {:first_name "Cam" :last_name "Era" :email (mt/random-email)}]
+      (testing "type outside the dashboard/question enum"
+        (mt/user-http-request :crowberto :post 400 "user"
+                              (assoc base :invite_target {:type "collection" :id 1 :name "Q3"})))
+      (testing "non-positive id"
+        (mt/user-http-request :crowberto :post 400 "user"
+                              (assoc base :invite_target {:type "dashboard" :id 0 :name "Q3"})))
+      (testing "blank name"
+        (mt/user-http-request :crowberto :post 400 "user"
+                              (assoc base :invite_target {:type "dashboard" :id 1 :name ""}))))))
 
 (deftest create-user-set-groups-test
   (testing "POST /api/user"
@@ -926,7 +949,8 @@
 (deftest create-user-mixed-case-email-2
   (testing "POST /api/user/:id"
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
-      (is (=? {:errors {:email "Email address already in use."}}
+      (is (=? {:errors     {:email "Email address already in use."}
+               :error_code "email-already-in-use"}
               (mt/user-http-request :crowberto :post 400 "user"
                                     {:first_name "Something"
                                      :last_name "Random"
@@ -1071,29 +1095,21 @@
                                                 :last_name    "User"
                                                 :email        "testuser@metabase.com"
                                                 :is_superuser true}]
-        (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
-                :errors
-                {:login_attributes
-                 {(keyword "@foo")
-                  "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
-               (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
-                                     {:email            "testuser@metabase.com"
-                                      :login_attributes {"@foo" "foo"}}))))))
+        (is (=? {:errors {:login_attributes #(str/includes? % "must not start with `@`")}}
+                (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
+                                      {:email            "testuser@metabase.com"
+                                       :login_attributes {"@foo" "foo"}}))))))
   (testing "POST /api/user"
     (let [user-name (mt/random-name)
           email     (mt/random-email)]
       (mt/with-model-cleanup [:model/User]
         (mt/with-fake-inbox
-          (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
-                  :errors
-                  {:login_attributes
-                   {(keyword "@foo")
-                    "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
-                 (mt/user-http-request :crowberto :post 400 "user"
-                                       {:first_name       user-name
-                                        :last_name        user-name
-                                        :email            email
-                                        :login_attributes {"@foo" "bar"}}))))))))
+          (is (=? {:errors {:login_attributes #(str/includes? % "must not start with `@`")}}
+                  (mt/user-http-request :crowberto :post 400 "user"
+                                        {:first_name       user-name
+                                         :last_name        user-name
+                                         :email            email
+                                         :login_attributes {"@foo" "bar"}}))))))))
 
 (deftest ^:parallel updated-user-name-test
   (testing "Test that `metabase.users-rest.api/updated-user-name` works as intended."
@@ -1243,7 +1259,6 @@
         (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
                               {:is_data_analyst true})
         (is (user-is-data-analyst? user-id))))
-
     (testing "Test that a superuser can unset the :is_data_analyst flag (removes from Data Analysts group)"
       (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst-unset@metabase.com"}]
         (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
@@ -1252,13 +1267,11 @@
         (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
                               {:is_data_analyst false})
         (is (not (user-is-data-analyst? user-id)))))
-
     (testing "Test that a normal user cannot change the :is_data_analyst flag for themselves"
       (is (not (user-is-data-analyst? (mt/user->id :rasta))))
       (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
                             {:is_data_analyst true})
       (is (not (user-is-data-analyst? (mt/user->id :rasta)))))
-
     (testing "Test that a normal user cannot change the :is_data_analyst flag for another user"
       (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst2@metabase.com"}]
         (is (= "You don't have permissions to do that."
@@ -1279,7 +1292,6 @@
             (is (contains? result-ids analyst-id)))
           (testing "non-analyst is excluded"
             (is (not (contains? result-ids non-analyst-id)))))))
-
     (testing "Filter users by is_data_analyst=false excludes data analysts group members"
       (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst2"
                                                    :last_name "User"
@@ -1300,27 +1312,26 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :trashbird))
                                    {:email "toucan@metabase.com"}))))
-
     (testing "We should get a 404 when trying to access a disabled account"
       (is (= "Not found."
              (mt/user-http-request :crowberto :put 404 (str "user/" (mt/user->id :trashbird))
                                    {:email "toucan@metabase.com"}))))
-
     (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "google"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
                  (client/client creds :put 403 (format "user/%d" (u/the-id user))
                                 {:email "adifferentemail@metabase.com"}))))))
-
     (testing (str "Similar to Google auth accounts, we should not allow LDAP users to change their own email address "
                   "as we get that from the LDAP server")
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "ldap"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -1333,15 +1344,16 @@
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "google"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (client/client creds :put 200 (format "user/%d" (u/the-id user))
                          {:locale "id"}))))
-
     (testing "LDAP users can change their locale"
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
                                        :password "def123"
                                        :sso_source "ldap"}]
+        (auth-identity/set-password! (u/the-id user) "def123")
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (client/client creds :put 200 (format "user/%d" (u/the-id user))
@@ -1473,7 +1485,8 @@
 
 (deftest update-locale-test
   (testing "PUT /api/user/:id\n"
-    (mt/with-temp [:model/User {user-id :id, email :email} {:password "p@ssw0rd"}]
+    (mt/with-temp [:model/User {user-id :id, email :email} {}]
+      (auth-identity/set-password! user-id "p@ssw0rd")
       (letfn [(set-locale! [expected-status-code new-locale]
                 (mt/client {:username email, :password "p@ssw0rd"}
                            :put expected-status-code (str "user/" user-id)
@@ -1493,7 +1506,6 @@
                 (testing "value in DB should be updated to new locale"
                   (is (= (i18n/normalized-locale-string locale)
                          (locale-from-db)))))))
-
           (testing "admins should be able to update someone else's locale"
             (testing "response"
               (is (= "en_US"
@@ -1501,7 +1513,6 @@
             (testing "value in DB should be updated and normalized"
               (is (= "en_US"
                      (locale-from-db)))))
-
           (testing "normal Users should not be able to update someone else's locale"
             (testing "response"
               (is (= "You don't have permissions to do that."
@@ -1509,7 +1520,6 @@
             (testing "value in DB should be unchanged"
               (is (= "en_US"
                      (locale-from-db)))))
-
           (testing "attempting to set an invalid locales should result in an error"
             (doseq [[group locales] {"invalid input" [nil "" 100 "ab/cd" "USA!"]
                                      "3-letter codes" ["eng" "eng-USA"]
@@ -1540,16 +1550,13 @@
         (is (true?
              (t2/select-one-fn :is_active :model/User :id (:id user)))
             "the user should now be active")))
-
     (testing "error conditions"
       (testing "Attempting to reactivate a non-existant user should return a 404"
         (is (= "Not found."
                (mt/user-http-request :crowberto :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))))
-
       (testing " Attempting to reactivate an already active user should fail"
         (is (=? {:message "Not able to reactivate an active user"}
                 (mt/user-http-request :crowberto :put 400 (format "user/%s/reactivate" (mt/user->id :rasta)))))))
-
     (testing (str "test that when disabling Google auth if a user gets disabled and re-enabled they are no longer "
                   "Google Auth (#3323)")
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
@@ -1574,25 +1581,26 @@
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- user-can-reset-password? [superuser?]
-  (mt/with-temp [:model/User user {:password "def", :is_superuser (boolean superuser?)}]
+(defn- user-can-reset-password! [superuser?]
+  (mt/with-temp [:model/User user {:is_superuser (boolean superuser?)}]
+    (auth-identity/set-password! (:id user) "def")
     (let [creds {:username (:email user), :password "def"}
-          hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))]
-      ;; use API to reset the users password
+          password-hash (fn [] (:password_hash (t2/select-one-fn :credentials :model/AuthIdentity
+                                                                 :user_id (:id user), :provider "password")))
+          original-hash (password-hash)]
       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                         :old_password "def"})
-      ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
-      (not= hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))))))
+      (not= original-hash (password-hash)))))
 
 (deftest can-reset-password-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we can reset our own password. If user is a"
       (testing "superuser"
         (is (true?
-             (user-can-reset-password? :superuser))))
+             (user-can-reset-password! :superuser))))
       (testing "non-superuser"
         (is (true?
-             (user-can-reset-password? (not :superuser))))))))
+             (user-can-reset-password! (not :superuser))))))))
 
 (deftest reset-password-permissions-test
   (testing "PUT /api/user/:id/password"
@@ -1607,27 +1615,58 @@
     (testing "Test input validations on password change"
       (is (=? {:errors {:password "password is too common."}}
               (mt/user-http-request :rasta :put 400 (format "user/%d/password" (mt/user->id :rasta)) {}))))
-
     (testing "Make sure that if current password doesn't match we get a 400"
       (is (=? {:errors {:old_password "Invalid password"}}
               (mt/user-http-request :rasta :put 400 (format "user/%d/password" (mt/user->id :rasta))
                                     {:password "whateverUP12!!"
                                      :old_password "mismatched"}))))))
 
+(deftest reset-password-verifies-old-password-against-auth-identity-test
+  (testing "PUT /api/user/:id/password"
+    (testing "old_password is checked against the password AuthIdentity, like login, not the legacy core_user columns"
+      (mt/with-temp [:model/User user {:is_superuser false}]
+        (auth-identity/set-password! (:id user) "def")
+        (t2/update! (t2/table-name :model/User) (:id user) {:password "not-a-bcrypt-hash", :password_salt "stale"})
+        (is (=? {:success true}
+                (mt/client {:username (:email user), :password "def"}
+                           :put 200 (format "user/%d/password" (:id user))
+                           {:password "abc123!!DEF", :old_password "def"})))
+        (testing "the new password authenticates and the stale core_user columns are left untouched"
+          (is (some? (mt/client :post 200 "session" {:username (:email user), :password "abc123!!DEF"})))
+          (is (= {:password "not-a-bcrypt-hash", :password_salt "stale"}
+                 (into {} (t2/select-one [:model/User :password :password_salt] :id (:id user))))))))))
+
 (deftest reset-password-session-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we return a session if we are changing our own password"
-      (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
+      (mt/with-temp [:model/User user {:is_superuser false}]
+        (auth-identity/set-password! (:id user) "def")
         (let [creds {:username (:email user), :password "def"}]
           (is (=? {:session_id string/valid-uuid?
                    :success true}
                   (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                     :old_password "def"}))))))
-
     (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
-      (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
+      (mt/with-temp [:model/User user {:is_superuser false}]
+        (auth-identity/set-password! (:id user) "def")
         (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                                     :old_password "def"})))))))
+
+(deftest reset-password-invalidates-existing-sessions-test
+  (testing "PUT /api/user/:id/password invalidates the user's existing sessions"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "def")
+      (let [session (auth-identity/create-session-with-auth-tracking!
+                     user
+                     {:device_id "test-device" :embedded false :token_exchange false
+                      :device_description "Test" :ip_address "127.0.0.1"}
+                     :provider/password)]
+        (is (some? (t2/select-one :model/Session :id (:id session)))
+            "sanity check: the session exists before the password change")
+        (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user))
+                              {:password "abc123!!DEF", :old_password "def"})
+        (is (nil? (t2/select-one :model/Session :id (:id session)))
+            "the user's pre-existing session should be deleted after the password change")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
@@ -1638,23 +1677,19 @@
     (mt/with-temp [:model/User user]
       (is (= {:success true}
              (mt/user-http-request :crowberto :delete 200 (format "user/%d" (:id user)) {})))
-
       (testing "User should still exist, but be inactive"
         (is (= {:is_active false}
                (mt/derecordize (t2/select-one [:model/User :is_active] :id (:id user)))))))
-
     (testing "Check that the last superuser cannot deactivate themselves"
       (mt/with-single-admin-user! [{id :id}]
         (is (= "You cannot remove the last member of the 'Admin' group!"
                (mt/user-http-request id :delete 400 (format "user/%d" id))))))
-
     (testing "Check that the last non-archived superuser cannot deactivate themselves"
       (mt/with-single-admin-user! [{id :id}]
         (mt/with-temp [:model/User _ {:is_active false
                                       :is_superuser true}]
           (is (= "You cannot remove the last member of the 'Admin' group!"
                  (mt/user-http-request id :delete 400 (format "user/%d" id)))))))
-
     (testing "Check that a non-superuser CANNOT deactivate themselves"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
@@ -1684,6 +1719,7 @@
                                                  :last_name (mt/random-name)
                                                  :email "def@metabase.com"
                                                  :password "def123"}]
+          (auth-identity/set-password! id "def123")
           (let [creds {:username "def@metabase.com"
                        :password "def123"}]
             (testing "defaults to true"
@@ -1693,7 +1729,6 @@
                      (mt/client creds :put 200 (format "user/%d/modal/%s" id endpoint)))))
             (testing (str endpoint "?")
               (is (false? (t2/select-one-fn property :model/User, :id id)))))))
-
       (testing "shouldn't be allowed to set someone else's status"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403
@@ -1739,3 +1774,69 @@
                             :previous {:first_name "John"
                                        :last_name "Cena"}}}
                  (mt/latest-audit-log-entry :user-update id))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                  Password Reset URL -- POST /api/user/:id/password-reset-url                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest password-reset-url-admin-can-generate-test
+  (testing "POST /api/user/:id/password-reset-url admin can generate a password reset URL"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "reseturl@test.com"}]
+      (let [response (mt/user-http-request :crowberto :post 200
+                                           (format "user/%d/password-reset-url" user-id))]
+        (is (contains? response :password_reset_url))
+        (is (string? (:password_reset_url response)))
+        (is (re-find #"/auth/reset_password/" (:password_reset_url response)))))))
+
+(deftest password-reset-url-non-admin-forbidden-test
+  (testing "POST /api/user/:id/password-reset-url non-admin gets 403"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "reseturl2@test.com"}]
+      (mt/user-http-request :rasta :post 403
+                            (format "user/%d/password-reset-url" user-id)))))
+
+(deftest password-reset-url-inactive-user-not-found-test
+  (testing "POST /api/user/:id/password-reset-url inactive user gets 404"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "reseturl3@test.com"
+                                              :is_active false}]
+      (mt/user-http-request :crowberto :post 404
+                            (format "user/%d/password-reset-url" user-id)))))
+
+(deftest password-reset-url-nonexistent-user-not-found-test
+  (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"
+    (mt/user-http-request :crowberto :post 404
+                          "user/999999/password-reset-url")))
+
+(deftest create-user-without-names-test
+  (testing "POST /api/user succeeds when first and last name are omitted (#22754)"
+    (mt/with-model-cleanup [:model/User]
+      (mt/with-fake-inbox
+        (let [email (mt/random-email)
+              resp  (mt/user-http-request :crowberto :post 200 "user" {:email email})]
+          (is (=? {:first_name nil
+                   :last_name  nil
+                   :email      email}
+                  resp)))))))
+
+(deftest update-blank-name-rejected-test
+  (testing "PUT /api/user/:id rejects a blank/whitespace first_name (#46449)"
+    (mt/with-temp [:model/User {id :id} {}]
+      (let [resp (mt/user-http-request :crowberto :put 400 (str "user/" id) {:first_name " "})]
+        (is (contains? (:errors resp) :first_name))))))
+
+(deftest invite-email-links-to-password-reset-test
+  (testing "POST /api/user with SMTP configured sends an invite email linking to the set-a-password flow (#23630)"
+    (mt/with-model-cleanup [:model/User]
+      (notification.tu/with-send-notification-sync
+        (mt/with-fake-inbox
+          (let [email (mt/random-email)]
+            (mt/user-http-request :crowberto :post 200 "user"
+                                  {:first_name "Inv" :last_name "Itee" :email email})
+            (let [body (-> @mt/inbox (get email) first :body first :content)]
+              (is (some? body))
+              (is (re-find #"/auth/reset_password/" body)))))))))

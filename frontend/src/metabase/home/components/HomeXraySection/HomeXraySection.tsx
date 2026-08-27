@@ -1,5 +1,4 @@
-import type { ChangeEvent } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,28 +7,28 @@ import {
   useListDatabaseXraysQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Select } from "metabase/common/components/Select";
-import { useSelector } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import {
+  Box,
+  Combobox,
+  DefaultSelectItem,
+  Flex,
+  Icon,
+  Text,
+  UnstyledButton,
+  useCombobox,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { isSyncCompleted } from "metabase/utils/syncing";
+import { isNotNull } from "metabase/utils/types";
 import type { Database, DatabaseXray } from "metabase-types/api";
 
 import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeXrayCard } from "../HomeXrayCard";
-
-import {
-  DatabaseLink,
-  DatabaseLinkIcon,
-  DatabaseLinkText,
-  SchemaTrigger,
-  SchemaTriggerIcon,
-  SchemaTriggerText,
-  SectionBody,
-} from "./HomeXraySection.styled";
 
 export const HomeXraySection = () => {
   const {
@@ -75,7 +74,7 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   const hasTables = (candidate?.tables.length ?? 0) > 0;
 
   return (
-    <div>
+    <Box>
       {isSample ? (
         <HomeCaption primary>
           {t`Try out these sample x-rays to see what ${applicationName} can do.`}
@@ -97,7 +96,7 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
           <DatabaseInfo database={database} />
         </HomeCaption>
       ) : null}
-      <SectionBody>
+      <Flex gap="lg" wrap="wrap">
         {candidate?.tables.map((table, index) => (
           <HomeXrayCard
             key={table.url}
@@ -107,8 +106,8 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
           />
         ))}
         <HomeHelpCard />
-      </SectionBody>
-    </div>
+      </Flex>
+    </Box>
   );
 };
 
@@ -127,31 +126,55 @@ interface SchemaSelectProps {
 }
 
 const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
-  const trigger = (
-    <SchemaTrigger>
-      <SchemaTriggerText data-testid="xray-schema-name">
-        {schema}
-      </SchemaTriggerText>
-      <SchemaTriggerIcon name="chevrondown" />
-    </SchemaTrigger>
-  );
-
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      onChange?.(event.target.value);
-    },
-    [onChange],
-  );
+  const combobox = useCombobox();
 
   return (
-    <Select
-      value={schema}
-      options={schemas}
-      optionNameFn={getSchemaOption}
-      optionValueFn={getSchemaOption}
-      onChange={handleChange}
-      triggerElement={trigger}
-    />
+    <Combobox
+      store={combobox}
+      position="bottom-start"
+      width={300}
+      onOptionSubmit={(value) => {
+        onChange?.(value);
+        combobox.closeDropdown();
+      }}
+    >
+      <Combobox.Target>
+        <Flex
+          component={UnstyledButton}
+          align="center"
+          display="inline-flex"
+          mx="sm"
+          onClick={() => combobox.toggleDropdown()}
+        >
+          <Text
+            component="span"
+            c="core-brand"
+            fw="bold"
+            data-testid="xray-schema-name"
+          >
+            {schema}
+          </Text>
+          <Icon name="chevrondown" c="core-brand" size={10} ml="xs" />
+        </Flex>
+      </Combobox.Target>
+      <Combobox.Dropdown>
+        <Combobox.Options>
+          {schemas.map((schemaOption) => (
+            <Combobox.Option
+              key={schemaOption}
+              value={schemaOption}
+              selected={schemaOption === schema}
+              p={0}
+            >
+              <DefaultSelectItem
+                value={schemaOption}
+                selected={schemaOption === schema}
+              />
+            </Combobox.Option>
+          ))}
+        </Combobox.Options>
+      </Combobox.Dropdown>
+    </Combobox>
   );
 };
 
@@ -161,10 +184,22 @@ interface DatabaseInfoProps {
 
 const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
   return (
-    <DatabaseLink to={Urls.browseDatabase(database)}>
-      <DatabaseLinkIcon name="database" />
-      <DatabaseLinkText>{database.name}</DatabaseLinkText>
-    </DatabaseLink>
+    <Flex
+      component={Link}
+      to={Urls.browseDatabase(database)}
+      align="center"
+      ml="sm"
+    >
+      <Icon
+        name="database"
+        c="input-focus"
+        size="var(--mantine-spacing-md)"
+        mr="xs"
+      />
+      <Text component="span" c="core-brand" fw="bold">
+        {database.name}
+      </Text>
+    </Flex>
   );
 };
 
@@ -191,8 +226,4 @@ const getMessages = (count: number) => {
     .map((index) => options[index % options.length])
     .sample(count)
     .value();
-};
-
-const getSchemaOption = (schema: string) => {
-  return schema;
 };

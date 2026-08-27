@@ -1,22 +1,24 @@
-import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Questions } from "metabase/entities/questions";
+import { cardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { loadMetadataForCard } from "metabase/questions/actions";
+import { createThunkAction } from "metabase/redux";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
 import {
   DEFAULT_CARD_SIZE,
   GRID_WIDTH,
   getPositionForNewDashCard,
-} from "metabase/lib/dashboard_grid";
-import { createThunkAction } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import { loadMetadataForCard } from "metabase/questions/actions";
-import { addUndo } from "metabase/redux/undo";
-import { getDefaultSize } from "metabase/visualizations";
-import {
-  getCardIdsFromColumnValueMappings,
-  isVisualizerDashboardCard,
-} from "metabase/visualizer/utils";
+} from "metabase/utils/dashboard_grid";
+import { checkNotNull } from "metabase/utils/types";
+import { getRegisteredDefaultSize } from "metabase/visualizations";
+import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
 import type {
   Card,
   CardId,
@@ -27,7 +29,7 @@ import type {
   VirtualCard,
   VisualizerVizDefinition,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import {
   trackCardCreated,
@@ -51,19 +53,19 @@ import {
   createVirtualCard,
   generateTemporaryDashcardId,
   hasInlineParameters,
-  isQuestionDashCard,
-  isVirtualDashCard,
 } from "../utils";
 
 import { showAutoWireToastNewCard } from "./auto-wire-parameters/actions";
 import { closeAddCardAutoWireToasts } from "./auto-wire-parameters/toasts";
 import {
-  ADD_CARD_TO_DASH,
-  ADD_MANY_CARDS_TO_DASH,
+  MARK_NEW_CARD_SEEN,
   REMOVE_CARD_FROM_DASH,
   TRASH_DASHBOARD_QUESTION_FROM_DASH,
   UNDO_REMOVE_CARD_FROM_DASH,
   UNDO_TRASH_DASHBOARD_QUESTION_FROM_DASH,
+  addCardToDash,
+  addManyCardsToDash,
+  markNewCardSeen,
   setDashCardAttributes,
   setDashboardAttributes,
 } from "./core";
@@ -86,20 +88,12 @@ export type AddDashCardOpts = NewDashCardOpts & {
   };
 };
 
-export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
-export const markNewCardSeen = createAction<DashCardId>(MARK_NEW_CARD_SEEN);
-
-export const addCardToDash = createAction<NewDashboardCard>(ADD_CARD_TO_DASH);
-export const addManyCardsToDash = createAction<NewDashboardCard[]>(
-  ADD_MANY_CARDS_TO_DASH,
-);
-
 export const addDashCardToDashboard =
   ({ dashId, tabId, dashcardOverrides }: AddDashCardOpts) =>
   (dispatch: Dispatch, getState: GetState) => {
     const display = dashcardOverrides?.card?.display;
     const dashCardSize = display
-      ? getDefaultSize(display) || DEFAULT_CARD_SIZE
+      ? getRegisteredDefaultSize(display) || DEFAULT_CARD_SIZE
       : DEFAULT_CARD_SIZE;
 
     const dashboardState = getState().dashboard;
@@ -169,13 +163,15 @@ export type AddCardToDashboardOpts = NewDashCardOpts & {
 
 export const addCardToDashboard =
   ({ dashId, tabId, cardId }: AddCardToDashboardOpts) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    await dispatch(Questions.actions.fetch({ id: cardId }));
-    const card = Questions.selectors
-      .getObject(getState(), { entityId: cardId })
-      .card();
+  async (dispatch: Dispatch) => {
+    const card = await runRtkEndpoint(
+      { id: cardId },
+      dispatch,
+      cardApi.endpoints.getCard,
+    );
 
     const dashcardId = generateTemporaryDashcardId();
+    // Unjustified type cast. FIXME
     const dashcard = dispatch(
       addDashCardToDashboard({
         dashId,
@@ -249,10 +245,11 @@ export const replaceCard =
   async (dispatch: Dispatch, getState: GetState) => {
     const dashboardId = getDashboardId(getState());
 
-    await dispatch(Questions.actions.fetch({ id: nextCardId }));
-    const card = Questions.selectors
-      .getObject(getState(), { entityId: nextCardId })
-      .card();
+    const card = await runRtkEndpoint(
+      { id: nextCardId },
+      dispatch,
+      cardApi.endpoints.getCard,
+    );
 
     await dispatch(
       setDashCardAttributes({
@@ -293,16 +290,18 @@ export const addCardWithVisualization =
     const cards: Card[] = [];
 
     for (const cardId of cardIds) {
-      await dispatch(Questions.actions.fetch({ id: cardId }));
-      const card: Card = Questions.selectors
-        .getObject(getState(), { entityId: cardId })
-        .card();
+      const card: Card = await runRtkEndpoint(
+        { id: cardId },
+        dispatch,
+        cardApi.endpoints.getCard,
+      );
       cards.push(card);
     }
 
     const [mainCard, ...secondaryCards] = cards;
 
     const dashcardId = generateTemporaryDashcardId();
+    // Unjustified type cast. FIXME
     const dashcard = dispatch(
       addDashCardToDashboard({
         dashId: getState().dashboard.dashboardId!,
@@ -342,10 +341,11 @@ export const replaceCardWithVisualization =
     const cards: Card[] = [];
 
     for (const cardId of cardIds) {
-      await dispatch(Questions.actions.fetch({ id: cardId }));
-      const card: Card = Questions.selectors
-        .getObject(getState(), { entityId: cardId })
-        .card();
+      const card: Card = await runRtkEndpoint(
+        { id: cardId },
+        dispatch,
+        cardApi.endpoints.getCard,
+      );
       cards.push(card);
     }
 
@@ -491,15 +491,14 @@ export const removeCardFromDashboard = createThunkAction(
       const dashcardCountByCardId = _.countBy(dashcards, "card_id");
       const isLastDashboardQuestionDashcard = Boolean(
         dashcard.card_id &&
-          dashcard.card.dashboard_id !== null &&
-          dashcardCountByCardId[dashcard.card_id] <= 1,
+        dashcard.card.dashboard_id !== null &&
+        dashcardCountByCardId[dashcard.card_id] <= 1,
       );
       dispatch(
         addUndo({
           message: isLastDashboardQuestionDashcard
             ? t`Trashed and removed card`
             : t`Removed card`,
-          undo: true,
           action: () =>
             dispatch(
               undoRemoveCardFromDashboard({
@@ -516,7 +515,7 @@ export const removeCardFromDashboard = createThunkAction(
     },
 );
 
-const undoRemoveCardFromDashboard = createThunkAction(
+export const undoRemoveCardFromDashboard = createThunkAction(
   UNDO_REMOVE_CARD_FROM_DASH,
   ({ dashcardId, originalParameters }) =>
     (dispatch, getState) => {
@@ -553,13 +552,18 @@ export const trashDashboardQuestion = createThunkAction(
     cardId: DashboardCard["card_id"];
   }) =>
     async (dispatch) => {
+      if (cardId == null) {
+        return;
+      }
       await dispatch(
-        Questions.actions.setArchived({ id: cardId }, true, {
-          notify: {
-            action: () =>
-              dispatch(undoTrashDashboardQuestion({ dashcardId, cardId })),
-            undo: false,
-          },
+        cardApi.endpoints.updateCard.initiate({ id: cardId, archived: true }),
+      );
+      dispatch(
+        addUndo({
+          subject: t`question`,
+          verb: t`trashed`,
+          action: () =>
+            dispatch(undoTrashDashboardQuestion({ dashcardId, cardId })),
         }),
       );
       dispatch(removeCardFromDashboard({ dashcardId, cardId }));
@@ -576,15 +580,27 @@ const undoTrashDashboardQuestion = createThunkAction(
     cardId: DashboardCard["card_id"];
   }) =>
     async (dispatch) => {
+      if (cardId == null) {
+        return;
+      }
       await dispatch(
-        Questions.actions.setArchived({ id: cardId }, false, {
-          notify: {
-            action: () =>
-              dispatch(trashDashboardQuestion({ dashcardId, cardId })),
-            undo: false,
-          },
+        cardApi.endpoints.updateCard.initiate({ id: cardId, archived: false }),
+      );
+      dispatch(
+        addUndo({
+          subject: t`question`,
+          verb: t`restored`,
+          action: () =>
+            dispatch(trashDashboardQuestion({ dashcardId, cardId })),
         }),
       );
       dispatch(undoRemoveCardFromDashboard({ dashcardId }));
     },
 );
+
+export {
+  MARK_NEW_CARD_SEEN,
+  addCardToDash,
+  addManyCardsToDash,
+  markNewCardSeen,
+};

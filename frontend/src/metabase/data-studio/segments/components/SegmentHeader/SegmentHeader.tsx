@@ -2,11 +2,12 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateSegmentMutation } from "metabase/api";
-import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
+import { modelIconMap } from "metabase/common/utils/icon";
+import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import type { SegmentTabUrls } from "metabase/data-studio/segments/types";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack } from "metabase/ui";
@@ -48,7 +49,7 @@ export function SegmentHeader({
             readOnly={readOnly}
           />
         }
-        icon="segment"
+        icon={modelIconMap.segment}
         menu={<SegmentMoreMenu previewUrl={previewUrl} onRemove={onRemove} />}
         tabs={<EntityDetailTabs urls={tabUrls} />}
         actions={actions}

@@ -94,15 +94,17 @@ You can use [Snippets](snippets.md) to save, reuse, and share SQL code across mu
 
 When you run a query from the SQL editor, Metabase sends the query to your database exactly as it is written. Any results or errors displayed in Metabase are the same as the results or errors that you would get if you ran the query directly against your database. If the SQL syntax of your query doesn’t match the SQL dialect used by your database, your database won’t be able to run the query.
 
-## The native query editor is designed for reading data, not writing it
+## SQL commands the editor doesn't support
 
-The native SQL editor is designed for asking questions about your data. Don't use the editor for:
+The native SQL editor is designed for asking questions about your data. The editor doesn't support:
 
 - Multi-statement queries
 - Stored procedures and function calls
 - DDL statements (like `CREATE`, `ALTER`, or `DROP`)
 
 Depending on your connection's privileges, some of the above actions may work, but none are officially supported, and we recommend against using the native query editor for these tasks.
+
+On databases that use [impersonation](../../permissions/impersonation.md), Metabase enforces this: queries must be a single `SELECT` statement, and Metabase will reject multi-statement queries, temporary tables, and DDL.
 
 ## Question version history
 
@@ -116,7 +118,7 @@ On saved SQL questions without [parameters](./sql-parameters.md), you'll get the
 
 ![Explore results button](../images/explore-results.png)
 
-## Drill-though in SQL questions
+## Drill-through in SQL questions
 
 Visualizations created with SQL have limited [drill-through][drill-through] capabilities:
 
@@ -138,4 +140,4 @@ See [Caching question policies](../../configuring-metabase/caching.md#question-c
 [sql-gloss]: https://www.metabase.com/glossary/sql
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
 [variable-gloss]: https://www.metabase.com/glossary/variable
-[drill-through]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through
+[drill-through]: https://www.metabase.com/docs/latest/questions/visualizations/drill-through

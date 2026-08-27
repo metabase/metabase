@@ -5,6 +5,9 @@ import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
+// brand (#509EE3) in getComputedStyle's normalized color format
+const HIGHLIGHTED_DOT_FILL = "rgb(80, 158, 227)";
+
 describe("scenarios > organization > timelines > question", () => {
   beforeEach(() => {
     H.restore();
@@ -29,7 +32,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Create event").click();
 
       cy.findByLabelText("Event name").type("RC1");
-      cy.findByLabelText("Date").type("10/20/2024");
+      cy.findByLabelText("Date").type("10/20/2027");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
@@ -42,7 +45,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should create an event within the default timeline", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -55,7 +58,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.findByText("Create event").click();
 
       cy.findByLabelText("Event name").type("RC2");
-      cy.findByLabelText("Date").type("10/30/2024");
+      cy.findByLabelText("Date").type("10/30/2027");
       cy.button("Create").click();
       cy.wait("@createEvent");
 
@@ -71,9 +74,9 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "v1", timestamp: "2027-01-01T00:00:00Z" },
-          { name: "v2", timestamp: "2023-01-01T00:00:00Z" },
-          { name: "v3", timestamp: "2026-01-01T00:00:00Z" },
+          { name: "v1", timestamp: "2030-01-01T00:00:00Z" },
+          { name: "v2", timestamp: "2026-01-01T00:00:00Z" },
+          { name: "v3", timestamp: "2029-01-01T00:00:00Z" },
         ],
       });
 
@@ -102,7 +105,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should edit an event", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -132,7 +135,7 @@ describe("scenarios > organization > timelines > question", () => {
       H.createTimeline({ name: "Releases" });
       H.createTimelineWithEvents({
         timeline: { name: "Builds" },
-        events: [{ name: "RC2", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC2", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -160,7 +163,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should archive and unarchive an event", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
@@ -194,7 +197,7 @@ describe("scenarios > organization > timelines > question", () => {
           {
             name: "RC1",
             description: "[Release notes](https://metabase.test)",
-            timestamp: "2024-10-20T00:00:00Z",
+            timestamp: "2027-10-20T00:00:00Z",
           },
         ],
       });
@@ -211,7 +214,7 @@ describe("scenarios > organization > timelines > question", () => {
     it("should show events for ad-hoc questions", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestionAdhoc({
@@ -233,13 +236,13 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      H.echartsIcon("star").should("be.visible");
+      H.timelineEventChip("RC1").should("be.visible");
     });
 
     it("should not show events for non-timeseries questions", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
       H.visitQuestionAdhoc({
@@ -263,20 +266,29 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      H.echartsIcon("star").should("not.exist");
+      H.timelineEventChip("RC1").should("not.exist");
     });
 
     it("should show events for native queries", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
+      cy.intercept("GET", "/api/timeline?include=events").as("getTimelines");
+
+      // Aggregate by month so the result is a deterministic ~48-row series that
+      // spans the full ORDERS date range. A raw `SELECT TOTAL, CREATED_AT FROM
+      // ORDERS` is truncated to the first 2000 (unordered) rows, so the chart's
+      // x-domain was non-deterministic and often fell short of the event date
+      // (2027-10-20); the event then landed outside the domain, was filtered out
+      // of the visible timeline events, and the star marker never rendered.
       H.visitQuestionAdhoc({
         dataset_query: {
           type: "native",
           native: {
-            query: "SELECT TOTAL, CREATED_AT FROM ORDERS",
+            query:
+              "SELECT DATE_TRUNC('month', CREATED_AT) AS CREATED_AT, COUNT(*) AS TOTAL FROM ORDERS GROUP BY DATE_TRUNC('month', CREATED_AT) ORDER BY 1",
           },
           database: SAMPLE_DB_ID,
         },
@@ -289,7 +301,9 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
-      H.echartsIcon("star").should("be.visible");
+      cy.wait("@getTimelines");
+
+      H.timelineEventChip("RC1").should("be.visible");
     });
 
     it("should toggle individual event visibility", () => {
@@ -300,7 +314,7 @@ describe("scenarios > organization > timelines > question", () => {
         H.createTimelineWithEvents({
           timeline: { name: "Releases" },
           events: [
-            { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "cloud" },
+            { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "cloud" },
           ],
         });
 
@@ -310,7 +324,7 @@ describe("scenarios > organization > timelines > question", () => {
             collection_id: PARENT_COLLECTION_ID,
           },
           events: [
-            { name: "TC1", timestamp: "2022-05-20T00:00:00Z", icon: "warning" },
+            { name: "TC1", timestamp: "2025-05-20T00:00:00Z", icon: "warning" },
           ],
         });
 
@@ -319,44 +333,48 @@ describe("scenarios > organization > timelines > question", () => {
         cy.findByTestId("view-footer")
           .findByText("Visualization")
           .should("be.visible");
-        H.echartsIcon("cloud").should("be.visible");
+        H.timelineEventChip("RC1").should("be.visible");
 
         // should hide individual events from chart if hidden in sidebar
         cy.icon("calendar").click();
         cy.findByTestId("sidebar-content").findByText("Releases").click();
         toggleEventVisibility("RC1");
 
-        H.echartsIcon("cloud").should("not.exist");
+        H.timelineEventChip("RC1").should("not.exist");
 
         // should show individual events in chart again
         toggleEventVisibility("RC1");
 
-        H.echartsIcon("cloud").should("be.visible");
+        H.timelineEventChip("RC1").should("be.visible");
 
         // should show a newly created event
         cy.button("Create event").click();
         cy.findByLabelText("Event name").type("RC2");
-        cy.findByLabelText("Date").clear().type("10/20/2023");
+        cy.findByLabelText("Date").clear().type("10/20/2026");
         cy.button("Create").click();
         waitForTimelinesAfterCreatingAnEvent("RC2");
 
         H.undoToast().icon("close").click();
-        H.echartsIcon("star").should("be.visible");
+        H.timelineEventChip("RC2").should("be.visible");
 
         // should then hide the newly created event
         timelineEventVisibility("RC2").should("be.checked");
         toggleEventVisibility("RC2");
         timelineEventVisibility("RC2").should("not.be.checked");
 
-        H.echartsIcon("star").should("not.exist");
+        H.timelineEventChip("RC2").should("not.exist");
 
         // its timeline, visible but having one hidden event
-        // should display its checkbox with a "dash" icon
+        // should display its checkbox in an indeterminate state
         cy.findByTestId("sidebar-content")
           .findByText("Releases")
           .closest("[aria-label='Timeline card header']")
           .within(() => {
-            cy.icon("dash").should("be.visible");
+            cy.findByRole("checkbox").should(
+              "have.prop",
+              "indeterminate",
+              true,
+            );
 
             // Hide the timeline then show it again
             cy.findByRole("checkbox").click();
@@ -364,8 +382,8 @@ describe("scenarios > organization > timelines > question", () => {
           });
 
         // once timeline is visible, all its events should be visible
-        H.echartsIcon("star").should("be.visible");
-        H.echartsIcon("cloud").should("be.visible");
+        H.timelineEventChip("RC2").should("be.visible");
+        H.timelineEventChip("RC1").should("be.visible");
 
         // should initialize events in a hidden timelime
         // with event checkboxes unchecked
@@ -387,19 +405,19 @@ describe("scenarios > organization > timelines > question", () => {
           .closest("[aria-label='Timeline card header']")
           .within(() => cy.findByRole("checkbox").click());
 
-        H.echartsIcon("warning").should("be.visible");
+        H.timelineEventChip("TC1").should("be.visible");
 
         // events whose timeline was invisible on page load
         // should be hideable once their timelines are visible
         toggleEventVisibility("TC1");
 
-        H.echartsIcon("warning").should("not.exist");
+        H.timelineEventChip("TC1").should("not.exist");
 
         /**
          * This tests the case where group by unit with the event in the end range bucket
          * not included when it's the only event selected.
          *
-         * e.g. group by month from 2024-01-01 to 2025-01-01 with event at 2025-01-15,
+         * e.g. group by month from 2027-01-01 to 2028-01-01 with event at 2028-01-15,
          * it should be included, but was not previously
          */
         cy.log(
@@ -409,7 +427,7 @@ describe("scenarios > organization > timelines > question", () => {
 
         H.modal().within(() => {
           cy.findByLabelText("Event name").type("Event at the end of range");
-          cy.findByLabelText("Date").clear().type("10/20/2026");
+          cy.findByLabelText("Date").clear().type("10/20/2029");
 
           cy.button("Create").click();
         });
@@ -422,63 +440,299 @@ describe("scenarios > organization > timelines > question", () => {
         toggleEventVisibility("RC2").should("not.be.checked");
 
         cy.log("the new event should be visible in the chart");
-        H.echartsIcon("star").should("be.visible");
+        H.timelineEventChip("Event at the end of range").should("be.visible");
       });
     });
 
-    it("should color the event icon when hovering", () => {
+    it("should show a single-event popover on hover without a 'See all' link", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+          { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "star" },
         ],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-      H.echartsIcon("star").should("be.visible");
-      H.echartsIcon("star").realHover();
-      H.echartsIcon("star", true).should("be.visible");
+      H.timelineEventChip("RC1").should("be.visible").realHover();
+
+      cy.log(
+        "hovering a single event shows a compact popover with no 'See all'",
+      );
+      cy.findByTestId("timeline-event-popover").within(() => {
+        cy.findByText("RC1").should("be.visible");
+        cy.findByText("See all").should("not.exist");
+      });
+
+      cy.log(
+        "hovering also shows a marker line and highlights the closest data point",
+      );
+      H.timelineEventMarkerLine().should("exist");
+      // the highlighted datum is drawn as a solid brand-filled dot (resting dots are hollow)
+      H.cartesianChartCircleWithFillColor(HIGHLIGHTED_DOT_FILL).should(
+        "have.length",
+        1,
+      );
+
+      cy.log("unhovering removes the marker line and the highlight");
+      cy.findByTestId("qb-header").realHover();
+      H.timelineEventMarkerLine().should("not.exist");
+      H.cartesianChartCircleWithFillColor(HIGHLIGHTED_DOT_FILL).should(
+        "not.exist",
+      );
     });
 
-    it("should open the sidebar when clicking an event icon", () => {
+    it("should show the event popover when hovering on a stacked chart #74005", () => {
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
-          { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
+          { name: "RC1", timestamp: "2027-10-20T00:00:00Z", icon: "star" },
         ],
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.split_panels": true,
+        },
+      });
+
+      H.timelineEventChip("RC1").should("be.visible").realHover();
+      cy.findByTestId("timeline-event-popover")
+        .findByText("RC1")
+        .should("be.visible");
+    });
+
+    it("should stack close events from different data points and spread the stack on hover", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          {
+            name: "Jan release",
+            timestamp: "2027-01-30T00:00:00Z",
+            icon: "star",
+          },
+          {
+            name: "Feb fix",
+            timestamp: "2027-02-02T00:00:00Z",
+            icon: "warning",
+          },
+          {
+            name: "Summer party",
+            timestamp: "2028-07-04T00:00:00Z",
+            icon: "cake",
+          },
+        ],
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.log("adjacent-month events collapse into an overlapped stack");
+      cy.findByTestId("timeline-event-stack").should(
+        "have.attr",
+        "data-expanded",
+        "false",
+      );
+      H.timelineEventChip("Summer party").should("be.visible");
+
+      cy.log("hovering the stack spreads it and hides unrelated chips");
+      H.timelineEventChip("Feb fix").realHover({ position: "right" });
+      cy.findByTestId("timeline-event-stack").should(
+        "have.attr",
+        "data-expanded",
+        "true",
+      );
+      H.timelineEventChip("Summer party").should("not.be.visible");
+      H.timelineEventMarkerLine().should("exist");
+
+      cy.log("a spread member behaves like a regular chip");
+      H.timelineEventChip("Jan release").realHover();
+      cy.findByTestId("timeline-event-popover")
+        .findByText("Jan release")
+        .should("be.visible");
+      H.timelineEventMarkerLine().should("exist");
+
+      cy.log("moving away collapses the stack and restores other chips");
+      cy.findByTestId("qb-header").realHover();
+      cy.findByTestId("timeline-event-stack").should(
+        "have.attr",
+        "data-expanded",
+        "false",
+      );
+      H.timelineEventChip("Summer party").should("be.visible");
+    });
+
+    it("should collapse close events into a count chip and focus the sidebar on the group from 'See all'", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "Alpha", timestamp: "2027-10-03T00:00:00Z" },
+          { name: "Beta", timestamp: "2027-10-10T00:00:00Z" },
+          { name: "Gamma", timestamp: "2027-10-17T00:00:00Z" },
+          { name: "Delta", timestamp: "2027-10-24T00:00:00Z" },
+        ],
+      });
+      // a second timeline that must be filtered out while the cluster is focused
+      H.createTimelineWithEvents({
+        timeline: { name: "Other" },
+        events: [{ name: "Outsider", timestamp: "2028-01-15T00:00:00Z" }],
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.findByTestId("visualization-root").findByTestId(
+        "timeline-events-band",
+      );
+
+      cy.log(
+        "the four same-month events collapse into one chip with the count",
+      );
+      H.timelineEventChip("4 events").should("be.visible").and("contain", "4");
+
+      cy.log("hovering shows the first three events and a 'See all' link");
+      H.timelineEventChip("4 events").realHover();
+      cy.findByTestId("timeline-event-popover").within(() => {
+        cy.findByText("Alpha").should("be.visible");
+        cy.findByText("Gamma").should("be.visible");
+        cy.findByText("Delta").should("not.exist");
+        cy.findByText("See all").click();
+      });
+
+      cy.log("'See all' selects the cluster and focuses the sidebar on it");
+      H.timelineEventChip("4 events").should(
+        "have.attr",
+        "data-selected",
+        "true",
+      );
+      cy.findByTestId("sidebar-content").within(() => {
+        timelineEventCard("Alpha").should("be.visible");
+        timelineEventCard("Delta").should("be.visible");
+      });
+
+      cy.log("the unrelated timeline is filtered out of the focused list");
+      cy.findByTestId("sidebar-content")
+        .findByText("Other")
+        .should("not.exist");
+
+      cy.log("'All events' restores the full list of timelines");
+      cy.findByTestId("timeline-sidebar-show-all").click();
+      cy.findByTestId("sidebar-content")
+        .findByText("Other")
+        .should("be.visible");
+    });
+
+    it("should focus the sidebar on the group when a grouped chip is clicked directly", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [
+          { name: "Alpha", timestamp: "2027-10-03T00:00:00Z" },
+          { name: "Beta", timestamp: "2027-10-10T00:00:00Z" },
+        ],
+      });
+      H.createTimelineWithEvents({
+        timeline: { name: "Other" },
+        events: [{ name: "Outsider", timestamp: "2028-01-15T00:00:00Z" }],
+      });
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      cy.log("clicking a grouped chip focuses the sidebar on its events");
+      H.timelineEventChip("2 events").should("be.visible").click();
+
+      cy.findByTestId("sidebar-content").within(() => {
+        timelineEventCard("Alpha").should("be.visible");
+        timelineEventCard("Beta").should("be.visible");
+      });
+      cy.findByTestId("sidebar-content")
+        .findByText("Other")
+        .should("not.exist");
+    });
+
+    it("should select a single event and open the full sidebar when its chip is clicked", () => {
+      H.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1", timestamp: "2027-01-01T00:00:00Z" }],
       });
 
       H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
-      H.echartsIcon("star").should("be.visible");
-      H.echartsIcon("star").click();
+      H.timelineEventChip("RC1").should("be.visible").click();
 
-      // event should be selected in sidebar
-      timelineEventCard("RC1").should("be.visible");
-      timelineEventCard("RC1").should(
-        "have.css",
-        "border-left",
-        "4px solid rgb(80, 158, 226)",
-      );
-
-      // after clicking the icon again, it should be deselected in sidebar
-      H.echartsIcon("star", true).click();
-      timelineEventCard("RC1").should("be.visible");
-      timelineEventCard("RC1").should(
-        "have.css",
-        "border-left",
-        "4px solid rgba(0, 0, 0, 0)",
-      );
+      cy.log("the sidebar opens (unfiltered) with the event selected");
+      H.timelineEventChip("RC1").should("have.attr", "data-selected", "true");
+      cy.findByTestId("sidebar-content").findByText("RC1").should("be.visible");
+      cy.findByTestId("timeline-sidebar-show-all").should("not.exist");
     });
 
+    // TODO @nemanjaglumac 2026-04-17: Simplify or potentially remove this repro altogether!
+    // It is hacky and it is fragile because it relies on the MAX date in the ORDERS table
+    // so all timestamps need to be carefully hard coded relative to it.
+    // I've added comments that hopefully make this easier for the next person to understand.
+    // Additionally, one granularity bucket would sufficiently reproduce the issue.
     it("should not filter out events in last period (metabase#23336)", () => {
       H.createTimelineWithEvents({
         events: [
-          { name: "Last week", timestamp: "2026-04-21T12:00:00Z" },
-          { name: "Last month", timestamp: "2026-04-27T12:00:00Z" },
-          { name: "Last quarter", timestamp: "2026-05-10T12:00:00Z" },
-          { name: "Last year", timestamp: "2026-09-10T12:00:00Z" },
+          // All events are AFTER the ORDERS max (~Apr 19, 2029) but within
+          // the last bucket of their respective granularity. The bug (#23336)
+          // was that events in the last period's extended range were filtered out.
+          // Last week bucket is Apr 13-19 (Sun-Sat): Apr 20 is next week
+          { name: "Last week", timestamp: "2029-04-20T12:00:00Z" },
+          // Last month bucket is April: Apr 27 is still in April
+          { name: "Last month", timestamp: "2029-04-27T12:00:00Z" },
+          // Last quarter bucket is Q2: May 10 is still in Q2
+          { name: "Last quarter", timestamp: "2029-05-10T12:00:00Z" },
+          // Last year bucket is 2029: Sep 10 is still in 2029
+          { name: "Last year", timestamp: "2029-09-10T12:00:00Z" },
         ],
       });
 
@@ -559,7 +813,7 @@ describe("scenarios > organization > timelines > question", () => {
       cy.signInAsAdmin();
       H.createTimelineWithEvents({
         timeline: { name: "Releases" },
-        events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
+        events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
       cy.signOut();
       cy.signIn("readonly");

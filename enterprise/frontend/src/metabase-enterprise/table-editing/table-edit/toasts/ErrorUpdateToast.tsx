@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
+import { Link } from "metabase/common/components/Link";
 import { Anchor, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import {
   getUpdateApiErrorMessage,
@@ -68,7 +68,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
   return (
     <Group gap="2.5rem" w="20rem">
       <Group gap="0.5rem">
-        <Icon name="warning" c="danger" size={12} />
+        <Icon name="warning" c="feedback-negative" size={12} />
         <Text
           c="text-primary-inverse"
           fw={700}
@@ -77,7 +77,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
 
       <Button
         size="compact-lg"
-        c="background-secondary-inverse"
+        c="background_page-secondary-inverse"
         variant="filled"
         autoContrast
         radius="0.5rem"

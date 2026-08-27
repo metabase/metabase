@@ -1,0 +1,349 @@
+## Adds a real FK constraint and an index on metabase_field.fk_target_field_id. Nothing enforced
+## this reference before, so dangling values (targets hard-deleted via database/table/field
+## cascades) are nulled out first.
+
+databaseChangeLog:
+  ## The cleanup originally shipped as changeSet v63.2026-07-14T00:00:00 with a Postgres/H2 query that used
+  ## NOT IN (SELECT id FROM metabase_field). NOT IN's null semantics keep Postgres from planning it as an
+  ## anti-join: it builds a hashed subplan, and when the id list outgrows work_mem it falls back to a
+  ## materialized subplan scanned linearly per row - O(rows^2) over metabase_field. On an instance with
+  ## 8.5M fields the statement ran for over an hour, tripped the appDB connection-pool timeout, rolled
+  ## back, and blocked the upgrade in a retry loop (#78271). v63.2026-07-22T12:00:01 below is the
+  ## equivalent replacement using NOT EXISTS, which always plans as a hash/merge anti-join and can spill
+  ## to disk instead of degrading quadratically. This changeSet retires the original's changelog entry so
+  ## instances that already ran it pick up the replacement (re-nulling already-clean data is a cheap
+  ## no-op); on instances where the original timed out, or that have never seen it, this DELETE is a
+  ## no-op. DATABASECHANGELOG is unquoted on purpose: it folds to the table's actual case on postgres
+  ## (lowercase) and h2 (uppercase), and matches it exactly on mysql/mariadb.
+  - changeSet:
+      id: v63.2026-07-22T12:00:00
+      author: ranquild
+      comment: Retire the timeout-prone original of v63.2026-07-22T12:00:01 (#78271)
+      changes:
+        - sql:
+            sql: DELETE FROM DATABASECHANGELOG WHERE id = 'v63.2026-07-14T00:00:00';
+      rollback: # not necessary; the replacement changeSet is equivalent to the original
+
+  - changeSet:
+      id: v63.2026-07-22T12:00:01
+      author: ranquild
+      comment: Null out metabase_field.fk_target_field_id values that point to deleted fields
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field AS a
+              LEFT JOIN metabase_field AS b ON b.id = a.fk_target_field_id
+              SET a.fk_target_field_id = NULL
+              WHERE a.fk_target_field_id IS NOT NULL AND b.id IS NULL;
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE metabase_field AS a
+              SET fk_target_field_id = NULL
+              WHERE a.fk_target_field_id IS NOT NULL
+                AND NOT EXISTS (SELECT 1 FROM metabase_field b WHERE b.id = a.fk_target_field_id);
+      rollback: # no change
+
+  ## The index is created before the FK constraint below: MySQL/MariaDB require an index to back
+  ## every FK and reuse an existing one, so this keeps rollback working (the FK is dropped before
+  ## the index it would otherwise still need). Postgres doesn't auto-index FKs, which is what
+  ## fks-are-indexed-test checks for.
+  - changeSet:
+      id: v63.2026-07-14T00:00:01
+      author: ranquild
+      comment: Index metabase_field.fk_target_field_id
+      changes:
+        - createIndex:
+            tableName: metabase_field
+            indexName: idx_field_fk_target_field_id
+            columns:
+              - column:
+                  name: fk_target_field_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:02
+      author: ranquild
+      comment: Add FK constraint on metabase_field.fk_target_field_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field
+            baseColumnNames: fk_target_field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_field_fk_target_ref_field_id
+            onDelete: SET NULL
+
+  ## metabase_field_user_settings.fk_target_field_id mirrors metabase_field.fk_target_field_id
+  ## (it stores the user-set override of the same reference) and had the same problem: nothing
+  ## enforced it, so it gets the same cleanup + index + FK treatment.
+  ## Same NOT IN -> NOT EXISTS replacement as v63.2026-07-22T12:00:01 above: the subquery here is also
+  ## over metabase_field, so the original v63.2026-07-14T00:00:03 degraded the same way on instances with
+  ## millions of fields (#78271).
+  - changeSet:
+      id: v63.2026-07-22T12:00:02
+      author: ranquild
+      comment: Retire the timeout-prone original of v63.2026-07-22T12:00:03 (#78271)
+      changes:
+        - sql:
+            sql: DELETE FROM DATABASECHANGELOG WHERE id = 'v63.2026-07-14T00:00:03';
+      rollback: # not necessary; the replacement changeSet is equivalent to the original
+
+  - changeSet:
+      id: v63.2026-07-22T12:00:03
+      author: ranquild
+      comment: Null out metabase_field_user_settings.fk_target_field_id values that point to deleted fields
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field_user_settings AS a
+              LEFT JOIN metabase_field AS b ON b.id = a.fk_target_field_id
+              SET a.fk_target_field_id = NULL
+              WHERE a.fk_target_field_id IS NOT NULL AND b.id IS NULL;
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE metabase_field_user_settings AS a
+              SET fk_target_field_id = NULL
+              WHERE a.fk_target_field_id IS NOT NULL
+                AND NOT EXISTS (SELECT 1 FROM metabase_field b WHERE b.id = a.fk_target_field_id);
+      rollback: # no change
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:04
+      author: ranquild
+      comment: Index metabase_field_user_settings.fk_target_field_id
+      changes:
+        - createIndex:
+            tableName: metabase_field_user_settings
+            indexName: idx_field_user_settings_fk_target_field_id
+            columns:
+              - column:
+                  name: fk_target_field_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:05
+      author: ranquild
+      comment: Add FK constraint on metabase_field_user_settings.fk_target_field_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field_user_settings
+            baseColumnNames: fk_target_field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_field_user_settings_fk_target_ref_field_id
+            onDelete: SET NULL
+
+  ## oauth_refresh_token.user_id is documented as an FK to core_user.id and its sibling tables
+  ## (oauth_authorization_code, oauth_access_token) got an index + FK when they were created,
+  ## but the refresh-token table was left unconstrained. A refresh token whose user is gone is
+  ## unusable (and undesirable to keep), so dangling rows are deleted rather than nulled:
+  ## user_id NULL is reserved for tokens that were never tied to a user.
+  - changeSet:
+      id: v63.2026-07-14T00:00:06
+      author: ranquild
+      comment: Delete oauth_refresh_token rows whose user has been deleted
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE a FROM oauth_refresh_token AS a
+              LEFT JOIN core_user AS b ON b.id = a.user_id
+              WHERE a.user_id IS NOT NULL AND b.id IS NULL;
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DELETE FROM oauth_refresh_token
+              WHERE user_id IS NOT NULL
+                AND user_id NOT IN (SELECT id FROM core_user);
+      rollback: # no change
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:07
+      author: ranquild
+      comment: Index oauth_refresh_token.user_id
+      changes:
+        - createIndex:
+            tableName: oauth_refresh_token
+            indexName: idx_oauth_refresh_token_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:08
+      author: ranquild
+      comment: Add FK on oauth_refresh_token.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: oauth_refresh_token
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_oauth_refresh_token_user_id
+
+  ## pulse_channel.channel_id has had an FK since v51 but never an explicit index; it was
+  ## grandfathered into the excluded-fks set of fks-are-indexed-test. The FK is dropped and
+  ## re-added around the index creation so the explicit index becomes the FK's backing index on
+  ## every database: adding the index while the FK exists would make MySQL adopt it in place of
+  ## its auto-generated one, and the rollback's DROP INDEX would then fail with errno 1553.
+  - changeSet:
+      id: v63.2026-07-14T00:00:09
+      author: ranquild
+      comment: Drop FK on pulse_channel.channel_id ahead of indexing the column
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse_channel
+            constraintName: fk_pulse_channel_channel_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel
+            baseColumnNames: channel_id
+            referencedTableName: channel
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_channel_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:10
+      author: ranquild
+      comment: Index pulse_channel.channel_id
+      changes:
+        - createIndex:
+            tableName: pulse_channel
+            indexName: idx_pulse_channel_channel_id
+            columns:
+              - column:
+                  name: channel_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:11
+      author: ranquild
+      comment: Re-add FK on pulse_channel.channel_id, backed by the new index
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel
+            baseColumnNames: channel_id
+            referencedTableName: channel
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_channel_id
+            onDelete: CASCADE
+
+  ## Polymorphic references (type + id column pairs) can't have FK constraints, but every other
+  ## polymorphic pair in the schema (comment, dependency, cache_config, task_run, ...) carries a
+  ## composite (type, id) index. These four were missing theirs.
+  - changeSet:
+      id: v63.2026-07-14T00:00:12
+      author: ranquild
+      comment: Index audit_log (model, model_id)
+      changes:
+        - createIndex:
+            tableName: audit_log
+            indexName: idx_audit_log_model_model_id
+            columns:
+              - column:
+                  name: model
+              - column:
+                  name: model_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:13
+      author: ranquild
+      comment: Index recent_views (model, model_id)
+      changes:
+        - createIndex:
+            tableName: recent_views
+            indexName: idx_recent_views_model_model_id
+            columns:
+              - column:
+                  name: model
+              - column:
+                  name: model_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:14
+      author: ranquild
+      comment: Index notification (payload_type, payload_id)
+      changes:
+        - createIndex:
+            tableName: notification
+            indexName: idx_notification_payload_type_payload_id
+            columns:
+              - column:
+                  name: payload_type
+              - column:
+                  name: payload_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:15
+      author: ranquild
+      comment: Index source_replacement_run (source_entity_type, source_entity_id)
+      changes:
+        - createIndex:
+            tableName: source_replacement_run
+            indexName: idx_source_replacement_run_source_entity
+            columns:
+              - column:
+                  name: source_entity_type
+              - column:
+                  name: source_entity_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:16
+      author: ranquild
+      comment: Index source_replacement_run (target_entity_type, target_entity_id)
+      changes:
+        - createIndex:
+            tableName: source_replacement_run
+            indexName: idx_source_replacement_run_target_entity
+            columns:
+              - column:
+                  name: target_entity_type
+              - column:
+                  name: target_entity_id
+
+  ## workspace.creator_id is in the same boat as pulse_channel.channel_id: an FK since v62 with no
+  ## explicit index, grandfathered into the excluded-fks set of fks-are-indexed-test. Same
+  ## drop/index/re-add dance for the same MySQL reasons.
+  - changeSet:
+      id: v63.2026-07-14T00:00:17
+      author: ranquild
+      comment: Drop FK on workspace.creator_id ahead of indexing the column
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace
+            constraintName: fk_workspace_creator_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: workspace
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:18
+      author: ranquild
+      comment: Index workspace.creator_id
+      changes:
+        - createIndex:
+            tableName: workspace
+            indexName: idx_workspace_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v63.2026-07-14T00:00:19
+      author: ranquild
+      comment: Re-add FK on workspace.creator_id, backed by the new index
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_creator_id
+            onDelete: SET NULL

@@ -6,20 +6,22 @@ import {
   isValidElement,
 } from "react";
 
-import { Badge } from "metabase/common/components/Badge";
-import type { ColorName } from "metabase/lib/colors/types";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { Box, Flex } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { DataSourcePart } from "../QuestionDataSource/utils";
 
 import HeaderBreadcrumbsS from "./HeaderBreadcrumbs.module.css";
 
-const HeaderBadge = (props: ComponentProps<typeof Badge>) => (
-  <Badge
-    classNames={{
-      root: HeaderBreadcrumbsS.HeaderBadge,
-      icon: HeaderBreadcrumbsS.HeaderBadgeIcon,
-    }}
+const HeaderBreadcrumb = ({
+  className,
+  iconClassName,
+  ...props
+}: ComponentProps<typeof Breadcrumb>) => (
+  <Breadcrumb
+    className={cx(HeaderBreadcrumbsS.HeaderBreadcrumb, className)}
+    iconClassName={cx(HeaderBreadcrumbsS.HeaderBreadcrumbIcon, iconClassName)}
     {...props}
   />
 );
@@ -31,7 +33,7 @@ function getBadgeInactiveColor({
   variant: "head" | "subhead";
   isLast: boolean;
 }) {
-  return isLast && variant === "head" ? "text-primary" : "text-tertiary";
+  return isLast && variant === "head" ? "text-primary" : "text-disabled";
 }
 
 interface HeadBreadcrumbsProps {
@@ -48,6 +50,7 @@ export function HeadBreadcrumbs({
   parts,
   divider,
   inactiveColor,
+  className,
   ...props
 }: HeadBreadcrumbsProps) {
   const { isObjectDetail, ...rest } = props;
@@ -56,9 +59,11 @@ export function HeadBreadcrumbs({
       align="center"
       wrap="wrap"
       data-testid="head-crumbs-container"
-      className={cx(HeaderBreadcrumbsS.Container, {
-        [HeaderBreadcrumbsS.headVariant]: variant === "head",
-      })}
+      className={cx(
+        HeaderBreadcrumbsS.Container,
+        { [HeaderBreadcrumbsS.headVariant]: variant === "head" },
+        className,
+      )}
       {...rest}
     >
       {parts.map((part, index) => {
@@ -70,13 +75,13 @@ export function HeadBreadcrumbs({
             {isDataSourceReactElement(part) ? (
               part
             ) : (
-              <HeaderBadge
+              <HeaderBreadcrumb
                 to={part.href}
+                color={badgeInactiveColor}
                 icon={part.icon}
-                inactiveColor={badgeInactiveColor}
               >
                 {part.name}
-              </HeaderBadge>
+              </HeaderBreadcrumb>
             )}
             {!isLast &&
               (isDividerReactElement(divider) ? (
@@ -109,4 +114,4 @@ function isDividerReactElement(
   return isValidElement(divider);
 }
 
-HeadBreadcrumbs.Badge = HeaderBadge;
+HeadBreadcrumbs.Breadcrumb = HeaderBreadcrumb;

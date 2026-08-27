@@ -7,33 +7,50 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.urls :as channel.urls]
    [metabase.comments.models.comment :as comment]
    [metabase.comments.models.comment-reaction :as comment-reaction]
+   [metabase.comments.render :as comments.render]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.request.core :as request]
-   [metabase.users-rest.api :as api.user]
+   [metabase.users.core :as users]
    [metabase.users.models.user :as user]
+   [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-;;; TODO (Cam 10/28/25) -- don't capitalize constants https://guide.clojure.style/#naming-constants
 (def ^:private type->model
-  {"document" :model/Document})
+  {"document"    :model/Document
+   "exploration" :model/Exploration})
+
+(def ^:private TargetType
+  "Malli enum of valid comment target types, derived from [[type->model]]."
+  (into [:enum] (keys type->model)))
 
 (defn- entity-archived?
   "Check if the target entity is archived"
   [entity]
   (case (t2/model entity)
-    :model/Document (:archived entity)))
+    :model/Document    (:archived entity)
+    :model/Exploration (:archived entity)))
 
 (defn- urlpath-for
-  "Generate an URL to an entity"
+  "Generate a relative URL path to an entity."
   [entity]
   (case (t2/model entity)
-    :model/Document (str "/document/" (:id entity))))
+    :model/Document    (channel.urls/document-path (:id entity))
+    :model/Exploration (channel.urls/exploration-path (:id entity))))
+
+(defn- friendly-entity-type-for
+  "Generate a friendly name for a comment target type."
+  [entity]
+  (case (t2/model entity)
+    :model/Document    "document"
+    :model/Exploration "research project"))
 
 ;;; schemas
 
@@ -43,24 +60,47 @@
    [:and
     {:error/message "Comment content must be valid JSON"
      :json-schema   {:type "object"}}
-    [:map]]
+    ms/Map]
    (deferred-tru "Comment content must be valid JSON.")))
+
+(def ^:private CommentHighlight
+  "The chart point a comment is anchored to. Identity only — which column, and which dimension values
+  pick out the point — so the client can re-find it in a result set it is separately authorized to
+  read."
+  [:map {:closed true}
+   [:columnName {:optional true} [:maybe :string]]
+   [:dimensions {:optional true}
+    [:maybe [:sequential [:map {:closed true}
+                          [:columnName {:optional true} [:maybe :string]]
+                          [:value      {:optional true} :any]]]]]])
+
+(def CommentContext
+  "Context stored alongside a comment"
+  (mu/with-api-error-message
+   [:and
+    {:error/message "Comment context must be a valid JSON object"
+     :json-schema   {:type "object"}}
+    [:map {:closed true}
+     [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
+     [:exploration_query_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+     [:highlighted           {:optional true} [:maybe CommentHighlight]]
+     [:highlight_label       {:optional true} [:maybe [:string {:max 1000}]]]]]
+   (deferred-tru "Comment context must be a valid JSON object.")))
 
 (def CreateComment
   "Schema for creating a new comment"
   [:map
-   [:target_type [:enum "document"]]
+   [:target_type TargetType]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
-   [:html        :string]
    [:child_target_id {:optional true} [:maybe :string]]
+   [:context {:optional true} [:maybe CommentContext]]
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def UpdateComment
   "Schema for updating a comment"
   [:map
    [:content {:optional true} CommentContent]
-   [:html    {:optional true} :string]
    [:is_resolved {:optional true} :boolean]])
 
 ;;; routes
@@ -100,7 +140,7 @@
   "Get comments for an entity"
   [_route-params
    {:keys [target_type target_id]} :- [:map
-                                       [:target_type [:enum "document"]]
+                                       [:target_type TargetType]
                                        [:target_id ms/PositiveInt]]
    _body
    req]
@@ -114,7 +154,19 @@
                                               [:= :target_id target_id]]
                                    :order-by [[:created_at :asc]]})
                        (t2/hydrate :creator :reactions))]
-      {:comments (render-comments comments)})))
+      ;; The read check above only proves the viewer may see the *target*, and for an exploration
+      ;; that is collection permissions alone; the gate is what adjudicates the warehouse values a
+      ;; `:context` carries (its dimension values and the `:highlight_label` summarizing them).
+      {:comments (render-comments (comment/apply-context-gate target_type target_id comments))})))
+
+(defn- mentioned-ids-who-can-read
+  "Restrict mentioned user ids to active users who can themselves read `entity`."
+  [entity mention-ids]
+  (when (seq mention-ids)
+    (->> (t2/select-pks-set :model/User :id [:in mention-ids] :is_active true)
+         (filterv (fn [user-id]
+                    (request/with-current-user user-id
+                      (mi/can-read? entity)))))))
 
 (defn notify-comment!
   "Send a notification about comment"
@@ -125,27 +177,28 @@
               parent (when parent_comment_id
                        (t2/select-one :model/Comment :id parent_comment_id))}}]]
   (let [clause     (if parent_comment_id
-                     {:where [:in :id {:from   [:comment]
-                                       :select [:creator_id]
-                                       :where  [:or
-                                                [:= :id parent_comment_id]
-                                                [:= :parent_comment_id parent_comment_id]]}]}
+                     {:where [:in :id ^:allow-subquery {:from   [:comment]
+                                                        :select [:creator_id]
+                                                        :where  [:or
+                                                                 [:= :id parent_comment_id]
+                                                                 [:= :parent_comment_id parent_comment_id]]}]}
                      ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
                      {:where [:= :id (:creator_id entity)]})
-        mentions   (comment/mentions (:content comment))
+        mentions   (->> (comment/mentions (:content comment))
+                        (mentioned-ids-who-can-read entity))
         recipients (-> (t2/select-fn-set :email [:model/User :email]
                                          (cond-> clause
                                            (seq mentions) (sql.helpers/where :or [:in :id mentions])))
                        (disj (:email @api/*current-user*)))
-        payload    {:entity_type    (:target_type comment)
+        payload    {:entity_type    (friendly-entity-type-for entity)
                     :entity_title   (:name entity)
                     :comment_href   (comment/url entity comment)
-                    :document_href  (urlpath-for entity)
+                    :entity_href    (urlpath-for entity)
                     :created_at     (:created_at comment)
                     :author         (:common_name (:creator comment))
-                    :comment        (:content_html comment)
+                    :comment        (comments.render/content->html (:content comment))
                     :parent_author  (:common_name (:creator parent))
-                    :parent_comment (:content_html parent)
+                    :parent_comment (some-> parent :content comments.render/content->html)
                     :style            {:color_text_dark   channel.render/color-text-dark
                                        :color_text_light  channel.render/color-text-light
                                        :color_text_medium channel.render/color-text-medium}}]
@@ -166,7 +219,7 @@
   "Create a new comment"
   [_route-params
    _query-params
-   {:keys [target_type target_id child_target_id parent_comment_id content html]} :- CreateComment]
+   {:keys [target_type target_id child_target_id context parent_comment_id content]} :- CreateComment]
   (let [entity     (-> (api/read-check (type->model target_type) target_id)
                        (u/prog1 (api/check-400 (not (entity-archived? <>))
                                                "Cannot comment on archived entities")))
@@ -182,9 +235,9 @@
                                                       {:target_type       target_type
                                                        :target_id         target_id
                                                        :child_target_id   child_target_id
+                                                       :context           context
                                                        :parent_comment_id parent_comment_id
                                                        :content           content
-                                                       :content_html      html
                                                        :creator_id        api/*current-user-id*})
                        (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
@@ -203,12 +256,11 @@
   "Update a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [content html is_resolved]} :- UpdateComment]
+   {:keys [content is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))
         entity  (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
                     (u/prog1 (api/check-400 (not (entity-archived? <>))
                                             "Cannot edit comments on archived entities")))]
-
     (when content
       ;; Cannot edit content of deleted comments
       (api/check-400 (not (:deleted_at comment))
@@ -216,16 +268,13 @@
       ;; Only creator or admin can edit comment content
       (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
                          (:is_superuser @api/*current-user*))))
-
     (when (some? is_resolved)
       ;; Anyone with write permission to target entity can resolve/unresolve
       (api/write-check entity))
-
-    (when-let [updates (-> {:content content :html html :is_resolved is_resolved}
+    (when-let [updates (-> {:content content :is_resolved is_resolved}
                            u/remove-nils
                            not-empty)]
       (t2/update! :model/Comment comment-id updates))
-
     (let [updated-comment (-> (t2/select-one :model/Comment :id comment-id)
                               (t2/hydrate :creator :reactions))]
       (events/publish-event! :event/comment-update
@@ -242,23 +291,18 @@
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
-
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot delete comments on archived entities")))
-
     ;; Only creator or admin can delete comments
     (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
                        (:is_superuser @api/*current-user*)))
     (api/check-400 (not (:deleted_at comment)) "Comment is already deleted")
-
     ;; Soft delete the comment
     (t2/update! :model/Comment comment-id {:deleted_at [:now]})
-
     (events/publish-event! :event/comment-delete
                            {:object comment
                             :user-id api/*current-user-id*})
-
     ;; Return 204 No Content
     api/generic-204-no-content))
 
@@ -274,12 +318,25 @@
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")
-
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot react to comments on archived entities")))
-
     (comment-reaction/toggle-reaction comment-id api/*current-user-id* emoji)))
+
+(defn- restrict-to-visible-users
+  "Narrow user-listing `clauses` to the users the current user should see, matching the scoping used by
+  `GET /api/user/recipients`: superusers see everyone; everyone else is limited to their own tenant and
+  further narrowed by the `user-visibility` setting."
+  [clauses]
+  (if api/*is-superuser?*
+    clauses
+    (let [clauses (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])]
+      (case (users.settings/user-visibility)
+        :all   clauses
+        :group (sql.helpers/where clauses [:in :core_user.id (-> (user/same-groups-user-ids api/*current-user-id*)
+                                                                 (set)
+                                                                 (conj api/*current-user-id*))])
+        :none (sql.helpers/where clauses [:= :core_user.id api/*current-user-id*])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -290,11 +347,10 @@
   [_route _query _body req]
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
-
-  (let [clauses (user/filter-clauses {:limit  (request/limit)
-                                      :offset (request/offset)})]
-    ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
-    ;; do not forget to uncomment tests (both api and e2e)
+  (let [clauses (->
+                 (user/filter-clauses {:limit  (request/limit)
+                                       :offset (request/offset)})
+                 restrict-to-visible-users)]
     {:data   (->> (t2/select [:model/User :id :first_name :last_name :email]
                              (-> clauses
                                  (sql.helpers/order-by [:%lower.first_name :asc]
@@ -304,7 +360,7 @@
      :total  (:count (t2/query-one
                       (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                               :from   :core_user}
-                             (api.user/filter-clauses-without-paging clauses))))
+                             (users/filter-clauses-without-paging clauses))))
      :limit  (request/limit)
      :offset (request/offset)}))
 

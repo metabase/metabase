@@ -1,10 +1,10 @@
 import { merge } from "icepick";
 
-import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
-import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
 import type { MantineThemeOverride } from "metabase/ui";
+import { OVERLAY_Z_INDEX } from "metabase/ui/component-theme";
+import type { DeepPartial } from "metabase-types/utils/types";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
 
@@ -35,9 +35,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     breadcrumbs: {
       expandButton: {
         textColor: "var(--mb-color-text-secondary)",
-        backgroundColor: "var(--mb-color-background-secondary)",
+        backgroundColor: "var(--mb-color-background_page-secondary)",
         hoverTextColor: "var(--mb-color-text-primary-inverse)",
-        hoverBackgroundColor: "var(--mb-color-brand)",
+        hoverBackgroundColor: "var(--mb-color-core-brand)",
       },
     },
     emptyContent: {
@@ -54,9 +54,9 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
   },
   dashboard: {
-    backgroundColor: "var(--mb-color-background-primary)",
+    backgroundColor: "var(--mb-color-background_page-primary)",
     card: {
-      backgroundColor: "var(--mb-color-background-primary)",
+      backgroundColor: "var(--mb-color-background_page-primary)",
     },
   },
   question: {
@@ -69,7 +69,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
       textColor: "var(--mb-color-text-primary)",
     },
     idColumn: {
-      textColor: "var(--mb-color-brand)",
+      textColor: "var(--mb-color-core-brand)",
     },
   },
   pivotTable: {
@@ -78,7 +78,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
     rowToggle: {
       textColor: "text-primary-inverse",
-      backgroundColor: "text-tertiary", // TODO: should it be "background-tertiary-inverse" ?
+      backgroundColor: "text-disabled", // TODO: should it be "background_page-tertiary-inverse" ?
     },
   },
   cartesian: {
@@ -127,7 +127,7 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
       expandButton: {
         backgroundColor: "transparent",
         hoverTextColor: "var(--mb-color-text-primary-inverse)",
-        hoverBackgroundColor: "var(--mb-color-brand)",
+        hoverBackgroundColor: "var(--mb-color-core-brand)",
       },
     },
   },

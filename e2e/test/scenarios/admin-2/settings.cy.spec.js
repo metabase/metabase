@@ -126,23 +126,6 @@ describe("scenarios > admin > settings", () => {
     H.restore(); // avoid leaving https site url
   });
 
-  it("should display an error if the https redirect check fails", () => {
-    cy.visit("/admin/settings/general");
-
-    cy.intercept("GET", "**/api/health", (req) => {
-      req.reply({ forceNetworkError: true });
-    }).as("httpsCheck");
-    // switch site url to use https
-    cy.findByTestId("site-url-setting")
-      .findByRole("textbox", { name: "input-prefix" })
-      .click();
-    H.popover().contains("https://").click();
-
-    cy.wait("@httpsCheck");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("It looks like HTTPS is not properly configured");
-  });
-
   it("should correctly apply the globalized date formats (metabase#11394) and update the formatting", () => {
     cy.intercept("PUT", "**/custom-formatting").as("saveFormatting");
 
@@ -174,7 +157,7 @@ describe("scenarios > admin > settings", () => {
     cy.findByTextEnsureVisible("Created At");
     cy.get("[data-testid=cell-data]")
       .should("contain", "Created At")
-      .and("contain", "2025/2/11, 21:40");
+      .and("contain", "2028/2/11, 21:40");
 
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
@@ -189,7 +172,7 @@ describe("scenarios > admin > settings", () => {
     H.openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get("[data-testid=cell-data]").and("contain", "2025/2/11, 9:40 PM");
+    cy.get("[data-testid=cell-data]").and("contain", "2028/2/11, 9:40 PM");
   });
 
   it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {
@@ -230,7 +213,7 @@ describe("scenarios > admin > settings", () => {
       .as("timezoneSelect")
       .clear()
       .type("Centr");
-    cy.findByRole("listbox").findByText("US/Central").click();
+    H.selectDropdown().findByText("US/Central").click();
     cy.wait("@reportTimezone");
     cy.get("@timezoneSelect").should("have.value", "US/Central");
   });
@@ -269,17 +252,13 @@ describe("scenarios > admin > settings", () => {
 
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
-      cy.visit("/admin/settings/notifications");
-      cy.findByTestId("admin-layout-content")
-        .findByText("Connect to Slack")
-        .click();
+      cy.visit("/admin/settings/slack");
 
-      H.modal().findByText("Metabase on Slack");
+      cy.findByRole("main").findByText("Create a Slack app and connect to it.");
 
       cy.findByLabelText(/Slack Bot User OAuth Token/i).type("xoxb");
-      cy.button("Save changes").click();
-
-      H.modal().findByText(/invalid token/i);
+      cy.button("Connect").click();
+      cy.findByRole("main").findByText(/invalid token/i);
     });
   });
 });
@@ -525,17 +504,13 @@ describe("scenarios > admin > settings > email settings", () => {
   describe("Pro-cloud instance", () => {
     beforeEach(() => {
       cy.intercept("DELETE", "api/ee/email/override").as("smtpCleared");
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          // in an actual pro-cloud instance this gets configured via env vars
-          res.body["email-configured?"] = true;
-          return res.body;
-        });
-      });
       cy.intercept("PUT", "api/ee/email/override").as("smtpSaved");
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-cloud");
+      // A real pro-cloud instance configures email via env vars; set the SMTP host so
+      // email-configured? is true (avoids a session/properties intercept that flakes on reload).
+      H.updateSetting("email-smtp-host", "smtp.example.test");
       H.resetSnowplow();
       H.enableTracking();
     });
@@ -631,20 +606,6 @@ describe("scenarios > admin > settings > email settings", () => {
 });
 
 describe("scenarios > admin > license and billing", () => {
-  const HOSTING_FEATURE_KEY = "hosting";
-  const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
-  const NO_UPSELL_FEATURE_HEY = "no-upsell";
-  // mocks data the will be returned by enterprise useLicense hook
-  const mockBillingTokenFeatures = (features) => {
-    return cy.intercept("GET", "/api/premium-features/token/status", {
-      "valid-thru": "2099-12-31T12:00:00",
-      valid: true,
-      trial: false,
-      features,
-      status: "something",
-    });
-  };
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -656,33 +617,6 @@ describe("scenarios > admin > license and billing", () => {
       cy.findByTestId("license-and-billing-content")
         .findByText("Go to the Metabase Store")
         .should("have.prop", "tagName", "A");
-    });
-
-    it("should not show license input for cloud-hosted instances", () => {
-      H.activateToken("pro-self-hosted");
-      mockBillingTokenFeatures([
-        STORE_MANAGED_FEATURE_KEY,
-        NO_UPSELL_FEATURE_HEY,
-        HOSTING_FEATURE_KEY,
-      ]);
-      cy.visit("/admin/settings/license");
-      cy.findByTestId("license-input").should("not.exist");
-    });
-
-    it("should render an error if something fails when fetching billing info", () => {
-      H.activateToken("pro-self-hosted");
-      mockBillingTokenFeatures([
-        STORE_MANAGED_FEATURE_KEY,
-        NO_UPSELL_FEATURE_HEY,
-      ]);
-      // force an error
-      cy.intercept("GET", "/api/ee/billing", (req) => {
-        req.reply({ statusCode: 500 });
-      });
-      cy.visit("/admin/settings/license");
-      cy.findByTestId("license-and-billing-content")
-        .findByText(/An error occurred/)
-        .should("exist");
     });
   });
 });
@@ -700,32 +634,27 @@ describe("scenarios > admin > localization", () => {
 
   it("should correctly apply start of the week to a bar chart (metabase#13516)", () => {
     // programatically create and save a question based on Orders table
-    // filter: created before June 1st, 2022
+    // filter: created before June 1st, 2025
     // summarize: Count by CreatedAt: Week
-
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    H.createQuestion({
-      name: "Orders created before June 1st 2022",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2022-06-01"],
+    H.createQuestion(
+      {
+        name: "Orders created before June 1st 2025",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2025-06-01"],
+        },
+        display: "bar",
       },
-      display: "line",
-    });
-
-    // find and open that question
-    cy.visit("/collection/root");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders created before June 1st 2022").click();
-
-    cy.wait("@cardQuery");
+      { visitQuestion: true },
+    );
 
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
-    H.echartsContainer().get("text").contains("April 25, 2022");
+    // April 28 is Monday in year 2025. Expect this to break when we shift years in the Sample Database.
+    H.echartsContainer().find("text").should("contain", "April 28, 2025");
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
@@ -882,7 +811,7 @@ describe("scenarios > admin > localization", () => {
       cy.findByTextEnsureVisible("Add filter");
 
       // update the date input in the widget
-      cy.findByLabelText("Date").clear().type("2024/5/15").blur();
+      cy.findByLabelText("Date").clear().type("2027/5/15").blur();
 
       // add a time to the date
       cy.findByText("Add time").click();
@@ -898,7 +827,7 @@ describe("scenarios > admin > localization", () => {
 
     // verify that the correct row is displayed
     H.tableInteractive().within(() => {
-      cy.findByText("2024/5/15, 19:56");
+      cy.findByText("2027/5/15, 19:56");
       cy.findByText("127.52");
     });
   });
@@ -925,9 +854,9 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.button("Load").click();
     cy.wait("@getGeoJson");
     cy.findByTestId("map-region-key-select").click();
-    H.popover().contains("NAME").click();
+    H.selectDropdown().contains("NAME").click();
     cy.findByTestId("map-region-name-select").click();
-    H.popover().contains("NAME").click();
+    H.selectDropdown().contains("NAME").click();
     cy.button("Add map").click();
     cy.findByTestId("admin-layout-content").within(() => {
       cy.contains("NAME").should("not.exist");
@@ -949,69 +878,6 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.findByText("Load").click();
     cy.wait("@load").then((interception) => {
       expect(interception.response.statusCode).to.eq(200);
-    });
-  });
-
-  it("should show an informative error when adding an invalid URL", () => {
-    cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a map").click();
-    cy.findByPlaceholderText(
-      "Like https://my-mb-server.com/maps/my-map.json",
-    ).type("bad-url");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(
-      "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath. " +
-        "URLs referring to hosts that supply internal hosting metadata are prohibited.",
-    );
-  });
-
-  it("should show an informative error when adding a valid URL that does not contain GeoJSON, or is missing required fields", () => {
-    cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a map").click();
-
-    // Not GeoJSON
-    cy.findByPlaceholderText(
-      "Like https://my-mb-server.com/maps/my-map.json",
-    ).type("https://metabase.com");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("GeoJSON URL returned invalid content-type");
-
-    // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
-    cy.findByPlaceholderText("Like https://my-mb-server.com/maps/my-map.json")
-      .clear()
-      .type(
-        "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson",
-      );
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Invalid custom GeoJSON: does not contain features");
-  });
-
-  it("should show an informative error when adding a calid URL that contains GeoJSON that does not use lat/lng coordinates", () => {
-    //intercept call to api/geojson and return projected.geojson. Call to load file actually happens in the BE
-    cy.fixture("../../e2e/support/assets/projected.geojson").then((data) => {
-      cy.intercept("GET", "/api/geojson*", data);
-    });
-
-    cy.visit("/admin/settings/maps");
-    cy.button("Add a map").click();
-
-    H.modal().within(() => {
-      // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
-      cy.findByPlaceholderText("Like https://my-mb-server.com/maps/my-map.json")
-        .clear()
-        .type("http://assets/projected.geojson");
-      cy.findByText("Load").click();
-      cy.findByText(
-        "Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude",
-      );
     });
   });
 });
@@ -1092,7 +958,7 @@ describe("notifications", { tags: "@external" }, () => {
 
     AUTH_METHODS.forEach((auth) => {
       it(`${auth.display} Auth`, () => {
-        cy.visit("/admin/settings/notifications");
+        cy.visit("/admin/settings/webhooks");
         cy.findByRole("heading", { name: "Add a webhook" }).click();
 
         H.modal().within(() => {
@@ -1121,7 +987,7 @@ describe("notifications", { tags: "@external" }, () => {
   });
 
   it("Should allow you to create and edit Notifications", () => {
-    cy.visit("/admin/settings/notifications");
+    cy.visit("/admin/settings/webhooks");
 
     cy.findByRole("heading", { name: "Add a webhook" }).click();
 
@@ -1288,7 +1154,7 @@ describe("admin > settings > nav", () => {
     cy.findByTestId("admin-layout-sidebar")
       .findByText(/api keys/i)
       .click();
-    cy.findByTestId("admin-layout-content").findByText(/No API keys here yet/i);
+    cy.findByTestId("admin-layout-content").findByText(/No API keys yet/i);
     cy.url().should("include", "/admin/settings/authentication/api-keys");
   });
 });

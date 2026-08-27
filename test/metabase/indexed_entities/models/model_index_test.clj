@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.indexed-entities.models.model-index-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.indexed-entities.models.model-index-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -7,8 +8,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.indexed-entities.task.index-values :as task.index-values]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.impl :as task]
    [metabase.test :as mt]

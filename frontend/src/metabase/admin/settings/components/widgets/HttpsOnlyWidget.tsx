@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { fetchWithTimeout } from "metabase/lib/fetchWithTimeout";
+import { useAdminSetting } from "metabase/settings";
+import { fetchWithTimeout } from "metabase/utils/fetchWithTimeout";
 
 import { AdminSettingInput } from "./AdminSettingInput";
 

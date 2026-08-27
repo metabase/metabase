@@ -5,8 +5,10 @@ import { ColorSelectorPanel } from "metabase/common/components/ColorSelectorPane
 
 import { PopoverRoot } from "./ColorSelectorPopover.styled";
 
-export interface ColorSelectorPopoverProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface ColorSelectorPopoverProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
   value?: string;
   colors: string[];
   onChange?: (newValue: string) => void;

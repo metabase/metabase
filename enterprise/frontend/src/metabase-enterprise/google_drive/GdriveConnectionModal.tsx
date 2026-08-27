@@ -1,14 +1,11 @@
-import dayjs from "dayjs";
 import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
-import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
-import { useDispatch } from "metabase/lib/redux";
-import { getUserName } from "metabase/lib/user";
+import { dayjs } from "metabase/dayjs";
 import {
   Box,
   Button,
@@ -20,6 +17,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import { getUserName } from "metabase/utils/user";
 import {
   useGetGsheetsFolderQuery,
   useGetServiceAccountQuery,
@@ -43,7 +41,7 @@ export function GdriveConnectionModal({
   onClose: (success?: boolean) => void;
   reconnect: boolean;
 }) {
-  const shouldShow = useShowGdrive();
+  const { showGdrive: shouldShow } = useShowGdrive();
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery(shouldShow ? undefined : skipToken);
 
@@ -98,7 +96,6 @@ function GoogleSheetsConnectModal({
   folderUrl: string | null;
   serviceAccountEmail: string;
 }) {
-  const dispatch = useDispatch();
   const [folderLink, setFolderLink] = useState(folderUrl ?? "");
   const [errorMessage, setErrorMessage] = useState("");
   const [linkType, setLinkType] = useState<UploadType>("folder");
@@ -124,7 +121,6 @@ function GoogleSheetsConnectModal({
     })
       .unwrap()
       .then(() => {
-        dispatch(reloadSettings());
         onClose(true);
       })
       .catch((response) => {
@@ -137,14 +133,15 @@ function GoogleSheetsConnectModal({
 
   return (
     <ModalWrapper onClose={onClose} title={t`Import Google Sheets`}>
-      <SegmentedControl
+      <SegmentedControl<UploadType>
         fullWidth
         autoContrast
-        color="brand"
+        color="core-brand"
         c="text-primary-inverse"
         value={linkType}
         onChange={setLinkType}
         data={
+          // Unjustified type cast. FIXME
           [
             { value: "folder", label: t`Entire folder` },
             { value: "file", label: t`Single Sheet` },
@@ -152,7 +149,7 @@ function GoogleSheetsConnectModal({
         }
       />
       <Flex
-        bg="background-secondary"
+        bg="background_page-secondary"
         style={{ borderRadius: "0.5rem" }}
         p="md"
         direction="column"
@@ -165,7 +162,7 @@ function GoogleSheetsConnectModal({
           <Text>
             2.{" "}
             {c("{0} is an email address")
-              .jt`Enter: ${(<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>)}`}
+              .jt`Enter: ${<strong key="bold">{serviceAccountEmail ?? t`Error fetching service account email`}</strong>}`}
           </Text>
           <CopyButton value={serviceAccountEmail}></CopyButton>
         </Flex>
@@ -199,7 +196,7 @@ function GoogleSheetsConnectModal({
           </Text>
         </Box>
         <Flex justify="space-between" align="center" mt="sm" gap="md">
-          <Text c="error" lh="1.2rem">
+          <Text c="feedback-negative" lh="1.2rem">
             {errorMessage}
           </Text>
           <Button
@@ -244,7 +241,7 @@ function GoogleSheetsDisconnectModal({
           {bodyCopy}
         </Text>
         <Flex w="100%" gap="sm" justify="space-between">
-          <Text c="error" ta="start">
+          <Text c="feedback-negative" ta="start">
             {errorMessage}
           </Text>
           <Flex justify="flex-end" gap="md">
@@ -257,7 +254,7 @@ function GoogleSheetsDisconnectModal({
             </Button>
             <Button
               variant="filled"
-              color="danger"
+              color="feedback-negative"
               loading={isDeletingFolderLink}
               onClick={onDelete}
             >
@@ -303,7 +300,7 @@ export const DriveConnectionDisplay = () => {
   return (
     <MaybeLink href={folderUrl ?? ""}>
       <Flex
-        bg="background-secondary"
+        bg="background_page-secondary"
         w="100%"
         gap="sm"
         p="md"

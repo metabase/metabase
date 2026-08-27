@@ -45,6 +45,11 @@
   "The current user does not have required permissions to run the current query."
   :parent client)
 
+(defn permission-error?
+  "Is `error-type` a permissions error"
+  [error-type]
+  (= missing-required-permissions error-type))
+
 (deferror bad-configuration
   "Something related to configuration (e.g. of a sandbox/GTAP) is preventing us from being able to run the query."
   :parent client)
@@ -98,6 +103,47 @@
   "The query contains a join condition which refers to a field on the LHS of the join which is no longer available."
   :parent invalid-query
   :show-in-embeds? true)
+
+(deferror circular-reference
+  "The query has circular referencing sub-queries."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror unable-to-acquire-connection
+  "The query references a database that we are unable to acquire a connection to."
+  :parent client
+  :show-in-embeds? true)
+
+;;;; #### Connection-Pool Saturation Errors
+;;;;
+;;;; A database's connection pool is momentarily overloaded. These are transient and retriable — the query itself is
+;;;; fine — so the query processor maps them to an HTTP 503 (Service Unavailable), not a 4xx. Contrast with
+;;;; `unable-to-acquire-connection`, a `client` error meaning we cannot connect to the database at all.
+
+(deferror connection-pool-saturated
+  "Ancestor type for the transient errors raised when a database's connection pool is saturated — every connection is
+  in use and the pool has hit `jdbc-data-warehouse-max-connection-pool-size`. Equivalent of an HTTP 503 (Service
+  Unavailable); the client may retry. Not thrown directly; see the children [[connection-pool-checkout-timeout]] and
+  [[connection-pool-checkout-queue-full]]."
+  :parent :error
+  :show-in-embeds? true)
+
+(deferror connection-pool-checkout-timeout
+  "A query waited for a free connection to its database but gave up once the wait exceeded
+  `jdbc-data-warehouse-connection-pool-checkout-timeout-ms`."
+  :parent connection-pool-saturated)
+
+(deferror connection-pool-checkout-queue-full
+  "A query was rejected immediately, without waiting, because the number of queries already waiting for a free
+  connection to its database had reached `jdbc-data-warehouse-connection-pool-max-pending-checkouts`."
+  :parent connection-pool-saturated)
+
+(defn connection-pool-saturated?
+  "Is `error-type` a connection-pool-saturation error, the equivalent of an HTTP 503 status code? True for both a
+  checkout timeout ([[connection-pool-checkout-timeout]]) and a full checkout queue
+  ([[connection-pool-checkout-queue-full]])."
+  [error-type]
+  (isa? hierarchy error-type connection-pool-saturated))
 
 ;;;; ### Server-Side Errors
 

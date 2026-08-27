@@ -5,9 +5,8 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk-bundle/lib/get-is-localhost";
-import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import {
   createMockApiKeyConfig,
@@ -18,21 +17,17 @@ import {
   createMockTokenState,
 } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 const TEST_USER = createMockUser();
 
-jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
-
-const mockSdkDispatchFn = jest.fn();
-jest.mock("embedding-sdk-bundle/store", () => ({
-  ...jest.requireActual("embedding-sdk-bundle/store"),
-  useSdkDispatch: () => mockSdkDispatchFn,
+jest.mock("metabase/visualizations/register", () => ({
+  registerVisualizations: jest.fn(),
 }));
 
 interface Options {
@@ -174,9 +169,59 @@ describe("SdkUsageProblemDisplay", () => {
     mock.mockRestore();
   });
 
-  // Caveat: we cannot detect this on non-localhost environments, as
-  // CORS is disabled on /api/session/properties.
-  it("shows an error when Embedding SDK is disabled on localhost", async () => {
+  // We allow the SDK to be used locally even when embedding isn't enabled for
+  // the instance: showing an error was confusing — clicking "hide" cleared it
+  // and the SDK rendered anyway — so on localhost there is no usage problem.
+  it("does not show an error when Embedding SDK is disabled on localhost", () => {
+    expect(window.location.origin).toBe("http://localhost");
+
+    setup({
+      authConfig: createMockSdkConfig(),
+      hasEmbeddingFeature: true,
+      isEmbeddingSdkEnabled: false,
+    });
+
+    expect(
+      screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the API key warning when the SDK is disabled on localhost but an API key is used", async () => {
+    expect(window.location.origin).toBe("http://localhost");
+
+    setup({
+      authConfig: createMockApiKeyConfig(),
+      hasEmbeddingFeature: true,
+      isEmbeddingSdkEnabled: false,
+    });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    // API keys are always allowed on localhost regardless of the
+    // `enable-embedding-sdk` setting, so the eval-only warning still shows —
+    // not the "not enabled" error.
+    expect(
+      within(card).getByText("This embed is powered by the Metabase SDK."),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).getByText(
+        /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).queryByText(/Embedding is not enabled for this instance/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an error when Embedding SDK is disabled in production", async () => {
+    const mock = jest
+      .spyOn(IsLocalhostModule, "getIsLocalhost")
+      .mockImplementation(() => false);
+
     setup({
       authConfig: createMockSdkConfig(),
       hasEmbeddingFeature: true,
@@ -201,6 +246,8 @@ describe("SdkUsageProblemDisplay", () => {
       "href",
       "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase",
     );
+
+    mock.mockRestore();
   });
 
   it("shows a warning when development mode is enabled", async () => {
@@ -279,6 +326,10 @@ describe("SdkUsageProblemDisplay", () => {
 
     await userEvent.click(within(card).getByText("Hide warning"));
 
-    expect(mockSdkDispatchFn).toHaveBeenCalledWith(setUsageProblem(null));
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
+      ).not.toBeInTheDocument();
+    });
   });
 });

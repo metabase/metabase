@@ -19,7 +19,7 @@ describe("scenarios > admin > permissions > application", () => {
     H.restore();
     cy.signInAsAdmin();
     // H.activateToken("pro-self-hosted");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   it("shows permissions help", () => {
@@ -69,7 +69,8 @@ describe("scenarios > admin > permissions > application", () => {
 
         H.visitQuestion(ORDERS_QUESTION_ID);
         H.tableInteractive().should("be.visible");
-        H.sharingMenuButton().should("be.disabled");
+        // No public link: the share button only copies the app link, no menu.
+        H.sharingMenuButton().should("have.attr", "aria-label", "Copy link");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {
@@ -85,7 +86,7 @@ describe("scenarios > admin > permissions > application", () => {
 
         cy.log("Set up a dashboard subscription");
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openSharingMenu(/subscriptions/i);
+        H.toggleDashboardSubscriptionsSidebar();
         H.sidebar().findByText("Email this dashboard").should("exist");
 
         cy.log("Create a question alert");
@@ -125,21 +126,18 @@ describe("scenarios > admin > permissions > application", () => {
 
       it("allows accessing tools for non-admins", () => {
         cy.visit("/");
-        H.goToAdmin();
+        H.getProfileLink().click();
+        H.popover().findByText("Monitor").click();
 
-        cy.log("Tools smoke test");
-        cy.location("pathname").should("eq", "/admin/tools/help");
+        cy.log("Monitor tools smoke test");
+        cy.location("pathname").should("contain", "/monitor/tasks");
         cy.findByRole("heading", {
-          name: "Help",
+          name: "Background tasks",
         });
 
-        cy.findByTestId("admin-layout-sidebar")
-          .findByText("Erroring questions")
-          .click();
-        cy.location("pathname").should("eq", "/admin/tools/errors");
-        cy.findByTestId("admin-layout-content").findByText(
-          "Questions that errored when last run",
-        );
+        cy.findByTestId("monitor-nav").findByText("Erroring questions").click();
+        cy.location("pathname").should("eq", "/monitor/errors");
+        cy.findByTestId("monitor-main").findByText("Erroring questions");
       });
     });
 
@@ -151,10 +149,10 @@ describe("scenarios > admin > permissions > application", () => {
 
         H.popover().findByText(adminAppLinkText).should("not.exist");
 
-        cy.visit("/admin/tools/errors");
+        cy.visit("/monitor/errors");
         H.main().findByText("Sorry, you don’t have permission to see that.");
 
-        cy.visit("/admin/tools/help");
+        cy.visit("/monitor");
         H.main().findByText("Sorry, you don’t have permission to see that.");
       });
     });

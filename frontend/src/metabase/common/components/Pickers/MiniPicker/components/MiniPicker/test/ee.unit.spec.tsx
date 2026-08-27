@@ -23,6 +23,7 @@ const LIBRARY_DATA_COLLECTION = createMockCollectionItem({
   model: "collection",
   id: 1338,
   here: ["dataset"],
+  is_library_root: true,
 });
 
 const LIBRARY_METRICS_COLLECTION = createMockCollectionItem({
@@ -31,6 +32,7 @@ const LIBRARY_METRICS_COLLECTION = createMockCollectionItem({
   model: "collection",
   id: 1339,
   here: ["metric"],
+  is_library_root: true,
 });
 
 describe("library", () => {
@@ -41,10 +43,7 @@ describe("library", () => {
       collectionItems: [LIBRARY_DATA_COLLECTION, LIBRARY_METRICS_COLLECTION],
     });
 
-    setup(
-      {},
-      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
-    );
+    setup({}, { tokenFeatures: createMockTokenFeatures({ library: true }) });
 
     expect(await screen.findByText("metrics")).toBeInTheDocument();
     expect(await screen.findByText("data")).toBeInTheDocument();
@@ -65,7 +64,7 @@ describe("library", () => {
 
     setup(
       { models: ["dataset", "metric"] },
-      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
+      { tokenFeatures: createMockTokenFeatures({ library: true }) },
     );
 
     expect(await screen.findByText("Our analytics")).toBeInTheDocument();
@@ -93,7 +92,7 @@ describe("library", () => {
 
     setup(
       { models: ["dataset", "metric"] },
-      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
+      { tokenFeatures: createMockTokenFeatures({ library: true }) },
     );
     expect(await screen.findByText("Surprise")).toBeInTheDocument();
     expect(screen.queryByText("metrics")).not.toBeInTheDocument();
@@ -108,7 +107,7 @@ describe("library", () => {
 
     setup(
       { shouldShowLibrary: false },
-      { tokenFeatures: createMockTokenFeatures({ data_studio: true }) },
+      { tokenFeatures: createMockTokenFeatures({ library: true }) },
     );
 
     expect(await screen.findByText("Mini Db")).toBeInTheDocument();

@@ -1,16 +1,19 @@
 (ns ^:mb/driver-tests metabase.query-processor.remapping-test
   "Tests for the remapping results"
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.remapping-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.remapping-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.tu]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
@@ -262,7 +265,7 @@
           (is (= [[1 1  14 37.65  2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
                   [2 1 123 110.93  6.1 117.03 nil  "2018-05-15T08:04:04.58Z" 3 "Mediocre Wooden Bench"]]
                  (remappings-with-metadata metadata))))))))
-        ;; doesn't currently work with any other metadata.
+;; doesn't currently work with any other metadata.
 
 (deftest remappings-with-implicit-joins-test
   (mt/with-temporary-setting-values [report-timezone "UTC"]
@@ -355,7 +358,7 @@
                             ["CATEGORY" nil      "Category"]                  ; products.category
                             ["TITLE_2"  "Orders" "Product → Title"]           ; product.title, remapped from orders.product_id
                             ["sum"      "Orders" "Orders → Sum of Quantity"]] ; sum(orders.quantity)
-                           (map (juxt :name :metabase.lib.join/join-alias :display_name) (mt/cols results))))))
+                           (map (juxt :name :lib/join-alias :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
                         ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
                         ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
@@ -398,7 +401,7 @@
                     {:aggregation [[:sum [:field (mt/id :orders :total)]]]
                      :breakout    [[:field
                                     (mt/id :orders :product_id)
-                                    {:base-type    :type/Integer}]]
+                                    {:base-type :type/Integer}]]
                      :limit       3})]
         (is (= [["Aerodynamic Bronze Hat"     144    5753.63]
                 ["Aerodynamic Concrete Bench" 116   10035.81]
@@ -408,23 +411,27 @@
 
 (deftest ^:parallel pivot-with-remapped-breakout
   (testing "remapped columns should be accounted for in the result rows (#46919)"
-    (qp.store/with-metadata-provider (-> (mt/metadata-provider)
-                                         (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
-                                                                         (mt/id :products :title)))
-      (let [query (merge (mt/mbql-query orders
-                           {:aggregation [[:sum [:field (mt/id :orders :total)]]]
-                            :breakout    [[:field
-                                           (mt/id :orders :product_id)
-                                           {:base-type    :type/Integer}]]
-                            :limit       3})
-                         {:pivot_rows [0]
-                          :pivot_cols []})]
-        (is (= [["Aerodynamic Bronze Hat"     144 0    5753.63]
-                ["Aerodynamic Concrete Bench" 116 0   10035.81]
-                ["Aerodynamic Concrete Lamp"  197 0    6478.65]
-                [nil                          nil 1 1510617.7]]
-               (mt/formatted-rows [str int int 2.0]
-                                  (qp.pivot/run-pivot-query query))))))))
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables :left-join) :h2)
+      (qp.store/with-metadata-provider (-> (mt/metadata-provider)
+                                           (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                                           (mt/id :products :title)))
+        (let [query (merge (mt/mbql-query orders
+                             {:aggregation [[:sum [:field (mt/id :orders :total)]]]
+                              :breakout    [[:field
+                                             (mt/id :orders :product_id)
+                                             {:base-type :type/Integer}]]
+                              :limit       3})
+                           {:pivot_rows [0]
+                            :pivot_cols []})]
+          ;; `:limit N` in the pivot's underlying query diverges between multi (per-sub-query) and native
+          ;; (whole GROUPING SETS output), so skip parity check for this test.
+          (qp.pivot.tu/without-pivot-parity-check
+           (is (= [["Aerodynamic Bronze Hat"     144 0    5753.63]
+                   ["Aerodynamic Concrete Bench" 116 0   10035.81]
+                   ["Aerodynamic Concrete Lamp"  197 0    6478.65]
+                   [nil                          nil 1 1510617.7]]
+                  (mt/formatted-rows [str int int 2.0]
+                                     (qp.pivot/run-pivot-query query))))))))))
 
 (deftest ^:parallel multiple-fk-remaps-test-in-joins-e2e-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B in a join"
@@ -562,7 +569,7 @@
                                   (qp/process-query query))))))))
 
 (deftest ^:parallel fk-remapped-should-remap-test
-  (testing (format "Check that we return the title when it's remapped")
+  (testing "Check that we return the title when it's remapped"
     (let [mp (-> (mt/metadata-provider)
                  (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                  (mt/id :products :title)))
@@ -570,6 +577,42 @@
                     (lib/limit 1))]
       ;; make sure the title is returned
       (is (string? (last (first (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel fk-remap-to-temporal-target-test
+  (testing "an FK remapped to a temporal target column projects the datetime value, not the raw id (#7108)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset test-data
+        (let [mp        (-> (mt/metadata-provider)
+                            (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                            (mt/id :products :created_at)))
+              query     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            (lib/limit 1))
+              result    (qp/process-query query)
+              cols      (mt/cols result)
+              remap-col (first (filter #(= (mt/id :products :created_at) (:id %)) cols))]
+          (testing "the remapped column is the temporal target"
+            (is (some? remap-col))
+            (is (isa? (:base_type remap-col) :type/Temporal))
+            (is (= (mt/id :orders :product_id) (:fk_field_id remap-col))))
+          (testing "the projected value is a datetime, not the raw product id"
+            (let [idx (first (keep-indexed (fn [i col]
+                                             (when (= (mt/id :products :created_at) (:id col)) i))
+                                           cols))
+                  v   (nth (first (mt/rows result)) idx)]
+              (is (not (integer? v))))))))))
+
+(deftest ^:parallel internal-remap-on-model-test
+  (testing "internal (FieldValues) remap values still surface through a model card query (#23449)"
+    (let [base (mt/metadata-provider)
+          mp   (-> base
+                   (lib.tu/remap-metadata-provider (mt/id :reviews :rating) {1 "Awful" 5 "Perfecto"})
+                   (lib.tu/metadata-provider-with-cards-for-queries
+                    [(lib/query base (lib.metadata/table base (mt/id :reviews)))])
+                   (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :type :model}]}))]
+      (qp.store/with-metadata-provider mp
+        (let [result   (qp/process-query (lib/query mp (lib.metadata/card mp 1)))
+              all-vals (into #{} (mapcat identity) (mt/rows result))]
+          (is (contains? all-vals "Perfecto")))))))
 
 (deftest ^:parallel fk-excluded-should-not-break-test
   (doseq [field [:id :title]

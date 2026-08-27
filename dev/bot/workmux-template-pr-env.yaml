@@ -1,0 +1,25 @@
+agent: "claude --permission-mode auto"
+
+# Empty prefix: tmux session name == --name value, so autobot's session-name
+# lookups (find-session, tmux-session-running?, stop!, quit!) match exactly.
+window_prefix: ""
+
+post_create:
+  # Trust mise.toml early so pane shells don't prompt with "config not trusted"
+  - mise trust
+  # Pull latest changes from origin so the worktree matches the PR commit (only if branch tracks a remote)
+  - bash -c 'git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git pull --ff-only || echo "No upstream branch — skipping pull"'
+  # Set up worktree (symlinks, copied files, postgres DB)
+  - bash -c 'MAIN=$(git rev-parse --git-common-dir | sed "s|/\\.git$||"); "$MAIN/bin/mage" -bot-setup-worktree --worktree "$PWD"'
+  # Write PR-env config (URL, PR#, creds) and cache a session token from the remote instance
+  - ./bin/mage -bot-pr-env --url {{PR_ENV_URL}} --pr {{PR_NUM}}
+
+pre_remove: []
+
+panes:
+  - command: <agent>
+    focus: true
+
+  - command: ./bin/mage -bot-status .bot/autobot/llm-status.txt
+    split: vertical
+    size: 10

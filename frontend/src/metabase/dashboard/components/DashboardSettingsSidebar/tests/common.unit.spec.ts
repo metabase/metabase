@@ -4,8 +4,8 @@ import { screen } from "__support__/ui";
 
 import { setup } from "./setup";
 
-jest.mock("metabase/dashboard/constants", () => ({
-  ...jest.requireActual("metabase/dashboard/constants"),
+jest.mock("metabase/common/utils/dashboard", () => ({
+  ...jest.requireActual("metabase/common/utils/dashboard"),
   DASHBOARD_DESCRIPTION_MAX_LENGTH: 20,
 }));
 

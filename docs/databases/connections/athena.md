@@ -4,7 +4,7 @@ title: Amazon Athena
 
 # Amazon Athena
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 ## Connection and sync
 
@@ -50,7 +50,7 @@ Part of IAM credentials for AWS. Metabase will encrypt these credentials.
 
 ### Additional Athena connection string options
 
-You can specify additional options via a string, e.g., `UseResultsetStreaming=0;LogLevel=6`.
+You can specify [additional options](https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver-advanced-connection-parameters.html) via a string, e.g., `LogPath=/tmp;ResultFetcher=S3;`.
 
 ### Include User ID and query hash in queries
 
@@ -60,7 +60,7 @@ This can be useful for auditing and debugging, but prevents databases from cachi
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -208,6 +208,10 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
   ]
 }
 ```
+
+## Writable connection
+
+Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
 ## Model features
 

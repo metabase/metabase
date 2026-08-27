@@ -53,7 +53,7 @@ export function InputWithSelectPrefix({
   );
 
   return (
-    <Flex w="400px" p={0} className={S.Border}>
+    <Flex w="100%" p={0} className={S.Border}>
       <Select
         aria-label="input-prefix"
         name="input-prefix"

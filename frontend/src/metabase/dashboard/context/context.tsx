@@ -11,10 +11,13 @@ import {
   useState,
 } from "react";
 import { usePrevious, useUnmount } from "react-use";
-import { isEqual, isObject, noop } from "underscore";
+import { isEqual, noop } from "underscore";
 
+import { isAbortError } from "metabase/api/client";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
+import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
+import { type NavigateFunction, navigate } from "metabase/router";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
   DashboardCard,
@@ -33,14 +36,12 @@ import {
 } from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
-  CancelledFetchDashboardResult,
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
   EmbedDisplayParams,
   EmbedThemeControls,
   FailedFetchDashboardResult,
   FetchDashboardResult,
-  SuccessfulFetchDashboardResult,
 } from "../types";
 
 import { type ReduxProps, connector } from "./context.redux";
@@ -77,6 +78,17 @@ export type DashboardContextOwnProps = {
    * Forcing passing it isn't ideal since we only need to do this in a couple of places
    */
   onNewQuestion?: () => void;
+  // Lets a host override how "edit question" navigates from a dashcard.
+  // Defaults to the query builder route when unset (the SDK renders inline instead).
+  onEditQuestion?: (
+    question: Question,
+    mode?: "query" | "view" | "notebook",
+  ) => void;
+  /**
+   * When true, internal click behaviors (dashboard/question links) are preserved
+   * instead of being filtered out. Used by the SDK for internal navigation.
+   */
+  enableEntityNavigation?: boolean;
 };
 
 export type DashboardContextOwnResult = {
@@ -100,6 +112,7 @@ export type DashboardContextReturned = DashboardContextOwnResult &
   DashboardContextErrorState &
   DashboardFullscreenControls & {
     fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
+    onChangeLocation: NavigateFunction;
   } & DashboardRefreshPeriodControls &
   EmbedThemeControls;
 
@@ -127,6 +140,7 @@ const DashboardContextProviderInner = forwardRef(
       dashboardActions: initDashboardActions,
       isDashcardVisible,
       onNewQuestion,
+      onEditQuestion,
 
       children,
 
@@ -148,6 +162,7 @@ const DashboardContextProviderInner = forwardRef(
       cardTitled = true,
       getClickActionMode = undefined,
       withFooter = true,
+      enableEntityNavigation = true, // true in core app, SDK passes it down as false
 
       // redux selectors
       dashboard,
@@ -407,6 +422,7 @@ const DashboardContextProviderInner = forwardRef(
           dashcardMenu,
           dashboardActions,
           onNewQuestion,
+          onEditQuestion,
           isEditableDashboard,
 
           navigateToNewCardFromDashboard,
@@ -433,6 +449,7 @@ const DashboardContextProviderInner = forwardRef(
           cardTitled,
           getClickActionMode,
           withFooter,
+          enableEntityNavigation,
 
           // redux selectors
           selectedTabId,
@@ -453,6 +470,10 @@ const DashboardContextProviderInner = forwardRef(
           toggleSidebar,
           reset,
           closeDashboard,
+
+          // `navigate` needs no dispatch, so it cannot ride in the
+          // action-creator map that `connect` binds.
+          onChangeLocation: navigate,
           ...reduxProps,
         }}
       >
@@ -476,23 +497,8 @@ export function useDashboardContext() {
   return context;
 }
 
-export function isSuccessfulFetchDashboardResult(
-  result: FetchDashboardResult,
-): result is SuccessfulFetchDashboardResult {
-  const hasError = "error" in result;
-  return !hasError;
-}
-
 export function isFailedFetchDashboardResult(
   result: FetchDashboardResult,
 ): result is FailedFetchDashboardResult {
-  return (
-    isObject(result.payload) && !result.payload.isCancelled && "error" in result
-  );
-}
-
-export function isCancelledFetchDashboardResult(
-  result: FetchDashboardResult,
-): result is CancelledFetchDashboardResult {
-  return isObject(result.payload) && Boolean(result.payload.isCancelled);
+  return !isAbortError(result.payload) && "error" in result;
 }

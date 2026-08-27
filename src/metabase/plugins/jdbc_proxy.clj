@@ -66,7 +66,6 @@
       (let [driver (proxy-driver (.newInstance klass))]
         (log/debug (u/format-color 'blue "Registering JDBC proxy driver for %s..." class-name))
         (DriverManager/registerDriver driver)
-
         ;; deregister the non-proxy version of the driver so it doesn't try to handle our URLs. Most JDBC drivers register
         ;; themseleves when the classes are loaded
         (doseq [driver (enumeration-seq (DriverManager/getDrivers))

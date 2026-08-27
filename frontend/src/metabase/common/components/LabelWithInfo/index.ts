@@ -1,0 +1,1 @@
+export { LabelWithInfo } from "./LabelWithInfo";

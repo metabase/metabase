@@ -26,6 +26,7 @@
   zone-offset-part-regex]
  [internal
   valid?
+  same-time?
   same-day?
   same-month?
   same-year?

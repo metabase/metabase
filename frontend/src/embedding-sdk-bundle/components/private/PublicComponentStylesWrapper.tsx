@@ -6,7 +6,9 @@ import cx from "classnames";
 import type React from "react";
 import { forwardRef } from "react";
 
-import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useComputedColorScheme } from "metabase/ui";
+import { getSaveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 import S from "./PublicComponentStylesWrapper.style.css";
 
@@ -17,21 +19,30 @@ import S from "./PublicComponentStylesWrapper.style.css";
  */
 const PublicComponentStylesWrapperInner = styled.div`
   font-size: ${({ theme }) => theme.other.fontSize};
-  ${saveDomImageStyles}
+  ${() => getSaveDomImageStyles(isEmbeddingSdk())}
 `;
 
 export const PublicComponentStylesWrapper = forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
 >(function PublicComponentStylesWrapper(props, ref) {
+  // Mantine scopes its CSS variables to `cssVariablesSelector=".mb-wrapper"`,
+  // so the variables for the active color scheme only apply when the wrapper
+  // itself carries `data-mantine-color-scheme`. Read the resolved scheme from
+  // the parent MantineProvider so portals (e.g. the filter-changed toast in
+  // guest embeds with `theme.preset: "dark"`) inherit it instead of being
+  // pinned to light (EMB-1560).
+  const colorScheme = useComputedColorScheme("light", {
+    getInitialValueInEffect: false,
+  });
+
   return (
     <PublicComponentStylesWrapperInner
       {...props}
       ref={ref}
       dir="ltr"
       className={cx("mb-wrapper", S.publicComponentWrapper, props.className)}
-      // Mantine's cssVariablesSelector expects data-mantine-color-scheme to be set on the target element
-      data-mantine-color-scheme="light"
+      data-mantine-color-scheme={colorScheme}
     />
   );
 });
@@ -61,5 +72,14 @@ export const SCOPED_CSS_RESET = css`
 
   :where(.mb-wrapper) *:where(svg) {
     display: inline;
+  }
+
+  // Mobile Safari sets the opacity of disabled inputs/textareas to 0.4 which we don't want
+  // https://github.com/metabase/metabase/issues/49170
+  @supports (-webkit-touch-callout: none) {
+    :where(.mb-wrapper) *:where(input),
+    :where(.mb-wrapper) *:where(textarea) {
+      opacity: 1;
+    }
   }
 `;

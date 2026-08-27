@@ -2,17 +2,18 @@ import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { NumericInput } from "metabase/common/components/NumericInput";
+import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import CS from "metabase/css/core/index.css";
-import { parseNumber } from "metabase/lib/number";
-import { isNotNull } from "metabase/lib/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
+import { BigIntNumberInput } from "metabase/querying/common/components/BigIntNumberInput";
 import type { NumberFilterValue } from "metabase/querying/parameters/types";
 import {
   deserializeNumberParameterValue,
   serializeNumberParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
-import { Box, type ComboboxItem, MultiAutocomplete } from "metabase/ui";
+import { Box, type ComboboxItem } from "metabase/ui";
+import { parseNumber } from "metabase/utils/number";
+import { isNotNull } from "metabase/utils/types";
 import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
@@ -102,7 +103,7 @@ export function NumberInputWidget({
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" || options.length > 0 ? (
         <TokenFieldWrapper>
-          <MultiAutocomplete
+          <MultiAutocompleteWithTranslation
             value={filteredUnsavedArrayValue.map((value) => value?.toString())}
             data={options}
             placeholder={placeholder}
@@ -116,15 +117,15 @@ export function NumberInputWidget({
       ) : (
         _.times(arity, (i) => (
           <div key={i}>
-            <NumericInput
-              fullWidth
+            <BigIntNumberInput
+              w="100%"
               className={CS.p1}
               autoFocus={autoFocus && i === 0}
-              value={unsavedArrayValue[i]?.toString()}
-              onChange={(_newValue, newValueText) => {
+              value={unsavedArrayValue[i] ?? null}
+              onChange={(newValue) => {
                 setUnsavedArrayValue((unsavedArrayValue) => {
                   const newUnsavedValue = [...unsavedArrayValue];
-                  newUnsavedValue[i] = parseNumber(newValueText);
+                  newUnsavedValue[i] = newValue;
                   return newUnsavedValue;
                 });
               }}

@@ -1,17 +1,16 @@
 import { useMemo } from "react";
 
-import { color } from "metabase/lib/colors";
-import {
-  ChartSettingSeriesOrder,
-  type SortableChartSettingOrderedItem,
-} from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
-import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import { color } from "metabase/ui/colors";
+import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import {
   createHexToAccentNumberMap,
   getPickerColorAlias,
 } from "metabase/visualizations/echarts/pie/util/colors";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { RawSeries } from "metabase-types/api";
+import type {
+  ChartSettingOrderedItem,
+  ComputedVisualizationSettings,
+} from "metabase/visualizations/types";
+import type { PieRow, RawSeries } from "metabase-types/api";
 
 export function PieRowsPicker({
   rawSeries,
@@ -37,7 +36,7 @@ export function PieRowsPicker({
 
   const handleGetColorForPicker = ({
     color: hexColor,
-  }: SortableChartSettingOrderedItem) => {
+  }: ChartSettingOrderedItem) => {
     if (!hasMultipleRings || hexColor == null) {
       return hexColor;
     }
@@ -58,9 +57,10 @@ export function PieRowsPicker({
       }),
     });
 
-  const onSortEnd = (newPieRows: SortableChartSettingOrderedItem[]) =>
+  const onSortEnd = (newPieRows: ChartSettingOrderedItem[]) =>
     onChangeSettings({
       "pie.sort_rows": false,
+      // Unjustified type cast. FIXME
       "pie.rows": newPieRows as PieRow[],
     });
 
@@ -70,6 +70,7 @@ export function PieRowsPicker({
       series={rawSeries}
       onChangeSeriesColor={onChangeSeriesColor}
       onSortEnd={onSortEnd}
+      // Unjustified type cast. FIXME
       onChange={(rows) => onChangeSettings({ "pie.rows": rows as PieRow[] })}
       onShowWidget={onShowWidget}
       hasEditSettings

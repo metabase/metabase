@@ -222,7 +222,6 @@
     (try
       (when retry?
         (t2/update! :model/CloudMigration :id id {:state :init}))
-
       (log/info "Setting read-only mode")
       (set-progress id :setup 1)
       (cloud-migration.settings/read-only-mode! true)
@@ -231,7 +230,6 @@
         (Thread/sleep (int (* 1.5 setting/cache-update-check-interval-ms))))
       (log/info "Stopping scheduler")
       (task/stop-scheduler!)
-
       (log/info "Dumping h2 backup to" (.getAbsolutePath dump-file))
       (set-progress id :dump 20)
       (dump-to-h2/dump-to-h2! (.getAbsolutePath dump-file) {:dump-plaintext? true})
@@ -239,20 +237,16 @@
         (throw (ex-info "Read-only mode disabled before h2 dump was completed, contents might not be self-consistent!"
                         {:id id})))
       (cloud-migration.settings/read-only-mode! false)
-
       (log/info "Uploading dump to store")
       (set-progress id :upload 50)
       (upload migration dump-file)
-
       (log/info "Notifying store that upload is done")
       (http/put (migration-url external_id "/uploaded"))
-
       ;; Need to restore the previous scheduler configuration because the database quartz is pointing at has changed
       ;; after finishing the dump to h2 migration
       (task.bootstrap/set-jdbc-backend-properties! (mdb/db-type))
       (log/info "Restarting scheduler")
       (task/start-scheduler!)
-
       (log/info "Migration finished")
       (set-progress id :done 100)
       (catch Exception e

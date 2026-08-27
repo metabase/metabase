@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -23,11 +24,20 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :druid-jdbc :parent :sql-jdbc)
+(driver/register! :druid-jdbc :parent #{:sql-jdbc})
+
+(defmethod driver/host-carrying-parameters :druid-jdbc
+  [_driver]
+  ["url" "LB_URLS"])
+
+(defmethod driver/non-host-parameters :druid-jdbc
+  [_driver]
+  ["HOSTNAME_VERIFICATION"])
 
 (doseq [[feature supported?] {:set-timezone            true
                               :expression-aggregations true
-                              :expression-literals     true}]
+                              :expression-literals     true
+                              :native-pivot-tables     true}]
   (defmethod driver/database-supports? [:druid-jdbc feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.conn/connection-details->spec :druid-jdbc
@@ -67,7 +77,8 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/TIMESTAMP]
   [_driver ^ResultSet rs _rsmeta ^Long i]
   (fn []
-    (t/instant (.getObject rs i))))
+    (when-let [ts (.getObject rs i)]
+      (t/instant ts))))
 
 ;; Druid's COMPLEX<...> types are encoded as JDBC's other -- 1111. Values are rendered as string.
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/OTHER]
@@ -160,16 +171,27 @@
   [:length [:to_json_string json-field-identifier]])
 
 (defmethod sql.qp/->honeysql [:druid-jdbc :field]
-  [driver [_ id-or-name opts :as clause]]
+  [driver [_ opts id-or-name :as clause]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
     (if-not (driver-api/json-field? stored-field)
       identifier
-      (if (or (::sql.qp/forced-alias opts)
-              (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
-        (keyword (driver-api/qp.add.source-alias opts))
+      (cond
+        (or (::sql.qp/forced-alias opts)
+            (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
+        (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
+
+        ;; The field is referenced through a join (source-table is a join-alias
+        ;; string). The join target is compiled as a subquery that already
+        ;; projects this nfc column with JSON extraction applied — reference the
+        ;; projected column directly instead of re-applying extraction, which
+        ;; would derive the wrong column name through nested projections. (#73198)
+        (string? (driver-api/qp.add.source-table opts))
+        identifier
+
+        :else
         (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :druid-jdbc % stored-field)
                           %)
@@ -188,7 +210,7 @@
 
 (defmethod driver/dbms-version :druid-jdbc
   [_driver database]
-  (let [{:keys [host port]} (:details database)]
+  (let [{:keys [host port]} (driver.conn/effective-details database)]
     (try (let [version (-> (http/get (format "%s:%s/status" host port))
                            :body
                            json/decode

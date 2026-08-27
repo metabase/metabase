@@ -103,6 +103,11 @@
        plural
        (str singular \s)))))
 
+(defn qualified-key
+  "(u/qualified-key :t :id) -> :t.id"
+  [a b]
+  (keyword (str (name a) "." (name b))))
+
 (defn qualified-name
   "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well
   (also unlike `name`).

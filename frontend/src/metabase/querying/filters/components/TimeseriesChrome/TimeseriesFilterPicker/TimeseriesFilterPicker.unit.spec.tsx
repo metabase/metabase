@@ -1,8 +1,13 @@
 import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { waitForFloatingPosition } from "__support__/utils";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "metabase-lib/test-helpers";
 
 import { TimeseriesFilterPicker } from "./TimeseriesFilterPicker";
 
@@ -22,7 +27,7 @@ function createDateFilter(query: Lib.Query) {
 }
 
 function createQueryWithFilter(
-  initialQuery: Lib.Query = createQuery(),
+  initialQuery = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   clause = createDateFilter(initialQuery),
 ) {
   const query = Lib.filter(initialQuery, 0, clause);
@@ -42,7 +47,7 @@ const userEvent = _userEvent.setup({
 });
 
 function setup({
-  query = createQuery(),
+  query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   column = findDateColumn(query),
   filter,
 }: SetupOpts = {}) {
@@ -76,6 +81,7 @@ describe("TimeseriesFilterPicker", () => {
     const { getNextFilterParts } = setup();
 
     await userEvent.click(screen.getByText("All time"));
+    await waitForFloatingPosition();
     await userEvent.click(await screen.findByDisplayValue("All time"));
     await userEvent.click(await screen.findByText("Current"));
     await userEvent.click(screen.getByText("Apply"));
@@ -90,6 +96,7 @@ describe("TimeseriesFilterPicker", () => {
     const { getNextFilterParts } = setup({ query, column, filter });
 
     await userEvent.click(screen.getByText("Jan 10, 2020"));
+    await waitForFloatingPosition();
     const input = await screen.findByLabelText("Date");
     await userEvent.clear(input);
     await userEvent.type(input, "Feb 20, 2020");
@@ -107,6 +114,7 @@ describe("TimeseriesFilterPicker", () => {
     const { getNextFilterParts } = setup({ query, column, filter });
 
     await userEvent.click(screen.getByText("Jan 10, 2020"));
+    await waitForFloatingPosition();
     await userEvent.click(await screen.findByDisplayValue("On"));
     await userEvent.click(await screen.findByText("All time"));
     await userEvent.click(screen.getByText("Apply"));

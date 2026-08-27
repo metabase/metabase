@@ -7,15 +7,16 @@ import {
   useListCollectionItemsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
+import { getValidCollectionItemModels } from "metabase/common/components/Pickers/utils";
 import {
   useGetPersonalCollection,
   useHasTokenFeature,
-  useSetting,
 } from "metabase/common/hooks";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { type DispatchFn, useDispatch, useSelector } from "metabase/lib/redux";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
+import { useSetting } from "metabase/settings";
 import type {
   Collection,
   CollectionNamespace,
@@ -29,7 +30,6 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "../types";
-import { getValidCollectionItemModels } from "../utils";
 
 import { getRootCollectionItem } from "./utils";
 
@@ -49,7 +49,7 @@ export const useRootItems = () => {
   const { options, models, searchQuery, namespaces } = useOmniPickerContext();
   const isAdmin = useSelector(getUserIsAdmin);
   const hasTenants = useSetting("use-tenants");
-  const transformsEnabled = useHasTokenFeature("transforms");
+  const transformsEnabled = useHasTokenFeature("transforms-basic");
   const dispatch = useDispatch();
 
   const { data: databaseData, isLoading: isLoadingDatabases } =

@@ -7,7 +7,7 @@ redirect_from:
 
 # Full app embedding UI components
 
-{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embbedding=true%}
+{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embedding=true%}
 
 To change the interface of your full app embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
 
@@ -77,7 +77,7 @@ header=false&additional_info=false
 
 ## `breadcrumbs`
 
-Shown by default in the top nav bar. Collection breadcrumbs show the path to the item (i.e., the collection(s) the item is in). This does not effect Data breadcrumbs if the user has Query Builder permissions. To hide the breadcrumbs:
+Shown by default in the top nav bar. Collection breadcrumbs show the path to the item (i.e., the collection(s) the item is in). This does not affect Data breadcrumbs if the user has Query Builder permissions. To hide the breadcrumbs:
 
 ```
 breadcrumbs=false

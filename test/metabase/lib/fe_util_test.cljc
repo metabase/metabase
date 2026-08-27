@@ -13,6 +13,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
@@ -101,12 +102,12 @@
                [{:lib/type :metadata/column
                  :lib/source-uuid string?
                  :effective-type :type/Integer
-                 :metabase.lib.field/binning {:strategy :default}
+                 :lib/binning {:strategy :default}
 
                  :active true
                  :id (:id checkins-user-id-col)
                  :display-name "User ID: Auto binned"
-                 :metabase.lib.join/join-alias "Checkins"}
+                 :lib/join-alias "Checkins"}
                 (assoc (m/filter-vals some? (meta/field-metadata :users :id)) :display-name "ID: Auto binned")]}
               (lib/expression-parts query (lib/= (lib/with-binning checkins-user-id-col {:strategy :default})
                                                  (lib/with-binning user-id-col {:strategy :default}))))))
@@ -119,9 +120,9 @@
                  :effective-type :type/Date
 
                  :id (:id checkins-date-col)
-                 :metabase.lib.field/temporal-unit :day
+                 :lib/temporal-unit :day
                  :display-name "Date: Day"
-                 :metabase.lib.join/join-alias "Checkins"}
+                 :lib/join-alias "Checkins"}
                 (assoc (m/filter-vals some? (meta/field-metadata :users :last-login)) :display-name "Last Login: Day")]}
               (lib/expression-parts query (lib/= (lib/with-temporal-bucket checkins-date-col :day)
                                                  (lib/with-temporal-bucket user-last-login-col :day))))))))
@@ -218,9 +219,7 @@
                   (lib/expression expression-name
                                   (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2))
                   (lib/expression other-expression-name
-                                  [:expression {:base-type :type/Integer} expression-name]))
-        ;;
-
+                                  [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} expression-name]))
         stage-number -1]
     (testing "expression references"
       (mu/disable-enforcement
@@ -229,7 +228,6 @@
                  :lib/expression-name expression-name
                  :lib/source :source/expressions}
                 (lib/expression-parts query stage-number [:expression {:base-type :type/Integer} expression-name])))))
-
     (testing "nested expression references"
       (mu/disable-enforcement
         (is (=? {:lib/type :metadata/column
@@ -306,7 +304,6 @@
           (is (=? operator (:operator res)))
           (is (=? options  (:options res)))
           (is (=? (map :id args) (map :id (:args res)))))))
-
     (testing "case pairs should be unflattened in expression clause"
       (doseq [[expected-expression parts] test-cases]
         (let [{:keys [operator options args]} parts
@@ -315,7 +312,6 @@
               [actual-op _ actual-args] actual-expression]
           (is (=? expected-op actual-op))
           (is (=? (map :id expected-args) (map :id actual-args))))))
-
     (testing "case/if should round-trip through expression-parts and expression-clause"
       (doseq [[clause] test-cases]
         (let [parts                     (lib.fe-util/expression-parts query clause)
@@ -324,7 +320,6 @@
                                          (:args parts)
                                          nil)
               round-tripped-parts       (lib.fe-util/expression-parts query round-tripped-expression)]
-
           (is (=? (:operator parts) (:operator round-tripped-parts)))
           (is (=? (map :id (:args parts)) (map :id (:args round-tripped-parts)))))))))
 
@@ -339,7 +334,6 @@
                       :args [boolean-field
                              string-field
                              "default"]}
-
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -354,7 +348,6 @@
                                       :args [boolean-field
                                              string-field
                                              "default"]}]}]}
-
                      {:lib/type :mbql/expression-parts
                       :operator :upper
                       :options {}
@@ -365,7 +358,6 @@
                                       :operator :case
                                       :options {}
                                       :args [boolean-field string-field]}]}]}]]
-
         (let [expression (lib.fe-util/expression-clause
                           (:operator parts)
                           (:args parts)
@@ -709,6 +701,17 @@
         (lib.filter/is-null column)
         (lib.filter/and (lib.filter/time-interval column -10 :month) true)))))
 
+(deftest ^:parallel relative-date-filter-parts-on-temporal-expression-test
+  (testing "QUE-2567 a relative-date filter over a temporal expression column round-trips to date-picker parts"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/expression "Foo" (lib/datetime-add (meta/field-metadata :orders :created-at) 5 :day)))
+          query (lib/filter query (lib/time-interval (lib/expression-ref query "Foo") -12 :month))
+          parts (lib.fe-util/relative-date-filter-parts query -1 (first (lib/filters query)))]
+      (is (some? parts))
+      (is (=? {:value -12
+               :unit  :month}
+              parts)))))
+
 (deftest ^:parallel exclude-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
         column (m/filter-vals some? (meta/field-metadata :checkins :date))]
@@ -877,6 +880,34 @@
                          :lib/source :source/aggregations
                          :lib/source-uuid string?}]}
             (lib.fe-util/expression-parts query (second (lib/aggregations query)))))))
+
+(deftest ^:parallel expression-parts-preserves-join-disambiguation-test
+  (testing (str "same-named aggregations from different joins keep their disambiguated long display names "
+                "when their :field refs are read back via expression-parts (#76986)")
+    (let [q0    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))])))
+          orders-id   (lib.tu.notebook/find-col-with-spec
+                       q0 (lib/orderable-columns q0) {:is-main-group true} {:display-name "ID"})
+          products-id (lib.tu.notebook/find-col-with-spec
+                       q0 (lib/orderable-columns q0) {:display-name "Products"} {:display-name "ID"})
+          q1    (-> q0
+                    (lib/aggregate (lib/distinct orders-id))
+                    (lib/aggregate (lib/distinct products-id))
+                    lib/append-stage)
+          agg1  (lib.tu.notebook/find-col-with-spec
+                 q1 (lib/expressionable-columns q1 1 nil)
+                 {:is-main-group true} {:long-display-name "Distinct values of ID"})
+          agg2  (lib.tu.notebook/find-col-with-spec
+                 q1 (lib/expressionable-columns q1 1 nil)
+                 {:is-main-group true} {:long-display-name "Distinct values of Products → ID"})
+          q2    (lib/expression q1 1 "diff" (lib/- agg2 agg1))
+          expr  (first (lib/expressions q2 1))
+          parts (lib.fe-util/expression-parts q2 1 expr)]
+      (is (= ["Distinct values of Products → ID" "Distinct values of ID"]
+             (mapv #(:long-display-name (lib/display-info q2 1 %))
+                   (:args parts)))))))
 
 (deftest ^:parallel join-condition-clause-test
   (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
@@ -1076,23 +1107,23 @@
 
 (deftest ^:parallel dependent-metadata-test-10
   (testing "Native query snippets should be included in dependent metadata"
-    (let [;; lib/native-query would try to look up the snippets:
+    (let [ ;; lib/native-query would try to look up the snippets:
           query {:lib/type :mbql/query
                  :database 1
-                 :stages [{:lib/type :mbql.stage/native
-                           :native "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
-                           :template-tags {"snippet: filter1" {:type :snippet
-                                                               :snippet-id 10
-                                                               :snippet-name "filter1"
-                                                               :name "snippet: filter1"
-                                                               :display-name "Filter 1"
-                                                               :id "def456"}
-                                           "snippet: filter2" {:type :snippet
-                                                               :snippet-id 20
-                                                               :snippet-name "filter2"
-                                                               :name "snippet: filter2"
-                                                               :display-name "Filter 2"
-                                                               :id "ghi789"}}}]}]
+                 :stages   [{:lib/type      :mbql.stage/native
+                             :native        "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
+                             :template-tags [{:type         :snippet
+                                              :snippet-id   10
+                                              :snippet-name "filter1"
+                                              :name         "snippet: filter1"
+                                              :display-name "Filter 1"
+                                              :id           "def456"}
+                                             {:type         :snippet
+                                              :snippet-id   20
+                                              :snippet-name "filter2"
+                                              :name         "snippet: filter2"
+                                              :display-name "Filter 2"
+                                              :id           "ghi789"}]}]}]
       (is (=? [{:type :database}
                {:type :schema}
                {:type :native-query-snippet :id 10}
@@ -1154,14 +1185,6 @@
                {:type :native-query-snippet :id 40}]
               (lib/dependent-metadata query nil :question))))))
 
-(deftest ^:parallel table-or-card-dependent-metadata-test
-  (testing "start from table"
-    (is (= [{:type :table, :id (meta/id :checkins)}]
-           (lib/table-or-card-dependent-metadata meta/metadata-provider (meta/id :checkins)))))
-  (testing "start from card"
-    (is (= [{:type :table, :id "card__1"}]
-           (lib/table-or-card-dependent-metadata lib.tu/metadata-provider-with-card "card__1")))))
-
 (deftest ^:parallel expand-temporal-expression-test
   (let [update-temporal-unit (fn [expr temporal-type] (update-in expr [2 1] assoc :temporal-unit temporal-type))
         expr [:=
@@ -1181,3 +1204,21 @@
                       (= false
                          (#'lib.fe-util/expandable-temporal-expression? expr)))
           :minute :day)))))
+
+(deftest ^:parallel expand-temporal-expression-preserves-local-date-test
+  (testing "values with a timezone offset must produce a range on the offset's local calendar day, not UTC (#72937)"
+    ;; The drill-thru/underlying-records path calls expand-temporal-expression directly for `:day`, and the FE
+    ;; can pass values stamped with the report-timezone offset (e.g. Asia/Shanghai +08:00). Truncating those to
+    ;; a calendar day must keep the original date — converting to UTC first shifts the day backwards.
+    (let [field-with-unit (fn [unit] [:field {:lib/uuid "3fcaefe5-5c20-4cbc-98ed-6007b67843a3"
+                                              :temporal-unit unit} 111])
+          expr-with       (fn [unit value] [:= {:lib/uuid "4fcaefe5-5c20-4cbc-98ed-6007b67843a4"}
+                                            (field-with-unit unit) value])]
+      (are [unit value start end]
+           (=? [:between map? [:field {:temporal-unit unit} int?] start end]
+               (#'lib.fe-util/expand-temporal-expression (expr-with unit value)))
+        :day   "2024-05-13T00:00:00Z"      "2024-05-13" "2024-05-13"
+        :day   "2024-05-13T00:00:00+08:00" "2024-05-13" "2024-05-13"
+        :day   "2024-05-13T00:00:00-08:00" "2024-05-13" "2024-05-13"
+        :week  "2024-05-13T00:00:00+08:00" "2024-05-12" "2024-05-18"
+        :month "2024-05-01T00:00:00+08:00" "2024-05-01" "2024-05-31"))))

@@ -2,11 +2,11 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useUpdateMeasureMutation } from "metabase/api";
-import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import {
   PaneHeader,
   PaneHeaderInput,
-} from "metabase/data-studio/common/components/PaneHeader";
+} from "metabase/common/data-studio/components/PaneHeader";
+import { EntityDetailTabs } from "metabase/data-studio/common/components/EntityDetailTabs/EntityDetailTabs";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Stack } from "metabase/ui";
 import type { Measure } from "metabase-types/api";
@@ -48,7 +48,7 @@ export function MeasureHeader({
             readOnly={readOnly}
           />
         }
-        icon="sum"
+        icon="ruler"
         menu={
           <MeasureMoreMenu
             previewUrl={previewUrl}

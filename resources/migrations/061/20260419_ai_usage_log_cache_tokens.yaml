@@ -1,0 +1,37 @@
+## Track Anthropic prompt-caching token counts on ai_usage_log
+##
+## Note: the v3 view update that exposes these columns lives in a separate
+## file (20260511_ai_usage_log_view_v3.yaml) so it runs after the BOT-1406
+## PII compliance migration (20260504), which is what adds embedding_hostname
+## and the other PII columns to metabot_conversation that v3 projects.
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2026-04-19T00:00:01
+      author: tsplude
+      comment: Add cache_creation_tokens to ai_usage_log for Anthropic prompt caching
+      changes:
+        - addColumn:
+            tableName: ai_usage_log
+            columns:
+              - column:
+                  name: cache_creation_tokens
+                  type: int
+                  remarks: Number of input tokens written to the provider prompt cache (Anthropic cache_creation_input_tokens).
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-04-19T00:00:02
+      author: tsplude
+      comment: Add cache_read_tokens to ai_usage_log for Anthropic prompt caching
+      changes:
+        - addColumn:
+            tableName: ai_usage_log
+            columns:
+              - column:
+                  name: cache_read_tokens
+                  type: int
+                  remarks: Number of input tokens served from the provider prompt cache (Anthropic cache_read_input_tokens).
+                  constraints:
+                    nullable: true

@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-21T10:00:00
+      author: noahmoss
+      comment: Index on metabot_message(user_id, conversation_id) for participation-based read permissions
+      changes:
+        - createIndex:
+            indexName: idx_metabot_message_user_id_conversation_id
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: conversation_id
+      rollback:
+        - dropIndex:
+            tableName: metabot_message
+            indexName: idx_metabot_message_user_id_conversation_id

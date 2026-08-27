@@ -1,0 +1,35 @@
+## Remove legacy Slack Metabot instance
+
+databaseChangeLog:
+  - changeSet:
+      id: v63.ksjdfh
+      author: undrfined
+      comment: Remove the separate Slack Metabot instance
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 1
+            sql: >-
+              SELECT COUNT(*) FROM metabot WHERE entity_id = 'slackbotmetabotmetabo';
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM metabot WHERE entity_id = 'slackbotmetabotmetabo';
+      rollback:
+        - sql:
+            sql: >-
+              INSERT INTO metabot (
+                  id
+                  , name
+                  , description
+                  , entity_id
+                  , created_at
+                  , updated_at
+              ) VALUES (
+                  3
+                  , 'Slack Metabot'
+                  , 'Metabot instance for Slack users.'
+                  , 'slackbotmetabotmetabo'
+                  , now()
+                  , now()
+              );

@@ -1,10 +1,12 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import { MetabaseApi, UtilApi } from "metabase/services";
+import { datasetApi } from "metabase/api";
+import { useLazyGetBugReportDetailsQuery } from "metabase/api/bug-report";
+import { useLazyListLogsQuery } from "metabase/api/logger";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
+import { useDispatch, useSelector } from "metabase/redux";
 
 import type { ErrorPayload, ReportableEntityName } from "./types";
 import { getBrowserInfo, getEntityDetails, hasQueryData } from "./utils";
@@ -24,9 +26,12 @@ const maybeSerializeError = (key: string, value: any) => {
 export const useErrorInfo = (
   { enabled }: { enabled?: boolean } = { enabled: true },
 ) => {
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
+  const dispatch = useDispatch();
   const location = window.location.href;
+  const [getBugReportDetails] = useLazyGetBugReportDetailsQuery();
+  const [listLogs] = useLazyListLogsQuery();
 
   return useAsync(async () => {
     if (!enabled) {
@@ -37,6 +42,7 @@ export const useErrorInfo = (
       /(question|model|dashboard|collection|metric)[[\/\#]([\d\w]+)/,
     );
 
+    // Unjustified type cast. FIXME
     const entity = (matches?.[1] ?? undefined) as
       | ReportableEntityName
       | undefined;
@@ -44,16 +50,20 @@ export const useErrorInfo = (
 
     const isAdHoc = entity === "question" && window.location.href.includes("#");
 
-    const entityInfoRequest = getEntityDetails({ entity, id, isAdHoc });
+    const entityInfoRequest = getEntityDetails({
+      entity,
+      id,
+      isAdHoc,
+      dispatch,
+    });
     const bugReportDetailsRequest = isAdmin
-      ? UtilApi.bug_report_details().catch(nullOnCatch)
+      ? getBugReportDetails().unwrap().catch(nullOnCatch)
       : Promise.resolve(null);
 
     const logsRequest: any = isAdmin
-      ? UtilApi.logs().catch(nullOnCatch)
+      ? listLogs().unwrap().catch(nullOnCatch)
       : Promise.resolve(null);
 
-    // @ts-expect-error non-standard error property
     const frontendErrors = console?.errorBuffer?.map?.((errArray) =>
       errArray
         .map((errLine: any) => JSON.stringify(errLine, maybeSerializeError))
@@ -73,31 +83,40 @@ export const useErrorInfo = (
     const queryResults =
       hasQueryData(entity) &&
       entityInfo?.dataset_query &&
-      (await MetabaseApi.dataset(entityInfo.dataset_query).catch(nullOnCatch));
+      (await runRtkEndpoint(
+        entityInfo.dataset_query,
+        dispatch,
+        datasetApi.endpoints.getAdhocQuery,
+      ).catch(nullOnCatch));
 
     // if this is an ad-hoc exploration on top of a saved question, fetch the original card
     if (hasQueryData(entity) && entityInfo?.original_card_id) {
       entityInfo.originalCard = await getEntityDetails({
         entity,
         id: entityInfo.original_card_id,
+        dispatch,
       });
     }
 
     const filteredLogs = logs?.slice?.(0, 100);
     const backendErrors = logs?.filter?.((log: any) => log.level === "ERROR");
 
-    const userLogs = logs?.filter(
-      (log: any) =>
-        log?.msg?.includes?.(`{:metabase-user-id ${currentUser.id}}`) ||
-        log?.msg?.includes?.(` userID: ${currentUser.id} `),
-    );
+    const userLogs = currentUser
+      ? logs?.filter(
+          (log: any) =>
+            log?.msg?.includes?.(`{:metabase-user-id ${currentUser.id}}`) ||
+            log?.msg?.includes?.(` userID: ${currentUser.id} `),
+        )
+      : [];
 
     const browserInfo = getBrowserInfo();
 
     const payload: ErrorPayload = {
       reporter: {
-        name: `${currentUser.first_name} ${currentUser.last_name}`,
-        email: currentUser.email,
+        name: currentUser
+          ? `${currentUser.first_name} ${currentUser.last_name}`
+          : "",
+        email: currentUser ? currentUser.email : "",
       },
       url: location,
       entityInfo,
@@ -113,7 +132,7 @@ export const useErrorInfo = (
     };
 
     return payload;
-  }, [enabled]);
+  }, [enabled, getBugReportDetails, listLogs]);
 };
 
 const nullOnCatch = () => null;

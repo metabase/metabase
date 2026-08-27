@@ -1,24 +1,26 @@
 {
   "teams": [
     {
-      "name": "Querying",
-      "label": ".Team/Querying",
+      "name": "Querying Platform",
+      "label": ".Team/QueryingPlatform",
       "members": [
-        "ranquild",
-        "romeovs",
-        "bshepherdson",
         "metamben",
-        "wzimrin",
-        "ericnormand",
-        "galdre"
+        "rileythomp",
+        "camsaul",
+        "technomancy"
       ]
     },
     {
-      "name": "Drivers",
-      "label": ".Team/Drivers",
+      "name": "Graphy",
+      "label": ".Team/Graphy",
       "members": [
-        "snoe",
-        "rileythomp"
+        "ranquild",
+        "ericnormand",
+        "galdre",
+        "dpsutton",
+        "escherize",
+        "bgrabow",
+        "alxnddr"
       ]
     },
     {
@@ -43,11 +45,10 @@
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "camsaul",
-        "dpsutton",
-        "escherize",
         "fraserdrops",
-        "nemanjaglumac"
+        "nemanjaglumac",
+        "romeovs",
+        "ChrisVandoo"
       ]
     },
     {
@@ -55,14 +56,14 @@
       "label": ".Team/Metabot",
       "members": [
         "appleby",
-        "noahmoss",
         "retro",
         "sloansparger",
-        "somtom",
         "tsplude",
         "lbrdnk",
-        "piranha",
-        "crisptrutski"
+        "crisptrutski",
+        "undrfined",
+        "andreis",
+        "prascuna"
       ]
     },
     {
@@ -87,12 +88,12 @@
         "npfitz",
         "johnswanson",
         "nvoxland",
-        "edpaget",
+        "bshepherdson",
         "deniskaber",
-        "alxnddr",
         "andsalves",
         "kevinkelleher12",
-        "undrfined"
+        "AndreyChernykh",
+        "bowbahdoe"
       ]
     },
     {
@@ -107,7 +108,9 @@
         "kamilmielnik",
         "stasgavrylov",
         "uladzimirdev",
-        "egorgrushin"
+        "egorgrushin",
+        "metatyb",
+        "olehk-mb"
       ]
     },
     {
@@ -117,7 +120,15 @@
         "iethree",
         "bpander",
         "gantoreno",
-        "losrebellos"
+        "losrebellos",
+        "tmashara"
+      ]
+    },
+    {
+      "name": "Security Engineering",
+      "label": ".Team/SecurityEngineering",
+      "members": [
+        "enthym-aa"
       ]
     }
   ]

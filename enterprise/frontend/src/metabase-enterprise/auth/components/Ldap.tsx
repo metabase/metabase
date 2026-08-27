@@ -2,8 +2,9 @@ import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useAdminSetting } from "metabase/api/utils";
 import { FormTextInput } from "metabase/forms";
+import { useAdminSetting } from "metabase/settings";
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
 
 export function LdapUserProvisioning() {
   return (
@@ -11,7 +12,8 @@ export function LdapUserProvisioning() {
       <AdminSettingInput
         name="ldap-user-provisioning-enabled?"
         title={t`User provisioning`}
-        inputType="boolean"
+        inputType="radio"
+        options={provisioningOptions("LDAP")}
       />
     </SettingsSection>
   );

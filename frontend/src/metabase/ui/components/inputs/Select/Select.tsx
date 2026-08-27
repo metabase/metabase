@@ -2,11 +2,13 @@ import type {
   ComboboxItem,
   ComboboxItemGroup,
   SelectProps as MantineSelectProps,
+  OptionsFilter,
 } from "@mantine/core";
-import { Select as MantineSelect } from "@mantine/core";
-import { type Ref, forwardRef } from "react";
+import { Select as MantineSelect, defaultOptionsFilter } from "@mantine/core";
+import { mergeRefs } from "@mantine/hooks";
+import { type Ref, forwardRef, useCallback, useMemo, useRef } from "react";
 
-import type { IconName } from "../../icons";
+import type { IconName } from "metabase-types/api";
 
 export type { DataAttributes, InputDescriptionProps } from "@mantine/core";
 export * from "./SelectItem";
@@ -25,25 +27,64 @@ export type SelectData<Value extends string | null> =
  * Mantine v7 loosened up the value types for Select, removing the generics, which sucks
  * This re-introduces the value generics to keep the type safety
  */
-export interface SelectProps<Value extends string | null = string>
-  extends Omit<MantineSelectProps, "data" | "onChange" | "value" | "ref"> {
+export interface SelectProps<Value extends string | null = string> extends Omit<
+  MantineSelectProps,
+  "data" | "onChange" | "value" | "ref"
+> {
   data: SelectData<Value>;
   value?: Value;
   onChange?: (newValue: Value) => void;
 }
 
-function _Select<Value extends string | null>(
+function dropEmptyGroups(filter: OptionsFilter): OptionsFilter {
+  return (input) =>
+    filter(input).filter((item) => !("group" in item) || item.items.length > 0);
+}
+
+function SelectWrapper<Value extends string | null>(
   props: SelectProps<Value>,
   ref: Ref<HTMLElement>,
 ) {
+  const { onDropdownOpen, searchable, filter } = props;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const combinedRef = useMemo(() => mergeRefs(ref, inputRef), [ref]);
+  const filterWithoutEmptyGroups = useMemo(
+    () => dropEmptyGroups(filter ?? defaultOptionsFilter),
+    [filter],
+  );
+  const handleDropdownOpen = useCallback(() => {
+    if (searchable) {
+      inputRef.current?.select();
+    }
+    onDropdownOpen?.();
+  }, [searchable, onDropdownOpen]);
+
   return (
     // @ts-expect-error -- our tighter types are better
-    <MantineSelect {...props} ref={ref} />
+    <MantineSelect
+      {...props}
+      ref={combinedRef}
+      filter={filterWithoutEmptyGroups}
+      // A bit confusing prop name but it actually means "on change of search input", not Select's value
+      selectFirstOptionOnChange={
+        props.selectFirstOptionOnChange ?? props.searchable
+      }
+      onDropdownOpen={handleDropdownOpen}
+      attributes={{
+        ...props.attributes,
+        dropdown: {
+          "data-element-id": "mantine-popover",
+          ...props.attributes?.dropdown,
+        },
+      }}
+    />
   );
 }
 
 // forwardRef is hard to type with generics
 // see https://stackoverflow.com/questions/58469229/react-with-typescript-generics-while-using-react-forwardref
-export const Select = forwardRef(_Select) as <Value extends string | null>(
+export const Select = forwardRef(SelectWrapper) as <
+  Value extends string | null,
+>(
   props: SelectProps<Value> & { ref?: Ref<HTMLElement> },
 ) => React.ReactNode;

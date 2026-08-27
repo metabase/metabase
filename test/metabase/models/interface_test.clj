@@ -9,9 +9,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [toucan2.core :as t2])
-  (:import
-   (com.fasterxml.jackson.core JsonParseException)))
+   [toucan2.core :as t2]))
 
 ;; Let's make sure `transform-metric-segment-definition`/`transform-parameters-list` normalization functions respond
 ;; gracefully to invalid stuff when pulling them out of the Database. See #8914
@@ -108,19 +106,19 @@
         (mi/encrypted-json-out
          (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))
         (is (=? [{:level   :error
-                  :e       JsonParseException
+                  :e       nil
                   :message "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"}]
                 (messages)))))
     (testing "Invalid JSON throws correct error"
       (mt/with-log-messages-for-level [messages :error]
         (mi/encrypted-json-out "{\"a\": 1")
-        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
+        (is (=? [{:level :error, :e nil, :message #"(?s)^Error parsing JSON: .*"}]
                 (messages))))
       (mt/with-log-messages-for-level [messages :error]
         (encryption-test/with-secret-key "qwe"
           (mi/encrypted-json-out
            (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))
-        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
+        (is (=? [{:level :error, :e nil, :message #"(?s)^Error parsing JSON: .*"}]
                 (messages)))))))
 
 (deftest ^:parallel instances-with-hydrated-data-test
@@ -176,6 +174,15 @@
             :graph.dimensions ["CREATED_AT"]}
            (mi/normalize-visualization-settings viz-settings)))))
 
+(deftest ^:parallel normalize-invalid-visualization-settings-test
+  (testing "Unknown keys in `:column_settings` should be removed rather than causing normalization to fail (#69626)"
+    (let [viz-settings {"column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}
+                                           "[\"REF\",[\"expression\",\"expression\"]]" {:number_style "y"}
+                                           "[\"bad-clause\",\"a\"]"                    {:number_style "z"}}}]
+      (is (= {:column_settings
+              {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}}}
+             (mi/normalize-visualization-settings viz-settings))))))
+
 (deftest ^:parallel json-in-with-eliding
   (is (= "{}" (#'mi/json-in-with-eliding {})))
   (is (= (json/encode {:a "short"}) (#'mi/json-in-with-eliding {:a "short"})))
@@ -194,7 +201,6 @@
                :database-type             "CHARACTER VARYING"
                :display-name              "Category"
                :effective-type            :type/Text
-               :field-ref                 [:field 61339 nil]
                :fingerprint               {:global {:distinct-count 4, :nil% 0.0}
                                            :type   {:type/Text {:average-length 6.375
                                                                 :percent-email  0.0
@@ -205,7 +211,6 @@
                :name                      "CATEGORY"
                :position                  3
                :semantic-type             :type/Category
-               :source                    :breakout
                :table-id                  10808
                :visibility-type           :normal
                :lib/breakout?             true
@@ -216,7 +221,6 @@
                :lib/source                :source/table-defaults
                :lib/source-column-alias   "CATEGORY"
                :lib/type                  :metadata/column}]]
-
     (is (= cols
            (#'mi/result-metadata-out (json/encode cols))))))
 

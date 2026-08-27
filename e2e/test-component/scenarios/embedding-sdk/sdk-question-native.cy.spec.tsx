@@ -14,7 +14,6 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Box, Button } from "metabase/ui";
 import type { DatasetColumn, TemplateTags } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -86,13 +85,13 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         const [questionId, setQuestionId] = useState<string | number>("new");
 
         return (
-          <Box>
+          <div>
             <InteractiveQuestion questionId={questionId} />
 
-            <Button onClick={() => setQuestionId(nativeQuestionId)}>
+            <button onClick={() => setQuestionId(nativeQuestionId)}>
               use native question
-            </Button>
-          </Box>
+            </button>
+          </div>
         );
       };
 
@@ -138,6 +137,41 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
 
         cy.log("should not show Group button");
         cy.findByText("Group").should("not.exist");
+      });
+    });
+  });
+
+  describe("editing column settings", () => {
+    beforeEach(() => {
+      setup({
+        question: {
+          name: "Orders native question",
+          native: { query: "SELECT * FROM ORDERS" },
+        },
+      });
+    });
+
+    it("edits a column title without crashing (metabase#76455)", () => {
+      mountInteractiveQuestion({});
+
+      cy.wait("@cardQuery");
+
+      getSdkRoot().within(() => {
+        cy.findByText("TAX").should("be.visible");
+
+        H.openVizSettingsSidebar();
+        cy.findByTestId("chartsettings-sidebar")
+          .findByTestId("TAX-settings-button")
+          .click();
+      });
+
+      getSdkRoot().findByLabelText("Column title").clear().type("Renamed tax");
+
+      getSdkRoot().within(() => {
+        // Editing the column title used to throw a full-screen "Unexpected
+        // Application Error!" and leave the title unchanged (metabase#76455).
+        cy.findByText("Unexpected Application Error!").should("not.exist");
+        cy.findAllByText("Renamed tax").should("have.length.at.least", 1);
       });
     });
   });

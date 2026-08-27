@@ -1,11 +1,12 @@
 import { createReducer } from "@reduxjs/toolkit";
 
-import type { SetupState } from "metabase-types/store";
+import type { SetupState, SetupStep } from "metabase/redux/store";
 
 import {
   loadLocaleDefaults,
   selectStep,
   skipDatabase,
+  startAiConfig,
   submitDatabase,
   submitLicenseToken,
   submitUsageReason,
@@ -15,7 +16,6 @@ import {
   updateLocale,
   updateTracking,
 } from "./actions";
-import type { SetupStep } from "./types";
 
 const getUserFromQueryParams = () => {
   const params = new URLSearchParams(window.location.search);
@@ -45,6 +45,7 @@ const initialState: SetupState = {
   step: getInitialStep(),
   isLocaleLoaded: false,
   isTrackingAllowed: true,
+  isAiConfigRequested: false,
   user: getUserFromQueryParams(),
   isEmbeddingUseCase,
 };
@@ -95,6 +96,9 @@ export const reducer = createReducer(initialState, (builder) => {
   builder.addCase(skipDatabase.pending, (state) => {
     state.database = undefined;
     state.invite = undefined;
+  });
+  builder.addCase(startAiConfig.pending, (state) => {
+    state.isAiConfigRequested = true;
   });
   builder.addCase(updateTracking.fulfilled, (state, { meta }) => {
     state.isTrackingAllowed = meta.arg;

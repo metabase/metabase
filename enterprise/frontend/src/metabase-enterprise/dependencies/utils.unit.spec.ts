@@ -1,5 +1,4 @@
-import type { IconName } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,
@@ -7,6 +6,7 @@ import type {
   DependencyGroupType,
   DependencyNode,
   DependencyType,
+  IconName,
 } from "metabase-types/api";
 import {
   createMockAnalysisFindingError,
@@ -65,6 +65,7 @@ import {
   getNodeLastEditedBy,
   getNodeLink,
   getNodeLocationInfo,
+  getNodeSourceReplacementEntry,
   getNodeTypeInfo,
   getNodeViewCount,
   getSearchQuery,
@@ -239,7 +240,7 @@ describe("getNodeTypeInfo", () => {
           type: "model",
         }),
       }),
-      expectedTypeInfo: { label: "Model", color: "brand" },
+      expectedTypeInfo: { label: "Model", color: "core-brand" },
     },
     {
       node: createMockCardDependencyNode({
@@ -247,11 +248,11 @@ describe("getNodeTypeInfo", () => {
           type: "metric",
         }),
       }),
-      expectedTypeInfo: { label: "Metric", color: "summarize" },
+      expectedTypeInfo: { label: "Metric", color: "core-summarize" },
     },
     {
       node: createMockTableDependencyNode(),
-      expectedTypeInfo: { label: "Table", color: "brand" },
+      expectedTypeInfo: { label: "Table", color: "core-brand" },
     },
     {
       node: createMockSnippetDependencyNode(),
@@ -632,16 +633,22 @@ describe("getDependencyGroupTypeInfo", () => {
       groupType: "question",
       expected: { label: "Question", color: "text-secondary" },
     },
-    { groupType: "model", expected: { label: "Model", color: "brand" } },
-    { groupType: "metric", expected: { label: "Metric", color: "summarize" } },
-    { groupType: "table", expected: { label: "Table", color: "brand" } },
+    { groupType: "model", expected: { label: "Model", color: "core-brand" } },
+    {
+      groupType: "metric",
+      expected: { label: "Metric", color: "core-summarize" },
+    },
+    { groupType: "table", expected: { label: "Table", color: "core-brand" } },
     {
       groupType: "dashboard",
-      expected: { label: "Dashboard", color: "filter" },
+      expected: { label: "Dashboard", color: "core-filter" },
     },
     {
       groupType: "sandbox",
-      expected: { label: "Row and column security rule", color: "error" },
+      expected: {
+        label: "Row and column security rule",
+        color: "feedback-negative",
+      },
     },
   ])("should get type info for $groupType", ({ groupType, expected }) => {
     expect(getDependencyGroupTypeInfo(groupType)).toEqual(expected);
@@ -896,5 +903,65 @@ describe("getDependentErrorNodesLabel", () => {
 
   it("should default to plural form when called without arguments", () => {
     expect(getDependentErrorNodesLabel()).toBe("Broken dependents");
+  });
+});
+
+describe("getNodeDataSourceEntry", () => {
+  it.each<{
+    description: string;
+    node: DependencyNode;
+    expected: { id: number; type: string } | null;
+  }>([
+    {
+      description: "table node",
+      node: createMockTableDependencyNode({ id: 1 }),
+      expected: { id: 1, type: "table" },
+    },
+    {
+      description: "question card node",
+      node: createMockCardDependencyNode({
+        id: 2,
+        data: createMockCardDependencyNodeData({ type: "question" }),
+      }),
+      expected: { id: 2, type: "card" },
+    },
+    {
+      description: "model card node",
+      node: createMockCardDependencyNode({
+        id: 3,
+        data: createMockCardDependencyNodeData({ type: "model" }),
+      }),
+      expected: { id: 3, type: "card" },
+    },
+    {
+      description: "metric card node",
+      node: createMockCardDependencyNode({
+        id: 4,
+        data: createMockCardDependencyNodeData({ type: "metric" }),
+      }),
+      expected: null,
+    },
+    {
+      description: "dashboard node",
+      node: createMockDashboardDependencyNode({ id: 5 }),
+      expected: null,
+    },
+    {
+      description: "transform node",
+      node: createMockTransformDependencyNode({ id: 6 }),
+      expected: null,
+    },
+    {
+      description: "snippet node",
+      node: createMockSnippetDependencyNode({ id: 7 }),
+      expected: null,
+    },
+    {
+      description: "sandbox node",
+      node: createMockSandboxDependencyNode({ id: 8 }),
+      expected: null,
+    },
+  ])("should return $expected for $description", ({ node, expected }) => {
+    expect(getNodeSourceReplacementEntry(node)).toEqual(expected);
   });
 });

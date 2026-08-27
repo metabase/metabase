@@ -1,17 +1,15 @@
 import { getIn } from "icepick";
 
-import type {
-  DatabaseEntityId,
-  EntityId,
-  SchemaEntityId,
-  TableEntityId,
-} from "metabase/admin/permissions/types";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionValue,
-} from "metabase/admin/permissions/types";
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import type { GroupsPermissions } from "metabase-types/api";
+  type DatabaseEntityId,
+  type GroupsPermissions,
+  type PermissionEntityId,
+  type SchemaEntityId,
+  type TableEntityId,
+} from "metabase-types/api";
 
 // permission that do not have a nested schemas/native key
 const flatPermissions = new Set([
@@ -44,6 +42,7 @@ const omittedDefaultValues: Record<DataPermission, DataPermissionValue> = {
   [DataPermission.DATA_MODEL]: DataPermissionValue.NONE,
   [DataPermission.DETAILS]: DataPermissionValue.NO,
   [DataPermission.TRANSFORMS]: DataPermissionValue.NO,
+  [DataPermission.COLLECTIONS]: DataPermissionValue.NONE,
 };
 
 function getOmittedPermissionValue(
@@ -57,7 +56,7 @@ function getOmittedPermissionValue(
 export function getRawPermissionsGraphValue(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   permission: DataPermission,
 ) {
   const nestedPath = [
@@ -173,13 +172,14 @@ export const getFieldsPermission = (
 export const getEntityPermission = (
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   permission: DataPermission,
 ): DataPermissionValue => {
   if (entityId.tableId !== undefined) {
     return getFieldsPermission(
       permissions,
       groupId,
+      // Unjustified type cast. FIXME
       entityId as TableEntityId,
       permission,
     );
@@ -187,6 +187,7 @@ export const getEntityPermission = (
     return getTablesPermission(
       permissions,
       groupId,
+      // Unjustified type cast. FIXME
       entityId as SchemaEntityId,
       permission,
     );

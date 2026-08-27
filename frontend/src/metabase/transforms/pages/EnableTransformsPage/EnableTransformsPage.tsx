@@ -1,0 +1,43 @@
+import { t } from "ttag";
+
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
+import { useSetting, useUpdateSettingMutation } from "metabase/settings";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
+import { Center, Text } from "metabase/ui";
+
+import { EnableTransformsCard } from "./EnableTransformsCard";
+
+export const EnableTransformsPage = () => {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const adminEmail = useSetting("admin-email");
+  const [updateSetting, { isLoading: updateSettingLoading }] =
+    useUpdateSettingMutation();
+
+  const enableTransforms = () =>
+    updateSetting({
+      key: "transforms-enabled",
+      value: true,
+    });
+
+  return (
+    <PageContainer data-testid="enable-transform-page">
+      <TransformsHeader showTabs={false} />
+      <Center>
+        <EnableTransformsCard
+          onEnableClick={enableTransforms}
+          permissionsErrorMessage={
+            !isAdmin && (
+              <Text fz="1rem" fw="bold">
+                {t`To enable Transforms, please contact your administrator`}
+                {adminEmail && ` (${adminEmail})`}.
+              </Text>
+            )
+          }
+          loading={updateSettingLoading}
+        />
+      </Center>
+    </PageContainer>
+  );
+};

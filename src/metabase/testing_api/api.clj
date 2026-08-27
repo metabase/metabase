@@ -10,9 +10,17 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mcp.usage :as mcp.usage]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.task.search-index :as task.search-index]
+   [metabase.session.api :as session.api]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -50,11 +58,12 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/snapshot/:name"
   "Snapshot the database for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
+  (task.search-index/wait-for-init!)
+  (search.ingestion/wait-for-idle!)
   (save-snapshot! snapshot-name)
   nil)
 
@@ -78,7 +87,6 @@
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]
       (jdbc/execute! {:connection conn} sql-args))
-
     ;; We've found a delightful bug in H2 where if you:
     ;; - create a table, then
     ;; - create a view based on the table, then
@@ -109,7 +117,7 @@
       (mdb/increment-app-db-unique-indentifier!)
       (finally
         (.. lock writeLock unlock)
-        ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend`
+        ;; don't know why this happens but when I try to test things locally with `bun run test-cypress-open-no-backend`
         ;; and a backend server started with `dev/start!` the snapshots are always missing columns added by DB
         ;; migrations. So let's just check and make sure it's fully up to date in this scenario. Not doing this outside
         ;; of dev because it seems to work fine for whatever reason normally and we don't want tests taking 5 million
@@ -125,7 +133,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/restore/:name"
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
@@ -134,19 +141,18 @@
   (alter-var-root #'java-time.clock/*clock* (constantly nil))
   (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
-  (search/reindex! {:async? false})
+  (search/sync-from-restored-db!)
   nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/echo"
   "Simple echo handler. Fails when you POST with `?fail=true`."
   [_route-params
    {:keys [fail]} :- [:map
                       [:fail {:default false} ms/BooleanValue]]
-   body]
+   body :- ms/Map]
   (if fail
     {:status 400
      :body {:error-code "oops"}}
@@ -156,7 +162,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/set-time"
   "Make java-time see world at exact time."
   [_route-params
@@ -177,7 +182,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/echo"
   "Simple echo handler. Fails when you GET with `?fail=true`."
   [_route-params
@@ -193,7 +197,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/mark-stale"
   "Mark the card or dashboard as stale"
   [_route-params
@@ -217,7 +220,6 @@
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/stats"
   "Triggers a send of instance usage stats"
   []
@@ -229,11 +231,381 @@
   metabase-enterprise.cache.task.refresh-cache-configs
   [])
 
+(defenterprise clear-metabot-limit-cache!
+  "Clears the metabot usage limit memoization cache on EE so that limit checks re-evaluate immediately.
+  No-op on OSS."
+  metabase-enterprise.metabot.usage
+  [])
+
+(defenterprise reset-mfa-throttlers-for-testing!
+  "Clears the accumulated MFA management throttle state (enroll/disable/regenerate) on EE.
+  No-op on OSS."
+  metabase-enterprise.mfa.management
+  [])
+
+(api.macros/defendpoint :post "/reset-throttlers" :- [:map [:success [:= true]]]
+  "Reset all in-memory login/MFA throttle state. Throttlers count failed attempts for up to an
+  hour and are not touched by a snapshot restore, so repeated E2E runs that deliberately submit
+  wrong credentials or codes would otherwise trip \"Too many attempts\". Intended only for E2E
+  tests."
+  []
+  (session.api/reset-throttlers-for-testing!)
+  (reset-mfa-throttlers-for-testing!)
+  {:success true})
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/refresh-caches"
   "Manually triggers the cache refresh task, if Enterprise code is available."
   []
   (refresh-cache-configs!))
+
+(api.macros/defendpoint :post "/query" :- ::lib.schema/query
+  "Creates a query from a test query spec."
+  [_route-params
+   _query-params
+   {:keys [database], :as query-spec} :- [:map
+                                          ;; open: clients send the spec in camelCase and `lib/test-query` re-parses
+                                          ;; it with its own coercer, which kebab-cases the keys and validates the
+                                          ;; result. Declaring `::lib.schema.test-spec/test-query-spec` here would
+                                          ;; strip every camelCase key before that coercer ever saw it.
+                                          {:closed false}
+                                          [:database ::lib.schema.id/database]]]
+  (-> (lib-be/application-database-metadata-provider database)
+      (lib/test-query query-spec)))
+
+(def ^:private TestAdvisory
+  "Schema for a single advisory in the testing seed endpoint."
+  [:map
+   [:advisory_id       ms/NonBlankString]
+   [:title             ms/NonBlankString]
+   [:severity          [:enum "critical" "high" "medium" "low"]]
+   [:description       ms/NonBlankString]
+   [:advisory_url      {:optional true} [:maybe ms/NonBlankString]]
+   [:remediation       ms/NonBlankString]
+   [:affected_versions [:sequential [:map [:min :string] [:fixed :string]]]]
+   [:download_jar_urls {:optional true} [:maybe [:sequential [:map [:version :string] [:url :string]]]]]
+   [:matching_query    {:optional true} [:maybe [:map-of :keyword :string]]]
+   [:match_status      [:enum "unknown" "active" "resolved" "not_affected" "error"]]
+   [:published_at      :any]
+   [:updated_at        :any]])
+
+(api.macros/defendpoint :post "/security-advisories"
+  "Nuke all existing security advisories and insert the provided ones."
+  [_route-params
+   _query-params
+   {:keys [advisories]} :- [:map
+                            [:advisories [:sequential TestAdvisory]]]]
+  (t2/delete! :model/SecurityAdvisory)
+  (t2/insert-returning-instances! :model/SecurityAdvisory advisories))
+
+(api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
+  "Creates a native query from a test query spec."
+  [_route-params
+   _query-params
+   {:keys [database], :as native-query-spec} :- [:map
+                                                 ;; open, for the same reason as `POST /query` above:
+                                                 ;; `lib/test-native-query` re-parses and validates the spec itself,
+                                                 ;; and it is the only thing that understands the camelCase keys
+                                                 ;; (`templateTags`, ...) clients send.
+                                                 {:closed false}
+                                                 [:database ::lib.schema.id/database]]]
+  (-> (lib-be/application-database-metadata-provider database)
+      (lib/test-native-query native-query-spec)))
+
+;;;; Metabot AI usage seeding
+
+(def ^:private e2e-usage-source "e2e-test")
+
+(def ^:private e2e-usage-auditing-group-name "E2E Usage Auditing")
+
+(def ^:private e2e-usage-auditing-conversation-ids
+  ["00000000-0000-0000-0000-000000000101"
+   "00000000-0000-0000-0000-000000000102"
+   "00000000-0000-0000-0000-000000000103"
+   "00000000-0000-0000-0000-000000000104"
+   "00000000-0000-0000-0000-000000000105"
+   "00000000-0000-0000-0000-000000000106"
+   "00000000-0000-0000-0000-000000000107"
+   "00000000-0000-0000-0000-000000000108"
+   "00000000-0000-0000-0000-000000000109"
+   "00000000-0000-0000-0000-000000000110"
+   "00000000-0000-0000-0000-000000000111"])
+
+(defn- e2e-usage-auditing-group-id!
+  []
+  (or (t2/select-one-pk :model/PermissionsGroup :name e2e-usage-auditing-group-name)
+      (t2/insert-returning-pk! :model/PermissionsGroup {:name e2e-usage-auditing-group-name})))
+
+(defn- ensure-seeded-usage-auditing-group-membership!
+  [user-id]
+  (let [group-id (e2e-usage-auditing-group-id!)]
+    (when-not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)
+      (perms/add-user-to-group! user-id group-id))))
+
+(defn- delete-seeded-usage-auditing-data!
+  []
+  (t2/delete! :model/AiUsageLog {:where [:in :conversation_id e2e-usage-auditing-conversation-ids]})
+  (t2/delete! :model/MetabotConversation {:where [:in :id e2e-usage-auditing-conversation-ids]}))
+
+(defn- insert-seeded-usage-auditing-conversation!
+  [{:keys [id user-id created-at source profile-id prompt-tokens completion-tokens total-tokens roles ip-address tenant-id]}]
+  (t2/insert! :model/MetabotConversation
+              {:id         id
+               :user_id    user-id
+               :title      "E2E usage auditing conversation"
+               :created_at created-at
+               :ip_address ip-address})
+  (doseq [role roles]
+    (t2/insert! :model/MetabotMessage
+                {:conversation_id id
+                 :user_id         user-id
+                 :role            role
+                 :profile_id      profile-id
+                 :data            []
+                 :data_version    2
+                 :total_tokens    0
+                 :created_at      created-at}))
+  (t2/insert! :model/AiUsageLog
+              (cond-> {:source            source
+                       :model             "anthropic/claude-sonnet-4-6"
+                       :conversation_id   id
+                       :user_id           user-id
+                       :prompt_tokens     prompt-tokens
+                       :completion_tokens completion-tokens
+                       :total_tokens      total-tokens
+                       :created_at        created-at}
+                tenant-id (assoc :tenant_id tenant-id))))
+
+(defn- seed-usage-auditing-data!
+  ([user-id second-user-id]
+   (seed-usage-auditing-data! user-id second-user-id nil nil))
+  ([user-id second-user-id tenant-id second-tenant-id]
+   ;; Anchor "today" at noon in the instance's own timezone (the JVM default
+   ;; zone), not UTC. The charts resolve relative date filters (past7days~,
+   ;; Yesterday, the per-day buckets) through the query processor, which falls
+   ;; back to the system timezone when no report/database timezone is set, so the
+   ;; app's notion of "today" follows the JVM zone. Anchoring the seed in UTC
+   ;; desyncs the two whenever that zone is behind UTC: e2e CI runs the instance
+   ;; (and browser) in US/Pacific, so a UTC-noon "today" lands on the app's
+   ;; *next* calendar day for ~7-8 hours after UTC midnight. That dropped the
+   ;; seeded "today" rows out of the window and made the "Conversations by day"
+   ;; drill report the wrong date. Noon in the JVM zone keeps every "today" event
+   ;; firmly inside the app's current day regardless of run time. Truncating to
+   ;; days and adding 12h (rather than a wall-clock instant) also keeps the
+   ;; neighbouring days clear of their own midnight boundaries.
+   (let [today          (-> (t/zoned-date-time)
+                            (t/truncate-to :days)
+                            (t/plus (t/hours 12)))
+         yesterday      (t/minus today (t/days 1))
+         two-days       (t/minus today (t/days 2))
+         previous-week  (t/minus today (t/days 8))
+         previous-month (t/minus today (t/days 45))
+         out-of-bounds  (t/minus today (t/days 395))]
+     (ensure-seeded-usage-auditing-group-membership! user-id)
+     (ensure-seeded-usage-auditing-group-membership! second-user-id)
+     (when tenant-id
+       (t2/update! :model/User user-id {:tenant_id tenant-id}))
+     (when second-tenant-id
+       (t2/update! :model/User second-user-id {:tenant_id second-tenant-id}))
+     (delete-seeded-usage-auditing-data!)
+     (doseq [conversation [{:id                (nth e2e-usage-auditing-conversation-ids 0)
+                            :user-id           user-id
+                            :created-at        (t/minus today (t/hours 2))
+                            :source            "metabot_agent"
+                            :profile-id        "nlq"
+                            :prompt-tokens     100
+                            :completion-tokens 50
+                            :total-tokens      150
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.1"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 1)
+                            :user-id           user-id
+                            :created-at        (t/minus two-days (t/hours 1))
+                            :source            "slackbot"
+                            :profile-id        "internal"
+                            :prompt-tokens     200
+                            :completion-tokens 100
+                            :total-tokens      300
+                            :roles             ["user" "user" "assistant"]
+                            :ip-address        "10.0.0.2"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 2)
+                            :user-id           second-user-id
+                            :created-at        yesterday
+                            :source            "sql-gen"
+                            :profile-id        "sql"
+                            :prompt-tokens     300
+                            :completion-tokens 150
+                            :total-tokens      450
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.3"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 3)
+                            :user-id           second-user-id
+                            :created-at        (t/minus yesterday (t/hours 2))
+                            :source            "document_generate_content"
+                            :profile-id        "document-generate-content"
+                            :prompt-tokens     400
+                            :completion-tokens 200
+                            :total-tokens      600
+                            :roles             ["user" "assistant" "assistant"]
+                            :ip-address        "10.0.0.4"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 4)
+                            :user-id           user-id
+                            :created-at        two-days
+                            :source            "metabot_agent"
+                            :profile-id        "nlq"
+                            :prompt-tokens     500
+                            :completion-tokens 250
+                            :total-tokens      750
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.1"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 5)
+                            :user-id           second-user-id
+                            :created-at        (t/minus two-days (t/hours 3))
+                            :source            "sql-gen"
+                            :profile-id        "embedding_next"
+                            :prompt-tokens     600
+                            :completion-tokens 300
+                            :total-tokens      900
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.5"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 6)
+                            :user-id           user-id
+                            :created-at        (t/minus today (t/minutes 30))
+                            :source            "slackbot"
+                            :profile-id        "slackbot"
+                            :prompt-tokens     700
+                            :completion-tokens 350
+                            :total-tokens      1050
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.6"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 7)
+                            :user-id           user-id
+                            :created-at        (t/minus today (t/minutes 15))
+                            :source            "metabot_agent"
+                            :profile-id        "transforms_codegen"
+                            :prompt-tokens     800
+                            :completion-tokens 400
+                            :total-tokens      1200
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.7"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 8)
+                            :user-id           second-user-id
+                            :created-at        previous-month
+                            :source            "sql-gen"
+                            :profile-id        "sql"
+                            :prompt-tokens     900
+                            :completion-tokens 450
+                            :total-tokens      1350
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.8"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 9)
+                            :user-id           user-id
+                            :created-at        out-of-bounds
+                            :source            "metabot_agent"
+                            :profile-id        "internal"
+                            :prompt-tokens     1000
+                            :completion-tokens 500
+                            :total-tokens      1500
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.99"}
+                           {:id                (nth e2e-usage-auditing-conversation-ids 10)
+                            :user-id           user-id
+                            :created-at        previous-week
+                            :source            "metabot_agent"
+                            :profile-id        "nlq"
+                            :prompt-tokens     110
+                            :completion-tokens 55
+                            :total-tokens      165
+                            :roles             ["user" "assistant"]
+                            :ip-address        "10.0.0.1"}]]
+       (insert-seeded-usage-auditing-conversation!
+        (cond-> conversation
+          (= (:user-id conversation) user-id) (assoc :tenant-id tenant-id)
+          (= (:user-id conversation) second-user-id) (assoc :tenant-id second-tenant-id))))
+     {:inserted (count e2e-usage-auditing-conversation-ids)
+      :date     (str (t/local-date today))})))
+
+(api.macros/defendpoint :post "/metabot/seed-ai-usage"
+  :- [:map [:inserted :int]]
+  "Insert `count` rows into `ai_usage_log` for the given `user_id`, then clear the metabot limit
+  cache so limit checks re-evaluate immediately.  Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [user_id count]} :- [:map
+                               [:user_id ms/PositiveInt]
+                               [:count   ms/PositiveInt]]]
+  (dotimes [_ count]
+    (t2/insert! :model/AiUsageLog
+                {:source            e2e-usage-source
+                 :model             "test/model"
+                 :prompt_tokens     0
+                 :completion_tokens 0
+                 :total_tokens      0
+                 :user_id           user_id}))
+  (clear-metabot-limit-cache!)
+  {:inserted count})
+
+(api.macros/defendpoint :delete "/metabot/seed-ai-usage"
+  :- [:map [:deleted :int]]
+  "Delete all `ai_usage_log` rows inserted by the seeding endpoint for the given `user_id`, then
+  clear the metabot limit cache.  Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [user_id]} :- [:map
+                         [:user_id ms/PositiveInt]]]
+  (let [deleted (t2/delete! :model/AiUsageLog :user_id user_id :source e2e-usage-source)]
+    (clear-metabot-limit-cache!)
+    {:deleted deleted}))
+
+(api.macros/defendpoint :post "/metabot/seed-usage-auditing"
+  :- [:map
+      [:inserted :int]
+      [:date ms/NonBlankString]]
+  "Seed deterministic Metabot conversation, message, and token usage rows for the usage auditing E2E charts."
+  [_route-params
+   _query-params
+   {:keys [user_id second_user_id tenant_id second_tenant_id]} :- [:map
+                                                                   [:user_id ms/PositiveInt]
+                                                                   [:second_user_id ms/PositiveInt]
+                                                                   [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
+                                                                   [:second_tenant_id {:optional true} [:maybe ms/PositiveInt]]]]
+  (seed-usage-auditing-data! user_id second_user_id tenant_id second_tenant_id))
+
+(api.macros/defendpoint :post "/mcp/seed-tool-call"
+  :- [:map
+      [:session_id ms/NonBlankString]
+      [:tool_name ms/NonBlankString]]
+  "Seed one `mcp_session_log` + one `mcp_tool_call_log` row so the MCP analytics E2E page has a
+  visible tool-call row. Routes through the production `metabase.mcp.usage` recording helpers
+  (rather than hand-rolled inserts) so the seeded rows can't drift from real MCP writes.
+  Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [user_id tool_name client_name client_version status error_code error_message duration_ms]}
+   :- [:map
+       [:user_id        ms/PositiveInt]
+       [:tool_name       {:optional true} [:maybe ms/NonBlankString]]
+       [:client_name     {:optional true} [:maybe ms/NonBlankString]]
+       [:client_version  {:optional true} [:maybe ms/NonBlankString]]
+       [:status          {:optional true} [:maybe ms/NonBlankString]]
+       [:error_code      {:optional true} [:maybe :int]]
+       [:error_message   {:optional true} [:maybe ms/NonBlankString]]
+       [:duration_ms     {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]]]
+  (let [session-id (str "e2e-mcp-" (random-uuid))
+        tool-name  (or tool_name "execute_query")]
+    (mcp.usage/record-mcp-session!
+     {:session-id  session-id
+      :user-id     user_id
+      :client-info {:name    (or client_name "claude")
+                    :version (or client_version "1.0.0")}})
+    (mcp.usage/record-mcp-tool-call!
+     {:tool-name     tool-name
+      :user-id       user_id
+      :session-id    session-id
+      :status        (or status "success")
+      :duration-ms   (or duration_ms 42)
+      :error-code    error_code
+      :error-message error_message})
+    {:session_id session-id :tool_name tool-name}))

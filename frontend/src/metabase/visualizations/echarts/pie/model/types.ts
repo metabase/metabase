@@ -1,17 +1,6 @@
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 
-export interface PieRow {
-  key: string;
-  name: string;
-  originalName: string;
-  color: string;
-  defaultColor: boolean;
-  enabled: boolean;
-  hidden: boolean;
-  isOther: boolean;
-}
-
 export interface PieColumnDescriptors {
   metricDesc: ColumnDescriptor;
   dimensionDesc: ColumnDescriptor;

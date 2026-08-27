@@ -26,7 +26,7 @@
                     (= target-clause clause) source-clause
                     :else                    clause))
                 (clause-fn swapped))
-                          ;; And didn't change anything else.
+             ;; And didn't change anything else.
              (= (m/dissoc-in query   [:stages 0 clause-key])
                 (m/dissoc-in swapped [:stages 0 clause-key]))))))))
 
@@ -46,7 +46,7 @@
    (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) $q
      (lib/breakout $q (meta/field-metadata :products :category))
      (lib/breakout $q (meta/field-metadata :people :source))
-      ;; Deliberately including the same field three times: without binning, and with two different binning settings.
+     ;; Deliberately including the same field three times: without binning, and with two different binning settings.
      (lib/breakout $q (meta/field-metadata :orders :subtotal))
      (lib/breakout $q (lib/with-binning
                        (meta/field-metadata :orders :subtotal)
@@ -55,7 +55,7 @@
                        (meta/field-metadata :orders :subtotal)
                        (nth (lib/available-binning-strategies $q (meta/field-metadata :orders :subtotal))
                             2)))
-      ;; Likewise including multiple temporal buckets.
+     ;; Likewise including multiple temporal buckets.
      (lib/breakout $q (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
      (lib/breakout $q (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))))
 
@@ -97,7 +97,7 @@
           [a1 a2 _a3] (lib/aggregations query)]
       (log.capture/with-log-messages-for-level [messages [metabase.lib.swap :warn]]
         (lib/swap-clauses query -1 a2 (lib.options/update-options a1 assoc :lib/uuid (str (random-uuid))))
-        (is (=? [{:level :warn, :message #"No matching clause in swap-clauses \[:count .*"}]
+        (is (=? [{:level :warn, :message #"No matching clause in swap-clauses"}]
                 (messages)))))))
 
 (deftest ^:synchronized swap-clauses-ambiguous-test
@@ -111,7 +111,7 @@
           query       (update-in query [:stages 0 :aggregation] conj a2)]
       (log.capture/with-log-messages-for-level [messages [metabase.lib.swap :warn]]
         (lib/swap-clauses query -1 a1 a2)
-        (is (=? [{:level :warn, :message #"Ambiguous match for clause in swap-clauses \[:sum .*"}]
+        (is (=? [{:level :warn, :message #"Ambiguous match for clause in swap-clauses \(2 matches\)"}]
                 (messages)))))))
 
 (deftest ^:parallel swap-clauses-aggregations-with-downstream-refs-test
@@ -156,8 +156,8 @@
             (is (=? (map :lib/source-uuid cols-before)
                     (map :lib/source-uuid cols-after)))
             (testing "even though the names have changed where they were swapped"
-              (let [aliases-before (mapv (juxt :metabase.lib.join/join-alias :lib/source-column-alias) cols-before)
-                    aliases-after  (mapv (juxt :metabase.lib.join/join-alias :lib/source-column-alias) cols-after)]
+              (let [aliases-before (mapv (juxt :lib/join-alias :lib/source-column-alias) cols-before)
+                    aliases-after  (mapv (juxt :lib/join-alias :lib/source-column-alias) cols-after)]
                 (is (not= (nth aliases-before i1)
                           (nth aliases-after  i1)))
                 (is (not= (nth aliases-before i2)

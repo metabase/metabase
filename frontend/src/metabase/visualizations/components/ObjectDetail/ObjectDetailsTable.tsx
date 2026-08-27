@@ -3,12 +3,12 @@ import type { MouseEvent } from "react";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
-import { ExpandableString } from "metabase/query_builder/components/ExpandableString";
+import { Box, Ellipsified, Icon } from "metabase/ui";
+import { displayNameForColumn, formatValue } from "metabase/value-formatting";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -24,19 +24,15 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import {
-  FitImage,
-  GridCell,
-  GridContainer,
-  ObjectDetailsTable,
-} from "./ObjectDetailsTable.styled";
+import { ExpandableString } from "./ExpandableString";
+import S from "./ObjectDetailsTable.module.css";
 import type { OnVisualizationClickType } from "./types";
 
 export interface DetailsTableCellProps {
-  column: any;
-  value: any;
+  column: DatasetColumn;
+  value?: RowValue;
   isColumnName: boolean;
-  settings: any;
+  settings?: ComputedVisualizationSettings;
   className?: string;
   clicked?: ClickObject;
   onVisualizationClick: OnVisualizationClickType;
@@ -61,18 +57,31 @@ export function DetailsTableCell({
     columnSettings?.["_column_title_full"] || displayNameForColumn(column);
 
   if (isColumnName) {
-    const title = column !== null ? columnTitle : null;
-    cellValue = <Ellipsified lines={8}>{title}</Ellipsified>;
+    cellValue = (
+      <span className={S.columnName}>
+        <Ellipsified lines={8}>{columnTitle}</Ellipsified>
+        {column.description && (
+          <Icon
+            name="info"
+            size={14}
+            flex="0 0 auto"
+            className={S.descriptionIcon}
+            tooltip={column.description}
+          />
+        )}
+      </span>
+    );
     isLink = false;
   } else {
     if (value === null || value === undefined || value === "") {
       cellValue = <span className={CS.textTertiary}>{t`Empty`}</span>;
     } else if (isa(column.semantic_type, TYPE.SerializedJSON)) {
+      const rawJson = String(value);
       let formattedJson;
       try {
-        formattedJson = JSON.stringify(JSON.parse(value), null, 2);
+        formattedJson = JSON.stringify(JSON.parse(rawJson), null, 2);
       } catch (e) {
-        formattedJson = value;
+        formattedJson = rawJson;
       }
       cellValue = (
         <pre className={QueryBuilderS.ObjectJSON}>{formattedJson}</pre>
@@ -126,7 +135,16 @@ export function DetailsTableCell({
       </span>
       {isImage && (
         <div>
-          <FitImage src={value} alt={value} />
+          <Box
+            component="img"
+            className={S.fitImage}
+            src={value}
+            alt={value}
+            maw="100%"
+            mah="18rem"
+            my="md"
+            mx="auto"
+          />
         </div>
       )}
     </div>
@@ -139,6 +157,7 @@ export interface DetailsTableProps {
   settings: VisualizationSettings;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
+  isDashboard: boolean;
 }
 
 export function DetailsTable({
@@ -147,6 +166,7 @@ export function DetailsTable({
   settings,
   onVisualizationClick,
   visualizationIsClickable,
+  isDashboard,
 }: DetailsTableProps): JSX.Element {
   const columnSettings = settings["table.columns"];
 
@@ -182,51 +202,57 @@ export function DetailsTable({
   }
 
   return (
-    <ObjectDetailsTable>
-      <GridContainer cols={3}>
+    <Box
+      flex={1}
+      p={isDashboard ? "0.5rem 1rem" : "2rem"}
+      style={{ overflowY: "auto" }}
+    >
+      <Box
+        display="grid"
+        style={{
+          gridTemplateColumns: "repeat(2, minmax(0, auto))",
+          gap: "1rem",
+        }}
+      >
         {cols.map((column, columnIndex) => {
           const columnValue = row[columnIndex];
 
           return (
             <Fragment key={columnIndex}>
-              <GridCell>
-                <DetailsTableCell
-                  column={column}
-                  value={row[columnIndex] ?? t`Empty`}
-                  isColumnName
-                  settings={settings}
-                  className={cx(CS.textBold, CS.textSecondary)}
-                  onVisualizationClick={onVisualizationClick}
-                  visualizationIsClickable={visualizationIsClickable}
-                />
-              </GridCell>
-              <GridCell colSpan={2}>
-                <DetailsTableCell
-                  column={column}
-                  value={columnValue}
-                  isColumnName={false}
-                  settings={settings}
-                  clicked={{
-                    value: columnValue,
-                    column,
-                    settings,
-                    origin: { row, cols },
-                    data: clickedData,
-                  }}
-                  className={cx(
-                    CS.textBold,
-                    CS.textPrimary,
-                    CS.textSpaced,
-                    CS.textWrap,
-                  )}
-                  onVisualizationClick={onVisualizationClick}
-                  visualizationIsClickable={visualizationIsClickable}
-                />
-              </GridCell>
+              <DetailsTableCell
+                column={column}
+                value={row[columnIndex] ?? t`Empty`}
+                isColumnName
+                settings={settings}
+                className={cx(CS.textBold, CS.textSecondary)}
+                onVisualizationClick={onVisualizationClick}
+                visualizationIsClickable={visualizationIsClickable}
+              />
+              <DetailsTableCell
+                column={column}
+                value={columnValue}
+                isColumnName={false}
+                settings={settings}
+                clicked={{
+                  value: columnValue,
+                  column,
+                  settings,
+                  origin: { row, cols },
+                  data: clickedData,
+                }}
+                className={cx(
+                  CS.textBold,
+                  CS.textPrimary,
+                  CS.textSpaced,
+                  CS.textWrap,
+                )}
+                onVisualizationClick={onVisualizationClick}
+                visualizationIsClickable={visualizationIsClickable}
+              />
             </Fragment>
           );
         })}
-      </GridContainer>
-    </ObjectDetailsTable>
+      </Box>
+    </Box>
   );
 }

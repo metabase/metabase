@@ -9,6 +9,7 @@
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.transforms.jobs :as transforms.jobs]
+   [metabase.transforms.settings :as transforms.settings]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -48,10 +49,10 @@
     (cron/schedule
      (cron/cron-schedule schedule)
      (cron/in-time-zone (TimeZone/getTimeZone ^String (timezone)))
-        ;; We want to fire the trigger once even if the previous triggers missed
-        ;; (potentially several times)
+     ;; We want to fire the trigger once even if the previous triggers missed
+     ;; (potentially several times)
      (cron/with-misfire-handling-instruction-fire-and-proceed)))
-    ;; higher than sync
+   ;; higher than sync
    (triggers/with-priority 6)))
 
 (defn- create-trigger!
@@ -67,8 +68,9 @@
   (first (task/existing-triggers (job-key job-id-or-trigger)
                                  (trigger-key job-id-or-trigger))))
 
-(defn- delete-trigger!
-  "Delete the trigger for a transform job."
+(defn delete-trigger!
+  "Delete the trigger for a transform job. Leaves the underlying Quartz job definition intact so it
+  can be re-scheduled later via [[initialize-job!]]."
   ([job-id-or-trigger]
    (if (number? job-id-or-trigger)
      (if-let [trigger (existing-trigger job-id-or-trigger)]
@@ -82,13 +84,24 @@
                org.quartz.DisallowConcurrentExecution true}
   RunTransforms
   [context]
-  (let [job-id (-> (conversion/from-job-data context)
-                   (get "job-id"))]
-    (log/info "Executing scheduled run of transform job" job-id)
+  (let [job-id   (-> (conversion/from-job-data context)
+                     (get "job-id"))
+        ;; Read the kill switch at fire time rather than trying to keep Quartz triggers in sync
+        ;; with the setting: it is global, env-overridable, and falls back to the token feature
+        ;; when unset, so there is no reliable toggle event to hook trigger deletion to.
+        enabled? (transforms.settings/transforms-enabled)]
     (task-history/with-task-history {:task "run-transforms"
-                                     :task_details {:job-id job-id
-                                                    :run-method :cron}}
-      (transforms.jobs/run-job! job-id {:run-method :cron}))))
+                                     :task_details (cond-> {:job-id job-id
+                                                            :run-method :cron}
+                                                     (not enabled?) (assoc :skipped-reason "transforms-disabled"))}
+      (if enabled?
+        (do
+          (log/info "Executing scheduled run of transform job" job-id)
+          (transforms.jobs/run-job! job-id {:run-method :cron}))
+        ;; Skip before run-job! creates a transform_job_run row: every transform would be
+        ;; skipped by the feature check anyway and the run would be recorded as "successful",
+        ;; which is misleading. The task_history row above still records the skipped firing.
+        (log/info "Skipping scheduled run of transform job" job-id "because transforms are disabled")))))
 
 (defn initialize-job!
   "Initialize a schedule for a transform job."
@@ -124,5 +137,5 @@
 
 (defmethod task/init! ::RunTransform [_]
   (log/info "Initializing transform job execution jobs")
-  (->> (t2/select :model/TransformJob)
+  (->> (t2/select :model/TransformJob :active true)
        (run! initialize-job!)))

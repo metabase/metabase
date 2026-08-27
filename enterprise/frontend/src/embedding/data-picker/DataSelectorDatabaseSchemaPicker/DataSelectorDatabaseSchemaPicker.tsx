@@ -5,28 +5,29 @@ import {
   AccordionList,
   type Section as BaseSection,
 } from "metabase/common/components/AccordionList";
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import { useTranslateContent } from "metabase/i18n/hooks";
-import { isSyncCompleted } from "metabase/lib/syncing";
 import { Icon } from "metabase/ui";
+import { isSyncCompleted } from "metabase/utils/syncing";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
+import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 
-import DataSelectorLoading from "../DataSelectorLoading";
+import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
 
-type DataSelectorDatabaseSchemaPicker = {
+type DataSelectorDatabaseSchemaPickerProps = {
   databases: Database[];
   hasBackButton: boolean;
   hasFiltering: boolean;
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   isLoading: boolean;
-  selectedDatabase: Database;
-  selectedSchema: Schema;
-  onBack: () => void;
+  selectedDatabase?: Database | null;
+  selectedSchema?: Schema | null;
+  onBack?: (() => void) | null;
   onChangeDatabase: (database: Database) => void;
-  onChangeSchema: (item: { schema?: Schema }) => void;
+  onChangeSchema: (schema?: Schema) => void;
 };
 
 type Item = {
@@ -38,7 +39,7 @@ type Section = BaseSection<Item> & {
   active: boolean;
 };
 
-const DataSelectorDatabaseSchemaPicker = ({
+export const DataSelectorDatabaseSchemaPicker = ({
   databases,
   selectedDatabase,
   selectedSchema,
@@ -49,7 +50,7 @@ const DataSelectorDatabaseSchemaPicker = ({
   hasBackButton,
   onBack,
   hasInitialFocus,
-}: DataSelectorDatabaseSchemaPicker) => {
+}: DataSelectorDatabaseSchemaPickerProps) => {
   const tc = useTranslateContent();
 
   if (databases.length === 0) {
@@ -62,7 +63,7 @@ const DataSelectorDatabaseSchemaPicker = ({
       !database.is_saved_questions && database.getSchemas().length > 1
         ? database.getSchemas().map((schema) => ({
             schema,
-            name: tc(schema.displayName()) ?? "",
+            name: tc(getSchemaDisplayName(schema.name)) ?? "",
           }))
         : [],
     className: database.is_saved_questions ? CS.bgLight : undefined,
@@ -78,7 +79,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     const isNavigationSection = hasBackButton && sectionIndex === 0;
 
     if (isNavigationSection) {
-      onBack();
+      onBack?.();
       return false;
     }
 
@@ -138,6 +139,3 @@ const DataSelectorDatabaseSchemaPicker = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorDatabaseSchemaPicker;

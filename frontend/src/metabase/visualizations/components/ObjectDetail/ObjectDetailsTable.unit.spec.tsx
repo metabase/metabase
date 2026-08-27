@@ -1,4 +1,5 @@
 import { fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { testDataset } from "__support__/testDataset";
 import { render, screen } from "__support__/ui";
@@ -93,6 +94,24 @@ const objectDetailImageCard = {
   }),
 };
 
+const objectDetailDescriptionCard = {
+  data: createMockDatasetData({
+    cols: [
+      createMockColumn({
+        name: "name",
+        display_name: "Name",
+        description: "The name of the user who owns an account",
+      }),
+      createMockColumn({
+        name: "email",
+        display_name: "Email",
+        description: null,
+      }),
+    ],
+    rows: [["Hudson Borer", "borer-hudson@yahoo.com"]],
+  }),
+};
+
 describe("ObjectDetailsTable", () => {
   it("renders an object details table", () => {
     render(
@@ -104,6 +123,7 @@ describe("ObjectDetailsTable", () => {
         settings={{
           column: () => null,
         }}
+        isDashboard={false}
       />,
     );
 
@@ -124,6 +144,7 @@ describe("ObjectDetailsTable", () => {
         settings={{
           column: () => null,
         }}
+        isDashboard={false}
       />,
     );
 
@@ -144,6 +165,7 @@ describe("ObjectDetailsTable", () => {
           settings={{
             column: () => null,
           }}
+          isDashboard={false}
         />,
       );
 
@@ -162,12 +184,45 @@ describe("ObjectDetailsTable", () => {
           settings={{
             column: () => null,
           }}
+          isDashboard={false}
         />,
       );
 
       expect(
         screen.getByAltText(String(objectDetailImageCard.data.rows[1][2])),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("column descriptions", () => {
+    const setupDescriptionCard = () =>
+      render(
+        <DetailsTable
+          columns={objectDetailDescriptionCard.data.cols}
+          zoomedRow={objectDetailDescriptionCard.data.rows[0]}
+          onVisualizationClick={() => null}
+          visualizationIsClickable={() => false}
+          settings={{
+            column: () => null,
+          }}
+          isDashboard={false}
+        />,
+      );
+
+    it("should show the column description on hovering its info icon (#68682)", async () => {
+      setupDescriptionCard();
+
+      await userEvent.hover(screen.getByRole("img", { name: "info icon" }));
+
+      expect(await screen.findByTestId("icon-tooltip")).toHaveTextContent(
+        "The name of the user who owns an account",
+      );
+    });
+
+    it("should not render an info icon for columns without a description (#68682)", () => {
+      setupDescriptionCard();
+
+      expect(screen.getAllByRole("img", { name: "info icon" })).toHaveLength(1);
     });
   });
 
@@ -180,6 +235,7 @@ describe("ObjectDetailsTable", () => {
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
           settings={{}}
+          isDashboard={false}
         />,
       );
 
@@ -195,6 +251,7 @@ describe("ObjectDetailsTable", () => {
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
           settings={{}}
+          isDashboard={false}
         />,
       );
 

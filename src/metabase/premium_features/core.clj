@@ -16,23 +16,30 @@
  [metabase.premium-features.defenterprise
   defenterprise
   defenterprise-schema]
-
  [metabase.premium-features.token-check
-   ;; TODO: move airgap code to a dedicated namespace?
+  ;; TODO: move airgap code to a dedicated namespace?
   assert-valid-airgap-user-count!
   assert-airgap-allows-user-creation!
   assert-has-feature
   assert-has-any-features
+  canonically-has-feature?
   ee-feature-error
+  is-trial?
   has-any-features?
   has-feature?
   log-enabled?
+  query-transforms-enabled?
+  python-transforms-enabled?
+  any-transforms-enabled?
   max-users-allowed
+  meters
   plan-alias
   quotas
   TokenStatus
-  clear-cache!]
-
+  clear-cache!
+  token-check-url
+  transform-metered-as
+  transform-stats]
  (metabase.premium-features.settings
   active-users-count
   airgap-enabled
@@ -40,10 +47,8 @@
   define-premium-feature
   development-mode?
   enable-tenants?
+  enable-ai-controls?
   enable-advanced-permissions?
-  enable-ai-entity-analysis?
-  enable-ai-sql-fixer?
-  enable-ai-sql-generation?
   enable-any-sso?
   enable-audit-app?
   enable-cache-granular-controls?
@@ -51,17 +56,23 @@
   enable-config-text-file?
   enable-content-translation?
   enable-content-verification?
+  enable-custom-viz?
+  enable-data-complexity-score?
   enable-dashboard-subscription-filters?
+  enable-data-apps?
   enable-database-auth-providers?
   enable-database-routing?
-  enable-data-studio?
+  enable-library?
+  enable-library-retrieval?
+  enable-metabase-ai-managed?
+  enable-metabot-v3?
   enable-dependencies?
+  enable-schema-viewer?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
   enable-embedding-simple-feature?
-  enable-llm-autodescription?
-  enable-metabot-v3?
+  enable-multi-factor-auth?
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?
@@ -75,18 +86,21 @@
   enable-sso-google?
   enable-sso-jwt?
   enable-sso-ldap?
+  enable-sso-oidc?
   enable-sso-saml?
   enable-support-users?
-  enable-sso-slack?
-  enable-transforms?
+  enable-basic-transforms?
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
-  enable-workspaces?
+  enable-writable-connection?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
+  locked-meters
   premium-embedding-token
+  security-center-disabled
+  security-center-enabled?
   site-uuid-for-premium-features-token-checks
   table-data-editing?
   token-features

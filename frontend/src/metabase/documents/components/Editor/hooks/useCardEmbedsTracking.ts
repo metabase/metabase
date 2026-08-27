@@ -1,7 +1,7 @@
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import { useEffect } from "react";
 
-import type { CardEmbedRef } from "metabase-types/store/documents";
+import type { CardEmbedRef } from "metabase/redux/store/documents";
 
 /**
  * Extracts all question references from the editor document.
@@ -21,6 +21,8 @@ const extractCardEmbeds = (editor: TiptapEditor): CardEmbedRef[] => {
       refs.push({
         id: node.attrs.id,
         name: node.attrs.name,
+        stored_result_id: node.attrs.stored_result_id,
+        sort: node.attrs.sort,
       });
     }
   });

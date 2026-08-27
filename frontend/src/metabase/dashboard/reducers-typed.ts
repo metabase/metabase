@@ -1,3 +1,4 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
 import { assocIn, dissocIn } from "icepick";
 import { omit } from "underscore";
@@ -5,16 +6,29 @@ import { omit } from "underscore";
 import {
   createDashboardPublicLink,
   deleteDashboardPublicLink,
+  updateDashboard,
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
-import { Dashboards } from "metabase/entities/dashboards";
-import { Questions } from "metabase/entities/questions";
-import { handleActions } from "metabase/lib/redux";
+import { handleActions } from "metabase/redux";
+import { CARD_UPDATED } from "metabase/redux/cards";
+import {
+  INITIALIZE,
+  RESET,
+  SET_PARAMETER_VALUES,
+  SHOW_ADD_PARAMETER_POPOVER,
+  initialize,
+  reset,
+} from "metabase/redux/dashboard";
 import {
   NAVIGATE_BACK_TO_DASHBOARD,
-  REVERT_TO_REVISION,
-} from "metabase/query_builder/actions";
+  REVERT_CARD_TO_REVISION,
+} from "metabase/redux/query-builder";
+import type {
+  DashboardLinkTargets,
+  DashboardSidebarName,
+  StoreDashboard,
+} from "metabase/redux/store/dashboard";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
@@ -25,23 +39,15 @@ import type {
   ParameterValuesMap,
   Revision,
 } from "metabase-types/api";
-import type {
-  DashboardSidebarName,
-  StoreDashboard,
-} from "metabase-types/store/dashboard";
 
 import {
   CLOSE_SIDEBAR,
   HIDE_ADD_PARAMETER_POPOVER,
-  INITIALIZE,
   REMOVE_PARAMETER,
-  RESET,
   RESET_PARAMETERS,
   SET_EDITING_DASHBOARD,
   SET_PARAMETER_VALUE,
-  SET_PARAMETER_VALUES,
   SET_SIDEBAR,
-  SHOW_ADD_PARAMETER_POPOVER,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   addCardToDash,
   addDashcardIdsToLoadingQueue,
@@ -51,9 +57,7 @@ import {
   fetchCardDataAction,
   fetchDashboard,
   fetchDashboardCardDataAction,
-  initialize,
   markCardAsSlow,
-  reset,
   setDashboardAttributes,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
@@ -293,6 +297,21 @@ function newDashboard(
   };
 }
 
+// Replaced rather than merged: the targets belong to the dashboard being
+// loaded, and a stale entry would let a removed click behavior keep resolving.
+export function linkTargets(
+  state: DashboardLinkTargets = INITIAL_DASHBOARD_STATE.linkTargets,
+  action: UnknownAction,
+): DashboardLinkTargets {
+  if (fetchDashboard.fulfilled.match(action)) {
+    return action.payload.linkTargets;
+  }
+  if (action.type === RESET) {
+    return INITIAL_DASHBOARD_STATE.linkTargets;
+  }
+  return state;
+}
+
 export const dashboards = createReducer(
   INITIAL_DASHBOARD_STATE.dashboards,
   (builder) => {
@@ -303,34 +322,25 @@ export const dashboards = createReducer(
       }))
       .addCase(
         setDashboardAttributes,
-        (state, { payload: { id, attributes, isDirty = true } }) => ({
-          ...state,
-          [id]: newDashboard(state[id], attributes, isDirty),
-        }),
-      )
-      .addCase(addCardToDash, (state, { payload: dashcard }) => ({
-        ...state,
-        [dashcard.dashboard_id]: {
-          ...state[dashcard.dashboard_id],
-          dashcards: [...state[dashcard.dashboard_id].dashcards, dashcard.id],
+        (state, { payload: { id, attributes, isDirty = true } }) => {
+          // Cast to avoid infinite type instantiation error.
+          const dashboards = state as Record<string, StoreDashboard>;
+          dashboards[id] = newDashboard(dashboards[id], attributes, isDirty);
         },
-      }))
+      )
+      .addCase(addCardToDash, (state, { payload: dashcard }) => {
+        state[dashcard.dashboard_id].dashcards.push(dashcard.id);
+      })
       .addCase(addManyCardsToDash, (state, { payload: dashcards }) => {
         const [{ dashboard_id }] = dashcards;
         const dashcardIds = dashcards.map(({ id }) => id);
-        return {
-          ...state,
-          [dashboard_id]: {
-            ...state[dashboard_id],
-            dashcards: [...state[dashboard_id].dashcards, ...dashcardIds],
-          },
-        };
+        state[dashboard_id].dashcards.push(...dashcardIds);
       })
-      .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
-        const draftDashboard = state[payload.dashboard?.id];
+      .addMatcher(updateDashboard.matchFulfilled, (state, { payload }) => {
+        const draftDashboard = state[payload.id];
         if (draftDashboard) {
-          draftDashboard.collection_id = payload.dashboard.collection_id;
-          draftDashboard.collection = payload.dashboard.collection;
+          draftDashboard.collection_id = payload.collection_id;
+          draftDashboard.collection = payload.collection;
         }
       })
       .addMatcher(
@@ -431,7 +441,7 @@ export const dashcardData = createReducer(
       })
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
-        if (dashcard_id && card_id) {
+        if (dashcard_id && card_id && result != null) {
           return assocIn(state, [dashcard_id, card_id], result);
         }
       })
@@ -440,7 +450,7 @@ export const dashcardData = createReducer(
         return dissocIn(state, [dashcardId, cardId]);
       })
       .addCase<string, { type: string; payload: { object?: Card } }>(
-        Questions.actionTypes.UPDATE,
+        CARD_UPDATED,
         (state, { payload: { object: card } }) => {
           if (card) {
             const { id } = card;
@@ -451,7 +461,7 @@ export const dashcardData = createReducer(
         },
       )
       .addCase<string, { type: string; payload: Revision }>(
-        REVERT_TO_REVISION,
+        REVERT_CARD_TO_REVISION,
         (state, action) => {
           const { id } = action.payload;
           if (id != null) {

@@ -3,7 +3,6 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { LoadingAndErrorWrapper as BaseLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
@@ -24,10 +23,6 @@ export const FormContainer = styled.div`
   display: flex;
   flex-direction: column;
   width: 430px;
-
-  ${FormSubmitButton.Button} {
-    width: 100%;
-  }
 
   ${breakpointMaxSmall} {
     width: 100%;

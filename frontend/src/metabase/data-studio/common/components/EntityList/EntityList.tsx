@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import type { IconName } from "metabase/ui";
 import { Button, Group, Icon, Stack, Title } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 type EntityListEmptyState = {
   icon: IconName;
@@ -11,12 +11,17 @@ type EntityListEmptyState = {
   message: string;
 };
 
+type NewButtonProps = {
+  label: string;
+  trackClickEvent: VoidFunction;
+  url: string;
+};
+
 type EntityListProps<T> = {
   items: T[];
   title: string;
   emptyState: EntityListEmptyState;
-  newButtonLabel?: string;
-  newButtonUrl?: string;
+  newButtonProps?: NewButtonProps;
   renderItem: (item: T) => ReactNode;
 };
 
@@ -24,17 +29,22 @@ export function EntityList<T>({
   items,
   title,
   emptyState,
-  newButtonLabel,
-  newButtonUrl,
+  newButtonProps,
   renderItem,
 }: EntityListProps<T>) {
   return (
     <Stack gap="md">
       <Group justify="space-between" wrap="nowrap">
         <Title order={4}>{title}</Title>
-        {newButtonLabel && newButtonUrl && (
-          <Button component={ForwardRefLink} to={newButtonUrl} variant="filled">
-            {newButtonLabel}
+        {!!newButtonProps && (
+          <Button
+            component={ForwardRefLink}
+            onAuxClick={newButtonProps.trackClickEvent}
+            onClickCapture={newButtonProps.trackClickEvent}
+            to={newButtonProps.url}
+            variant="filled"
+          >
+            {newButtonProps.label}
           </Button>
         )}
       </Group>

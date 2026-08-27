@@ -45,7 +45,7 @@
 (defmethod model-details :model/Card
   [{card-type :type, :as card} _event-type]
   (merge (select-keys card [:name :description :database_id :table_id])
-          ;; Use `model` instead of `dataset` to mirror product terminology
+         ;; Use `model` instead of `dataset` to mirror product terminology
          {:model? (= (keyword card-type) :model)}))
 
 (defmethod model-details :model/Channel
@@ -144,6 +144,10 @@
 (defmethod model-details :model/Glossary
   [glossary _event-type]
   (select-keys glossary [:term]))
+
+(defmethod model-details :model/CustomVizPlugin
+  [plugin _event-type]
+  (select-keys plugin [:identifier :display_name :status :enabled :bundle_hash]))
 
 (defmethod model-details :model/RemoteSyncTask
   [task _event-type]

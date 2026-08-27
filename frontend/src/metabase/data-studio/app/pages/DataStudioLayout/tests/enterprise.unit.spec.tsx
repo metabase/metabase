@@ -3,11 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
 
-import {
-  DEFAULT_EE_SETTINGS,
-  DEFAULT_EE_SETTINGS_WITH_WORKSPACES,
-  setup,
-} from "./setup";
+import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
 describe("DataStudioLayout", () => {
   beforeEach(() => {
@@ -20,37 +16,35 @@ describe("DataStudioLayout", () => {
     jest.restoreAllMocks();
   });
 
-  describe("Set up git sync button", () => {
-    it("should show Set up git sync button when git settings is visible", async () => {
+  describe("Remote sync button", () => {
+    it("should show Remote sync button when git settings is visible", async () => {
       setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByLabelText("Set up git sync")).toBeInTheDocument();
+      expect(screen.getByLabelText("Remote sync")).toBeInTheDocument();
     });
 
-    it("should hide Set up git sync button when git settings is not visible", async () => {
+    it("should hide Remote sync button when git settings is not visible", async () => {
       setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(
-        screen.queryByLabelText("Set up git sync"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Remote sync")).not.toBeInTheDocument();
     });
 
-    it("should open modal when Set up git sync button is clicked", async () => {
+    it("should open modal when Remote sync button is clicked", async () => {
       setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const gitSettingsButton = screen.getByLabelText("Set up git sync");
+      const gitSettingsButton = screen.getByLabelText("Set up remote sync");
       await userEvent.click(gitSettingsButton);
 
       await waitFor(() => {
@@ -68,7 +62,7 @@ describe("DataStudioLayout", () => {
       });
 
       // Open the modal
-      const gitSettingsButton = screen.getByLabelText("Set up git sync");
+      const gitSettingsButton = screen.getByLabelText("Set up remote sync");
       await userEvent.click(gitSettingsButton);
 
       await waitFor(() => {
@@ -87,7 +81,7 @@ describe("DataStudioLayout", () => {
       });
     });
 
-    it("should show Set up git sync text when sidebar is expanded", async () => {
+    it("should show Set up remote sync text when sidebar is expanded", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncEnabled: false,
@@ -98,7 +92,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Set up git sync")).toBeInTheDocument();
+      expect(screen.getByText("Set up remote sync")).toBeInTheDocument();
     });
   });
 
@@ -110,7 +104,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("Semantic layer")).toBeInTheDocument();
     });
 
     it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
@@ -153,7 +147,7 @@ describe("DataStudioLayout", () => {
   });
 
   describe("transform dirty indicator", () => {
-    it("should show dirty indicator on Exit tab when transforms have dirty changes", async () => {
+    it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
@@ -162,18 +156,15 @@ describe("DataStudioLayout", () => {
         remoteSyncTransforms: true,
       });
 
+      const transformsTab = await screen.findByLabelText("Data transformation");
       await waitFor(() => {
-        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+        expect(
+          within(transformsTab).getByTestId("remote-sync-status"),
+        ).toBeInTheDocument();
       });
-
-      // Should show the dirty indicator badge on the Exit tab
-      const transformsTab = screen.getByLabelText("Transforms");
-      expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
     });
 
-    it("should not show dirty indicator on Exit tab when no dirty changes", async () => {
+    it("should not show dirty indicator on Transforms tab when no dirty changes", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
@@ -186,7 +177,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const transformsTab = screen.getByLabelText("Transforms");
+      const transformsTab = screen.getByLabelText("Data transformation");
       expect(
         within(transformsTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
@@ -205,36 +196,61 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const transformsTab = screen.getByLabelText("Transforms");
+      const transformsTab = screen.getByLabelText("Data transformation");
       expect(
         within(transformsTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
     });
   });
 
-  describe("workspaces feature", () => {
-    it("should not render WorkspacesSection when workspaces feature is not available", async () => {
-      setup({ isNavbarOpened: true });
+  describe("transforms tab visibility", () => {
+    const transformsReadySettings = {
+      transformsSetupComplete: true,
+      transformsEnabled: true,
+    };
+
+    it("should show Transforms tab for admins", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
+        isAdmin: true,
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(
-        screen.queryByTestId("workspaces-section"),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByText("Workspaces")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
     });
 
-    it("should render WorkspacesSection when workspaces feature is available", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS_WITH_WORKSPACES, isNavbarOpened: true });
+    it("should show Transforms tab for a non-admin with transforms permission", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
+        isAdmin: false,
+        canAccessTransforms: true,
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId("workspaces-section")).toBeInTheDocument();
-      expect(screen.getByText("Workspaces")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
+    });
+
+    it("should hide Transforms tab for a non-admin without transforms permission", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        ...transformsReadySettings,
+        isAdmin: false,
+        canAccessTransforms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText("Transforms")).not.toBeInTheDocument();
     });
   });
 });

@@ -39,7 +39,7 @@
 (defn randomly-once-an-hour
   "Schedule map for once an hour at a random minute of the hour."
   [excluded-minute]
-   ;; avoid around near the hour because it's usually when notifications are scheduled.
+  ;; avoid around near the hour because it's usually when notifications are scheduled.
   (let [choices (remove #{excluded-minute} (range 5 55))]
     {:schedule_minute (rand-nth choices)
      :schedule_type   "hourly"}))

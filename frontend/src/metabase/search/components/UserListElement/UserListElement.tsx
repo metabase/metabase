@@ -21,13 +21,13 @@ export const UserListElement = ({
     px="sm"
     py="xs"
     variant="subtle"
-    bg={isSelected ? "brand" : undefined}
+    bg={isSelected ? "core-brand" : undefined}
     justify="start"
     classNames={{
       root: Styles.Root,
     }}
   >
-    <Text fw={700} color={isSelected ? "brand" : undefined} truncate>
+    <Text fw={700} color={isSelected ? "core-brand" : undefined} truncate>
       {value.common_name}
     </Text>
   </Button>

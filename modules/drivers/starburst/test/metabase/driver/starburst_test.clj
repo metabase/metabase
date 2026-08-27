@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.starburst-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.starburst-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.starburst-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -10,15 +12,15 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.starburst :as starburst]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.fixtures :as fixtures]
-   [metabase.warehouses-rest.api :as api.database]
+   [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -48,7 +50,6 @@
                             (close [_] nil))))]
         (is (true? (sql-jdbc.sync.interface/have-select-privilege?
                     :starburst mock-conn "sales_data" "hive_table")))))
-
     (testing "Returns false when DESCRIBE fails with UNSUPPORTED_TABLE_TYPE error (incompatible table type like Iceberg in Hive catalog)"
       (let [mock-conn (reify Connection
                         (getCatalog [_] "hive")
@@ -62,7 +63,6 @@
                             (close [_] nil))))]
         (is (false? (sql-jdbc.sync.interface/have-select-privilege?
                      :starburst mock-conn "sales_data" "iceberg_table")))))
-
     (testing "Returns false for non-mixed-catalog errors"
       (let [mock-conn (reify Connection
                         (getCatalog [_] "hive")
@@ -82,11 +82,11 @@
                       {:name "checkins" :schema "default"}
                       {:name "users" :schema "default"}}}
            (-> (driver/describe-database :starburst (mt/db))
-               (update :tables (comp set (partial filter (comp #{"categories"
-                                                                 "venues"
-                                                                 "checkins"
-                                                                 "users"}
-                                                               :name)))))))))
+               (update :tables #(into #{} (filter (comp #{"categories"
+                                                          "venues"
+                                                          "checkins"
+                                                          "users"}
+                                                        :name)) %)))))))
 
 (deftest describe-table-test
   (mt/test-driver :starburst
@@ -246,7 +246,7 @@
       ;; the others (ex: :auto_run_queries and :refingerprint) are one level up (fields in the model, not in the details
       ;; JSON blob)
       (let [db-details (assoc (:details (mt/db)) :let-user-control-scheduling false)]
-        (is (nil? (api.database/test-database-connection :starburst db-details)))))))
+        (is (nil? (warehouses/test-database-connection :starburst db-details)))))))
 
 (deftest kerberos-properties-test
   (testing "Kerberos related properties are set correctly"
@@ -354,8 +354,8 @@
 (deftest prepared-statements
   (mt/test-driver :starburst
     (testing "Make sure prepared statements work"
-        ;; If impersonation is set, then the starburst user should be the current Metabase user, i.e. metabase_user@user.com
-        ;; The role is ignored as Metabase users may not have the role defined in the database connection
+      ;; If impersonation is set, then the starburst user should be the current Metabase user, i.e. metabase_user@user.com
+      ;; The role is ignored as Metabase users may not have the role defined in the database connection
       (prepared-statements-helper true)
       (prepared-statements-helper false))))
 
@@ -366,7 +366,7 @@
        driver/*driver* (mt/id) nil
        (fn [^Connection conn]
          (let [stmt (.prepareStatement conn "select 1" ResultSet/TYPE_FORWARD_ONLY ResultSet/CONCUR_READ_ONLY)
-               prepared-stmt (#'starburst/proxy-optimized-prepared-statement driver/*driver* conn stmt [])]
+               ^PreparedStatement prepared-stmt (#'starburst/proxy-optimized-prepared-statement driver/*driver* conn stmt [])]
            (is (false? (.isClosed prepared-stmt)))
            (.close stmt)
            (is (true? (.isClosed prepared-stmt)))))))))

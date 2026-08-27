@@ -1,17 +1,17 @@
 import cx from "classnames";
-import { type MouseEvent, useState } from "react";
+import type { MouseEvent } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
+import { getUser } from "metabase/current-user";
 import {
+  formatCreatorMessage,
   formatNotificationSchedule,
   getNotificationHandlersGroupedByTypes,
-} from "metabase/lib/notifications";
-import { useSelector } from "metabase/lib/redux";
-import { isNotFalsy } from "metabase/lib/types";
-import { getUser } from "metabase/selectors/user";
+} from "metabase/notifications/utils";
+import { useSelector } from "metabase/redux";
 import { Box, FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
+import { isNotFalsy } from "metabase/utils/types";
 import type {
   Notification,
   NotificationCardSendCondition,
@@ -46,8 +46,6 @@ export const AlertListItem = ({
 }: AlertListItemProps) => {
   const user = useSelector(getUser);
 
-  const [showHoverActions, setShowHoverActions] = useState(false);
-
   const { emailHandler, slackHandler, hookHandlers } =
     getNotificationHandlersGroupedByTypes(alert.handlers);
   const subscription = alert.subscriptions[0];
@@ -70,14 +68,6 @@ export const AlertListItem = ({
     onDelete(alert);
   };
 
-  const handleMouseEnter = () => {
-    setShowHoverActions(true);
-  };
-
-  const handleMouseLeave = () => {
-    setShowHoverActions(false);
-  };
-
   return (
     <Box
       className={cx(
@@ -86,11 +76,9 @@ export const AlertListItem = ({
       )}
       p="1rem"
       onClick={handleEdit}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       <Text className={S.itemTitle} size="md" lineClamp={1} fw="bold">
-        {formatTitle(alert.payload.send_condition)}
+        {formatTitle(alert.payload?.send_condition)}
       </Text>
       <Group gap="xs" align="center" c="text-secondary">
         {subscription && (
@@ -100,7 +88,7 @@ export const AlertListItem = ({
         )}
         {user && (
           <>
-            <Text size="sm" c="text-tertiary">
+            <Text size="sm" c="text-disabled">
               •
             </Text>
             <Text size="sm" c="inherit">
@@ -136,28 +124,26 @@ export const AlertListItem = ({
           </Group>
         )}
       </Stack>
-      {showHoverActions && (
-        <div className={S.actionButtonContainer}>
-          {canEdit ? (
-            <AlertListItemActionButton
-              label={t`Delete this alert`}
-              iconName="trash"
-              onClick={handleDelete}
-            />
-          ) : (
-            <AlertListItemActionButton
-              label={t`Unsubscribe from this`}
-              iconName="unsubscribe"
-              onClick={handleUnsubscribe}
-            />
-          )}
-        </div>
-      )}
+      <div className={S.actionButtonContainer}>
+        {canEdit ? (
+          <AlertListItemActionButton
+            label={t`Delete this alert`}
+            iconName="trash"
+            onClick={handleDelete}
+          />
+        ) : (
+          <AlertListItemActionButton
+            label={t`Unsubscribe from this`}
+            iconName="unsubscribe"
+            onClick={handleUnsubscribe}
+          />
+        )}
+      </div>
     </Box>
   );
 };
 
-const formatTitle = (sendCondition: NotificationCardSendCondition): string => {
+const formatTitle = (sendCondition?: NotificationCardSendCondition): string => {
   switch (sendCondition) {
     case "has_result":
       return t`Alert when this has results`;
@@ -165,6 +151,8 @@ const formatTitle = (sendCondition: NotificationCardSendCondition): string => {
       return t`Alert when this reaches a goal`;
     case "goal_below":
       return t`Alert when this goes below a goal`;
+    default:
+      return t`Unknown alert`;
   }
 };
 

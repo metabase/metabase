@@ -3,8 +3,8 @@ import type { PropsWithChildren } from "react";
 import {
   Footer,
   type FooterVariant,
-} from "metabase/public/components/EmbedFrame/EmbedFrame.styled";
-import { LogoBadge } from "metabase/public/components/EmbedFrame/LogoBadge";
+} from "metabase/embedding/components/EmbedFooter.styled";
+import { LogoBadge } from "metabase/embedding/components/LogoBadge";
 
 import EmbeddingFooterS from "./EmbeddingFooter.module.css";
 

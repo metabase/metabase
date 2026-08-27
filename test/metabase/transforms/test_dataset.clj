@@ -24,7 +24,6 @@
      ["Bob Johnson" "bob@example.com" #t "2023-07-15T10:00:00"]
      ["Carol White" "carol@example.com" #t "2023-08-20T10:00:00"]
      ["David Brown" "david@example.com" #t "2023-09-10T10:00:00"]]]
-
    ["transforms_products"
     [{:field-name "name" :base-type :type/Text}
      {:field-name "category" :base-type :type/Text}
@@ -46,7 +45,6 @@
      ["Gizmo Ultra" "Gizmo" 199.99 #t "2024-01-14T10:00:00"]
      ["Widget E" "Widget" 44.99 #t "2024-01-15T10:00:00"]
      ["Gadget Mini" "Gadget" 79.99 #t "2024-01-16T10:00:00"]]]
-
    ["transforms_orders"
     [{:field-name "product_id" :base-type :type/Integer :fk "transforms_products"}
      {:field-name "customer_id" :base-type :type/Integer :fk "transforms_customers"}

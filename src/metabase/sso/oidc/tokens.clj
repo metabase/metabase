@@ -3,10 +3,9 @@
   (:require
    [buddy.core.keys :as keys]
    [buddy.sign.jwt :as jwt]
-   [clj-http.client :as http]
    [java-time.api :as t]
+   [metabase.sso.oidc.http :as oidc.http]
    [metabase.util :as u]
-   [metabase.util.http :as u.http]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -43,19 +42,12 @@
 (defn- fetch-jwks
   "Fetch JWKS from the given URI. Returns the parsed JWKS map or nil on error."
   [jwks-uri]
-  (when-not (u.http/valid-host? :external-only jwks-uri)
-    (throw (ex-info "Invalid JWKS URI: internal addresses not allowed"
-                    {:url jwks-uri})))
   (try
     (log/infof "Fetching JWKS from %s" jwks-uri)
-    (-> (http/get jwks-uri {:as :json
-                            :accept :json
-                            :throw-exceptions false
-                            :conn-timeout 5000
-                            :socket-timeout 5000})
+    (-> (oidc.http/oidc-get jwks-uri {:accept :json})
         :body)
     (catch Exception e
-      (log/warnf e "Failed to fetch JWKS from %s" jwks-uri)
+      (log/warnf "Failed to fetch JWKS from %s: %s" jwks-uri (ex-message e))
       nil)))
 
 (defn get-jwks
@@ -124,7 +116,7 @@
                 public-key (keys/jwk->public-key key-data)]
             (jwt/unsign token public-key {:alg alg})))))
     (catch Exception e
-      (log/warn e "JWT signature verification failed")
+      (log/warnf "JWT signature verification failed: %s" (ex-message e))
       nil)))
 
 (defn- validate-expiry

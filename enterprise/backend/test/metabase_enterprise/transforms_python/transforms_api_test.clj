@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-python.base :as transforms-python.base]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms-python.init]
    [metabase-enterprise.transforms-python.python-runner :as transforms-python.python-runner]
@@ -31,7 +32,7 @@
                           transform-payload {:name   "My beautiful python runner"
                                              :source {:type            "python"
                                                       :body            "print('hello world')"
-                                                      :source-tables   {}
+                                                      :source-tables   []
                                                       :source-database (mt/id)}
                                              :target {:type     "table"
                                                       :schema   schema
@@ -39,7 +40,6 @@
                                                       :database (mt/id)}}]
                       (mt/user-http-request :lucky :post "transform"
                                             transform-payload)))]
-
             (testing "without any feature flags"
               (mt/with-premium-features #{}
                 (testing "creating python transform without any features fails"
@@ -48,30 +48,28 @@
                                                {:name   "My beautiful python runner"
                                                 :source {:type            "python"
                                                          :body            "print('hello world')"
-                                                         :source-tables   {}
+                                                         :source-tables   []
                                                          :source-database (mt/id)}
                                                 :target {:type     "table"
                                                          :schema   (get-test-schema)
                                                          :name     "gadget_products"
                                                          :database (mt/id)}}))))))
-
-            (testing "with only transforms feature flag (no transforms-python)"
-              (mt/with-premium-features #{:transforms}
+            (testing "with only transforms-basic feature flag (no transforms-python)"
+              (mt/with-premium-features #{:transforms-basic}
                 (testing "creating python transform without transforms-python feature fails"
                   (is (= "Premium features required for this transform type are not enabled."
                          (mt/user-http-request :lucky :post 402 "transform"
                                                {:name   "My beautiful python runner"
                                                 :source {:type            "python"
                                                          :body            "print('hello world')"
-                                                         :source-tables   {}
+                                                         :source-tables   []
                                                          :source-database (mt/id)}
                                                 :target {:type     "table"
                                                          :schema   (get-test-schema)
                                                          :name     "gadget_products"
                                                          :database (mt/id)}}))))))
-
             (testing "with transforms-python feature flag"
-              (mt/with-premium-features #{:transforms :transforms-python}
+              (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
                 (with-transform-cleanup! [table-name "gadget_products"]
                   (let [transform         (create-transform!)]
                     (is (= "print('hello chris')"
@@ -79,7 +77,7 @@
                                                      {:name   "My beautiful python runner"
                                                       :source {:type            "python"
                                                                :body            "print('hello chris')"
-                                                               :source-tables   {}
+                                                               :source-tables   []
                                                                :source-database (mt/id)}
                                                       :target {:type     "table"
                                                                :schema   (get-test-schema)
@@ -88,14 +86,14 @@
                                :source :body)))))))))))))
 
 (deftest update-python-transform-feature-flag-test
-  (mt/with-premium-features #{:transforms :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "Updating a python transform requires both :transforms and :transforms-python features"
+      (testing "Updating a python transform requires both :transforms-basic and :transforms-python features"
         (mt/with-temp [:model/Transform {id :id
                                          :as transform} {:name   "Original Python Transform"
                                                          :source {:type            "python"
                                                                   :body            "print('original')"
-                                                                  :source-tables   {}
+                                                                  :source-tables   []
                                                                   :source-database (mt/id)}
                                                          :target {:type     "table"
                                                                   :schema   "scheam"
@@ -109,17 +107,17 @@
                   "Should return 403 without any features"))))))))
 
 (deftest run-python-transform-feature-flag-test
-  (mt/with-premium-features #{:transforms :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "Running a python transform requires both :transforms and :transforms-python features"
-        (mt/with-premium-features #{:transforms :transforms-python}
+      (testing "Running a python transform requires both :transforms-basic and :transforms-python features"
+        (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
           (mt/dataset transforms-dataset/transforms-test
             (with-transform-cleanup! [table-name "test_run_python"]
               (let [schema (get-test-schema)
                     transform-payload {:name   "Test Run Python Transform"
                                        :source {:type            "python"
                                                 :body            "def transform():\n    pass"
-                                                :source-tables   {}
+                                                :source-tables   []
                                                 :source-database (mt/id)}
                                        :target {:type     "table"
                                                 :schema   schema
@@ -130,7 +128,7 @@
                   (let [response (mt/user-http-request :crowberto :post 403
                                                        (format "transform/%d/run" (:id created)))]
                     (is (= "You don't have permissions to do that." response))))
-                (mt/with-premium-features #{:transforms}
+                (mt/with-premium-features #{:transforms-basic}
                   (let [response (mt/user-http-request :crowberto :post
                                                        (format "transform/%d/run" (:id created)))]
                     (is (= "You don't have permissions to do that." response)
@@ -139,7 +137,7 @@
 (deftest execute-python-transform-test
   (testing "transform execution with :transforms/table target"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
@@ -148,7 +146,7 @@
               (let [original           {:name   "Gadget Products"
                                         :source {:type  "python"
                                                  :source-database (mt/id)
-                                                 :source-tables {"transforms_customers" (mt/id :transforms_customers)}
+                                                 :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                  :body  (str "import pandas as pd\n"
                                                              "\n"
                                                              "def transform():\n"
@@ -158,8 +156,7 @@
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 10000)
                 (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
-                (is (= [["Alice" 25] ["Bob" 30]]
-                       (transforms.tu/table-rows table-name)))))))))))
+                (is (= [["Alice" 25] ["Bob" 30]] (sort-by first (transforms.tu/table-rows table-name))))))))))))
 
 (defn- subsequence?
   "Returns true if sequence ys is a subsequence of xs:
@@ -204,18 +201,23 @@
       Closeable
       (close [_]
         (reset! stopped? true)
-        (future-cancel fut)
-        (assert (not= :timeout (try (deref fut 1000 :timeout) (catch Throwable _))) "Observation thread did not exit!")))))
+        ;; Join instead of cancelling: interrupting does not abort an in-flight HTTP request, and cancelling
+        ;; makes deref throw CancellationException immediately, so close would return while a poll is still
+        ;; running. That poll then lands after the transform is cleaned up and fails the enclosing test with
+        ;; an unrelated 404.
+        (let [exited? (not= :timeout (try (deref fut 5000 :timeout) (catch Throwable _ nil)))]
+          (when-not exited?
+            (future-cancel fut))
+          (assert exited? "Observation thread did not exit!"))))))
 
 (deftest python-transform-logging-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (letfn [(program->source [program]
               (->> (concat ["import pandas as pd"
                             "def transform():"]
                            (for [s program] (str "  " s))
                            ["  return pd.DataFrame({'x': [42]})"])
                    (str/join "\n")))
-
             (create-transform [{:keys [program]} target]
               {:post [(integer? %)]}
               (:id (mt/user-http-request :crowberto :post 200 "transform"
@@ -223,9 +225,8 @@
                                           :source {:type            "python"
                                                    :body            (program->source program)
                                                    :source-database (mt/id)
-                                                   :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
+                                                   :source-tables   [(transforms.tu/default-source-table-entry)]}
                                           :target (assoc target :database (mt/id))})))
-
             (block-on-run [{:keys [expect-status]} target transform-id]
               (try
                 (transforms.tu/test-run transform-id)
@@ -235,12 +236,11 @@
                     (throw e))))
               (when (= :succeeded expect-status)
                 (transforms.tu/wait-for-table (:name target) 5000)))
-
             (run-scenario [scenario schema]
               (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)
-                            transforms-python.execute/transfer-file-to-db                (if-some [e (:writeback-ex scenario)]
+                            transforms-python.base/transfer-file-to-db                   (if-some [e (:writeback-ex scenario)]
                                                                                            (fn [& _] (throw e))
-                                                                                           @#'transforms-python.execute/transfer-file-to-db)]
+                                                                                           @#'transforms-python.base/transfer-file-to-db)]
                 (with-transform-cleanup! [target {:type   "table"
                                                   :schema schema
                                                   :name   "result"}]
@@ -290,7 +290,7 @@
         (mt/test-drivers (-> (mt/normal-drivers-with-feature :transforms/table)
                              ;; certain drivers are slow/unpredictable enough that the generous timings in this test are not enough
                              (disj :snowflake :redshift :bigquery-cloud-sdk))
-          (mt/with-premium-features #{:transforms :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
             (mt/dataset transforms-dataset/transforms-test
               (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
                 (doseq [{:keys [expected
@@ -319,7 +319,7 @@
 
 (deftest get-python-transform-with-different-target-database-test
   (testing "GET /api/transform/:id correctly fetches target table from different database"
-    (mt/with-premium-features #{:transforms :transforms-python}
+    (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
       (mt/with-temp [:model/Database target-db {:engine :h2
                                                 :details {:db "mem:target-db"}}
                      :model/Table target-table {:db_id (:id target-db)
@@ -329,7 +329,7 @@
                      :model/Transform transform {:name "Python Transform Cross DB"
                                                  :source {:type "python"
                                                           :source-database (mt/id)
-                                                          :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                          :source-tables [(transforms.tu/default-source-table-entry)]
                                                           :body "def transform():\n    pass"}
                                                  :target {:type "table"
                                                           :schema "PUBLIC"
@@ -353,9 +353,8 @@
                                    :source {:type            "python"
                                             :body            (str/join "\n" program)
                                             :source-database (mt/id)
-                                            :source-tables   {"transforms_customers" (mt/id :transforms_customers)}}
+                                            :source-tables   [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]}
                                    :target (assoc target :database (mt/id))}))
-
           ;; using clojure-ey coordination with promises (I know j.u.c could be better here)
           ;; goal is blocking at the right point during the run so that we can test the cancellation behaviour
           ;; for a particular stage during the run or area of interest (e.g. during a table copy out to shared storage)
@@ -363,7 +362,6 @@
           (await-signal [wait-signal]
             (when-not (deref wait-signal 5000 nil)
               (throw (ex-info "Expected delivery of wait signal within a reasonable amount of time" {}))))
-
           (rf-proxy [ready-signal
                      wait-signal
                      rf]
@@ -374,7 +372,6 @@
                (deliver ready-signal true)
                (await-signal wait-signal)
                (rf w e))))
-
           (blocking-redefs [{:keys [block]} ready-signal wait-signal]
             (case block
               :read
@@ -384,7 +381,7 @@
                  (fn [os fields-meta col-meta]
                    (rf-proxy ready-signal wait-signal (f os fields-meta col-meta)))})
               :write
-              (let [f-ref #'transforms-python.execute/transfer-file-to-db
+              (let [f-ref #'transforms-python.base/transfer-file-to-db
                     f     @f-ref]
                 {f-ref
                  (fn [& args]
@@ -392,7 +389,6 @@
                    (await-signal wait-signal)
                    (apply f args))})
               nil))
-
           (run-scenario [{:keys [expect-script] :as scenario} target]
             (let [ready-signal    (promise)                 ; test blocks: until the run is ready to be cancelled
                   wait-signal     (promise)                 ; run blocks:  until the test has cancelled
@@ -427,7 +423,6 @@
                             last-run   (get-last-run transform-id)]
                         {:messages     @message-observer
                          :last-run     last-run})))))))]
-
     (let [blocking-script
           ["import time"
            "import pandas as pd"
@@ -463,12 +458,11 @@
             :expect-script true
             :expect-write  true                             ; note: the cancellation signal is currently ignored during the write phase
             :expect-status :canceled}]]
-
       (doseq [{:keys [desc expect-status expect-script expect-write] :as scenario} scenarios]
         (mt/test-drivers (-> (mt/normal-drivers-with-feature :transforms/python)
                              ; these drivers cause timing issues, could be fixed if we change timeout / time variables in test
                              (disj :snowflake :bigquery-cloud-sdk :redshift :mongo))
-          (mt/with-premium-features #{:transforms :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
             (mt/dataset transforms-dataset/transforms-test
               (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
                 (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)]
@@ -480,7 +474,6 @@
                         (let [scenario-result (run-scenario scenario target)
                               {:keys [messages last-run]} scenario-result]
                           (is (= (name expect-status) (:status last-run)))
-
                           (when (some? expect-script)
                             (if expect-script
                               (testing "script should have started"
@@ -488,11 +481,9 @@
                               (testing "script should not have started"
                                 (is (not-any? #(str/includes? % "script started") messages))
                                 (is (not (str/includes? (str (:message last-run)) "script started"))))))
-
                           (when (some? expect-write)
                             (testing "table existence"
                               (is (= expect-write (driver/table-exists? driver/*driver* (mt/db) target)))))))))
-
                   ; todo We have not yet covered the case where we rerun the same transform while there might be some hangover.
                   ;      Cancellation addresses the transform and not the run, there is shared mutable state and races on it are possible
                   (testing "the runner is not blocked for a new run"
@@ -516,17 +507,16 @@
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/python)
                            ;; takes too long on CI
                            :bigquery-cloud-sdk)
-      (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (get-test-schema)]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                      :schema schema
                                                                      :name   "schema_change_test"}]
-
               (let [initial-transform {:name   "Schema Change Integration Test"
                                        :source {:type            "python"
                                                 :source-database (mt/id)
-                                                :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                :source-tables   [(transforms.tu/default-source-table-entry)]
                                                 :body            (str "import pandas as pd\n"
                                                                       "\n"
                                                                       "def transform():\n"
@@ -534,18 +524,16 @@
                                        :target (assoc target :database (mt/id))}
                     ;; Create initial transform via API
                     {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform" initial-transform)]
-
                 ;; Run initial transform and validate
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 10000)
                 (let [initial-rows (transforms.tu/table-rows table-name)]
                   (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob with ages"))
-
                 ;; Update transform with different schema via API endpoint
                 (let [updated-transform (assoc initial-transform
                                                :source {:type            "python"
                                                         :source-database (mt/id)
-                                                        :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                        :source-tables   [(transforms.tu/default-source-table-entry)]
                                                         :body            (str "import pandas as pd\n"
                                                                               "\n"
                                                                               "def transform():\n"
@@ -553,13 +541,15 @@
                       update-response (mt/user-http-request :crowberto :put 200 (format "transform/%d" transform-id)
                                                             updated-transform)]
                   (is (some? update-response) "Transform update should succeed"))
-
                 ;; Run updated transform and validate schema change
                 (transforms.tu/test-run transform-id)
-                (transforms.tu/wait-for-transform-completion transform-id 10000)
-
-                ;; hmmm, looks like QP needs a bit more time to update metadata
-                (Thread/sleep 2000)
+                ;; test-run returns immediately for a rerun (:table is already set), so this wait
+                ;; covers the whole second execution. 10s was flaky on Redshift (GDGT-2818).
+                (transforms.tu/wait-for-transform-completion transform-id 30000)
+                ;; Sync runs after succeed-started-run! and activates new fields
+                ;; before retiring old ones (non-transactional). Waiting for "age"
+                ;; to be deactivated guarantees "friend" is already active too.
+                (transforms.tu/wait-for-field-inactive table-name "age" 30000)
                 (let [updated-rows (transforms.tu/table-rows table-name)]
                   (is (= [["Alice" "Bob"] ["Bob" "Alice"]] updated-rows)
                       "Updated data should show Alice/Bob with friends instead of ages"))))))))))
@@ -567,15 +557,16 @@
 (deftest create-python-transform-with-table-ref-source-test
   (testing "Creating a Python transform with name-based source table refs is allowed"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target {:type   "table"
                                             :schema (get-test-schema)
                                             :name   "table_ref_test"}]
             (let [;; Use a name-based ref instead of table ID
-                  source-tables {"input" {:database_id (mt/id)
-                                          :schema      (get-test-schema)
-                                          :table       "transforms_products"}}
+                  source-tables [{:alias       "input"
+                                  :database_id (mt/id)
+                                  :schema      (get-test-schema)
+                                  :table       "transforms_products"}]
                   transform-payload {:name   "Transform with table ref"
                                      :source {:type            "python"
                                               :body            "def transform(input):\n    return input"
@@ -586,7 +577,6 @@
               (testing "Transform is created successfully"
                 (is (integer? (:id response)))
                 (is (= "python" (:source_type response))))
-
               ;; currently not allowed and used on UI so we're still converting this back to integer
               #_(testing "Source tables are preserved in response"
                   (is (map? (get-in response [:source :source-tables :input])))

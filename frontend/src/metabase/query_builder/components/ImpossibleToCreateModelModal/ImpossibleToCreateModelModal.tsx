@@ -1,13 +1,13 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Button } from "metabase/ui";
 
 type Props = {
   onClose: () => void;
@@ -52,7 +52,7 @@ export function ImpossibleToCreateModelModal({ onClose }: Props) {
           : t`To solve this, just remove the variables in this question and try again. (It's okay to use SQL snippets or reference the results of another saved question in your query.)`}
       </p>
       <div className={cx(CS.flex, CS.justifyCenter, CS.py1)}>
-        <Button primary onClick={onClose}>{t`Okay`}</Button>
+        <Button variant="filled" onClick={onClose}>{t`Okay`}</Button>
       </div>
     </ModalContent>
   );

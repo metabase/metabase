@@ -1,10 +1,8 @@
 import { type ReactElement, isValidElement } from "react";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import { getIcon } from "metabase/lib/icon";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
-import type { IconName } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -14,7 +12,7 @@ import {
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import * as ML_Urls from "metabase-lib/v1/urls";
+import type { IconName } from "metabase-types/api";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
@@ -35,11 +33,13 @@ export function getDataSourceParts({
   subHead,
   isObjectDetail,
   formatTableAsComponent = true,
+  hasMultipleSchemas = false,
 }: {
   question: Question;
   subHead?: boolean;
   isObjectDetail?: boolean;
   formatTableAsComponent?: boolean;
+  hasMultipleSchemas?: boolean;
 }): DataSourcePart[] {
   if (!question) {
     return [];
@@ -69,8 +69,9 @@ export function getDataSourceParts({
 
   const table = !isNative
     ? metadata.table(Lib.sourceTableOrCardId(query))
-    : (question.legacyNativeQuery() as NativeQuery).table();
-  if (table && table.hasSchema()) {
+    : // Unjustified type cast. FIXME
+      (question.legacyNativeQuery() as NativeQuery).table();
+  if (table?.schema_name && hasMultipleSchemas) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (database != null && !isBasedOnSavedQuestion) {
       parts.push({
@@ -149,13 +150,13 @@ function QuestionTableBadges({
   isLast,
 }: QuestionTableBadgesProps) {
   const badgeInactiveColor =
-    isLast && !subHead ? "text-primary" : "text-tertiary";
+    isLast && !subHead ? "text-primary" : "text-disabled";
 
   const parts = tables.map((table) => (
-    <HeadBreadcrumbs.Badge
+    <HeadBreadcrumbs.Breadcrumb
       key={table.id}
       to={hasLink ? getTableURL(table) : ""}
-      inactiveColor={badgeInactiveColor}
+      color={badgeInactiveColor}
     >
       <span>
         {table.displayName()}
@@ -171,7 +172,7 @@ function QuestionTableBadges({
           </span>
         )}
       </span>
-    </HeadBreadcrumbs.Badge>
+    </HeadBreadcrumbs.Breadcrumb>
   ));
 
   return (
@@ -188,12 +189,8 @@ function getTableURL(table: Table) {
   if (isVirtualCardId(table.id)) {
     const cardId = getQuestionIdFromVirtualTableId(table.id);
     if (cardId != null) {
-      return Urls.question({ id: cardId, name: table.displayName() });
+      return Urls.card({ id: cardId, name: table.displayName() });
     }
   }
-  return ML_Urls.getUrl(table.newQuestion());
-}
-
-export function getQuestionIcon(question: Question): IconName {
-  return getIcon({ model: "card", type: question.type() }).name;
+  return Urls.question(table.newQuestion());
 }

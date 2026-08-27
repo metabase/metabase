@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.calculation-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.computed :as lib.computed]
@@ -40,7 +41,6 @@
                      (map (comp :long-display-name #(lib/display-info query 0 %))))]
     (is (= ["ID" "Name" "Category ID" "Latitude" "Longitude" "Price" "Category → ID" "Category → Name"]
            results)))
-
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
         results (->> query
                      lib/visible-columns
@@ -133,6 +133,19 @@
            (->> (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
                 visible-columns-with-desired-aliases
                 (map :lib/desired-column-alias))))))
+
+(deftest ^:parallel visible-columns-fk-to-deleted-field-test
+  (testing "visible-columns doesn't crash when an FK target field no longer exists"
+    (let [mp    (lib.tu/merged-mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [{:id                 (meta/id :orders :user-id)
+                            :fk-target-field-id 999999999}]})
+          query (lib/query mp (meta/table-metadata :orders))
+          cols  (lib.metadata.calculation/visible-columns query)]
+      (is (seq (filter #(= (:table-id %) (meta/id :products)) cols))
+          "Products implicitly-joinable columns should still be present")
+      (is (empty? (filter #(= (:table-id %) (meta/id :people)) cols))
+          "People implicitly-joinable columns should be absent since the FK target field doesn't exist"))))
 
 (deftest ^:parallel visible-columns-test-4
   (testing "multiple aggregations"
@@ -241,7 +254,7 @@
                                      :total :discount :created-at :quantity]
                           :let      [field (meta/field-metadata :orders field-key)]]
                       {:name                         (:name field)
-                       :metabase.lib.join/join-alias "Orders"
+                       :lib/join-alias "Orders_2"
                        :lib/source-column-alias      (:name field)
                        :lib/source                   :source/joins})]
     (testing "just own columns"
@@ -276,14 +289,12 @@
           (is (= []
                  (->> (lib/visible-columns query)
                       (remove (comp #{:source/card} :lib/source)))))))
-
       (testing "metadata for the FK target field is not sufficient"
         (let [query (query-with-user-id-tweaks {:fk-target-field-id (meta/id :people :id)})]
           (is (= 9 (count (lib/visible-columns query))))
           (is (= []
                  (->> (lib/visible-columns query)
                       (remove (comp #{:source/card} :lib/source)))))))
-
       (testing "an ID for the FK field itself is not sufficient"
         (let [query (query-with-user-id-tweaks {:id            (meta/id :orders :user-id)
                                                 :semantic-type nil})]
@@ -386,7 +397,7 @@
   (let [query                (-> (lib/query meta/metadata-provider (meta/table-metadata :reviews))
                                  (lib/join (lib/join-clause (meta/table-metadata :products)))
                                  (lib/join (lib/join-clause (meta/table-metadata :orders))))
-        original             (lib.metadata/field meta/metadata-provider (meta/id :people :latitude))
+        original             (meta/field-metadata :people :latitude)
         {latitude "LATITUDE"} (m/index-by :name (lib/visible-columns query))]
     (is (some? original))
     (is (some? latitude))))
@@ -404,8 +415,8 @@
                         (m/index-by (juxt :fk-join-alias :fk-field-id)))
         sr-email   (get emails [nil (meta/id :gh/issues :reporter-id)])
         sa-email   (get emails [nil (meta/id :gh/issues :assignee-id)])
-        jr-email   (get emails ["GH Issues" (meta/id :gh/issues :reporter-id)])
-        ja-email   (get emails ["GH Issues" (meta/id :gh/issues :assignee-id)])]
+        jr-email   (get emails ["GH Issues_2" (meta/id :gh/issues :reporter-id)])
+        ja-email   (get emails ["GH Issues_2" (meta/id :gh/issues :assignee-id)])]
     (testing "explicit self-join allows implicit joins via all duplicated FKs"
       (is (= 4 (count (filter some? [sr-email sa-email jr-email ja-email]))))
       (is (= 4 (count (into #{} [sr-email sa-email jr-email ja-email])))))))
@@ -644,6 +655,53 @@
         ;; a [[metabase.lib.metadata.calculation/visible-columns-method]] somewhere. I've only noticed this recently,
         ;; this has been a bug since day one. (QUE-2438)
         ["People - User__PASSWORD" :source/card]
+        ["People - User__BIRTH_DATE" :source/card]
+        ["People - User__LONGITUDE" :source/card]
+        ["People - User__EMAIL" :source/card]
+        ["People - User__CREATED_AT" :source/card]
+        ["PRODUCTS__via__PRODUCT_ID__ID" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__EAN" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__TITLE" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__CATEGORY" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__VENDOR" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__PRICE" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__RATING" :source/implicitly-joinable]
+        ["PRODUCTS__via__PRODUCT_ID__CREATED_AT" :source/implicitly-joinable]]))))
+
+(deftest ^:parallel visible-columns-card-filters-sensitive-columns-test
+  (testing "visible-columns for a card-based query should filter out columns with :visibility-type :sensitive (QUE-2438)"
+    ;; Simulate: card was saved when PASSWORD was :normal (so it's in result-metadata),
+    ;; then PASSWORD was later changed to :sensitive.
+    (let [inner   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/join (meta/table-metadata :people)))
+          ;; Create the card using normal metadata (PASSWORD is :normal, so it's in result-metadata)
+          card-mp (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider 1 inner)
+          ;; Now override PASSWORD to be :sensitive (simulating admin changing it after card was saved)
+          mp      (lib.tu/merged-mock-metadata-provider
+                   card-mp
+                   {:fields [{:id              (meta/id :people :password)
+                              :visibility-type :sensitive}]})
+          query   (lib/query mp (lib.metadata/card mp 1))]
+      (check-visible-columns
+       query
+       [["ID" :source/card]
+        ["SUBTOTAL" :source/card]
+        ["TOTAL" :source/card]
+        ["TAX" :source/card]
+        ["DISCOUNT" :source/card]
+        ["QUANTITY" :source/card]
+        ["CREATED_AT" :source/card]
+        ["PRODUCT_ID" :source/card]
+        ["USER_ID" :source/card]
+        ["People - User__ID" :source/card]
+        ["People - User__STATE" :source/card]
+        ["People - User__CITY" :source/card]
+        ["People - User__ADDRESS" :source/card]
+        ["People - User__NAME" :source/card]
+        ["People - User__SOURCE" :source/card]
+        ["People - User__ZIP" :source/card]
+        ["People - User__LATITUDE" :source/card]
+        ;; People - User__PASSWORD should NOT appear here because it has :visibility-type :sensitive
         ["People - User__BIRTH_DATE" :source/card]
         ["People - User__LONGITUDE" :source/card]
         ["People - User__EMAIL" :source/card]
@@ -899,7 +957,6 @@
   (testing "temporal unit should not be incorrectly propagated in returned-columns past the stage where the bucketing was done"
     (let [query (lib/query
                  meta/metadata-provider
-
                  (lib.tu.macros/mbql-query people
                    {:source-query {:source-table $$people
                                    :breakout     [!month.created-at]
@@ -917,7 +974,7 @@
               {:lib/desired-column-alias "Q2__BIRTH_DATE"
                :inherited-temporal-unit  :month}
               {:lib/desired-column-alias "Q2__count"}]
-             (map #(select-keys % [:lib/desired-column-alias :metabase.lib.field/temporal-unit :inherited-temporal-unit])
+             (map #(select-keys % [:lib/desired-column-alias :lib/temporal-unit :inherited-temporal-unit])
                   (lib/returned-columns query)))))))
 
 (deftest ^:parallel returned-columns-no-duplicates-test-2
@@ -970,14 +1027,14 @@
                     :name                         "ID"
                     :lib/source                   :source/table-defaults
                     :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
-                    :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                    :lib/join-alias (symbol "nil #_\"key is not present.\"")
                     :lib/source-column-alias      "ID"
                     :lib/desired-column-alias     "ID"}
                    {:id                           (meta/id :categories :name)
                     :table-id                     (meta/id :categories)
                     :name                         "NAME"
                     :lib/source                   :source/joins
-                    :metabase.lib.join/join-alias "Cat"
+                    :lib/join-alias "Cat"
                     :lib/source-column-alias      "NAME"
                     :lib/desired-column-alias     "Cat__NAME"}]
                   (lib/returned-columns query 0 (lib/query-stage query 0)))))
@@ -988,7 +1045,7 @@
                     :lib/source                   :source/previous-stage
                     :lib/breakout?                true
                     :lib/original-join-alias      "Cat"
-                    :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                    :lib/join-alias (symbol "nil #_\"key is not present.\"")
                     :lib/source-column-alias      "Cat__NAME"
                     :lib/desired-column-alias     "Cat__NAME"}]
                   (lib/returned-columns query)))))
@@ -998,14 +1055,14 @@
                   :name                         "ID"
                   :lib/source                   :source/previous-stage
                   :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
-                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                  :lib/join-alias (symbol "nil #_\"key is not present.\"")
                   :lib/source-column-alias      "ID"}
                  {:id                           (meta/id :categories :name)
                   :table-id                     (meta/id :categories)
                   :name                         "NAME"
                   :lib/source                   :source/previous-stage
                   :lib/original-join-alias      "Cat"
-                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                  :lib/join-alias (symbol "nil #_\"key is not present.\"")
                   :lib/source-column-alias      "Cat__NAME"
                   ;; should not be returned by `visible-columns` since it needs to be recalculated in the context of
                   ;; everything that gets returned.
@@ -1040,7 +1097,7 @@
           relevant-keys (fn [cols]
                           (map #(select-keys % [:name
                                                 :lib/source
-                                                :metabase.lib.join/join-alias
+                                                :lib/join-alias
                                                 :lib/source-column-alias
                                                 :lib/desired-column-alias])
                                cols))]
@@ -1049,7 +1106,7 @@
                  :lib/source                   :source/joins
                  :lib/desired-column-alias     "P2__CATEGORY"
                  :lib/source-column-alias      "CATEGORY"
-                 :metabase.lib.join/join-alias "P2"}
+                 :lib/join-alias "P2"}
                 {:name                     "avg"
                  :lib/source               :source/aggregations
                  :lib/desired-column-alias "avg"
@@ -1059,22 +1116,22 @@
       (testing "join returned columns relative to parent stage"
         (is (= [{:name                         "CATEGORY"
                  :lib/source                   :source/joins
-                 :metabase.lib.join/join-alias "Q2"
+                 :lib/join-alias "Q2"
                  :lib/source-column-alias      "P2__CATEGORY"}
                 {:name                         "avg"
                  :lib/source                   :source/joins
-                 :metabase.lib.join/join-alias "Q2"
+                 :lib/join-alias "Q2"
                  :lib/source-column-alias      "avg"}]
                (relevant-keys (#'lib.join/join-returned-columns-relative-to-parent-stage query -1 (first (lib/joins query)))))))
       (testing "query (last stage) returned columns"
         (is (= [{:name                         "CATEGORY"
                  :lib/source                   :source/joins
-                 :metabase.lib.join/join-alias "Q2"
+                 :lib/join-alias "Q2"
                  :lib/source-column-alias      "P2__CATEGORY"
                  :lib/desired-column-alias     "Q2__P2__CATEGORY"}
                 {:name                         "avg"
                  :lib/source                   :source/joins
-                 :metabase.lib.join/join-alias "Q2"
+                 :lib/join-alias "Q2"
                  :lib/source-column-alias      "avg"
                  :lib/desired-column-alias     "Q2__avg"}]
                (relevant-keys (lib/returned-columns query))))))))
@@ -1132,3 +1189,86 @@
       (testing "retired column is NOT included even with :include-sensitive-fields? true"
         (let [visible-col-ids (into #{} (map :id) (lib/visible-columns query -1 {:include-sensitive-fields? true}))]
           (is (not (contains? visible-col-ids (meta/id :venues :longitude)))))))))
+
+(deftest ^:parallel primary-source-table-test
+  (testing `lib.metadata.calculation/primary-source-table
+    (let [table-query (lib.tu/venues-query)
+          mp          lib.tu/metadata-provider-with-card
+          card-query  (lib/query mp (lib.metadata/card mp 1))]
+      (testing "returns the `:metadata/table` for a query based on a table"
+        (is (= (meta/table-metadata :venues)
+               (lib.metadata.calculation/primary-source-table table-query)))
+        (testing "likewise for primary-source"
+          (is (= (meta/table-metadata :venues)
+                 (lib.metadata.calculation/primary-source table-query)))))
+      (testing "returns nil for a query based on a card"
+        (is (nil? (lib.metadata.calculation/primary-source-table card-query)))))))
+
+(deftest ^:parallel primary-source-card-test
+  (testing `lib.metadata.calculation/primary-source-card
+    (let [table-query (lib.tu/venues-query)
+          mp          (lib.tu/metadata-provider-with-mock-cards)
+          card        (lib.metadata/card mp 1)
+          card-query  (lib/query mp card)]
+      (testing "returns the `:metadata/card` for a query based on a card"
+        (is (= card
+               (lib.metadata.calculation/primary-source-card card-query)))
+        (testing "likewise for primary-source"
+          (is (= card
+                 (lib.metadata.calculation/primary-source card-query)))))
+      (testing "returns nil for a query based on a table"
+        (is (nil? (lib.metadata.calculation/primary-source-card table-query)))))))
+
+(deftest ^:parallel multi-join-display-names-survive-nesting-test
+  (testing "#40635 multi-join column display names are preserved after wrapping as a nested (card) query"
+    (let [base   (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
+                   (lib/join q (-> (lib/join-clause (meta/table-metadata :products)
+                                                    (lib/suggested-join-conditions q (meta/table-metadata :products)))
+                                   (lib/with-join-fields [(meta/field-metadata :products :id)])))
+                   (lib/join q (-> (lib/join-clause (meta/table-metadata :products)
+                                                    [(lib/= (meta/field-metadata :orders :user-id)
+                                                            (meta/field-metadata :products :id))])
+                                   (lib/with-join-fields [(meta/field-metadata :products :id)]))))
+          mp     (lib.tu/metadata-provider-with-card-from-query 1 base)
+          nested (lib/query mp (lib.metadata/card mp 1))
+          nnames (set (map #(lib/display-name nested %) (lib/returned-columns nested)))]
+      (testing "the two joined Product ID columns get distinct disambiguated display names in the nested query"
+        (is (contains? nnames "Products → ID"))
+        (is (contains? nnames "Products - User → ID"))
+        (is (= 2 (count (filter #(str/includes? % "→ ID") nnames))))))))
+
+#?(:clj
+   (defmethod lib.metadata.calculation/display-name-method ::throws
+     [_query _stage-number x _style]
+     (throw (:throwable x))))
+
+#?(:clj
+   (deftest ^:synchronized suggested-name-vm-error-test
+     (testing "a VM Error thrown while describing the query propagates out of suggested-name"
+       (with-redefs [lib.metadata.calculation/describe-query (fn [_query] (throw (Error. "boom")))]
+         (is (thrown? Error
+                      (lib.metadata.calculation/suggested-name (lib.tu/venues-query))))))
+     (testing "an Exception thrown while describing the query yields nil"
+       (with-redefs [lib.metadata.calculation/describe-query (fn [_query] (throw (ex-info "boom" {})))]
+         (is (nil? (lib.metadata.calculation/suggested-name (lib.tu/venues-query))))))))
+
+#?(:clj
+   (deftest ^:parallel display-name-vm-error-test
+     (testing "a VM Error thrown while computing a display name propagates unwrapped"
+       (let [e (Error. "boom")]
+         (is (identical? e
+                         (try
+                           (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                  {:lib/type ::throws, :throwable e})
+                           nil
+                           (catch Error actual actual))))))
+     (testing "an Exception thrown while computing a display name is wrapped with context"
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
+                             (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                    {:lib/type ::throws
+                                                                     :throwable (ex-info "boom" {})}))))
+     (testing "an AssertionError thrown while computing a display name is contained (wrapped), not propagated"
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Error calculating display name"
+                             (lib.metadata.calculation/display-name (lib.tu/venues-query)
+                                                                    {:lib/type ::throws
+                                                                     :throwable (AssertionError. "boom")}))))))

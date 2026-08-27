@@ -1,3 +1,5 @@
+import { metaKey } from "./e2e-browser-helpers";
+
 type TypeOptions = {
   delay?: number;
   focus?: boolean;
@@ -14,8 +16,6 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       helpers.get().should("be.visible").click("right", {
         /**
          * We want to click on the right, because we want the caret to be positioned at the end of the editor.
-         * Transform editor in workspaces (data studio) has a resize handle at the right of the editor,
-         * which causes this click("right") to fail.
          * Alternative approach with pressing End key for moving the caret to the end made
          * repro for (metabase#49882-2, metabase#15892) fail in CI every time.
          * Hence force: true.
@@ -30,8 +30,6 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return helpers;
     },
     selectAll() {
-      const isMac = Cypress.platform === "darwin";
-      const metaKey = isMac ? "Meta" : "Control";
       helpers.focus();
       cy.realPress([metaKey, "A"]);
       return helpers;
@@ -47,6 +45,11 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
     ) {
       if (focus) {
         helpers.focus();
+      } else {
+        // The editor can be a lazily loaded chunk, so it may still be mounting.
+        // Wait for it to hold focus before typing, or the first keystroke goes
+        // nowhere. Do not click it: that would move the caret.
+        helpers.get().get(".cm-editor").should("have.class", "cm-focused");
       }
 
       if (allowFastSet) {
@@ -62,9 +65,6 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
 
         return helpers;
       }
-
-      const isMac = Cypress.platform === "darwin";
-      const metaKey = isMac ? "Meta" : "Control";
 
       const parts = text.replaceAll("{{", "{{}{{}").split(/(\{[^}]+\})/);
 
@@ -153,21 +153,19 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return helpers.get().get("[role='textbox']");
     },
     value() {
-      // Get the multiline text content of the editor
-      return helpers
-        .textbox()
-        .get(".cm-line")
-        .then((lines) => {
-          const text: string[] = [];
-          lines.each((_, line) => {
-            const placeholder = line.querySelector(".cm-placeholder");
-            if (placeholder) {
-              return;
-            }
-            text.push(line.textContent ?? "");
-          });
-          return text.join("\n");
-        });
+      // The editor mounts with an empty document and fills it in when the first
+      // format finishes. It can also mount late, because its chunk loads on
+      // demand. Wait for two identical reads before reporting the value, or a
+      // read that lands in either window reports an empty editor.
+      let previous: string | null = null;
+      cy.get(`[data-testid=${testId}] .cm-content`).should(($content) => {
+        const current = textOf($content);
+        const isStable = previous !== null && current === previous;
+        previous = current;
+        expect(isStable, "the editor text is stable").to.be.true;
+      });
+
+      return helpers.get().then(textOf);
     },
     completions() {
       return cy.get(".cm-tooltip-autocomplete").should("be.visible");
@@ -237,4 +235,19 @@ export function codeMirrorValue() {
       }
       return value;
     });
+}
+
+/**
+ * The text of every line in a CodeMirror editor, skipping the placeholder line
+ * that stands in for an empty document.
+ */
+function textOf($content: JQuery<HTMLElement>) {
+  const text: string[] = [];
+  $content.find(".cm-line").each((_, line) => {
+    if (line.querySelector(".cm-placeholder")) {
+      return;
+    }
+    text.push(line.textContent ?? "");
+  });
+  return text.join("\n");
 }

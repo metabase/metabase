@@ -11,23 +11,15 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListCommentsQuery } from "metabase/api/comment";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
-import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
-import {
-  getChildTargetId,
-  getCurrentDocument,
-} from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
+import { useSelector } from "metabase/redux/hooks";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
 import { useDndHelpers } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/use-dnd-helpers";
+import { useNavigate } from "metabase/router";
 import { Box } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import { cleanupFlexContainerNodes } from "../HandleEditorDrop/utils";
@@ -140,26 +132,19 @@ const SupportingTextComponent = ({
   node,
   selected,
 }: NodeViewProps) => {
-  const childTargetId = useSelector(getChildTargetId);
-  const document = useSelector(getCurrentDocument);
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(document),
-  );
-  const comments = commentsData?.comments;
+  const host = useEditorHost();
+  const { ref: viewportRef, isInViewport } = host.useNodeInViewport();
+  const childTargetId = useSelector(host.selectors.getChildTargetId);
+  const document = useSelector(host.selectors.getCurrentDocument);
   const { _id } = node.attrs;
+  const unresolvedCommentsCount = host.useUnresolvedCommentsCount(_id, {
+    skip: !isInViewport,
+  });
   const isOpen = childTargetId === _id;
-  const threads = useMemo(
-    () => getTargetChildCommentThreads(comments, _id),
-    [comments, _id],
-  );
-  const unresolvedCommentsCount = useMemo(
-    () => getUnresolvedComments(threads).length,
-    [threads],
-  );
-  const commentsPath = document
-    ? `/document/${document.id}/comments/${_id}`
-    : "";
-  const dispatch = useDispatch();
+  const commentsPath = host.useCommentUrl({
+    childTargetId: _id,
+  });
+  const navigate = useNavigate();
 
   const canWrite = editor.options.editable;
 
@@ -175,6 +160,7 @@ const SupportingTextComponent = ({
 
   return (
     <NodeViewWrapper
+      ref={viewportRef}
       className={cx(S.wrapper, { [S.selected]: selected })}
       data-testid="document-card-supporting-text"
       data-type={SUPPORTING_TEXT_NODE_NAME}
@@ -250,13 +236,7 @@ const SupportingTextComponent = ({
             unresolvedCommentsCount={unresolvedCommentsCount}
             onClick={(e) => {
               e.preventDefault();
-              dispatch(
-                push(
-                  unresolvedCommentsCount > 0
-                    ? commentsPath
-                    : `${commentsPath}?new=true`,
-                ),
-              );
+              navigate(commentsPath);
             }}
           />
         </Box>

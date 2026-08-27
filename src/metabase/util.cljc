@@ -10,7 +10,6 @@
              [clojure.pprint :as pprint]
              ^{:clj-kondo/ignore [:discouraged-namespace]}
              [metabase.util.jvm :as u.jvm]
-             [metabase.util.http :as u.http]
              [metabase.util.string :as u.str]
              [potemkin :as p]
              [puget.printer]
@@ -26,6 +25,7 @@
    [metabase.util.format :as u.format]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
    [metabase.util.namespaces :as u.ns]
    [metabase.util.number :as u.number]
@@ -56,6 +56,7 @@
   format-nanoseconds
   format-seconds
   format-plural
+  qualified-key
   qualified-name])
 
 #?(:clj (p/import-vars [u.jvm
@@ -81,9 +82,7 @@
                         with-timeout
                         with-us-locale]
                        [u.str
-                        build-sentence]
-                       [u.http
-                        valid-host?]))
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -199,6 +198,12 @@
       (str/ends-with? text ":") (str (subs text 0 (dec (count text))) ".")
       :else (str text "."))))
 
+(defn trimmed-string
+  "`value` trimmed of surrounding whitespace, or nil when it is not a string or has nothing left once trimmed."
+  ^String [value]
+  (when (string? value)
+    (not-empty (str/trim value))))
+
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
   conversions, turning `ID` into `ıd`, in the Turkish locale. This function always uses the `en-US` locale."
@@ -226,6 +231,18 @@
       (str (upper-case-en (subs s 0 1))
            (lower-case-en (subs s 1))))))
 
+(def ^String utf8-bom
+  "The UTF-8 byte-order mark"
+  "\ufeff")
+
+(defn strip-bom
+  "Strip a leading UTF-8 BOM from string `s`, if present. `clojure.data.csv` and many other parsers do not strip it
+  automatically, so it can leak into the first cell. Returns `s` unchanged when there is no BOM (or `s` is nil)."
+  ^String [^String s]
+  (if (and s (str/starts-with? s utf8-bom))
+    (subs s 1)
+    s))
+
 (defn truncate
   "Truncate a string to `n` characters."
   [s n]
@@ -239,27 +256,33 @@
      request handled by Jetty will be over HTTP."
      [{{:strs [x-forwarded-proto x-forwarded-protocol x-url-scheme x-forwarded-ssl front-end-https origin]} :headers
        :keys                                                                                                [scheme]}]
-     (cond
-       ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
-       ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
-       (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
-       (= "https" (lower-case-en (or x-forwarded-proto x-forwarded-protocol x-url-scheme)))
+     (let [;; Take the first hop of a comma-separated chain (`https, http`), trim, and drop blanks, mirroring
+           ;; `misc/forwarded-scheme`. Branching on the normalized value (not raw presence) lets a blank proto header
+           ;; (e.g. `X-Forwarded-Proto: ""`) fall through to the boolean-style HTTPS indicators below.
+           proto (some-> (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
+                         (str/split #",") first str/trim not-empty lower-case-en)
+           ssl   (or x-forwarded-ssl front-end-https)]
+       (cond
+         ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
+         ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
+         proto
+         (= "https" proto)
 
-       ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Frontend-End-Https`, which
-       ;; will be set to `on` if the original request was over HTTPS.
-       (or x-forwarded-ssl front-end-https)
-       (= "on" (lower-case-en (or x-forwarded-ssl front-end-https)))
+         ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Front-End-Https`, which
+         ;; will be set to `on` if the original request was over HTTPS.
+         ssl
+         (= "on" (lower-case-en ssl))
 
-       ;; If none of the above are present, we are most not likely being accessed over a reverse proxy. Still, there's a
-       ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
-       ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
-       origin
-       (str/starts-with? (lower-case-en origin) "https")
+         ;; If none of the above are present, we are most likely not being accessed over a reverse proxy. Still, there's a
+         ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
+         ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
+         origin
+         (str/starts-with? (lower-case-en origin) "https")
 
-       ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
-       ;; front of us), we can look directly at the scheme of the request sent to Jetty.
-       scheme
-       (= scheme :https))))
+         ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
+         ;; front of us), we can look directly at the scheme of the request sent to Jetty.
+         scheme
+         (= scheme :https)))))
 
 (defn regex->str
   "Returns the contents of a regex as a string.
@@ -525,7 +548,7 @@
          :cljs (js/encodeURIComponent c))
       c)))
 
-(defn slugify
+(mu/defn slugify
   "Return a version of String `s` appropriate for use as a URL slug.
   Downcase the name and remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores.
 
@@ -537,7 +560,12 @@
   Optionally specify `:max-length` which will truncate the slug after that many characters."
   (^String [^String s]
    (slugify s {}))
-  (^String [s {:keys [max-length unicode?]}]
+  (^String [s :- [:maybe :string]
+            {:keys [max-length unicode?]} :- [:maybe
+                                              [:map
+                                               {:closed true}
+                                               [:max-length {:optional true} pos-int?]
+                                               [:unicode?   {:optional true} [:maybe boolean?]]]]]
    (when (seq s)
      (cond->> (remove-diacritical-marks (lower-case-en s))
        true (map #(slugify-char % (not unicode?)))
@@ -551,6 +579,13 @@
                               (reduced cur-slug)))
                           "")
        true str/join))))
+
+(defn valid-slug?
+  "Check that a given string is a valid slug."
+  [slug]
+  (and (string? slug)
+       (not (str/blank? slug))
+       (re-matches #"^[a-z0-9][a-z0-9\-]*$" slug)))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
@@ -758,7 +793,6 @@
       (with-out-str
         #_{:clj-kondo/ignore [:discouraged-var]}
         (pp/pprint x {:max-width 120}))
-
       :cljs-dev
       ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
       ;; default value wastes too much space, 120 is a little easier to read actually.
@@ -766,7 +800,6 @@
         (with-out-str
           #_{:clj-kondo/ignore [:discouraged-var]}
           (pprint/pprint x)))
-
       :default
       ;; For CLJS release, we don't pull cljs.pprint to reduce bundle size.
       (str x)))
@@ -1017,16 +1050,16 @@
   [nodes traverse-fn]
   (loop [to-traverse (zipmap nodes (repeat nil))
          traversed   {}]
-    (let [item        (first to-traverse)
-          found       (traverse-fn (key item))
-          traversed   (conj traversed item)
-          ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
-          ;; locations
-          to-traverse (merge-with into
-                                  (dissoc to-traverse (key item))
-                                  (apply dissoc found (keys traversed)))]
-      (if (empty? to-traverse)
-        traversed
+    (if (empty? to-traverse)
+      traversed
+      (let [item (first to-traverse)
+            found (traverse-fn (key item))
+            traversed (conj traversed item)
+            ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
+            ;; locations
+            to-traverse (merge-with into
+                                    (dissoc to-traverse (key item))
+                                    (apply dissoc found (keys traversed)))]
         (recur to-traverse traversed)))))
 
 (defn reverse-compare
@@ -1167,7 +1200,6 @@
                                                            (long (+
                                                                   cumulative-byte-count
                                                                   (string-byte-count (string-character-at s i)))))))
-
      :cljs
      (let [buf (js/Uint8Array. max-length-bytes)
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
@@ -1255,6 +1287,11 @@
   [reducible]
   (reduce (fn [_ fst] (reduced fst)) nil reducible))
 
+(defn rlast
+  "Return last item from Reducible."
+  [reducible]
+  (reduce (fn [_ x] x) nil reducible))
+
 (defn rconcat
   "Concatenate two Reducibles"
   [r1 r2]
@@ -1297,7 +1334,8 @@
 
   If an argument is provided, it's taken to be an identity-hash string and used to seed the RNG,
   producing the same value every time. This is only supported on the JVM!"
-  ([] (encore/nanoid))
+  ([]
+   (encore/nanoid false 21))
   ([seed-str]
    #?(:clj  (let [seed (Long/parseLong seed-str 16)
                   rnd  (Random. seed)
@@ -1358,3 +1396,8 @@
   "Finds the first map in `maps` that contains the value at the given key path."
   [maps ks value]
   (second (find-first-map-indexed maps ks value)))
+
+(defn tee-xf
+  "Transducer that collects items into an atom while passing them through unchanged."
+  [atom]
+  (map (fn [x] (swap! atom conj x) x)))

@@ -1,11 +1,14 @@
 import type {
   ActionDashboardCard,
   Dashboard,
+  DashboardParameterMapping,
   DashboardQueryMetadata,
   DashboardTab,
   QuestionDashboardCard,
   VirtualCard,
   VirtualDashboardCard,
+  VisualizerDashboardCard,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
 
 import { createMockCard } from "./card";
@@ -23,6 +26,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   can_write: true,
   can_restore: false,
   can_delete: false,
+  can_set_cache_policy: true,
   description: "",
   cache_ttl: null,
   "last-edit-info": {
@@ -81,6 +85,15 @@ export const createMockDashboardCard = (
   ...opts,
 });
 
+export const createMockParameterMapping = (
+  opts?: Partial<DashboardParameterMapping>,
+): DashboardParameterMapping => ({
+  card_id: 1,
+  target: ["variable", ["template-tag", "foo"]],
+  parameter_id: "foo",
+  ...opts,
+});
+
 export const createMockVirtualCard = (
   opts?: Partial<VirtualCard>,
 ): VirtualCard => ({
@@ -92,6 +105,34 @@ export const createMockVirtualCard = (
   archived: false,
   ...opts,
 });
+
+type VisualizerDashboardCardOpts = Partial<
+  Omit<VisualizerDashboardCard, "visualization_settings">
+> & {
+  visualization_settings?: Partial<
+    VisualizerDashboardCard["visualization_settings"]
+  >;
+};
+
+export const createMockVisualizerDashboardCard = (
+  opts?: VisualizerDashboardCardOpts,
+): VisualizerDashboardCard => {
+  const visualization: VisualizerVizDefinition = opts?.visualization_settings
+    ?.visualization ?? {
+    display: "table",
+    columnValuesMapping: {},
+    settings: {},
+  };
+
+  return {
+    ...createMockDashboardCard(opts),
+    ...opts,
+    visualization_settings: {
+      ...opts?.visualization_settings,
+      visualization,
+    },
+  };
+};
 
 export const createMockActionDashboardCard = (
   opts?: Partial<ActionDashboardCard>,

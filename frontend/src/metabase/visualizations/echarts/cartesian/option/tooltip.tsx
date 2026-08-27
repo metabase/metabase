@@ -1,16 +1,13 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 
-import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
+import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getTooltipModel } from "metabase/visualizations/visualizations/CartesianChart/events";
 import type { CardDisplayType } from "metabase-types/api";
 
 import { getTooltipBaseOption } from "../../tooltip";
-import {
-  GOAL_LINE_SERIES_ID,
-  TIMELINE_EVENT_SERIES_ID,
-} from "../constants/dataset";
+import { GOAL_LINE_SERIES_ID } from "../constants/dataset";
 import type { BaseCartesianChartModel, DataKey } from "../model/types";
 
 interface ChartItemTooltip {
@@ -63,10 +60,7 @@ export const getTooltipOption = (
 
       const { dataIndex, seriesId } = params;
 
-      if (
-        seriesId === TIMELINE_EVENT_SERIES_ID ||
-        seriesId === GOAL_LINE_SERIES_ID
-      ) {
+      if (seriesId === GOAL_LINE_SERIES_ID) {
         return "";
       }
 

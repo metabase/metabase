@@ -3,7 +3,7 @@
  * Therefore we need to override it for non-active items.
  */
 .item {
-  --item-border-color: var(--mb-color-border);
+  --item-border-color: var(--mb-color-border-neutral);
 
   &[data-line-active] {
     --item-border-color: var(--tl-color);
@@ -11,7 +11,7 @@
 }
 
 .itemBullet {
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 
   &[data-active] {
     border-color: var(--tl-color);

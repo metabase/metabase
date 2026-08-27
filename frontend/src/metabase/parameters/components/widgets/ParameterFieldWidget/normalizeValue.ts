@@ -1,7 +1,16 @@
-export function normalizeValue(value: unknown) {
+type NonArray<T> = Exclude<T, any[]>;
+
+export function normalizeValue<T>(
+  value: NonArray<T> | NonArray<T>[] | undefined,
+): T[] {
   if (Array.isArray(value)) {
-    return value;
+    // Unjustified type cast. FIXME
+    return value as T[];
   }
 
-  return value || value === 0 ? [value] : [];
+  if (value || value === 0) {
+    return [value];
+  }
+
+  return [];
 }

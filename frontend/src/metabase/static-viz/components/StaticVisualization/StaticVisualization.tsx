@@ -3,6 +3,7 @@ import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { StaticVisualizationProps } from "metabase/visualizations/types";
 
+import { BoxPlotChart } from "../BoxPlotChart/BoxPlotChart";
 import { ComboChart } from "../ComboChart";
 import { FunnelBarChart } from "../FunnelBarChart";
 import { PieChart } from "../PieChart/PieChart";
@@ -12,6 +13,7 @@ import { SankeyChart } from "../SankeyChart";
 import { ScalarChart } from "../ScalarChart";
 import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
 import { SmartScalar } from "../SmartScalar";
+import { TreemapChart } from "../TreemapChart";
 import { WaterfallChart } from "../WaterfallChart/WaterfallChart";
 
 registerStaticVisualizations();
@@ -21,6 +23,9 @@ export const StaticVisualization = ({
   renderingContext,
   isStorybook,
   hasDevWatermark,
+  width,
+  height,
+  fitWithinBounds,
 }: StaticVisualizationProps) => {
   const display = rawSeries[0].card.display;
   const transformedSeries = getVisualizationTransformed(rawSeries).series;
@@ -31,6 +36,9 @@ export const StaticVisualization = ({
     renderingContext,
     isStorybook,
     hasDevWatermark,
+    width,
+    height,
+    fitWithinBounds,
   };
 
   switch (display) {
@@ -41,6 +49,8 @@ export const StaticVisualization = ({
       return <ComboChart {...props} />;
     case "scatter":
       return <ScatterPlot {...props} />;
+    case "boxplot":
+      return <BoxPlotChart {...props} />;
     case "waterfall":
       return <WaterfallChart {...props} />;
     case "funnel":
@@ -53,6 +63,8 @@ export const StaticVisualization = ({
       return <PieChart {...props} />;
     case "sankey":
       return <SankeyChart {...props} />;
+    case "treemap":
+      return <TreemapChart {...props} />;
     case "progress":
       return <ProgressBar {...props} />;
     case "row":

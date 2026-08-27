@@ -1,0 +1,284 @@
+name: Tenants
+description: All tenants in this Metabase instance
+entity_id: 7ttdbco3tMmYqcRxPsMgm
+created_at: '2026-04-21T16:00:00Z'
+creator_id: internal@metabase.com
+display: table
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_tenants]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - source-table: [Internal Metabase Database, public, v_tenants]
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Tenant ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, tenant_id]
+  - null
+  id: [Internal Metabase Database, public, v_tenants, tenant_id]
+  name: tenant_id
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 1081
+  lib/deduplicated-name: tenant_id
+  lib/desired-column-alias: tenant_id
+  lib/from-model?: true
+  lib/original-display-name: Tenant ID
+  lib/original-name: tenant_id
+  lib/source: source/previous-stage
+  lib/source-column-alias: tenant_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Entity Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, entity_qualified_id]
+  - null
+  id: [Internal Metabase Database, public, v_tenants, entity_qualified_id]
+  name: entity_qualified_id
+  position: 1
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 1081
+  lib/deduplicated-name: entity_qualified_id
+  lib/desired-column-alias: entity_qualified_id
+  lib/from-model?: true
+  lib/original-display-name: Entity Qualified ID
+  lib/original-name: entity_qualified_id
+  lib/source: source/previous-stage
+  lib/source-column-alias: entity_qualified_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, name]
+  - null
+  id: [Internal Metabase Database, public, v_tenants, name]
+  name: name
+  position: 2
+  semantic_type: type/Name
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 1081
+  lib/deduplicated-name: name
+  lib/desired-column-alias: name
+  lib/from-model?: true
+  lib/original-display-name: Name
+  lib/original-name: name
+  lib/source: source/previous-stage
+  lib/source-column-alias: name
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Slug
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, slug]
+  - null
+  id: [Internal Metabase Database, public, v_tenants, slug]
+  name: slug
+  position: 3
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 1081
+  lib/deduplicated-name: slug
+  lib/desired-column-alias: slug
+  lib/from-model?: true
+  lib/original-display-name: Slug
+  lib/original-name: slug
+  lib/source: source/previous-stage
+  lib/source-column-alias: slug
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Boolean
+  database_type: bool
+  display_name: Is Active
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, is_active]
+  - null
+  id: [Internal Metabase Database, public, v_tenants, is_active]
+  name: is_active
+  position: 4
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 1081
+  lib/deduplicated-name: is_active
+  lib/desired-column-alias: is_active
+  lib/from-model?: true
+  lib/original-display-name: Is Active
+  lib/original-name: is_active
+  lib/source: source/previous-stage
+  lib/source-column-alias: is_active
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Attributes
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, attributes]
+  - null
+  id: [Internal Metabase Database, public, v_tenants, attributes]
+  name: attributes
+  position: 5
+  semantic_type: type/SerializedJSON
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 1081
+  lib/deduplicated-name: attributes
+  lib/desired-column-alias: attributes
+  lib/from-model?: true
+  lib/original-display-name: Attributes
+  lib/original-name: attributes
+  lib/source: source/previous-stage
+  lib/source-column-alias: attributes
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, created_at]
+  - null
+  id: [Internal Metabase Database, public, v_tenants, created_at]
+  name: created_at
+  position: 6
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 1081
+  lib/deduplicated-name: created_at
+  lib/desired-column-alias: created_at
+  lib/from-model?: true
+  lib/original-display-name: Created At
+  lib/original-name: created_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: created_at
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Updated At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, updated_at]
+  - null
+  id: [Internal Metabase Database, public, v_tenants, updated_at]
+  name: updated_at
+  position: 7
+  semantic_type: type/UpdatedTimestamp
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 1081
+  lib/deduplicated-name: updated_at
+  lib/desired-column-alias: updated_at
+  lib/from-model?: true
+  lib/original-display-name: Updated At
+  lib/original-name: updated_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: updated_at
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Tenant Collection ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, tenant_collection_id]
+  - null
+  id: [Internal Metabase Database, public, v_tenants, tenant_collection_id]
+  name: tenant_collection_id
+  position: 8
+  semantic_type: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 1081
+  lib/deduplicated-name: tenant_collection_id
+  lib/desired-column-alias: tenant_collection_id
+  lib/from-model?: true
+  lib/original-display-name: Tenant Collection ID
+  lib/original-name: tenant_collection_id
+  lib/source: source/previous-stage
+  lib/source-column-alias: tenant_collection_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Tenant Collection Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, tenant_collection_qualified_id]
+  - null
+  id: [Internal Metabase Database, public, v_tenants, tenant_collection_qualified_id]
+  name: tenant_collection_qualified_id
+  position: 9
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 1081
+  lib/deduplicated-name: tenant_collection_qualified_id
+  lib/desired-column-alias: tenant_collection_qualified_id
+  lib/from-model?: true
+  lib/original-display-name: Tenant Collection Qualified ID
+  lib/original-name: tenant_collection_qualified_id
+  lib/source: source/previous-stage
+  lib/source-column-alias: tenant_collection_qualified_id
+  qp/implicit-field?: true
+visualization_settings: {column_settings: null, table.cell_column: tenant_collection_qualified_id, table.pivot_column: is_active}
+card_schema: 23
+serdes/meta:
+- {id: 7ttdbco3tMmYqcRxPsMgm, label: tenants, model: Card}
+type: model

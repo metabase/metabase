@@ -1,5 +1,8 @@
+import { ObjectUnionSchema } from "metabase/schema";
 import type {
   Collection,
+  CollectionItemModel,
+  CollectionPermissionsGraph,
   CreateCollectionRequest,
   DeleteCollectionRequest,
   GetCollectionDashboardQuestionCandidatesRequest,
@@ -10,6 +13,7 @@ import type {
   ListCollectionsTreeRequest,
   MoveCollectionDashboardCandidatesRequest,
   MoveCollectionDashboardCandidatesResult,
+  UpdateCollectionPermissionsGraphRequest,
   UpdateCollectionRequest,
   getCollectionRequest,
 } from "metabase-types/api";
@@ -23,6 +27,14 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
+
+const getCollectionItemTagModels = (
+  models: ListCollectionItemsRequest["models"],
+): CollectionItemModel[] | undefined =>
+  models?.filter(
+    (model): model is CollectionItemModel => model !== "no_models",
+  );
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -65,9 +77,16 @@ export const collectionApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (response, error, { models, id }) => [
-        ...provideCollectionItemListTags(response?.data ?? [], models),
+        ...provideCollectionItemListTags(
+          response?.data ?? [],
+          getCollectionItemTagModels(models),
+        ),
         { type: "collection", id: `${id}-items` },
       ],
+      onQueryStarted: hydrateMetadataStore<ListCollectionItemsResponse>(
+        [ObjectUnionSchema],
+        (response) => response.data,
+      ),
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ignore_error, ...params }) => {
@@ -81,19 +100,49 @@ export const collectionApi = Api.injectEndpoints({
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
     }),
+    getCollectionPermissionsGraph: builder.query<
+      CollectionPermissionsGraph,
+      { namespace?: string } | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/collection/graph",
+        params: params ?? undefined,
+      }),
+    }),
+    updateCollectionPermissionsGraph: builder.mutation<
+      CollectionPermissionsGraph,
+      UpdateCollectionPermissionsGraphRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/collection/graph?skip-graph=true",
+        body,
+      }),
+    }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({
         method: "POST",
         url: "/api/collection",
         body,
       }),
-      invalidatesTags: (collection, error) =>
-        collection
-          ? invalidateTags(error, [
-              listTag("collection"),
-              idTag("collection", collection.parent_id ?? "root"),
-            ])
-          : [],
+      invalidatesTags: (collection, error, request) => {
+        if (!collection) {
+          return [];
+        }
+
+        const tags = [
+          listTag("collection"),
+          idTag("collection", collection.parent_id ?? "root"),
+        ];
+
+        // Creating a shared tenant collection affects the embedding hub checklist
+        if (request.namespace === "shared-tenant-collection") {
+          tags.push(listTag("embedding-hub-checklist"));
+        }
+
+        return invalidateTags(error, tags);
+      },
     }),
     updateCollection: builder.mutation<Collection, UpdateCollectionRequest>({
       query: ({ id, ...body }) => ({
@@ -169,6 +218,8 @@ export const {
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
   useGetCollectionQuery,
+  useGetCollectionPermissionsGraphQuery,
+  useUpdateCollectionPermissionsGraphMutation,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,
   useDeleteCollectionMutation,

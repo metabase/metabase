@@ -73,12 +73,10 @@
             _ (t2/update! :model/Document doc-id {:name "Updated Document"
                                                   :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}})
             updated-document (t2/select-one :model/Document :id doc-id)]
-
         (testing "document was updated"
           (is (= "Updated Document" (:name updated-document)))
           (is (= {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}
                  (:document updated-document))))
-
         (testing "reversion restores original state"
           (revision/revert-to-revision! :model/Document doc-id (mt/user->id :crowberto) original-serialized)
           (let [reverted-document (t2/select-one :model/Document :id doc-id)]
@@ -100,4 +98,5 @@
       (is (contains? excluded-columns :updated_at))
       (is (contains? excluded-columns :collection_id))
       (is (contains? excluded-columns :collection_position))
-      (is (= 8 (count excluded-columns)) "Should exclude exactly 5 metadata fields"))))
+      (is (contains? excluded-columns :public_uuid_prefix))
+      (is (= 11 (count excluded-columns)) "Should exclude exactly 11 metadata fields"))))

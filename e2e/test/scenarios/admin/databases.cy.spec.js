@@ -12,7 +12,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { visitDatabase, waitForDbSync } from "./helpers/e2e-database-helpers";
 
 const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe(
@@ -36,109 +36,6 @@ describe(
 
         cy.findByLabelText("Model actions").should("be.checked");
       });
-    });
-  },
-);
-
-describe(
-  "admin > database > external databases > workspaces",
-  { tags: ["@external"] },
-  () => {
-    beforeEach(() => {
-      cy.intercept("POST", "/api/database/*/permission/workspace/check").as(
-        "checkPermissions",
-      );
-    });
-
-    [
-      { dbName: "Writable Postgres12", snapshot: "postgres-writable" },
-      { dbName: "Writable MySQL8", snapshot: "mysql-writable" },
-    ].forEach(({ dbName, snapshot }) => {
-      it(`should allow to enable and disable workspaces in ${snapshot} database`, () => {
-        H.restore(snapshot);
-        cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
-        H.addPostgresDatabase("Test DB");
-
-        visitDatabase(WRITABLE_DB_ID);
-
-        cy.findByLabelText("Enable workspaces").should("not.be.checked");
-        cy.findByLabelText("Enable workspaces").parent().click();
-
-        cy.wait("@checkPermissions");
-        cy.findByLabelText("Enable workspaces").should("be.checked");
-
-        cy.findByLabelText("Settings").click();
-        H.popover().findByText("Data studio").click();
-        H.Workspaces.getNewWorkspaceButton().click();
-        cy.findByPlaceholderText("Select a database").click();
-        H.popover().within(() => {
-          cy.findByText(dbName).should("be.visible");
-          cy.findByText("Test DB").should("not.exist");
-        });
-
-        cy.go(-2);
-        cy.findByLabelText("Enable workspaces").should("be.checked");
-        cy.findByLabelText("Enable workspaces").parent().click();
-        cy.findByLabelText("Enable workspaces").should("not.be.checked");
-
-        cy.go(2);
-        cy.findByPlaceholderText("No database supports workspaces").should(
-          "be.visible",
-        );
-      });
-    });
-
-    it("should not show workspaces setting for unsupported mysql database", () => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-
-      visitDatabase(WRITABLE_DB_ID);
-
-      cy.findByLabelText("Enable workspaces").should("not.exist");
-    });
-
-    it("should not allow to enable workspaces for a db user that cannot create users/schemas", () => {
-      H.restore("postgres-writable");
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-
-      // Create a limited postgres user without CREATE USER/SCHEMA permissions
-      const limitedUser = "limited_user";
-      const limitedPassword = "limited_pass";
-
-      H.queryWritableDB(`
-        DROP USER IF EXISTS ${limitedUser};
-        CREATE USER ${limitedUser} WITH PASSWORD '${limitedPassword}';
-      `);
-
-      // Update the existing database connection to use the limited user
-      cy.request("PUT", `/api/database/${WRITABLE_DB_ID}`, {
-        details: {
-          host: "localhost",
-          port: QA_POSTGRES_PORT,
-          dbname: "writable_db",
-          user: limitedUser,
-          password: limitedPassword,
-        },
-      });
-
-      visitDatabase(WRITABLE_DB_ID);
-
-      cy.findByLabelText("Enable workspaces").should("not.be.checked");
-      cy.findByLabelText("Enable workspaces").parent().click();
-
-      cy.wait("@checkPermissions");
-
-      cy.findByTestId("database-workspaces-section").should(
-        "contain.text",
-        "Failed to initialize workspace isolation",
-      );
-      cy.findByLabelText("Enable workspaces").should("not.be.checked");
-
-      // Cleanup: just drop the postgres user, H.restore() resets the DB connection
-      H.queryWritableDB(`DROP USER IF EXISTS ${limitedUser};`);
     });
   },
 );
@@ -425,7 +322,7 @@ describe("admin > database > add", () => {
           cy.button("Save", { timeout: 7000 })
             .should("not.be.disabled")
             .click();
-          cy.findByText(/Exception authenticating MongoCredential/);
+          cy.findByText(/Authentication failed/);
           cy.button("Failed");
 
           cy.findByLabelText("Paste your connection string")
@@ -552,7 +449,7 @@ describe("database page > side panel", () => {
       { name: "Amazon Redshift", file: "redshift" },
       { name: "ClickHouse", file: "clickhouse" },
       { name: "Databricks", file: "databricks" },
-      { name: "Druid", file: "druid" },
+      { name: "Druid JDBC", file: "druid" },
       { name: "MongoDB", file: "mongo" },
       { name: "MySQL", file: "mysql" },
       { name: "PostgreSQL", file: "postgresql" },
@@ -635,9 +532,7 @@ describe("scenarios > admin > databases > exceptions", () => {
       .findByRole("button", { name: "Edit connection details" })
       .should("be.disabled")
       .trigger("mouseenter", { force: true });
-    H.tooltip().findByText(
-      "This database is managed by Metabase Cloud and cannot be modified.",
-    );
+    H.tooltip().findByText("The sample database cannot be edited.");
     cy.findByTestId("database-actions-panel").should("not.exist");
   });
 
@@ -757,144 +652,6 @@ describe("scenarios > admin > databases > sample database", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/database/*").as("databaseUpdate");
-  });
-
-  it("database settings", () => {
-    visitDatabase(SAMPLE_DB_ID);
-
-    cy.findAllByTestId("database-connection-info-section").should(
-      "contain.text",
-      "Connected",
-    );
-
-    editDatabase();
-
-    // should not display a setup help card
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Need help connecting?").should("not.exist");
-
-    cy.log(
-      "should not be possible to change database type for the Sample Database (metabase#16382)",
-    );
-    cy.findByLabelText("Database type")
-      .should("have.value", "H2")
-      .and("be.disabled");
-
-    cy.log("should correctly display connection settings");
-    cy.findByLabelText("Display name").should("have.value", "Sample Database");
-    cy.findByLabelText("Connection String")
-      .should("have.attr", "value")
-      .and("contain", "sample-database.db");
-
-    cy.log("should be possible to modify the connection settings");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Show advanced options").click();
-    // `auto_run_queries` toggle should be ON by default
-    cy.findByLabelText(/Rerun queries for simple explorations/)
-      .should("have.attr", "data-checked", "true")
-      .click({ force: true });
-    // Reported failing in v0.36.4
-    cy.log(
-      "should respect the settings for automatic query running (metabase#13187)",
-    );
-    cy.findByLabelText(/Rerun queries for simple explorations/).should(
-      "not.have.attr",
-      "data-checked",
-    );
-
-    cy.log("change the metadata_sync period");
-    cy.findByLabelText(/Choose when syncs and scans happen/).click({
-      force: true,
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Hourly").click();
-    H.popover().within(() => {
-      cy.findByText("Daily").click({ force: true });
-    });
-
-    // "lets you change the cache_field_values period"
-    cy.findByDisplayValue("Never, I'll do this manually if I need to")
-      .should("be.visible")
-      .click();
-
-    H.popover().findByText("Regularly, on a schedule").click();
-    cy.findAllByRole("button", { name: /Daily/ })
-      .should("have.length", 2)
-      .eq(1)
-      .click();
-    H.popover().findByText("Weekly").click();
-
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
-      editDatabase();
-      expect(body.details["let-user-control-scheduling"]).to.equal(true);
-      expect(body.schedules.metadata_sync.schedule_type).to.equal("daily");
-      expect(body.schedules.cache_field_values.schedule_type).to.equal(
-        "weekly",
-      );
-    });
-
-    // "lets you change the cache_field_values to 'Only when adding a new filter widget'"
-    cy.findByDisplayValue("Regularly, on a schedule").click();
-    H.popover().findByText("Only when adding a new filter widget").click();
-    cy.button("Save changes", { timeout: 10000 }).click();
-    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
-      editDatabase();
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(true);
-    });
-
-    // and back to never
-    cy.findByDisplayValue("Only when adding a new filter widget").click();
-    H.popover().findByText("Never, I'll do this manually if I need to").click();
-    cy.button("Save changes", { timeout: 10000 }).click();
-    cy.wait("@databaseUpdate").then(({ response: { body } }) => {
-      editDatabase();
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(false);
-    });
-  });
-
-  it("allows to save the default schedule (metabase#57198)", () => {
-    visitDatabase(SAMPLE_DB_ID);
-    editDatabase();
-    cy.findByRole("button", { name: /Show advanced options/ }).click();
-    cy.findByLabelText(/Choose when syncs and scans happen/).click({
-      force: true,
-    });
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ request: { body }, response }) => {
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(false);
-      // frontend sends wrong value but backend automatically corrects it for us:
-      expect(response.body.schedules.cache_field_values).to.equal(null);
-    });
-
-    editDatabase();
-    cy.findByDisplayValue("Never, I'll do this manually if I need to").click();
-    H.popover().findByText("Regularly, on a schedule").click();
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
-      expect(body.is_full_sync).to.equal(true);
-      expect(body.is_on_demand).to.equal(false);
-      expect(body.schedules.cache_field_values).to.deep.eq({
-        schedule_day: "mon",
-        schedule_frame: null,
-        schedule_hour: 0,
-        schedule_type: "daily",
-      });
-    });
-
-    editDatabase();
-    cy.findByDisplayValue("Regularly, on a schedule").click();
-    H.popover().findByText("Only when adding a new filter widget").click();
-    cy.button("Save changes").click();
-    cy.wait("@databaseUpdate").then(({ request: { body } }) => {
-      expect(body.is_full_sync).to.equal(false);
-      expect(body.is_on_demand).to.equal(true);
-      expect(body.schedules.cache_field_values).to.equal(null);
-    });
   });
 
   it("database actions", () => {
@@ -917,11 +674,13 @@ describe("scenarios > admin > databases > sample database", () => {
     H.createSegment({
       name: "Small orders",
       description: "All orders with a total under $100.",
-      table_id: ORDERS_ID,
       definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
       },
     });
 
@@ -974,7 +733,7 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     H.modal().within(() => {
-      cy.button("Delete this content and the DB connection")
+      cy.button("Delete this DB connection")
         .as("deleteButton")
         .should("be.disabled");
       cy.findByLabelText(/Delete [0-9]* saved questions?/)
@@ -994,7 +753,7 @@ describe("scenarios > admin > databases > sample database", () => {
         .click()
         .should("be.checked");
       cy.findByText(
-        "This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!",
+        "This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone. Transforms that use this database won’t be deleted, but they will stop working.",
       );
 
       cy.get("@deleteButton").should("be.disabled");
@@ -1050,7 +809,7 @@ describe("scenarios > admin > databases > sample database", () => {
       cy.findByTestId("database-name-confirmation-input").type(
         "Sample Database",
       );
-      cy.findByText("Delete this content and the DB connection").click();
+      cy.findByText("Delete this DB connection").click();
       cy.wait("@deleteDatabase");
     });
 

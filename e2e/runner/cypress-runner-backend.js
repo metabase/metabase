@@ -17,6 +17,22 @@ function getJvmOptsFromDepsEdn(alias = "e2e") {
 // Ensure that the only two required env vars have values
 process.env.MB_DB_FILE = process.env.MB_DB_FILE || tempDbPath;
 process.env.MB_JETTY_PORT = process.env.MB_JETTY_PORT || 4000;
+process.env.MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED =
+  process.env.MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED || "true";
+
+// Expose the `en-ZZ` pseudo-locale in the Cypress backend's language pickers and API validation.
+process.env.MB_ENABLE_TEST_LOCALES = "true";
+
+// Use the H2 sample database in E2E tests. Production ships SQLite, but the test suite was written
+// against the H2 sample data; this defers migrating the tests to SQLite until after the release.
+process.env.MB_SAMPLE_DATABASE_ENGINE = "h2";
+
+// The warehouses the E2E suite connects to are all on localhost, so the warehouse network policy has to be off.
+// It otherwise defaults to `external-only` whenever `is-hosted?` is true, which any spec calling
+// `setTokenFeatures("all")` (or activating a cloud token) makes true -- and those specs would then be unable to
+// add or sync a test database. Set here rather than in the `:e2e` deps.edn alias because CI runs the uberjar and
+// never reads that alias. A spec that wants the policy on can set it through the settings API.
+process.env.MB_WAREHOUSE_ALLOWED_NETWORKS = "allow-all";
 
 if (!process.env.CI) {
   // Use a temporary copy of the sample db so it won't use and lock the db used for local development

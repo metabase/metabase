@@ -183,7 +183,7 @@ describe(
       cy.visit("/admin/settings/authentication/ldap");
 
       cy.findByTestId("ldap-user-provisioning-enabled?-setting")
-        .findByText("Enabled")
+        .findByText(/^Disabled/)
         .click();
 
       H.undoToast().findByText("Changes saved").should("be.visible");

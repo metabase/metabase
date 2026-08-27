@@ -8,12 +8,11 @@ import {
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { sandboxed, normal, admin, nodata, nocollection } = USERS;
+const { normal, admin, nocollection } = USERS;
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
 const TOTAL_USERS = Object.entries(USERS).length;
 const TOTAL_GROUPS = Object.entries(USER_GROUPS).length;
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
-const { COLLECTION_GROUP } = USER_GROUPS;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const TEST_USER = {
   first_name: "Testy",
@@ -25,8 +24,6 @@ const TEST_USER = {
 const adminUserName = H.getFullName(admin);
 const noCollectionUserName = H.getFullName(nocollection);
 const normalUserName = H.getFullName(normal);
-
-const totalUsers = Object.keys(USERS).length;
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
@@ -119,36 +116,38 @@ describe("scenarios > admin > people", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("0 members");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("A group is only as good as its members.");
+      cy.findByText("Add members to get started.");
     });
 
-    it("should allow admin to create new users", { tags: "@smoke" }, () => {
-      const { first_name, last_name, email } = TEST_USER;
-      const FULL_NAME = `${first_name} ${last_name}`;
-      cy.visit("/admin/people");
-      clickButton("Invite someone");
+    it(
+      "should allow admin to create new users",
+      { tags: "@prerelease" },
+      () => {
+        const { first_name, last_name, email } = TEST_USER;
+        const FULL_NAME = `${first_name} ${last_name}`;
+        cy.visit("/admin/people");
+        clickButton("Invite someone");
 
-      // first modal
-      cy.findByLabelText("First name").type(first_name);
-      cy.findByLabelText("Last name").type(last_name);
-      //
-      cy.findByLabelText(/Email/).type(email);
-      clickButton("Create");
+        // first modal
+        cy.findByLabelText("First name").type(first_name);
+        cy.findByLabelText("Last name").type(last_name);
+        //
+        cy.findByLabelText(/Email/).type(email);
+        clickButton("Create");
 
-      // second modal
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(`${FULL_NAME} has been added`);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Show").click();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
+        // second modal
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        cy.findByText(`${FULL_NAME} has been added`);
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Done").click();
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(FULL_NAME);
-      cy.location().should((loc) =>
-        expect(loc.pathname).to.eq("/admin/people"),
-      );
-    });
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+        cy.findByText(FULL_NAME);
+        cy.location().should((loc) =>
+          expect(loc.pathname).to.eq("/admin/people"),
+        );
+      },
+    );
 
     it("should allow admin to create new users without first name or last name (metabase#22754)", () => {
       const { email } = TEST_USER;
@@ -161,8 +160,6 @@ describe("scenarios > admin > people", () => {
       // second modal
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${email} has been added`);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Show").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Done").click();
 
@@ -196,8 +193,10 @@ describe("scenarios > admin > people", () => {
       cy.findByLabelText(/Email/).type(email);
 
       // Add user to Administrators group
-      H.modal().findByText("Default").click();
+      H.modal().findByRole("combobox", { name: "Groups" }).click();
       H.popover().findByText("Administrators").click();
+      // dismiss the open dropdown so it doesn't cover the submit button
+      H.modal().findByText("Create user").click();
 
       clickButton("Create");
 
@@ -296,12 +295,50 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Reset password").click();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`Reset ${normalUserName}'s password?`);
-      clickButton("Reset password");
+
+      H.modal().within(() => {
+        cy.findByText("Are you sure you want to do this?");
+        cy.button("Cancel").should("exist");
+        cy.button("Get reset link").should("exist");
+        cy.button("Reset password").click();
+      });
+
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${normalUserName}'s password has been reset`);
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^temporary password$/i);
       clickButton("Done");
+      cy.location().should((loc) =>
+        expect(loc.pathname).to.eq("/admin/people"),
+      );
+    });
+
+    it("should generate a password reset link without SMTP set up", () => {
+      cy.intercept("POST", "/api/user/*/password-reset-url").as("getResetUrl");
+
+      cy.visit("/admin/people");
+      showUserOptions(normalUserName);
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Reset password").click();
+
+      H.modal().within(() => {
+        cy.findByText(`Reset ${normalUserName}'s password?`);
+        cy.button("Get reset link").click();
+      });
+
+      cy.wait("@getResetUrl");
+
+      H.modal().within(() => {
+        cy.findByText(`Password reset link for ${normalUserName}`);
+        cy.findByText(
+          "Share this link with the user. It will expire in 48 hours.",
+        );
+        cy.findByRole("textbox")
+          .invoke("val")
+          .should("contain", "reset_password");
+        cy.button("Done").click();
+      });
+
       cy.location().should((loc) =>
         expect(loc.pathname).to.eq("/admin/people"),
       );
@@ -335,7 +372,11 @@ describe("scenarios > admin > people", () => {
         cy.findByText("Reset password").click();
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText(`Reset ${normalUserName}'s password?`);
-        clickButton("Reset password");
+
+        H.modal().within(() => {
+          cy.button("Get reset link").should("exist");
+          cy.button("Reset password").click();
+        });
 
         H.undoToast().within(() => {
           cy.findByText(
@@ -507,41 +548,50 @@ describe("scenarios > admin > people", () => {
       beforeEach(() => {
         generateUsers(NEW_USERS);
 
-        cy.intercept("GET", "/api/user*").as("users");
+        cy.intercept("GET", "/api/user?query*").as("users");
         cy.intercept("GET", "/api/permissions/membership").as("memberships");
       });
 
       it("should allow paginating people forward and backward", () => {
         const PAGE_SIZE = 25;
 
+        const footer = () =>
+          cy
+            .findByTestId("people-list-footer")
+            .scrollIntoView()
+            .should("be.visible");
+
         cy.visit("/admin/people");
-
-        // Total
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`${NEW_TOTAL_USERS} people found`);
-
-        // Page 1
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`1 - ${PAGE_SIZE}`);
-        assertTableRowsCount(PAGE_SIZE);
-        cy.findByLabelText("Previous page").should("be.disabled");
-
-        cy.findByTestId("next-page-btn").click();
+        cy.findByTestId("admin-panel")
+          .findByText("Loading...")
+          .should("not.exist");
         cy.wait("@users");
 
-        // Page 2
-        cy.findByTestId("people-list-footer")
-          .findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`)
-          .should("be.visible");
-        assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
-        cy.findByLabelText("Next page").should("be.disabled");
-
-        cy.findByLabelText("Previous page").click();
-
-        // Page 1
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`1 - ${PAGE_SIZE}`);
+        cy.log("Page 1");
         assertTableRowsCount(PAGE_SIZE);
+        footer()
+          .should("contain", `${NEW_TOTAL_USERS} people found`)
+          .and("contain", `1 - ${PAGE_SIZE}`);
+
+        footer().within(() => {
+          cy.findByLabelText("Previous page").should("be.disabled");
+
+          cy.findByLabelText("Next page").click();
+          cy.wait("@users");
+        });
+
+        cy.log("Page 2");
+        assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
+        footer().should("contain", `${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+
+        cy.log("Back to the Page 1");
+        footer().within(() => {
+          cy.findByLabelText("Next page").should("be.disabled");
+          cy.findByLabelText("Previous page").click();
+        });
+
+        assertTableRowsCount(PAGE_SIZE);
+        footer().should("contain", `1 - ${PAGE_SIZE}`);
       });
 
       it("should allow paginating group members forward and backward", () => {
@@ -681,7 +731,7 @@ describe("scenarios > admin > people > group managers", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.visit("/admin/people");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -836,78 +886,6 @@ describe("scenarios > admin > people > group managers", () => {
 
     removeFirstGroup();
     cy.url().should("match", /\/$/);
-  });
-});
-
-describe("issue 23689", () => {
-  function findUserByFullName(user) {
-    const { first_name, last_name } = user;
-    return cy.findByText(`${first_name} ${last_name}`);
-  }
-
-  function visitGroupPermissionsPage(groupId) {
-    cy.visit(`/admin/people/groups/${groupId}`);
-    cy.wait("@membership");
-  }
-
-  beforeEach(() => {
-    // TODO: remove the next line when this issue gets fixed
-    cy.skipOn(true);
-
-    cy.intercept("GET", "/api/permissions/membership").as("membership");
-
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-
-    visitGroupPermissionsPage(COLLECTION_GROUP);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("3 members");
-
-    findUserByFullName(normal);
-    findUserByFullName(nodata);
-
-    // Make sandboxed user a group manager
-    findUserByFullName(sandboxed)
-      .closest("tr")
-      .findByTestId("user-type-toggle")
-      .click({ force: true });
-
-    // Sanity check instead of waiting for the PUT request
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Manager");
-
-    cy.sandboxTable({
-      table_id: ORDERS_ID,
-      attribute_remappings: {
-        attr_uid: ["dimension", ["field", ORDERS.USER_ID, null]],
-      },
-    });
-
-    cy.signOut();
-    cy.signInAsSandboxedUser();
-  });
-
-  it("sandboxed group manager should see all other members (metabase#23689)", () => {
-    visitGroupPermissionsPage(COLLECTION_GROUP);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("3 members");
-
-    findUserByFullName(sandboxed);
-    findUserByFullName(normal);
-    findUserByFullName(nodata);
-
-    cy.visit("/admin/people");
-    cy.wait("@membership");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`${totalUsers} people found`);
-    findUserByFullName(sandboxed);
-    findUserByFullName(normal);
-    findUserByFullName(nodata);
-    findUserByFullName(nocollection);
   });
 });
 

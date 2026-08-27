@@ -20,17 +20,17 @@ export function SelectionCheckbox({
   disabled,
   onClick,
   className,
+  ariaLabel,
 }: SelectionCheckboxProps) {
   return (
     <Checkbox
-      size="sm"
       checked={isSelected}
       indeterminate={isSomeSelected && !isSelected}
       disabled={disabled}
       className={className}
       readOnly
       onClick={onClick}
-      aria-label={getAriaLabel(isSelected, isSomeSelected)}
+      aria-label={ariaLabel ?? getAriaLabel(isSelected, isSomeSelected)}
     />
   );
 }

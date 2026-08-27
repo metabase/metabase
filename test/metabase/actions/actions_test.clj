@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.actions.actions-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.actions-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.actions.actions-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -9,9 +11,10 @@
    [metabase.actions.models :as action]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.test-util :as driver.tu]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -238,7 +241,6 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
         (mt/with-actions-test-data-tables #{"venues" "categories"}
           (with-actions-test-data-and-actions-permissively-enabled!
-
             ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have
             ;; this `category_id` -- it's an FK constraint violation.
             (is (thrown-with-msg? Exception (case driver/*driver*
@@ -391,7 +393,6 @@
         (let [db-id    (mt/id)
               table-id (mt/id :categories)]
           (unset-entity-key! table-id)
-
           (is (= 75 (categories-row-count)))
           (is (= {:type                      :data-editing/no-pk
                   :status-code               400
@@ -497,7 +498,6 @@
                                                   {:database (mt/id)
                                                    :table-id table-id
                                                    :row      row}))))))
-
           (testing "rows should be updated in the DB"
             (is (= [[1 "Seed Bowl"]
                     [2 "Millet Treat"]
@@ -515,7 +515,6 @@
                   [2 "American"]
                   [3 "Artisan"]]
                  (first-three-categories)))
-
           (is (= {:type                      :data-editing/no-pk
                   :status-code               400
                   :table-id                  table-id
@@ -534,7 +533,6 @@
                    ::did-not-throw
                    (catch Exception e
                      (or (ex-data e) ::did-not-throw-ex-info)))))
-
           (testing "rows should NOT be updated in the DB"
             (is (= [[1 "African"]
                     [2 "American"]
@@ -773,7 +771,6 @@
                              :mysql    (format "GRANT SELECT ON %s.categories TO '%s'" test-db-name test-user-name))])]
               (when stmt
                 (jdbc/execute! admin-spec [stmt])))
-
             ;; Create connection details for test user (no password)
             (let [test-user-details (cond-> details
                                       (= driver/*driver* :mysql)
@@ -804,7 +801,6 @@
                       (is (= 400 (:status-code result)))
                       (is (= actions.error/violate-permission-constraint (:type first-error)))
                       (is (= "You don't have permission to add data to this table." (:message first-error)))))
-
                   (testing (str "UPDATE permission denied for " driver/*driver*)
                     (let [result (try
                                    (actions/perform-action-v2!
@@ -820,7 +816,6 @@
                       (is (= 400 (:status-code result)))
                       (is (= actions.error/violate-permission-constraint (:type first-error)))
                       (is (= "You don't have permission to update data in this table." (:message first-error)))))
-
                   (testing (str "DELETE permission denied for " driver/*driver*)
                     (let [result (try
                                    (actions/perform-action-v2!
@@ -836,3 +831,26 @@
                       (is (= 400 (:status-code result)))
                       (is (= actions.error/violate-permission-constraint (:type first-error)))
                       (is (= "You don't have permission to delete data from this table." (:message first-error))))))))))))))
+
+(deftest action-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:actions]})
+    (mt/with-actions-test-data-and-actions-enabled
+      (let [db-id           (mt/id)
+            write-cache-key [db-id :write-data]]
+        (mt/with-dynamic-fn-redefs [driver.conn/connection-pool-type
+                                    (fn [_database]
+                                      (if (= @#'driver.conn/*connection-type* :write-data)
+                                        :write-data
+                                        :default))]
+          (try
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (testing "write pool does not exist before action execution"
+              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (binding [*current-user-permissions-set* (delay #{"/"})]
+              (actions/perform-action! :model.row/create
+                                       (assoc (mt/mbql-query categories)
+                                              :create-row {(format-field-name :name) "write_pool_test"})))
+            (testing "write pool is created during action execution"
+              (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+            (finally
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))

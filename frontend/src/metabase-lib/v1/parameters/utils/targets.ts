@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -33,8 +33,14 @@ function isConcreteFieldReference(
   return reference[0] === "field" || reference[0] === "expression";
 }
 
+export function isTextTagTarget(
+  target: ParameterTarget,
+): target is ParameterTextTarget {
+  return target[0] === "text-tag";
+}
+
 export function getTemplateTagFromTarget(target: ParameterTarget) {
-  if (!target?.[1] || target?.[0] === "text-tag") {
+  if (!target?.[1] || isTextTagTarget(target)) {
     return null;
   }
 
@@ -43,7 +49,7 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
 }
 
 export function getTextTagFromTarget(target: ParameterTarget) {
-  if (!target?.[1] || target?.[0] !== "text-tag") {
+  if (!target?.[1] || !isTextTagTarget(target)) {
     return null;
   }
 

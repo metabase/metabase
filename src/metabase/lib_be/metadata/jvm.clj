@@ -2,6 +2,7 @@
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:refer-clojure :exclude [get-in])
   (:require
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
@@ -12,6 +13,7 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -44,10 +46,11 @@
   (u.memo/fast-memo u/->kebab-case-en))
 
 (def ^:private metadata-type->schema
-  {:metadata/card ::lib.schema.metadata/card})
+  {:metadata/card   ::lib.schema.metadata/card
+   :metadata/column ::lib.schema.metadata/column})
 
 (mu/defn instance->metadata
-  "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
+  "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a Lib style
   metadata instance with `:lib/type` and `kebab-case` keys."
   [instance      :- :map
    metadata-type :- :keyword]
@@ -78,7 +81,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone :router_database_id]}))
+         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details :admin_details :timezone :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -178,11 +181,11 @@
                 [(t2/table-name :model/Dimension) :dimension]
                 [:and
                  [:= :dimension/field_id :field/id]
-                 [:inline [:in :dimension/type ["external" "internal"]]]]
+                 [:in :dimension/type ["external" "internal"]]]
                 [(t2/table-name :model/FieldValues) :values]
                 [:and
                  [:= :values/field_id :field/id]
-                 [:= :values/type [:inline "full"]]]]}))
+                 [:= :values/type "full"]]]}))
 
 (t2/define-after-select :metadata/column
   [field]
@@ -361,7 +364,9 @@
                 :measure/name
                 :measure/description
                 :measure/archived
-                :measure/definition]
+                :measure/definition
+                :measure/dimensions
+                :measure/dimension_mappings]
     :from      [[(t2/table-name :model/Measure) :measure]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :measure/table_id :table/id]]}))
@@ -468,7 +473,7 @@
     :metadata/measure :measure/table_id))
 
 (defn- card-id-key [metadata-type]
-    ;; types not in the case statement do not support Card ID
+  ;; types not in the case statement do not support Card ID
   (case metadata-type
     :metadata/metric :source_card_id))
 
@@ -479,7 +484,7 @@
      [:= :active true]
      [:or
       [:= :visibility_type nil]
-      [:not-in :visibility_type [:inline ["hidden" "technical" "cruft"]]]]]
+      [:not-in :visibility_type ["hidden" "technical" "cruft"]]]]
 
     :metadata/column
     (let [excluded-visibility-types (cond-> ["retired"]
@@ -488,7 +493,7 @@
        [:= :field/active true]
        [:or
         [:= :field/visibility_type nil]
-        [:not-in :field/visibility_type [:inline excluded-visibility-types]]]])
+        [:not-in :field/visibility_type excluded-visibility-types]]])
 
     :metadata/card
     [:= :card/archived false]
@@ -509,20 +514,20 @@
                                        {:closed true}
                                        [:where {:optional true} vector?]]
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
-  [database-id                                                                                                            :- ::lib.schema.id/database
-   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  [database-id                                                                                                             :- ::lib.schema.id/database
+   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-ids card-ids include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [database-id-key (db-id-key metadata-type)
         active-only?    (not (or id-set name-set))
         metric?         (= metadata-type :metadata/metric)
         where-clauses   (cond-> []
-                          database-id-key        (conj [:= database-id-key database-id])
-                          id-set                 (conj [:in (id-key metadata-type) id-set])
-                          name-set               (conj [:in (name-key metadata-type) name-set])
-                          table-id               (conj [:= (table-id-key metadata-type) table-id])
-                          card-id                (conj [:= (card-id-key metadata-type) card-id])
-                          active-only?           (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))
-                          metric?                (conj [:= :type [:inline "metric"]])
-                          (and metric? table-id) (conj [:= :source_card_id nil]))]
+                          database-id-key         (conj [:= database-id-key database-id])
+                          id-set                  (conj [:in (id-key metadata-type) id-set])
+                          name-set                (conj [:in (name-key metadata-type) name-set])
+                          table-ids               (conj [:in (table-id-key metadata-type) table-ids])
+                          card-ids                (conj [:in (card-id-key metadata-type) card-ids])
+                          active-only?            (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))
+                          metric?                 (conj [:= :type "metric"])
+                          (and metric? table-ids) (conj [:= :source_card_id nil]))]
     (reduce
      sql.helpers/where
      {}
@@ -532,12 +537,12 @@
   [database-id                                  :- ::lib.schema.id/database
    {metadata-type :lib/type, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [query (metadata-spec->honey-sql database-id metadata-spec)]
-    (try
-      (t2/select metadata-type query)
-      (catch Throwable e
-        (throw (ex-info "Error fetching metadata with spec"
-                        {:metadata-spec metadata-spec, :query query}
-                        e))))))
+    (lib.util/recover
+     (fn [] (t2/select metadata-type query))
+     (fn [e]
+       (throw (ex-info "Error fetching metadata with spec"
+                       {:metadata-spec metadata-spec, :query query}
+                       e))))))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
@@ -546,7 +551,10 @@
   (metadatas [_this metadata-spec]
     (metadatas database-id metadata-spec))
   (setting [_this setting-name]
-    (setting/get setting-name))
+    (if (setting/database-local-values)
+      (setting/get setting-name)
+      (setting/with-database (database database-id)
+        (setting/get setting-name))))
 
   pretty/PrettyPrintable
   (pretty [_this]
@@ -618,3 +626,8 @@
  UncachedApplicationDatabaseMetadataProvider
  (fn [_mp json-generator]
    (json/generate-nil nil json-generator)))
+
+(extend-protocol clj-yaml.core/YAMLCodec
+  UncachedApplicationDatabaseMetadataProvider
+  (encode [_this]
+    nil))

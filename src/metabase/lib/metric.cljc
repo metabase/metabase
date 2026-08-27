@@ -1,12 +1,12 @@
 (ns metabase.lib.metric
   "A Metric is a special type of Card that you can do special metric stuff with. (Not sure exactly what said special
   stuff is TBH.)"
-  (:refer-clojure :exclude [select-keys not-empty])
+  (:refer-clojure :exclude [select-keys some not-empty])
   (:require
+   [clojure.string :as str]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
@@ -19,7 +19,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys not-empty]]))
+   [metabase.util.performance :refer [select-keys some not-empty]]))
 
 (defn- resolve-metric [query card-id]
   (when (pos-int? card-id)
@@ -31,15 +31,15 @@
     (let [normalized-definition (case (lib.util/normalized-mbql-version dataset-query)
                                   ;; TODO (Cam 10/7/25) -- not sure we'll ever see legacy queries here anymore since
                                   ;; they get normalized to MBQL 5 coming out of the app DB
-                                  :mbql-version/legacy (-> dataset-query mbql.normalize/normalize lib.convert/->pMBQL)
+                                  :mbql-version/legacy (-> dataset-query mbql.normalize/normalize lib.convert/->mbql5)
                                   :mbql-version/mbql5  (lib.normalize/normalize ::lib.schema/query dataset-query))]
       (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
-  [{:keys [id], join-alias ::lib.join/join-alias, :as metric-metadata}]
+  [{:keys [id], join-alias :lib/join-alias, :as metric-metadata}]
   (let [effective-type (or ((some-fn :effective-type :base-type) metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
-                             (let [ag-effective-type (lib.schema.expression/type-of aggregation)]
+                             (let [ag-effective-type (lib.schema.expression/type-of-resolved aggregation)]
                                (when (isa? ag-effective-type :type/*)
                                  ag-effective-type))))
         options (cond-> {:lib/uuid (str (random-uuid))}
@@ -116,7 +116,7 @@
                                    (lib.aggregation/aggregations query stage-number))
          maybe-add-aggregation-pos (fn [metric-metadata]
                                      (let [aggregation-pos (-> metric-metadata
-                                                               ((juxt :id ::lib.join/join-alias))
+                                                               ((juxt :id :lib/join-alias))
                                                                metric-aggregations)]
                                        (cond-> metric-metadata
                                          aggregation-pos (assoc :aggregation-position aggregation-pos))))]
@@ -141,17 +141,37 @@
     (#{:query :native} (lib.util/normalized-query-type query))
     mbql.normalize/normalize))
 
+(def ^:private ^:dynamic *metric-expansion-path*
+  "Metric card IDs whose [[lib.metadata.calculation/metadata-method]] `:metric` expansion is in flight on this
+  thread/binding, outermost first. A metric's metadata is computed from its inner aggregation, which may itself be a
+  `:metric` ref; a cycle in the metric reference graph would recurse unboundedly and overflow the stack (#74954)."
+  [])
+
+;; Read-time backstop for cycles that slip past the card API's `check-card-overwrite`: serdes import, remote sync,
+;; direct writes, data predating the check. find-cycle can't help -- a cycle is only visible mid-expansion -- so we
+;; watch the in-flight path instead.
+(defn- check-metric-cycle!
+  "Throw if `metric-id` is already being expanded on this thread, i.e. its `:metric` refs form a cycle."
+  [metric-id]
+  (when (some #(= % metric-id) *metric-expansion-path*)
+    (throw (ex-info (i18n/tru "Metric cycle detected: {0}"
+                              (str/join " → " (conj *metric-expansion-path* metric-id)))
+                    {:metric-id  metric-id
+                     :cycle-path (conj *metric-expansion-path* metric-id)}))))
+
 (defmethod lib.metadata.calculation/metadata-method :metric
   [query _stage-number [_ opts metric-id]]
+  (check-metric-cycle! metric-id)
   (if-let [metric-meta (lib.metadata/metric query metric-id)]
-    (let [metric-query      (lib.query/query query (normalize-legacy-query (:dataset-query metric-meta)))
-          inner-aggregation (first (lib.aggregation/aggregations metric-query))
-          inner-meta        (lib.metadata.calculation/metadata metric-query -1 inner-aggregation)]
-      (-> inner-meta
-          (assoc :display-name (:name metric-meta) ; Metric card's name
-                 :name         (:name inner-meta)) ; Name of the inner aggregation column
-          ;; If the :metric ref has a :name option, that overrides the metric card's name.
-          (cond-> (:name opts) (assoc :name (:name opts)))))
+    (binding [*metric-expansion-path* (conj *metric-expansion-path* metric-id)]
+      (let [metric-query      (lib.query/query query (normalize-legacy-query (:dataset-query metric-meta)))
+            inner-aggregation (first (lib.aggregation/aggregations metric-query))
+            inner-meta        (lib.metadata.calculation/metadata metric-query -1 inner-aggregation)]
+        (-> inner-meta
+            (assoc :display-name (:name metric-meta) ; Metric card's name
+                   :name         (:name inner-meta)) ; Name of the inner aggregation column
+            ;; If the :metric ref has a :name option, that overrides the metric card's name.
+            (cond-> (:name opts) (assoc :name (:name opts))))))
     {:lib/type :metadata/metric
      :id metric-id
      :display-name (fallback-display-name)}))

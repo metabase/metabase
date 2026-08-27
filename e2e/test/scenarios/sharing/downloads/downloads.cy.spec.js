@@ -153,7 +153,7 @@ describe("scenarios > question > download", () => {
       cy.intercept("GET", formatUrl).as("fetchFormat");
     });
 
-    it("should remember the selected format across page reloads", () => {
+    it("should remember the downloaded format across page reloads", () => {
       H.createQuestion(
         {
           name: "Format Preference Test",
@@ -172,6 +172,7 @@ describe("scenarios > question > download", () => {
       cy.findByTestId("view-footer").button("Download results").click();
 
       H.popover().findByText(".xlsx").click();
+      cy.findByTestId("download-results-button").click();
       cy.wait("@saveFormat");
 
       cy.get("@questionId").then((id) => {
@@ -190,7 +191,7 @@ describe("scenarios > question > download", () => {
       });
     });
 
-    it("should remember the download format on dashboards", () => {
+    it("should remember the downloaded format on dashboards", () => {
       H.createQuestion({
         name: "Dashboard Format Test",
         query: {
@@ -212,7 +213,7 @@ describe("scenarios > question > download", () => {
           H.popover().findByText("Download results").click();
 
           H.popover().findByText(".xlsx").click();
-
+          cy.findByTestId("download-results-button").click();
           cy.wait("@saveFormat");
 
           cy.reload();

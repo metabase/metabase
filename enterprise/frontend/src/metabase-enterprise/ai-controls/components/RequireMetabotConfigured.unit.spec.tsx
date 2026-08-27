@@ -1,0 +1,44 @@
+import { renderWithProviders, screen } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
+
+import { RequireMetabotConfigured } from "./RequireMetabotConfigured";
+
+const SUB_PAGE_PATH = "/admin/metabot/1/usage-controls/ai-usage-limits";
+const INDEX_PATH = "/admin/metabot/";
+
+function setup({ configured }: { configured: boolean }) {
+  return renderWithProviders(
+    <>
+      <Route element={<RequireMetabotConfigured />}>
+        <Route path={SUB_PAGE_PATH} element={<div>SUB PAGE CONTENT</div>} />
+      </Route>
+      <Route path={INDEX_PATH} element={<div>METABOT INDEX</div>} />
+    </>,
+    {
+      withRouter: true,
+      initialRoute: SUB_PAGE_PATH,
+      storeInitialState: {
+        settings: createMockSettingsState({
+          "llm-metabot-configured?": configured,
+        }),
+      },
+    },
+  );
+}
+
+describe("RequireMetabotConfigured", () => {
+  it("redirects to the AI settings index when AI is not configured", async () => {
+    const { router } = setup({ configured: false });
+
+    expect(await screen.findByText("METABOT INDEX")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(INDEX_PATH);
+  });
+
+  it("renders the requested sub-page when AI is configured", async () => {
+    const { router } = setup({ configured: true });
+
+    expect(await screen.findByText("SUB PAGE CONTENT")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(SUB_PAGE_PATH);
+  });
+});

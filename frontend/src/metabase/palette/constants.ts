@@ -22,6 +22,21 @@ export const GROUP_LABELS = {
 
 export const ELLIPSIS = "...";
 
+export const METABASE_DOCS_LABELS = {
+  get section() {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only shown when showMetabaseLinks is true; links to metabase.com docs.
+    return t`Metabase documentation`;
+  },
+  searchLabel(searchTerm: string) {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only shown when showMetabaseLinks is true; links to metabase.com docs.
+    return t`Search Metabase's docs for "${searchTerm}"`;
+  },
+  get viewLabel() {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only shown when showMetabaseLinks is true; links to metabase.com docs.
+    return t`View Metabase documentation`;
+  },
+};
+
 type AdminSettingsSections = Record<
   string,
   {
@@ -45,8 +60,11 @@ export const getAdminSettingsSections = (
   email: {
     name: t`Email`,
   },
-  notifications: {
-    name: t`Notification channels`,
+  slack: {
+    name: t`Slack`,
+  },
+  webhooks: {
+    name: t`Webhooks`,
   },
   authentication: {
     name: t`Authentication`,

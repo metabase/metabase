@@ -41,15 +41,28 @@
           (throw (ex-info (format "Driver verification failed: driver contains compiled Clojure core file %s" file)
                           {:file file})))))))
 
+(defn- find-plugin-manifest-entry
+  "Find a `metabase-plugin.yaml` entry in a JAR, checking both the root and `metabase/<driver>/` paths."
+  [^String jar-path]
+  (with-open [zip-file (ZipFile. jar-path)]
+    (let [manifests (filter
+                     (fn [^ZipEntry zip-entry]
+                       (re-matches #"(metabase/[^/]+/)?metabase-plugin\.yaml" (str zip-entry)))
+                     (enumeration-seq (.entries zip-file)))]
+      (when (> (count manifests) 1)
+        (throw (ex-info "Driver verification failed: multiple metabase-plugin.yaml files found in JAR"
+                        {:entries (map str manifests)})))
+      (first manifests))))
+
 (defn- verify-has-plugin-manifest [driver]
   (let [jar-filename (c/driver-jar-destination-path driver)]
     (u/step (format "Check %s contains metabase-plugin.yaml" jar-filename)
-      (if-let [manifest-entry (get-jar-entry jar-filename "metabase-plugin.yaml")]
+      (if-let [manifest-entry (find-plugin-manifest-entry jar-filename)]
         (with-open [zip-file (ZipFile. jar-filename)]
           (let [entry-is (.getInputStream zip-file manifest-entry)
                 yaml-str (slurp entry-is)
                 yml      (yaml/parse-string yaml-str)]
-            (u/announce "Plugin manifest found; validating it")
+            (u/announce "Plugin manifest found at %s; validating it" (str manifest-entry))
             (if-not (s/valid? ::lint-manifest-file/plugin-manifest yml)
               (do
                 ;; print a readable explanation of the spec error

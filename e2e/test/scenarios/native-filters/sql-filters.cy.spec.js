@@ -31,18 +31,6 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       });
     });
 
-    it("when set as the default value for a required filter", () => {
-      SQLFilter.toggleRequired();
-      SQLFilter.setDefaultValue("Gizmo");
-
-      SQLFilter.runQuery();
-
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("Rustic Paper Wallet");
-        cy.findAllByText("Doohickey").should("not.exist");
-      });
-    });
-
     describe("required tag", () => {
       it("does not need a default value to run and save the query", () => {
         SQLFilter.toggleRequired();
@@ -92,18 +80,6 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     it("when set through the filter widget", () => {
       SQLFilter.setWidgetValue("4.3");
-
-      SQLFilter.runQuery();
-
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("Aerodynamic Linen Coat");
-        cy.findAllByText("4.3");
-      });
-    });
-
-    it("when set as the default value for a required filter (metabase#16811)", () => {
-      SQLFilter.toggleRequired();
-      SQLFilter.setDefaultValue("4.3");
 
       SQLFilter.runQuery();
 
@@ -173,25 +149,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       SQLFilter.runQuery();
 
       cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("No results!");
-      });
-    });
-
-    it("when set as the default value for a required filter", () => {
-      SQLFilter.toggleRequired();
-
-      cy.findByTestId("sidebar-content")
-        .findByText("Select a default value…")
-        .click();
-      H.popover().within(() => {
-        cy.findByText("15").click();
-        cy.findByText("Add filter").click();
-      });
-
-      SQLFilter.runQuery();
-
-      cy.findByTestId("query-visualization-root").within(() => {
-        cy.findByText("No results!");
+        cy.findByText("No results");
       });
     });
 
@@ -211,14 +169,14 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       });
 
       it("when there's a default value, enabling required sets it as a parameter value", () => {
-        setDefaultDate("2023", "11", "01");
+        setDefaultDate("2026", "11", "01");
         H.filterWidget().icon("close").click();
         SQLFilter.toggleRequired();
-        H.filterWidget().should("contain.text", "November 1, 2023");
+        H.filterWidget().should("contain.text", "November 1, 2026");
       });
 
       it("when there's a default value and template tag is required, can reset it back", () => {
-        setDefaultDate("2023", "11", "01");
+        setDefaultDate("2026", "11", "01");
         SQLFilter.toggleRequired();
         H.filterWidget().click();
         H.popover().within(() => {
@@ -226,7 +184,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
           cy.findByText("Update filter").click();
         });
         H.filterWidget().icon("revert").click();
-        H.filterWidget().should("contain.text", "November 1, 2023");
+        H.filterWidget().should("contain.text", "November 1, 2026");
       });
     });
   });
@@ -260,26 +218,6 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       .findByPlaceholderText("Testingparamvisbility77")
       .should("be.visible");
   });
-
-  // flaky test (#19454)
-  it(
-    "should show an info popover when hovering over fields in the field filter field picker",
-    { tags: "@skip" },
-    () => {
-      SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{cat}}");
-
-      SQLFilter.openTypePickerFromDefaultFilterType();
-      SQLFilter.chooseType("Field Filter");
-
-      H.popover().within(() => {
-        cy.findByText("People").click();
-        cy.findByText("City").trigger("mouseenter");
-      });
-
-      H.popover().contains("City");
-      H.popover().contains("1,966 distinct values");
-    },
-  );
 });
 
 describe("scenarios > filters > sql filters > multiple values", () => {

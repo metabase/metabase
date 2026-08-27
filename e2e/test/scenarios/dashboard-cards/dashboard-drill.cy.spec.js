@@ -248,7 +248,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("My Param").click());
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.popover().within(() => cy.findByText("MY_STRING").click());
+    H.selectDropdown().within(() => cy.findByText("MY_STRING").click());
 
     // set the text template
     cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
@@ -300,49 +300,6 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.location("pathname").should("eq", `/dashboard/${dashboardId}`);
       cy.location("search").should("eq", "?my_param=Aaron+Hand");
     });
-  });
-
-  // This was flaking. Example: https://dashboard.cypress.io/projects/a394u1/runs/2109/test-results/91a15b66-4b80-40bf-b569-de28abe21f42
-  it("should handle cross-filter on a table", { tags: "@skip" }, () => {
-    createDashboardWithQuestion({}, (dashboardId) =>
-      H.visitDashboard(dashboardId),
-    );
-    cy.icon("pencil").click();
-    H.showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
-    });
-
-    // configure clicks on "MY_NUMBER to update the param
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("On-click behavior for each column")
-      .parent()
-      .parent()
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("MY_NUMBER").click());
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Update a dashboard filter").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick one or more filters to update")
-      .parent()
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("My Param").click());
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.popover().within(() => cy.findByText("MY_STRING").click());
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    // click on table value
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("111").click();
-
-    // check that param was set to "foo"
-    cy.location("search").should("eq", "?my_param=foo");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("My Param")
-      .parent()
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("foo"));
   });
 
   describe("should pass multiple filters for numeric column on drill-through (metabase#13062)", () => {
@@ -554,7 +511,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.findByTestId("object-detail")
       .findAllByText("Fantastic Wool Shirt")
-      .should("have.length", 2)
+      .should("have.length", 3)
       .and("be.visible");
   });
 
@@ -628,11 +585,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ).as("cardQuery");
 
         H.chartPathWithFillColor("#509EE3")
-          .eq(14) // August 2023 (Total of 12 reviews, 9 unique days)
+          .eq(14) // August 2026 (Total of 12 reviews, 9 unique days)
           .click();
 
         cy.wait("@cardQuery");
-        cy.url().should("include", "2023-08");
+        cy.url().should("include", "2026-08");
         H.chartPathWithFillColor("#509EE3").should("have.length", 1);
         // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
         // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)
@@ -826,10 +783,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
     });
     H.tableHeaderColumn("Quantity");
-    cy.get(".test-Table-ID")
-      .first()
-      // Mid-point check that this cell actually contains ID = 1
-      .contains("1")
+    cy.findByTestId("table-body")
+      .get("[data-dataset-index=0] > [data-column-id='ID']")
+      .should("have.text", "3") // Subject to change - sensitive to year shifting in the Sample Database
       .click();
 
     cy.wait("@dataset").then((xhr) => {
@@ -837,7 +793,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("Subtotal");
-      cy.findByText("37.65");
+      cy.findByText("52.72");
     });
   });
 
@@ -886,7 +842,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
           H.chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
           assertTooltipValues();
 
-          H.chartPathWithFillColor("#98D9D9").first().trigger("mousemove");
+          H.chartPathWithFillColor("#98D9D9")
+            .first()
+            .trigger("mousemove", { force: true });
           assertTooltipValues();
         });
       });

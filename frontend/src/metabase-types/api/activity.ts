@@ -1,5 +1,3 @@
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
-
 import type { CollectionId, CollectionType } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
@@ -19,6 +17,7 @@ export const ACTIVITY_MODELS = [
 export type ActivityModel = (typeof ACTIVITY_MODELS)[number];
 
 export const isActivityModel = (model: string): model is ActivityModel =>
+  // Unjustified type cast. FIXME
   (ACTIVITY_MODELS as unknown as string[]).includes(model);
 
 export const isLoggableActivityModel = (item: {
@@ -75,15 +74,17 @@ export type RecentCollectionItem = BaseRecentItem & {
   collection_type?: CollectionType;
 };
 
+/**
+ * Model retrieved through the recent views endpoint
+ */
+export interface RecentModel extends RecentCollectionItem {
+  model: "dataset";
+}
+
 export type RecentItem = RecentTableItem | RecentCollectionItem;
 
 export const isRecentTableItem = (item: RecentItem): item is RecentTableItem =>
   item.model === "table";
-
-export const isRecentCollectionItem = (
-  item: OmniPickerItem,
-): item is RecentCollectionItem =>
-  ["collection", "dashboard", "card", "dataset", "metric"].includes(item.model);
 
 export interface RecentItemsResponse {
   recent_views: RecentItem[];

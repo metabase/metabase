@@ -1,18 +1,28 @@
 import type {
   DatabaseId,
+  InspectorCard,
+  InspectorSource,
+  ListTransformGraphRunsResponse,
+  ListTransformJobRunsResponse,
   ListTransformRunsResponse,
   PythonTransformTableAliases,
   Transform,
+  TransformGraphRun,
   TransformJob,
+  TransformJobRun,
   TransformOwner,
   TransformRun,
+  TransformRunForJobRun,
   TransformSource,
   TransformTag,
   TransformTarget,
   UpdateTransformRequest,
 } from "metabase-types/api";
 
-import { createMockStructuredDatasetQuery } from "./query";
+import {
+  createMockNativeDatasetQuery,
+  createMockStructuredDatasetQuery,
+} from "./query";
 
 export function createMockTransformOwner(
   opts?: Partial<TransformOwner>,
@@ -35,7 +45,7 @@ export function createMockTransformSource(): TransformSource {
 
 export function createMockPythonTransformSource({
   sourceDatabase = 1,
-  sourceTables = {},
+  sourceTables = [],
   body = "# Python script\nprint('Hello, world!')",
 }: {
   sourceDatabase?: DatabaseId;
@@ -132,6 +142,84 @@ export function createMockListTransformRunsResponse(
   };
 }
 
+export function createMockTransformJobRun(
+  opts?: Partial<TransformJobRun>,
+): TransformJobRun {
+  return {
+    id: 1,
+    job_id: 1,
+    status: "succeeded",
+    run_method: "cron",
+    start_time: "2000-01-01T00:00:00Z",
+    end_time: "2000-01-01T00:00:00Z",
+    message: null,
+    is_active: false,
+    created_at: "2000-01-01T00:00:00Z",
+    updated_at: "2000-01-01T00:00:00Z",
+    ...opts,
+  };
+}
+
+export function createMockListTransformJobRunsResponse(
+  opts?: Partial<ListTransformJobRunsResponse>,
+): ListTransformJobRunsResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
+    ...opts,
+  };
+}
+
+export function createMockTransformRunForJobRun(
+  opts?: Partial<TransformRunForJobRun>,
+): TransformRunForJobRun {
+  return {
+    ...createMockTransformRun(),
+    transform_id: 1,
+    job_run_id: 1,
+    transform_name: "Transform",
+    transform_entity_id: null,
+    metered_as: null,
+    user_id: null,
+    ...opts,
+  };
+}
+
+export function createMockTransformGraphRun(
+  opts?: Partial<TransformGraphRun>,
+): TransformGraphRun {
+  return {
+    run_type: "job",
+    id: 1,
+    entity_id: 1,
+    name: "Graph run",
+    direction: null,
+    transform_count: null,
+    run_method: "manual",
+    status: "succeeded",
+    is_active: false,
+    start_time: "2024-01-01T00:00:00Z",
+    end_time: "2024-01-01T00:01:00Z",
+    message: null,
+    user_id: null,
+    ...opts,
+  };
+}
+
+export function createMockListTransformGraphRunsResponse(
+  opts?: Partial<ListTransformGraphRunsResponse>,
+): ListTransformGraphRunsResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
+    ...opts,
+  };
+}
+
 export function createMockTransformTag(
   opts?: Partial<TransformTag>,
 ): TransformTag {
@@ -154,6 +242,7 @@ export function createMockTransformJob(
     description: null,
     schedule: "0 0 0 * * ? *",
     ui_display_type: "cron/builder",
+    active: true,
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
     ...opts,
@@ -165,6 +254,33 @@ export function createMockUpdateTransformRequest(
 ): UpdateTransformRequest {
   return {
     id: 1,
+    ...opts,
+  };
+}
+
+export function createMockTransformInspectSource(
+  opts?: Partial<InspectorSource>,
+): InspectorSource {
+  return {
+    table_name: "Table",
+    column_count: 0,
+    fields: [],
+    ...opts,
+  };
+}
+
+export function createMockInspectorCard(
+  opts?: Partial<InspectorCard>,
+): InspectorCard {
+  return {
+    id: "card-1",
+    title: "Card",
+    display: "scalar",
+    dataset_query: createMockNativeDatasetQuery(),
+    metadata: {
+      card_type: "table_count",
+      dedup_key: ["table-1"],
+    },
     ...opts,
   };
 }

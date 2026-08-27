@@ -9,6 +9,7 @@ describe("getDataLabel", () => {
   const seriesKey = "test-series";
 
   const createBarData = <T>(overrides: Partial<BarData<T>> = {}): BarData<T> =>
+    // Unjustified type cast. FIXME
     ({
       xStartValue: 10,
       xEndValue: 50,

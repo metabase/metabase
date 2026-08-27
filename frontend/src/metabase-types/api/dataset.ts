@@ -6,7 +6,7 @@ import type {
   VisualizerColumnValueSource,
 } from "metabase-types/api";
 
-import type { Card } from "./card";
+import type { Card, ColumnSettings } from "./card";
 import type { DatabaseId } from "./database";
 import type {
   Field,
@@ -15,13 +15,22 @@ import type {
   FieldVisibilityType,
 } from "./field";
 import type { Insight } from "./insight";
-import type { ParameterOptions } from "./parameters";
+import type { NormalizedQueryParameter, ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
+/**
+ * @inline
+ */
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
+
+export function getRowsForStableKeys(
+  data: Pick<DatasetData, "rows" | "untranslatedRows">,
+): RowValues[] {
+  return data.untranslatedRows ?? data.rows;
+}
 
 export type BinningMetadata = {
   binning_strategy?: "default" | "bin-width" | "num-bins";
@@ -74,11 +83,14 @@ export interface DatasetColumn {
   remapped_to?: string;
   effective_type?: string;
   binning_info?: BinningMetadata | null;
-  settings?: Record<string, any>;
+  settings?: ColumnSettings;
   fingerprint?: FieldFingerprint | null;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+  should_index?: boolean;
+
+  remapping?: Map<RowValue, string | number>;
 }
 
 export interface ResultsMetadata {
@@ -91,6 +103,7 @@ export interface DatasetData {
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
+  pivot_rows_truncated?: number;
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
@@ -102,10 +115,13 @@ export interface DatasetData {
     "show-row-totals"?: boolean;
     "show-column-totals"?: boolean;
   };
+  untranslatedRows?: RowValues[];
+
+  sourceRows?: (number | null)[][]; // present in pivoted data
 }
 
 export type JsonQuery = DatasetQuery & {
-  parameters?: Parameter[];
+  parameters?: NormalizedQueryParameter[];
   "cache-strategy"?: CacheStrategy & {
     /** An ISO 8601 date */
     "invalidated-at"?: string;
@@ -118,6 +134,7 @@ export interface Dataset {
   data: DatasetData;
   database_id: DatabaseId;
   row_count: number;
+  total_count?: number;
   running_time: number;
   json_query?: JsonQuery;
   error?: DatasetError;
@@ -196,8 +213,13 @@ export type SingleSeriesWithTranslation = SingleSeries & {
   };
 };
 
+export type TransformedCard = Card & {
+  _seriesKey: string;
+  _transformed: true;
+};
+
 export type RawSeries = SingleSeries[];
-export type TransformedSeries = RawSeries & { _raw: Series };
+export type TransformedSeries = RawSeries & { _raw?: Series };
 export type MaybeTranslatedSeries = SingleSeriesWithTranslation[];
 export type Series = RawSeries | TransformedSeries;
 
@@ -211,7 +233,8 @@ export type TemplateTagType =
   | "boolean"
   | "temporal-unit"
   | "dimension"
-  | "snippet";
+  | "snippet"
+  | "table";
 
 export interface TemplateTag {
   id: TemplateTagId;
@@ -235,6 +258,10 @@ export interface TemplateTag {
   // Field filter specific
   "widget-type"?: string;
   options?: ParameterOptions;
+
+  // Table specific
+  "table-id"?: TableId;
+  "emit-alias"?: boolean;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;
@@ -261,3 +288,5 @@ export type GetRemappedParameterValueRequest = {
   field_ids: FieldId[];
   value: ParameterValueOrArray;
 };
+
+export type Point = [number, number];

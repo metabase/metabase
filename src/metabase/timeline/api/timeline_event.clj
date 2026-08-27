@@ -55,7 +55,7 @@
                                 (boolean source)      (assoc :source source)
                                 (boolean question_id) (assoc :question_id question_id)))
       (u/prog1 (first (t2/insert-returning-instances! :model/TimelineEvent tl-event))
-        (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*})))))
+        (events/publish-event! :event/timeline-create {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -90,6 +90,8 @@
         timeline-event-updates (cond-> timeline-event-updates
                                  (boolean timestamp) (update :timestamp u.date/parse))]
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
+    (when (api/column-will-change? :timeline_id existing timeline-event-updates)
+      (api/write-check :model/Timeline (:timeline_id timeline-event-updates)))
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
     (t2/update! :model/TimelineEvent id
                 (u/select-keys-when timeline-event-updates

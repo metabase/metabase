@@ -31,9 +31,11 @@ interface PaletteResultListProps {
   renderItem: (params: RenderParams) => React.ReactElement;
   maxHeight: number;
   minHeight: number;
+  liveSearchTerm: string;
 }
 
 export const PaletteResultList = (props: PaletteResultListProps) => {
+  const { liveSearchTerm } = props;
   const activeRef = useRef<HTMLDivElement>(null);
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -44,9 +46,8 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
 
   const hasUserInteractedRef = useRef(false);
 
-  const { query, search, currentRootActionId, activeIndex, options } = useKBar(
+  const { query, currentRootActionId, activeIndex, options } = useKBar(
     (state) => ({
-      search: state.searchQuery,
       currentRootActionId: state.currentRootActionId,
       activeIndex: state.activeIndex,
     }),
@@ -120,7 +121,7 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
   // Reset interaction tracking when search changes
   useEffect(() => {
     hasUserInteractedRef.current = false;
-  }, [search]);
+  }, [liveSearchTerm]);
 
   useEffect(() => {
     // Only auto-set the active index if the user hasn't interacted yet.
@@ -133,7 +134,7 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
           : START_INDEX,
       );
     }
-  }, [search, currentRootActionId, props.items, query]);
+  }, [liveSearchTerm, currentRootActionId, props.items, query]);
 
   const execute = useCallback(
     (item: RenderParams["item"], e?: MouseEvent) => {

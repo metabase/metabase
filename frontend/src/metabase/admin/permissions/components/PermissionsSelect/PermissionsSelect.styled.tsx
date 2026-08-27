@@ -2,8 +2,8 @@
 import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
-import { lighten } from "metabase/lib/colors";
 import { Icon, type IconProps } from "metabase/ui";
+import { lighten } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 import { PermissionsSelectOption } from "./PermissionsSelectOption";
@@ -19,7 +19,7 @@ export const SelectedOption = styled(PermissionsSelectOption)`
   transition: color 200ms;
 
   &:hover {
-    color: var(--mb-color-filter);
+    color: var(--mb-color-core-filter);
   }
 `;
 
@@ -39,13 +39,13 @@ export const OptionsListItem = styled.li`
 `;
 
 export const ActionsList = styled(OptionsList)`
-  border-top: 1px solid var(--mb-color-border);
+  border-top: 1px solid var(--mb-color-border-neutral);
 `;
 
 export const ToggleContainer = styled.div`
   display: flex;
   align-items: center;
-  background-color: var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background_page-tertiary);
   padding: 0.5rem 1rem;
   justify-content: flex-end;
 `;
@@ -56,24 +56,26 @@ export const ToggleLabel = styled.label`
 `;
 
 export const WarningIcon = styled(
-  forwardRef<SVGSVGElement, IconProps>(function WarningIcon(props, ref) {
-    return (
-      <Icon
-        {...props}
-        size={props.size ?? 18}
-        name={props.name ?? "warning"}
-        ref={ref}
-      />
-    );
-  }),
+  forwardRef<SVGSVGElement, Partial<IconProps>>(
+    function WarningIcon(props, ref) {
+      return (
+        <Icon
+          {...props}
+          size={props.size ?? 18}
+          name={props.name ?? "warning"}
+          ref={ref}
+        />
+      );
+    },
+  ),
 )`
   margin-right: 0.25rem;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
 `;
 
 export const DisabledPermissionOption = styled(PermissionsSelectOption)<{
   isHighlighted: boolean;
 }>`
   color: ${(props) =>
-    props.isHighlighted ? color("text-secondary") : color("text-tertiary")};
+    props.isHighlighted ? color("text-secondary") : color("text-disabled")};
 `;

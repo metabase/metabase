@@ -49,12 +49,25 @@
               (is (= [{:data (merge expected-payload {"event" "interactive_embedding_enabled"})
                        :user-id (str (mt/user->id :crowberto))}]
                      (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))))
-
               (mt/with-temporary-setting-values [enable-embedding-interactive false]
                 (is (= [{:data
                          (merge expected-payload {"event" "interactive_embedding_disabled"})
                          :user-id (str (mt/user->id :crowberto))}]
                        (filter embedding-event? (snowplow-test/pop-event-data-and-user-id!))))))))))))
+
+(deftest enabling-embedding-generates-secret-key-test
+  (testing "Enabling embedding auto-generates embedding-secret-key when blank, and preserves an existing key"
+    (mt/with-test-user :crowberto
+      (mt/with-premium-features #{:embedding}
+        (snowplow-test/with-fake-snowplow-collector
+          (mt/with-temporary-setting-values [enable-embedding-simple false enable-embedding-static false embedding-secret-key nil]
+            (embed.settings/enable-embedding-simple! true)
+            (is (true? (embed.settings/enable-embedding-simple)))
+            (is (not (str/blank? (embed.settings/embedding-secret-key))))
+            (let [generated-key (embed.settings/embedding-secret-key)]
+              (embed.settings/enable-embedding-static! true)
+              (is (= generated-key (embed.settings/embedding-secret-key))
+                  "an existing secret key is preserved, not regenerated"))))))))
 
 (def ^:private other-ip "1.2.3.4:5555")
 
@@ -124,7 +137,7 @@
   (depricated-setting-throws #'embed.settings/check-origins-settings! {:mb-embedding-app-origin true :mb-embedding-app-origins-interactive true :mb-embedding-app-origins-sdk false}))
 
 (defn test-enabled-sync! [env expected-behavior]
-  (let [unsyncd-settings {:enable-embedding             #_:clj-kondo/ignore (embed.settings/enable-embedding)
+  (let [unsyncd-settings {:enable-embedding             #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/enable-embedding)
                           :enable-embedding-interactive (embed.settings/enable-embedding-interactive)
                           :enable-embedding-sdk         (embed.settings/enable-embedding-sdk)
                           :enable-embedding-static      (embed.settings/enable-embedding-static)}]
@@ -158,14 +171,12 @@
     (test-enabled-sync! {:mb-enable-embedding-interactive false} :no-op)
     (test-enabled-sync! {:mb-enable-embedding-interactive true :mb-enable-embedding-static true} :no-op)
     (test-enabled-sync! {:mb-enable-embedding-interactive false :mb-enable-embedding-static true} :no-op)
-
     (test-enabled-sync! {:mb-enable-embedding true} :sets-all-true)
-
     (test-enabled-sync! {:mb-enable-embedding false} :sets-all-false)))
 
 (defn test-origin-sync! [env expected-behavior]
   (testing (str "origin sync with expected-behavior: " expected-behavior)
-    (let [unsyncd-setting {:embedding-app-origin              #_:clj-kondo/ignore (embed.settings/embedding-app-origin)
+    (let [unsyncd-setting {:embedding-app-origin              #_{:clj-kondo/ignore [:deprecated-var]} (embed.settings/embedding-app-origin)
                            :embedding-app-origins-interactive (embed.settings/embedding-app-origins-interactive)
                            :embedding-app-origins-sdk         (embed.settings/embedding-app-origins-sdk)}]
       ;; called for side effects
@@ -198,13 +209,10 @@
                                        embedding-app-origins-interactive nil
                                        embedding-app-origins-sdk nil]
       (test-origin-sync! {} :no-op)
-
       (test-origin-sync! {:mb-embedding-app-origins-sdk other-ip} :no-op)
       (test-origin-sync! {:mb-embedding-app-origins-sdk nil} :no-op)
-
       (test-origin-sync! {:mb-embedding-app-origins-interactive other-ip} :no-op)
       (test-origin-sync! {:mb-embedding-app-origins-interactive nil} :no-op)
-
       (test-origin-sync! {:mb-embedding-app-origin other-ip} :sets-both))))
 
 (deftest disable-cors-on-localhost-validation-test
@@ -228,7 +236,6 @@
                clojure.lang.ExceptionInfo
                #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
                (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")))))))
-
   (testing "Should allow localhost origins when disable-cors-on-localhost is disabled"
     (mt/with-premium-features #{:embedding-sdk}
       (mt/with-temporary-setting-values [enable-embedding-sdk true

@@ -1,0 +1,66 @@
+import cx from "classnames";
+import { memo } from "react";
+import { t } from "ttag";
+
+import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import CS from "metabase/css/core/index.css";
+import S from "metabase/reference/components/Sidebar.module.css";
+import { SidebarItem } from "metabase/reference/components/SidebarItem";
+import MetabaseSettings from "metabase/utils/settings";
+
+import { trackReferenceXRayClicked } from "../analytics";
+import type { StubbedDatabase, StubbedTable } from "../types";
+
+interface TableSidebarProps {
+  database: StubbedDatabase;
+  table: StubbedTable;
+}
+
+const TableSidebar = ({ database, table }: TableSidebarProps) => (
+  <div className={S.sidebar}>
+    <div>
+      <Breadcrumbs
+        className={cx(CS.py4, CS.ml3)}
+        crumbs={[
+          [t`Databases`, "/reference/databases"],
+          [database.name, `/reference/databases/${database.id}`],
+          [table.name],
+        ]}
+        inSidebar={true}
+        placeholder={t`Data Reference`}
+      />
+    </div>
+    <ol className={CS.mx3}>
+      <SidebarItem
+        key={`/reference/databases/${database.id}/tables/${table.id}`}
+        href={`/reference/databases/${database.id}/tables/${table.id}`}
+        icon="document"
+        name={t`Details`}
+      />
+      <SidebarItem
+        key={`/reference/databases/${database.id}/tables/${table.id}/fields`}
+        href={`/reference/databases/${database.id}/tables/${table.id}/fields`}
+        icon="field"
+        name={t`Fields in this table`}
+      />
+      <SidebarItem
+        key={`/reference/databases/${database.id}/tables/${table.id}/questions`}
+        href={`/reference/databases/${database.id}/tables/${table.id}/questions`}
+        icon="folder"
+        name={t`Questions about this table`}
+      />
+      {MetabaseSettings.get("enable-xrays") && (
+        <SidebarItem
+          key={`/auto/dashboard/table/${table.id}`}
+          href={`/auto/dashboard/table/${table.id}`}
+          icon="bolt"
+          name={t`X-ray this table`}
+          onClick={() => trackReferenceXRayClicked("table")}
+        />
+      )}
+    </ol>
+  </div>
+);
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default memo(TableSidebar);

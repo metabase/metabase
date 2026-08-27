@@ -7,6 +7,7 @@ import {
   setupRemappedFieldValueEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   createMockClipboardData,
   renderWithProviders,
   screen,
@@ -15,9 +16,10 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
   SAMPLE_METADATA,
   columnFinder,
-  createQuery,
+  createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import type {
   FieldId,
@@ -772,7 +774,11 @@ describe("StringFilterValuePicker", () => {
 
       const input = screen.getByRole("combobox", { name: "Filter value" });
       await userEvent.type(input, "a@b.com");
-      input.blur();
+      // blurring commits the typed value; wrap it so the resulting state
+      // updates in MultiAutocomplete are flushed inside act()
+      act(() => {
+        input.blur();
+      });
       expect(onChange).toHaveBeenLastCalledWith(["a@b.com"]);
     });
 
@@ -1194,7 +1200,8 @@ describe("NumberFilterValuePicker", () => {
 });
 
 function createQueryWithMetadata(metadata = SAMPLE_METADATA) {
-  const query = createQuery({ metadata });
+  const provider = createMetadataProvider({ metadata });
+  const query = Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(query, stageIndex);
   const findColumn = columnFinder(query, availableColumns);

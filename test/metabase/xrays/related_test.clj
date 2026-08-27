@@ -1,4 +1,5 @@
 (ns metabase.xrays.related-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.xrays.related-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -10,8 +11,13 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.test.fixtures :as fixtures]
    [metabase.xrays.related :as related]
    [toucan2.core :as t2]))
+
+;; Initialize test users before these tests run in parallel. Each creates a `with-temp` Card whose creator defaults
+;; to Rasta; creating that User within the transaction would roll it back and make every test race to reinsert it.
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest ^:parallel collect-context-bearing-forms-test
   (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
@@ -20,7 +26,7 @@
                                                     ["segment" 1]]
                                                    [:metric 1]]))))
 
-(defn- pmbql-segment-definition
+(defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
   [table-id field-id value]
   (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
@@ -49,6 +55,23 @@
           (is (= expected-similarity
                  (double (#'related/similarity (t2/select-one :model/Card :id (get cards card-x)) (t2/select-one :model/Card :id (get cards card-y)))))))))))
 
+(deftest ^:parallel similarity-tolerates-an-unparseable-query-test
+  (testing "a Card whose stored query will not parse has no context-bearing forms, and does not stop the ranking"
+    (mt/with-temp [:model/Card broken {:name "broken", :dataset_query {}}
+                   :model/Card {:as reference} {:name          "reference"
+                                                :dataset_query (mt/mbql-query venues
+                                                                 {:aggregation [[:sum $price]]
+                                                                  :breakout    [$category_id]})}
+                   :model/Card {:as similar} {:name          "similar"
+                                              :dataset_query (mt/mbql-query venues
+                                                               {:aggregation [[:sum $longitude]]
+                                                                :breakout    [$category_id]})}]
+      (is (nil? (#'related/definition broken)))
+      (is (zero? (double (#'related/similarity reference broken))))
+      (testing "the similar Card still ranks above the broken one"
+        (is (= ["similar" "broken"]
+               (map :name (#'related/rank-by-similarity reference [broken similar]))))))))
+
 (def ^:private ^:dynamic *world* {})
 
 (defn- do-with-world [f]
@@ -63,9 +86,9 @@
                                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
                                                                                             :breakout    [$category_id]})}
                  :model/Segment {segment-id-a :id} {:table_id (mt/id :venues)
-                                                    :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :category_id) nil)}
+                                                    :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :category_id) nil)}
                  :model/Segment {segment-id-b :id} {:table_id (mt/id :venues)
-                                                    :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :name) nil)}
+                                                    :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :name) nil)}
                  :model/Card       {card-id-a :id} {:table_id      (mt/id :venues)
                                                     :dataset_query (mt/mbql-query venues
                                                                      {:aggregation [[:sum $price]]

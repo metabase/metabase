@@ -22,7 +22,7 @@ Set up email for [Alerts](../questions/alerts.md) and [Dashboard subscriptions](
 
 Set up Slack for Alerts and Dashboard subscriptions.
 
-### [Webhooks](./webhooks.md)
+## [Webhooks](./webhooks.md)
 
 Set up webhooks as notification channels for alerts.
 
@@ -34,7 +34,7 @@ Configure Metabase on launch via environment variables.
 
 On self-hosted Pro and Enterprise plans, you can configure Metabase via a configuration file.
 
-## [Metabase logs configuration](./log-configuration.md)
+## [Application logs](../monitor/application-logs.md)
 
 Tell Metabase what to log.
 
@@ -61,6 +61,10 @@ Cache query results for faster loading times.
 ## [Custom maps](./custom-maps.md)
 
 Upload custom maps to your Metabase.
+
+## [Custom visualizations](../questions/visualizations/custom.md)
+
+Add your own chart types by uploading visualization plugins.
 
 ## [Customizing the Metabase Jetty webserver](./customizing-jetty-webserver.md)
 

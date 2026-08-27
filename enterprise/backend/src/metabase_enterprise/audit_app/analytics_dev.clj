@@ -22,6 +22,7 @@
    [metabase.setup.core :as setup]
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -31,9 +32,14 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private canonical-db-id
-  "The serdes ID used in YAMLs for the audit database."
+(def ^:private canonical-db-name
   audit-ee/default-db-name)
+
+(def ^:private canonical-db-filename
+  (serialization/slugify-name canonical-db-name))
+
+(def ^:private legacy-canonical-db-filename
+  canonical-db-name)
 
 (def ^:private canonical-creator-id
   "The creator email used in YAMLs for all analytics content."
@@ -46,7 +52,7 @@
 (defn find-analytics-dev-database
   "Finds existing analytics dev database."
   []
-  (t2/select-one :model/Database :name canonical-db-id :is_audit false))
+  (t2/select-one :model/Database :name canonical-db-name :is_audit false))
 
 (defn create-analytics-dev-database!
   "Creates a Database entry pointing to the app database for analytics development.
@@ -58,13 +64,18 @@
 
   Returns the created database map."
   [user-id]
+  ;; An analytics-dev database is a handle onto the app-db and must not exist outside analytics dev mode; refuse to
+  ;; create one unless the mode is on (mirrors the connection-layer guard in
+  ;; [[metabase.driver.sql-jdbc.connection/db->pooled-connection-spec]]).
+  (when-not (audit/analytics-dev-mode)
+    (throw (ex-info (tru "Analytics dev mode is not enabled.") {:status-code 400})))
   (let [db-type (mdb/db-type)]
     (if-let [existing (find-analytics-dev-database)]
       (do
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
       (let [db (t2/insert-returning-instance! :model/Database
-                                              {:name canonical-db-id
+                                              {:name canonical-db-name
                                                :description "Development database for analytics views and content"
                                                :engine (name db-type)
                                                :details {:is-audit-dev true}
@@ -114,7 +125,8 @@
                            canonical-creator-id
                            node)))
                      yaml-data)
-        is-database? (= file-name (str canonical-db-id ".yaml"))]
+        is-database? (or (= file-name (str canonical-db-filename ".yaml"))
+                         (= file-name (str legacy-canonical-db-filename ".yaml")))]
     (if is-database?
       (-> (select-keys transformed [:name :creator_id :is_sample :is_on_demand :serdes/meta
                                     :initial_sync_status :entity_id])
@@ -138,14 +150,14 @@
     (doseq [^File file (file-seq (io/file source-dir))
             :when (and (.isFile file)
                        (.endsWith (.getName file) ".yaml")
-                       (not (= (.getName file) (str canonical-db-id ".yaml"))))]
+                       (not (or (= (.getName file) (str canonical-db-filename ".yaml"))
+                                (= (.getName file) (str legacy-canonical-db-filename ".yaml")))))]
       (let [relative-path (.relativize (.toPath (io/file source-dir)) (.toPath file))
             target-file (io/file temp-path (.toFile relative-path))]
         (.mkdirs (.getParentFile target-file))
         (let [yaml-data (yaml/parse-string (slurp file))
               transformed (yaml->dev yaml-data user-email)]
           (spit target-file (yaml/generate-string transformed)))))
-
     (log/info "YAML transformation complete")
     (.getPath temp-path)))
 
@@ -163,13 +175,12 @@
             (throw (ex-info "Analytics plugin directory not found after copy" {:path plugins-dir})))
 
         temp-dir (copy-and-transform-yamls! plugins-dir user-email)]
-
     (log/info "Ingesting YAMLs from" temp-dir)
     (try
-      (let [report (serdes/with-cache (serialization/load-metabase! (serialization/ingest-yaml temp-dir) {:backfill? false}))]
+      (let [report (serdes/with-cache (serialization/load-metabase! (serialization/ingest-yaml temp-dir) {}))]
         (log/info "Import complete:" (count (:seen report)) "entities loaded")
         (when (seq (:errors report))
-          (log/warn "Import had errors:" (:errors report)))
+          (log/warn "Import had errors:" (mapv ex-message (:errors report))))
         report)
       (finally
         (when (.exists (io/file temp-dir))
@@ -190,17 +201,34 @@
     (log/info "Exporting dev collection" collection-id "to" temp-path)
     (try
       (let [opts {:targets (serialization/make-targets-of-type "Collection" [collection-id])
-                  :no-settings true :no-transforms true}
-            report (serdes/with-cache (serialization/store! (serialization/extract opts) (.getPath temp-path)))]
-        (log/info "Export complete:" (count (:seen report)) "entities exported")
+                  :no-settings true :no-transforms true
+                  :include-field-values true}
+            report (serdes/with-cache (serialization/store! (serialization/extract opts)
+                                                            (serialization/file-writer (.getPath temp-path))))]
+        (log/info "Export complete:" (reduce + 0 (vals (:entity-counts report))) "entities exported")
         (when (seq (:errors report))
-          (log/warn "Export had errors:" (:errors report)))
+          (log/warn "Export had errors:" (mapv ex-message (:errors report))))
         {:report report
          :export-dir (.getPath temp-path)})
       (catch Exception e
         (doseq [^File file (reverse (file-seq temp-path))]
           (.delete file))
         (throw e)))))
+
+(defn- keep-only-remapped-pairs
+  "Filter a parsed FieldValues YAML to keep only (value, label) pairs where the label
+  is non-empty. Returns nil if there are no remapped pairs, so the caller can skip
+  writing the file. Prevents exporting raw sample data (IPs, IDs, etc.) for fields
+  that don't have human-readable remaps."
+  [yaml-data]
+  (let [values (:values yaml-data)
+        labels (:human_readable_values yaml-data)
+        pairs  (map vector values labels)
+        remaps (filter (fn [[_ label]] (and (some? label) (not= "" label))) pairs)]
+    (when (seq remaps)
+      (assoc yaml-data
+             :values (mapv first remaps)
+             :human_readable_values (mapv second remaps)))))
 
 (defn- transform-exported-yamls!
   "Transform exported YAMLs from dev format back to canonical.
@@ -214,18 +242,22 @@
                      (not (.endsWith (.getName file) "___fieldusersettings.yaml"))
                      (not (.contains (.getPath file) "/channels/"))
                      (or (not (.contains (.getPath file) "/databases/"))
-                         (and (.contains (.getPath file) (str "/databases/" canonical-db-id))
-                              (or (= (.getName file) (str canonical-db-id ".yaml"))
+                         (and (.contains (.getPath file) (str "/databases/" canonical-db-filename "/"))
+                              (or (= (.getName file) (str canonical-db-filename ".yaml"))
                                   (some #(.contains (.getPath file) (str "/tables/" %))
                                         audit-ee.permissions/audit-db-view-names)))))]
     (let [relative-path (str/replace (.getPath file)
                                      (str (.getPath (io/file export-dir)) "/")
                                      "")
-          target-file (io/file target-dir relative-path)]
-      (.mkdirs (.getParentFile target-file))
-      (let [yaml-data (yaml/parse-string (slurp file))
-            transformed (yaml->canonical (.getName file) yaml-data user-email)]
-        (spit target-file (yaml/generate-string transformed))))))
+          target-file (io/file target-dir relative-path)
+          yaml-data (yaml/parse-string (slurp file))
+          filtered (if (.endsWith (.getName file) "___fieldvalues.yaml")
+                     (keep-only-remapped-pairs yaml-data)
+                     yaml-data)]
+      (when filtered
+        (.mkdirs (.getParentFile target-file))
+        (let [transformed (yaml->canonical (.getName file) filtered user-email)]
+          (spit target-file (yaml/generate-string transformed)))))))
 
 (defn export-analytics-content!
   "Export dev collection and transform back to canonical format."
@@ -280,12 +312,12 @@
           (log/info "Analytics dev environment already set up, skipping initialization")
           (when-let [admin-user (first-admin-user)]
             (cleanup-real-analytics)
-            (log/info "Setting up analytics dev environment with user:" (:email admin-user))
+            (log/info "Setting up analytics dev environment with user:" (:id admin-user))
             (create-analytics-dev-database! (:id admin-user))
             (import-analytics-content! (:email admin-user))
             (log/info "Analytics dev environment ready")))
         (catch Exception e
-          (log/error e "Failed to set up analytics dev environment"))))))
+          (log/errorf "Failed to set up analytics dev environment: %s" (ex-message e)))))))
 
 (defmethod startup/def-startup-logic! ::analytics-dev-mode-setup
   [_] (analytics-dev-mode-setup))

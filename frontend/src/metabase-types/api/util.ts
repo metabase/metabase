@@ -4,7 +4,7 @@ export interface Log {
   fqns: string;
   msg: string;
   level: string;
-  exception: any;
+  exception: string[] | null;
 }
 
 export interface MetabaseInfo {
@@ -43,3 +43,11 @@ export interface BugReportDetails {
 }
 
 export type LongTaskStatus = "incomplete" | "complete" | "aborted";
+
+export type JSONValue =
+  | null
+  | string
+  | number
+  | boolean
+  | { [value: string]: JSONValue }
+  | Array<JSONValue>;

@@ -1,12 +1,14 @@
 import type { CollectionBrowserListColumns } from "embedding-sdk-bundle/components/public/CollectionBrowser";
-import type { MetabaseError } from "embedding-sdk-bundle/errors";
-import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import type {
   EntityTypeFilterKeys,
   MetabaseAuthMethod,
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
+import type { ParameterChangePayload } from "embedding-sdk-bundle/types/dashboard";
+import type { SqlParameterChangePayload } from "embedding-sdk-bundle/types/question";
+import type { MetabaseError } from "embedding-sdk-shared/errors";
+import type { MetabaseErrorCode } from "embedding-sdk-shared/errors/error-code";
 import type {
   SdkIframeDashboardEmbedSettings,
   SdkIframeQuestionEmbedSettings,
@@ -17,15 +19,21 @@ import type {
   MetabaseFetchRequestTokenFn,
 } from "metabase/embedding-sdk/types/refresh-token";
 import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
+import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
-/** Events that the embed.js script listens for */
+/** Events that the embed.js script listens for. */
 export type SdkIframeEmbedTagMessage =
+  | SdkIframeEmbedTagTransportMessage
+  | SdkIframeEmbedComponentTagMessage;
+
+export type SdkIframeEmbedTagTransportMessage =
   | SdkIframeEmbedTagIframeReadyMessage
-  | SdkIframeEmbedTagRequestSessionTokenMessage;
+  | SdkIframeEmbedTagRequestSessionTokenMessage
+  | SdkIframeEmbedTagHandleLinkMessage
+  | SdkIframeEmbedTagRequestGuestTokenRefreshMessage;
 
 export type SdkIframeEmbedTagIframeReadyMessage = {
   type: "metabase.embed.iframeReady";
@@ -33,13 +41,24 @@ export type SdkIframeEmbedTagIframeReadyMessage = {
 export type SdkIframeEmbedTagRequestSessionTokenMessage = {
   type: "metabase.embed.requestSessionToken";
 };
+export type SdkIframeEmbedTagHandleLinkMessage = {
+  type: "metabase.embed.handleLink";
+  data: { url: string; requestId: string };
+};
+export type SdkIframeEmbedTagRequestGuestTokenRefreshMessage = {
+  type: "metabase.embed.requestGuestTokenRefresh";
+  data: {
+    expiredToken: string;
+  };
+};
 
-/** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
   | SdkIframeEmbedSetSettingsMessage
   | SdkIframeEmbedSubmitSessionTokenMessage
   | SdkIframeEmbedReportAuthenticationError
-  | SdkIframeEmbedReportAnalytics;
+  | SdkIframeEmbedReportAnalytics
+  | SdkIframeEmbedHandleLinkResponse
+  | SdkIframeEmbedSubmitRefreshedGuestTokenMessage;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -65,6 +84,26 @@ export type SdkIframeEmbedReportAnalytics = {
     embedHostUrl: string;
   };
 };
+export type SdkIframeEmbedHandleLinkResponse = {
+  type: "metabase.embed.handleLinkResponse";
+  data: { requestId: string; handled: boolean };
+};
+export type SdkIframeEmbedSubmitRefreshedGuestTokenMessage = {
+  type: "metabase.embed.submitRefreshedGuestToken";
+  data: {
+    guestToken: string;
+  };
+};
+
+export type SdkIframeEmbedComponentTagMessage =
+  | {
+      type: "metabase.embed.parametersChange";
+      data: ParameterChangePayload;
+    }
+  | {
+      type: "metabase.embed.sqlParametersChange";
+      data: SqlParameterChangePayload;
+    };
 
 // --- Embed Option Interfaces ---
 
@@ -81,7 +120,11 @@ export type DashboardEmbedOptions = StrictUnion<
 
   // parameters
   initialParameters?: ParameterValues;
+  parameters?: ParameterValues;
   hiddenParameters?: string[];
+  enableEntityNavigation?: boolean;
+
+  customContext?: string | Record<string, unknown>;
 
   // incompatible options
   template?: never;
@@ -103,7 +146,10 @@ export type QuestionEmbedOptions = StrictUnion<
 
   // parameters
   initialSqlParameters?: SqlParameterValues;
+  sqlParameters?: SqlParameterValues;
   hiddenParameters?: string[];
+
+  customContext?: string | Record<string, unknown>;
 
   // incompatible options
   template?: never;
@@ -142,14 +188,20 @@ export interface BrowserEmbedOptions {
   /** Which entities to show on the collection browser */
   collectionEntityTypes?: CollectionBrowserEntityTypes[];
 
-  /** Which entities to show on the question's data picker */
-  dataPickerEntityTypes?: ModularEmbeddingEntityType[];
+  /** Whether to show questions that belong to a dashboard in the collection browser. Defaults to false. */
+  collectionShowDashboardQuestions?: boolean;
 
-  /** Whether to show the "New exploration" button. Defaults to true. */
+  /** Which entities to show on the question's data picker */
+  dataPickerEntityTypes?: EmbeddingEntityType[];
+
+  /** Whether to show the "New question" button. Defaults to true. */
   withNewQuestion?: boolean;
 
   /** Whether to show the "New dashboard" button. Defaults to true. Only applies when readOnly is false. */
   withNewDashboard?: boolean;
+
+  /** Whether to enable internal entity navigation (links to dashboards/questions). Defaults to false. */
+  enableEntityNavigation?: boolean;
 
   template?: never;
   questionId?: never;
@@ -199,8 +251,37 @@ export type SdkIframeEmbedBaseSettings = {
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
   useExistingUserSession?: boolean;
 
+  /**
+   * URL endpoint for fetching and refreshing guest embed JWT tokens (iframe only, not applicable for SDK's guest mode).
+   * Supports both token refresh on expiry and initial token fetch when no static token is provided.
+   * In both cases, this works with guest embed components (metabase-dashboard and metabase-question).
+   * The endpoint should return { jwt: string } with the new token.
+   */
+  guestEmbedProviderUri?: string;
+
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
+
+  // Full URL of the host page embedding Metabase. Cannot be set by the user.
+  _embedReferrer?: string;
+
+  pluginsConfig?: {
+    // Callback to handle link clicks. Return { handled: true } to prevent default navigation.
+    handleLink?: (url: string) => { handled: boolean };
+  };
+
+  // Type inlined (not CustomVizDisplayType) so hovering the public setting shows the format.
+  /**
+   * Opt-in support for EE custom visualization plugins inside the embed.
+   *
+   * Pass an allowlist of `custom:`-prefixed plugin identifiers (manifest
+   * `name`), e.g. `["custom:Thumbs", "custom:Calendar"]`. Only
+   * listed plugins are loaded. Omit or pass `[]` to disable.
+   *
+   * Ignored in guest embeds: custom visualizations need an authenticated
+   * user.
+   */
+  allowedCustomVisualizations?: `custom:${string}`[];
 };
 
 export type SdkIframeEmbedAuthTypeSettings = {

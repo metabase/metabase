@@ -360,8 +360,8 @@
           table-col #(assoc % :lib/source :source/table-defaults)
           join-col  #(-> %
                          (merge {:lib/source                   :source/joins
-                                 :metabase.lib.join/join-alias "Orders"}))
-          sorted    #(sort-by (juxt :position :source-alias) %)
+                                 :lib/join-alias "Orders_2"}))
+          sorted    #(sort-by (juxt :position :lib/original-join-alias) %)
           visible   (lib/visible-columns query)]
       (is (=? (->> (sorted (concat (map table-col cols)
                                    (map join-col  cols)))
@@ -403,12 +403,12 @@
           just-3 (lib/replace-join base join (lib/with-join-fields join [(meta/field-metadata :orders :id)]))]
       (is (=? [{:lib/desired-column-alias "ID"}
                {:lib/desired-column-alias "TAX"}
-               {:lib/desired-column-alias "Orders__ID"}
-               {:lib/desired-column-alias "Orders__TAX"}]
+               {:lib/desired-column-alias "Orders_2__ID"}
+               {:lib/desired-column-alias "Orders_2__TAX"}]
               (lib/returned-columns all-4)))
       (is (=? [{:lib/desired-column-alias "ID"}
                {:lib/desired-column-alias "TAX"}
-               {:lib/desired-column-alias "Orders__ID"}]
+               {:lib/desired-column-alias "Orders_2__ID"}]
               (lib/returned-columns just-3)))
       (testing "matching the four fields against"
         (let [hr-own-id   {:lib/type           :metadata/column
@@ -445,7 +445,7 @@
                            :table-id                     (meta/id :orders)
                            :id                           (meta/id :orders :id)
                            :name                         "ID_2"
-                           :metabase.lib.join/join-alias "Orders"
+                           :lib/join-alias "Orders"
                            :lib/source                   :source/joins
                            :fk-target-field-id           nil
                            :parent-id                    nil
@@ -459,7 +459,7 @@
                            :table-id                     (meta/id :orders)
                            :id                           (meta/id :orders :tax)
                            :name                         "TAX_2"
-                           :metabase.lib.join/join-alias "Orders"
+                           :lib/join-alias "Orders"
                            :lib/source                   :source/joins
                            :fk-target-field-id           nil
                            :parent-id                    nil
@@ -601,7 +601,7 @@
           query            (-> base
                                (lib/breakout base-user-source)
                                (lib/breakout base-category))
-          returned         (map #(assoc %1 :source-alias %2)
+          returned         (map #(assoc %1 :lib/original-join-alias %2)
                                 (lib/returned-columns query)
                                 [nil "PEOPLE__via__USER_ID" "PRODUCTS__via__PRODUCT_ID" nil])]
       (is (= :source/implicitly-joinable (:lib/source base-user-source)))
@@ -632,7 +632,6 @@
       (testing "different columns"
         (is (int? (:id created-at)))
         (is (nil? (:id ca-expr))))
-
       (testing "both refs should match correctly"
         (is (= created-at
                (lib.equality/find-matching-column (lib/ref created-at) columns)))
@@ -923,7 +922,7 @@
                 :lib/source                   :source/joins
                 :lib/source-column-alias      "TITLE"
                 :lib/type                     :metadata/column
-                :metabase.lib.join/join-alias "question b - Product"
+                :lib/join-alias "question b - Product"
                 :name                         "TITLE"}
           refs [[:field
                  {:lib/uuid       "435541d8-8c9e-4a95-ac12-0e4c246ca797"
@@ -966,7 +965,7 @@
                   :id                       66
                   :lib/card-id              5
                   :lib/desired-column-alias "CREATED_AT"
-                  :lib/model-display-name   "Created At"
+                  :lib/original-display-name "Created At"
                   :lib/original-name        "CREATED_AT"
                   :lib/source               :source/card
                   :lib/source-column-alias  "CREATED_AT"
@@ -979,7 +978,7 @@
                   :id                       66
                   :lib/card-id              5
                   :lib/desired-column-alias "CREATED_AT_2"
-                  :lib/model-display-name   "Products → Created At"
+                  :lib/original-display-name "Created At"
                   :lib/original-join-alias  "Products"
                   :lib/original-name        "CREATED_AT_2"
                   :lib/source               :source/card
@@ -990,7 +989,7 @@
           a-ref [:field {:lib/uuid                                          "28d2f111-3882-4ffb-a650-0650bc7d7c3b"
                          :effective-type                                    :type/DateTime
                          :base-type                                         :type/DateTime
-                         :metabase.lib.query/transformation-added-base-type true}
+                         :lib/transformation-added-base-type true}
                  66]]
       (is (=? {:id 66, :display-name "Created At"}
               (lib.equality/find-matching-column a-ref cols))))))
@@ -1008,10 +1007,9 @@
               :lib/source-column-alias      "ID"
               :lib/source-uuid              "1c2a0643-f25c-4099-a2d5-7c7e790b632f"
               :lib/type                     :metadata/column
-              :metabase.lib.join/join-alias "Orders"
+              :lib/join-alias "Orders"
               :name                         "ID_2"
               :semantic-type                :type/PK
-              :source-alias                 "Orders"
               :table-id                     55060}
         refs [[:field
                {:lib/uuid       "1c2a0643-f25c-4099-a2d5-7c7e790b632f"
@@ -1070,7 +1068,7 @@
                     :lib/source                   :source/joins
                     :lib/source-column-alias      "NAME"
                     :lib/source-uuid              "00000000-0000-0000-0000-000000000000"
-                    :metabase.lib.join/join-alias "Cat"
+                    :lib/join-alias "Cat"
                     :name                         "NAME"})
             col-2 (merge
                    (meta/field-metadata :categories :name)
@@ -1124,21 +1122,21 @@
 (deftest ^:parallel column-equality-binning-test
   (testing "Two columns with the same binning should be equal; different binning should make them unequal"
     (let [col               (assoc (meta/field-metadata :orders :total)
-                                   :metabase.lib.field/binning {:bin-width 20.0
-                                                                :max-value 160.0
-                                                                :min-value 0.0
-                                                                :num-bins  10
-                                                                :strategy  :num-bins})
-          same-binning      (assoc col :metabase.lib.field/binning {:bin-width 20.0
-                                                                    :max-value 160.0
-                                                                    :min-value 0.0
-                                                                    :num-bins  10
-                                                                    :strategy  :num-bins})
-          different-binning (assoc col :metabase.lib.field/binning {:bin-width 5.0
-                                                                    :max-value 160.0
-                                                                    :min-value 5.0
-                                                                    :num-bins  50
-                                                                    :strategy  :num-bins})]
+                                   :lib/binning {:bin-width 20.0
+                                                 :max-value 160.0
+                                                 :min-value 0.0
+                                                 :num-bins  10
+                                                 :strategy  :num-bins})
+          same-binning      (assoc col :lib/binning {:bin-width 20.0
+                                                     :max-value 160.0
+                                                     :min-value 0.0
+                                                     :num-bins  10
+                                                     :strategy  :num-bins})
+          different-binning (assoc col :lib/binning {:bin-width 5.0
+                                                     :max-value 160.0
+                                                     :min-value 5.0
+                                                     :num-bins  50
+                                                     :strategy  :num-bins})]
       (is (lib.equality/= col same-binning))
       (is (not (lib.equality/= col different-binning))))))
 
@@ -1200,7 +1198,7 @@
                {:lib/source-column-alias "BODY",       :display-name "Body",       :selected? true}
                {:lib/source-column-alias "CREATED_AT", :display-name "Created At", :selected? true}
                ;; the following two Card 1 → ID should have :selected? true
-               {:lib/source-column-alias "ID",    :display-name "Card 1 → ID", :selected? true} ; FIXME - these should be true
+               {:lib/source-column-alias "ID",    :display-name "Card 1 → ID", :selected? true}
                {:lib/source-column-alias "o__ID", :display-name "Card 1 → ID", :selected? true}
                ;; these are implicitly joinable fields, :selected? false is right
                {:lib/source-column-alias "ID",         :display-name "ID",         :selected? false}

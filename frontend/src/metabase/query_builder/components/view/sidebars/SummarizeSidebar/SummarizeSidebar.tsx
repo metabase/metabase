@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks/types";
 import { useDefaultQueryAggregation } from "metabase/query_builder/hooks/use-default-query-aggregation";
 import { Divider } from "metabase/ui";
@@ -46,7 +46,7 @@ export function SummarizeSidebar({
     <SidebarContent
       className={cx(SummarizeSidebarS.SidebarView, className)}
       title={t`Summarize by`}
-      color={color("summarize")}
+      color={color("core-summarize")}
       onDone={handleDoneClick}
     >
       <SummarizeAggregationItemList

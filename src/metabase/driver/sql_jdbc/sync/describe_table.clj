@@ -1,6 +1,5 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
-  "SQL JDBC impl for `describe-fields`, `describe-table`, `describe-fks`, `describe-table-fks`, and `describe-nested-field-columns`.
-  `describe-table-fks` is deprecated and will be replaced by `describe-fks` in the future."
+  "SQL JDBC impl for `describe-fields`, `describe-table`, `describe-fks`, and `describe-nested-field-columns`."
   (:refer-clojure :exclude [some select-keys every? mapv empty? not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -10,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -17,9 +17,12 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some select-keys every? mapv empty? not-empty]]
    [potemkin :as p]
@@ -116,10 +119,8 @@
                (range 1 (inc (.getColumnCount metadata))))))
           (catch Exception e
             (if (driver/table-known-to-not-exist? driver e)
-              ;; if the table does not exist, we just warn and ignore it, rather than failing with an exception
-              (do
-                (log/warnf e "Cannot sync Table %s: does not exist" table-name)
-                init)
+              ;; if the table does not exist, we just ignore it, rather than failing with an exception
+              init
               (throw e))))))))
 
 (defn- jdbc-fields-metadata
@@ -132,7 +133,7 @@
                  (some->> table-name (driver/escape-entity-name-for-metadata driver))
                  nil)
    (fn [^ResultSet rs]
-      ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
+     ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
      #(let [default            (.getString rs "COLUMN_DEF")
             no-default?        (contains? #{nil "NULL" "null"} default)
             ;; leave room for "", or other strings to be nil (unknown)
@@ -150,23 +151,22 @@
         (merge
          {:name                       column-name
           :database-type              (.getString rs "TYPE_NAME")
+          :jdbc-type                  (.getInt rs "DATA_TYPE")
           :database-is-auto-increment auto-increment?
           :database-required          required?}
-
          ;; in the same way drivers are free to not return these attributes, and leave them undefined
          ;; we should treat unknown values accordingly
          (u/remove-nils
           {;; COLUMN_DEF = "" observed with clickhouse, druid, "" is never a valid SQL expression, so treat as undefined
            ;; we should probably not-empty for the purposes of required, but trying to retain existing behaviour for now
-           :database-default           (not-empty default)
-           :database-is-generated      generated
-           :database-is-nullable       nullable})
-
+           :database-default      (not-empty default)
+           :database-is-generated generated
+           :database-is-nullable  nullable})
          (when-let [remarks (.getString rs "REMARKS")]
            (when-not (str/blank? remarks)
              {:field-comment remarks})))))))
 
-(defn ^:private fields-metadata
+(defn- fields-metadata
   [driver ^Connection conn {schema :schema, table-name :name} ^String db-name-or-nil]
   {:pre [(instance? Connection conn) (string? table-name)]}
   (reify clojure.lang.IReduceInit
@@ -229,7 +229,8 @@
                                          :database-required
                                          :database-is-auto-increment
                                          :database-is-generated
-                                         :database-is-nullable])
+                                         :database-is-nullable
+                                         :jdbc-type])
              {:table-schema      (:table-schema col) ;; can be nil
               :base-type         base-type
               ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
@@ -364,23 +365,46 @@
   [_driver _db & _args]
   identity)
 
+(defn limit-fields-per-table-xf
+  "Stateful transducer that caps streamed `describe-fields` rows to at most `limit` per table -- a hard, O(1)-memory
+  per-table field cap (no buffering, no window functions). Rows must arrive contiguous by table, which the
+  `describe-fields` contract guarantees (ordered by `table-schema`, `table-name`); within a table the first `limit`
+  rows are kept and the rest dropped as they stream. [[describe-fields]] passes
+  [[metabase.driver.settings/sync-max-fields-per-table]] as `limit`, and the sync layer treats a table that comes back
+  with exactly that many fields as having hit the cap (see `metabase.sync.sync-metadata.fields/limit-fields-to-sync`)."
+  [limit]
+  (fn [rf]
+    (let [current (volatile! ::none)
+          n       (volatile! 0)]
+      (fn
+        ([] (rf))
+        ([result] (rf result))
+        ([result row]
+         (let [table [(:table-schema row) (:table-name row)]]
+           (when-not (= table @current)
+             (vreset! current table)
+             (vreset! n 0))
+           (vswap! n inc)
+           (if (<= @n limit)
+             (rf result row)
+             result)))))))
+
 (defn describe-fields
-  "Default implementation of [[metabase.driver/describe-fields]] for JDBC drivers. Uses JDBC DatabaseMetaData."
+  "Default implementation of [[metabase.driver/describe-fields]] for JDBC drivers. Uses JDBC DatabaseMetaData. The
+  result is hard-capped to [[metabase.driver.settings/sync-max-fields-per-table]] fields per table (see
+  [[limit-fields-per-table-xf]])."
   [driver db & {:keys [schema-names table-names] :as args}]
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (let [sql (describe-fields-sql driver (assoc args :details (:details db)))]
-      (try
-        (log/debugf "`describe-fields` sql query:\n```\n%s\n```\n`describe-fields` args:\n```\n%s\n```"
-                    (driver/prettify-native-form driver (first sql))
-                    (rest sql))
-        ;; This overly defensive, but rather save than sorry.
-        (catch Throwable _
-          (log/error "Failed to prepare sql for log.")))
+    (let [sql (describe-fields-sql driver (assoc args :details (driver.conn/effective-details db)))]
+      (log/debugf "`describe-fields` for schemas %s, tables %s"
+                  (pr-str schema-names)
+                  (pr-str table-names))
       (eduction
        (comp
         (m/mapply describe-fields-pre-process-xf driver db args)
+        (limit-fields-per-table-xf (driver.settings/sync-max-fields-per-table))
         (describe-fields-xf driver db))
        (sql-jdbc.execute/reducible-query db sql)))))
 
@@ -400,29 +424,74 @@
     []
     (eduction
      (map (fn [col] (select-keys col [:table-schema :table-name :field-name])))
-     (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (:details db)))))))
+     (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (driver.conn/effective-details db)))))))
 
-(defn- describe-table-fks*
-  [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
-  (into
-   #{}
-   (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-                                           (fn [^ResultSet rs]
-                                             (fn []
-                                               {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                                :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                                   :schema (.getString rs "PKTABLE_SCHEM")}
-                                                :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
+(mu/defn reducible-table-fks-from-jdbc-metadata :- ::driver/describe-fks.result
+  "Part of the implementation for [[describe-fks-with-jdbc-metadata]], which is the default implementation
+  of [[metabase.driver/describe-fks]]. Made available if you'd like to implement [[metabase.driver/describe-fks]]
+  individually for each Table.
 
-(defn describe-table-fks
-  "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db-or-id-or-spec table & [db-name-or-nil]]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   db-or-id-or-spec
-   nil
-   (fn [^Connection conn]
-     (describe-table-fks* driver conn table db-name-or-nil))))
+  Return a reducible sequence of foreign key information maps (as expected by [[metabase.driver/describe-fks]]) for
+  Table with `schema`, `table-name`, and, optionally `db-name-or-nil` using
+  `java.sql.DatabaseMetaData/getImportedKeys`. These strings act like filters for the returned results."
+  [^DatabaseMetaData metadata       :- (lib.schema.common/instance-of-class DatabaseMetaData)
+   ^String           db-name-or-nil :- [:maybe :string]
+   ^String           schema         :- [:maybe :string]
+   ^String           table-name     :- :string]
+  (sql-jdbc.sync.common/reducible-results
+   #(.getImportedKeys metadata db-name-or-nil schema table-name)
+   (fn [^ResultSet rs]
+     (fn []
+       {:fk-table-schema schema
+        :fk-table-name   table-name
+        :fk-column-name  (.getString rs "FKCOLUMN_NAME")
+        :pk-table-schema (.getString rs "PKTABLE_SCHEM")
+        :pk-table-name   (.getString rs "PKTABLE_NAME")
+        :pk-column-name  (.getString rs "PKCOLUMN_NAME")}))))
+
+(mu/defn reducible-fks-for-tables-matching-options :- ::driver/describe-fks.result
+  "Part of the implementation for [[describe-fks-with-jdbc-metadata]], which is the default implementation
+  of [[metabase.driver/describe-fks]]. Made available if you'd like to implement [[metabase.driver/describe-fks]]
+  individually for each Table.
+
+  Return a reducible sequence of foreign key information maps (as expected by [[metabase.driver/describe-fks]]) by
+  calling
+
+    (f ^java.sql.Connection conn table)
+
+  for each Table that matches the `options` spec and concatenating the results."
+  [driver   :- :keyword
+   database :- ::lib.schema.metadata/database
+   options  :- ::driver/describe-fks.options
+   f        :- [:=>
+                [:cat
+                 (lib.schema.common/instance-of-class Connection)
+                 [:map
+                  {:description "Table"}
+                  [:schema {:optional true} [:maybe :string]]
+                  [:name   :string]]]
+                ::driver/describe-fks.result]]
+  (reify clojure.lang.IReduceInit
+    (reduce [_this rf init]
+      (let [reducible-tables (driver-api/reducible-sync-tables database options)]
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver
+         database
+         nil
+         (fn [^Connection conn]
+           (let [xform         (mapcat (partial f conn)) ; (f conn table) => [fk1 fk2 ...]
+                 reducible-fks (eduction xform reducible-tables)]
+             (reduce rf init reducible-fks))))))))
+
+(mu/defn- describe-fks-with-jdbc-metadata :- ::driver/describe-fks.result
+  "Default implementation of [[metabase.driver/describe-fks]] for JDBC-based drivers."
+  [driver   :- :keyword
+   database :- ::lib.schema.metadata/database
+   options  :- ::driver/describe-fks.options]
+  (letfn [(f [^java.sql.Connection conn {schema :schema, table-name :name, :as _table}]
+            (let [metadata (.getMetaData conn)]
+              (reducible-table-fks-from-jdbc-metadata metadata nil schema table-name)))]
+    (reducible-fks-for-tables-matching-options driver database options f)))
 
 (defmulti describe-fks-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fks]],
@@ -432,13 +501,24 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defn describe-fks
-  "Default implementation of [[metabase.driver/describe-fks]] for JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db & {:keys [schema-names table-names] :as args}]
+(mu/defn- describe-fks-with-sql :- ::driver/describe-fks.result
+  [driver                                         :- :keyword
+   db                                             :- ::lib.schema.metadata/database
+   {:keys [schema-names table-names] :as options} :- ::driver/describe-fks.options]
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver (assoc args :details (:details db))))))
+    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver (assoc options :details (driver.conn/effective-details db))))))
+
+(mu/defn describe-fks :- ::driver/describe-fks.result
+  "Default implementation of [[metabase.driver/describe-fks]] for JDBC drivers. Uses JDBC DatabaseMetaData."
+  [driver   :- :keyword
+   database :- ::lib.schema.metadata/database
+   options  :- ::driver/describe-fks.options]
+  (let [f (if (get-method describe-fks-sql driver)
+            describe-fks-with-sql
+            describe-fks-with-jdbc-metadata)]
+    (f driver database options)))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
@@ -529,10 +609,10 @@
             (nil? token)
             (persistent! res)
 
-           ;; we could be more precise here and issue warning about nested fields (the one in `describe-json-fields`),
-           ;; but this limit could be hit by multiple json fields (fetched in `describe-json-fields`) rather than only
-           ;; by this one. So for the sake of issuing only a single warning in logs we'll spill over limit by a single
-           ;; entry (instead of doing `<=`).
+            ;; we could be more precise here and issue warning about nested fields (the one in `describe-json-fields`),
+            ;; but this limit could be hit by multiple json fields (fetched in `describe-json-fields`) rather than only
+            ;; by this one. So for the sake of issuing only a single warning in logs we'll spill over limit by a single
+            ;; entry (instead of doing `<=`).
             (< max-nested-field-columns (count res))
             (persistent! res)
 
@@ -548,7 +628,7 @@
               JsonToken/FIELD_NAME         (recur path (.getText p) res)
               JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
               JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
-                         ;; We put top-level array row type semantics on JSON roadmap but skip for now
+              ;; We put top-level array row type semantics on JSON roadmap but skip for now
               JsonToken/START_ARRAY        (do (.skipChildren p)
                                                (if field
                                                  (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
@@ -657,7 +737,7 @@
   (->> (for [[field-path field-type] (seq field-types)
              :when field-type]
          (let [curr-type (get field-type-map field-type :type/*)]
-           {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
+           {:name              (str/join " → " (map name field-path)) ;; right arrow
             :database-type     (db-type-map curr-type)
             :base-type         curr-type
             ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
@@ -762,10 +842,10 @@
                                   nil
                                   (fn [^Connection conn]
                                     (let [unfold-json-fields (table->unfold-json-fields driver conn table)
-                                           ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
-                                           ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
-                                           ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
-                                           ;; database [:details :db])` works for most drivers but not H2.
+                                          ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
+                                          ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
+                                          ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
+                                          ;; database [:details :db])` works for most drivers but not H2.
                                           pks                (get-table-pks driver conn nil table)]
                                       [unfold-json-fields pks])))]
     (if (empty? unfold-json-fields)

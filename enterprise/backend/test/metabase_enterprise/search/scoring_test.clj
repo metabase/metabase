@@ -1,4 +1,5 @@
 (ns metabase-enterprise.search.scoring-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.search.scoring-test]}}}}}}
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
@@ -8,9 +9,16 @@
    [metabase-enterprise.search.scoring :as ee-scoring]
    [metabase.search.appdb.scoring-test :as appdb.scoring-test]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json])
   (:import [java.time Instant]))
+
+;; Initialize before any tests run. The app DB index tests below write search-index bookkeeping before anything
+;; else accesses the app DB; a later lazy initialization, triggered by `mt/user->id` in `search-results`, would
+;; recreate the H2 test DB while a test is running.
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (set! *warn-on-reflection* true)
 
@@ -36,7 +44,7 @@
   (mt/with-premium-features #{}
     (-> (scoring/score-and-result item {:search-string search-string}) :score)))
 
-(deftest official-collection-tests
+(deftest official-collection-bumps-value-test
   (testing "it should bump up the value of items in official collections"
     ;; using the ee implementation that isn't wrapped by premium features token check
     (let [search-string "custom expression examples"
@@ -62,12 +70,17 @@
               "custom expression examples"]
              (mapv :name (sort-by #(oss-score search-string %)
                                   (shuffle [a b c d])))))
+      ;; With :official-collection at 1 in :default, the official bump is only a tie-breaker —
+      ;; it can't overcome the text scorers, so `d` stays ranked by its (weakest) text match
+      ;; and the ordering matches OSS.
       (is (= ["customer examples of bad sorting"
               "customer success stories"
               "examples of custom expressions"
               "custom expression examples"]
              (mapv :name (sort-by #(ee-score search-string %)
-                                  (shuffle [a b c (assoc d :collection_authority_level "official")])))))))
+                                  (shuffle [a b c (assoc d :collection_authority_level "official")]))))))))
+
+(deftest verified-items-bump-value-test
   (testing "It should bump up the value of verified items"
     (let [ss "foo"
           a  {:name                "foobar"
@@ -141,15 +154,12 @@
         (is (= #{}
                (set/intersection #{"official collection score" "verified"}
                                  (score-result-names))))))
-
     (testing "includes official collection score if :official-collections is enabled"
       (mt/with-premium-features #{:official-collections}
         (is (set/subset? #{"official collection score"} (score-result-names)))))
-
     (testing "includes verified if :content-verification is enabled"
       (mt/with-premium-features #{:content-verification}
         (is (set/subset? #{"verified"} (score-result-names)))))
-
     (testing "includes both if has both features"
       (mt/with-premium-features #{:official-collections :content-verification}
         (is (set/subset? #{"official collection score" "verified"} (score-result-names)))))))
@@ -185,29 +195,35 @@
                (appdb.scoring-test/search-results* "card")))))))
 
 (deftest transforms-user-recency-test
-  (mt/with-premium-features #{:transforms}
-    (let [user-id (mt/user->id :crowberto)
-          now     (Instant/now)
-          recent-view (fn [model-id timestamp]
-                        {:model     "card"
-                         :model_id  model-id
-                         :user_id   user-id
-                         :timestamp timestamp})]
-      (mt/with-temp [:model/Card        {c1 :id} {}
-                     :model/Card        {c2 :id} {}
-                     :model/Transform   {t1 :id} {:name "test transform"
-                                                  :source {:type "query"
-                                                           :query (mt/native-query {:query "SELECT 1"})}
-                                                  :target {:type "table"
-                                                           :name "test_table"}}
-                     :model/RecentViews _ (recent-view c1 now)]
-        (appdb.scoring-test/with-index-contents
-          [{:model "card"      :id c1 :name "test card recent"}
-           {:model "card"      :id c2 :name "test card unseen"}
-           {:model "transform" :id t1 :name "test transform" :source_type "mbql"}]
-          (testing "Transforms get a hardcoded 1-day recency (between recently viewed card and never viewed card)"
-            (is (= [["card"      c1 "test card recent"]
-                    ["transform" t1 "test transform"]
-                    ["card"      c2 "test card unseen"]]
-                   (appdb.scoring-test/search-results :user-recency "test" {:current-user-id user-id
-                                                                            :context :metabot})))))))))
+  ;; Create the temporary index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the
+  ;; ambient connection would implicitly commit that transaction, preventing rollback and leaking rows into later
+  ;; tests. The nested index-table scope below reuses this table. Materialize the test-data Database first as well;
+  ;; otherwise its ingestion would enter the temporary index and appear as an extra search result.
+  (mt/id)
+  (search.tu/with-temp-index-table
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (let [user-id (mt/user->id :crowberto)
+            now     (Instant/now)
+            recent-view (fn [model-id timestamp]
+                          {:model     "card"
+                           :model_id  model-id
+                           :user_id   user-id
+                           :timestamp timestamp})]
+        (mt/with-temp [:model/Card        {c1 :id} {}
+                       :model/Card        {c2 :id} {}
+                       :model/Transform   {t1 :id} {:name "test transform"
+                                                    :source {:type "query"
+                                                             :query (mt/native-query {:query "SELECT 1"})}
+                                                    :target {:type "table"
+                                                             :name (mt/random-name)}}
+                       :model/RecentViews _ (recent-view c1 now)]
+          (appdb.scoring-test/with-index-contents
+            [{:model "card"      :id c1 :name "test card recent"}
+             {:model "card"      :id c2 :name "test card unseen"}
+             {:model "transform" :id t1 :name "test transform" :source_type "mbql"}]
+            (testing "Transforms get a hardcoded 1-day recency (between recently viewed card and never viewed card)"
+              (is (= [["card"      c1 "test card recent"]
+                      ["transform" t1 "test transform"]
+                      ["card"      c2 "test card unseen"]]
+                     (appdb.scoring-test/search-results :user-recency "test" {:current-user-id user-id
+                                                                              :context :metabot}))))))))))

@@ -4,6 +4,10 @@ import { useEffect } from "react";
 import { SDK_BUNDLE_FULL_PATH } from "build-configs/embedding-sdk/constants/sdk-bundle";
 import { SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED } from "embedding-sdk-package/constants/sdk-bundle-script-data-attribute-name";
 import { getSdkBundleScriptElement } from "embedding-sdk-package/lib/private/get-sdk-bundle-script-element";
+import {
+  SDK_BUNDLE_ERROR,
+  SDK_BUNDLE_LOADED,
+} from "embedding-sdk-shared/constants/event-names";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import {
   SdkLoadingError,
@@ -12,16 +16,73 @@ import {
 
 const ERROR_MESSAGE = "Failed to load Embedding SDK bundle";
 
+const SDK_PACKAGE_VERSION = process.env.VERSION || "unknown";
+
+/**
+ * Dual-listen: resolves when the SDK bundle is ready, regardless of whether
+ * the server responded with the bootstrap (new backend with packageVersion param)
+ * or the monolithic bundle (old backend / useLegacyMonolithicBundle=true).
+ *
+ * - On script `load`: if `window.METABASE_EMBEDDING_SDK_BUNDLE` is already
+ *   set, the monolithic bundle ran synchronously → resolve.
+ * - On `SDK_BUNDLE_LOADED` CustomEvent: the bootstrap loaded all
+ *   chunks and `index.ts` executed → resolve.
+ * - First signal wins; all listeners are cleaned up after settling.
+ */
 const waitForScriptLoading = (script: HTMLScriptElement) => {
   return new Promise<void>((resolve, reject) => {
-    script.addEventListener("load", () => resolve());
-    script.addEventListener("error", () => reject(new Error(ERROR_MESSAGE)));
+    let settled = false;
+
+    const settle = (onSettle: () => void) => {
+      if (!settled) {
+        settled = true;
+        cleanup();
+        onSettle();
+      }
+    };
+
+    const onBundleEvent = () => {
+      settle(() => resolve());
+    };
+
+    const onScriptLoad = () => {
+      if (window.METABASE_EMBEDDING_SDK_BUNDLE) {
+        // Old backend served the monolithic bundle (or new backend served
+        // monolithic because no packageVersion param or useLegacyMonolithicBundle=true).
+        // The global is set synchronously during script execution → resolve.
+        settle(() => resolve());
+      } else {
+        // The bootstrap loaded. It will load chunks in parallel, and
+        // index.ts will dispatch the custom event when done.
+      }
+    };
+
+    const onScriptError = () => {
+      settle(() => reject(new Error(ERROR_MESSAGE)));
+    };
+
+    const onBundleError = () => {
+      settle(() => reject(new Error(ERROR_MESSAGE)));
+    };
+
+    const cleanup = () => {
+      document.removeEventListener(SDK_BUNDLE_LOADED, onBundleEvent);
+      document.removeEventListener(SDK_BUNDLE_ERROR, onBundleError);
+      script.removeEventListener("load", onScriptLoad);
+      script.removeEventListener("error", onScriptError);
+    };
+
+    document.addEventListener(SDK_BUNDLE_LOADED, onBundleEvent);
+    document.addEventListener(SDK_BUNDLE_ERROR, onBundleError);
+    script.addEventListener("load", onScriptLoad);
+    script.addEventListener("error", onScriptError);
   });
 };
 
 const loadSdkBundle = (
   metabaseInstanceUrl: string,
   existingLoadingPromise: Promise<void> | null | undefined,
+  useLegacyMonolithicBundle: boolean,
 ): Promise<void> => {
   if (existingLoadingPromise) {
     return existingLoadingPromise;
@@ -33,20 +94,42 @@ const loadSdkBundle = (
     return waitForScriptLoading(existingScript);
   }
 
+  const baseUrl = `${
+    process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl
+  }/${SDK_BUNDLE_FULL_PATH}`;
+
   const script = document.createElement("script");
 
   script.async = true;
   script.dataset[SDK_BUNDLE_SCRIPT_DATA_ATTRIBUTE_PASCAL_CASED] = "true";
-  script.src = `${
-    process.env.EMBEDDING_SDK_BUNDLE_HOST || metabaseInstanceUrl
-  }/${SDK_BUNDLE_FULL_PATH}`;
+
+  // New packages always send packageVersion so the backend can distinguish them
+  // from old packages (which send no params and get the legacy bundle).
+  // When useLegacyMonolithicBundle is true, we also add that param so the backend
+  // serves the monolithic bundle even for new packages.
+  const params = new URLSearchParams({
+    packageVersion: SDK_PACKAGE_VERSION,
+  });
+  if (useLegacyMonolithicBundle) {
+    params.set("useLegacyMonolithicBundle", "true");
+  }
+  script.src = `${baseUrl}?${params}`;
 
   document.body.appendChild(script);
 
   return waitForScriptLoading(script);
 };
 
-export function useLoadSdkBundle(metabaseInstanceUrl: string) {
+interface UseLoadSdkBundleOptions {
+  useLegacyMonolithicBundle: boolean;
+}
+
+export function useLoadSdkBundle(
+  metabaseInstanceUrl: string,
+  options: UseLoadSdkBundleOptions,
+) {
+  const { useLegacyMonolithicBundle } = options;
+
   useEffect(() => {
     const metabaseProviderPropsStore = ensureMetabaseProviderPropsStore();
     const { loadingPromise: existingLoadingPromise, loadingState } =
@@ -70,6 +153,7 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
     const loadingPromise = loadSdkBundle(
       metabaseInstanceUrl,
       existingLoadingPromise,
+      useLegacyMonolithicBundle,
     );
 
     metabaseProviderPropsStore.updateInternalProps({
@@ -93,5 +177,5 @@ export function useLoadSdkBundle(metabaseInstanceUrl: string) {
           loadingError: SdkLoadingError.Error,
         });
       });
-  }, [metabaseInstanceUrl]);
+  }, [metabaseInstanceUrl, useLegacyMonolithicBundle]);
 }

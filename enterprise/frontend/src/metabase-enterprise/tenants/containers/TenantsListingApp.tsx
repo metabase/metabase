@@ -7,8 +7,9 @@ import {
   type ActiveStatus,
 } from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
+import { Outlet } from "metabase/router";
 import { Box, Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
@@ -16,13 +17,7 @@ import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButto
 import { TenantsDocsButton } from "../TenantsDocsButton";
 import { TenantsListing } from "../components/TenantsListing";
 
-import S from "./TenantsListingApp.module.css";
-
-export const TenantsListingApp = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
+export const TenantsListingApp = () => {
   const isAdmin = useSelector(getUserIsAdmin);
 
   const [searchInputValue, setSearchInputValue] = useState("");
@@ -43,9 +38,9 @@ export const TenantsListingApp = ({
     [data?.data],
   );
 
-  const handleTabChange = (tab: string | null) => {
+  const handleTabChange = (tab: ActiveStatus | null) => {
     if (tab) {
-      setStatus(tab as ActiveStatus);
+      setStatus(tab);
     }
   };
 
@@ -70,8 +65,13 @@ export const TenantsListingApp = ({
       </Group>
 
       {isAdmin && hasDeactivatedTenants && (
-        <Tabs value={status} onChange={handleTabChange} pl="md">
-          <Tabs.List className={S.tabs}>
+        <Tabs
+          value={status}
+          onChange={handleTabChange}
+          pl="md"
+          listBorder={false}
+        >
+          <Tabs.List>
             <Tabs.Tab value={ACTIVE_STATUS.active}>{t`Active`}</Tabs.Tab>
 
             <Tabs.Tab
@@ -93,7 +93,7 @@ export const TenantsListingApp = ({
           />
         </LoadingAndErrorWrapper>
 
-        {children}
+        <Outlet />
       </SettingsSection>
     </Box>
   );

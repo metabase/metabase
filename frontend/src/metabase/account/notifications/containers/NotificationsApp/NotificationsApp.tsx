@@ -1,37 +1,32 @@
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 import { useMemo } from "react";
 
-import type { NotificationListItem } from "metabase/account/notifications/types";
-import { skipToken, useListNotificationsQuery } from "metabase/api";
-import { Pulses } from "metabase/entities/pulses";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
+import {
+  skipToken,
+  useListNotificationsQuery,
+  useListSubscriptionsQuery,
+} from "metabase/api";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
-} from "metabase/selectors/user";
-import type { Alert } from "metabase-types/api";
+} from "metabase/current-user";
+import type { NotificationListItem } from "metabase/notifications/types";
+import { useSelector } from "metabase/redux";
+import { Outlet, useNavigate } from "metabase/router";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 
-import {
-  navigateToArchive,
-  navigateToHelp,
-  navigateToUnsubscribe,
-} from "../../actions";
+import { getArchiveUrl, getHelpUrl, getUnsubscribeUrl } from "../../actions";
 import { NotificationList } from "../../components/NotificationList";
 
-interface NotificationsAppProps {
-  pulses: Alert[];
-  children?: ReactNode;
-}
-
-const NotificationsAppInner = ({
-  pulses,
-  children,
-}: NotificationsAppProps): JSX.Element | null => {
+export const NotificationsApp = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const { data: pulses = [] } = useListSubscriptionsQuery({
+    creator_or_recipient: true,
+  });
 
   const { data: questionNotifications = [] } = useListNotificationsQuery(
     user
@@ -61,11 +56,11 @@ const NotificationsAppInner = ({
     );
   }, [pulses, questionNotifications]);
 
-  const onHelp = () => dispatch(navigateToHelp());
+  const onHelp = () => navigate(getHelpUrl());
   const onUnsubscribe = ({ item, type }: NotificationListItem) =>
-    dispatch(navigateToUnsubscribe(item, type));
+    navigate(getUnsubscribeUrl(item, type));
   const onArchive = ({ item, type }: NotificationListItem) =>
-    dispatch(navigateToArchive(item, type));
+    navigate(getArchiveUrl(item, type));
 
   if (!user) {
     return null;
@@ -80,13 +75,7 @@ const NotificationsAppInner = ({
       onUnsubscribe={onUnsubscribe}
       onArchive={onArchive}
     >
-      {children}
+      <Outlet />
     </NotificationList>
   );
 };
-
-export const NotificationsApp = Pulses.loadList({
-  // Load all pulses the current user is a creator or recipient of
-  query: () => ({ creator_or_recipient: true }),
-  reload: true,
-})(NotificationsAppInner);

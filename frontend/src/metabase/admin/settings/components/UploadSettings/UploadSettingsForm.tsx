@@ -7,15 +7,16 @@ import {
   useListDatabasesQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
-import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
+import { getErrorMessage } from "metabase/api/utils";
 import {
   ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { useAdminSetting, useSetting } from "metabase/settings";
 import {
   Alert,
   Box,
@@ -172,7 +173,21 @@ export function UploadSettingsFormView({
       {isH2db && <H2PersistenceWarning isHosted={isHosted} />}
       <Group align="flex-start">
         <Select
-          label={t`Database to use for uploads`}
+          label={
+            <Group gap="xs" wrap="nowrap" align="center">
+              {t`Database to use for uploads`}
+              <Tooltip
+                label={t`PostgreSQL, MySQL, Redshift, ClickHouse, and Snowflake databases are supported for file storage.`}
+              >
+                <Icon
+                  name="info"
+                  size={14}
+                  c="text-secondary"
+                  data-testid="uploads-db-info-icon"
+                />
+              </Tooltip>
+            </Group>
+          }
           value={dbId ? String(dbId) : null}
           placeholder={t`Select a database`}
           disabled={!hasValidDatabases}
@@ -206,6 +221,7 @@ export function UploadSettingsFormView({
               schemaLength: !!schemas?.length,
             })
               .with({ schemasError: true }, () =>
+                // Unjustified type cast. FIXME
                 getErrorMessage((schemasError as any)?.data),
               )
               .with(
@@ -238,7 +254,7 @@ export function UploadSettingsFormView({
               disabled={!hasValidSettings}
               failedText={t`Failed to save upload settings`}
               actionFn={handleEnableUploads}
-              primary
+              variant="filled"
               useLoadingSpinner
               type="submit"
             />
@@ -252,7 +268,8 @@ export function UploadSettingsFormView({
               failedText={t`Failed to disable uploads`}
               actionFn={handleDisableUploads}
               type="button"
-              danger
+              variant="filled"
+              color="feedback-negative"
               useLoadingSpinner
             />
           )
@@ -265,7 +282,7 @@ export function UploadSettingsFormView({
             }
             failedText={t`Failed to enable uploads`}
             actionFn={handleEnableUploads}
-            primary={!!hasValidSettings}
+            variant={hasValidSettings ? "filled" : "default"}
             disabled={!hasValidSettings || !hasValidDatabases}
             useLoadingSpinner
             type="submit"
@@ -274,7 +291,7 @@ export function UploadSettingsFormView({
       </Flex>
       {!hasValidDatabases && <NoValidDatabasesMessage />}
       {errorMessage && (
-        <Text c="danger" mt="md">
+        <Text c="feedback-negative" mt="md">
           {errorMessage}
         </Text>
       )}
@@ -283,11 +300,9 @@ export function UploadSettingsFormView({
 }
 
 const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
-  <Stack my="md" maw={620}>
-    <Alert icon={<Icon name="warning" />} color="warning">
-      <Text>
-        {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift or Clickhouse database.`}
-      </Text>
+  <Alert my="md" maw={620} icon={<Icon name="warning" />} color="warning">
+    <Stack gap="sm">
+      {t`Warning: uploads to the Sample Database are for testing only and may disappear. If you want your data to stick around, you should upload to a PostgreSQL, MySQL, Redshift, ClickHouse, or Snowflake database.`}
       {isHosted && (
         <Tooltip
           label={
@@ -311,8 +326,8 @@ const H2PersistenceWarning = ({ isHosted }: { isHosted: boolean }) => (
           >{t`Additional terms apply.`}</Text>
         </Tooltip>
       )}
-    </Alert>
-  </Stack>
+    </Stack>
+  </Alert>
 );
 
 const NoValidDatabasesMessage = () => (

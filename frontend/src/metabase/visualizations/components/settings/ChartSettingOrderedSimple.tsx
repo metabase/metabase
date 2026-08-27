@@ -4,9 +4,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import type { DragEndEvent } from "metabase/common/components/Sortable";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { isEmpty } from "metabase/lib/validate";
 import { Box } from "metabase/ui";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { isEmpty } from "metabase/utils/validate";
 import type { Series } from "metabase-types/api";
 
 import { ChartSettingMessage } from "./ChartSettingMessage";

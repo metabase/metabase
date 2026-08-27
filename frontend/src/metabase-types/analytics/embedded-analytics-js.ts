@@ -1,27 +1,26 @@
+// V3-0-0 Schema Types
 export type EmbeddedAnalyticsJsEventSchema = {
   event: EVENTS;
   global: {
     auth_method: AUTH_TYPES;
+    locale_used: boolean;
   };
-  dashboard?: {
-    drills: BOOLEAN_COUNT;
-    with_downloads: BOOLEAN_COUNT;
-    with_title: BOOLEAN_COUNT;
-    with_subscriptions: BOOLEAN_COUNT;
-  };
-  question?: {
-    drills: BOOLEAN_COUNT;
-    with_downloads: BOOLEAN_COUNT;
-    with_title: BOOLEAN_COUNT;
-    is_save_enabled: BOOLEAN_COUNT;
-    with_alerts: BOOLEAN_COUNT;
-  };
-  exploration?: {
-    is_save_enabled: BOOLEAN_COUNT;
-  };
-  browser?: {
-    read_only: BOOLEAN_COUNT;
-  };
+  components: ComponentData[];
+};
+
+type ComponentData = {
+  name: "dashboard" | "question" | "exploration" | "browser" | "metabot";
+  properties: ComponentProperty[];
+};
+
+type ComponentProperty = {
+  name: string;
+  values: PropertyValue[];
+};
+
+export type PropertyValue = {
+  group: string; // "true", "false", "auto", "sidebar", "stacked", etc.
+  value: number; // count
 };
 
 /**
@@ -34,28 +33,33 @@ type EVENTS = "setup";
  */
 export type AUTH_TYPES = "session" | "api_key" | "sso" | "guest";
 
-type BOOLEAN_COUNT = {
-  true: number;
-  false: number;
-};
-
 export type DefaultValues = {
-  dashboard: Record<
-    keyof NonNullable<EmbeddedAnalyticsJsEventSchema["dashboard"]>,
-    boolean
-  >;
-  question: Record<
-    keyof NonNullable<EmbeddedAnalyticsJsEventSchema["question"]>,
-    boolean
-  >;
-  exploration: Record<
-    keyof NonNullable<EmbeddedAnalyticsJsEventSchema["exploration"]>,
-    boolean
-  >;
-  browser: Record<
-    keyof NonNullable<EmbeddedAnalyticsJsEventSchema["browser"]>,
-    boolean
-  >;
+  dashboard: {
+    drills: boolean;
+    withDownloads: boolean;
+    withTitle: boolean;
+    withSubscriptions: boolean;
+    autoRefreshInterval: boolean;
+    enableEntityNavigation: boolean;
+  };
+  question: {
+    drills: boolean;
+    withDownloads: boolean;
+    withTitle: boolean;
+    isSaveEnabled: boolean;
+    withAlerts: boolean;
+  };
+  exploration: {
+    isSaveEnabled: boolean;
+    questionId: undefined;
+  };
+  browser: {
+    readOnly: boolean;
+    enableEntityNavigation: boolean;
+  };
+  metabot: {
+    layout: "auto" | "sidebar" | "stacked";
+  };
 };
 
 type ValidateEvent<
@@ -67,26 +71,9 @@ type EmbeddedAnalyticsJsSetupEvent = ValidateEvent<{
   event: "setup";
   global: {
     auth_method: AUTH_TYPES;
+    locale_used: boolean;
   };
-  dashboard?: {
-    drills: BOOLEAN_COUNT;
-    with_downloads: BOOLEAN_COUNT;
-    with_title: BOOLEAN_COUNT;
-    with_subscriptions: BOOLEAN_COUNT;
-  };
-  question?: {
-    drills: BOOLEAN_COUNT;
-    with_downloads: BOOLEAN_COUNT;
-    with_title: BOOLEAN_COUNT;
-    is_save_enabled: BOOLEAN_COUNT;
-    with_alerts: BOOLEAN_COUNT;
-  };
-  exploration?: {
-    is_save_enabled: BOOLEAN_COUNT;
-  };
-  browser?: {
-    read_only: BOOLEAN_COUNT;
-  };
+  components: ComponentData[];
 }>;
 
 export type EmbeddedAnalyticsJsEvent = EmbeddedAnalyticsJsSetupEvent;

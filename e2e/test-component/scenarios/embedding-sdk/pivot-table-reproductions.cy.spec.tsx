@@ -60,7 +60,7 @@ describe("scenarios > embedding-sdk > Pivot Table reproductions", () => {
 
       getSdkRoot().within(() => {
         cy.findByTestId("chart-type-selector-button").click();
-        cy.findByRole("menu").within(() => {
+        cy.findByRole("listbox").within(() => {
           cy.findByText("Pivot Table").click();
         });
 

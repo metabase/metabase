@@ -88,7 +88,10 @@ describe("issue 45255", () => {
     // Can reorder (empty)
     H.getDraggableElements().eq(2).should("have.text", "(empty)");
     H.getDraggableElements().first().as("dragElement");
-    H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
+    H.moveDnDKitElementByAlias("@dragElement", {
+      vertical: 100,
+      useMouseEvents: true,
+    });
     H.getDraggableElements().eq(1).should("have.text", "(empty)");
 
     // Has (empty) in the chart
@@ -212,7 +215,7 @@ describe("issue 47847", () => {
 
     H.cartesianChartCircleWithColor("#509EE3").eq(0).trigger("mousemove");
     H.assertEChartsTooltip({
-      header: "April 24–30, 2022",
+      header: "April 27 – May 3, 2025", // expect this to break when we shift years in the Sample Database
       blurAfter: false,
       footer: null,
       rows: [
@@ -223,36 +226,6 @@ describe("issue 47847", () => {
         },
       ],
     });
-  });
-});
-
-describe("issue 51926", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should render pivot table when selecting it from another viz type", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        },
-        database: SAMPLE_DB_ID,
-      },
-      display: "pivot",
-    });
-
-    H.openVizTypeSidebar();
-    H.leftSidebar().within(() => {
-      cy.findByTestId("Table-button").click();
-      cy.findByTestId("Pivot Table-button").click();
-    });
-
-    cy.findAllByTestId("pivot-table-cell").contains("April 24, 2022");
   });
 });
 
@@ -283,7 +256,7 @@ describe("issue 51952", () => {
 
     cy.findByTestId("settings-CREATED_AT").click();
     H.popover().findByText("Abbreviate days and months").click();
-    H.echartsContainer().findByText("Jan 2024");
+    H.echartsContainer().findByText("Jan 2027");
   });
 });
 
@@ -533,6 +506,68 @@ union all select 'Medium length category', 30 as count`;
   });
 });
 
+describe("issue 68337", () => {
+  const longTooltipValue = "a".repeat(10000);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should wrap long values without expanding the tooltip beyond the viewport (metabase#68337)", () => {
+    H.visitQuestionAdhoc({
+      display: "line",
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select 1 as x, 10 as metric_value, '${longTooltipValue}' as details
+union all select 2, 20, 'short value'`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["METRIC_VALUE"],
+        "graph.tooltip_columns": [JSON.stringify(["name", "DETAILS"])],
+      },
+    });
+
+    H.cartesianChartCircle()
+      .should("have.length", 2)
+      .first()
+      .trigger("mousemove");
+
+    cy.window().then((appWindow) => {
+      H.echartsTooltip().then(($tooltip) => {
+        const tooltipRoot = $tooltip[0].parentElement;
+        expect(tooltipRoot).not.to.be.null;
+        if (tooltipRoot == null) {
+          return;
+        }
+
+        const tooltipBounds = tooltipRoot.getBoundingClientRect();
+
+        expect(tooltipBounds.left).to.be.at.least(0);
+        expect(tooltipBounds.right).to.be.at.most(appWindow.innerWidth);
+        expect(tooltipBounds.height).to.be.at.most(appWindow.innerHeight * 0.8);
+        expect(tooltipRoot.scrollHeight).to.be.greaterThan(
+          tooltipRoot.clientHeight,
+        );
+      });
+    });
+
+    H.echartsTooltip()
+      .findByText(longTooltipValue)
+      .should(($value) => {
+        const value = $value[0];
+        const fontSize = Number.parseFloat(getComputedStyle(value).fontSize);
+
+        expect(value.scrollWidth).to.be.at.most(value.clientWidth);
+        expect(value.clientHeight).to.be.greaterThan(fontSize * 2);
+      });
+  });
+});
+
 describe("issue 55853", () => {
   const questionDetails = {
     name: "55853",
@@ -577,12 +612,12 @@ describe("issue 55853", () => {
         const axisTitle: Array<{ text: string; element: HTMLElement }> = [];
 
         $texts.each((i, el) => {
-          const text = (el as HTMLElement).textContent?.trim() || "";
+          const text = el.textContent?.trim() || "";
           if (text.includes("%") && text !== "value") {
-            percentTexts.push({ text, element: el as HTMLElement });
+            percentTexts.push({ text, element: el });
           }
           if (text === "value") {
-            axisTitle.push({ text, element: el as HTMLElement });
+            axisTitle.push({ text, element: el });
           }
         });
 
@@ -752,14 +787,11 @@ describe("UXW-2696", () => {
     assertDataVisible();
   });
 
-  it("should show the message on pinned cards", () => {
+  it("should be able to open the menu on pinned cards", () => {
     H.visitCollection("root");
     H.openCollectionItemMenu(QUESTION_NAME);
     H.popover().findByText("Pin this").click();
 
-    H.getPinnedSection().within(() => {
-      assertNoPoints();
-    });
     // assert that the menu trigger is not covered
     H.openPinnedItemMenu(QUESTION_NAME);
     H.popover().should("exist");
@@ -781,10 +813,11 @@ describe("UXW-2696", () => {
     H.popover().findByText("Edit Visualization").click();
 
     H.getDocumentSidebar().within(() => {
-      cy.findByRole("radio", { name: /axes/i }).click({ force: true });
-      cy.findByRole("switch", { name: /auto y-axis range/i }).should(
-        "not.have.attr",
+      cy.findByRole("tab", { name: /axes/i }).click({ force: true });
+      cy.findByLabelText("Auto y-axis range").should(
+        "have.attr",
         "data-checked",
+        "false",
       );
 
       cy.findByLabelText("Min").clear().type("70");
@@ -824,10 +857,11 @@ describe("UXW-2696", () => {
       H.showDashcardVisualizerModalSettings(0, { isVisualizerCard: false });
 
       H.modal().within(() => {
-        cy.findByRole("radio", { name: /axes/i }).click({ force: true });
-        cy.findByRole("switch", { name: /auto y-axis range/i }).should(
-          "not.have.attr",
+        cy.findByRole("tab", { name: /axes/i }).click({ force: true });
+        cy.findByLabelText("Auto y-axis range").should(
+          "have.attr",
           "data-checked",
+          "false",
         );
 
         assertNoPoints(false);
@@ -846,6 +880,68 @@ describe("UXW-2696", () => {
       cy.findByTestId("dashcard").within(() => {
         getChartPoints().should("have.length.greaterThan", 0);
       });
+    });
+  });
+});
+
+describe("issue 69882", () => {
+  const DOOHICKEY_BAR_COLOR = "#227FD2";
+  const GADGET_LINE_COLOR = "#689636";
+
+  const questionDetails: StructuredQuestionDetails = {
+    name: "69882",
+    display: "combo" as const,
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+      ],
+    },
+    visualization_settings: {
+      series_settings: {
+        Doohickey: {
+          color: DOOHICKEY_BAR_COLOR,
+          title: "_Doohickey",
+          display: "bar",
+        },
+        Gadget: {
+          color: GADGET_LINE_COLOR,
+          title: "_Gadget",
+          display: "line",
+        },
+      },
+      "graph.x_axis.scale": "timeseries",
+      "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+      "graph.metrics": ["count"],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should apply per-series display type on a question and dashcard (metabase#69882)", () => {
+    H.createQuestion(questionDetails, { visitQuestion: true, wrapId: true });
+
+    H.echartsContainer().should("be.visible");
+    H.chartPathWithFillColor(DOOHICKEY_BAR_COLOR).should("exist");
+    H.cartesianChartCircleWithColor(GADGET_LINE_COLOR);
+
+    H.createDashboard({ name: "Test Dashboard" }, { wrapId: true });
+    cy.get<number>("@questionId").then((cardId) => {
+      cy.get<number>("@dashboardId").then((dashboardId) => {
+        H.addQuestionToDashboard({ dashboardId, cardId });
+        H.visitDashboard(dashboardId);
+      });
+    });
+
+    cy.findByTestId("dashcard").within(() => {
+      H.echartsContainer().should("be.visible");
+      H.chartPathWithFillColor(DOOHICKEY_BAR_COLOR).should("exist");
+      H.cartesianChartCircleWithColor(GADGET_LINE_COLOR);
     });
   });
 });

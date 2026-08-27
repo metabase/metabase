@@ -10,7 +10,7 @@ What kind of problem are you having with your [model][model-docs]?
 
 If you don't see [the model button][model-button-image] (three squares):
 
-1. Check if you're using a Metabase version that's 0.42.0 or greater by going to the top right of the screen and clicking on the **gear** icon > **About Metabase**.
+1. Check if you're using a Metabase version that's 0.42.0 or greater by clicking the **profile or grid icon** in the top right, selecting **Help**, then choosing **About Metabase.**
 2. Clear your browser cache.
 3. Ask your Metabase admin to clear the proxy cache (if you're using one).
 
@@ -67,7 +67,7 @@ If you can’t solve your problem using the troubleshooting guides:
 [known-issues-models]: https://github.com/metabase/metabase/labels/Querying%2FModels
 [limit-data-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#ask-for-less-data
 [materialize-views-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#materialize-views-create-new-tables-to-store-query-results
-[model-button-image]: https://www.metabase.com/learn/images/models/model-icon.png
+[model-button-image]: ./images/model-icon.png
 [model-docs]: ../data-modeling/models.md
 [replicate-database-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#replicate-your-database
 [sql-explain-learn]: https://www.metabase.com/learn/sql/working-with-sql/sql-best-practices#explain

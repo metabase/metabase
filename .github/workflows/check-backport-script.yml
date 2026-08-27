@@ -3,14 +3,14 @@ name: Prevent backport.sh from being merged
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  merge_group:
 
 jobs:
   check-backport-script:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Check for backport.sh file
         run: |
           if [ -f "./backport.sh" ]; then

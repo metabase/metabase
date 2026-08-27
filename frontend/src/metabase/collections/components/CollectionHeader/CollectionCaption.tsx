@@ -1,27 +1,24 @@
+import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import {
   isEditableCollection,
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
-} from "metabase/collections/utils";
-import { useSelector } from "metabase/lib/redux";
+} from "metabase/common/collections/utils";
+import { EditableDescription } from "metabase/common/components/EditableDescription";
+import { EditableText } from "metabase/common/components/EditableText";
+import { getIsTenantUser, getUser } from "metabase/current-user";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
-import { getIsTenantUser } from "metabase/selectors/user";
-import { Icon } from "metabase/ui";
+import { useSelector } from "metabase/redux";
+import { Box, Flex, Icon, rem } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
-import {
-  CaptionDescription,
-  CaptionRoot,
-  CaptionTitle,
-  CaptionTitleContainer,
-} from "./CollectionCaption.styled";
+import S from "./CollectionCaption.module.css";
 
 interface CollectionCaptionProps {
   collection: Collection;
@@ -32,7 +29,7 @@ export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const isEditable = isEditableCollection(collection, { currentUser });
   const hasDescription = Boolean(collection.description);
 
@@ -51,10 +48,10 @@ export const CollectionCaption = ({
   );
 
   return (
-    <CaptionRoot data-testid="collection-caption">
-      <CaptionTitleContainer>
+    <Box className={S.root} data-testid="collection-caption">
+      <Flex align="center" gap="sm">
         <CollectionCaptionIcon collection={collection} />
-        <CaptionTitle
+        <EditableText
           key={collection.id}
           initialValue={collection.name}
           placeholder={t`Add title`}
@@ -62,27 +59,32 @@ export const CollectionCaption = ({
           data-testid="collection-name-heading"
           onChange={handleChangeName}
           maxLength={100}
+          fz={rem(28)}
+          fw={900}
         />
-      </CaptionTitleContainer>
+      </Flex>
       {(isEditable || hasDescription) && (
-        <CaptionDescription
+        <EditableDescription
           key={
             // Including the description in the key prevents a stale value from
             // being stored in the state of EditableText if the collection's
             // description is modified in another component
             `${collection.id}-${collection.description}`
           }
+          className={cx(S.description, {
+            [S.visible]: Boolean(collection.description),
+          })}
           description={collection.description}
           placeholder={t`Add description`}
-          isVisible={Boolean(collection.description)}
           canWrite={isEditable}
           onChange={handleChangeDescription}
           data-testid="collection-description-in-caption"
           left={0}
+          maw={rem(400)}
           maxLength={255}
         />
       )}
-    </CaptionRoot>
+    </Box>
   );
 };
 
@@ -93,7 +95,7 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
         size={24}
-        c="brand"
+        c="core-brand"
         collection={collection}
         entity="collection"
       />
@@ -102,18 +104,18 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
 
   if (PLUGIN_COLLECTIONS.isSyncedCollection(collection) && !isTenantUser) {
     // external users should see the normal icon, they should not know about what synced collections are
-    return <Icon name="synced_collection" size={24} c="brand" />;
+    return <Icon name="synced_collection" size={24} c="core-brand" />;
   }
 
   if (isRootTrashCollection(collection)) {
-    return <Icon name="trash" size={24} c="text-tertiary" />;
+    return <Icon name="trash" size={24} c="text-disabled" />;
   }
 
   if (
     collection.archived &&
     PLUGIN_COLLECTIONS.isRegularCollection(collection)
   ) {
-    return <Icon name="folder" size={24} c="text-tertiary" />;
+    return <Icon name="folder" size={24} c="text-disabled" />;
   }
 
   return (

@@ -1,4 +1,5 @@
 (ns metabase.revisions.impl.card-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.revisions.impl.card-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -36,29 +37,49 @@
      :description "New description"}
     "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."))
 
+;; Regression test for https://github.com/metabase/metabase/issues/73681
+(deftest diff-cards-str-deleted-collection-test
+  (mt/initialize-if-needed! :db)
+  (testing "When a collection referenced in a revision has been deleted, the description should not show 'null'"
+    (let [deleted-coll-id 99999]
+      (are [x y expected] (= expected
+                             (u/build-sentence (revision/diff-strings :model/Card x y)))
+        ;; moved from nil (root) to a now-deleted collection
+        {:name "Apple"}
+        {:name          "Apple"
+         :collection_id deleted-coll-id}
+        (str "moved this Card to #" deleted-coll-id ".")
+
+        ;; moved from a now-deleted collection back to root: should show ID, not "null"
+        {:name          "Apple"
+         :collection_id deleted-coll-id}
+        {:name "Apple"}
+        (str "moved this Card from #" deleted-coll-id " to Our analytics.")))))
+
 (deftest ^:parallel diff-cards-str-update-collection--test
   (mt/with-temp
     [:model/Collection {coll-id-1 :id} {:name "Old collection"}
      :model/Collection {coll-id-2 :id} {:name "New collection"}]
-    (are [x y expected] (= expected
-                           (u/build-sentence (revision/diff-strings :model/Card x y)))
+    (mt/with-test-user :crowberto
+      (are [x y expected] (= expected
+                             (u/build-sentence (revision/diff-strings :model/Card x y)))
 
-      {:name "Apple"}
-      {:name          "Apple"
-       :collection_id coll-id-2}
-      "moved this Card to New collection."
+        {:name "Apple"}
+        {:name          "Apple"
+         :collection_id coll-id-2}
+        "moved this Card to New collection."
 
-      {:name        "Diff Test"
-       :description nil}
-      {:name        "Diff Test changed"
-       :description "New description"}
-      "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
+        {:name        "Diff Test"
+         :description nil}
+        {:name        "Diff Test changed"
+         :description "New description"}
+        "added a description and renamed it from \"Diff Test\" to \"Diff Test changed\"."
 
-      {:name          "Apple"
-       :collection_id coll-id-1}
-      {:name          "Apple"
-       :collection_id coll-id-2}
-      "moved this Card from Old collection to New collection.")))
+        {:name          "Apple"
+         :collection_id coll-id-1}
+        {:name          "Apple"
+         :collection_id coll-id-2}
+        "moved this Card from Old collection to New collection."))))
 
 (defn- create-card-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
@@ -138,12 +159,7 @@
                          :card_schema
                          ;; we don't expect a description for this column because it should never change
                          ;; once created by the migration
-                         :dataset_query_metrics_v2_migration_backup
-                         ;; `dependency_analysis_version` is an internal bookkeeping field.  It doesn't affect the
-                         ;; actual card itself, so no description is necessary.
-                         :dependency_analysis_version
-                         ;; this column is immutable in practice, and doesn't warrant a description
-                         :workspace_id}
+                         :dataset_query_metrics_v2_migration_backup}
                        col)
               (testing (format "we should have a revision description for %s" col)
                 (let [diff-strings (revision/diff-strings
@@ -173,6 +189,13 @@
                        before
                        changes)))))))))
 
+(deftest card-revision-excludes-metabot-origin-test
+  (testing "the Metabot origin columns are not captured in revisions, so reverting can never write back a stale conversation id"
+    (mt/with-temp [:model/Card card {:metabot_chart_id "chart-1"}]
+      (let [serialized (revision/serialize-instance :model/Card (:id card) card)]
+        (is (not (contains? serialized :metabot_chart_id)))
+        (is (not (contains? serialized :metabot_conversation_id)))))))
+
 (deftest load-old-revision-without-card-schema-test
   (testing "Old revisions without :card_schema should be loadable (regression test for #61555)"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Test Card"
@@ -190,7 +213,6 @@
                      :user_id  (mt/user->id :rasta)
                      :object   old-card-data
                      :message  "Test revision without card_schema"})
-
         (testing "Can fetch revisions without error through API"
           (let [revisions (revision/revisions+details :model/Card card-id)]
             (is (seq revisions))

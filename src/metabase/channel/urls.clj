@@ -23,12 +23,22 @@
   []
   (str (site-url) "/trash"))
 
+(defn dashboard-path
+  "Relative frontend path for a `Dashboard` with ID, e.g. \"/dashboard/10\"."
+  [^Integer id]
+  (format "/dashboard/%d" id))
+
+(defn card-path
+  "Relative frontend path for a `Card` with ID, e.g. \"/question/10\"."
+  [^Integer id]
+  (format "/question/%d" id))
+
 (defn dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
 
      (dashboard-url 10) -> \"http://localhost:3000/dashboard/10\""
   ([^Integer id]
-   (format "%s/dashboard/%d" (site-url) id))
+   (str (site-url) (dashboard-path id)))
   ([^Integer id parameters & [tab-id]]
    (let [base-url   (dashboard-url id)
          url-params (cond-> (flatten
@@ -49,7 +59,7 @@
 
      (card-url 10) -> \"http://localhost:3000/question/10\""
   [^Integer id]
-  (format "%s/question/%d" (site-url) id))
+  (str (site-url) (card-path id)))
 
 (def ^:dynamic *dashcard-parameters*
   "Bind dashboard parameters for dashcard deeplinked urls"
@@ -112,7 +122,7 @@
 (defn tools-caching-details-url
   "Return an appropriate URL for linking to caching log details."
   [^Integer persisted-info-id]
-  (format "%s/admin/tools/model-caching/%d" (site-url) persisted-info-id))
+  (format "%s/monitor/model-persistence-log/%d" (site-url) persisted-info-id))
 
 (defn transform-job-url
   "URL for a transform job."
@@ -123,3 +133,28 @@
   "URL for a transform's run tab."
   [transform-id]
   (format "%s/data-studio/transforms/%s/run" (site-url) transform-id))
+
+(defn document-path
+  "Relative path for a document"
+  [^Integer id]
+  (format "/document/%d" id))
+
+(defn document-url
+  "URL for a document"
+  [^Integer id]
+  (str (site-url) (document-path id)))
+
+(defn exploration-path
+  "Relative path for an exploration"
+  [^Integer id]
+  (format "/question/research/%d" id))
+
+(defn exploration-url
+  "URL for an exploration"
+  [^Integer id]
+  (str (site-url) (exploration-path id)))
+
+(defn security-center-url
+  "Url for the Security Center"
+  []
+  (format "%s/admin/security-center" (site-url)))

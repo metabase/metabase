@@ -1,17 +1,45 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_METADATA,
+  SAMPLE_PROVIDER,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { FilterHeaderButton } from "./FilterHeaderButton";
 
+const queryWithFilters = Lib.createTestQuery(SAMPLE_PROVIDER, {
+  stages: [
+    {
+      source: { type: "table", id: ORDERS_ID },
+      filters: [
+        {
+          type: "operator",
+          operator: ">",
+          args: [
+            { type: "literal", value: 1 },
+            { type: "literal", value: 2 },
+          ],
+        },
+      ],
+    },
+  ],
+});
+
 const QUESTION_WITH_FILTERS = Question.create({
   metadata: SAMPLE_METADATA,
-}).setQuery(Lib.filter(createQuery(), 0, Lib.expressionClause(">", [1, 2])));
+}).setQuery(queryWithFilters);
+
+const queryWithoutFilters = Lib.createTestQuery(
+  SAMPLE_PROVIDER,
+  DEFAULT_TEST_QUERY,
+);
 
 const QUESTION_WITHOUT_FILTERS = Question.create({
   metadata: SAMPLE_METADATA,
-}).setQuery(createQuery());
+}).setQuery(queryWithoutFilters);
 
 type SetupOpts = {
   question?: Question;

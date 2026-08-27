@@ -6,9 +6,9 @@ import {
   useUpdateFieldMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { MetadataEditEventDetail } from "metabase-types/analytics";
 import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { SemanticTypeAndTargetPicker } from "../../SemanticTypeAndTargetPicker";

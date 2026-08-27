@@ -2,11 +2,10 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  type OperatorType,
-  useStringFilter,
-} from "metabase/querying/filters/hooks/use-string-filter";
-import { Box, Checkbox, Flex, MultiAutocomplete } from "metabase/ui";
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
+import { hasFeature } from "metabase/databases";
+import { Box, Checkbox, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -15,6 +14,9 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { StringFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+
+import { useStringFilter } from "./hooks";
+import type { OperatorType } from "./types";
 
 export function StringFilterPicker({
   autoFocus,
@@ -33,6 +35,16 @@ export function StringFilterPicker({
     () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],
   );
+
+  const databaseId = Lib.databaseID(query);
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
+  // An unknown database keeps the option available rather than hiding a
+  // control the database probably supports.
+  const supportsCaseSensitivity =
+    database == null ||
+    hasFeature(database, "case-sensitivity-string-filter-options");
 
   const {
     type,
@@ -109,7 +121,7 @@ export function StringFilterPicker({
           withSubmitButton={withSubmitButton}
           onAddButtonClick={handleAddButtonClick}
         >
-          {type === "partial" && (
+          {type === "partial" && supportsCaseSensitivity && (
             <CaseSensitiveOption
               value={options.caseSensitive ?? false}
               onChange={(newValue) => setOptions({ caseSensitive: newValue })}
@@ -160,7 +172,7 @@ function StringValueInput({
   if (type === "partial") {
     return (
       <Box p="md" pb={0} mah="40vh" style={{ overflow: "auto" }}>
-        <MultiAutocomplete
+        <MultiAutocompleteWithTranslation
           value={values}
           placeholder={t`Enter some text`}
           comboboxProps={COMBOBOX_PROPS}
@@ -184,7 +196,6 @@ function CaseSensitiveOption({ value, onChange }: CaseSensitiveOptionProps) {
   return (
     <Flex align="center" px="sm">
       <Checkbox
-        size="xs"
         label={t`Case sensitive`}
         checked={value}
         onChange={(e) => onChange(e.target.checked)}

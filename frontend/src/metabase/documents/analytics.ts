@@ -1,5 +1,7 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 import type { Document } from "metabase-types/api";
+
+export type DocumentTriggerSource = "standalone" | "exploration";
 
 export const trackDocumentCreated = (document: Document) => {
   trackSimpleEvent({
@@ -8,10 +10,14 @@ export const trackDocumentCreated = (document: Document) => {
   });
 };
 
-export const trackDocumentUpdated = (document: Document) => {
+export const trackDocumentUpdated = (
+  document: Pick<Document, "id">,
+  triggeredFrom: DocumentTriggerSource,
+) => {
   trackSimpleEvent({
     event: "document_saved",
     target_id: document.id,
+    triggered_from: triggeredFrom,
   });
 };
 
@@ -32,6 +38,13 @@ export const trackDocumentAddSmartLink = (document?: Document | null) => {
 export const trackDocumentReplaceCard = (document?: Document | null) => {
   trackSimpleEvent({
     event: "document_replace_card",
+    target_id: document?.id || null,
+  });
+};
+
+export const trackDocumentDuplicated = (document?: Document | null) => {
+  trackSimpleEvent({
+    event: "document_duplicated",
     target_id: document?.id || null,
   });
 };

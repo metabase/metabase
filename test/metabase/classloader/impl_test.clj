@@ -12,11 +12,9 @@
     (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))
     (is (= false
            (#'classloader/has-shared-context-classloader-as-ancestor? (.getContextClassLoader (Thread/currentThread)))))
-
     (testing "context classloader => MB shared-context-classloader"
       (.setContextClassLoader (Thread/currentThread) @@#'classloader/shared-context-classloader)
       (is (#'classloader/has-shared-context-classloader-as-ancestor? (.getContextClassLoader (Thread/currentThread)))))
-
     (testing "context classloader => DynamicClassLoader with MB shared-context-classloader as its parent"
       (.setContextClassLoader (Thread/currentThread) (DynamicClassLoader. @@#'classloader/shared-context-classloader))
       (is (#'classloader/has-shared-context-classloader-as-ancestor? (.getContextClassLoader (Thread/currentThread)))))))
@@ -28,13 +26,11 @@
     (classloader/the-classloader)
     (is (= @@#'classloader/shared-context-classloader
            (.getContextClassLoader (Thread/currentThread)))))
-
   (testing "if current thread context classloader === the shared context classloader it should be kept as-is"
     (.setContextClassLoader (Thread/currentThread) @@#'classloader/shared-context-classloader)
     (classloader/the-classloader)
     (is (= @@#'classloader/shared-context-classloader
            (.getContextClassLoader (Thread/currentThread)))))
-
   (testing (str "if current thread context classloader is a *descendant* the shared context classloader it should be "
                 "kept as-is")
     (let [descendant-classloader (DynamicClassLoader. @@#'classloader/shared-context-classloader)]

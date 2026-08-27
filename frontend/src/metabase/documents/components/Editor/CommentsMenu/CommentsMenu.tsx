@@ -1,9 +1,9 @@
 import cx from "classnames";
-import { type CSSProperties, forwardRef, useMemo } from "react";
+import { type CSSProperties, forwardRef } from "react";
 import { createPortal } from "react-dom";
 
-import type { CommentThread } from "metabase/comments/types";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { Box, rem } from "metabase/ui";
 
@@ -11,30 +11,22 @@ import S from "./CommentsMenu.module.css";
 
 interface Props {
   active: boolean;
-  disabled?: boolean;
-  href: string;
+  childTargetId: string;
   show: boolean;
   style: CSSProperties;
-  threads: CommentThread[];
+  unresolvedCommentsCount: number;
 }
 
-export const getUnresolvedComments = (
-  threads: CommentThread[],
-): CommentThread["comments"] => {
-  return threads
-    .filter((thread) => !thread.comments[0]?.is_resolved)
-    .flatMap((thread) =>
-      thread.comments.filter((comment) => !comment.deleted_at),
-    );
-};
-
 export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
-  function CommentsMenu({ active, href, show, style, threads }: Props, ref) {
-    const unresolvedCommentsCount = useMemo(
-      () => getUnresolvedComments(threads).length,
-      [threads],
-    );
+  function CommentsMenu(
+    { active, childTargetId, show, style, unresolvedCommentsCount }: Props,
+    ref,
+  ) {
+    const host = useEditorHost();
     const hasUnresolvedComments = unresolvedCommentsCount > 0;
+    const commentUrl = host.useCommentUrl({
+      childTargetId,
+    });
 
     return createPortal(
       <Box
@@ -53,7 +45,7 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
           variant={active ? "filled" : "default"}
           unresolvedCommentsCount={unresolvedCommentsCount}
           component={ForwardRefLink}
-          to={unresolvedCommentsCount > 0 ? href : `${href}?new=true`}
+          to={commentUrl}
         />
       </Box>,
       document.body,

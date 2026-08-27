@@ -5,7 +5,7 @@ summary: Get started with the Modular embedding SDK using a single CLI command. 
 
 # Modular embedding SDK - CLI quickstart
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true %}
 
 We built a single command to spin up a Metabase and help you get an embedded dashboard in your app. This setup with API keys won't work in production; it's only intended for you to quickly try out the SDK on your local machine. A production setup requires a Pro/Enterprise license, and SSO with JWT.
 

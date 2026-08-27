@@ -2,11 +2,13 @@ import userEvent from "@testing-library/user-event";
 
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { NumberColumn } from "__support__/visualizations";
+import { loadVisualizationComponents } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import registerVisualizations from "metabase/visualizations/register";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/widgets";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Series } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
+import { createMockSingleSeries } from "metabase-types/api/mocks";
 
 import {
   PREVIOUS_VALUE_COMPARISON,
@@ -15,6 +17,10 @@ import {
 } from "./test-mocks";
 
 registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["smartscalar"]));
 
 const createMockInsights = (insights: Partial<Insight>[]) => insights;
 
@@ -142,9 +148,22 @@ describe("SmartScalar", () => {
     });
 
     it("shouldn't throw an error getting settings for single-column data", () => {
-      const card = { display: "smartscalar", visualization_settings: {} };
-      const data = { cols: [NumberColumn({ name: "Count" })], rows: [[100]] };
-      expect(() => getSettingsWidgetsForSeries([{ card, data }])).not.toThrow();
+      expect(() =>
+        getSettingsWidgetsForSeries(
+          [
+            createMockSingleSeries(
+              { display: "smartscalar", visualization_settings: {} },
+              {
+                data: {
+                  cols: [NumberColumn({ name: "Count" })],
+                  rows: [[100]],
+                },
+              },
+            ),
+          ],
+          jest.fn(),
+        ),
+      ).not.toThrow();
     });
 
     it("shouldn't render compact if normal formatting is <=6 characters", () => {
@@ -332,6 +351,7 @@ describe("SmartScalar", () => {
         series({
           rows,
           insights,
+          // Unjustified type cast. FIXME
           comparisonType: getPeriodsAgoComparison("hi" as unknown as number),
         }),
       );

@@ -14,10 +14,10 @@ Unless otherwise noted, all files Copyright © 2024 Metabase, Inc.
 ### Front-end
 
 ```sh
-MB_EDITION=ee yarn build-hot
+MB_EDITION=ee bun run build-hot
 ```
 
-Clear the Webpack cache using `yarn remove-webpack-cache` if you previously ran OSS edition in dev mode to avoid unexpected application behavior.
+Clear the Webpack cache using `bun run remove-webpack-cache` if you previously ran OSS edition in dev mode to avoid unexpected application behavior.
 
 ### Back-end
 

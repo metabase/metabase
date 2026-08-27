@@ -116,13 +116,15 @@
 
         "2022-01-01T00:00:00" 2022 "year"
         "1954-01-01T00:00:00" 1954 "year"
-        "2044-01-01T00:00:00" 2044 "year")))
+        "2044-01-01T00:00:00" 2044 "year"))))
 
+(deftest ^:parallel string->timestamp-test-2
   (testing "numbers with no unit are parsed as year numbers"
     (are [exp-str input] (same? (from-zulu exp-str) (shared.ut/coerce-to-timestamp input {}))
       "1950-01-01T00:00:00Z" 1950
-      "2015-01-01T00:00:00Z" 2015))
+      "2015-01-01T00:00:00Z" 2015)))
 
+(deftest string->timestamp-test-3
   (testing "strings"
     (testing "with unit=day-of-week get parsed as eg. Mon"
       (with-redefs [internal/now (fn [] (from test-epoch))]
@@ -135,7 +137,6 @@
           "2022-12-16T00:00:00" "Fri"
           "2022-12-17T00:00:00" "Sat"
           "2022-12-18T00:00:00" "Sun")))
-
     (testing "with unit != day-of-week"
       (testing "and a time offset are parsed in that offset"
         (are [exp-str input] (same-instant? (from-zulu exp-str) (shared.ut/coerce-to-timestamp input {}))
@@ -144,8 +145,9 @@
           "2022-12-14T17:07:00Z" "2022-12-14T13:37:00-03:30"))
       (testing "and no time offset are assumed to be UTC"
         (is (same? (from-zulu "2022-12-14T13:37:45Z")
-                   (shared.ut/coerce-to-timestamp "2022-12-14T13:37:45" {}))))))
+                   (shared.ut/coerce-to-timestamp "2022-12-14T13:37:45" {})))))))
 
+(deftest ^:parallel string->timestamp-test-4
   (testing "existing date-time values are simply returned"
     (are [value] (let [t (shared.ut/coerce-to-timestamp value)] (same? t (shared.ut/coerce-to-timestamp t)))
       "2022-12-12T00:00:00"
@@ -183,7 +185,6 @@
 (deftest to-range-test
   (doseq [[exp-from exp-to date unit]
           [["2022-01-01T00:00:00Z" "2022-12-31T23:59:59.999Z" "2022-08-19T00:00:00" "year"]
-
            ["2022-08-01T00:00:00Z" "2022-08-31T23:59:59.999Z" "2022-08-19T00:00:00" "month"] ; 31 days in August
            ["2022-02-01T00:00:00Z" "2022-02-28T23:59:59.999Z" "2022-02-19T00:00:00" "month"] ; 28 days in regular February
            ["2020-02-01T00:00:00Z" "2020-02-29T23:59:59.999Z" "2020-02-19T00:00:00" "month"] ; 29 days in leap-year February
@@ -225,11 +226,9 @@
       "09:26:45.000" "09:26:45-08:00"
       "09:26:00.000" "09:26-08:00"
       "19:26:00.000" "19:26-08:00"))
-
   (testing "Day.js and LocalTime values are simply returned"
     (let [t (time-from "09:29")]
       (is (= t (shared.ut/coerce-to-time t)))))
-
   (testing "numbers are treated as Unix timestamps"
     (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
                           #"Unknown input to coerce-to-time; expecting a string"
@@ -244,7 +243,6 @@
     "6" :week-of-year
     "Q1" :quarter-of-year
     "Feb 8, 2023" nil)
-
   (are [exp u] (= exp (shared.ut/format-unit "2023-02-08" u "fr"))
     "mercredi" :day-of-week
     "févr." :month-of-year
@@ -262,7 +260,6 @@
     "6" :week-of-year
     "Q1" :quarter-of-year
     "Feb 8, 2023" nil)
-
   (are [exp u] (= exp (shared.ut/format-unit (from-local-date "2023-02-08") u "fr"))
     "mercredi" :day-of-week
     "févr." :month-of-year
@@ -271,13 +268,10 @@
     "6" :week-of-year
     "Q1" :quarter-of-year
     "Feb 8, 2023" nil)
-
   (is (= "12:00 PM" (shared.ut/format-unit "12:00:00.000" nil)))
   (is (= "12:00 PM" (shared.ut/format-unit (from-local-time "12:00:00.000") nil)))
-
   (is (= "Oct 3, 2023, 1:30 PM" (shared.ut/format-unit "2023-10-03T13:30:00" nil)))
   (is (= "Oct 3, 2023, 1:30 PM" (shared.ut/format-unit (from-local "2023-10-03T13:30:00") nil)))
-
   (is (= "30" (shared.ut/format-unit "2023-10-03T13:30:00" :minute-of-hour)))
   (is (= "1 PM" (shared.ut/format-unit "2023-10-03T13:30:00" :hour-of-day)))
   (is (= "30" (shared.ut/format-unit 30 :minute-of-hour)))

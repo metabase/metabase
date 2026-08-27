@@ -2,25 +2,16 @@ import type { ChangeEvent, SyntheticEvent } from "react";
 import { memo, useCallback } from "react";
 import { t } from "ttag";
 
-import { CheckBox as Checkbox } from "metabase/common/components/CheckBox/CheckBox";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { TimelineEventInfo } from "metabase/common/components/TimelineEventInfo";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
-import Settings from "metabase/lib/settings";
-import type { IconName } from "metabase/ui";
+import { ActionIcon, Checkbox, Icon, Menu } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import {
   CardAside,
   CardBody,
   CardCheckboxContainer,
-  CardCreatorInfo,
-  CardDateInfo,
-  CardDescription,
-  CardIcon,
-  CardIconAndDateContainer,
   CardRoot,
-  CardTitle,
 } from "./EventCard.styled";
 
 export interface EventCardProps {
@@ -48,10 +39,8 @@ const EventCard = ({
   onShowTimelineEvents,
   onHideTimelineEvents,
 }: EventCardProps): JSX.Element => {
-  const selectedRef = useScrollOnMount();
+  const selectedRef = useScrollOnMount<HTMLDivElement>();
   const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
-  const dateMessage = getDateMessage(event);
-  const creatorMessage = getCreatorMessage(event);
 
   const handleToggleSelected = useCallback(() => {
     if (isVisible) {
@@ -89,19 +78,18 @@ const EventCard = ({
         />
       </CardCheckboxContainer>
       <CardBody>
-        <CardIconAndDateContainer>
-          <CardIcon name={event.icon as unknown as IconName} />
-          <CardDateInfo>{dateMessage}</CardDateInfo>
-        </CardIconAndDateContainer>
-        <CardTitle>{event.name}</CardTitle>
-        {event.description && (
-          <CardDescription>{event.description}</CardDescription>
-        )}
-        <CardCreatorInfo data-server-date>{creatorMessage}</CardCreatorInfo>
+        <TimelineEventInfo event={event} />
       </CardBody>
       {menuItems.length > 0 && (
         <CardAside onClick={handleAsideClick}>
-          <EntityMenu items={menuItems} triggerIcon="ellipsis" />
+          <Menu position="bottom-end" shadow="md">
+            <Menu.Target>
+              <ActionIcon variant="subtle" aria-label={t`Event menu`}>
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+          </Menu>
         </CardAside>
       )}
     </CardRoot>
@@ -119,42 +107,29 @@ const getMenuItems = (
     return [];
   }
 
-  return [
-    {
-      title: t`Edit event`,
-      action: () => onEdit?.(event),
-    },
-    {
-      title: t`Move event`,
-      action: () => onMove?.(event),
-    },
-    {
-      title: t`Archive event`,
-      action: () => onArchive?.(event),
-    },
-  ];
-};
-
-const getDateMessage = (event: TimelineEvent) => {
-  const date = event.timestamp;
-  const options = Settings.formattingOptions();
-
-  if (event.time_matters) {
-    return formatDateTimeWithUnit(date, "default", options);
-  } else {
-    return formatDateTimeWithUnit(date, "day", options);
+  const items = [];
+  if (onEdit) {
+    items.push(
+      <Menu.Item key="edit-event" onClick={() => onEdit(event)}>
+        {t`Edit event`}
+      </Menu.Item>,
+    );
   }
-};
-
-const getCreatorMessage = (event: TimelineEvent) => {
-  const options = Settings.formattingOptions();
-  const createdAt = formatDateTimeWithUnit(event.created_at, "day", options);
-
-  if (event.creator) {
-    return t`${event.creator.common_name} added this on ${createdAt}`;
-  } else {
-    return t`Added on ${createdAt}`;
+  if (onMove) {
+    items.push(
+      <Menu.Item key="move-event" onClick={() => onMove(event)}>
+        {t`Move event`}
+      </Menu.Item>,
+    );
   }
+  if (onArchive) {
+    items.push(
+      <Menu.Item key="archive-event" onClick={() => onArchive(event)}>
+        {t`Archive event`}
+      </Menu.Item>,
+    );
+  }
+  return items;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

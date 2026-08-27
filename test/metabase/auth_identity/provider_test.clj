@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.auth-identity.provider :as provider]
+   [metabase.test :as mt]
    [methodical.core :as methodical]))
 
 ;; Set up test providers for testing the hierarchy
@@ -15,10 +16,8 @@
     (testing "Providers can derive from ::provider/provider"
       (is (isa? :provider/test-password ::provider/provider))
       (is (isa? :provider/test-ldap ::provider/provider)))
-
     (testing "SSO providers can derive from ::provider/create-user-if-not-exists"
       (is (isa? :provider/test-ldap ::provider/create-user-if-not-exists)))
-
     (testing "Password providers do NOT derive from create-user-if-not-exists"
       (is (not (isa? :provider/test-password ::provider/create-user-if-not-exists))))))
 
@@ -44,7 +43,6 @@
     (is (= :provider/google (provider/provider-string->keyword "google")))
     (is (= :provider/jwt (provider/provider-string->keyword "jwt")))
     (is (= :provider/saml (provider/provider-string->keyword "saml"))))
-
   (testing "provider-keyword->string converts keywords to strings"
     (is (= "password" (provider/provider-keyword->string :provider/password)))
     (is (= "emailed-secret" (provider/provider-keyword->string :provider/emailed-secret)))
@@ -52,7 +50,6 @@
     (is (= "google" (provider/provider-keyword->string :provider/google)))
     (is (= "jwt" (provider/provider-keyword->string :provider/jwt)))
     (is (= "saml" (provider/provider-keyword->string :provider/saml))))
-
   (testing "Round-trip conversion works"
     (doseq [provider-str ["password" "emailed-secret" "ldap" "google" "jwt" "saml"]]
       (is (= provider-str
@@ -70,7 +67,6 @@
         {:success? :redirect
          :redirect-url "https://example.com/oauth"
          :message "Redirecting to provider"})
-
       (let [result (provider/login! :provider/test-redirect
                                     {:device-info {:device_id "test" :ip_address "127.0.0.1"}})]
         (is (= :redirect (:success? result)))
@@ -78,7 +74,6 @@
         (is (= "Redirecting to provider" (:message result)))
         (is (nil? (:session result)))
         (is (nil? (:user result))))))
-
   (testing "login! default implementation handles failure responses"
     (testing "Returns error response unchanged when authenticate fails"
       ;; Create a test provider that returns error
@@ -88,7 +83,6 @@
         {:success? false
          :error :invalid-credentials
          :message "Invalid credentials"})
-
       (let [result (provider/login! :provider/test-error
                                     {:email "test@example.com"
                                      :password "wrong"
@@ -99,14 +93,25 @@
         (is (nil? (:session result)))
         (is (nil? (:user result)))))))
 
+(deftest create-user!-refuses-to-strip-tenant-id-test
+  (testing (str "UXW-4898: when user-data carries :tenant_id but the sso-user-fields field list would strip it "
+                "(e.g. a premium-feature check disagrees with the upstream tenant flow that stamped it), "
+                "create-user! must throw rather than silently create a non-tenant user — such a user could "
+                "never log in with its tenant claim again")
+    (mt/with-premium-features #{:sso-jwt}
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"tenant assignment could not be applied"
+                            (#'provider/create-user! {:email      "uxw-4898-invariant@metabase.com"
+                                                      :sso_source :jwt
+                                                      :tenant_id  1}
+                                                     :jwt))))))
+
 (deftest ^:parallel ^:parallel three-valued-success-state-test
   (testing "Success states work correctly"
     (testing "Success state: true"
       (is (true? (:success? {:success? true :user-id 123}))))
-
     (testing "Success state: :redirect"
       (is (= :redirect (:success? {:success? :redirect :redirect-url "https://example.com"}))))
-
     (testing "Success state: false"
       (is (false? (:success? {:success? false :error :invalid-credentials}))))))
 
@@ -114,10 +119,8 @@
   (testing "Multimethod dispatch works with provider hierarchy"
     ;; Create a test provider that inherits from ::provider/provider
     (derive :provider/test-custom ::provider/provider)
-
     (testing "Custom provider inherits default validate implementation"
       (is (nil? (provider/validate :provider/test-custom {:credentials {:foo "bar"}}))))
-
     (testing "Custom provider inherits default authenticate implementation"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -133,12 +136,10 @@
         {:success? true
          :user-id 123
          :provider-id email})
-
       (let [result (provider/authenticate :provider/test-with-provider-id {:email "user@example.com" :password "secret"})]
         (is (true? (:success? result)))
         (is (= 123 (:user-id result)))
         (is (= "user@example.com" (:provider-id result))))))
-
   (testing "authenticate docstring documents :provider-id return value"
     (let [docstring (-> #'provider/authenticate meta :doc)]
       (is (string? docstring))
@@ -156,14 +157,12 @@
                      :last_name "User"
                      :sso_source :test}
          :provider-id "newuser@example.com"})
-
       ;; Test that the :around method merges :provider-id into :user-data
       (let [auth-result (provider/authenticate :provider/test-provider-id-flow {:token "test"})]
         (is (true? (:success? auth-result)))
         (is (= "newuser@example.com" (:provider-id auth-result)))
         (is (contains? (:user-data auth-result) :email))
         (is (not (contains? (:user-data auth-result) :provider-id)))
-
         ;; Simulate what login! :around does
         (let [merged-request (cond-> auth-result
                                (and (:provider-id auth-result) (:user-data auth-result))
@@ -181,7 +180,6 @@
                        :user_id 123
                        :provider "test-expired"
                        :expires_at (t/minus (t/offset-date-time) (t/hours 1))}})
-
     (let [result (provider/authenticate :provider/test-expired {:email "test@example.com"})]
       (is (false? (:success? result))
           "Authentication should fail for expired auth-identity")
@@ -201,7 +199,6 @@
                        :user_id 123
                        :provider "test-not-expired"
                        :expires_at (t/plus (t/offset-date-time) (t/hours 24))}})
-
     (let [result (provider/authenticate :provider/test-not-expired {:email "test@example.com"})]
       (is (true? (:success? result))
           "Authentication should succeed for non-expired auth-identity")
@@ -221,7 +218,6 @@
                        :user_id 123
                        :provider "test-no-expiration"
                        :expires_at nil}})
-
     (let [result (provider/authenticate :provider/test-no-expiration {:email "test@example.com"})]
       (is (true? (:success? result))
           "Authentication should succeed when no expiration set")
@@ -239,7 +235,6 @@
        :user-data {:email "newuser@example.com"
                    :first_name "New"
                    :last_name "User"}})
-
     (let [result (provider/authenticate :provider/test-no-auth-identity {:token "abc123"})]
       (is (true? (:success? result))
           "Authentication should succeed without auth-identity")
@@ -256,7 +251,6 @@
       {:success? false
        :error :invalid-credentials
        :message "Invalid password"})
-
     (let [result (provider/authenticate :provider/test-auth-failure {:email "test@example.com" :password "wrong"})]
       (is (false? (:success? result))
           "Authentication should fail")

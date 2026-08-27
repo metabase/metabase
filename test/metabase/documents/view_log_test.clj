@@ -1,13 +1,18 @@
-(ns metabase.documents.view-log-test
+(ns ^:synchronized metabase.documents.view-log-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.documents.view-log :as documents.view-log]
    [metabase.events.core :as events]
    [metabase.test :as mt]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+                        (thunk))))
 
 (defn latest-view
   "Returns the most recent view for a given user and document ID"
@@ -37,16 +42,17 @@
              (latest-view (:id user) (:id document))))))))
 
 (deftest document-read-oss-no-view-logging-test
-  (mt/with-temp [:model/Collection collection {}
-                 :model/User user {}
-                 :model/Document document {:collection_id (:id collection)
-                                           :name "Test Document"
-                                           :document "{\"type\":\"doc\",\"content\":[]}"
-                                           :creator_id (:id user)}]
-    (testing "A basic document read event is not recorded without audit-app"
-      (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
-      (is (nil? (latest-view (:id user) (:id document)))
-          "view log entries should not be made without audit-app feature"))))
+  (mt/with-premium-features #{}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/User user {}
+                   :model/Document document {:collection_id (:id collection)
+                                             :name "Test Document"
+                                             :document "{\"type\":\"doc\",\"content\":[]}"
+                                             :creator_id (:id user)}]
+      (testing "A basic document read event is not recorded without audit-app"
+        (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
+        (is (nil? (latest-view (:id user) (:id document)))
+            "view log entries should not be made without audit-app feature")))))
 
 (deftest document-read-view-count-test
   (mt/test-helpers-set-global-values!
@@ -85,7 +91,6 @@
                (-> (t2/select-one-fn :last_viewed_at :model/Document (:id document))
                    t/offset-date-time
                    (.withNano 0))))))
-
     (testing "if the existing last_viewed_at is greater than the updating values, do not override it"
       (mt/with-temp [:model/Collection collection {}
                      :model/User user {}
@@ -100,10 +105,34 @@
                    t/offset-date-time
                    (.withNano 0))))))))
 
+(deftest update-last-viewed-at-does-not-trigger-after-update-test
+  (testing "updating last_viewed_at should not trigger the Document after-update hook"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/User user {}
+                   :model/Document document {:collection_id (:id collection)
+                                             :name "Test Document"
+                                             :document "{\"type\":\"doc\",\"content\":[]}"
+                                             :creator_id (:id user)}]
+      (let [events-published (atom [])]
+        (methodical/add-aux-method-with-unique-key!
+         #'events/publish-event! :before :default
+         (fn [topic _event]
+           (swap! events-published conj topic))
+         ::publish-event-spy)
+        (try
+          (#'documents.view-log/update-document-last-viewed-at!*
+           [{:id (:id document) :timestamp (t/offset-date-time)}])
+          (is (not (contains? (set @events-published) :event/document-update))
+              "updating last_viewed_at should not publish :event/document-update")
+          (finally
+            (methodical/remove-aux-method-with-unique-key!
+             #'events/publish-event! :before :default
+             ::publish-event-spy)))))))
+
 (deftest document-event-derivation-test
   (testing "Document events are properly derived from base events"
-    (is (isa? :metabase.documents.view-log/document-read :metabase/event))
-    (is (isa? :event/document-read :metabase.documents.view-log/document-read))))
+    (is (events/isa? :metabase.documents.view-log/document-read :metabase/event))
+    (is (events/isa? :event/document-read :metabase.documents.view-log/document-read))))
 
 (deftest document-read-error-handling-test
   (testing "Document read event handles missing document gracefully"
@@ -129,10 +158,8 @@
                                :user_id (:id user)
                                :model "document"
                                :model_id (:id document))))
-
         ;; Publish document read event
         (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
-
         ;; Verify recent view was created
         (let [recent-view (t2/select-one :model/RecentViews
                                          :user_id (:id user)

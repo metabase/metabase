@@ -1,0 +1,22 @@
+name: updated_at
+display_name: Updated At
+created_at: '2023-10-31T21:26:33.02415Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_databases]
+database_type: timestamptz
+base_type: type/DateTimeWithLocalTZ
+effective_type: type/DateTimeWithLocalTZ
+semantic_type: type/UpdatedTimestamp
+dimensions: []
+position: 3
+custom_position: 0
+database_position: 3
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_databases, model: Table}
+- {id: updated_at, model: Field}
+database_indexed: false
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

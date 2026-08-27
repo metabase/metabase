@@ -1,12 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 
 type MoreMenuProps = {
   previewUrl?: string;
+  previewLabel?: string;
   onRemove?: () => void;
   ariaLabel: string;
   removeLabel: string;
@@ -16,6 +17,7 @@ type MoreMenuProps = {
 
 export function MoreMenu({
   previewUrl,
+  previewLabel,
   onRemove,
   ariaLabel,
   removeLabel,
@@ -47,15 +49,14 @@ export function MoreMenu({
             <Menu.Item
               component={Link}
               to={previewUrl}
-              target="_blank"
               leftSection={<Icon name="share" />}
             >
-              {t`Preview`}
+              {previewLabel ?? t`Preview`}
             </Menu.Item>
           )}
           {onRemove && (
             <Menu.Item
-              c="danger"
+              c="feedback-negative"
               leftSection={<Icon name="trash" />}
               onClick={openConfirm}
             >

@@ -3,8 +3,9 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.models.transforms.transform-run :as transform-run]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util.log :as log]))
 
@@ -13,11 +14,9 @@
 (def ^:private job-key "metabase.transforms.timeout")
 
 (defn- timeout-transform-runs! [_ctx]
-  (log/trace "Timing out old runs.")
-  (try
-    (transform-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute)
-    (catch Throwable t
-      (log/error t "Error timing out old runs."))))
+  (tracing/with-span :tasks "task.transform.timeout-check" {:transform.timeout/type "transform"}
+    (when-let [timed-out (not-empty (transform-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute))]
+      (log/infof "Timed out %d transform run(s)." (count timed-out)))))
 
 (task/defjob  ^{:doc "Timeout long-running tasks that have been lost by a worker."
                 org.quartz.DisallowConcurrentExecution true}

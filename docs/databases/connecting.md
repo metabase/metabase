@@ -14,11 +14,14 @@ Connect Metabase to your data sources.
 
 ## Adding a database connection
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+To add a database connection:
 
-Fill out the fields for that database, and click **Save changes** at the bottom.
+1. Click the **grid** icon in the top right.
+2. Select **Admin**.
+3. In Admin settings, navigate **Databases** > **Add a database**.
+4. Fill out the fields for that database, and click **Save changes** at the bottom.
 
-The connection settings differ database to database. For the list of connection settings available for your database, click on the link to your database below.
+   The connection settings differ database to database. For the list of connection settings available for your database, click the link to your database below.
 
 ## Connecting to supported databases
 
@@ -45,7 +48,7 @@ The databases listed below have official drivers maintained by the Metabase team
 
 If you don't see your database listed here, see [Community drivers](../developers-guide/community-drivers.md).
 
-As of version 46.6.4, Metabase [no longer supports H2 connections](https://www.metabase.com/blog/vulnerability-post-mortem). But Metabase still ships with an H2 database to include an embedded application database, as well as to provide some sample data out of the box.
+As of version 46.6.4, Metabase [no longer supports H2 connections](https://www.metabase.com/blog/vulnerability-post-mortem). But Metabase still ships with an H2 database to include an embedded application database.
 
 ## Connecting to databases hosted by a cloud provider
 
@@ -65,11 +68,11 @@ See [Syncing and scanning](./sync-scan.md).
 
 **Caution: Deleting a database is irreversible! All saved questions and dashboard cards based on the database will be deleted as well!**
 
-Go to **Admin settings** > **Databases** > your database and click **Remove this database**.
+Go to **Admin** > **Databases** > your database and click **Remove this database**.
 
 ## Restoring the Sample Database
 
-If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossary/sample-database), go to **Admin settings** > **Databases** and click **Bring the Sample Database back**.
+If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossary/sample-database), go to **Admin** > **Databases** and click **Bring the Sample Database back**.
 
 ## Troubleshooting
 

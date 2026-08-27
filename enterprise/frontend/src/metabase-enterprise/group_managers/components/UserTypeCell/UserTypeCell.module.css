@@ -1,0 +1,9 @@
+.changeButton {
+  cursor: pointer;
+  vertical-align: middle;
+  visibility: hidden;
+}
+
+.cell:hover .changeButton {
+  visibility: visible;
+}

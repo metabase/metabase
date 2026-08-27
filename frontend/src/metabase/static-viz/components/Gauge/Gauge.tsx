@@ -2,7 +2,7 @@ import { Group } from "@visx/group";
 import { Pie } from "@visx/shape";
 import type { PieArcDatum } from "@visx/shape/lib/shapes/Pie";
 
-import type { ColorGetter } from "metabase/visualizations/types";
+import type { ColorGetter } from "metabase/ui/colors/types";
 
 import Watermark from "../../watermark.svg?component";
 
@@ -67,7 +67,7 @@ export default function Gauge({
     formattedValue,
     GAUGE_INNER_RADIUS,
   );
-  const outlineColor = getColor("white");
+  const outlineColor = getColor("core-white");
 
   return (
     <svg
@@ -108,7 +108,7 @@ export default function Gauge({
                       <g>
                         <path
                           d={baseArcPath}
-                          fill={getColor("background-tertiary")}
+                          fill={getColor("background_page-tertiary")}
                         />
                       </g>
                     )}

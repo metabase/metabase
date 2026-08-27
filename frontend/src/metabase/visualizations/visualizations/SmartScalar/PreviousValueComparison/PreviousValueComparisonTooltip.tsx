@@ -1,6 +1,6 @@
-import { formatValue } from "metabase/lib/formatting/value";
 import { Flex } from "metabase/ui";
-import type { ColumnSettings } from "metabase/visualizations/types";
+import { formatValue } from "metabase/value-formatting";
+import type { ColumnSettings } from "metabase-types/api";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
 import { TEXT_SPACING, TOOLTIP_ICON_SIZE } from "../constants";
@@ -35,7 +35,7 @@ export function PreviousValueComparisonTooltip({
       </VariationPercent>
       <VariationDetails>
         <DetailCandidate
-          color="white"
+          color="core-white"
           comparison={comparison}
           valueFormatted={valueCandidates[0]}
         />

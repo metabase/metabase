@@ -1,5 +1,5 @@
 import { render, screen } from "__support__/ui";
-import type { TypeFilterProps } from "metabase/search/types";
+import type { TypeFilterProps } from "metabase/common/search/types";
 import type { EnabledSearchModel } from "metabase-types/api";
 
 import { TypeFilterDisplay } from "./TypeFilterDisplay";
@@ -11,10 +11,12 @@ const MODEL_TYPE_DISPLAY_NAMES: Record<EnabledSearchModel, string> = {
   dashboard: "Dashboard",
   database: "Database",
   dataset: "Model",
+  measure: "Measure",
   metric: "Metric",
   table: "Table",
   "indexed-entity": "Indexed record",
   document: "Document",
+  exploration: "Research",
   transform: "Transform",
 };
 
@@ -36,6 +38,7 @@ describe("TypeFilterDisplay", () => {
   it.each(Object.keys(MODEL_TYPE_DISPLAY_NAMES))(
     "should display correct text for %s type selected",
     (type) => {
+      // Unjustified type cast. FIXME
       const searchModelType = type as EnabledSearchModel;
       setup([searchModelType]);
       const expectedText: string = MODEL_TYPE_DISPLAY_NAMES[searchModelType];

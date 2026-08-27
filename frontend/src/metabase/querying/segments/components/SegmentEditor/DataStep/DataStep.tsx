@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { selectTableQueryMetadata } from "metabase/api";
 import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
-import { Tables } from "metabase/entities/tables";
-import { useDispatch, useStore } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import { TableBreadcrumbs } from "metabase/metadata/components";
+import { useDispatch, useStore } from "metabase/redux";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
@@ -41,12 +42,16 @@ export function DataStep({
   const dispatch = useDispatch();
 
   const handleChange = async (tableId: TableId) => {
-    await dispatch(
-      Tables.actions.fetchMetadataAndForeignTables({ id: tableId }),
+    await dispatch(fetchTableMetadataAndForeignKeys({ id: tableId }));
+    const state = store.getState();
+    const { data: tableMetadata } = selectTableQueryMetadata({ id: tableId })(
+      state,
     );
-    const metadata = getMetadata(store.getState());
-    const databaseId = checkNotNull(metadata.table(tableId)).db_id;
-    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+    const databaseId = checkNotNull(tableMetadata).db_id;
+    const metadataProvider = Lib.metadataProvider(
+      databaseId,
+      getMetadata(state),
+    );
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     if (table) {
       const newQuery = Lib.queryFromTableOrCardMetadata(

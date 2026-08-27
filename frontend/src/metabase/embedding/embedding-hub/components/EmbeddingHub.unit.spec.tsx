@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { push } from "react-router-redux";
 
 import {
   setupCollectionByIdEndpoint,
@@ -17,24 +16,16 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
+  createMockDashboard,
   createMockRecentTableDatabaseInfo,
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
-
-jest.mock("react-router-redux", () => ({
-  push: jest.fn(() => ({
-    type: "@@router/CALL_HISTORY_METHOD",
-    payload: { method: "push" },
-  })),
-}));
 
 import { EmbeddingHub } from "./EmbeddingHub";
-
-const mockPush = push as jest.MockedFunction<typeof push>;
 
 const setup = ({ isAdmin = true, checklist = {} } = {}) => {
   mockGetBoundingClientRect();
@@ -82,16 +73,18 @@ const setup = ({ isAdmin = true, checklist = {} } = {}) => {
     query: { include_only_uploadable: true },
     response: { data: [], total: 0 },
   });
-  fetchMock.get("path:/api/ee/embedding-hub/checklist", checklist);
+  fetchMock.get("path:/api/ee/embedding-hub/checklist", {
+    checklist,
+    "data-isolation-strategy": null,
+  });
 
-  return renderWithProviders(<EmbeddingHub />, { storeInitialState: state });
+  return renderWithProviders(<EmbeddingHub />, {
+    storeInitialState: state,
+    withUndos: true,
+  });
 };
 
 describe("EmbeddingHub", () => {
-  beforeEach(() => {
-    mockPush.mockClear();
-  });
-
   it("opens AddDataModal when 'Connect a database' is clicked", async () => {
     setup();
 
@@ -105,7 +98,19 @@ describe("EmbeddingHub", () => {
     });
   });
 
-  it("opens table picker when 'Create a dashboard' is clicked", async () => {
+  it("creates and saves an x-ray dashboard when a table is picked", async () => {
+    const xrayDashboard = createMockDashboard({
+      id: 10,
+      name: "A look at Foo Bar Table",
+    });
+    const savedDashboard = createMockDashboard({
+      id: 42,
+      name: "A look at Foo Bar Table",
+    });
+
+    fetchMock.get("path:/api/automagic-dashboards/table/10", xrayDashboard);
+    fetchMock.post("path:/api/dashboard/save", savedDashboard);
+
     setup();
 
     await userEvent.click(await screen.findByText("Create a dashboard"));
@@ -125,35 +130,34 @@ describe("EmbeddingHub", () => {
 
     await userEvent.click(within(dialog).getByText("Foo Bar Table"));
 
-    expect(mockPush).toHaveBeenCalledWith("/auto/dashboard/table/10");
+    expect(
+      await screen.findByText("Your dashboard was saved"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("See it")).toBeInTheDocument();
+
+    expect(screen.queryByTestId("entity-picker-modal")).not.toBeInTheDocument();
   });
 
-  it("has correct href link for Configure SSO card", async () => {
+  it("shows an error toast when x-ray dashboard creation fails", async () => {
+    fetchMock.get("path:/api/automagic-dashboards/table/10", 500);
+
     setup();
 
-    const configureSsoLink = screen.getByRole("link", {
-      name: /configure sso/i,
-    });
-    expect(configureSsoLink).toBeInTheDocument();
+    await userEvent.click(await screen.findByText("Create a dashboard"));
 
-    expect(configureSsoLink).toHaveAttribute(
-      "href",
-      "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js.html?utm_source=product&utm_medium=docs&utm_campaign=embedding_hub&utm_content=secure-embeds&source_plan=oss#set-up-sso",
-    );
-  });
+    const dialog = await screen.findByTestId("entity-picker-modal");
 
-  it("has correct href link for Configure data permissions card", async () => {
-    setup();
+    await userEvent.click(await screen.findByText("Recent items"));
 
-    const configureDataPermissionsLink = screen.getByRole("link", {
-      name: /configure data permissions/i,
-    });
-    expect(configureDataPermissionsLink).toBeInTheDocument();
+    expect(
+      await within(dialog).findByText("Foo Bar Table"),
+    ).toBeInTheDocument();
 
-    expect(configureDataPermissionsLink).toHaveAttribute(
-      "href",
-      "https://www.metabase.com/docs/latest/permissions/embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding_hub&utm_content=configure-row-column-security&source_plan=oss#one-database-for-all-customers-commingled-setups",
-    );
+    await userEvent.click(within(dialog).getByText("Foo Bar Table"));
+
+    expect(
+      await screen.findByText("Failed to create dashboard"),
+    ).toBeInTheDocument();
   });
 
   it("shows success banner when first 3 steps are completed", async () => {
@@ -162,11 +166,10 @@ describe("EmbeddingHub", () => {
         "add-data": true,
         "create-dashboard": true,
         "create-test-embed": true,
-        "create-models": false,
         "configure-row-column-security": false,
         "embed-production": false,
-        "secure-embeds": false,
-        "setup-tenants": false,
+        "sso-configured": false,
+        "data-permissions-and-enable-tenants": false,
       },
     });
 

@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
+import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { createMockCollectionItemFromCollection } from "metabase-types/api/mocks";
 
 import {
   createMockLibraryCollection,
@@ -37,7 +39,9 @@ describe("RemoteSyncSettingsForm", () => {
       setup({ remoteSyncType: "read-only" });
 
       expect(screen.getByText("Branch to sync with")).toBeInTheDocument();
-      expect(screen.getByLabelText(/Sync branch/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("textbox", { name: "Sync branch" }),
+      ).toBeInTheDocument();
       expect(screen.getByLabelText(/Auto-sync with git/i)).toBeInTheDocument();
     });
 
@@ -80,10 +84,10 @@ describe("RemoteSyncSettingsForm", () => {
       });
     });
 
-    it("should show the 'Set up Remote Sync' button", async () => {
+    it("should show the 'Set up remote sync' button", async () => {
       // Verify the submit button shows correct text for new setup
       expect(
-        screen.getByRole("button", { name: /Set up Remote Sync/i }),
+        screen.getByRole("button", { name: /Set up remote sync/i }),
       ).toBeInTheDocument();
     });
 
@@ -92,7 +96,7 @@ describe("RemoteSyncSettingsForm", () => {
         screen.getByRole("heading", { name: "Branch to sync with" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("switch", { name: "Auto-sync with git" }),
+        screen.getByRole("switch", { name: /Auto-sync with git/ }),
       ).toBeInTheDocument();
     });
   });
@@ -479,6 +483,374 @@ describe("RemoteSyncSettingsForm", () => {
       // In modal variant, transforms toggle is shown in "Content to sync" section
       expect(screen.getByText("Content to sync")).toBeInTheDocument();
       expect(screen.getByLabelText("Sync Transforms")).toBeInTheDocument();
+    });
+  });
+
+  describe("URL validation", () => {
+    it("should show a validation error for non-HTTPS URLs", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "",
+        remoteSyncEnabled: false,
+      });
+
+      const urlInput = screen.getByLabelText(/Repository URL/i);
+      await userEvent.type(urlInput, "git://github.com/foo/bar.git");
+
+      // Tab away to trigger validation
+      await userEvent.tab();
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Only HTTPS URLs are supported/),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should not show a validation error for HTTPS URLs", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "",
+        remoteSyncEnabled: false,
+      });
+
+      const urlInput = screen.getByLabelText(/Repository URL/i);
+      await userEvent.type(urlInput, "https://github.com/foo/bar.git");
+
+      // Tab away to trigger validation
+      await userEvent.tab();
+
+      // Give validation time to run, then verify no error
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/Only HTTPS URLs are supported/),
+        ).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("test connection button", () => {
+    it("should be disabled when no URL is provided", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "",
+        remoteSyncEnabled: false,
+      });
+
+      expect(
+        screen.getByRole("button", { name: /Test connection/i }),
+      ).toBeDisabled();
+    });
+
+    it("should be enabled when a URL is provided", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncEnabled: true,
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Test connection/i }),
+        ).toBeEnabled();
+      });
+    });
+
+    it("should POST only the URL and token to the test-connection endpoint", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncToken: "ghp_abc123",
+        remoteSyncBranch: "main",
+        remoteSyncEnabled: true,
+      });
+
+      const testButton = await screen.findByRole("button", {
+        name: /Test connection/i,
+      });
+      await waitFor(() => expect(testButton).toBeEnabled());
+      await userEvent.click(testButton);
+
+      await waitFor(async () => {
+        const posts = await findRequests("POST");
+        const testRequest = posts.find((r) =>
+          r.url.includes("/api/ee/remote-sync/test-connection"),
+        );
+        expect(testRequest).toBeDefined();
+        expect(testRequest?.body).toEqual({
+          "remote-sync-url": "https://github.com/test/repo.git",
+          "remote-sync-token": "ghp_abc123",
+        });
+      });
+    });
+
+    it("should still call the endpoint when the connection fails so the user gets feedback", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncToken: "ghp_bad",
+        remoteSyncEnabled: true,
+        testConnectionError: {
+          status: 400,
+          message: "Authentication failed: Please check your git credentials",
+        },
+      });
+
+      const testButton = await screen.findByRole("button", {
+        name: /Test connection/i,
+      });
+      await waitFor(() => expect(testButton).toBeEnabled());
+      await userEvent.click(testButton);
+
+      await waitFor(async () => {
+        const posts = await findRequests("POST");
+        const testRequest = posts.find((r) =>
+          r.url.includes("/api/ee/remote-sync/test-connection"),
+        );
+        expect(testRequest).toBeDefined();
+      });
+
+      // Failures must not crash the form — the button stays enabled afterward
+      // and the URL field keeps its value.
+      expect(
+        screen.getByRole("button", { name: /Test connection/i }),
+      ).toBeEnabled();
+      expect(screen.getByLabelText(/Repository URL/i)).toHaveValue(
+        "https://github.com/test/repo.git",
+      );
+    });
+  });
+
+  describe("save error handling", () => {
+    it("should show backend error message in toast when save fails", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncUrl: "",
+        remoteSyncEnabled: false,
+        settingsError: { status: 400, message: "Invalid branch name" },
+      });
+
+      const urlInput = screen.getByLabelText(/Repository URL/i);
+      await userEvent.type(urlInput, "https://github.com/foo/bar.git");
+
+      const submitButton = screen.getByRole("button", {
+        name: /Set up remote sync/i,
+      });
+      await userEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Invalid branch name/)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("collection change filtering", () => {
+    it("should not send collections in request body when no collection sync states changed", async () => {
+      const syncedCollection = createMockCollectionItemFromCollection({
+        id: 10,
+        name: "Synced Collection",
+        is_remote_synced: true,
+        can_write: true,
+      });
+      const unsyncedCollection = createMockCollectionItemFromCollection({
+        id: 20,
+        name: "Unsynced Collection",
+        is_remote_synced: false,
+        can_write: true,
+      });
+
+      setup({
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncEnabled: true,
+        rootCollectionItems: [syncedCollection, unsyncedCollection],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      // Change the URL to make the form dirty (but don't change collections)
+      const urlInput = screen.getByLabelText(/Repository URL/i);
+      await userEvent.clear(urlInput);
+      await userEvent.type(urlInput, "https://github.com/test/other-repo.git");
+
+      const submitButton = screen.getByRole("button", {
+        name: /Save changes/i,
+      });
+      await userEvent.click(submitButton);
+
+      const puts = await findRequests("PUT");
+      const settingsRequest = puts.find((r) =>
+        r.url.includes("/api/ee/remote-sync/settings"),
+      );
+      expect(settingsRequest).toBeDefined();
+      expect(settingsRequest?.body).not.toHaveProperty("collections");
+    });
+
+    it("should only send changed collections in request body", async () => {
+      const syncedCollection = createMockCollectionItemFromCollection({
+        id: 10,
+        name: "Synced Collection",
+        is_remote_synced: true,
+        can_write: true,
+      });
+      const unsyncedCollection = createMockCollectionItemFromCollection({
+        id: 20,
+        name: "Unsynced Collection",
+        is_remote_synced: false,
+        can_write: true,
+      });
+
+      setup({
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncEnabled: true,
+        rootCollectionItems: [syncedCollection, unsyncedCollection],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      // Toggle the unsynced collection to synced
+      const unsyncedToggle = screen.getByLabelText("Sync Unsynced Collection");
+      await userEvent.click(unsyncedToggle);
+
+      const submitButton = screen.getByRole("button", {
+        name: /Save changes/i,
+      });
+      await userEvent.click(submitButton);
+
+      // Should only include collection 20 (changed), not collection 10 (unchanged)
+      const puts = await findRequests("PUT");
+      const settingsRequest = puts.find((r) =>
+        r.url.includes("/api/ee/remote-sync/settings"),
+      );
+      expect(settingsRequest).toBeDefined();
+      expect(settingsRequest?.body).toHaveProperty("collections", {
+        "20": true,
+      });
+    });
+  });
+
+  describe("environment variable overrides", () => {
+    it("should disable both sync mode radio options and show env var description when remote-sync-type is set by env", async () => {
+      setup({
+        remoteSyncType: "read-write",
+        envSettings: ["remote-sync-type"],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-only")).toBeDisabled();
+      });
+      expect(screen.getByLabelText("Read-write")).toBeDisabled();
+      expect(screen.getByText("Using MB_REMOTE_SYNC_TYPE")).toBeInTheDocument();
+    });
+
+    it("should not disable sync mode radio options when remote-sync-type is not set by env", async () => {
+      setup({
+        remoteSyncType: "read-write",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(screen.getByLabelText("Read-only")).toBeEnabled();
+      expect(screen.getByLabelText("Read-write")).toBeEnabled();
+    });
+
+    it("should hide the disable button when remote-sync-enabled is set by env", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncType: "read-write",
+        envSettings: ["remote-sync-enabled"],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(
+        screen.queryByRole("button", { name: /Disable remote sync/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should make URL and token fields read-only when set by env", async () => {
+      setup({
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncToken: "ghp_abc123",
+        envSettings: ["remote-sync-url", "remote-sync-token"],
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Using MB_REMOTE_SYNC_URL"),
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText(/Repository URL/i)).toHaveAttribute(
+        "readonly",
+      );
+      expect(
+        screen.getByText("Using MB_REMOTE_SYNC_TOKEN"),
+      ).toBeInTheDocument();
+    });
+
+    it("should make branch field read-only when remote-sync-branch is set by env", async () => {
+      setup({
+        remoteSyncType: "read-only",
+        remoteSyncBranch: "main",
+        envSettings: ["remote-sync-branch"],
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Using MB_REMOTE_SYNC_BRANCH"),
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.getByRole("textbox", { name: "Sync branch" }),
+      ).toHaveAttribute("readonly");
+    });
+  });
+
+  describe("DevInstanceUpsell", () => {
+    it("should show the upsell when not a dev instance and upsell has not been dismissed", async () => {
+      setup({ isDevInstance: false, upsellDismissed: false });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Need a dedicated development environment?"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("should not show the upsell when it has been dismissed", async () => {
+      setup({ isDevInstance: false, upsellDismissed: true });
+
+      await waitFor(() => {
+        expect(screen.getByText("Git settings")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText("Need a dedicated development environment?"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show the upsell when it is a dev instance", async () => {
+      setup({ isDevInstance: true, upsellDismissed: false });
+
+      await waitFor(() => {
+        expect(screen.getByText("Git settings")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText("Need a dedicated development environment?"),
+      ).not.toBeInTheDocument();
     });
   });
 

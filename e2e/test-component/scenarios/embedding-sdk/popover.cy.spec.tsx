@@ -190,7 +190,7 @@ describe("scenarios > embedding-sdk > popovers", () => {
     });
 
     cy.findByTestId("chart-type-selector-button").click();
-    cy.findByRole("menu").within(() => {
+    cy.findByRole("listbox").within(() => {
       cy.findByText("Trend").click();
     });
 

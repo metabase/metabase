@@ -6,7 +6,9 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
-   [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.protocols :as v2.protocols]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage]
+   [metabase-enterprise.serialization.v2.storage.tar :as v2.storage.tar]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -14,6 +16,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.logger.core :as logger]
    [metabase.models.serialization :as serdes]
+   [metabase.server.streaming-response :as sr]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
@@ -65,43 +68,63 @@
 
 ;;; Logic
 
-(defn- serialize&pack ^File [{:keys [dirname full-stacktrace] :as opts}]
-  (let [dirname  (or dirname
-                     (format "%s-%s"
-                             (u/slugify (appearance/site-name))
-                             (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
-        path     (io/file parent-dir dirname)
-        dst      (io/file (str (.getPath path) ".tar.gz"))
-        log-file (io/file path "export.log")
-        err      (atom nil)
-        report   (with-open [_logger (logger/for-ns log-file ['metabase-enterprise.serialization
-                                                              'metabase.models.serialization]
-                                                    {:additive *additive-logging*})]
-                   (try                 ; try/catch inside logging to log errors
-                     (let [report (serdes/with-cache
-                                    (-> (extract/extract opts)
-                                        (storage/store! path)))]
-                       ;; not removing dumped yamls immediately to save some time before response
-                       (u.compress/tgz path dst)
-                       report)
-                     (catch Exception e
-                       (reset! err e)
-                       (if full-stacktrace
-                         (log/error e "Error during serialization export")
-                         (log/error (u/strip-error e "Error during serialization export"))))))]
-    {:archive       (when (.exists dst)
-                      dst)
-     :log-file      (when (.exists log-file)
-                      log-file)
-     :report        report
-     :status        (:status-code (ex-data @err))
-     :error-message (when @err
-                      (u/strip-error @err nil))
-     :callback      (fn []
-                      (when (.exists path)
-                        (run! io/delete-file (reverse (file-seq path))))
-                      (when (.exists dst)
-                        (io/delete-file dst)))}))
+(def ^:private serialization-logger-prefixes
+  "log4j2 logger-name prefixes whose logs are forked into the `export.log`/`import.log` files inside the archive.
+  These are not loaded namespaces; each prefix captures every logger nested under it (e.g.
+  `metabase-enterprise.serialization` captures `metabase-enterprise.serialization.v2.extract`)."
+  ['metabase-enterprise.serialization
+   'metabase.models.serialization])
+
+(defn- log-export-error!
+  "Log a serialization export error, honoring `full-stacktrace` (full trace vs stripped one-liner)."
+  [e full-stacktrace]
+  (if full-stacktrace
+    (log/error e "Error during serialization export")
+    (log/error (u/strip-error e "Error during serialization export"))))
+
+(defn- extract-entities!
+  "Run eager extraction (target resolution, escape analysis) before streaming starts. It must run
+  before the streaming response opens so a failure can still set a non-200 status. Eager logs (e.g.
+  escape-analysis warnings) are captured into `log-output` so they land in export.log alongside the
+  storage logs captured later. `full-stacktrace` is honored for genuine server failures the way the
+  streaming path and the CLI export do; client input errors carry a `:status-code` and pass through to
+  the API layer unlogged, so they surface as a clean 4xx rather than a logged server error."
+  [opts ^ByteArrayOutputStream log-output full-stacktrace]
+  (try
+    (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
+                                       {:additive *additive-logging*})]
+      (extract/extract opts))
+    (catch Exception e
+      (when-not (:status-code (ex-data e))
+        (log-export-error! e full-stacktrace))
+      (throw e))))
+
+(defn- serialize-to-stream!
+  "Serialize directly to an OutputStream as streaming tar.gz. Returns result map.
+
+  Storage logs are appended to `log-output`, whose full contents are then written to `export.log` inside the
+  archive."
+  [^java.io.OutputStream output ^String dirname entities ^ByteArrayOutputStream log-output {:keys [full-stacktrace]}]
+  (let [writer (v2.storage.tar/tar-writer output dirname)
+        error  (atom nil)
+        report (with-open [_logger (logger/for-ns log-output serialization-logger-prefixes
+                                                  {:additive *additive-logging*})]
+                 (try
+                   (serdes/with-cache
+                     (v2.storage/store! entities writer))
+                   (catch Exception e
+                     (reset! error e)
+                     (log-export-error! e full-stacktrace)
+                     nil)))]
+    ;; Read the buffer and write the log after the appender has closed (and thus flushed) so nothing is lost.
+    (try
+      (v2.protocols/store-log! writer (.toByteArray log-output))
+      (v2.protocols/finish! writer)
+      (catch Exception _))
+    {:report        report
+     :success       (nil? @error)
+     :error-message (when @error
+                      (u/strip-error @error nil))}))
 
 (defn- find-serialization-dir
   "Find an actual top-level dir with serialization data inside, instead of picking up various .DS_Store and similar
@@ -123,8 +146,7 @@
         log-file (io/file dst "import.log")
         err      (atom nil)
         reindex? (if (nil? reindex?) true reindex?)
-        report   (with-open [_logger (logger/for-ns log-file ['metabase-enterprise.serialization
-                                                              'metabase.models.serialization]
+        report   (with-open [_logger (logger/for-ns log-file serialization-logger-prefixes
                                                     {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
@@ -138,7 +160,7 @@
                                           :dst    (.getPath dst)
                                           :count  cnt
                                           :files  (.listFiles dst)})))
-                       (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
+                       (log/infof "In total %s entries unpacked, source dir detected" cnt)
                        (serdes/with-cache
                          (-> (v2.ingest/ingest-yaml (.getPath path))
                              (v2.load/load-metabase! {:continue-on-error continue-on-error
@@ -155,6 +177,24 @@
      :report        report
      :callback      #(when (.exists dst)
                        (run! io/delete-file (reverse (file-seq dst))))}))
+
+(defn- track-export-event! [collection opts start {:keys [report success error-message]}]
+  (analytics/track-event! :snowplow/serialization
+                          {:event           :serialization
+                           :direction       "export"
+                           :source          "api"
+                           :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                           :count           (reduce + 0 (vals (:entity-counts report)))
+                           :error_count     (count (:errors report))
+                           :collection      (str/join "," (map str collection))
+                           :all_collections (and (empty? collection)
+                                                 (not (:no-collections opts)))
+                           :data_model      (not (:no-data-model opts))
+                           :settings        (not (:no-settings opts))
+                           :field_values    (:include-field-values opts)
+                           :secrets         false
+                           :success         (boolean success)
+                           :error_message   error-message}))
 
 ;;; HTTP API
 
@@ -174,7 +214,6 @@
   [_route-params
    {:keys                     [collection dirname]
     include-field-values?     :field_values
-    include-database-secrets? :database_secrets
     all-collections?          :all_collections
     data-model?               :data_model
     settings?                 :settings
@@ -198,52 +237,33 @@
        [:settings          {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase settings"})]
        [:data_model        {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase data model"})]
        [:field_values      {:default false} (mu/with ms/BooleanValue {:description "Serialize cached field values"})]
-       [:database_secrets  {:default false} (mu/with ms/BooleanValue {:description "Serialize details how to connect to each db"})]
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
   (api/check-superuser)
-  (let [start              (System/nanoTime)
-        opts               {:targets                  (mapv #(vector "Collection" %)
+  (let [opts               {:targets                  (mapv #(vector "Collection" %)
                                                             collection)
                             :no-collections           (and (empty? collection)
                                                            (not all-collections?))
                             :no-data-model            (not data-model?)
                             :no-settings              (not settings?)
                             :include-field-values     include-field-values?
-                            :include-database-secrets include-database-secrets?
-                            :dirname                  dirname
                             :continue-on-error        continue-on-error?
                             :full-stacktrace          full-stacktrace?}
-        {:keys [archive
-                log-file
-                report
-                status
-                error-message
-                callback]} (serialize&pack opts)]
-    (analytics/track-event! :snowplow/serialization
-                            {:event           :serialization
-                             :direction       "export"
-                             :source          "api"
-                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                             :count           (count (:seen report))
-                             :error_count     (count (:errors report))
-                             :collection      (str/join "," (map str collection))
-                             :all_collections (and (empty? collection)
-                                                   (not (:no-collections opts)))
-                             :data_model      (not (:no-data-model opts))
-                             :settings        (not (:no-settings opts))
-                             :field_values    (:include-field-values opts)
-                             :secrets         (:include-database-secrets opts)
-                             :success         (boolean archive)
-                             :error_message   error-message})
-    (if archive
-      {:status  200
-       :headers {"Content-Type"        "application/gzip"
-                 "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName ^File archive))}
-       :body    (on-response! archive callback)}
-      {:status  (or status 500)
-       :headers {"Content-Type" "text/plain"}
-       :body    (on-response! log-file callback)})))
+        export-dirname (or dirname
+                           (format "%s-%s"
+                                   (u/slugify (appearance/site-name))
+                                   (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
+        ;; Eager setup (target resolution, escape analysis) must run before the streaming response opens
+        ;; so a failure can still set a non-200 status. extract-entities! captures its logs into log-output
+        ;; (so escape-analysis warnings land in export.log) and honors full_stacktrace for genuine failures.
+        log-output (ByteArrayOutputStream.)
+        entities   (extract-entities! opts log-output full-stacktrace?)]
+    (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
+      (sr/set-header! "Content-Disposition"
+                      (format "attachment; filename=\"%s.tar.gz\"" export-dirname))
+      (let [start  (System/nanoTime)
+            result (serialize-to-stream! output export-dirname entities log-output opts)]
+        (track-export-event! collection opts start result)))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -273,11 +293,8 @@
        ;;      ideally we'd fix the underlying issue (by delaying realtime indexing updates until the tx closes)
        ;;      for now, we let users opt out, in case they're indexing a lot, so they can only reindex on the last step
        [:reindex           {:default true}  (mu/with ms/BooleanValue {:description "Rebuild the search index afterwards"})]]
-   _body
-   {{:strs [file]} :multipart-params, :as _request} :- [:map
-                                                        [:multipart-params
-                                                         [:map
-                                                          ["file" (mu/with ms/File {:description ".tgz with serialization data"})]]]]]
+   {:keys [file]} :- [:map
+                      [:file (mu/with ms/File {:description ".tgz with serialization data"})]]]
   (api/check-superuser)
   (try
     (let [start              (System/nanoTime)

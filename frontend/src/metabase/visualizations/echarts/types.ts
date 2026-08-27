@@ -14,6 +14,7 @@ export type EChartsSeriesMouseEvent<TDatum = unknown> = {
   };
   dataIndex?: number;
   seriesId?: string;
+  seriesName?: string;
   name?: string;
   value: any;
   dataType?: string;
@@ -21,8 +22,32 @@ export type EChartsSeriesMouseEvent<TDatum = unknown> = {
   data: TDatum;
 };
 
+export type EChartsSeriesBrushEvent = {
+  areas: BrushAreaParam[];
+};
+
+export function isLineXBrushRange(
+  range: BrushAreaParam["range"],
+): range is [number, number] {
+  return (
+    Array.isArray(range) &&
+    range.length === 2 &&
+    typeof range[0] === "number" &&
+    typeof range[1] === "number"
+  );
+}
+
 export type EChartsSeriesBrushEndEvent = EChartsSeriesMouseEvent & {
   areas: BrushAreaParam[];
+};
+
+export type EChartsSeriesBrushSelectedEvent = {
+  batch: {
+    selected: {
+      seriesIndex: number;
+      dataIndex: number[];
+    }[];
+  }[];
 };
 
 export type EChartsCartesianCoordinateSystem = {

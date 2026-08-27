@@ -6,6 +6,9 @@ export const actionIconOverrides: MantineThemeOverride["components"] = {
   ActionIcon: ActionIcon.extend({
     defaultProps: {
       variant: "subtle",
+      loaderProps: {
+        color: "currentColor",
+      },
     },
     classNames: {
       root: ActionIconStyles.root,

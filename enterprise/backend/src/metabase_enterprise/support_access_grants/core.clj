@@ -49,7 +49,6 @@
           token (sag.provider/create-support-access-reset! (:id support-user) grant)
           password-reset-url (when token
                                (str (system/site-url) "/auth/reset_password/" token))]
-
       ;; Publish event - the notification system handles email sending automatically
       (when (and token password-reset-url)
         (events/publish-event! :event/support-access-grant-created
@@ -59,7 +58,6 @@
                                 :grant_end_time grant-end
                                 :password_reset_url password-reset-url
                                 :notes notes}))
-
       ;; Return grant with token
       (cond-> grant
         token (assoc :token token)))))

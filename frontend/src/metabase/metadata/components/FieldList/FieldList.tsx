@@ -46,11 +46,9 @@ export function FieldList<T extends number | string>({
             parent={parent}
             href={getFieldHref?.(field) ?? ""}
             readOnly={readOnly}
-            onSelect={() => onSelect?.(field)}
-            onNameChange={(newName) => onNameChange(field, newName)}
-            onDescriptionChange={(newDescription) =>
-              onDescriptionChange(field, newDescription)
-            }
+            onSelect={onSelect}
+            onNameChange={onNameChange}
+            onDescriptionChange={onDescriptionChange}
           />
         );
       })}

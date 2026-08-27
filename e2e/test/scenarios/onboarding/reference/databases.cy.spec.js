@@ -73,18 +73,6 @@ describe("scenarios > reference > databases", () => {
       });
     });
 
-    it(
-      "should sort data reference database list (metabase#15598)",
-      { tags: "@skip" },
-      () => {
-        cy.visit("/browse");
-        checkReferenceDatabasesOrder();
-
-        cy.visit("/reference/databases/");
-        checkReferenceDatabasesOrder();
-      },
-    );
-
     it("should sort databases in new UI based question data selection popover", () => {
       H.startNewQuestion();
       H.miniPickerBrowseAll().click();
@@ -99,14 +87,6 @@ describe("scenarios > reference > databases", () => {
         });
       });
     });
-
-    it(
-      "should sort databases in new native question data selection popover",
-      { tags: "@skip" },
-      () => {
-        checkQuestionSourceDatabasesOrder("Native query");
-      },
-    );
   });
 
   describe("x-ray", () => {
@@ -155,25 +135,3 @@ describe("scenarios > reference > databases", () => {
     });
   });
 });
-
-function checkReferenceDatabasesOrder() {
-  cy.get("[class*=Card]").as("databaseCard").first().should("have.text", "a");
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  cy.get("@databaseCard").last().should("have.text", "Sample Database");
-}
-
-function checkQuestionSourceDatabasesOrder() {
-  // Last item is "Saved Questions" for UI based questions so we have to check for the one before that (-2), and the last one for "Native" (-1)
-  const lastDatabaseIndex = -1;
-  const selector = "[data-element-id=list-item]-title";
-
-  H.startNewQuestion();
-  H.popover().within(() => {
-    cy.findByText("Raw Data").click();
-    cy.get(selector).as("databaseName").eq(1).should("have.text", "a");
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.get("@databaseName")
-      .eq(lastDatabaseIndex)
-      .should("have.text", "Sample Database");
-  });
-}

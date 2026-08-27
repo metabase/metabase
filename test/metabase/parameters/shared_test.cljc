@@ -148,7 +148,7 @@
       {"foo" {:type :string/= :value "<script>alert(1)</script>"}}
       "<script>alert(1)</script>"
 
-        ;; Characters in the original text are not escaped
+      ;; Characters in the original text are not escaped
       "_*{{foo}}*_"
       {"foo" {:type :string/= :value "*bar*"}}
       "_**bar**_")))
@@ -401,7 +401,7 @@
                      :default "Q1-2021"
                      :type "date/quarter-year",
                      :sectionId "date"}
-    ;; Filter without default, should not be included in subscription
+                    ;; Filter without default, should not be included in subscription
                     {:name "Product title contains",
                      :slug "product_title_contains",
                      :id "acd0dfab",
@@ -410,7 +410,6 @@
     (testing "If a filter has multiple values, they are concatenated into a comma-separated string"
       (is (= "CA, NY, and NJ"
              (params/value-string (first parameters) "en"))))
-
     (testing "If a filter has a single default value, it is formatted appropriately"
       (is (= "Q1, 2021"
              (params/value-string (second parameters) "en"))))))
@@ -421,7 +420,16 @@
       (is (= "my default value"
              (param-val-or-default {:default "my default value"}))))
     (testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
-      (is (nil? (param-val-or-default {:value nil :default "my default value"}))))))
+      (is (nil? (param-val-or-default {:value nil :default "my default value"}))))
+    (testing "Empty collections count as no value (#76854)"
+      (is (nil? (param-val-or-default {:default []})))
+      (is (nil? (param-val-or-default {:value [] :default ["CA"]}))))))
+
+(deftest ^:parallel value-string-empty-value-test
+  (testing "Filters with an empty list of values render as an empty string instead of throwing (#76854)"
+    (is (= "" (params/value-string {:type "string/=" :default []} "en")))
+    (is (= "" (params/value-string {:type "string/=" :value []} "en")))
+    (is (= "" (params/formatted-list [])))))
 
 (deftest ^:parallel value-string-contains-test
   (testing "string/contains parameters are correctly formatted"

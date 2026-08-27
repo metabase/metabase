@@ -1,21 +1,17 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
-import { color as getColor } from "metabase/lib/colors";
-import { Icons } from "metabase/ui/components/icons/Icon/icons";
+import { color as getColor } from "metabase/ui/colors";
+import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style.ts";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
 import { TREND_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/trend-line.ts";
-import {
-  setSvgColor,
-  svgToDataUri,
-} from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
 
 export function ensureChartIsActive() {
-  cy.findByTestId("debounced-frame-root").should(
-    "not.have.css",
-    "pointer-events",
-    "none",
-  );
+  cy.findAllByTestId("debounced-frame-root").each(($el) => {
+    cy.wrap($el).should("not.have.css", "pointer-events", "none");
+  });
+  cy.wait(500); // Let DebouncedFrame transitions settle
+  ensureEchartsContainerHasSvg();
 }
 
 export function echartsContainer() {
@@ -57,20 +53,33 @@ export function getXYTransform(element) {
   return { x, y };
 }
 
-export function echartsIcon(name, isSelected = false) {
-  const iconSvg = setSvgColor(
-    Icons[name].source,
-    getColor(isSelected ? "brand" : "text-tertiary"),
-  );
-  const dataUri = svgToDataUri(iconSvg);
+export function timelineEventChip(label) {
+  return cy.get(`[data-testid="timeline-event-chip"][aria-label="${label}"]`);
+}
 
-  return echartsContainer().find(`image[href="${dataUri}"]`);
+export function timelineEventMarkerLine() {
+  const lineWidth = CHART_STYLE.timelineEvents.selectionLineWidth;
+  return echartsContainer()
+    .find(`path[stroke-width='${lineWidth}'][fill='none']`)
+    .filter((_, element) => {
+      // a vertical line is drawn as "M x y1 L x y2" — two points with the same x
+      const coordinates = (element.getAttribute("d") ?? "")
+        .split(/[ML\s,]+/)
+        .filter(Boolean);
+      const [x1, , x2] = coordinates;
+      return coordinates.length === 4 && x1 === x2;
+    });
 }
 
 export function chartGridLines() {
   return echartsContainer().find(
     "path[stroke='var(--mb-color-cartesian-grid-line)'][fill='none']",
   );
+}
+
+export function splitPanelAxisLines() {
+  const borderStrong = getColor("border-strong");
+  return echartsContainer().find(`path[stroke="${borderStrong}"]`);
 }
 
 export function chartPathWithFillColor(color) {
@@ -86,10 +95,14 @@ export function chartPathsWithFillColors(colors) {
 }
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
+const DIAMOND_PATH = "M0 -1L1 0L0 1L-1 0Z";
+
+export function cartesianChartCircles() {
+  return echartsContainer().find(`path[d="${CIRCLE_PATH}"]`);
+}
+
 export function cartesianChartCircle() {
-  return echartsContainer()
-    .find(`path[d="${CIRCLE_PATH}"]`)
-    .should("be.visible");
+  return cartesianChartCircles().should("be.visible");
 }
 
 export function cartesianChartCircleWithColor(color) {
@@ -100,6 +113,12 @@ export function cartesianChartCircleWithColor(color) {
 
 export function cartesianChartCircleWithColors(colors) {
   return colors.map((color) => cartesianChartCircleWithColor(color));
+}
+
+export function cartesianChartCircleWithFillColor(color) {
+  return echartsContainer()
+    .find(`path[d="${CIRCLE_PATH}"]`)
+    .filter((_, element) => getComputedStyle(element).fill === color);
 }
 
 export function otherSeriesChartPaths() {
@@ -260,4 +279,25 @@ export function assertEChartsTooltipNotContain(rows) {
       cy.findByText(row).should("not.exist");
     });
   });
+}
+
+export const BoxPlot = {
+  getBoxes() {
+    return echartsContainer().find('path[fill-opacity="0.15"][stroke]');
+  },
+
+  getPoints() {
+    return echartsContainer().find(`path[d="${CIRCLE_PATH}"]`);
+  },
+
+  getMeanMarkers() {
+    return echartsContainer().find(`path[d="${DIAMOND_PATH}"]`);
+  },
+};
+
+export function applyBrush(left, right) {
+  echartsContainer()
+    .trigger("mousedown", left, 100)
+    .trigger("mousemove", right, 100)
+    .trigger("mouseup", right, 100);
 }

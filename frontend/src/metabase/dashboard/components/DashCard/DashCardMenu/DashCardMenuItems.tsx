@@ -1,20 +1,20 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
+import { canDownloadResults } from "metabase/common/utils/dataset";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
-import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
-import { useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
+import type {
+  DashCardMenuItem,
+  DashboardCardCustomMenuItem,
+} from "metabase/embedding-sdk/types/plugins";
+import { useDispatch } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
 
-import type { DashCardMenuItem } from "./dashcard-menu";
-import { canDownloadResults, canEditQuestion } from "./utils";
+import { canEditQuestion } from "./utils";
 
 type DashCardMenuItemsProps = {
   question: Question;
@@ -31,17 +31,18 @@ export const DashCardMenuItems = ({
   isDownloadingData,
   onDownload,
   onEditVisualization,
-  dashcardId,
   canEdit,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
 
   const {
-    onEditQuestion = (question, mode = "notebook") =>
-      dispatch(editQuestion(question, mode)),
-  } = useSdkDashboardContext();
-
-  const { dashcardMenu } = useDashboardContext();
+    dashcardMenu,
+    onEditQuestion = (
+      question: Question,
+      mode: "query" | "view" | "notebook" = "notebook",
+    ) => dispatch(editQuestion(question, mode)),
+  } = useDashboardContext();
+  // Unjustified type cast. FIXME
   const dashcardMenuItems = dashcardMenu as
     | DashboardCardCustomMenuItem
     | undefined;
@@ -103,12 +104,6 @@ export const DashCardMenuItems = ({
       });
     }
 
-    items.push(
-      ...PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters
-        .map((itemGetter) => itemGetter(question, dashcardId, dispatch))
-        .filter(isNotNull),
-    );
-
     if (customItems) {
       items.push(
         ...customItems.map((item) => {
@@ -136,8 +131,6 @@ export const DashCardMenuItems = ({
     withDownloads,
     withEditLink,
     onEditVisualization,
-    dashcardId,
-    dispatch,
     canEdit,
   ]);
 

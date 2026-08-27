@@ -42,6 +42,7 @@
   ;; We may also want to filter based on the type of interaction that caused the change (e.g., grid, workflow, etc)
   (t2/select :model/Undo
              :batch_num [:in
+                         ^:allow-subquery
                          {:select [[[(if undo? :max :min) :batch_num]]]
                           :from   [(t2/table-name :model/Undo)]
                           :where  [:and
@@ -117,14 +118,12 @@
                    ;; default value, can be override in values
                    :undoable   true}
                   values)))))
-
     ;; Delete snapshots that have been undone, as we keep a linear history and will no longer be able to "redo" them.
     (when-let [{:keys [batch_num]} (first (next-batch false user-id scope))]
       (t2/delete! :model/Undo
                   :batch_num [:>= batch_num]
                   :scope scope
                   :undone true))
-
     ;; Pruning. Fairly naive implementation. Doesn't assume we were fully pruned before this update.
     (prune-from-batch! (max (batch-to-prune-from-for-rows retention-total-rows)
                             (batch-to-prune-from retention-total-batches)))

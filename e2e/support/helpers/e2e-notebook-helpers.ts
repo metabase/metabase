@@ -7,8 +7,7 @@ import {
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/querying/notebook/types";
-import type { IconName } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export function notebookButton() {
   return cy
     .findByTestId("qb-header-action-panel")

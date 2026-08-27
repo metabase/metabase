@@ -8,15 +8,16 @@ import type {
   DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   TableId,
-  Transform,
 } from "metabase-types/api";
 
 const getDefaultPluginDbRouting = () => ({
+  // Unjustified type cast. FIXME
   DatabaseRoutingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
   }>,
   getDatabaseNameFieldProps: (_isSlug: boolean) => ({}),
   getDestinationDatabaseRoutes: (_IsAdmin: any) =>
+    // Unjustified type cast. FIXME
     null as React.ReactElement | null,
   useRedirectDestinationDatabase: (
     _database: Pick<DatabaseType, "id" | "router_database_id"> | undefined,
@@ -29,6 +30,7 @@ const getDefaultPluginDbRouting = () => ({
 export const PLUGIN_DB_ROUTING = getDefaultPluginDbRouting();
 
 const getDefaultPluginDatabaseReplication = () => ({
+  // Unjustified type cast. FIXME
   DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
   }>,
@@ -40,8 +42,10 @@ export const PLUGIN_DATABASE_REPLICATION =
 const getDefaultPluginTableEditing = () => ({
   isEnabled: () => false,
   isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
+  // Unjustified type cast. FIXME
   getRoutes: () => null as React.ReactElement | null,
   getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
+  // Unjustified type cast. FIXME
   AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
     database: DatabaseType;
     settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
@@ -53,30 +57,6 @@ const getDefaultPluginTableEditing = () => ({
 
 export const PLUGIN_TABLE_EDITING = getDefaultPluginTableEditing();
 
-export type WorkspacesSectionProps = {
-  showLabel: boolean;
-};
-
-export type EditTransformMenuProps = {
-  transform: Transform;
-};
-
-const getDefaultPluginWorkspaces = () => ({
-  isEnabled: false,
-  AdminDatabaseWorkspacesSection: PluginPlaceholder as ComponentType<{
-    database: DatabaseType;
-    settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
-    updateDatabase: (
-      database: { id: DatabaseId } & Partial<DatabaseData>,
-    ) => Promise<void>;
-  }>,
-  WorkspacesSection: PluginPlaceholder as ComponentType<WorkspacesSectionProps>,
-  getDataStudioWorkspaceRoutes: () => null as React.ReactElement | null,
-  EditTransformMenu: PluginPlaceholder as ComponentType<EditTransformMenuProps>,
-});
-
-export const PLUGIN_WORKSPACES = getDefaultPluginWorkspaces();
-
 /**
  * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
  */
@@ -87,5 +67,4 @@ export function reinitialize() {
     getDefaultPluginDatabaseReplication(),
   );
   Object.assign(PLUGIN_TABLE_EDITING, getDefaultPluginTableEditing());
-  Object.assign(PLUGIN_WORKSPACES, getDefaultPluginWorkspaces());
 }

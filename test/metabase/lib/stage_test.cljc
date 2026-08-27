@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.join :as lib.join]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
@@ -169,20 +169,20 @@
                  {:id (meta/id :venues :price), :name "PRICE", :lib/source :source/table-defaults}
                  {:name "ID + 1", :lib/source :source/expressions}
                  {:name "ID + 2", :lib/source :source/expressions}
-                 {:id                       (meta/id :categories :id)
-                  :name                     "ID_2"
-                  :lib/source               :source/joins
-                  :source-alias             "Cat"
-                  :display-name             "ID"
-                  :lib/source-column-alias  "ID"
-                  :lib/desired-column-alias "Cat__ID"}
-                 {:id                       (meta/id :categories :name)
-                  :name                     "NAME_2"
-                  :lib/source               :source/joins
-                  :source-alias             "Cat"
-                  :display-name             "Name"
-                  :lib/source-column-alias  "NAME"
-                  :lib/desired-column-alias "Cat__NAME"}]
+                 {:id                           (meta/id :categories :id)
+                  :name                         "ID_2"
+                  :lib/source                   :source/joins
+                  :lib/join-alias "Cat"
+                  :display-name                 "ID"
+                  :lib/source-column-alias      "ID"
+                  :lib/desired-column-alias     "Cat__ID"}
+                 {:id                           (meta/id :categories :name)
+                  :name                         "NAME_2"
+                  :lib/source                   :source/joins
+                  :lib/join-alias "Cat"
+                  :display-name                 "Name"
+                  :lib/source-column-alias      "NAME"
+                  :lib/desired-column-alias     "Cat__NAME"}]
                 metadata))
         (testing ":long display names"
           (is (= ["ID"
@@ -321,16 +321,16 @@
     (let [query (metadata-for-breakouts-from-joins-test-query)]
       (is (= [{:name                     "CATEGORY"
                :lib/source-column-alias  "CATEGORY"
-               ::lib.join/join-alias     "P1"
+               :lib/join-alias     "P1"
                :lib/desired-column-alias "P1__CATEGORY"}
               {:name                     "SOURCE"
                :lib/source-column-alias  "SOURCE"
-               ::lib.join/join-alias     "People"
+               :lib/join-alias     "People"
                :lib/desired-column-alias "People__SOURCE"}
               {:name                     "count"
                :lib/source-column-alias  "count"
                :lib/desired-column-alias "count"}]
-             (map #(select-keys % [:name :lib/source-column-alias ::lib.join/join-alias :lib/desired-column-alias])
+             (map #(select-keys % [:name :lib/source-column-alias :lib/join-alias :lib/desired-column-alias])
                   (lib/returned-columns query)))))))
 
 (defn- metadata-for-breakouts-from-joins-test-query-2
@@ -352,7 +352,7 @@
     (let [query (metadata-for-breakouts-from-joins-test-query-2)]
       (is (= [{:name "CATEGORY", :lib/source-column-alias "P2__CATEGORY", :lib/desired-column-alias "P2__CATEGORY"}
               {:name "avg", :lib/source-column-alias "avg", :lib/desired-column-alias "avg"}]
-             (map #(select-keys % [:name :lib/source-column-alias ::lib.join/join-alias :lib/desired-column-alias])
+             (map #(select-keys % [:name :lib/source-column-alias :lib/join-alias :lib/desired-column-alias])
                   (lib/returned-columns query)))))))
 
 (defn- metadata-for-breakouts-from-joins-from-previous-stage-test-query
@@ -383,13 +383,13 @@
                :lib/desired-column-alias "count"}
               {:name                     "CATEGORY_2"
                :lib/source-column-alias  "P2__CATEGORY"
-               ::lib.join/join-alias     "Q2"
+               :lib/join-alias     "Q2"
                :lib/desired-column-alias "Q2__P2__CATEGORY"}
               {:name                     "avg"
                :lib/source-column-alias  "avg"
-               ::lib.join/join-alias     "Q2"
+               :lib/join-alias     "Q2"
                :lib/desired-column-alias "Q2__avg"}]
-             (map #(select-keys % [:name :lib/source-column-alias ::lib.join/join-alias :lib/desired-column-alias])
+             (map #(select-keys % [:name :lib/source-column-alias :lib/join-alias :lib/desired-column-alias])
                   (lib/returned-columns query)))))))
 
 (deftest ^:parallel ensure-filter-stage-test
@@ -618,6 +618,30 @@
       (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "CATEGORIES__via__CATEGORY_ID__NAME"]
              (map :lib/desired-column-alias (lib/returned-columns query -1 -1 {:include-remaps? true})))))))
 
+(deftest ^:parallel dont-show-remap-target-columns-from-source-card-test
+  (testing "Remapped columns from source cards don't show up in the \"select specific columns\" picker (#74177)"
+    (let [mp (-> meta/metadata-provider
+                 (lib.tu/remap-metadata-provider (meta/id :orders :user-id) (meta/id :people :email))
+                 (lib.tu/remap-metadata-provider (meta/id :orders :product-id) (meta/id :products :title)))
+          card-query (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (meta/field-metadata :orders :user-id))
+                         (lib/breakout (meta/field-metadata :orders :product-id)))
+          cols (lib/returned-columns card-query -1 -1 {:include-remaps? true})
+          remap-to->remap-from (into {} (keep (fn [col]
+                                                (when-let [field-id (get-in col [:lib/external-remap :field-id])]
+                                                  [field-id (:name col)])))
+                                     cols)
+          result-md (mapv (fn [col]
+                            (cond-> col
+                              (remap-to->remap-from (:id col)) (assoc :remapped-from (remap-to->remap-from (:id col)))))
+                          cols)
+          card-mp (lib.tu/metadata-provider-with-card-from-query mp 1 card-query {:result-metadata result-md})
+          query (lib/query card-mp (lib.metadata/card card-mp 1))]
+      (is (= ["USER_ID" "PRODUCT_ID" "count"]
+             (map :name (lib.field/fieldable-columns query 0))
+             (map :name (lib/returned-columns query 0)))))))
+
 (deftest ^:parallel propagate-binning-info-test
   (testing "binning info from previous stages should get propagated"
     (let [mp    (lib.tu/mock-metadata-provider
@@ -725,7 +749,7 @@
                                             nonsense-key            (assoc :nonsense-key nonsense-key)
                                             lib-key                 (assoc :lib/nonsense-key lib-key))
                                      clause [:field (meta/id :people :birth-date) opts]]]
-      (testing (pr-str (lib/->pMBQL clause))
+      (testing (pr-str (lib/->mbql5 clause))
         (testing `lib/returned-columns
           (let [query (lib/query
                        meta/metadata-provider
@@ -890,10 +914,9 @@
           :lib/source-column-alias      "sum"
           :lib/source-uuid              "4d059464-4190-40ae-bc4e-717ff016e157"
           :lib/type                     :metadata/column
-          :metabase.lib.join/join-alias "Orders"
+          :lib/join-alias "Orders"
           :name                         "sum"
-          :semantic-type                :type/Quantity
-          :source-alias                 "Orders"}
+          :semantic-type                :type/Quantity}
          {:base-type                    :type/Integer
           :display-name                 "Sum"
           :effective-type               :type/Integer
@@ -901,7 +924,7 @@
           :lib/source                   :source/joins
           :lib/source-uuid              "91b22976-279d-4052-b269-e4cd83a6683b"
           :lib/type                     :metadata/column
-          :metabase.lib.join/join-alias "Orders"
+          :lib/join-alias "Orders"
           :name                         "sum"}))))
 
 (deftest ^:parallel column-equality-test
@@ -929,7 +952,6 @@
                       :preview-display              true
                       :semantic-type                :type/Title
                       :settings                     nil
-                      :source-alias                 "Orders"
                       :table-id                     24050
                       :visibility-type              :normal
                       :lib/breakout?                false
@@ -939,7 +961,7 @@
                       :lib/source                   :source/joins
                       :lib/source-column-alias      "TITLE"
                       :lib/type                     :metadata/column
-                      :metabase.lib.join/join-alias "Orders"}
+                      :lib/join-alias "Orders"}
         existing-col {:base-type               :type/Integer
                       :display-name            "Orders → Sum"
                       :name                    "sum"

@@ -1,10 +1,12 @@
 import {
   BarChart,
+  BoxplotChart,
   CustomChart,
   LineChart,
   SankeyChart,
   ScatterChart,
   SunburstChart,
+  TreemapChart,
 } from "echarts/charts";
 import {
   BrushComponent,
@@ -25,6 +27,7 @@ export const registerEChartsModules = () => {
   use([
     LineChart,
     BarChart,
+    BoxplotChart,
     ScatterChart,
     CustomChart,
     SunburstChart,
@@ -38,6 +41,7 @@ export const registerEChartsModules = () => {
     BrushComponent,
     DatasetComponent,
     SankeyChart,
+    TreemapChart,
     LabelLayout,
     TooltipComponent,
   ]);

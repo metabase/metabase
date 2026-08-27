@@ -1,15 +1,14 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router";
 import { jt, t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
+import { getUser } from "metabase/current-user";
+import type { AdminPathKey, State } from "metabase/redux/store";
 import type {
   PermissionSubject,
   SpecialGroupType,
-} from "metabase/admin/permissions/types";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { getUser } from "metabase/selectors/user";
-import type { User } from "metabase-types/api";
-import type { AdminPathKey, State } from "metabase-types/store";
+  User,
+} from "metabase-types/api";
 
 const canUserAccessDataModel = (user?: User) =>
   user?.permissions?.can_access_data_model ?? false;
@@ -34,11 +33,17 @@ export const databaseManagementPermissionAllowedPathGetter = (
   return canUserAccessDatabaseManagement(user) ? ["databases"] : [];
 };
 
-export const getDataColumns = (
-  subject: PermissionSubject,
-  groupType?: SpecialGroupType,
-  isExternal?: boolean,
-) => {
+export const getDataColumns = ({
+  subject,
+  groupType,
+  isExternal,
+  showTransformPermissions = false,
+}: {
+  subject: PermissionSubject;
+  groupType?: SpecialGroupType;
+  isExternal?: boolean;
+  showTransformPermissions?: boolean;
+}) => {
   const allSubjectsColumns: { name: string; hint?: ReactNode }[] = [
     {
       name: t`Download results`,
@@ -57,13 +62,14 @@ export const getDataColumns = (
       name: t`Manage database`,
     });
 
-    if (PLUGIN_TRANSFORMS.isEnabled) {
+    if (showTransformPermissions) {
+      const transformsDescription = t`This lets users see, edit, and run transforms based on this database.`;
       allSubjectsColumns.push({
         name: t`Transforms`,
         hint:
           groupType === "analyst" || groupType === "admin"
-            ? null
-            : jt`Users must also be a member of the ${(
+            ? transformsDescription
+            : jt`${transformsDescription} Users must also be a member of the ${(
                 <Link
                   key="link"
                   to="/admin/people"

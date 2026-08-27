@@ -5,7 +5,7 @@ import { type SetupOpts, setup } from "./setup";
 describe("TableSection", () => {
   const commonSettings: Partial<SetupOpts> = {
     enterprisePlugins: ["library", "remote_sync"],
-    tokenFeatures: { data_studio: true, remote_sync: true },
+    tokenFeatures: { library: true, remote_sync: true },
   };
 
   it("should render publish button for admins", () => {

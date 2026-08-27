@@ -2,7 +2,7 @@ import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { extractRemappings } from "metabase/visualizations";
 import { ChartWithLegend } from "metabase/visualizations/components/ChartWithLegend";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
@@ -20,12 +20,10 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
 import S from "./PieChart.module.css";
-import { PIE_CHART_DEFINITION } from "./chart-definition";
+import { PIE_CHART_DEFINITION } from "./definition";
 import { useChartEvents } from "./use-chart-events";
 
-Object.assign(PieChart, PIE_CHART_DEFINITION);
-
-export function PieChart(props: VisualizationProps) {
+function PieChartComponent(props: VisualizationProps) {
   const {
     fontFamily,
     rawSeries,
@@ -206,3 +204,5 @@ export function PieChart(props: VisualizationProps) {
     </ChartWithLegend>
   );
 }
+
+export const PieChart = Object.assign(PieChartComponent, PIE_CHART_DEFINITION);

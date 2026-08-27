@@ -1,17 +1,15 @@
 import type React from "react";
 
 import { Link } from "metabase/common/components/Link";
-import { useSelector } from "metabase/lib/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { useLocation } from "metabase/router";
 import {
   Icon,
-  type IconName,
   NavLink,
   type NavLinkProps,
   Stack,
   type StackProps,
 } from "metabase/ui";
-
+import type { IconName } from "metabase-types/api";
 export const AdminNavWrapper = ({
   children,
   ...stackProps
@@ -40,8 +38,8 @@ export function AdminNavItem({
   icon,
   ...navLinkProps
 }: AdminNavItemProps) {
-  const location = useSelector(getLocation);
-  const subpath = location?.pathname;
+  const location = useLocation();
+  const subpath = location.pathname;
 
   return (
     <NavLink
@@ -49,7 +47,7 @@ export function AdminNavItem({
       to={path ?? ""}
       defaultOpened={folderPattern ? subpath.includes(folderPattern) : false}
       active={path === subpath}
-      variant="admin-nav"
+      variant="secondary"
       label={label}
       mb="xs"
       {...(icon ? { leftSection: <Icon name={icon} /> } : undefined)}

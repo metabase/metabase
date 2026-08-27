@@ -22,8 +22,10 @@ interface DownloadAndAssertParams {
   dashboardId?: number;
   enableFormatting?: boolean;
   pivoting?: "pivoted" | "non-pivoted";
+  assertStatusCode?: number;
   /** Assert that parameters in request body match expected values */
   assertParameters?: any[];
+  waitForDismiss?: boolean;
 }
 
 export interface DownloadRequestData {
@@ -48,7 +50,9 @@ export const exportFromDashcard = (format: string) => {
     cy.findByTestId("download-results-button").click();
   });
 
-  cy.findByTestId("status-root-container").should("contain", "Downloading");
+  cy.findByTestId("status-root-container")
+    .invoke("text")
+    .should("match", /Downloading|Done/);
 };
 
 /**
@@ -69,7 +73,9 @@ export function downloadAndAssert({
   isEmbed = false,
   enableFormatting = true,
   pivoting,
+  assertStatusCode,
   assertParameters,
+  waitForDismiss = true,
 }: DownloadAndAssertParams) {
   const { method, endpoint } = downloadUrl
     ? { method: downloadMethod, endpoint: downloadUrl }
@@ -137,7 +143,7 @@ export function downloadAndAssert({
     }
   }
 
-  cy.get("[aria-label='Download results']").click();
+  cy.findByLabelText("Download results").should("be.visible").click();
 
   popover().within(() => {
     cy.findByText(`.${fileType}`).click();
@@ -167,8 +173,14 @@ export function downloadAndAssert({
     cy.findByTestId("download-results-button").click();
   });
 
-  cy.wait("@fileDownload").then(() => {
-    ensureDownloadStatusDismissed();
+  cy.wait("@fileDownload").then(({ response }) => {
+    if (assertStatusCode) {
+      expect(response?.statusCode).to.eq(assertStatusCode);
+    }
+
+    if (waitForDismiss) {
+      ensureDownloadStatusDismissed();
+    }
   });
 }
 

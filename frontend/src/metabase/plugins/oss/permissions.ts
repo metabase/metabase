@@ -1,50 +1,103 @@
-import type { ReactNode } from "react";
+import type { Action, ThunkDispatch } from "@reduxjs/toolkit";
+import type { ReactElement, ReactNode } from "react";
 
-import {
-  type DataPermission,
-  DataPermissionValue,
-  type DatabaseEntityId,
-  type EntityId,
-  type PermissionSubject,
-  type SpecialGroupType,
-} from "metabase/admin/permissions/types";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import type Database from "metabase-lib/v1/metadata/Database";
+import { getUserIsAdmin } from "metabase/current-user";
+import type { State } from "metabase/redux/store";
+import type { ColorName } from "metabase/ui/colors/types";
 import type {
+  DataPermission,
+  DatabaseEntityId,
   Dataset,
   Group,
-  GroupPermissions,
+  GroupId,
   GroupsPermissions,
+  IconName,
+  PermissionEntityId,
+  PermissionSubject,
+  PermissionsDatabase,
+  SpecialGroupType,
   User,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import { DataPermissionValue } from "metabase-types/api";
 
 import type { PluginGroupManagersType } from "../types";
 
-const getDefaultAdminPermissionsDatabaseRoutes = () => [];
-const getDefaultAdminPermissionsDatabaseGroupRoutes = () => [];
-const getDefaultAdminPermissionsDatabasePostActions = () => ({
+// These describe the entries EE plugins contribute to the admin permissions
+// editor. They live here (not in metabase/admin) because shared plugin code
+// cannot import from feature modules; metabase/admin/permissions/types
+// re-exports them.
+export interface PermissionOption {
+  label: string;
+  value: DataPermissionValue;
+  icon: IconName;
+  iconColor: ColorName;
+}
+
+export interface PermissionAction {
+  label: string;
+  icon: IconName;
+  iconColor: ColorName;
+  onSelect: (
+    entityId: PermissionEntityId | undefined,
+    groupId: GroupId,
+    view: "database" | "group",
+  ) => void;
+}
+
+export interface PermissionConfirmationProps {
+  title: string;
+  message: ReactNode;
+  confirmButtonText: string;
+  cancelButtonText: string;
+}
+
+export type PostActionFunction = (
+  entityId: PermissionEntityId,
+  groupId: GroupId,
+  view: "database" | "group",
+  value: DataPermissionValue,
+  getState: () => State,
+) =>
+  | Action
+  | ((
+      dispatch: ThunkDispatch<State, unknown, Action>,
+      getState: () => State,
+    ) => unknown)
+  | void;
+
+const getDefaultAdminPermissionsDatabaseRoutes = (): ReactElement[] => [];
+const getDefaultAdminPermissionsDatabaseGroupRoutes = (): ReactElement[] => [];
+const getDefaultAdminPermissionsDatabasePostActions = (): {
+  impersonated: PostActionFunction | null;
+} => ({
   impersonated: null,
 });
-const getDefaultAdminPermissionsDatabaseActions = () => ({
+const getDefaultAdminPermissionsDatabaseActions = (): {
+  impersonated: PermissionAction[];
+} => ({
   impersonated: [],
 });
-const getDefaultAdminPermissionsTableOptions = () => [];
-const getDefaultAdminPermissionsTableRoutes = () => [];
-const getDefaultAdminPermissionsTableGroupRoutes = () => [];
-const getDefaultAdminPermissionsTableFieldsOptions = () => [];
+const getDefaultAdminPermissionsTableOptions = (): PermissionOption[] => [];
+const getDefaultAdminPermissionsTableRoutes = (): ReactElement[] => [];
+const getDefaultAdminPermissionsTableGroupRoutes = (): ReactElement[] => [];
+const getDefaultAdminPermissionsTableFieldsOptions =
+  (): PermissionOption[] => [];
 const getDefaultAdminPermissionsTableFieldsConfirmations = (): Array<
   (
     _permissions: GroupsPermissions,
     _groupId: number,
-    _entityId: EntityId,
+    _entityId: PermissionEntityId,
     _value: DataPermissionValue,
-  ) => any
+  ) => PermissionConfirmationProps | undefined
 > => [];
-const getDefaultAdminPermissionsTableFieldsActions = () => ({
+const getDefaultAdminPermissionsTableFieldsActions = (): {
+  sandboxed: PermissionAction[];
+} => ({
   sandboxed: [],
 });
-const getDefaultAdminPermissionsTableFieldsPostAction = () => ({
+const getDefaultAdminPermissionsTableFieldsPostAction = (): {
+  sandboxed: PostActionFunction | null;
+} => ({
   sandboxed: null,
 });
 
@@ -81,26 +134,26 @@ const getDefaultDataPermissions = () => ({
 export const PLUGIN_DATA_PERMISSIONS: {
   permissionsPayloadExtraSelectors: ((
     state: State,
-  ) => [Record<string, undefined | { group_id: string }[]>, string[]])[];
+  ) => [Record<string, undefined | { group_id: number }[]>, string[]])[];
   hasChanges: ((state: State) => boolean)[];
   shouldRestrictNativeQueryPermissions: (
     permissions: GroupsPermissions,
     groupId: number,
-    entityId: EntityId,
+    entityId: PermissionEntityId,
     permission: DataPermission,
     value: DataPermissionValue,
-    database: Database,
+    database: PermissionsDatabase,
   ) => boolean;
 
   upgradeViewPermissionsIfNeeded:
     | ((
         permissions: GroupsPermissions,
         groupId: number,
-        entityId: EntityId,
-        value: any,
-        database: Database,
+        entityId: PermissionEntityId,
+        value: DataPermissionValue,
+        database: PermissionsDatabase,
         permission: DataPermission,
-      ) => GroupPermissions)
+      ) => GroupsPermissions)
     | null;
 } = getDefaultDataPermissions();
 
@@ -113,13 +166,21 @@ export const PLUGIN_ADMIN_USER_MENU_ITEMS = getDefaultAdminUserMenuItems();
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = getDefaultAdminUserMenuRoutes();
 
 const getDefaultAdvancedPermissions = () => ({
-  addDatabasePermissionOptions: (permissions: any[], _database: Database) =>
-    permissions,
-  addSchemaPermissionOptions: (permissions: any[], _value: string) =>
-    permissions,
-  addTablePermissionOptions: (permissions: any[], _value: string) =>
-    permissions,
-  getDatabaseLimitedAccessPermission: (_value: string) => null,
+  addDatabasePermissionOptions: (
+    permissions: PermissionOption[],
+    _database: PermissionsDatabase,
+  ) => permissions,
+  addSchemaPermissionOptions: (
+    permissions: PermissionOption[],
+    _value: string,
+  ) => permissions,
+  addTablePermissionOptions: (
+    permissions: PermissionOption[],
+    _value: string,
+  ) => permissions,
+  getDatabaseLimitedAccessPermission: (
+    _value: string,
+  ): DataPermissionValue | null => null,
   isAccessPermissionDisabled: (
     _value: string,
     _subject: "schemas" | "tables" | "fields",
@@ -132,27 +193,48 @@ const getDefaultAdvancedPermissions = () => ({
 export const PLUGIN_ADVANCED_PERMISSIONS = getDefaultAdvancedPermissions();
 
 const getDefaultFeatureLevelPermissions = () => ({
-  getFeatureLevelDataPermissions: (
-    _entityId: DatabaseEntityId,
-    _groupId: number,
-    _groupType: SpecialGroupType,
-    _permissions: GroupsPermissions,
-    _dataAccessPermissionValue: DataPermissionValue,
-    _defaultGroup: Group,
-    _permissionSubject: PermissionSubject,
-    _permissionView?: "group" | "database",
-  ) => {
+  getFeatureLevelDataPermissions: ({
+    entityId: _entityId,
+    groupId: _groupId,
+    groupType: _groupType,
+    permissions: _permissions,
+    dataAccessPermissionValue: _dataAccessPermissionValue,
+    defaultGroup: _defaultGroup,
+    permissionSubject: _permissionSubject,
+    permissionView: _permissionView,
+    showTransformPermissions: _showTransformPermissions,
+  }: {
+    entityId: DatabaseEntityId;
+    groupId: number;
+    groupType: SpecialGroupType;
+    permissions: GroupsPermissions;
+    dataAccessPermissionValue: DataPermissionValue;
+    defaultGroup: Group;
+    permissionSubject: PermissionSubject;
+    permissionView?: "group" | "database";
+    showTransformPermissions?: boolean;
+  }) => {
+    // Unjustified type cast. FIXME
     return [] as any;
   },
-  getDataColumns: (
-    _subject: PermissionSubject,
-    _groupType?: SpecialGroupType,
-    _isExternal?: boolean,
-  ) => [] as any,
+  getDataColumns: ({
+    subject: _subject,
+    groupType: _groupType,
+    isExternal: _isExternal,
+    showTransformPermissions: _showTransformPermissions,
+  }: {
+    subject: PermissionSubject;
+    groupType?: SpecialGroupType;
+    isExternal?: boolean;
+    showTransformPermissions?: boolean;
+    // Unjustified type cast. FIXME
+  }) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
   canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),
+  // Unjustified type cast. FIXME
   dataModelQueryProps: {} as any,
+  // Unjustified type cast. FIXME
   databaseDetailsQueryProps: {} as any,
 });
 
@@ -161,6 +243,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS =
 
 const getDefaultAdminPermissionsTabs = () => ({
   getRoutes: (): ReactNode => null,
+  // Unjustified type cast. FIXME
   tabs: [] as { name: string; value: string }[],
 });
 
@@ -168,6 +251,7 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABS = getDefaultAdminPermissionsTabs();
 
 const getDefaultApplicationPermissions = () => ({
   getRoutes: (): ReactNode => null,
+  // Unjustified type cast. FIXME
   tabs: [] as any,
   selectors: {
     canAccessSettings: (_state: any) => false,
@@ -179,6 +263,7 @@ export const PLUGIN_APPLICATION_PERMISSIONS =
   getDefaultApplicationPermissions();
 
 const getDefaultGroupManagers = (): PluginGroupManagersType => ({
+  // Unjustified type cast. FIXME
   UserTypeToggle: () => null as any,
   UserTypeCell: null,
 

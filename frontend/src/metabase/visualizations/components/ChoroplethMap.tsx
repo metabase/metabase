@@ -1,0 +1,514 @@
+import cx from "classnames";
+import * as d3 from "d3";
+import type { Feature, FeatureCollection } from "geojson";
+import type L from "leaflet";
+import { useEffect, useMemo, useState } from "react";
+import { jt, t } from "ttag";
+import _ from "underscore";
+
+import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { connect, useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import { Flex, Loader, Text } from "metabase/ui";
+import MetabaseSettings from "metabase/utils/settings";
+import {
+  HEAT_MAP_ZERO_COLOR,
+  buildColorScale,
+  getLegendTitles,
+} from "metabase/visualizations/lib/choropleth";
+import { MinColumnsError } from "metabase/visualizations/lib/errors";
+import { getCanonicalRowKey } from "metabase/visualizations/lib/region-codes";
+import { unaggregatedDataWarningMap } from "metabase/visualizations/lib/warnings";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
+import type {
+  VisualizationDefinition,
+  VisualizationProps,
+} from "metabase/visualizations/types";
+import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
+import type {
+  CustomGeoJSONMap,
+  GeoJSONData,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+import { ChartWithLegend } from "./ChartWithLegend";
+import {
+  type FeatureClickContext,
+  buildFeatureClickObject,
+} from "./ChoroplethMap.utils";
+import {
+  type FeatureInteraction,
+  LeafletChoropleth,
+} from "./LeafletChoropleth";
+import { LegacyChoropleth, type ProjectionFrame } from "./LegacyChoropleth";
+import { computeMinimalBounds } from "./leaflet-bounds";
+
+const geoJsonCache = new Map<string, GeoJSONData>();
+
+function loadGeoJson(
+  geoJsonPath: string,
+  callback: (json: GeoJSONData) => void,
+) {
+  const cached = geoJsonCache.get(geoJsonPath);
+  if (cached) {
+    setTimeout(() => callback(cached), 0);
+    return;
+  }
+
+  d3.json<GeoJSONData>(geoJsonPath).then((json) => {
+    if (json) {
+      geoJsonCache.set(geoJsonPath, json);
+      callback(json);
+    }
+  });
+}
+
+type ChoroplethStateProps = {
+  sdkMetabaseInstanceUrl?: string;
+};
+
+type StateWithMaybeSdk = State & {
+  sdk?: { metabaseInstanceUrl?: string };
+};
+
+const mapStateToProps = (state: StateWithMaybeSdk): ChoroplethStateProps => ({
+  sdkMetabaseInstanceUrl: state.sdk?.metabaseInstanceUrl,
+});
+
+const connector = connect(mapStateToProps, null);
+
+const ensureTrailingSlash = (url: string): string =>
+  url.endsWith("/") ? url : url + "/";
+
+type GetMapUrlDetails = {
+  builtin?: boolean;
+  url?: string;
+};
+
+type GetMapUrlProps = {
+  sdkMetabaseInstanceUrl?: string;
+  settings?: VisualizationSettings;
+};
+
+export function getMapUrl(
+  details: GetMapUrlDetails,
+  props: GetMapUrlProps,
+): string {
+  const mapUrl = details.builtin
+    ? (details.url ?? "")
+    : `api/geojson/${props.settings?.["map.region"] ?? ""}`;
+
+  if (!isEmbeddingSdk() || !props.sdkMetabaseInstanceUrl) {
+    return mapUrl;
+  }
+
+  const baseUrl = new URL(props.sdkMetabaseInstanceUrl, window.location.origin)
+    .href;
+
+  // if the second parameter ends with a slash, it will join them together
+  // new URL("/sub-path", "http://example.org/proxy/") => "http://example.org/proxy/sub-path"
+  return new URL(mapUrl, ensureTrailingSlash(baseUrl)).href;
+}
+
+const MapNotFound = () => {
+  const isAdmin = useSelector(getUserIsAdmin);
+  return (
+    <Flex direction="column" m="auto" maw="25rem">
+      <div className={cx(CS.textCentered, CS.mb4, CS.px2)}>
+        <Text component="p">
+          {t`Looks like this custom map is no longer available. Try using a different map to visualize this.`}
+        </Text>
+        {isAdmin && (
+          <Text component="p" className={CS.mt1}>
+            {jt`To add a new map, visit ${(
+              <Link key="link" to="/admin/settings/maps" className={CS.link}>
+                {t`Admin settings > Maps`}
+              </Link>
+            )}.`}
+          </Text>
+        )}
+      </div>
+    </Flex>
+  );
+};
+
+type ChoroplethMapProps = VisualizationProps & ChoroplethStateProps;
+
+type ChoroplethMapState = {
+  geoJson: GeoJSONData | null;
+  geoJsonPath: string | null;
+  minimalBounds?: L.LatLngBounds;
+};
+
+type Projection = d3.GeoProjection | null;
+
+function isFeatureCollection(value: GeoJSONData): value is FeatureCollection {
+  return value.type === "FeatureCollection";
+}
+
+function getFeatures(geoJson: GeoJSONData): Feature[] {
+  return isFeatureCollection(geoJson) ? geoJson.features : [geoJson];
+}
+
+function getDetails(
+  settings: ChoroplethMapProps["settings"],
+): CustomGeoJSONMap | undefined {
+  const customGeoJson = MetabaseSettings.get("custom-geojson") ?? {};
+  const region = settings["map.region"];
+  return region ? customGeoJson[region] : undefined;
+}
+
+function useGeoJson(geoJsonPath: string | null): ChoroplethMapState {
+  const [state, setState] = useState<ChoroplethMapState>(() => {
+    if (geoJsonPath) {
+      const cached = geoJsonCache.get(geoJsonPath);
+      if (cached) {
+        return {
+          geoJson: cached,
+          geoJsonPath,
+          minimalBounds: computeMinimalBounds(getFeatures(cached)),
+        };
+      }
+    }
+    return { geoJson: null, geoJsonPath: null };
+  });
+
+  useEffect(() => {
+    if (!geoJsonPath) {
+      return;
+    }
+
+    let cancelled = false;
+    setState({ geoJson: null, geoJsonPath });
+    loadGeoJson(geoJsonPath, (geoJson) => {
+      if (!cancelled) {
+        setState({
+          geoJson,
+          geoJsonPath,
+          minimalBounds: computeMinimalBounds(getFeatures(geoJson)),
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [geoJsonPath]);
+
+  return state;
+}
+
+type MapProjection =
+  | { projection: d3.GeoProjection; projectionFrame: ProjectionFrame }
+  | { projection: null; projectionFrame: null };
+
+function getMapProjection(region: string | undefined): MapProjection {
+  // special case builtin maps to use legacy choropleth map
+  if (region === "us_states") {
+    return {
+      projection: d3.geoAlbersUsa(),
+      projectionFrame: [
+        [-135.0, 46.6],
+        [-69.1, 21.7],
+      ],
+    };
+  }
+  if (region === "world_countries") {
+    return {
+      projection: d3.geoMercator(),
+      projectionFrame: [
+        [-170, 78],
+        [180, -60],
+      ],
+    };
+  }
+  return { projection: null, projectionFrame: null };
+}
+
+function computeAspectRatio(
+  projection: Projection,
+  projectionFrame: ProjectionFrame | null,
+  minimalBounds: L.LatLngBounds | undefined,
+): number {
+  if (projection && projectionFrame) {
+    const [[minX, minY], [maxX, maxY]] = projectionFrame.map((coord) => {
+      const projected = projection(coord);
+      return projected ?? [0, 0];
+    });
+    return (maxX - minX) / (maxY - minY);
+  }
+  if (minimalBounds) {
+    return (
+      (minimalBounds.getEast() - minimalBounds.getWest()) /
+      (minimalBounds.getNorth() - minimalBounds.getSouth())
+    );
+  }
+  return 1;
+}
+
+function ChoroplethMapInner(props: ChoroplethMapProps) {
+  const {
+    series,
+    className,
+    gridSize,
+    hovered,
+    highlighted,
+    onHoverChange,
+    visualizationIsClickable,
+    onVisualizationClick,
+    settings,
+    isDashboard,
+    isDocument,
+    isMetricsViewer,
+    onRender,
+    onRenderError,
+  } = props;
+
+  const details = getDetails(settings);
+  const geoJsonPath = details ? getMapUrl(details, props) : null;
+  const { geoJson, minimalBounds } = useGeoJson(geoJsonPath);
+
+  const [
+    {
+      data: { cols, rows },
+      card,
+    },
+  ] = series;
+  const region = settings["map.region"];
+  const dimensionIndex = _.findIndex(
+    cols,
+    (col) => col.name === settings["map.dimension"],
+  );
+  const metricIndex = _.findIndex(
+    cols,
+    (col) => col.name === settings["map.metric"],
+  );
+  const dimensionColumn = cols[dimensionIndex];
+
+  const rowsByFeatureKey = useMemo(
+    () =>
+      _.groupBy(rows, (row) => getCanonicalRowKey(row[dimensionIndex], region)),
+    [rows, dimensionIndex, region],
+  );
+
+  const warnings = useMemo(() => {
+    const hasRowsToAggregate = Object.values(rowsByFeatureKey).some(
+      (featureRows) => featureRows.length > 1,
+    );
+    return hasRowsToAggregate && dimensionColumn
+      ? [unaggregatedDataWarningMap([dimensionColumn]).text]
+      : [];
+  }, [rowsByFeatureKey, dimensionColumn]);
+
+  useEffect(() => {
+    onRender({ warnings });
+  }, [onRender, warnings]);
+
+  if (!details) {
+    return <MapNotFound />;
+  }
+
+  const { projection, projectionFrame } = getMapProjection(region);
+
+  if (!geoJson) {
+    return (
+      <div className={cx(className, CS.flex, CS.layoutCentered)}>
+        <Loader size="lg" />
+      </div>
+    );
+  }
+
+  const nameProperty = details.region_name;
+  const keyProperty = details.region_key;
+
+  const getRowValue = (row: RowValue[]): number => {
+    const value = row[metricIndex];
+    return typeof value === "number" ? value : 0;
+  };
+
+  const getFeatureName = (feature: Feature): string =>
+    String(feature.properties?.[nameProperty]);
+  const getFeatureKey = (
+    feature: Feature,
+    { lowerCase = true }: { lowerCase?: boolean } = {},
+  ): string => {
+    const key = String(feature.properties?.[keyProperty]);
+    return lowerCase ? key.toLowerCase() : key;
+  };
+
+  const valuesMap = _.mapObject(rowsByFeatureKey, (featureRows) =>
+    featureRows.reduce((sum, row) => sum + getRowValue(row), 0),
+  );
+  const getFeatureValue = (feature: Feature): number | undefined =>
+    valuesMap[getFeatureKey(feature)];
+
+  const clickContext: FeatureClickContext = {
+    cols,
+    dimensionIndex,
+    metricIndex,
+    settings,
+    getFeatureName,
+    getFeatureKey,
+    cardId: card.id,
+  };
+
+  const onClickFeature =
+    onVisualizationClick != null
+      ? (click: FeatureInteraction) => {
+          const featureRows = rowsByFeatureKey[getFeatureKey(click.feature)];
+          const clickData = {
+            ...buildFeatureClickObject(
+              featureRows,
+              click.feature,
+              clickContext,
+            ),
+            event: click.event,
+          };
+          if (visualizationIsClickable(clickData)) {
+            onVisualizationClick(clickData);
+          }
+        }
+      : undefined;
+
+  const onHoverFeature = onHoverChange
+    ? (hover: FeatureInteraction | null) => {
+        const featureRows =
+          hover && rowsByFeatureKey[getFeatureKey(hover.feature)];
+        if (featureRows && hover) {
+          onHoverChange({
+            ...buildFeatureClickObject(
+              featureRows,
+              hover.feature,
+              clickContext,
+            ),
+            event: hover.event,
+          });
+        } else {
+          onHoverChange(null);
+        }
+      }
+    : undefined;
+
+  const domain = Array.from(new Set(Object.values(valuesMap)));
+  const { colorScale, groups, heatMapColors } = buildColorScale(
+    domain,
+    settings["map.colors"],
+  );
+
+  const columnSettings = settings.column?.(cols[metricIndex]) ?? {};
+  const legendTitles = getLegendTitles(groups, columnSettings);
+
+  const getColor = (feature: Feature): string => {
+    const value = getFeatureValue(feature);
+    return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
+  };
+
+  const isSeriesHighlighted =
+    highlighted != null &&
+    (highlighted.cardId == null || highlighted.cardId === card.id);
+  const highlightedDimension = highlighted?.dimensions?.find(
+    (d) => d.columnName === dimensionColumn?.name,
+  );
+  const highlightedKey =
+    isSeriesHighlighted && highlightedDimension
+      ? getCanonicalRowKey(highlightedDimension.value, region)
+      : null;
+
+  const isFeatureHighlighted = (feature: Feature): boolean | null => {
+    if (!isSeriesHighlighted || !highlightedDimension) {
+      return null;
+    }
+    return getFeatureKey(feature) === highlightedKey;
+  };
+
+  const aspectRatio = computeAspectRatio(
+    projection,
+    projectionFrame,
+    minimalBounds,
+  );
+
+  const onLegendHoverChange = onHoverChange
+    ? (hover?: { index: number; element?: HTMLElement | null } | null) => {
+        if (hover) {
+          onHoverChange({
+            index: hover.index,
+            element: hover.element ?? undefined,
+          });
+        } else {
+          onHoverChange(null);
+        }
+      }
+    : undefined;
+
+  const propagateRenderError = (error?: unknown) => {
+    onRenderError(error == null ? undefined : String(error));
+  };
+
+  return (
+    <ChartWithLegend
+      className={className}
+      aspectRatio={aspectRatio}
+      legendTitles={legendTitles}
+      legendColors={heatMapColors}
+      gridSize={gridSize}
+      hovered={hovered}
+      onHoverChange={onLegendHoverChange}
+      isDashboard={isDashboard}
+      isDocument={isDocument}
+      isMetricsViewer={isMetricsViewer}
+    >
+      {projection && isFeatureCollection(geoJson) ? (
+        <LegacyChoropleth
+          series={series}
+          geoJson={geoJson}
+          getColor={getColor}
+          isFeatureHighlighted={isFeatureHighlighted}
+          highlightedKey={highlightedKey}
+          onHoverFeature={onHoverFeature}
+          onClickFeature={onClickFeature}
+          projection={projection}
+          projectionFrame={projectionFrame}
+        />
+      ) : (
+        <LeafletChoropleth
+          series={series}
+          geoJson={geoJson}
+          getColor={getColor}
+          onHoverFeature={onHoverFeature}
+          onClickFeature={onClickFeature}
+          minimalBounds={minimalBounds}
+          onRenderError={propagateRenderError}
+        />
+      )}
+    </ChartWithLegend>
+  );
+}
+
+const choroplethStatics: Pick<
+  VisualizationDefinition,
+  "minSize" | "defaultSize" | "isSensible" | "checkRenderable"
+> = {
+  minSize: getMinSize("map"),
+  defaultSize: getDefaultSize("map"),
+  isSensible: ({ cols }) =>
+    cols.filter(isString).length > 0 && cols.filter(isMetric).length > 0,
+  checkRenderable: (series) => {
+    const {
+      data: { cols },
+    } = series[0];
+    if (cols.length < 2) {
+      throw new MinColumnsError(2);
+    }
+  },
+};
+
+export const ChoroplethMap = Object.assign(
+  connector(ChoroplethMapInner),
+  choroplethStatics,
+);

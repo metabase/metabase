@@ -1,6 +1,7 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 
 import type { FormLocation } from "../../types";
+
 export function connectionStringParsedSuccess(location: FormLocation) {
   trackSimpleEvent({
     event: "connection_string_parsed_success",

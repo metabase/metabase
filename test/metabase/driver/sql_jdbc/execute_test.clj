@@ -2,9 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
   (:import
    (java.sql Connection DatabaseMetaData)
@@ -15,6 +19,7 @@
                           (me/humanize (mr/explain sql-jdbc.execute/ConnectionOptions options)))
     nil                              nil
     {}                               nil
+    {:stream? true}                  nil
     {:session-timezone nil}          nil
     {:session-timezone "US/Pacific"} nil
     {:session-timezone "X"}          {:session-timezone ["invalid timezone ID: \"X\"" "timezone offset string literal"]}))
@@ -26,19 +31,19 @@
     (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
       (let [test-db-id (mt/id)  ;; Get the test database ID
             connection-count (volatile! 0)
-            orig-do-with-resolved-connection-data-source @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
-        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
-                      (fn [driver db opts]
-                        ;; Only count connections for our test database because on startup the audit-db will be
-                        ;; synced, which causes this to fail intermittently because it creates connections (to db
-                        ;; 13371337)
-                        (if (= db test-db-id)
-                          (reify javax.sql.DataSource
-                            (getConnection [_]
-                              (vswap! connection-count inc)
-                              (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts))))
-                          ;; For other databases (like audit DB), just pass through
-                          (orig-do-with-resolved-connection-data-source driver db opts)))]
+            orig-do-with-resolved-connection-data-source (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection-data-source)]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [driver db opts]
+                                      ;; Only count connections for our test database because on startup the audit-db will be
+                                      ;; synced, which causes this to fail intermittently because it creates connections (to db
+                                      ;; 13371337)
+                                      (if (= db test-db-id)
+                                        (reify javax.sql.DataSource
+                                          (getConnection [_]
+                                            (vswap! connection-count inc)
+                                            (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts))))
+                                        ;; For other databases (like audit DB), just pass through
+                                        (orig-do-with-resolved-connection-data-source driver db opts)))]
           (let [closed-conn (doto (.getConnection ^DataSource
                                    (orig-do-with-resolved-connection-data-source driver/*driver* test-db-id {}))
                               (.close))]
@@ -55,12 +60,36 @@
                (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)
                (is (= 2 @connection-count))))))))))
 
+(deftest resilient-reconnect-preserves-connection-type-test
+  (testing "resilient reconnection preserves *connection-type* binding"
+    (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+      (let [test-db-id               (mt/id)
+            captured-connection-type (volatile! nil)
+            orig-fn                  (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection-data-source)]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [driver db opts]
+                                      (when (and (= db test-db-id) (:keep-open? opts))
+                                        (vreset! captured-connection-type @#'driver.conn/*connection-type*))
+                                      (orig-fn driver db opts))]
+          (let [closed-conn (doto (.getConnection ^DataSource
+                                   (orig-fn driver/*driver* test-db-id {}))
+                              (.close))]
+            (driver.conn/with-write-connection
+              (driver/do-with-resilient-connection
+               driver/*driver*
+               test-db-id
+               (fn [driver _]
+                 (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)
+                 (is (= :write-data @captured-connection-type)
+                     "Reconnection should preserve write-data connection type"))))))))))
+
 (deftest try-ensure-open-conn-sets-non-recursive-options-test
   (testing "try-ensure-open-conn! sets connection options as non-recursive"
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
     #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-drivers (disj (descendants driver/hierarchy :sql-jdbc)
                            ;; too tricky to stub the connection
-                           :presto-jdbc :databricks :starburst)
+                           :presto-jdbc :databricks :starburst :clickhouse)
       (let [connection-option-calls (volatile! [])
             is-default-options
             (identical? (get-method sql-jdbc.execute/do-with-connection-with-options :sql-jdbc)
@@ -105,16 +134,13 @@
                           (let [ret (original-recursive-fn)]
                             (vswap! connection-option-calls conj [:recursive-connection-check ret])
                             ret)))]
-
           (driver/do-with-resilient-connection
            driver/*driver* (mt/id)
            (fn [driver _db]
              (let [result (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)]
                ;; Should return the new connection
                (is (identical? new-conn result))
-
                (is (some #(= % [:recursive-connection-check false]) @connection-option-calls))
-
                ;; Should have set connection options (since it's non-recursive)
                (when is-default-options
                  (let [calls @connection-option-calls]
@@ -130,13 +156,11 @@
                    (isClosed [_] false)
                    (isValid [_ _] true))]
         (is (true? (sql-jdbc.execute/is-conn-open? conn :check-valid? true)))))
-
     (testing "returns false when connection is closed"
       (let [conn (reify Connection
                    (isClosed [_] true)
                    (isValid [_ _] true))]
         (is (false? (sql-jdbc.execute/is-conn-open? conn :check-valid? true)))))
-
     (testing "closes connection and returns false when connection is open but not valid"
       (let [close-called? (atom false)
             conn (reify Connection
@@ -166,3 +190,102 @@
            (is (false? (.isClosed prepared-stmt)))
            (.close prepared-stmt)
            (is (true? (.isClosed prepared-stmt)))))))))
+
+(deftest write-op-metric-test
+  (testing "write-op counter tracks default connection acquisitions"
+    (mt/with-prometheus-system! [_ system]
+      (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver/*driver* (mt/id) nil
+         (fn [_conn] nil))
+        (is (pos? (mt/metric-value system :metabase-db-connection/write-op
+                                   {:connection-type "default"}))))))
+  (when config/ee-available?
+    (testing "write-op counter tracks write-data connection acquisitions"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-prometheus-system! [_ system]
+          (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+            (let [db (mt/db)]
+              (mt/with-temp-vals-in-db :model/Database (:id db) {:write_data_details (:details db)}
+                (driver.conn/with-write-connection
+                  (sql-jdbc.execute/do-with-connection-with-options
+                   driver/*driver* (mt/id) nil
+                   (fn [_conn] nil)))
+                (is (pos? (mt/metric-value system :metabase-db-connection/write-op
+                                           {:connection-type "write-data"})))))))))))
+
+(deftest bad-connection-details-throw-client-error-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
+                                           :engine  driver/*driver*}]
+      ;; It's not straightforward to trigger a `.getConnection` error for some drivers (e.g. sqlite)
+      ;; so just mock the exception. Also need to mock this h2 method so that the query doesn't fail
+      ;; before it gets to `do-with-resolved-connection-data-source`.
+      (with-redefs [h2/check-read-only-statements (fn [_query] nil)
+                    sql-jdbc.execute/do-with-resolved-connection-data-source
+                    (fn [_driver _db-or-id-or-spec _options]
+                      (reify javax.sql.DataSource
+                        (getConnection [_]
+                          (throw (java.sql.SQLException. "connection error")))))]
+        (let [query    {:database (:id tmp-db)
+                        :type     :native
+                        :native   {:query "SELECT 1"}}
+              response (mt/user-http-request :crowberto :post 400 "dataset" query)]
+          (is (= "unable-to-acquire-connection" (:error_type response))))))))
+
+(deftest connection-pool-checkout-timeout-returns-503-test
+  (testing "A c3p0 checkout timeout (saturated pool) surfaces to the frontend as a retriable HTTP 503"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
+                                             :engine  driver/*driver*}]
+        (with-redefs [h2/check-read-only-statements (fn [_query] nil)
+                      sql-jdbc.execute/do-with-resolved-connection-data-source
+                      (fn [_driver _db-or-id-or-spec _options]
+                        (reify javax.sql.DataSource
+                          (getConnection [_]
+                            (throw (java.sql.SQLException.
+                                    "An attempt by a client to checkout a Connection has timed out."
+                                    (com.mchange.v2.resourcepool.TimeoutException. "timed out"))))))]
+          (let [query    {:database (:id tmp-db)
+                          :type     :native
+                          :native   {:query "SELECT 1"}}
+                response (mt/user-http-request :crowberto :post 503 "dataset" query)]
+            (is (= "connection-pool-checkout-timeout" (:error_type response)))))))))
+
+(deftest checkout-queue-full?-test
+  (let [full? #'sql-jdbc.execute/checkout-queue-full?]
+    (testing "a limit of 0 (the default) disables the check even when many queries are waiting"
+      (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 0]
+        (is (false? (full? (reify com.mchange.v2.c3p0.PooledDataSource
+                             (getNumThreadsAwaitingCheckoutDefaultUser [_] 100)))))))
+    (testing "non-pooled data sources are never considered full"
+      (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 1]
+        (is (false? (full? (reify javax.sql.DataSource
+                             (getConnection [_] nil)))))))
+    (testing "full only once the waiting count reaches the limit"
+      (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 3]
+        (is (false? (full? (reify com.mchange.v2.c3p0.PooledDataSource
+                             (getNumThreadsAwaitingCheckoutDefaultUser [_] 2)))))
+        (is (true? (full? (reify com.mchange.v2.c3p0.PooledDataSource
+                            (getNumThreadsAwaitingCheckoutDefaultUser [_] 3)))))))))
+
+(deftest connection-pool-full-checkout-queue-returns-503-test
+  (testing "When the checkout queue is full, additional queries fail fast with a retriable HTTP 503"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
+                                             :engine  driver/*driver*}]
+        (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 1]
+          (with-redefs [h2/check-read-only-statements (fn [_query] nil)
+                        sql-jdbc.execute/do-with-resolved-connection-data-source
+                        (fn [_driver _db-or-id-or-spec _options]
+                          ;; a pool that already has more queries waiting than the configured max
+                          (reify com.mchange.v2.c3p0.PooledDataSource
+                            (getNumThreadsAwaitingCheckoutDefaultUser [_] 5)))]
+            (let [query    {:database (:id tmp-db)
+                            :type     :native
+                            :native   {:query "SELECT 1"}}
+                  response (mt/user-http-request :crowberto :post 503 "dataset" query)]
+              (is (= "connection-pool-checkout-queue-full" (:error_type response))))))))))

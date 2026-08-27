@@ -1,36 +1,55 @@
+import type { Schema as NormalizrSchema } from "normalizr";
 import { normalize } from "normalizr";
 
-import { EntitiesSchema } from "metabase/schema";
+import type { EntitiesState } from "metabase/redux/store";
+import { createMockNormalizedEntitiesState } from "metabase/redux/store/mocks";
+import {
+  DatabaseSchema,
+  FieldSchema,
+  MeasureSchema,
+  MetricSchema,
+  QuestionSchema,
+  SchemaSchema,
+  SegmentSchema,
+  SnippetSchema,
+  TableSchema,
+} from "metabase/schema";
 import type {
   Card,
-  Collection,
-  Dashboard,
   Database,
   Field,
+  Measure,
   NativeQuerySnippet,
   SavedQuestionDatabase,
   Schema,
   Segment,
   Table,
   User,
-  WritebackAction,
 } from "metabase-types/api";
-import type { EntitiesState } from "metabase-types/store";
-import { createMockNormalizedEntitiesState } from "metabase-types/store/mocks";
 
 export interface EntitiesStateOpts {
-  actions?: WritebackAction[];
-  collections?: Collection[];
-  dashboards?: Dashboard[];
   databases?: (Database | SavedQuestionDatabase)[];
   schemas?: Schema[];
   tables?: Table[];
   fields?: Field[];
   segments?: Segment[];
+  measures?: Measure[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
   questions?: Card[];
 }
+
+const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
+  databases: [DatabaseSchema],
+  schemas: [SchemaSchema],
+  tables: [TableSchema],
+  fields: [FieldSchema],
+  segments: [SegmentSchema],
+  measures: [MeasureSchema],
+  metrics: [MetricSchema],
+  snippets: [SnippetSchema],
+  questions: [QuestionSchema],
+};
 
 export const createMockEntitiesState = (
   opts: EntitiesStateOpts,

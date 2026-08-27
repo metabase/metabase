@@ -4,7 +4,7 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { Card, Dashboard, DashboardId } from "metabase-types/api";
 
 const getResource = ({
@@ -46,7 +46,7 @@ export const useGetCurrentResource = ({
 
       await dispatch(
         fetchDashboard({
-          dashId: dashboardId as number,
+          dashId: dashboardId,
           queryParams: {},
         }),
       );
@@ -58,6 +58,7 @@ export const useGetCurrentResource = ({
     error: cardLoadingError,
     isLoading: isCardLoading,
     isFetching: isCardFetching,
+    // Unjustified type cast. FIXME
   } = useGetCardQuery(questionId ? { id: questionId as number } : skipToken, {
     refetchOnMountOrArgChange: true,
   });

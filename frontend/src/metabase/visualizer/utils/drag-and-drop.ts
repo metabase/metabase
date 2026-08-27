@@ -4,7 +4,7 @@ import type {
   DraggedColumn,
   DraggedItem,
   DraggedWellItem,
-} from "metabase-types/store/visualizer";
+} from "metabase/redux/store/visualizer";
 
 import { DRAGGABLE_ID } from "../constants";
 

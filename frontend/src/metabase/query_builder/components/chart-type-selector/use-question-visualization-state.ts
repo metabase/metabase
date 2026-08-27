@@ -1,16 +1,11 @@
 import { useCallback } from "react";
-import _ from "underscore";
 
-import visualizations from "metabase/visualizations";
-import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
+import { visualizations } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
-import {
-  type CardDisplayType,
-  type Dataset,
-  isCardDisplayType,
-} from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
-import { DEFAULT_VIZ_ORDER } from "./viz-order";
+import { trackCustomVizSelected } from "./analytics";
 
 export type UseQuestionVisualizationStateProps = {
   question?: Question;
@@ -24,9 +19,12 @@ export const useQuestionVisualizationState = ({
   const selectedVisualization = question?.display() ?? "table";
 
   const updateQuestionVisualization = useCallback(
-    (display: CardDisplayType) => {
+    (display: VisualizationDisplay) => {
       if (!question || selectedVisualization === display) {
         return;
+      }
+      if (isCustomVizDisplay(display)) {
+        trackCustomVizSelected();
       }
       let newQuestion = question.setDisplay(display).lockDisplay();
       const visualization = visualizations.get(display);
@@ -45,43 +43,4 @@ export const useQuestionVisualizationState = ({
     selectedVisualization,
     updateQuestionVisualization,
   };
-};
-
-type IsSensibleVisualizationProps = {
-  result: Dataset | null;
-  vizType: CardDisplayType;
-};
-
-const isSensibleVisualization = ({
-  result,
-  vizType,
-}: IsSensibleVisualizationProps) => {
-  const visualization = visualizations.get(vizType);
-  return (
-    (result?.data &&
-      visualization?.isSensible?.(sanatizeResultData(result.data))) ||
-    false
-  );
-};
-
-export type GetSensibleVisualizationsProps = {
-  result: Dataset | null;
-};
-
-export const getSensibleVisualizations = ({
-  result,
-}: GetSensibleVisualizationsProps) => {
-  const availableVizTypes = Array.from(visualizations.entries())
-    .filter(([_display, config]) => !config.hidden)
-    .map(([vizType]) => vizType)
-    .filter(isCardDisplayType);
-
-  const orderedVizTypes = _.union(DEFAULT_VIZ_ORDER, availableVizTypes);
-
-  const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
-    orderedVizTypes,
-    (vizType) => isSensibleVisualization({ result, vizType }),
-  );
-
-  return { sensibleVisualizations, nonSensibleVisualizations };
 };

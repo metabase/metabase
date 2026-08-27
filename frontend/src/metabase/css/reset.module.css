@@ -43,15 +43,14 @@
   a,
   [role="button"] {
     &:focus-visible {
-      outline: 2px solid var(--mb-color-focus);
+      outline: 2px solid var(--mb-color-input-focus);
     }
   }
 
   button,
   input,
   textarea {
-    font-family: var(--mb-default-font-family), "Helvetica Neue", Helvetica,
-      sans-serif;
+    font-family: var(--mb-default-font-family);
   }
 
   textarea {

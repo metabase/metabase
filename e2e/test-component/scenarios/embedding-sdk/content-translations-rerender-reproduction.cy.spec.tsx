@@ -8,7 +8,6 @@ import {
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
-import { Flex } from "metabase/ui";
 
 describe("scenarios > embedding-sdk > content-translations-rerender-reproduction", () => {
   const setupEditor = () => {
@@ -31,9 +30,9 @@ describe("scenarios > embedding-sdk > content-translations-rerender-reproduction
     mockAuthProviderAndJwtSignIn();
 
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" />
-      </Flex>,
+      </div>,
       {
         sdkProviderProps: {
           locale: "de",

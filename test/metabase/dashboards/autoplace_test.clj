@@ -46,3 +46,10 @@
   (testing "should not place card over the right edge of the grid"
     (is (= (pos {:col 0 :row 1})
            (get-position [(pos {:col 0 :row 0 :size_x 5 :size_y 1})])))))
+
+(deftest get-position-for-new-dashcard-falls-back-to-default-size
+  (testing "unknown display types (e.g. custom viz plugins) fall back to default-card-size instead of NPE"
+    (is (= {:col 0 :row 0 :size_x 4 :size_y 4 :dashboard_tab_id nil}
+           (autoplace/get-position-for-new-dashcard [] :custom:Calendar-Heatmap)))
+    (is (= {:col 0 :row 0 :size_x 4 :size_y 4 :dashboard_tab_id nil}
+           (autoplace/get-position-for-new-dashcard [] nil)))))

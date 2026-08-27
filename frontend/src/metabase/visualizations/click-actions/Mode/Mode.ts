@@ -6,11 +6,12 @@ import type Question from "metabase-lib/v1/Question";
 
 import type {
   ClickAction,
+  ClickActionsMode,
   ClickObject,
   QueryClickActionsMode,
 } from "../../types";
 
-export class Mode {
+export class Mode implements ClickActionsMode {
   _question: Question;
   _queryMode: QueryClickActionsMode;
   _plugins?: MetabasePluginsConfig;
@@ -75,6 +76,7 @@ export class Mode {
             buttonType: "horizontal",
             name: "default",
 
+            // Unjustified type cast. FIXME
             ...(actionsOrActionObject as Partial<ClickAction>),
           },
         ];

@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { IndexRedirect, Link, Redirect, Route } from "react-router";
 
 import {
   setupCardDataset,
@@ -24,10 +23,12 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
+import { Link } from "metabase/common/components/Link";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import registerVisualizations from "metabase/visualizations/register";
+import { Route, redirect } from "metabase/router";
+import * as Urls from "metabase/urls";
+import { checkNotNull } from "metabase/utils/types";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Database,
   Field,
@@ -67,7 +68,7 @@ const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
   databaseId: undefined,
   schemaName: undefined,
   tableId: undefined,
-  tab: "field",
+  tab: "details",
   fieldId: undefined,
 };
 
@@ -252,28 +253,30 @@ async function setup({
     );
   }
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <>
-      <Route path="notData" component={OtherComponent} />
+      <Route path="notData" element={<OtherComponent />} />
       <Route path="data-studio/data">
-        <IndexRedirect to="database" />
-        <Route path="database" component={DataModel} />
-        <Route path="database/:databaseId" component={DataModel} />
+        <Route index element={redirect("database")} />
+        <Route path="database" element={<DataModel />} />
+        <Route path="database/:databaseId" element={<DataModel />} />
         <Route
           path="database/:databaseId/schema/:schemaId"
-          component={DataModel}
+          element={<DataModel />}
         />
-        <Redirect
-          from="database/:databaseId/schema/:schemaId/table/:tableId"
-          to="database/:databaseId/schema/:schemaId/table/:tableId/field"
+        <Route
+          path="database/:databaseId/schema/:schemaId/table/:tableId"
+          element={redirect(
+            "../database/:databaseId/schema/:schemaId/table/:tableId/details",
+          )}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
-          component={DataModel}
+          element={<DataModel />}
         />
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
-          component={DataModel}
+          element={<DataModel />}
         />
       </Route>
       <Route path="data-studio/library/segments/new" />
@@ -300,7 +303,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { history };
+  return { router };
 }
 
 describe("DataModel", () => {
@@ -385,6 +388,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
       await userEvent.clear(
         getTableSectionFieldNameInput(ORDERS_DISCOUNT_FIELD.display_name),
@@ -403,6 +407,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
       await userEvent.clear(getFieldNameInput());
       await userEvent.tab();
@@ -454,6 +459,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await userEvent.click(screen.getByRole("button", { name: /Sorting/ }));
 
       expect(screen.getByLabelText("Database order")).toBeInTheDocument();
@@ -469,6 +475,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
 
       await userEvent.click(getFieldVisibilityInput());
@@ -486,6 +493,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
 
       const input = getFieldSemanticTypeInput();
@@ -508,6 +516,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_PRODUCT_ID_FIELD.display_name);
 
       const input = getFieldSemanticTypeFkTargetInput();
@@ -532,6 +541,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_USER_ID_FIELD.display_name);
 
       const input = getFieldSemanticTypeFkTargetInput();
@@ -547,6 +557,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_ID_FIELD.display_name);
 
       expect(
@@ -561,6 +572,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
 
       const currencyInput = within(getFieldSection()).getByPlaceholderText(
@@ -587,6 +599,7 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       );
       await waitForLoaderToBeRemoved();
+      await clickFieldsTab();
       await clickTableSectionField(ORDERS_ID_FIELD.display_name);
 
       expect(
@@ -676,6 +689,8 @@ describe("DataModel", () => {
       expect(getTableNameInput()).toBeInTheDocument();
       expect(getTableNameInput()).toHaveValue(JSON_TABLE.display_name);
 
+      await clickFieldsTab();
+
       expect(
         getTableSectionFieldNameInput(JSON_FIELD_ROOT.display_name),
       ).toBeInTheDocument();
@@ -690,7 +705,7 @@ describe("DataModel", () => {
 
     describe("navigation", () => {
       it("should replace locations in history stack when being routed automatically", async () => {
-        const { history } = await setup({
+        const { router } = await setup({
           initialRoute: "notData",
           waitForDatabase: false,
           waitForTable: false,
@@ -704,7 +719,7 @@ describe("DataModel", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        history?.goBack();
+        router?.back();
 
         await waitFor(() => {
           expect(
@@ -724,10 +739,10 @@ describe("DataModel", () => {
       );
       await waitForLoaderToBeRemoved();
       await userEvent.click(
-        screen.getByRole("button", { name: /Sync settings/ }),
+        screen.getByRole("button", { name: "More actions" }),
       );
       await userEvent.click(
-        screen.getByRole("button", { name: "Re-scan table" }),
+        await screen.findByRole("menuitem", { name: /Re-scan field values/ }),
       );
 
       const calls = fetchMock.callHistory.calls(
@@ -742,6 +757,7 @@ describe("DataModel", () => {
       });
 
       const lastCall = calls[calls.length - 1];
+      // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall.options.body as string)).toEqual({
         table_ids: [ORDERS_TABLE.id],
       });
@@ -755,11 +771,11 @@ describe("DataModel", () => {
       );
       await waitForLoaderToBeRemoved();
       await userEvent.click(
-        screen.getByRole("button", { name: /Sync settings/ }),
+        screen.getByRole("button", { name: "More actions" }),
       );
       await userEvent.click(
-        screen.getByRole("button", {
-          name: "Discard cached field values",
+        await screen.findByRole("menuitem", {
+          name: /Discard cached field values/,
         }),
       );
       const calls = fetchMock.callHistory.calls(
@@ -774,6 +790,7 @@ describe("DataModel", () => {
       });
 
       const lastCall = calls[calls.length - 1];
+      // Unjustified type cast. FIXME
       expect(JSON.parse(lastCall.options.body as string)).toEqual({
         table_ids: [ORDERS_TABLE.id],
       });
@@ -1035,7 +1052,7 @@ describe("DataModel", () => {
     });
 
     it("should navigate to new segment page when clicking New segment", async () => {
-      const { history } = await setup();
+      const { router } = await setup();
 
       await userEvent.click(
         await findTablePickerTable(ORDERS_TABLE.display_name),
@@ -1045,7 +1062,7 @@ describe("DataModel", () => {
       await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
       await userEvent.click(screen.getByRole("link", { name: /New segment/i }));
 
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         `/data-studio/data/database/${ORDERS_TABLE.db_id}/schema/${ORDERS_TABLE.db_id}:${ORDERS_TABLE.schema}/table/${ORDERS_TABLE.id}/segments/new`,
       );
     });
@@ -1080,22 +1097,30 @@ async function findTablePickerItem(
 ) {
   let items: HTMLElement[] = [];
 
-  await waitFor(() => {
-    const allItems = screen.queryAllByTestId("tree-item");
-    items = allItems.filter(
-      (el) =>
-        el.getAttribute("data-type") === type && el.textContent?.includes(name),
-    );
+  await waitFor(
+    () => {
+      const allItems = screen.queryAllByTestId("tree-item");
+      items = allItems.filter(
+        (el) =>
+          el.getAttribute("data-type") === type &&
+          el.textContent?.includes(name),
+      );
 
-    if (items.length !== 1) {
-      throw new Error(`Cannot find ${type} in table picker`); // trigger retry
-    }
-  });
+      if (items.length !== 1) {
+        throw new Error(`Cannot find ${type} in table picker`); // trigger retry
+      }
+    },
+    { timeout: 5000 },
+  );
 
   return items[0];
 }
 
 /** table section helpers */
+
+async function clickFieldsTab() {
+  await userEvent.click(screen.getByRole("tab", { name: /Fields/ }));
+}
 
 function getTableSection() {
   return screen.getByTestId("table-section");

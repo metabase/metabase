@@ -6,14 +6,17 @@ import { useMemo } from "react";
 import "embedding-sdk-bundle";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import { storybookThemes } from "embedding-sdk-shared/test/storybook-themes";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import { USERS } from "../../../../e2e/support/cypress_data";
 
-import { storybookThemes } from "./storybook-themes";
 const METABASE_INSTANCE_URL =
+  // Unjustified type cast. FIXME
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 const METABASE_JWT_SHARED_SECRET =
+  // Unjustified type cast. FIXME
   (window as any).JWT_SHARED_SECRET || "0".repeat(64);
 
 const secret = new TextEncoder().encode(METABASE_JWT_SHARED_SECRET);
@@ -48,7 +51,27 @@ export const storybookSdkAuthDefaultConfig =
 
 export const CommonSdkStoryWrapper = (Story: StoryFn, context: any) => {
   const sdkTheme = context.globals.sdkTheme;
-  const theme = sdkTheme ? storybookThemes[sdkTheme] : undefined;
+  const globalTheme: MetabaseTheme | undefined = sdkTheme
+    ? storybookThemes[sdkTheme]
+    : undefined;
+
+  // Per-story theme overrides passed via `parameters.sdkThemeOverride`.
+  // Useful for stories that render their chat UI inside a fixed overlay and
+  // need SDK popovers to stack above the host app's modal backdrop.
+  const themeOverride: MetabaseTheme | undefined =
+    context.parameters?.sdkThemeOverride;
+
+  const theme: MetabaseTheme | undefined = themeOverride
+    ? {
+        ...globalTheme,
+        ...themeOverride,
+        components: {
+          ...globalTheme?.components,
+          ...themeOverride?.components,
+        },
+      }
+    : globalTheme;
+
   const locale = context.globals.locale;
   const user = context.globals.user;
 

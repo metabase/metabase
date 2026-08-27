@@ -2,9 +2,9 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
+import { createMockState } from "metabase/redux/store/mocks";
+import type { ExportFormat } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import type { PublicLinkPopoverProps } from "./PublicLinkPopover";
 import { PublicLinkPopover } from "./PublicLinkPopover";
@@ -16,6 +16,7 @@ const TestComponent = ({
   isOpen: mockIsOpen,
   onClose: mockIsClosed,
   url,
+  canRemoveLink,
 }: Omit<PublicLinkPopoverProps, "target">) => {
   const target = (
     <button data-testid="target" onClick={() => setIsOpen(true)}>
@@ -23,7 +24,7 @@ const TestComponent = ({
     </button>
   );
   const [isOpen, setIsOpen] = useState(mockIsOpen);
-  const [extension, setExtension] = useState<ExportFormatType | null>(null);
+  const [extension, setExtension] = useState<ExportFormat | null>(null);
 
   const linkExtension = extension ? `.${extension}` : "";
   const publicUrl = url ? `sample-public-link${linkExtension}` : null;
@@ -44,6 +45,7 @@ const TestComponent = ({
       extensions={extensions}
       selectedExtension={extension}
       setSelectedExtension={setExtension}
+      canRemoveLink={canRemoveLink}
     />
   );
 };
@@ -53,11 +55,13 @@ const setup = ({
   isOpen = true,
   extensions = [],
   isAdmin = false,
+  canRemoveLink = true,
 }: {
   hasUUID?: boolean;
   isOpen?: boolean;
-  extensions?: ExportFormatType[];
+  extensions?: ExportFormat[];
   isAdmin?: boolean;
+  canRemoveLink?: boolean;
 } = {}) => {
   const createPublicLink = jest.fn();
   const deletePublicLink = jest.fn();
@@ -71,6 +75,7 @@ const setup = ({
       onClose={onClose}
       extensions={extensions}
       url={hasUUID ? "sample-public-link" : null}
+      canRemoveLink={canRemoveLink}
     />,
     {
       storeInitialState: createMockState({
@@ -132,6 +137,18 @@ describe("PublicLinkPopover", () => {
     it("should not render `Remove public link` for non-admins", () => {
       setup({ isAdmin: false });
 
+      expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
+    });
+
+    // Removing a link is a write; hidden when the resource isn't writable (e.g. a
+    // remote-synced entity on a read-only instance), while the link itself stays
+    // viewable/copyable (MB #72752).
+    it("should not render `Remove public link` when canRemoveLink is false, even for admins", async () => {
+      setup({ isAdmin: true, canRemoveLink: false });
+
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
       expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
     });
   });

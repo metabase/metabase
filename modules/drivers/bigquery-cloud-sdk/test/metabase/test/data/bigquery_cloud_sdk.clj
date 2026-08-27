@@ -1,5 +1,6 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
@@ -17,6 +18,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
+   (com.google.api.client.googleapis.json
+    GoogleJsonResponseException)
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetDeleteOption
@@ -35,7 +38,8 @@
     Schema
     StandardTableDefinition
     TableId
-    TableInfo)))
+    TableInfo)
+   (java.time Duration)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,13 +63,19 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (if (str/starts-with? database-name "sha_")
-    database-name
-    (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
+  (cond (str/starts-with? database-name "sha_")
+        database-name
+        ;; releases get their own isolated datasets
+        (tx/on-master-or-release-branch?)
+        (str "sha_rel_" (tx/hash-dataset db-def) "_" (normalize-name database-name))
+        :else
+        (str "sha__" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
-  {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
-   :service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json)})
+  (if tx/*use-routing-details*
+    {:service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json-routing)}
+    {:project-id           (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
+     :service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json)}))
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
@@ -90,6 +100,9 @@
          :dataset-filters-type "inclusion"
          :dataset-filters-patterns (test-dataset-id db-def)
          :include-user-id-and-hash true))
+
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :test/dynamic-dataset-loading]
+  [_driver _feature _database] false)
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
@@ -143,7 +156,7 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println "Deleting dataset: " dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
-    (.printStackTrace (Exception. "This should not happen")))
+    (throw (Exception. "tried to delete test-data")))
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
@@ -336,20 +349,55 @@
               (recur (dec num-retries))
               (throw e))))))))
 
-(defn delete-old-datasets!
+(def ^:private ^Duration reap-after
+  "How long [[delete-old-datasets!]] lets a dataset sit before deleting it - since its last recorded use if it is
+  tracked, since its creation if it is not."
+  (t/duration 14 :days))
+
+(def ^:private ^Duration track-debounce
+  "How stale a dataset's `accessed_at` may be before another use is worth recording.
+
+  Half of [[reap-after]], so a dataset that keeps being used is re-recorded with a full reap interval to spare.
+  Anything past that halfway point leaves a dataset that is still in use eligible for deletion."
+  (.dividedBy reap-after 2))
+
+(defn- track-debounce-seconds
+  "[[track-debounce]] shortened by a random margin.
+
+  Without the margin, every job using a given dataset crosses the threshold at the same moment and writes at once.
+  [[tx/track-dataset]] writes to one table shared by every branch and release stream, and BigQuery runs only two
+  mutating statements per table concurrently, queueing twenty more before it starts rejecting them."
   []
+  (let [seconds (.toSeconds track-debounce)]
+    (- seconds (rand-int (quot seconds 4)))))
+
+(def ^:private recently-tracked-hashes
+  "Hashes of datasets used recently enough that recording another use would be redundant, read once per process.
+
+  Nothing reads `accessed_at` during a test run, so a snapshot going stale mid-run costs at worst a redundant write.
+  Nil if the tracking table cannot be read: on a fresh project nothing has been tracked, which is the same answer."
+  (delay
+    (u/ignore-exceptions
+      (into #{}
+            (map first)
+            (execute! (str "SELECT `hash` FROM `%s.metabase_test_tracking.datasets`"
+                           " WHERE `accessed_at` > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %d SECOND)")
+                      (project-id)
+                      (track-debounce-seconds))))))
+
+(defn delete-old-datasets! []
   (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets` WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))"
+                      (str "(SELECT `name` FROM `%1$s.metabase_test_tracking.datasets`"
+                           " WHERE `accessed_at` < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %2$d SECOND))"
                            " UNION ALL "
-                           "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
-                             where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
+                           "(select schema_name from `%1$s`.INFORMATION_SCHEMA.SCHEMATA d
+                             where d.schema_name not in (select name from `%1$s.metabase_test_tracking.datasets`)
                              and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))")
+                             and creation_time < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %2$d SECOND))")
                       (project-id)
-                      (project-id)
-                      (project-id))]
+                      (.toSeconds reap-after))]
     (doseq [outdated (map first all-outdated)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset more than two days old: %s`." outdated))
+      (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
       (destroy-dataset! outdated))))
 
 (defonce ^:private deleted-old-datasets?
@@ -381,7 +429,7 @@
                                              {:field-name "access_note"
                                               :base-type  :type/Text}])
       (catch BigQueryException e
-       ;; Already exists, ignore
+        ;; Already exists, ignore
         (when-not (= (.getCode e) 409)
           (throw e))))))
 
@@ -404,46 +452,61 @@
     [(test-dataset-id db-def)])
    ffirst))
 
+(defn- get-existing-tables [dataset-id]
+  (let [sql (format "SELECT table_name FROM %s.%s.INFORMATION_SCHEMA.TABLES"
+                    (project-id) dataset-id)]
+    (set (map first (execute! sql)))))
+
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
   [_driver db-def]
-  (setup-tracking-dataset!)
-  (and
-   (dataset-tracked?! db-def)
-   (database-exists?! db-def)))
+  (and (database-exists?! db-def)
+       (set/subset? (set (map :table-name (:table-definitions db-def)))
+                    (set (get-existing-tables (test-dataset-id db-def))))))
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
-  ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
-  (u/ignore-exceptions
-    (execute-params!
-     (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
-                  "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
-                  "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-                  "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
-     [(tx/hash-dataset db-def)
-      (test-dataset-id db-def)
-      (tx/tracking-access-note)])))
+  ;; BigQuery has a limit of 20 pending DML statements per table.
+  ;; https://cloud.google.com/blog/products/data-analytics/dml-without-limits-now-in-bigquery
+  ;; Repeatedly tracking the same dataset each time it's touched causes us to run up against
+  ;; that limit in CI. Debounce tracking recently tracked datasets so we don't create nearly as much
+  ;; dataset tracking noise.
+  (when-not (contains? @recently-tracked-hashes (tx/hash-dataset db-def))
+    (setup-tracking-dataset!)
+    ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
+    (u/ignore-exceptions
+      (execute-params!
+       (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
+                    "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
+                    "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
+                    "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
+       [(tx/hash-dataset db-def)
+        (test-dataset-id db-def)
+        (tx/tracking-access-note)]))))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-  (delete-old-datasets-if-needed!)
+  ;; re-enable this again once things are stable; for now let's just completely
+  ;; excise this potential source of unreliability
+  (comment (delete-old-datasets-if-needed!))
   (let [dataset-id (test-dataset-id db-def)]
-    (if (database-exists?! db-def)
-      (log/info (u/format-color 'blue "Dataset already exists %s, not loading db" (pr-str dataset-id)))
-      (try
-        (log/infof "Creating dataset %s..." (pr-str dataset-id))
-        (create-dataset! dataset-id)
-        ;; now create tables and load data.
-        (doseq [tabledef table-definitions]
-          (load-tabledef! dataset-id tabledef))
-        (doseq [native-ddl (:native-ddl options)]
-          (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
-        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
-        (catch Throwable e
-          (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
-          (log/error (u/pprint-to-str 'red (Throwable->map e)))
-          (throw e))))))
+    (when-not (database-exists?! db-def)
+      (create-dataset! dataset-id))
+    ;; now create tables and load data.
+    (let [existing-tables (get-existing-tables dataset-id)]
+      (doseq [tabledef table-definitions
+              :when (not (existing-tables (:table-name tabledef)))]
+        (try
+          (load-tabledef! dataset-id tabledef)
+          (catch BigQueryException e
+            (when-not (= 409 (.getCode e))
+              (throw e)))
+          (catch GoogleJsonResponseException e
+            (when-not (= 409 (.getCode (.getDetails e)))
+              (throw e))))))
+    (doseq [native-ddl (:native-ddl options)]
+      (apply execute! (sql.tx/compile-native-ddl driver native-ddl)))
+    (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]

@@ -1,5 +1,6 @@
 (ns metabase.query-processor.query-to-native-test
   "Tests around the `compile` function."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.query-to-native-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor.compile :as qp.compile]

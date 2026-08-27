@@ -29,18 +29,58 @@
    :visualization_settings mi/transform-visualization-settings
    :inline_parameters      mi/transform-json})
 
+(defn- ensure-integer-link-card-id
+  [id]
+  (when-not (integer? id)
+    (throw (ex-info "Link card entity id must be an integer"
+                    {:status-code 400, :id id})))
+  id)
+
+(defn- validate-link-card-entity-id
+  "Require the link-card entity id to be an integer before it is stored. It is used as an id when the linked
+  entity is looked up on read, so validating on write keeps a malformed value from being persisted."
+  [dashcard]
+  (when-let [id (get-in dashcard [:visualization_settings :link :entity :id])]
+    (ensure-integer-link-card-id id))
+  dashcard)
+
+(defn- validate-click-behavior-target-ids
+  "Require click-behavior target ids to be integers before they are stored. They are later used as entity ids
+  (e.g. by the dependency backfill), so validating on write keeps a malformed value from being persisted."
+  [dashcard]
+  (let [viz (:visualization_settings dashcard)]
+    (doseq [cb (cons (:click_behavior viz)
+                     (map (comp :click_behavior val) (:column_settings viz)))
+            :let [id (:targetId cb)]
+            :when (some? id)]
+      (when-not (integer? id)
+        (throw (ex-info "Click behavior target id must be an integer"
+                        {:status-code 400, :id id})))))
+  dashcard)
+
+(defn- validate-dashcard-on-write
+  [dashcard]
+  (-> dashcard
+      validate-link-card-entity-id
+      validate-click-behavior-target-ids))
+
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
-  (merge {:parameter_mappings     []
-          :visualization_settings {}
-          :inline_parameters      []}
-         dashcard))
+  (-> (merge {:parameter_mappings     []
+              :visualization_settings {}
+              :inline_parameters      []}
+             dashcard)
+      validate-dashcard-on-write))
+
+(t2/define-before-update :model/DashboardCard
+  [dashcard]
+  (validate-dashcard-on-write dashcard))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
   [dashcard]
   (if (contains? dashcard :visualization_settings)
-    (update dashcard :visualization_settings serdes/import-visualizer-settings)
+    (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
     dashcard))
 
 (declare series)
@@ -77,15 +117,19 @@
                    (m/update-existing :parameter_mappings parameters/normalize-parameter-mappings)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
-(defmethod serdes/hash-fields :model/DashboardCard
-  [_dashboard-card]
-  [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
-   (comp serdes/identity-hash
-         #(t2/select-one 'Dashboard :id %)
-         :dashboard_id)
-   :visualization_settings
-   :row :col
-   :created_at])
+(defn virtual-card-settings
+  "`visualization_settings` for a virtual dashcard — a dashcard with no backing card, such as a text
+  card or heading. `display` is the virtual display type as a string (\"text\", \"heading\", ...).
+  Mirrors the shape the frontend saves; see `createVirtualCard` in
+  frontend/src/metabase/common/utils/dashboard.ts."
+  [display text]
+  (cond-> {:virtual_card {:name                   nil
+                          :display                display
+                          :visualization_settings {}
+                          :archived               false}
+           :text         text}
+    ;; headings render without a card background, matching the frontend default
+    (= display "heading") (assoc :dashcard.background false)))
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 
@@ -215,7 +259,6 @@
               (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
                               {:status-code 400
                                :in-report-card-ids (map :id in-report-cards)}))))))
-
       (let [dashboard-card-ids (t2/insert-returning-pks!
                                 :model/DashboardCard
                                 (for [dashcard dashboard-cards]
@@ -239,14 +282,12 @@
           orphaned-param-ids (set (mapcat :inline_parameters cards-being-deleted))
           ;; Get dashboard IDs (should all be the same, but let's be safe)
           dashboard-ids (set (map :dashboard_id cards-being-deleted))]
-
       (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
         (let [dashboard-id (first dashboard-ids)
               dashboard (t2/select-one :model/Dashboard :id dashboard-id)
               current-params (:parameters dashboard)
               cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %)))
                                       current-params)]
-
           (when (not= (count current-params) (count cleaned-params))
             (t2/update! :model/Dashboard dashboard-id {:parameters cleaned-params})
             (count orphaned-param-ids)))))))
@@ -258,7 +299,6 @@
   (t2/with-transaction [_conn]
     ;; Clean up inline parameters before deletion (since we need to read the cards first)
     (cleanup-orphaned-inline-parameters! dashboard-card-ids)
-
     ;; Delete the cards
     (t2/delete! :model/PulseCard :dashboard_card_id [:in dashboard-card-ids])
     (t2/delete! :model/DashboardCard :id [:in dashboard-card-ids])))
@@ -327,18 +367,18 @@
 (defn link-card-info-query-for-model
   "Return a honeysql query that is used to fetch info for a linkcard."
   [model id-or-ids]
-  {:select (select-clause-for-link-card-model model)
-   :from   (t2/table-name (serdes/link-card-model->toucan-model model))
-   :where  (if (coll? id-or-ids)
-             [:in :id id-or-ids]
-             [:= :id id-or-ids])})
+  ^:allow-subquery {:select (select-clause-for-link-card-model model)
+                    :from   (t2/table-name (serdes/link-card-model->toucan-model model))
+                    :where  (if (coll? id-or-ids)
+                              [:in :id (mapv ensure-integer-link-card-id id-or-ids)]
+                              [:= :id (ensure-integer-link-card-id id-or-ids)])})
 
 (defn- link-card-info-query
   [link-card-model->ids]
   (if (= 1 (count link-card-model->ids))
     (apply link-card-info-query-for-model (first link-card-model->ids))
     {:select   [:*]
-     :from     [[{:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
+     :from     [[^:allow-subquery {:union-all (map #(apply link-card-info-query-for-model %) link-card-model->ids)}
                  :alias_is_required_by_sql_but_not_needed_here]]}))
 
 (mi/define-batched-hydration-method dashcard-linkcard-info

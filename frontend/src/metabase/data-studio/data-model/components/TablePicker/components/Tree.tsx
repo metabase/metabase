@@ -25,7 +25,7 @@ interface Props {
   path: TreePath;
   isLibraryEnabled: boolean;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
-  setOnUpdateCallback: (callback: (() => void) | null) => void;
+  setOnUpdateCallback: (callback: ((path?: TreePath) => void) | null) => void;
 }
 
 export function Tree({
@@ -50,17 +50,24 @@ export function Tree({
     reload(path);
   }, [reload, path]);
 
-  const refetchSelectedTables = useCallback(() => {
-    const selectedTableNodes = findSelectedTableNodes(tree, selectedTables);
-    selectedTableNodes.forEach((tableNode) => {
-      reload(tableNode.value);
-    });
-  }, [tree, reload, selectedTables]);
+  const refetchTables = useCallback(
+    (path?: TreePath) => {
+      if (path) {
+        reload(path);
+      } else {
+        const selectedTableNodes = findSelectedTableNodes(tree, selectedTables);
+        selectedTableNodes.forEach((tableNode) => {
+          reload(tableNode.value);
+        });
+      }
+    },
+    [tree, reload, selectedTables],
+  );
 
   useEffect(() => {
-    setOnUpdateCallback(() => refetchSelectedTables);
+    setOnUpdateCallback(() => refetchTables);
     return () => setOnUpdateCallback(null);
-  }, [refetchSelectedTables, setOnUpdateCallback]);
+  }, [refetchTables, setOnUpdateCallback]);
 
   useEffect(() => {
     if (tree.children.length !== 1) {

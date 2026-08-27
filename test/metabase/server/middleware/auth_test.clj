@@ -45,13 +45,11 @@
                (-> (auth-enforced-handler (request-with-session-key session-key))
                    :metabase-user-id)))
         (finally (t2/delete! :model/Session :id session-id)))))
-
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
       (is (= api.response/response-unauthentic
              (auth-enforced-handler
               (ring.mock/request :get "/anyurl")))))
-
     (testing "when an expired session ID is sent with request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED) should fail due to session
       ;; expiration
@@ -67,7 +65,6 @@
           (is (= api.response/response-unauthentic
                  (auth-enforced-handler (request-with-session-key session-key))))
           (finally (t2/delete! :model/Session :id session-id)))))
-
     (testing "when a Session tied to an inactive User is sent with the request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED)
       ;; should fail due to inactive user
@@ -101,7 +98,6 @@
          (:metabase-session-key
           (wrapped-api-key-handler
            (ring.mock/request :get "/anyurl"))))))
-
   (testing "API Key in header"
     (is (= "foobar"
            (:static-metabase-api-key

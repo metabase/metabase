@@ -3,29 +3,27 @@ import { t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { EmbeddingSettingsCard } from "metabase/admin/settings/components/EmbeddingSettings";
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
-import { UpsellBanner } from "metabase/admin/upsells/components";
-import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { UpsellBanner } from "metabase/common/components/upsells/components";
 import {
+  PLUGIN_ADMIN_SETTINGS,
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
+import { useSetting } from "metabase/settings";
 import { Box, Text } from "metabase/ui";
 
 import { SettingTitle } from "../../SettingHeader";
 import { EmbeddedResources } from "../../widgets/PublicLinksListing/EmbeddedResources";
 import { EmbeddingSecretKeyWidget } from "../EmbeddingSecretKeyWidget";
-import { CorsInputWidget } from "../EmbeddingSecuritySettings/CorsInputWidget";
 
 type Props = {
   showEmbeddingSdkSettings?: boolean;
-  showCorsSettings?: boolean;
   showContentTranslationSettings?: boolean;
 };
 
 export function SharedCombinedEmbeddingSettings({
-  showCorsSettings,
   showContentTranslationSettings,
 }: Props) {
   const isSimpleEmbedFeatureAvailable =
@@ -36,13 +34,18 @@ export function SharedCombinedEmbeddingSettings({
     getUpgradeUrl(state, { utm_content: "embedding-settings" }),
   );
 
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign: "enterprise",
+    location: "embedding-settings",
+  });
+
   return (
     <>
       <EmbeddingSettingsCard
         title={t`Enable guest embeds`}
         description={t`A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through.`}
         settingKey="enable-embedding-static"
-        actionButton={<NewEmbedButton />}
+        actionButton={<NewEmbedButton forceIsGuest />}
         sdk-setting-card
         testId="guest-embeds-setting-card"
       />
@@ -50,10 +53,11 @@ export function SharedCombinedEmbeddingSettings({
       {!isSimpleEmbedFeatureAvailable && (
         <UpsellBanner
           title={t`Upgrade to Metabase Pro for more powerful embedding methods`}
-          campaign="embedded-analytics-js"
+          campaign="embedding-methods"
           location="embedding-page"
           buttonText={t`Upgrade`}
           buttonLink={upgradeUrl}
+          onClick={triggerUpsellFlow}
           dismissible
         >
           <Text c="text-secondary" lh="md">
@@ -77,12 +81,6 @@ export function SharedCombinedEmbeddingSettings({
 
             <EmbeddedResources />
           </Box>
-        </SettingsSection>
-      )}
-
-      {showCorsSettings && (
-        <SettingsSection>
-          <CorsInputWidget />
         </SettingsSection>
       )}
 

@@ -10,17 +10,18 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import type {
+  Group,
+  GroupsPermissions,
+  PermissionsDatabase,
+  SchemaEntityId,
+  SpecialGroupType,
+} from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
 import { navigateToGranularPermissions } from "../../permissions";
-import type {
-  PermissionSectionConfig,
-  SchemaEntityId,
-  SpecialGroupType,
-} from "../../types";
+import type { PermissionSectionConfig } from "../../types";
 import {
   DataPermission,
   DataPermissionType,
@@ -133,7 +134,7 @@ const buildNativePermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   accessPermissionValue: DataPermissionValue,
-  database: Database,
+  database: PermissionsDatabase,
 ): PermissionSectionConfig => {
   const dbValue = getSchemasPermission(
     permissions,
@@ -184,15 +185,25 @@ const buildNativePermission = (
   };
 };
 
-export const buildTablesPermissions = (
-  entityId: SchemaEntityId,
-  groupId: number,
-  groupType: SpecialGroupType,
-  permissions: GroupsPermissions,
-  originalPermissions: GroupsPermissions,
-  defaultGroup: Group,
-  database: Database,
-): PermissionSectionConfig[] => {
+export const buildTablesPermissions = ({
+  entityId,
+  groupId,
+  groupType,
+  permissions,
+  originalPermissions,
+  defaultGroup,
+  database,
+  showTransformPermissions,
+}: {
+  entityId: SchemaEntityId;
+  groupId: number;
+  groupType: SpecialGroupType;
+  permissions: GroupsPermissions;
+  originalPermissions: GroupsPermissions;
+  defaultGroup: Group;
+  database: PermissionsDatabase;
+  showTransformPermissions: boolean;
+}): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
 
   const accessPermission = buildAccessPermission(
@@ -221,14 +232,15 @@ export const buildTablesPermissions = (
   return _.compact([
     shouldShowViewDataColumn && accessPermission,
     nativePermission,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions({
       entityId,
       groupId,
       groupType,
       permissions,
-      accessPermission.value,
+      dataAccessPermissionValue: accessPermission.value,
       defaultGroup,
-      "tables",
-    ),
+      permissionSubject: "tables",
+      showTransformPermissions,
+    }),
   ]);
 };

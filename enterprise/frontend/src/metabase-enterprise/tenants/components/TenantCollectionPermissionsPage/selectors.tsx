@@ -7,38 +7,40 @@ import { COLLECTION_OPTIONS } from "metabase/admin/permissions/constants/collect
 import { Messages } from "metabase/admin/permissions/constants/messages";
 import type {
   CollectionIdProps,
-  CollectionPermissionEditorType,
   CollectionSidebarType,
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { buildCollectionTree } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import type { DataPermissionValue } from "metabase/admin/permissions/types";
+import { selectGroupList } from "metabase/admin/permissions/selectors/data-permissions/groups";
 import {
-  Collections,
-  ROOT_COLLECTION,
-  getCollectionIcon,
-} from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
+  DataPermission,
+  DataPermissionType,
+  type PermissionEditorType,
+} from "metabase/admin/permissions/types";
+import { collectionApi } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { getCollectionIcon } from "metabase/common/collections/utils";
 import {
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
+} from "metabase/common/utils/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import type { ExpandedCollection, State } from "metabase/redux/store";
+import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
   CollectionId,
   CollectionPermissions,
+  DataPermissionValue,
   Group as GroupType,
 } from "metabase-types/api";
-import type { ExpandedCollection, State } from "metabase-types/store";
 
 export const tenantCollectionsQuery = {
-  tree: true,
   "exclude-other-user-collections": true,
   "exclude-archived": true,
   namespace: "shared-tenant-collection",
-};
+} as const;
 
 export const getIsTenantDirty = createSelector(
   (state: State) => state.admin.permissions.tenantCollectionPermissions,
@@ -72,10 +74,12 @@ const getTenantRootCollectionTreeItem = () => {
   };
 };
 
-const getTenantCollections = (state: State) =>
-  Collections.selectors.getList(state, {
-    entityQuery: tenantCollectionsQuery,
-  }) ?? [];
+const getTenantCollections = (state: State) => {
+  const queryState = collectionApi.endpoints.listCollectionsTree.select(
+    tenantCollectionsQuery,
+  )(state);
+  return queryState?.data ?? [];
+};
 
 const getTenantCollectionsTree = createSelector(
   [getTenantCollections],
@@ -127,17 +131,18 @@ const findCollection = (
 
 const getTenantCollection = createSelector(
   [getCurrentTenantCollectionId, getTenantCollections],
-  (collectionId, collections) => {
+  (collectionId, collections): Collection | null => {
     if (collectionId == null) {
       return null;
     }
 
     if (collectionId === ROOT_COLLECTION.id) {
+      // Unjustified type cast. FIXME
       return {
         ...ROOT_COLLECTION,
         name: t`Root shared collection`,
         children: collections,
-      };
+      } as unknown as Collection;
     }
 
     return findCollection(collections, collectionId);
@@ -160,13 +165,13 @@ const getTenantCollectionPermission = (
 export const getTenantCollectionsPermissionEditor = createSelector(
   getTenantCollectionsPermissions,
   getTenantCollectionEntity,
-  Groups.selectors.getList,
-  (permissions, collection, groups): CollectionPermissionEditorType => {
+  selectGroupList,
+  (permissions, collection, groups): PermissionEditorType | null => {
     if (!permissions || collection == null) {
       return null;
     }
 
-    const hasChildren = collection.children?.length > 0;
+    const hasChildren = (collection.children?.length ?? 0) > 0;
     const toggleLabel = hasChildren ? t`Also change sub-collections` : null;
 
     const entities = groups
@@ -179,13 +184,15 @@ export const getTenantCollectionsPermissionEditor = createSelector(
           isTenantGroup ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
         );
 
-        const defaultGroupPermission = defaultGroup
-          ? getTenantCollectionPermission(
-              permissions,
-              defaultGroup.id,
-              collection.id,
-            )
-          : "none";
+        if (!defaultGroup) {
+          return null;
+        }
+
+        const defaultGroupPermission = getTenantCollectionPermission(
+          permissions,
+          defaultGroup.id,
+          collection.id,
+        );
 
         const confirmations = (newValue: DataPermissionValue) => [
           getPermissionWarningModal(
@@ -219,6 +226,8 @@ export const getTenantCollectionsPermissionEditor = createSelector(
           ) : undefined,
           permissions: [
             {
+              permission: DataPermission.COLLECTIONS,
+              type: DataPermissionType.COLLECTIONS,
               toggleLabel,
               hasChildren,
               isDisabled: disabled,
@@ -230,6 +239,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
               ),
               warning: getTenantCollectionWarning(
                 group.id,
+                // Unjustified type cast. FIXME
                 collection as ExpandedCollection,
                 permissions,
               ),
@@ -239,7 +249,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
           ],
         };
       })
-      .filter(Boolean);
+      .filter(isNotNull);
 
     return {
       title: t`Permissions for ${collection.name}`,

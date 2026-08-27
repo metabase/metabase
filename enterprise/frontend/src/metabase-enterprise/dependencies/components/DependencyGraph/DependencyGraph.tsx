@@ -1,4 +1,8 @@
-import { skipToken } from "@reduxjs/toolkit/query";
+// Deliberate import-time side effect: xyflow's stylesheet must load with this
+// chunk. If this module is ever declared side-effect free, the bundler would
+// drop this import and the graph would render unstyled.
+import "@xyflow/react/dist/style.css";
+
 import {
   Background,
   Controls,
@@ -8,16 +12,18 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group, useColorScheme } from "metabase/ui";
-import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import type {
-  DependencyGraph,
-  WorkspaceDependencyGraph,
-} from "metabase-types/api";
+import type { DependencyEntry, DependencyGraph } from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
@@ -45,36 +51,30 @@ const PRO_OPTIONS = {
 };
 
 type DependencyGraphProps = {
-  graph?: DependencyGraph | WorkspaceDependencyGraph | null;
+  graph?: DependencyGraph;
   isFetching?: boolean;
-  error?: any;
-  getGraphUrl: (entry?: any) => string;
-  withEntryPicker?: boolean;
-  entry?: any;
+  error?: unknown;
+  entry?: DependencyEntry;
   nodeTypes?: typeof NODE_TYPES;
   edgeTypes?: typeof EDGE_TYPES;
+  headerRightSide?: ReactNode;
+  withEntryPicker?: boolean;
   openLinksInNewTab?: boolean;
+  getGraphUrl: (entry?: DependencyEntry) => string;
 };
 
 export function DependencyGraph({
   entry,
-  graph: externalGraph,
-  isFetching: isFetchingExternally = false,
-  error: externalError,
+  graph,
+  isFetching = false,
+  error,
   getGraphUrl,
   withEntryPicker,
+  headerRightSide = null,
   nodeTypes = NODE_TYPES,
   edgeTypes = EDGE_TYPES,
   openLinksInNewTab = true,
 }: DependencyGraphProps) {
-  const shouldFetch = entry != null && !externalGraph;
-  const dependencyGraph = useGetDependencyGraphQuery(
-    shouldFetch ? entry : skipToken,
-  );
-  const isFetching = isFetchingExternally || dependencyGraph.isFetching;
-  const graph = externalGraph || dependencyGraph.data;
-  const error = externalError || dependencyGraph.error;
-
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
@@ -89,19 +89,23 @@ export function DependencyGraph({
     return selection != null ? findNode(nodes, selection) : null;
   }, [nodes, selection]);
 
-  useEffect(() => {
-    if (entry == null || error != null) {
+  useLayoutEffect(() => {
+    if (graph == null) {
       setNodes([]);
       setEdges([]);
-      setSelection(null);
     } else if (graph != null) {
       const { nodes: initialNodes, edges: initialEdges } =
         getInitialGraph(graph);
       setNodes(initialNodes);
       setEdges(initialEdges);
+    }
+  }, [graph, setNodes, setEdges]);
+
+  useLayoutEffect(() => {
+    if (selection != null && selectedNode == null) {
       setSelection(null);
     }
-  }, [entry, graph, error, setNodes, setEdges]);
+  }, [selection, selectedNode, setSelection]);
 
   useEffect(() => {
     if (error != null) {
@@ -145,6 +149,7 @@ export function DependencyGraph({
               />
             )}
             {nodes.length > 1 && <GraphSelectInput nodes={nodes} />}
+            {headerRightSide}
           </Group>
         </Panel>
         {selection != null && selectedNode != null && (

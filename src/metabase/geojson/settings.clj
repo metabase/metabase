@@ -1,12 +1,15 @@
 (ns metabase.geojson.settings
   (:require
    [clojure.java.io :as io]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.http :as http]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
-   (java.net InetAddress URL)))
+   (java.net URI URL)))
 
 (set! *warn-on-reflection* true)
 
@@ -52,42 +55,54 @@
 
 (def ^:private CustomGeoJSONValidator (mr/validator CustomGeoJSON))
 
+(defn allow-classpath-geojson?
+  "Whether classpath GeoJSON resources are allowed, controlled by MB_ALLOW_CLASSPATH_GEOJSON."
+  []
+  (config/config-bool :mb-allow-classpath-geojson))
+
 (defn invalid-location-msg
   "Error message when a GeoJSON URL is invalid."
   []
-  (str (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath.")
+  (str (if (allow-classpath-geojson?)
+         (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath.")
+         (tru "Invalid GeoJSON file location: must start with http:// or https://."))
        " "
        (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")))
-
-(def ^:private invalid-hosts
-  #{"metadata.google.internal"}) ; internal metadata for GCP
-
-(defn- valid-host?
-  [^URL url]
-  (let [host (.getHost url)
-        host->url (fn [host] (URL. (str "http://" host)))
-        base-url  (host->url (.getHost url))]
-    (and (not-any? (fn [invalid-url] (.equals ^URL base-url invalid-url))
-                   (map host->url invalid-hosts))
-         (not (.isLinkLocalAddress (InetAddress/getByName host))))))
 
 (defn- valid-protocol?
   [^URL url]
   (#{"http" "https"} (.getProtocol url)))
 
+(defn- external-host?
+  "True only when `url`'s host resolves and *every* resolved address is a public, externally-routable
+  unicast address (see [[metabase.util.http/address-allowed-for-network-policy?]]). Unlike
+  [[metabase.util.http/host-allowed-for-network-policy?]] this rejects a host that does not resolve,
+  matching geojson's stricter set-time validation -- a bad URL should fail to save.
+  The fetch itself will still re-check the security at each request to handle changes in settings."
+  [^URL url]
+  (boolean
+   (when-let [addrs (http/host->inet-addresses (.getHost url))]
+     (every? #(http/address-allowed-for-network-policy? :external-only %) addrs))))
+
 (defn- valid-url?
   [url-string]
   (try
-    (let [url (URL. url-string)]
+    (let [url (.toURL (URI. url-string))]
       (and (valid-protocol? url)
-           (valid-host? url)))
-    (catch Throwable e
-      (throw (ex-info (invalid-location-msg) {:status-code 400, :url url-string} e)))))
+           (external-host? url)))
+    (catch Throwable _ false)))
+
+(defn valid-geojson-resource-path?
+  "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not.
+   User-defined classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true."
+  [url]
+  (and (allow-classpath-geojson?)
+       (boolean (io/resource url))))
 
 (defn valid-geojson-url?
-  "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not."
+  "Whether GeoJSON `url` points to a valid resource or "
   [url]
-  (or (io/resource url)
+  (or (valid-geojson-resource-path? url)
       (valid-url? url)))
 
 (defn- valid-geojson-urls?
@@ -134,3 +149,38 @@
   :visibility :public
   :export?    true
   :audit      :raw-value)
+
+(defn user-defined-custom-geojson
+  "Returns the subset of custom-geojson that users defined, without the built-in geojson entries."
+  []
+  (reduce dissoc (custom-geojson) (keys (builtin-geojson))))
+
+(defn defined-region?
+  "Whether `region-key` names a region map whose GeoJSON we could resolve: a built-in region (when default
+  maps are enabled), or a user-defined one (when custom GeoJSON is enabled). Mirrors what
+  [[metabase.geojson.api/region-geojson]] can resolve, minus the fetch itself."
+  [region-key]
+  (let [k (keyword region-key)]
+    (or (contains? (builtin-geojson) k)
+        (and (custom-geojson-enabled)
+             (contains? (user-defined-custom-geojson) k)))))
+
+(def ^:private read-classpath-geojson
+  ;; Built-in GeoJSON files are static, so reading + parsing them once is safe to cache forever. The stored
+  ;; `url` (e.g. "app/assets/...") is a web path served out of resources/frontend_client, so resolve it there.
+  (memoize (fn [url]
+             (some-> (str "frontend_client/" url)
+                     io/resource
+                     slurp
+                     json/decode))))
+
+(defn builtin-region-geojson
+  "For a built-in region key (e.g. \"us_states\"), return the parsed GeoJSON `:data` along with its
+  `:region_key`/`:region_name`, read straight from the classpath. Returns nil for unknown or non-built-in
+  keys. Used by static (email/Slack) rendering to embed GeoJSON without an HTTP round-trip."
+  [region-key]
+  (when-let [{:keys [url region_key region_name builtin]} (get (builtin-geojson) (some-> region-key keyword))]
+    (when-let [data (and builtin url (read-classpath-geojson url))]
+      {:data        data
+       :region_key  region_key
+       :region_name region_name})))

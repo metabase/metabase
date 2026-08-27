@@ -1,16 +1,16 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Route } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
+import { trackSegmentCreated } from "metabase/common/data-studio/analytics";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table } from "metabase-types/api";
@@ -21,20 +21,18 @@ import { useSegmentQuery } from "../../hooks/use-segment-query";
 import { createInitialQueryForTable } from "../../utils/segment-query";
 
 type NewSegmentPageProps = {
-  route: Route;
   table: Table;
   breadcrumbs: ReactNode;
   getSuccessUrl: (segment: Segment) => string;
 };
 
 export function NewSegmentPage({
-  route,
   table,
   breadcrumbs,
   getSuccessUrl,
 }: NewSegmentPageProps) {
-  const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
+  const navigate = useNavigate();
+  const metadata = useSelector(getMetadataWithHiddenTables);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [name, setName] = useState("");
@@ -72,14 +70,15 @@ export function NewSegmentPage({
     }
     const { data: segment, error } = await createSegment({
       name: name.trim(),
-      table_id: table.id,
       definition: definition,
       description: description.trim() || undefined,
     });
 
     if (error) {
+      trackSegmentCreated("failure", "data_studio_segments");
       sendErrorToast(t`Failed to create segment`);
     } else if (segment) {
+      trackSegmentCreated("success", "data_studio_segments", segment.id);
       setSavedSegment(segment);
       sendSuccessToast(t`Segment created`);
     }
@@ -96,9 +95,9 @@ export function NewSegmentPage({
 
   useEffect(() => {
     if (savedSegment) {
-      dispatch(push(getSuccessUrl(savedSegment)));
+      navigate(getSuccessUrl(savedSegment));
     }
-  }, [savedSegment, dispatch, getSuccessUrl]);
+  }, [savedSegment, getSuccessUrl, navigate]);
 
   return (
     <PageContainer data-testid="new-segment-page" gap="xl">
@@ -125,7 +124,7 @@ export function NewSegmentPage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }

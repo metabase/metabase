@@ -30,7 +30,7 @@
                      base-type (.getCanonicalName (class expected)))
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                       (lib/filter (lib/= (meta/field-metadata :venues :price)
-                                         ;; apparently we have no MLv2 helper for creating `:value` clauses
+                                         ;; apparently we have no Lib helper for creating `:value` clauses
                                          [:value
                                           {:base-type base-type, :effective-type base-type, :lib/uuid (str (random-uuid))}
                                           (str expected)])))]

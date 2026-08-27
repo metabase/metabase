@@ -15,16 +15,16 @@ Metabase periodically runs different types of queries on your data warehouse to 
 
 When Metabase first connects to your database, it performs a [sync](#how-database-syncs-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/semantic-types.md).
 
-You can follow the progress of these queries from **Gear icon** >**Admin settings** > **Tools** > **Tasks** and filtering by the various sync tasks.
+You can follow the progress of these queries from **grid icon** >**Admin** > **Tools** > **Tasks** and filtering by the various sync tasks.
 
-Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Table Metadata**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
+Once the queries are done running, you can view and edit the synced metadata from **Admin** > **Table Metadata**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
 
 ## Choose when syncs and scans happen
 
 By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, you might want to choose when syncs and scans happen.
 
-1. Click on the **Gear icon**.
-2. Select **Admin settings**.
+1. Click on the **grid icon**.
+2. Select **Admin**.
 3. Go to **Databases**.
 4. Select your database.
 5. In the **Connection and sync** section, click on **Edit connection details**.
@@ -54,21 +54,21 @@ Regardless of which option you pick, if you [set a field to use a dropdown list 
 
 ## Manually syncing tables and columns
 
-1. Go to **Admin settings** > **Databases** > your database.
+1. Go to **Admin** > **Databases** > your database.
 2. Click **Sync database schema**.
 
 ## Manually scanning column values
 
 To scan values from all the columns in a table:
 
-1. Go to **Admin settings** > **Table Metadata** > your database.
+1. Go to **Admin** > **Table Metadata** > your database.
 2. Select the table that you want to bring up to date with your database.
 3. Click the **gear icon** at the top of the page.
 4. Click **Re-scan this table**.
 
 To scan values from a specific column:
 
-1. Go to **Admin settings** > **Table Metadata** > your database.
+1. Go to **Admin** > **Table Metadata** > your database.
 2. Select the table.
 3. Find the column you want to bring up to date with your database.
 4. Click the **gear icon** in the panel for that column.
@@ -78,7 +78,7 @@ To scan values from a specific column:
 
 To clear the [scanned field values for a table](#syncing-and-scanning-databases):
 
-1. Go to **Admin settings** > **Table Metadata**.
+1. Go to **Admin** > **Table Metadata**.
 2. Select the database and table.
 3. Click the **gear icon** in the upper right.
 4. Click **Discard cached field values**.
@@ -89,7 +89,7 @@ You can also tell Metabase to forget the cached values for individual fields by 
 
 To prevent Metabase from running syncs and scans against a specific table, change the [table visibility](../data-modeling/metadata-editing.md#table-visibility) to **Hidden**:
 
-1. Go to **Admin settings** > **Table Metadata** > your database.
+1. Go to **Admin** > **Table Metadata** > your database.
 2. Hover over the table name in the sidebar.
 3. Click the **eye** icon.
 

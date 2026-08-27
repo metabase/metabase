@@ -6,7 +6,10 @@ import {
   embedModalEnableEmbedding,
   legacyStaticEmbeddingButton,
 } from "e2e/support/helpers/e2e-embedding-iframe-sdk-setup-helpers";
-import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import {
+  modal,
+  selectDropdown,
+} from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/embedding-sdk-helpers/constants";
 
 import { openSharingMenu } from "./e2e-sharing-helpers";
@@ -313,16 +316,16 @@ export function unpublishChanges(apiPath, callback) {
 }
 
 export function getParametersContainer() {
-  return cy.findByLabelText("Configuring parameters");
+  return cy.findByTestId("parameters-container");
 }
 
 export function setEmbeddingParameter(name, value) {
   getParametersContainer().findByLabelText(name).click();
-  popover().contains(value).click();
+  selectDropdown().contains(value).click();
 }
 
 export function assertEmbeddingParameter(name, value) {
-  getParametersContainer().findByLabelText(name).should("have.text", value);
+  getParametersContainer().findByLabelText(name).should("have.value", value);
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing
@@ -357,9 +360,28 @@ export function createPublicDocumentLink(documentId) {
 }
 
 /**
+ * Create a public link for a document, sign out, and visit it as anonymous.
+ * Accepts a numeric id or a Cypress alias string (e.g. "@documentId").
+ */
+export function visitPublicDocument(documentIdOrAlias) {
+  if (typeof documentIdOrAlias === "number") {
+    visitPublicDocumentById(documentIdOrAlias);
+    return;
+  }
+  cy.get(documentIdOrAlias).then((id) => visitPublicDocumentById(Number(id)));
+}
+
+function visitPublicDocumentById(documentId) {
+  createPublicDocumentLink(documentId).then(({ body: { uuid } }) => {
+    cy.signOut();
+    cy.visit(`/public/document/${uuid}`);
+  });
+}
+
+/**
  * @param {Object} options
  * @param {string} options.url
- * @param {import("metabase-types/store").InteractiveEmbeddingOptions} options.qs
+ * @param {Partial<import("metabase/redux/store").InteractiveEmbeddingOptions>} options.qs
  * @param {Function} [options.onBeforeLoad]
  */
 export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {

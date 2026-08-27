@@ -24,7 +24,6 @@ const DASHCARD_QUERY_WAIT_TIME = 1000;
 // and then immediately editing it again. After saving,
 // we exit the edit mode and that can happen after
 // `H.editDashboard` is called for some reason
-const DASHBOARD_SAVE_WAIT_TIME = 450;
 
 describe("scenarios > dashboard > visualizer > basics", () => {
   beforeEach(() => {
@@ -144,6 +143,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       (ordersCountByCreatedAtQuestionId) => {
         H.addQuestionToDashboard({
           dashboardId: ORDERS_DASHBOARD_ID,
+          // Unjustified type cast. FIXME
           cardId: ordersCountByCreatedAtQuestionId as any,
         });
         H.visitDashboard(ORDERS_DASHBOARD_ID);
@@ -173,21 +173,23 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.saveDashcardVisualizerModal();
 
-    H.getDashboardCard(1).within(() => {
-      cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findAllByText("Created At: Month").should("exist");
-    });
-
-    H.saveDashboard();
-
-    H.getDashboardCard(1).within(() => {
-      cy.findByTestId("chart-container").within(() => {
+    H.getDashboardCard(1)
+      .findByTestId("chart-container")
+      .within(() => {
         cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
         cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
         cy.findAllByText("Created At: Month").should("exist");
       });
-    });
+
+    H.saveDashboard();
+
+    H.getDashboardCard(1)
+      .findByTestId("chart-container")
+      .within(() => {
+        cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+        cy.findAllByText("Created At: Month").should("exist");
+      });
   });
 
   it("should allow to visualize an existing dashcard another way if its viz type isn't supported by visualizer", () => {
@@ -284,7 +286,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     });
     H.saveDashcardVisualizerModal();
     cy.wait(DASHCARD_QUERY_WAIT_TIME);
-    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+    H.saveDashboard();
 
     H.getDashboardCard(2).realHover();
     H.getDashboardCardMenu(2).click();
@@ -342,7 +344,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.assertDashboardCardTitle(1, "");
 
     // Save the dashboard
-    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+    H.saveDashboard();
 
     // Check that the card titles are still good
     H.assertDashboardCardTitle(0, "Renamed chart");
@@ -389,6 +391,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@questionId").then((questionId) => {
         H.addQuestionToDashboard({
           dashboardId,
+          // Unjustified type cast. FIXME
           cardId: questionId as any,
         });
         H.visitDashboard(dashboardId);
@@ -429,6 +432,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@questionWithDescriptionId").then((questionId) => {
         H.addQuestionToDashboard({
           dashboardId,
+          // Unjustified type cast. FIXME
           cardId: questionId as any,
         });
         H.visitDashboard(dashboardId);
@@ -465,7 +469,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.saveDashcardVisualizerModal();
 
-    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+    H.saveDashboard();
 
     H.getDashboardCard(0).within(() => {
       cy.findByText("Original Question Title").should("exist");
@@ -498,7 +502,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.saveDashcardVisualizerModal();
 
-    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+    H.saveDashboard();
 
     H.getDashboardCard(0).within(() => {
       cy.findByText("Updated Title").should("exist");
@@ -714,7 +718,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
-    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+    H.saveDashboard();
 
     H.editDashboard();
     H.showDashcardVisualizerModal(0);
@@ -991,6 +995,19 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.resetDataSourceButton(ORDERS_COUNT_BY_CREATED_AT.name).should(
         "be.disabled",
       );
+    });
+  });
+
+  it("should allow viewing the table preview (metabase#69038)", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0);
+
+    cy.findByTestId("visualizer-view-as-table-button").click();
+
+    cy.findByTestId("visualizer-tabular-preview-modal").within(() => {
+      cy.findByText("Count").should("exist");
     });
   });
 });

@@ -11,9 +11,9 @@ import {
   Text,
 } from "metabase/ui";
 
-interface ConfirmModal extends ModalProps {
+interface ConfirmModal extends Omit<ModalProps, "content"> {
   title?: string | ReactNode;
-  content?: string;
+  content?: string | ReactNode;
   message?: string | ReactNode;
   onConfirm?: () => void | Promise<void>;
   confirmButtonText?: string;
@@ -39,11 +39,14 @@ export const ConfirmModal = ({
   const [confirming, setConfirming] = useState(false);
   const handleConfirm = async () => {
     const confirm = onConfirm();
-    if (confirm instanceof Promise) {
-      setConfirming(true);
-      await confirm;
+    try {
+      if (confirm instanceof Promise) {
+        setConfirming(true);
+        await confirm;
+      }
+    } finally {
+      setConfirming(false);
     }
-    setConfirming(false);
   };
 
   return (
@@ -52,7 +55,11 @@ export const ConfirmModal = ({
         {content ? <Text>{content}</Text> : null}
         <Text>{message}</Text>
         <Flex align="center" justify="space-between" gap="md">
-          {errorMessage ? <Text c="danger">{errorMessage} </Text> : <div />}
+          {errorMessage ? (
+            <Text c="feedback-negative">{errorMessage} </Text>
+          ) : (
+            <div />
+          )}
           <Flex align="center" justify="flex-end" gap="md">
             {closeButtonText && (
               <Button {...closeButtonProps} onClick={onClose}>
@@ -60,8 +67,9 @@ export const ConfirmModal = ({
               </Button>
             )}
             <Button
-              color="danger"
+              color="feedback-negative"
               variant="filled"
+              data-autofocus
               {...confirmButtonProps}
               disabled={confirmButtonProps.disabled || confirming}
               onClick={handleConfirm}

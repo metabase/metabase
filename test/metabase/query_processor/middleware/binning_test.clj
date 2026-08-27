@@ -1,5 +1,7 @@
 (ns metabase.query-processor.middleware.binning-test
   "There are more 'e2e' tests related to binning in [[metabase.query-processor.breakout-test]]."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.binning-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.binning-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -7,77 +9,16 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.binning :as binning]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
-(deftest ^:parallel filter->field-map-test
-  (is (= {}
-         (#'binning/filters->field-map
-          (lib.normalize/normalize
-           ::lib.schema/filters
-           [[:and
-             [:= {} [:field {} 1] 10]
-             [:= {} [:field {} 2] 10]]]))))
-
-  (is (=? {1 [[:< {} [:field {} 1] 10] [:> {} [:field {} 1] 1]]
-           2 [[:> {} [:field {} 2] 20] [:< {} [:field {} 2] 10]]
-           3 [[:between {} [:field {} 3] 5 10]]}
-          (#'binning/filters->field-map
-           (lib.normalize/normalize
-            ::lib.schema/filters
-            [[:and
-              [:< {} [:field {} 1] 10]
-              [:> {} [:field {} 1] 1]
-              [:> {} [:field {} 2] 20]
-              [:< {} [:field {} 2] 10]
-              [:between {} [:field {} 3] 5 10]]])))))
-
-(def ^:private test-min-max-fingerprint
-  {:type {:type/Number {:min 100 :max 1000}}})
-
-(deftest ^:parallel extract-bounds-test
-  (are [field-id->filters expected] (= expected
-                                       (#'binning/extract-bounds
-                                        1 test-min-max-fingerprint
-                                        (lib.normalize/normalize
-                                         [:map-of ::lib.schema.id/field ::lib.schema/filters]
-                                         field-id->filters)))
-    {1 [[:> {} [:field {} 1] 1]
-        [:< {} [:field {} 1] 10]]}
-    {:min-value 1, :max-value 10}
-
-    {1 [[:between {} [:field {} 1] 1 10]]}
-    {:min-value 1, :max-value 10}
-
-    {}
-    {:min-value 100, :max-value 1000}
-
-    {1 [[:> {} [:field {} 1] 500]]}
-    {:min-value 500, :max-value 1000}
-
-    {1 [[:< {} [:field {} 1] 500]]}
-    {:min-value 100, :max-value 500}
-
-    {1 [[:> {} [:field {} 1] 200] [:< {} [:field {} 1] 800] [:between {} [:field {} 1] 600 700]]}
-    {:min-value 600, :max-value 700}))
-
-(deftest ^:parallel extract-bounds-field-name-test
-  (testing "Should be able to adjust min max based on filters against named field refs. (#26202)"
-    (is (= {:min-value 1, :max-value 10}
-           (#'binning/extract-bounds
-            "foo" test-min-max-fingerprint
-            {"foo" (lib.normalize/normalize
-                    ::lib.schema/filters
-                    [[:> {} [:field {} 1] 1] [:< {} [:field {} 1] 10]])})))))
+;; Unit tests for bounds extraction live in [[metabase.lib.binning.util-test]].
 
 ;; Try an end-to-end test of the middleware
 (defn- mock-field-metadata-provider []
@@ -268,11 +209,11 @@
               query))
       (testing `lib/returned-columns
         (letfn [(returned-columns [stage-number]
-                  (map #(select-keys % [:lib/desired-column-alias :metabase.lib.field/binning :lib/original-binning])
+                  (map #(select-keys % [:lib/desired-column-alias :lib/binning :lib/original-binning])
                        (lib/returned-columns query stage-number)))]
           (testing "first stage"
             (is (= [{:lib/desired-column-alias   "TOTAL"
-                     :metabase.lib.field/binning {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}
+                     :lib/binning {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}
                      :lib/original-binning       {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}}
                     {:lib/desired-column-alias "count"}]
                    (returned-columns 0))))

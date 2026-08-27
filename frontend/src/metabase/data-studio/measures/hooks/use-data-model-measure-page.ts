@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -7,12 +6,12 @@ import {
   useGetMeasureQuery,
   useUpdateMeasureMutation,
 } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useNavigate } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
-import { useLoadTableWithMetadata } from "../../common/hooks/use-load-table-with-metadata";
 import type { MeasureTabUrls } from "../types";
 
 type DataModelMeasurePageParams = {
@@ -22,8 +21,10 @@ type DataModelMeasurePageParams = {
   measureId: string;
 };
 
-export function useDataModelMeasurePage(params: DataModelMeasurePageParams) {
-  const dispatch = useDispatch();
+export function useDataModelMeasurePage(
+  params: Partial<DataModelMeasurePageParams>,
+) {
+  const navigate = useNavigate();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [updateMeasure] = useUpdateMeasureMutation();
 
@@ -61,15 +62,13 @@ export function useDataModelMeasurePage(params: DataModelMeasurePageParams) {
       sendErrorToast(t`Failed to remove measure`);
     } else {
       sendSuccessToast(t`Measure removed`);
-      dispatch(
-        push(
-          Urls.dataStudioData({
-            databaseId,
-            schemaName,
-            tableId,
-            tab: "measures",
-          }),
-        ),
+      navigate(
+        Urls.dataStudioData({
+          databaseId,
+          schemaName,
+          tableId,
+          tab: "measures",
+        }),
       );
     }
   }, [
@@ -78,9 +77,9 @@ export function useDataModelMeasurePage(params: DataModelMeasurePageParams) {
     schemaName,
     databaseId,
     updateMeasure,
-    dispatch,
     sendSuccessToast,
     sendErrorToast,
+    navigate,
   ]);
 
   const isLoading = isLoadingMeasure || isLoadingTable;

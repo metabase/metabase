@@ -52,6 +52,7 @@ describe("DiscardTableFieldValuesButton", () => {
       },
     );
     expect(calls).toHaveLength(1);
+    // Unjustified type cast. FIXME
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],
     });
@@ -79,6 +80,7 @@ describe("DiscardTableFieldValuesButton", () => {
       },
     );
     expect(calls).toHaveLength(1);
+    // Unjustified type cast. FIXME
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],
     });
@@ -99,6 +101,7 @@ describe("DiscardTableFieldValuesButton", () => {
       },
     );
     expect(calls).toHaveLength(2);
+    // Unjustified type cast. FIXME
     expect(JSON.parse(calls[1].options.body as string)).toEqual({
       table_ids: [table.id],
     });
@@ -134,6 +137,7 @@ describe("DiscardTableFieldValuesButton", () => {
       },
     );
     expect(calls).toHaveLength(1);
+    // Unjustified type cast. FIXME
     expect(JSON.parse(calls[0].options.body as string)).toEqual({
       table_ids: [table.id],
     });

@@ -15,9 +15,11 @@
 (deftest create-session-with-password-auth-tracking-test
   (testing "Creating a session with password authentication tracks the auth_identity_id"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-123"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking!
@@ -36,6 +38,7 @@
                                                     :metadata {:sso_source "google"}}]
       (let [device-info {:device_id "test-device-456"
                          :embedded false
+                         :token_exchange false
                          :device_description "Chrome Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking! user device-info :provider/google)]
@@ -52,6 +55,7 @@
                                                   :metadata {:login_attributes {:uid "testuser"}}}]
       (let [device-info {:device_id "test-device-789"
                          :embedded false
+                         :token_exchange false
                          :device_description "Firefox Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking! user device-info :provider/ldap)]
@@ -63,9 +67,11 @@
 (deftest create-session-updates-last-used-at-test
   (testing "Creating a session updates the last_used_at timestamp on the AuthIdentity"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-last-used"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             original-last-used (:last_used_at password-auth)]
@@ -77,13 +83,16 @@
 (deftest multiple-sessions-same-auth-identity-test
   (testing "Multiple sessions can reference the same AuthIdentity"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info-1 {:device_id "device-1"
                            :embedded false
+                           :token_exchange false
                            :device_description "Browser 1"
                            :ip_address "127.0.0.1"}
             device-info-2 {:device_id "device-2"
                            :embedded false
+                           :token_exchange false
                            :device_description "Browser 2"
                            :ip_address "127.0.0.1"}
             session-1 (auth-identity/create-session-with-auth-tracking!
@@ -99,9 +108,11 @@
 (deftest session-cascade-delete-on-auth-identity-deletion-test
   (testing "Deleting an AuthIdentity cascades to delete associated Sessions"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-cascade"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking!
@@ -116,9 +127,11 @@
     (mt/with-temp [:model/User user {}
                    :model/AuthIdentity google-auth {:user_id (:id user)
                                                     :provider "google"}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-multi"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             password-session (auth-identity/create-session-with-auth-tracking!
@@ -135,6 +148,7 @@
     (mt/with-temp [:model/User user {}]
       (let [device-info {:device_id "test-device-type"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)]
@@ -148,6 +162,7 @@
       (mt/with-temp [:model/User user {}]
         (let [device-info {:device_id "test-device-type"
                            :embedded false
+                           :token_exchange false
                            :device_description "Test Browser"
                            :ip_address "127.0.0.1"}
               session (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)]
@@ -158,11 +173,13 @@
 (deftest session-inherits-expires-at-test
   (testing "Session inherits expires_at from auth-identity"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [expires-at (t/plus (t/offset-date-time) (t/days 7))
             password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")]
         (t2/update! :model/AuthIdentity (:id password-auth) {:expires_at expires-at})
         (let [device-info {:device_id "test-device-expires"
                            :embedded false
+                           :token_exchange false
                            :device_description "Test Browser"
                            :ip_address "127.0.0.1"}
               session (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)]
@@ -176,9 +193,11 @@
 (deftest session-no-expires-at-when-auth-identity-has-none-test
   (testing "Session has no expires_at when auth-identity doesn't have one"
     (mt/with-temp [:model/User user {}]
+      (auth-identity/set-password! (:id user) "test-password")
       (let [password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")
             device-info {:device_id "test-device-no-expires"
                          :embedded false
+                         :token_exchange false
                          :device_description "Test Browser"
                          :ip_address "127.0.0.1"}
             session (auth-identity/create-session-with-auth-tracking! user device-info :provider/password)]

@@ -27,9 +27,9 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.time :as u.time]))
 
 (defn- is-ref-for-column? [expr column]
@@ -37,10 +37,8 @@
        (lib.equality/find-matching-column expr [column])))
 
 (defn- contains-ref-for-column? [expr column]
-  (letfn [(ref-for-column? [expr]
-            (is-ref-for-column? expr column))]
-    (lib.util.match/match-lite expr
-      (x :guard ref-for-column?) true)))
+  (match/match-one expr
+    (x :guard (is-ref-for-column? x column)) true))
 
 (mu/defn- remove-existing-filters-against-column* :- ::lib.schema/query
   [query        :- ::lib.schema/query
@@ -163,7 +161,6 @@
 (mr/def ::temporal-literal
   #?(:clj
      ::lib.schema.literal/temporal
-
      :cljs
      [:or
       ::lib.schema.literal/temporal
@@ -205,7 +202,10 @@
        (let [;; clamp range to unit to ensure we select exactly what's represented by the dots/bars. E.g. if I draw my
              ;; filter from `2024-01-02` to `2024-03-05` and the unit is `:month`, we should only show the months
              ;; between those two values, i.e. only `2024-02` and `2024-03`.
-             start         (u.time/truncate (u.time/add start unit 1) unit)
+             start         (let [truncated-start (u.time/truncate start unit)]
+                             (if (zero? (u.time/unit-diff :millisecond truncated-start start))
+                               truncated-start
+                               (u.time/truncate (u.time/add start unit 1) unit)))
              end           (u.time/truncate end unit)
              ;; update the breakout unit if appropriate.
              breakout-unit (temporal-filter-find-best-breakout-unit unit start end (:effective-type temporal-column))

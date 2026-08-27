@@ -11,10 +11,11 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
+import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
+import { createMockState } from "metabase/redux/store/mocks";
+import { createMockEmbeddingDataPickerState } from "metabase/redux/store/mocks/embedding-data-picker";
+import * as iframeUtils from "metabase/utils/iframe";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
-import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { BrowseNavSection } from "./BrowseNavSection";
 
@@ -176,7 +177,7 @@ describe("BrowseNavSection", () => {
 
 interface SetupOpts {
   isEmbeddingIframe?: boolean;
-  entityTypes?: ModularEmbeddingEntityType[];
+  entityTypes?: EmbeddingEntityType[];
   isAdmin?: boolean;
 }
 
@@ -195,14 +196,14 @@ async function setup({
   setupUpdateSettingEndpoint();
 
   if (isEmbeddingIframe) {
-    jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+    jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
   }
 
   const embeddingDataPickerState = entityTypes
     ? {
-        embeddingDataPicker: {
+        embeddingDataPicker: createMockEmbeddingDataPickerState({
           entityTypes,
-        },
+        }),
       }
     : undefined;
 

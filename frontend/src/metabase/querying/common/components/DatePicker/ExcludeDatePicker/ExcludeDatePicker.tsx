@@ -1,7 +1,6 @@
 import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -9,6 +8,7 @@ import type {
   ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
 } from "metabase/querying/common/types";
+import { useSetting } from "metabase/settings";
 import type { PopoverBackButtonProps } from "metabase/ui";
 import {
   Box,
@@ -222,7 +222,7 @@ function ExcludeValuePicker({
       <Stack p="md">
         <Checkbox
           checked={isAll}
-          label={<Text c="text-secondary">{t`Select all`}</Text>}
+          label={<Text c="text-secondary" lh="inherit">{t`Select all`}</Text>}
           onChange={(event) => handleToggleAll(event.target.checked)}
         />
         <Divider />

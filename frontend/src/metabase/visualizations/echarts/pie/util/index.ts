@@ -1,4 +1,4 @@
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 
 import { OPTION_NAME_SEPERATOR } from "../constants";
 import type { SliceTree, SliceTreeNode } from "../model/types";

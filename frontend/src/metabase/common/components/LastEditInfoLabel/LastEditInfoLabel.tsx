@@ -1,14 +1,14 @@
-import dayjs from "dayjs";
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { connect } from "metabase/lib/redux";
-import type { NamedUser } from "metabase/lib/user";
-import { getFullName } from "metabase/lib/user";
-import { getUser } from "metabase/selectors/user";
+import { getUser } from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
+import { connect } from "metabase/redux";
 import type { TooltipProps } from "metabase/ui";
 import { Text, Tooltip, UnstyledButton } from "metabase/ui";
+import type { NamedUser } from "metabase/utils/user";
+import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";
 
 export type ItemWithLastEditInfo = {

@@ -1,11 +1,20 @@
 (ns metabase-enterprise.dependencies.test-util
   (:require
    [medley.core :as m]
+   [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.test :as mt]))
+
+(defn synchronously-run-backfill!
+  "Run the dependency backfill job synchronously, processing all stale/outdated entities
+  until there is nothing left to process. Use this in tests after operations that mark
+  entities stale (create/update events) and before asserting on dependency data."
+  []
+  (mt/with-premium-features #{:dependencies}
+    (while (#'dependencies.backfill/backfill-dependencies!))))
 
 (defn mock-card [metadata-provider {:keys [id query details]}]
   (merge {:lib/type        :metadata/card
@@ -33,9 +42,14 @@
    :template-tags template-tags
    :lib/type      :metadata/native-query-snippet})
 
-(defn mock-metadata-provider [{:keys [cards snippets]}]
+(defn mock-metadata-provider
+  "Cards and snippets from an in-memory mock, Tables from the application database.
+
+  The Tables have to be real rows: resolving a table name parsed out of native SQL is a lookup against the appdb, so a
+  purely in-memory base would have no rows to find."
+  [{:keys [cards snippets]}]
   (lib/composed-metadata-provider
-   meta/metadata-provider
+   (mt/metadata-provider)
    (providers.mock/mock-metadata-provider
     {:cards cards
      :native-query-snippets snippets})))
@@ -62,10 +76,10 @@
         initial-mock-mp (mock-metadata-provider {:snippets snippets})
         initial-card-a  (mock-card initial-mock-mp
                                    {:id    1
-                                    :query (lib/query initial-mock-mp (meta/table-metadata :products))})
+                                    :query (lib/query initial-mock-mp (lib.metadata/table initial-mock-mp (mt/id :products)))})
         initial-card-b  (mock-card initial-mock-mp
                                    {:id    2
-                                    :query (lib/query initial-mock-mp (meta/table-metadata :orders))})]
+                                    :query (lib/query initial-mock-mp (lib.metadata/table initial-mock-mp (mt/id :orders)))})]
     (mock-metadata-provider
      {:cards    (into [initial-card-a
                        initial-card-b]
@@ -121,5 +135,47 @@
                        {:id    22
                         :query "SELECT * FROM {{#1}}"}
                        {:id    23
-                        :query "SELECT p.LATITUDE FROM {{#1}} AS p"}])
+                        :query "SELECT p.LATITUDE FROM {{#1}} AS p"}
+                       {:id    24
+                        :query "SELECT BAD FROM {{#1}} AS c1 JOIN {{#2}} AS c2 ON c1.ID = c2.ID"}
+                       {:id    25
+                        :query "SELECT c1.BAD FROM {{#1}} AS c1 JOIN {{#2}} AS c2 ON c1.ID = c2.ID"}
+                       {:id    26
+                        :query "SELECT BAD FROM products JOIN {{#1}} AS c1 ON products.ID = c1.ID"}
+                       {:id    27
+                        :query "SELECT products.BAD FROM products JOIN {{#1}} AS c1 ON products.ID = c1.ID"}
+                       {:id    28
+                        :query "SELECT xix.x, products.BAD FROM products JOIN {{#1}} AS c1 ON products.ID = c1.ID"}
+                       ;; Mixed table+card, qualified to card alias
+                       {:id    29
+                        :query "SELECT c1.BAD FROM products JOIN {{#1-how-are-you}} AS c1 ON products.ID = c1.ID"}
+                       ;; Multi-card, qualified to second card
+                       {:id    30
+                        :query "SELECT c2.BAD FROM {{#1-im-fine}} AS c1 JOIN {{#2-thank-you}} AS c2 ON c1.ID = c2.ID"}
+                       ;; Card 31: middle of transitive chain, passes through card 1's columns
+                       ;; but with CATEGORY removed (simulates upstream card 1 was changed)
+                       {:id      31
+                        :query   "SELECT * FROM {{#1}}"
+                        :details {:result-metadata
+                                  (vec (remove #(= (:name %) "CATEGORY")
+                                               (:result-metadata initial-card-a)))}}
+                       ;; Card 32: end of chain, selects CATEGORY which card 31 no longer has
+                       {:id    32
+                        :query "SELECT CATEGORY FROM {{#31}}"}
+                       ;; Card 33: MBQL card with subset of products columns (simulates MBQL intermediary)
+                       {:id      33
+                        :query   (lib/query initial-mock-mp (lib.metadata/table initial-mock-mp (mt/id :products)))
+                        :details {:result-metadata
+                                  (vec (filter #(#{"ID" "TITLE"} (:name %))
+                                               (:result-metadata initial-card-a)))}}
+                       ;; Card 34: native referencing MBQL card 33 — CATEGORY not in card 33's metadata
+                       {:id    34
+                        :query "SELECT CATEGORY FROM {{#33}}"}
+                       ;; Card 35: native card with orders columns as result-metadata
+                       {:id      35
+                        :query   "SELECT * FROM orders"
+                        :details {:result-metadata (:result-metadata initial-card-b)}}
+                       ;; Card 36: native referencing both MBQL card 33 and native card 35
+                       {:id    36
+                        :query "SELECT c1.CATEGORY, c2.BAD FROM {{#33}} AS c1 JOIN {{#35}} AS c2 ON c1.ID = c2.ID"}])
       :snippets snippets})))

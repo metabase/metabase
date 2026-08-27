@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.permissions-rest.api :as api.permissions]
    [metabase.permissions-rest.api-test-util :as perm-test-util]
@@ -15,7 +16,11 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]))
+
+(set! *warn-on-reflection* true)
 
 ;; there are some issues where it doesn't look like the hydrate function for `member_count` is being added (?)
 (comment api.permissions/keep-me)
@@ -49,7 +54,6 @@
                             (get id->group (:id (perms-group/admin)))))))]
       (let [id->group (m/index-by :id (fetch-groups))]
         (check-default-groups-returned id->group))
-
       (testing "should return empty groups"
         (mt/with-temp [:model/PermissionsGroup group]
           (let [id->group (m/index-by :id (fetch-groups))]
@@ -94,19 +98,15 @@
                 external-groups (fetch-groups :tenancy "external")
                 regular-id (:id regular-group)
                 tenant-id (:id tenant-group)]
-
             (testing "default behavior (no tenancy param) returns all groups"
               (is (some #(= regular-id (:id %)) all-groups))
               (is (some #(= tenant-id (:id %)) all-groups)))
-
             (testing "tenancy=internal returns only non-tenant groups"
               (is (some #(= regular-id (:id %)) internal-groups))
               (is (not (some #(= tenant-id (:id %)) internal-groups))))
-
             (testing "tenancy=external returns only tenant groups"
               (is (not (some #(= regular-id (:id %)) external-groups)))
               (is (some #(= tenant-id (:id %)) external-groups)))
-
             (testing "magic groups are handled correctly"
               (let [all-internal-users-id (:id (perms-group/all-users))
                     find-group-by-type (fn [groups magic-type]
@@ -116,7 +116,6 @@
                 (testing "all-external-users appears in external filter when available"
                   (when-let [external-users-group (find-group-by-type all-groups "all-external-users")]
                     (is (some #(= (:id external-users-group) (:id %)) external-groups))))))))))
-
     (testing "when tenants feature is disabled"
       (mt/with-temporary-setting-values [use-tenants false]
         (mt/with-temp [:model/PermissionsGroup regular-group {:name "Regular Group" :is_tenant_group false}]
@@ -124,16 +123,12 @@
                 internal-groups (fetch-groups :tenancy "internal")
                 external-groups (fetch-groups :tenancy "external")
                 regular-id (:id regular-group)]
-
             (testing "default behavior excludes tenant groups when tenants disabled"
               (is (some #(= regular-id (:id %)) all-groups)))
-
             (testing "tenancy=internal still works when tenants disabled"
               (is (some #(= regular-id (:id %)) internal-groups)))
-
             (testing "tenancy=external returns empty when tenants disabled"
               (is (empty? external-groups)))))))
-
     (testing "invalid tenancy value returns 400"
       (:status (mt/user-http-request :crowberto :get 400 "permissions/group" :tenancy "invalid")))))
 
@@ -166,14 +161,67 @@
       (testing "Should *not* include inactive users"
         (is (nil?
              (get id->member :trashbird)))))
-
     (testing "returns 404 for nonexistent id"
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 "permissions/group/10000"))))
-
     (testing "requires superuers"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
+
+(deftest invite-group-ids-test
+  (testing "GET /api/permissions/invite-group-ids"
+    (mt/with-temp [:model/Collection       coll      {}
+                   :model/Dashboard        dash      {:collection_id (u/the-id coll)}
+                   :model/PermissionsGroup readers   {:name "Readers"}
+                   :model/PermissionsGroup writers   {:name "Writers"}
+                   :model/PermissionsGroup no-access {:name "No access"}]
+      (perms/grant-collection-read-permissions! readers coll)
+      (perms/grant-collection-readwrite-permissions! writers coll)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+      (perms/grant-collection-read-permissions! (perms-group/data-analyst) coll)
+      (let [ids (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                           :type "dashboard" :id (u/the-id dash)))]
+        (testing "includes ids of groups with read or read-write access to the item's collection"
+          (is (contains? ids (u/the-id readers)))
+          (is (contains? ids (u/the-id writers)))
+          (is (contains? ids (u/the-id (perms-group/all-users)))))
+        (testing "the ids are unfiltered: system-managed groups like Data Analysts are included when they hold a grant"
+          (is (contains? ids (u/the-id (perms-group/data-analyst)))))
+        (testing "excludes groups without access"
+          (is (not (contains? ids (u/the-id no-access)))))
+        (testing "excludes the Administrators group, whose access is implicit rather than granted"
+          (is (not (contains? ids (u/the-id (perms-group/admin))))))))
+    (testing "works for questions, resolving the card's collection"
+      (mt/with-temp [:model/Collection       coll {}
+                     :model/Card             card {:collection_id (u/the-id coll)}
+                     :model/PermissionsGroup g    {:name "Q Readers"}]
+        (perms/grant-collection-read-permissions! g coll)
+        (is (contains? (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                                  :type "question" :id (u/the-id card)))
+                       (u/the-id g)))))
+    (testing "resolves the Root collection for items with no collection_id"
+      (mt/with-temp [:model/PermissionsGroup g    {:name "Root Readers"}
+                     :model/Dashboard        dash {:collection_id nil}
+                     :model/Permissions      _    {:group_id (u/the-id g), :object "/collection/root/read/"}]
+        (is (contains? (set (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                                  :type "dashboard" :id (u/the-id dash)))
+                       (u/the-id g)))))
+    (testing "returns no ids for an item in a personal collection (no permission rows exist)"
+      (let [personal-coll (collection/user->personal-collection (mt/user->id :crowberto))]
+        (mt/with-temp [:model/Dashboard dash {:collection_id (u/the-id personal-coll)}]
+          (is (= [] (mt/user-http-request :crowberto :get 200 "permissions/invite-group-ids"
+                                          :type "dashboard" :id (u/the-id dash)))))))
+    (testing "requires superuser, even for users who can read the item"
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Dashboard  dash {:collection_id (u/the-id coll)}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "permissions/invite-group-ids"
+                                     :type "dashboard" :id (u/the-id dash))))))
+    (testing "returns 404 for a nonexistent item"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 "permissions/invite-group-ids"
+                                   :type "dashboard" :id Integer/MAX_VALUE))))))
 
 (deftest create-group-test
   (testing "POST /permissions/group"
@@ -181,30 +229,25 @@
       (mt/with-model-cleanup [:model/PermissionsGroup]
         (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Test Group"})
         (is (some? (t2/select :model/PermissionsGroup :name "Test Group")))))
-
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "permissions/group" {:name "Test Group"}))))
-
     (testing "group name is required"
       (is (= {:errors          {:name "value must be a non-blank string."},
               :specific-errors {:name ["should be a string, received: nil" "non-blank string, received: nil"]}}
              (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))
-
     (testing "creates regular group by default"
       (mt/with-model-cleanup [:model/PermissionsGroup]
         (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Regular Group"})
         (let [group (t2/select-one :model/PermissionsGroup :name "Regular Group")]
           (is (some? group))
           (is (false? (:is_tenant_group group))))))
-
     (testing "creates regular group when is_tenant_group is explicitly false"
       (mt/with-model-cleanup [:model/PermissionsGroup]
         (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Explicit Regular Group" :is_tenant_group false})
         (let [group (t2/select-one :model/PermissionsGroup :name "Explicit Regular Group")]
           (is (some? group))
           (is (false? (:is_tenant_group group))))))
-
     (testing "creates regular group when is_tenant_group is nil"
       (mt/with-model-cleanup [:model/PermissionsGroup]
         (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Nil Tenant Group" :is_tenant_group nil})
@@ -225,7 +268,6 @@
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test group"}]
         (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
         (is (= 0 (t2/count :model/PermissionsGroup :name "Test group")))))
-
     (testing "requires superuser"
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test group"}]
         (is (= "You don't have permissions to do that."
@@ -289,7 +331,6 @@
                                   {db-id {:view-data "unrestricted"
                                           :create-queries "query-builder-and-native"}}}}
                         graph)))))
-
     (testing "make sure a non-admin cannot fetch the perms graph from the API"
       (mt/user-http-request :rasta :get 403 "permissions/graph"))))
 
@@ -389,15 +430,12 @@
               returned-g     (do-perm-put "permissions/graph")
               returned-g-two (do-perm-put "permissions/graph?skip-graph=false")
               no-returned-g  (do-perm-put "permissions/graph?skip-graph=true")]
-
           (testing "returned-g"
             (is (perm-test-util/validate-graph-api-groups (:groups returned-g)))
             (is (mr/validate [:map [:revision pos-int?]] returned-g)))
-
           (testing "return-g-two"
             (is (perm-test-util/validate-graph-api-groups (:groups returned-g-two)))
             (is (mr/validate [:map [:revision pos-int?]] returned-g-two)))
-
           (testing "no returned g"
             (is (not (perm-test-util/validate-graph-api-groups (:groups no-returned-g))))
             (is (mr/validate [:map {:closed true}
@@ -413,8 +451,33 @@
         (is (= (str "Looks like someone else edited the permissions and your data is out of date. "
                     "Please fetch new data and try again.")
                (do-perm-put "permissions/graph?force=false" 409)))
-
         (do-perm-put "permissions/graph?force=true" 200)))))
+
+;; NOTE: `oss-preserves-sandboxed-view-data-test` lives in
+;; `metabase-enterprise.sandbox.api.permissions-test`: it references the EE-only `:model/Sandbox` model,
+;; which is not on the OSS classpath. It exercises OSS-token graph semantics under `with-premium-features #{}`.
+
+(deftest oss-edit-create-queries-on-blocked-row-test
+  (testing "PUT /api/permissions/graph in OSS: a create-queries-only edit on a :blocked database returns 200 and bumps view-data to :unrestricted"
+    (mt/with-temp [:model/PermissionsGroup {gid :id} {}
+                   :model/Database {db-id :id} {}]
+      (mt/with-premium-features #{:advanced-permissions}
+        (data-perms/set-database-permission! gid db-id :perms/view-data :blocked))
+      (mt/with-premium-features #{}
+        (mt/user-http-request
+         :crowberto :put 200 "permissions/graph"
+         (assoc-in (data-perms.graph/api-graph) [:groups gid db-id :create-queries] :query-builder-and-native))
+        (is (= :unrestricted (data-perms/table-permission-for-groups #{gid} :perms/view-data db-id nil)))))))
+
+(deftest update-graph-response-echoes-only-modified-groups-test
+  (testing "PUT /api/permissions/graph response :groups map contains only the request's modified group ids"
+    (mt/with-temp [:model/PermissionsGroup g1 {} :model/PermissionsGroup g2 {}]
+      (let [body (assoc-in (data-perms.graph/api-graph)
+                           [:groups (u/the-id g1) (mt/id) :view-data] :unrestricted)
+            resp (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                       (update body :groups select-keys [(u/the-id g1)]))]
+        (is (= #{(u/the-id g1)} (set (keys (:groups resp)))))
+        (is (not (contains? (:groups resp) (u/the-id g2))))))))
 
 (deftest can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"
@@ -453,9 +516,14 @@
 (deftest update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
-      (mt/with-premium-features #{}
-        (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 "permissions/graph"
-                                                                               (assoc (data-perms.graph/api-graph) :sandboxes [{:card_id 1}])))))))
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/Table            {table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+        (mt/with-premium-features #{}
+          (mt/assert-has-premium-feature-error
+           "Sandboxes"
+           (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                 (assoc (data-perms.graph/api-graph)
+                                        :sandboxes [{:group_id group-id, :table_id table-id, :card_id 1}]))))))))
 
 (deftest update-perms-graph-blocked-view-data-test
   (testing "PUT /api/permissions/graph"
@@ -473,7 +541,6 @@
                          {"PUBLIC" {table-id :unrestricted}})
                (assoc-in [:groups (u/the-id group) db-id :download :schemas]
                          {"PUBLIC" {table-id :full}})))
-
           ;; Verify initial state
           (is (= :unrestricted
                  (data-perms/table-permission-for-user (mt/user->id :rasta)
@@ -493,7 +560,6 @@
                          {"PUBLIC" {table-id :blocked}})
                (assoc-in [:groups (u/the-id group) db-id :download :schemas]
                          {"PUBLIC" {table-id :full}})))
-
           ;; Verify that download-results was automatically set to no
           (is (= :blocked
                  (data-perms/table-permission-for-user (mt/user->id :rasta)
@@ -511,7 +577,6 @@
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "permissions/membership"))))
-
     (testing "Return a graph of membership"
       (let [result (mt/user-http-request :crowberto :get 200 "permissions/membership")]
         (is (malli= [:map-of ms/PositiveInt [:sequential [:map
@@ -531,7 +596,6 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "permissions/membership" {:group_id (:id group)
                                                                                 :user_id  (:id user)}))))
-
       (testing "Add membership successfully"
         (mt/user-http-request :crowberto :post 200 "permissions/membership"
                               {:group_id         (:id group)
@@ -557,13 +621,11 @@
       (testing "requires superuser permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (format "permissions/membership/%d/clear" group-id)))))
-
       (testing "Membership of a group can be cleared succesfully, while preserving the group itself"
         (is (= 1 (t2/count :model/PermissionsGroupMembership :group_id group-id)))
         (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
         (is (true? (t2/exists? :model/PermissionsGroup :id group-id)))
         (is (= 0 (t2/count :model/PermissionsGroupMembership :group_id group-id))))
-
       (testing "The admin group cannot be cleared using this endpoint"
         (mt/user-http-request :crowberto :put 400 (format "permissions/membership/%d/clear" (u/the-id (perms-group/admin))))))))
 
@@ -576,7 +638,6 @@
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 (format "permissions/membership/%d" id)))))
-
       (testing "Delete membership successfully"
         (mt/user-http-request :crowberto :delete 204 (format "permissions/membership/%d" id))))))
 
@@ -603,3 +664,61 @@
           (is (=? {:magic_group_type "all-external-users"
                    :name "All tenant users"}
                   (get-magic-group "all-external-users"))))))))
+
+;;; ---------------------------------------- Performance tests ------------------------------------------
+
+(defn- count-db-calls
+  "Execute `f` and return the number of database calls (queries) made during its execution."
+  [f]
+  (let [call-count (atom 0)]
+    (methodical/add-aux-method-with-unique-key!
+     #'t2.pipeline/transduce-execute-with-connection
+     :around :default
+     (fn [next-method rf conn query-type model query]
+       (swap! call-count inc)
+       (next-method rf conn query-type model query))
+     ::query-counter)
+    (try
+      (f)
+      (finally
+        (methodical/remove-aux-method-with-unique-key!
+         #'t2.pipeline/transduce-execute-with-connection
+         :around :default
+         ::query-counter)))
+    @call-count))
+
+(deftest permissions-graph-update-query-count-test
+  (testing "PUT /api/permissions/graph should not make an excessive number of DB calls"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (let [num-groups 28
+              num-tables 382
+              now        (java.time.OffsetDateTime/now)
+              table-ids  (t2/insert-returning-pks! (t2/table-name :model/Table)
+                                                   (for [i (range num-tables)]
+                                                     {:db_id      db-id
+                                                      :name       (format "table_%d" i)
+                                                      :schema     "PUBLIC"
+                                                      :active     true
+                                                      :created_at now
+                                                      :updated_at now}))
+              group-ids  (t2/insert-returning-pks! :model/PermissionsGroup
+                                                   (for [i (range num-groups)]
+                                                     {:name (str "perf-test-group-" i "-" (random-uuid))}))]
+          (try
+            (let [base-graph    (data-perms.graph/api-graph {:group-ids group-ids})
+                  view-perms    {"PUBLIC" (zipmap table-ids (repeat :unrestricted))}
+                  cq-perms      {"PUBLIC" (zipmap table-ids (repeat :query-builder))}
+                  updated-graph (reduce (fn [g gid]
+                                          (-> g
+                                              (assoc-in [:groups gid db-id :view-data] view-perms)
+                                              (assoc-in [:groups gid db-id :create-queries] cq-perms)))
+                                        base-graph
+                                        group-ids)
+                  num-calls     (count-db-calls
+                                 #(mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                                        updated-graph))]
+              (is (<= num-calls 100)
+                  (format "Expected at most 100 database calls, got %d" num-calls)))
+            (finally
+              (t2/delete! :model/PermissionsGroup :id [:in group-ids]))))))))

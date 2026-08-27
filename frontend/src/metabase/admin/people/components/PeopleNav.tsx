@@ -5,16 +5,24 @@ import {
   type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { shouldNudgeToPro } from "metabase/admin/people/selectors";
+import {
+  shouldNudgeToPro,
+  shouldShowTenantsUpsell,
+} from "metabase/admin/people/selectors";
 import { UpsellSSO } from "metabase/admin/upsells";
-import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
-import { getLocation } from "metabase/selectors/routing";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
+import { useSelector } from "metabase/redux";
+import { useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Divider, Stack } from "metabase/ui";
 
 export function PeopleNav() {
+  // Unjustified type cast. FIXME
   const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
   const isUsingTenants = useSetting("use-tenants");
+  const showTenantsUpsell = useSelector(shouldShowTenantsUpsell);
+  const showTenantsUpsellNav = showTenantsUpsell && !isUsingTenants;
+  const tenantUpsellGem = showTenantsUpsellNav ? <UpsellGem /> : undefined;
 
   return (
     <AdminNavWrapper justify="space-between" aria-label="people-nav">
@@ -54,6 +62,18 @@ export function PeopleNav() {
             />
           </>
         )}
+        {showTenantsUpsellNav && (
+          <>
+            <Divider my="sm" />
+            <PeopleNavItem
+              path="/admin/people/tenants"
+              data-testid="nav-item-tenants"
+              label={t`Tenants`}
+              icon="globe"
+              rightSection={tenantUpsellGem}
+            />
+          </>
+        )}
       </Stack>
       {shouldNudge && <UpsellSSO location="people-groups-settings" />}
     </AdminNavWrapper>
@@ -61,7 +81,7 @@ export function PeopleNav() {
 }
 
 export const PeopleNavItem = (props: AdminNavItemProps) => {
-  const location = useSelector(getLocation);
+  const location = useLocation();
   const subpath = location?.pathname;
 
   // we want to highlight the groups nav item if it's showing a details subpage

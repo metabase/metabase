@@ -6,9 +6,9 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.models.interface :as mi]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
@@ -30,7 +30,7 @@
       #_{:clj-kondo/ignore [:deprecated-var]}
       (qp.metadata/legacy-result-metadata query api/*current-user-id*)
       (catch Throwable e
-        (log/errorf e "Error calculating result metadata for Card: %s" (ex-message e))
+        (log/errorf "Error calculating result metadata for Card: %s" (ex-message e))
         []))))
 
 (def ^:private metadata-sync-wait-ms
@@ -66,7 +66,7 @@ saved later when it is ready."
                             (combiner @futur)
                             (catch Throwable e
                               (future-cancel futur)
-                              (log/errorf e "Error blending model metadata: %s" (ex-message e))
+                              (log/errorf "Error blending model metadata: %s" (ex-message e))
                               metadata')))}
       {:metadata (combiner result)})))
 
@@ -81,7 +81,7 @@ saved later when it is ready."
 
 (defn normalize-dataset-query
   "Normalize the query `dataset-query` received via an HTTP call.
-  Handles both (legacy) MBQL and pMBQL queries."
+  Handles both (legacy) MBQL and MBQL 5 queries."
   {:deprecated "0.57.0"}
   [dataset-query]
   (lib-be/normalize-query dataset-query))
@@ -167,7 +167,7 @@ saved later when it is ready."
                   (log/infof "Metadata updated asynchronously for card %s" id))
                 (log/infof "Not updating metadata asynchronously for card %s because query has changed" id)))))
         (catch Throwable e
-          (log/errorf e "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
+          (log/errorf "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
 (defn infer-metadata
   "Infer the default result_metadata to store for MBQL cards.
@@ -193,7 +193,8 @@ saved later when it is ready."
         model-metadata (when model? (:result_metadata card))
         ;; If this is a model, include that model metadata so QP will infer correctly overridden metadata.
         query          (cond-> query
-                         model-metadata (update :info merge {:metadata/model-metadata model-metadata}))]
+                         model-metadata (update :info merge {:metadata/model-metadata   model-metadata
+                                                             :metadata/own-model-query? true}))]
     (infer-metadata query)))
 
 ;; TODO: Refactor this to use idents rather than names, so it's more robust.
@@ -224,6 +225,9 @@ saved later when it is ready."
            (log/debug "Not inferring result metadata for Card: query was not updated")
            card)
 
+         (and mi/*deserializing?* (= (:type card) :model) query (seq metadata) (not-any? :id metadata))
+         (assoc card :result_metadata (or (infer-metadata-with-model-overrides query card) metadata))
+
          ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
          (or (and (not-empty changes) (contains? changes :result_metadata))
              (and (empty? changes) metadata))
@@ -247,4 +251,4 @@ saved later when it is ready."
            (log/debug "Attempting to infer result metadata for Card")
            (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))
        ;; now normalize the result metadata as needed so it passes the output schema check
-       (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))))))
+       (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))))))

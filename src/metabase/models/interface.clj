@@ -9,6 +9,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.memoize :as memoize]
+   [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -16,11 +17,7 @@
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
@@ -61,8 +58,8 @@
 
 (def ^:dynamic *deserializing?*
   "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
-  deserialization. Most notably, we don't want to generate an `:entity_id`, as that would lead to duplicated entities
-  on a future deserialization."
+  deserialization and are skipped based on this var. (Entity ids are not one of them: the insert hook generates an
+  `:entity_id` whenever it is missing, deserializing or not — ingested entities carry their own.)"
   false)
 
 (def ^{:arglists '([x & _args])} dispatch-on-model
@@ -160,7 +157,7 @@
     (try
       (json/decode s keywordize-keys?)
       (catch Throwable e
-        (log/error e "Error parsing JSON")
+        (log/errorf "Error parsing JSON: %s" (ex-message e))
         s))
     s))
 
@@ -209,7 +206,7 @@
     (try
       (doall (f x))
       (catch Throwable e
-        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red x))
+        (log/errorf "Unable to normalize: %s" (ex-message e))
         nil))))
 
 (def ^{:deprecated "0.57.0"} transform-legacy-field-ref
@@ -218,23 +215,12 @@
    :out (comp (catch-normalization-exceptions #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref)
               json-out-with-keywordization)})
 
-(defn- normalize-result-metadata-column [col]
-  (if (:lib/type col)
-    (lib.normalize/normalize ::lib.schema.metadata/column col)
-    ;; legacy usages -- do not use these going forward
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (-> col
-        (->> (lib/normalize :metabase.query-processor.schema/result-metadata.column))
-        ;; This is necessary, because in the wild, there may be cards created prior to this change.
-        lib.temporal-bucket/ensure-temporal-unit-in-display-name
-        lib.binning/ensure-binning-in-display-name)))
-
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (not-empty (mapv normalize-result-metadata-column metadata))))
+    (not-empty (mapv lib/normalize-result-metadata-column metadata))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."
@@ -255,6 +241,14 @@
   "Transform for json-no-keywordization"
   {:in  json-in
    :out json-out-without-keywordization})
+
+(def transform-edn
+  "Transform that stores Clojure data as EDN strings. Preserves keywords, sets, and other
+   types that JSON cannot represent. Strings are assumed to already be EDN and passed through."
+  {:in  (fn [v] (cond (nil? v)    nil
+                      (string? v) v
+                      :else       (pr-str v)))
+   :out (fn [s] (when (string? s) (edn/read-string s)))})
 
 (mu/defn assert-enum
   "Assert that a value is one of the values in `enum`."
@@ -279,6 +273,23 @@
     (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
                                                                                                    :value       value}))))
 
+(defn transform-validator-with-fixes
+  "Like [[transform-validator]], but applies `fixes` (a fn of old-value->new-value) before validation on both read
+   and write. Use this when an enum has been renamed and old values may still exist in the database or in
+   serialization exports."
+  [tf assert-fn fixes]
+  (-> tf
+      (update :out (fn [f]
+                     (fn [x]
+                       (let [out (fixes (f x))]
+                         (assert-fn out)
+                         out))))
+      (update :in (fn [f]
+                    (fn [x]
+                      (let [x (fixes x)]
+                        (assert-fn x)
+                        (f x)))))))
+
 (defn transform-validator
   "Given a transform, returns a transform that call `assert-fn` on the \"out\" value.
 
@@ -288,44 +299,41 @@
       (when-not (-> x namespace some?)
         (throw (ex-info \"Value is not namespaced\")))))"
   [tf assert-fn]
-  (-> tf
-      ;; deserialization
-      (update :out (fn [f]
-                     (fn [x]
-                       (let [out (f x)]
-                         (assert-fn out)
-                         out))))
-      ;; serialization
-      (update :in (fn [f]
-                    (fn [x]
-                      (assert-fn x)
-                      (f x))))))
+  (transform-validator-with-fixes tf assert-fn identity))
 
 (def encrypted-json-in
   "Serialize encrypted json."
   (comp encryption/maybe-encrypt json-in))
 
 (defn encrypted-json-out
-  "Deserialize encrypted json."
+  "Deserialize encrypted json, requiring the value to be encrypted when `MB_ENCRYPTION_SECRET_KEY` is set (see
+  [[encryption/maybe-decrypt]]): a plaintext value at rest is rejected. A value that decrypts (or, with no key set,
+  passes through) but is not valid JSON is logged and returned as-is rather than crashing the read."
   [v]
   (let [decrypted (encryption/maybe-decrypt v)]
     (try
-      (json/decode+kw decrypted)
+      (some-> decrypted json/decode+kw)
       (catch Throwable e
         (if (or (encryption/possibly-encrypted-string? decrypted)
                 (encryption/possibly-encrypted-bytes? decrypted))
-          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+          (log/error "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/errorf "Error parsing JSON: %s" (ex-message e)))
         v))))
 
-;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
-;; cache the decrypted JSON for one hour
-(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
+(def ^:private cached-encrypted-json-out
+  (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
 
 (def transform-encrypted-json
-  "Transform for encrypted json."
+  "Encrypted-json transform. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
+
+(def transform-encrypted-text
+  "Whole-column encrypted text transform. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected
+  on read (see [[encryption/maybe-decrypt]]) — a value written outside the encrypting path cannot stand in for a
+  properly encrypted one."
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
 
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
@@ -347,6 +355,9 @@
    [:= {:decode/normalize keyword} :name]
    :string])
 
+;;; TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
+;;; `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
+;;; also [[metabase.models.visualization-settings]].
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to MBQL 4 clauses so things work correctly."
@@ -360,11 +371,18 @@
                          (not (sequential? x)) x
                          (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
                          (= (first x) "name")  (lib/normalize ::viz-settings-name x)
-                         :else                 (mbql.normalize/normalize x))))
+                         :else                 (try
+                                                 (mbql.normalize/normalize x)
+                                                 (catch Throwable e
+                                                   (log/debugf "Error normalizing column settings key %s: %s" (pr-str x) (ex-message e))
+                                                   nil)))))
                     json/encode))
           (normalize-column-settings [column-settings]
-            (into {} (for [[k v] column-settings]
-                       [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
+            (into {} (for [[k v] column-settings
+                           ;; remove nil (bad) keys
+                           :let  [k (normalize-column-settings-key k)]
+                           :when (some? k)]
+                       [k (walk/keywordize-keys v)])))
           (mbql-field-clause? [form]
             (and (vector? form)
                  (#{"field-id"
@@ -383,7 +401,7 @@
                 (mbql.normalize/normalize form)
                 (catch Exception e
                   (log/warnf "Unable to normalize visualization-settings part %s: %s"
-                             (u/pprint-to-str 'red form)
+                             (pr-str form)
                              (ex-message e))
                   form))
 
@@ -469,9 +487,9 @@
     v))
 
 (def transform-secret-value
-  "Transform for secret value."
+  "Transform for secret value. When `MB_ENCRYPTION_SECRET_KEY` is set, a plaintext value at rest is rejected on read."
   {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
+   :out (comp encryption/maybe-decrypt-bytes maybe-blob->bytes)})
 
 #_(defn decompress
     "Decompress `compressed-bytes`."
@@ -555,12 +573,8 @@
       add-updated-at-timestamp))
 
 (defn- add-entity-id [obj & _]
-  (if (or (contains? obj :entity_id)
-          *deserializing?*)
-    ;; Don't generate a new entity_id if either: (a) there's already one set; or (b) we're deserializing.
-    ;; Generating them at deserialization time can lead to duplicated entities if they're deserialized again.
-    obj
-    (assoc obj :entity_id (u/generate-nano-id))))
+  (cond-> obj
+    (nil? (:entity_id obj)) (assoc :entity_id (u/generate-nano-id))))
 
 (t2/define-before-insert :hook/entity-id
   [instance]

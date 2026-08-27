@@ -1,10 +1,16 @@
 (ns metabase.channel.impl.email
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [clojure.java.io :as io]
    [clojure.string :as str]
-   [hiccup.core :refer [html]]
+   [hiccup.core :refer [h html]]
    [medley.core :as m]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
+   [metabase.channel.email.logo :as email.logo]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.util :as impl.util]
@@ -18,17 +24,28 @@
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.channel.urls :as urls]
    [metabase.notification.models :as models.notification]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.markdown :as markdown]
    [metabase.util.ui-logic :as ui-logic]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec])
+  (:import
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
+
+(defmethod analytics.core/known-labels :metabase-notification/template-render [_]
+  (for [template-type [:email/handlebars-text :email/handlebars-resource]]
+    {:template-type template-type
+     :channel-type  :channel/email}))
+
+(def EmailDetails
+  "Schema for the connection `:details` of a `:channel/email` channel."
+  [:map {:closed true}])
 
 (def ^:private EmailMessage
   [:map
@@ -38,8 +55,25 @@
    [:message                         :any]
    [:recipient-type {:optional true} [:maybe (ms/enum-keywords-and-strings :cc :bcc)]]])
 
+(defn- email->digest
+  "A short, stable digest of an email address, for logging recipients without writing the raw address
+  to logs. Not meant to be irreversible — email space is enumerable — just to keep PII out of plain
+  sight. To check whether an address was a recipient, digest it the same way and grep the logs:
+  lower-cased + trimmed, SHA-256, first 12 hex chars."
+  [email]
+  (-> (u/lower-case-en (str/trim (str email)))
+      buddy-hash/sha256
+      codecs/bytes->hex
+      (subs 0 12)))
+
 (mu/defmethod channel/send! :channel/email
   [_channel {:keys [subject recipients message-type message recipient-type]} :- EmailMessage]
+  ;; Make deliverability debuggable from logs (Grafana/Loki). info: recipient count only (always on,
+  ;; no PII). debug: short per-recipient digests, so "was address X sent to?" can be answered by
+  ;; digesting the suspected address the same way and grepping (see [[email->digest]]) — opt-in.
+  ;; Carries the caller's log context (e.g. :notification_id) via MDC. (GDGT-2416)
+  (log/infof "Sending email to %d recipient(s)" (count recipients))
+  (log/debugf "Email recipient digests: %s" (pr-str (mapv email->digest recipients)))
   (email/send-message-or-throw! {:subject      subject
                                  :recipients   recipients
                                  :message-type message-type
@@ -81,7 +115,7 @@
     :text
     (let [inline-params   (:inline_parameters part)
           rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))]
-      {:content (str (markdown/process-markdown (:text part) :html)
+      {:content (str (markdown/process-markdown (:text part) :html (system/site-url))
                      rendered-params)})
 
     :heading
@@ -89,23 +123,30 @@
           rendered-params (when (seq inline-params) (render.util/render-parameters inline-params))
           heading-text    (:text part)
           style           (style/style (if (seq inline-params) {:margin-bottom "4px"} {}))]
-      {:content (str (html [:h2 {:style style} heading-text])
+      ;; hiccup 1 doesn't escape strings and :content reaches `{{{computed.dashboard_content}}}` as-is
+      {:content (str (html [:h2 {:style style} (h heading-text)])
                      rendered-params)})
     :tab-title
-    {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
+    {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html (system/site-url))}))
 
 (defn- render-body
   [{:keys [details] :as _template} payload]
-  (case (keyword (:type details))
-    :email/handlebars-resource
-    (handlebars/render (:path details) payload)
+  (let [template-type (keyword (:type details))]
+    (analytics/inc! :metabase-notification/template-render
+                    {:template-type template-type
+                     :channel-type  :channel/email})
+    (case template-type
+      :email/handlebars-resource
+      (handlebars/render (:path details) payload)
 
-    :email/handlebars-text
-    (handlebars/render-string (:body details) payload)
+      :email/handlebars-text
+      (do
+        (log/debug "Rendering user-provided template body")
+        (handlebars/render-string (:body details) payload))
 
-    (do
-      (log/warnf "Unknown email template type: %s" (:type details))
-      nil)))
+      (do
+        (log/warnf "Unknown email template type: %s" (:type details))
+        nil))))
 
 (defn- render-message-body
   [template message-context attachments]
@@ -185,18 +226,18 @@
   {:notification/dashboard {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
                                            :subject "{{payload.dashboard.name}}"
-                                           :path    "metabase/channel/email/dashboard_subscription.hbs"}}
+                                           :path    "dashboard_subscription"}}
    :notification/card      {:channel_type :channel/email
                             :details      {:type    :email/handlebars-resource
                                            :subject "{{computed.subject}}"
-                                           :path    "metabase/channel/email/notification_card.hbs"}}})
+                                           :path    "notification_card"}}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Notification Card                                          ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/card] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type] :as notification-payload} {:keys [template recipients]}]
+  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients]}]
   (let [{:keys [card_part
                 notification_card
                 subscriptions
@@ -210,7 +251,8 @@
         result-attachments (email.result-attachment/result-attachment
                             (first (assoc-attachment-booleans
                                     [(assoc notification_card :include_csv true :format_rows true)]
-                                    [card_part])))
+                                    [card_part]))
+                            creator_id)
         attachments        (concat [icon-attachment] card-attachments result-attachments)
         html-content       (html (:content rendered-card))
         goal               (ui-logic/find-goal-value payload)
@@ -239,8 +281,32 @@
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(defn- dashboard-pdf-attachment
+  "Render the whole dashboard to a PDF email attachment, or `nil` if rendering fails. `parts` are the dashboard's
+  already-executed parts, reused so the PDF generation doesn't re-run every query."
+  [dashboard-id dashboard-name creator-id parameters parts]
+  (try
+    ;; TODO: (bshepherdson, 2026-07-02) This should not be hard-coding the paper size.
+    (let [pdf-bytes (channel.render/render-dashboard-to-pdf dashboard-id creator-id (vec parameters) :a4 parts)
+          temp-file (doto (File/createTempFile "metabase_dashboard_" ".pdf")
+                      (.deleteOnExit))]
+      (with-open [os (io/output-stream temp-file)]
+        (.write os ^bytes pdf-bytes))
+      {:type         :attachment
+       :content-type "application/pdf"
+       :file-name    (-> dashboard-name
+                         (some-> str/trim)
+                         not-empty
+                         (or "dashboard")
+                         (str ".pdf"))
+       :content      (.. temp-file toURI toURL)
+       :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
+    (catch Throwable e
+      (log/errorf "Error rendering dashboard subscription PDF; skipping PDF attachment: %s" (ex-message e))
+      nil)))
+
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
-  [_channel-type {:keys [payload payload_type] :as notification-payload} {:keys [template recipients attachment_only]}]
+  [_channel-type {:keys [payload payload_type creator_id] :as notification-payload} {:keys [template recipients attachment_only include_pdf]}]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
@@ -256,20 +322,32 @@
          result-attachments
          html-contents]     (reduce
                              (fn [[merged-attachments result-attachments html-contents] part]
-                               (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
-                                                                                               :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
-                                     result-attachment             (email.result-attachment/result-attachment part)]
-                                 [(merge merged-attachments attachments)
-                                  (into result-attachments result-attachment)
-                                  (when-not attachment_only
-                                    (conj html-contents (html content)))]))
+                               ;; Isolate each part: realizing one part's Hiccup (here, via `html`) must not
+                               ;; abort the whole subscription. On failure, substitute the error placeholder so
+                               ;; the remaining cards still deliver (#74007).
+                               (try
+                                 (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
+                                                                                                 :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
+                                       result-attachment             (email.result-attachment/result-attachment part creator_id)]
+                                   [(merge merged-attachments attachments)
+                                    (into result-attachments result-attachment)
+                                    (when-not attachment_only
+                                      (conj html-contents (html content)))])
+                                 (catch Throwable e
+                                   (log/errorf "Error rendering dashboard subscription part; substituting error placeholder: %s" (ex-message e))
+                                   [merged-attachments
+                                    result-attachments
+                                    (when-not attachment_only
+                                      (conj html-contents (html (:content (channel.render/error-rendered-part)))))])))
                              [{} [] []]
                              (assoc-attachment-booleans (:dashboard_subscription_dashcards dashboard_subscription) dashboard_parts))
         icon-attachment     (make-message-attachment (first (icon-bundle :dashboard)))
         card-attachments    (map make-message-attachment merged-attachments)
+        pdf-attachment      (when include_pdf
+                              (dashboard-pdf-attachment (:id dashboard) (:name dashboard) creator_id parameters dashboard_parts))
         attachments         (cond-> (into [icon-attachment] result-attachments)
-                              (not attachment_only)
-                              (concat card-attachments))
+                              (not attachment_only) (concat card-attachments)
+                              pdf-attachment        (concat [pdf-attachment]))
         dashboard-content   (if-not attachment_only
                               (str "<div>" (str/join html-contents) "</div>")
                               "<p>Dashboard content available in attached files</p>")
@@ -288,41 +366,12 @@
                                                                           (some-> (seq parameters)
                                                                                   (impl.util/remove-inline-parameters dashboard_parts)
                                                                                   (render.util/render-parameters)))})
-                                  (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
+                                  (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html (system/site-url)))))]
     (construct-emails template message-context-fn attachments recipients)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         System Events                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
-
-(def ^:private data-uri-pattern
-  #"^data:([^;]+);base64,(.+)$")
-
-(defn- parse-data-uri
-  "Parse a data URI and return {:content-type <string> :bytes <byte-array>}, or nil if not a data URI."
-  [data-uri]
-  (when-let [[_ content-type base64-data] (re-matches data-uri-pattern data-uri)]
-    {:content-type content-type
-     :bytes        (u.jvm/decode-base64-to-bytes base64-data)}))
-
-(defn- logo-bundle
-  "Create a logo bundle from the application logo URL.
-   Returns {:image-src <url-or-cid> :attachment <attachment-map-or-nil>}.
-   For data URIs, converts to an embedded attachment for email compatibility."
-  [logo-url]
-  (cond
-    (nil? logo-url)
-    nil
-
-    (str/starts-with? logo-url "data:")
-    (when-let [{:keys [bytes]} (parse-data-uri logo-url)]
-      (let [bundle (channel.render/make-image-bundle :attachment bytes)]
-        {:image-src  (:image-src bundle)
-         :attachment (channel.render/image-bundle->attachment bundle)}))
-
-    :else
-    {:image-src logo-url
-     :attachment nil}))
 
 (defn- notification-recipients->emails
   [recipients notification-payload]
@@ -330,9 +379,12 @@
                      :let [details (:details recipient)
                            emails (case (:type recipient)
                                     :notification-recipient/user
-                                    [(-> recipient :user :email)]
+                                    (when (not= :api-key (-> recipient :user :type))
+                                      [(-> recipient :user :email)])
                                     :notification-recipient/group
-                                    (->> recipient :permissions_group :members (map :email))
+                                    (->> recipient :permissions_group :members
+                                         (remove #(= :api-key (:type %)))
+                                         (map :email))
                                     :notification-recipient/raw-value
                                     [(:value details)]
                                     :notification-recipient/template
@@ -351,7 +403,7 @@
                                      [:recipients [:sequential ::models.notification/NotificationRecipient]]]]
   (assert (some? template) "Template is required for system event notifications")
   (let [logo-url              (get-in notification-payload [:context :application_logo_url])
-        logo                  (logo-bundle logo-url)
+        logo                  (email.logo/logo-bundle logo-url)
         ;; Update context with the processed logo URL (cid: reference if data URI was converted)
         updated-payload       (if (:image-src logo)
                                 (assoc-in notification-payload [:context :application_logo_url] (:image-src logo))

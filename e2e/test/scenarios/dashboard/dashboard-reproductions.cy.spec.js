@@ -47,7 +47,7 @@ describe("issue 12578", () => {
 
     // Without tick the dashboard header will not load
     cy.tick();
-    cy.findByLabelText("Auto Refresh").click();
+    H.openDashboardMenu("Auto-refresh");
     H.popover().findByText("1 minute").click();
 
     // Mock slow card request
@@ -205,13 +205,16 @@ describe("issue 12926", () => {
         cy.visit(`/dashboard/${dashboard_id}`);
       });
 
+      // The query is deliberately slowed, so it is still in-flight here.
+      // The API client uses fetch, so cancelling the query aborts its
+      // AbortController rather than calling XMLHttpRequest.abort().
       cy.window().then((win) => {
-        cy.spy(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
+        cy.spy(win.AbortController.prototype, "abort").as("queryAbort");
       });
 
       removeCard();
 
-      cy.get("@xhrAbort").should("have.been.calledOnce");
+      cy.get("@queryAbort").should("have.been.called");
     });
 
     it("should re-fetch the query when doing undo on the removal", () => {
@@ -250,8 +253,7 @@ describe("issue 12926", () => {
   });
 
   describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
-    it("should stop the ongoing query", () => {
-      // this test requires the card to be manually added to the dashboard, as it requires the dashcard id to be negative
+    it("should load the card with correct parameters after save", () => {
       H.createNativeQuestion(questionDetails);
 
       H.createDashboard().then(({ body: { id: dashboardId } }) => {
@@ -261,8 +263,6 @@ describe("issue 12926", () => {
       H.editDashboard();
 
       H.openQuestionsSidebar();
-      // when the card is added to a dashboard, it doesn't use the dashcard endpoint but instead uses the card one
-      slowDownCardQuery().as("cardQuerySlowed");
       H.sidebar().findByText(questionDetails.name).click();
 
       H.setFilter("Number", "Equal to");
@@ -274,10 +274,6 @@ describe("issue 12926", () => {
       H.popover().contains(filterDisplayName).eq(0).click();
 
       H.saveDashboard();
-
-      cy.wait("@cardQuerySlowed").then((xhrProxy) =>
-        expect(xhrProxy.state).to.eq("Errored"),
-      );
 
       H.getDashboardCard().findByText(queryResult + parameterValue);
     });
@@ -367,7 +363,6 @@ describe("issue 16559", () => {
       H.visitDashboard(response.body.id);
     });
 
-    cy.intercept("GET", "/api/collection/tree?*").as("getCollections");
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/dashboard/*?dashboard_load_id=*").as(
@@ -381,7 +376,7 @@ describe("issue 16559", () => {
       cy.findByRole("tab", { name: "History" }).click();
       cy.log("Dashboard creation");
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You created this.")
         .should("be.visible");
@@ -393,13 +388,17 @@ describe("issue 16559", () => {
     H.openQuestionsSidebar();
     H.sidebar().findByText("Orders, Count").click();
     cy.wait("@cardQuery");
-    cy.button("Save").click();
-    cy.wait(["@saveDashboard", "@loadDashboard"]);
+    // Use the canonical save helper so we deterministically wait for the whole
+    // save-and-settle sequence (PUT + query_metadata reload, edit-bar gone, all
+    // dashcards loaded). The previous ad-hoc `Save` click only awaited the PUT,
+    // so the "More info" click below raced the trailing re-render and was
+    // dropped, leaving the sidesheet closed.
+    H.saveDashboard();
 
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You added a card.")
         .should("be.visible");
@@ -414,7 +413,7 @@ describe("issue 16559", () => {
       cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText(
           'You renamed this Dashboard from "16559 Dashboard" to "16559 Dashboard modified".',
@@ -433,7 +432,7 @@ describe("issue 16559", () => {
       cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You added a description.")
         .should("be.visible");
@@ -443,7 +442,7 @@ describe("issue 16559", () => {
     H.closeDashboardInfoSidebar();
 
     H.openDashboardSettingsSidebar();
-    H.sidesheet().findByText("Auto-apply filters").click();
+    H.sidesheet().findByLabelText("Auto-apply filters").click();
     cy.wait("@saveDashboard");
     H.closeDashboardSettingsSidebar();
 
@@ -451,7 +450,7 @@ describe("issue 16559", () => {
       cy.contains("button", "History").click();
 
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You set auto apply filters to false.")
         .should("be.visible");
@@ -464,13 +463,13 @@ describe("issue 16559", () => {
     H.entityPickerModal().within(() => {
       cy.findByText("First collection").click();
       cy.button("Move").click();
-      cy.wait(["@saveDashboard", "@getCollections"]);
+      cy.wait(["@saveDashboard"]);
     });
 
     H.openDashboardInfoSidebar().within(() => {
       cy.contains("button", "History").click();
       cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
+        .findAllByTestId("revision-history-event")
         .eq(0)
         .findByText("You moved this Dashboard to First collection.")
         .should("be.visible");
@@ -576,28 +575,28 @@ describe("issue 17879", () => {
   it("should map dashcard date parameter to correct date range filter in target question - month -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "month",
-      expectedFilterText: "Created At is Apr 1–30, 2022",
+      expectedFilterText: "Created At is Apr 1–30, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - week -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "week",
-      expectedFilterText: "Created At is Apr 24–30, 2022",
+      expectedFilterText: "Created At is Apr 27 – May 3, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - year -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2022",
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - year -> month (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "year",
-      expectedFilterText: "Created At is Jan 1 – Dec 31, 2022",
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2025",
       targetDateUnit: "month",
     });
   });
@@ -752,7 +751,10 @@ describe("issue 29076", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@cardQuery");
     // test that user is sandboxed - normal users has over 2000 rows
-    H.getDashboardCard().findAllByRole("row").should("have.length", 1);
+    H.getDashboardCard()
+      .findByTestId("table-body")
+      .findAllByRole("row")
+      .should("have.length", 1);
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
@@ -843,11 +845,13 @@ describe("issue 31697", () => {
   const segmentDetails = {
     name: "Orders segment",
     description: "All orders with a total under $100.",
-    table_id: ORDERS_ID,
     definition: {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+      },
     },
   };
 
@@ -1062,7 +1066,7 @@ describe("issue 34382", () => {
 
     H.getDashboardCard().within(() => {
       // only products with category "Gizmo" are filtered
-      cy.findAllByRole("row")
+      cy.findByTestId("table-body")
         .findAllByRole("gridcell")
         .eq(3)
         .should("contain", "Gizmo");
@@ -1930,102 +1934,6 @@ describe("issue 56716", () => {
     H.getDashboardCard().findByText("200 rows").should("be.visible");
   });
 });
-
-describe("Issue 46337", () => {
-  const MODEL_NAME = "Model 46337";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.createQuestion({
-      type: "model",
-      name: MODEL_NAME,
-      query: {
-        "source-table": ORDERS_ID,
-        fields: [
-          [
-            "field",
-            ORDERS.ID,
-            {
-              "base-type": "type/BigInteger",
-            },
-          ],
-          [
-            "field",
-            ORDERS.TAX,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-          [
-            "field",
-            ORDERS.TOTAL,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-          [
-            "field",
-            ORDERS.DISCOUNT,
-            {
-              "base-type": "type/Float",
-            },
-          ],
-          [
-            "field",
-            ORDERS.QUANTITY,
-            {
-              "base-type": "type/Integer",
-            },
-          ],
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            {
-              "base-type": "type/DateTime",
-            },
-          ],
-          [
-            "field",
-            ORDERS.PRODUCT_ID,
-            {
-              "base-type": "type/Integer",
-            },
-          ],
-        ],
-        joins: [
-          {
-            fields: "all",
-            alias: "Products",
-            "source-table": PEOPLE_ID,
-            strategy: "left-join",
-            condition: [
-              "=",
-              ["field", ORDERS.USER_ID, {}],
-              ["field", PEOPLE.ID, { "join-alias": "Products" }],
-            ],
-          },
-        ],
-      },
-    }).then(({ body: model }) => {
-      cy.visit(`/auto/dashboard/model/${model.id}`);
-    });
-  });
-
-  // TODO: unskip when metabase#46337 is fixed
-  // See: https://github.com/metabase/metabase/issues/46337
-  it("should (metabase#46337)", { tags: "@skip" }, () => {
-    cy.log("ensure the dashcards render data not errors");
-
-    cy.findByTestId("dashboard-grid").within(() => {
-      cy.findByText("There was a problem displaying this chart.").should(
-        "not.exist",
-      );
-      cy.findByText(`Total ${MODEL_NAME}`).should("be.visible");
-    });
-  });
-});
-
 function slowDownCardQuery() {
   return cy.intercept("POST", "/api/card/*/query", (req) => {
     req.on("response", (res) => {
@@ -2242,7 +2150,9 @@ describe("issue 64138", () => {
       })
       .within(() => {
         cy.findByLabelText("Zoom in").should("not.exist");
-        cy.findByText("Set as default view").should("be.visible").click();
+        // the update button is disabled until the map is panned, so only
+        // assert that it is shown while the zoom controls are hidden
+        cy.findByText("Set as default view").should("be.visible");
       });
 
     cy.log("hovering marker icons should not open their tooltips");

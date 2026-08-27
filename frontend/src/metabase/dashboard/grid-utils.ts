@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { DEFAULT_CARD_SIZE } from "metabase/lib/dashboard_grid";
+import { DEFAULT_CARD_SIZE } from "metabase/utils/dashboard_grid";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type {
   BaseDashboardCard,

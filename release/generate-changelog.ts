@@ -1,11 +1,9 @@
 // changelog preview only, doesn't publish anything
-import "dotenv/config";
 import { Octokit } from "@octokit/rest";
-import "zx/globals";
 
 import {
-  isValidVersionString,
   getChangelog,
+  isValidVersionString,
 } from "./src";
 
 const {

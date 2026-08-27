@@ -1,13 +1,5 @@
 import type { Row } from "@tanstack/react-table";
-import {
-  type ComponentProps,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import type { WithRouterProps } from "react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -17,25 +9,29 @@ import {
   useListTransformsQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Link } from "metabase/common/components/Link";
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import type { ColorName } from "metabase/lib/colors/types";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { type NamedUser, getUserName } from "metabase/lib/user";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
-import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
+import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
+import { Outlet, useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
+import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
+import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
+import { Ellipsified } from "metabase/ui";
 import {
   Card,
   EntityNameCell,
   Flex,
+  Group,
   Icon,
+  type RenderRowLink,
   Stack,
   TextInput,
   TreeTable,
@@ -43,11 +39,20 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import * as Urls from "metabase/urls";
+import { getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
+import { CreateTransformMenu } from "./CreateTransformMenu";
 import S from "./TransformListPage.module.css";
 import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
-import { buildTreeData, getDefaultExpandedIds } from "./utils";
+import {
+  buildTreeData,
+  getDefaultExpandedIds,
+  useGetNodeSyncColor,
+  useGetTransformWarnings,
+} from "./utils";
 
 const getNodeId = (node: TreeNode) => node.id;
 const getSubRows = (node: TreeNode) => node.children;
@@ -66,12 +71,30 @@ const countTransforms = (node: TreeNode): number => {
 };
 
 const isRowDisabled = (row: Row<TreeNode>) => {
-  return row.original.source_readable === false;
+  return row.original.can_read === false;
+};
+
+const getRowHref = (row: Row<TreeNode>) => {
+  if (isRowDisabled(row)) {
+    return null;
+  }
+  if (row.original.nodeType === "transform" && row.original.transformId) {
+    return Urls.transform(row.original.transformId);
+  }
+  if (row.original.nodeType === "library" && row.original.url) {
+    return row.original.url;
+  }
+  return null;
+};
+
+const renderRowLink: RenderRowLink<TreeNode> = (row, props) => {
+  const href = getRowHref(row);
+  return href ? <Link to={href} {...props} /> : props.children;
 };
 
 const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
   folder: "text-secondary",
-  transform: "brand",
+  transform: "core-brand",
   library: "text-primary",
 };
 
@@ -91,16 +114,18 @@ const globalFilterFn = (
   );
 };
 
-export const TransformListPage = ({ location }: WithRouterProps) => {
+export const TransformListPage = () => {
+  const location = useLocation();
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
   const targetCollectionId =
-    Urls.extractEntityId(location.query?.collectionId) ?? null;
+    Urls.extractEntityId(
+      new URLSearchParams(location.search).get("collectionId") ?? undefined,
+    ) ?? null;
   const hasScrolledRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const hasPythonTransformsFeature = useHasTokenFeature("transforms-python");
+  const isMeterLocked = useSetting("transforms-meter-locked");
 
   const { data: targetCollection } = useGetCollectionQuery(
     targetCollectionId
@@ -126,10 +151,21 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
   const isLoading =
     isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
   const error = collectionsError ?? transformsError;
+  const shouldShowPythonTransformsUpsell = useSelector(
+    getShouldShowPythonTransformsUpsell,
+  );
+
+  const warningsByTransformId = useGetTransformWarnings(transforms);
+  const getNodeSyncColor = useGetNodeSyncColor();
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
-    if (PLUGIN_TRANSFORMS_PYTHON.isEnabled) {
+
+    // It will trigger the upsell modal if the feature isn't enabled.
+    const shouldShowPythonLibraryRow =
+      hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
+
+    if (shouldShowPythonLibraryRow) {
       data.push({
         id: "library",
         name: t`Python library`,
@@ -138,11 +174,17 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         url: Urls.transformPythonLibrary({
           path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath,
         }),
-        source_readable: transformsDatabases.length > 0,
+        can_read: transformsDatabases.length > 0,
       });
     }
     return data;
-  }, [collections, transforms, transformsDatabases]);
+  }, [
+    collections,
+    hasPythonTransformsFeature,
+    shouldShowPythonTransformsUpsell,
+    transforms,
+    transformsDatabases.length,
+  ]);
 
   const defaultExpanded = useMemo(
     () => getDefaultExpandedIds(targetCollectionId, targetCollection),
@@ -150,16 +192,6 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
   );
 
   const columnDefs = useMemo<TreeTableColumnDef<TreeNode>[]>(() => {
-    type EllipsifiedProps = ComponentProps<
-      typeof EntityNameCell
-    >["ellipsifiedProps"];
-    const unreadableTransformEllipsifiedProps: EllipsifiedProps = {
-      alwaysShowTooltip: true,
-      tooltipProps: {
-        openDelay: 300,
-        label: t`Sorry, you don’t have permission to see that.`,
-      },
-    };
     return [
       {
         id: "name",
@@ -168,19 +200,13 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         minWidth: 280,
         maxAutoWidth: 800,
         enableSorting: true,
-        cell: ({ row }) => (
-          <EntityNameCell
-            data-testid="tree-node-name"
-            icon={row.original.icon}
-            iconColor={getNodeIconColor(row.original)}
-            name={row.original.name}
-            ellipsifiedProps={
-              isRowDisabled(row)
-                ? unreadableTransformEllipsifiedProps
-                : undefined
-            }
-          />
-        ),
+        cell: ({ row }) =>
+          getNameCell({
+            row,
+            hasPythonTransformsFeature,
+            warningsByTransformId,
+            syncColor: getNodeSyncColor(row.original),
+          }),
       },
       {
         id: "owner",
@@ -201,7 +227,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
           const hasUserName = owner?.first_name || owner?.last_name;
 
           if (hasUserName) {
-            const displayName = getUserName(owner as NamedUser);
+            const displayName = getUserName(owner);
             return <Ellipsified>{displayName}</Ellipsified>;
           }
 
@@ -247,27 +273,13 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         cell: ({ row }) =>
           isCollectionNode(row.original) ? (
             <CollectionRowMenu
-              collectionId={row.original.collectionId}
-              collectionName={row.original.name}
+              collection={row.original.collection}
               transformCount={countTransforms(row.original)}
             />
           ) : null,
       },
     ];
-  }, []);
-
-  const getRowHref = useCallback((row: Row<TreeNode>) => {
-    if (isRowDisabled(row)) {
-      return null;
-    }
-    if (row.original.nodeType === "transform" && row.original.transformId) {
-      return Urls.transform(row.original.transformId);
-    }
-    if (row.original.nodeType === "library" && row.original.url) {
-      return row.original.url;
-    }
-    return null;
-  }, []);
+  }, [hasPythonTransformsFeature, warningsByTransformId, getNodeSyncColor]);
 
   const treeTableInstance = useTreeTableInstance({
     data: treeData,
@@ -312,14 +324,9 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
 
   return (
     <PageContainer data-testid="transforms-list" gap={0}>
-      <PaneHeader
-        breadcrumbs={
-          <DataStudioBreadcrumbs>{t`Transforms`}</DataStudioBreadcrumbs>
-        }
-        showMetabotButton
-        py={0}
-      />
+      <TransformsHeader showMetabotButton />
       <Stack className={CS.overflowHidden}>
+        {isMeterLocked && <LockedTransformsBanner />}
         <Flex gap="md">
           <TextInput
             placeholder={t`Search...`}
@@ -329,8 +336,11 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {!isRemoteSyncReadOnly && transformsDatabases.length > 0 && (
-            <CreateTransformMenu />
+          {transformsDatabases.length > 0 && (
+            <>
+              <CreateTransformMenu />
+              <PLUGIN_REPLACEMENT.TransformToolsMenu />
+            </>
           )}
         </Flex>
 
@@ -345,12 +355,72 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
               }
               onRowClick={handleRowClick}
               isRowDisabled={isRowDisabled}
-              getRowHref={getRowHref}
+              renderRowLink={renderRowLink}
               classNames={{ rowDisabled: S.rowDisabled }}
             />
           )}
         </Card>
       </Stack>
+      <Outlet />
     </PageContainer>
   );
 };
+
+function getNameCell({
+  row,
+  hasPythonTransformsFeature,
+  warningsByTransformId,
+  syncColor,
+}: {
+  row: Row<TreeNode>;
+  hasPythonTransformsFeature: boolean;
+  warningsByTransformId: Map<number, string>;
+  syncColor: ColorName | undefined;
+}) {
+  const getTooltipProps = (message: string | undefined) => {
+    if (!message) {
+      return undefined;
+    }
+
+    return {
+      alwaysShowTooltip: true,
+      tooltipProps: {
+        openDelay: 300,
+        label: message,
+      },
+    };
+  };
+
+  const getWarningMessage = () => {
+    if (isRowDisabled(row)) {
+      return t`Sorry, you don’t have permission to see that.`;
+    }
+
+    if (row.original.transformId) {
+      return warningsByTransformId.get(row.original.transformId);
+    }
+    return undefined;
+  };
+
+  const isLibraryWithoutFeature =
+    row.original.nodeType === "library" && !hasPythonTransformsFeature;
+
+  const hasWarning = !!getWarningMessage();
+  const iconColor = hasWarning
+    ? "warning"
+    : (syncColor ?? getNodeIconColor(row.original));
+
+  return (
+    <Group gap="sm" wrap="nowrap" miw={0}>
+      <EntityNameCell
+        data-testid="tree-node-name"
+        icon={hasWarning ? "warning" : row.original.icon}
+        iconColor={iconColor}
+        nameColor={syncColor}
+        name={row.original.name}
+        ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
+      />
+      {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
+    </Group>
+  );
+}

@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -29,6 +30,17 @@
 
 (driver/register! :athena, :parent #{:sql-jdbc})
 
+(defmethod driver/host-carrying-parameters :athena
+  [_driver]
+  ["AthenaEndpoint" "AthenaStreamingEndpoint" "S3Endpoint" "StsEndpoint" "LakeFormationEndpoint"
+   "SsoAdminEndpoint" "SsoOidcEndpoint" "SsoLoginUrl" "IdentityCenterIssuerUrl" "IdpHostName"
+   "IdpWellKnownConfigurationUrl" "DataZoneEndpointOverride" "ProxyHost"])
+
+(defmethod driver/non-host-parameters :athena
+  [_driver]
+  ["DataZoneDomainId" "DataZoneDomainRegion" "OutputLocation" "PingPartnerSpId" "ProxyEnabledForIdP"
+   "ProxyExemptHosts" "ProxyPassword" "ProxyPort" "ProxyUsername"])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -39,6 +51,7 @@
                               :expression-literals              true
                               :identifiers-with-spaces          false
                               :metadata/key-constraints         false
+                              :native-pivot-tables              true
                               :nested-fields                    false
                               :regex/lookaheads-and-lookbehinds false
                               :test/jvm-timezone-setting        false
@@ -47,7 +60,7 @@
 
 (defmethod driver/database-supports? [:athena :schemas]
   [_driver _feature db]
-  (not (seq (:dbname (:details db)))))
+  (not (seq (:dbname (driver.conn/effective-details db)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
@@ -59,6 +72,14 @@
   "Returns the endpoint URL for a specific region"
   [region]
   (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
+
+(defmethod driver/connection-hosts :athena
+  [_driver {:keys [hostname region]}]
+  (driver/hosts-from-details
+   {:host (if (str/blank? hostname)
+            (str "athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn"))
+            hostname)}
+   [:host]))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
@@ -150,8 +171,8 @@
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
 
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
-  [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+  [driver [_ _opts expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
@@ -164,8 +185,7 @@
         (try
           (u.date/with-time-zone-same-instant t results-timezone)
           (catch Throwable _
-            (log/warnf "Failed to construct ZonedDateTime from `%s` using `%s` timezone."
-                       (pr-str t)
+            (log/warnf "Failed to construct ZonedDateTime using `%s` timezone."
                        (pr-str results-timezone))
             t))))))
 
@@ -331,7 +351,7 @@
   [:date_parse expr (h2x/literal "%Y%m%d%H%i%S")])
 
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
-  [driver [_ x y unit]]
+  [driver [_ _opts x y unit]]
   (let [x (sql.qp/->honeysql driver x)
         y (sql.qp/->honeysql driver y)]
     (case unit
@@ -342,26 +362,26 @@
 
 ;; Support for median/percentile functions
 (defmethod sql.qp/->honeysql [:athena :median]
-  [driver [_ arg]]
+  [driver [_ _opts arg]]
   [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:athena :percentile]
-  [driver [_ arg p]]
+  [driver [_ _opts arg p]]
   [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
-  [driver [_ arg pattern]]
-  [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
+  [driver [_ _opts arg pattern]]
+  [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
    Such as prepare statement"
   [database query]
-  (log/infof "Running Athena query : '%s'..." query)
+  (log/info "Running Athena query...")
   (try
     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database) (str/replace query ";" " ") {:raw? true})
     (catch Exception e
-      (log/error (u/format-color 'red "Failed to execute query: %s %s" query (.getMessage e))))))
+      (log/error (u/format-color 'red "Failed to execute query: %s" (.getMessage e))))))
 
 (defn- describe-database->clj
   "Workaround for wrong getColumnCount response by the driver (huh?)"
@@ -369,14 +389,32 @@
   {:name (str/trim (:col_name column-metadata))
    :type (str/trim (:data_type column-metadata))})
 
+;; the partition section markers and row shapes come from Hive's DESCRIBE formatter, which this
+;; output format derives from:
+;; https://github.com/apache/hive/blob/1cb455bbb6753e548e1435f4345b4e0d4644bf9f/ql/src/java/org/apache/hadoop/hive/ql/ddl/table/info/desc/formatter/TextDescTableFormatter.java#L121-L185
+(defn- partition-section-start?
+  "Whether this row of `DESCRIBE` output starts the partition section: `# Partition Information`
+  for natively-partitioned tables, or `# Partition Transform Information` for Iceberg tables."
+  [{:keys [col_name]}]
+  (str/starts-with? (str col_name) "# Partition"))
+
 (defn- remove-invalid-columns
-  "Returns a transducer."
+  "Returns a transducer that converts rows of `DESCRIBE` output into column metadata, dropping the
+  partition section and other non-column rows."
   []
-  (comp (remove #(= (:col_name %) ""))
+  ;; everything from the partition section marker on describes the partition spec rather than
+  ;; additional columns. Hive tables repeat the partition columns there with their real types;
+  ;; Iceberg tables repeat them with the partition transform (e.g. `identity`) as the type, which
+  ;; would otherwise sync as duplicate columns with no base type (#75579)
+  (comp (take-while (complement partition-section-start?))
+        (remove #(= (:col_name %) ""))
         (remove #(= (:col_name %) nil))
         (remove #(= (:data_type %) nil))
         (remove #(str/starts-with? (:col_name %) "#")) ; remove comment
-        (distinct)                                     ; driver can return twice the partitioning fields
+        ;; the partition section only repeats columns that are already in the main column list, so
+        ;; if the marker text above ever changes, keeping the first occurrence of each name still
+        ;; keeps the partition rows out
+        (m/distinct-by :col_name)
         (map describe-database->clj)))
 
 (defn- normalize-field-info
@@ -453,24 +491,25 @@
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver schema table-name columns)))
       (catch Throwable e
-        (log/errorf e "Error retrieving fields for DB %s.%s" schema table-name)
+        (log/errorf "Error retrieving fields for DB %s.%s: %s" schema table-name (ex-message e))
         (throw e)))))
 
 ;; Because describe-table-fields might fail, we catch the error here and return an empty set of columns
 
 (defmethod driver/describe-table :athena
-  [driver {{:keys [catalog dbname]} :details, :as database} table]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (let [metadata (.getMetaData conn)]
-       (assoc (select-keys table [:name :schema])
-              :fields (try
-                        (describe-table-fields metadata database driver table catalog dbname)
-                        (catch Throwable _
-                          (set nil))))))))
+  [driver database table]
+  (let [{:keys [catalog dbname]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [metadata (.getMetaData conn)]
+         (assoc (select-keys table [:name :schema])
+                :fields (try
+                          (describe-table-fields metadata database driver table catalog dbname)
+                          (catch Throwable _
+                            (set nil)))))))))
 
 (defn- get-tables
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
@@ -480,7 +519,7 @@
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-#_:clj-kondo/ignore
+#_{:clj-kondo/ignore [:aliased-namespace-symbol :discouraged-var :unresolved-namespace]}
 (comment
   ;; Script on following lines was used to get available table types, used in the `get-tables` implementation.
   (with-open [conn (clojure.java.jdbc/get-connection
@@ -526,14 +565,14 @@
                                remarks)}))))))
 
 (defmethod driver/describe-database* :athena
-  [driver {details :details, :as database}]
+  [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    database
    nil
    (fn [^Connection conn]
      (let [metadata (.getMetaData conn)]
-       {:tables (fast-active-tables driver metadata details)}))))
+       {:tables (fast-active-tables driver metadata (driver.conn/effective-details database))}))))
 
 (defmethod sql.qp/format-honeysql :athena
   [driver honeysql-form]
@@ -547,4 +586,4 @@
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))
 
 (defmethod driver/llm-sql-dialect-resource :athena [_]
-  "llm/prompts/dialects/athena.md")
+  "metabot/prompts/dialects/athena.md")

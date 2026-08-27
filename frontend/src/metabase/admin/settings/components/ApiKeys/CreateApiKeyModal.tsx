@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useCreateApiKeyMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -10,9 +9,12 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button, Group, Modal, Stack, Text } from "metabase/ui";
+import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
 import type { CreateApiKeyRequest } from "metabase-types/api";
 
+import { useCreateApiKeyMutation } from "../../api/api-key";
+
+import S from "./CreateApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
@@ -23,6 +25,7 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
   const handleSubmit = useCallback(
     async (vals: { group_id: number | null; name: string }) => {
       if (vals.group_id !== null) {
+        // Unjustified type cast. FIXME
         await createApiKey(vals as CreateApiKeyRequest).unwrap();
       }
     },
@@ -36,7 +39,8 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
   if (response.isUninitialized || response.isLoading || response.isError) {
     return (
       <Modal
-        size="30rem"
+        size="40rem"
+        padding="xl"
         opened
         onClose={onClose}
         title={t`Create a new API key`}
@@ -47,24 +51,31 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
           onSubmit={handleSubmit}
         >
           <Form data-testid="create-api-key-modal">
-            <Stack gap="md">
+            <Stack gap="xl">
               <FormTextInput
                 name="name"
                 label={t`Key name`}
-                size="sm"
+                placeholder={t`Something to help you remember what this is for`}
                 required
                 maxLength={250}
               />
               <FormGroupWidget
                 name="group_id"
-                label={t`Which group should this key belong to? The key will have the same permissions granted to that group.`}
-                size="sm"
+                label={t`Group this key should belong to`}
+                description={t`The key will have the same permissions that the group does.`}
+                classNames={{ description: S.groupDescription }}
                 required
               />
-              <Text
-                my="sm"
-                size="sm"
-              >{t`We don't version the Metabase API. We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.`}</Text>
+              {/* TODO: swap for the planned metabase/ui Alert variant once it lands. */}
+              <Paper
+                bg="background_page-secondary"
+                radius="md"
+                px="md"
+                py="sm"
+                shadow="none"
+              >
+                <Text c="text-secondary">{t`We don't version the Metabase API. We rarely change API endpoints, and almost never remove them, but if you write code that relies on the API, there's a chance you might have to update your code in the future.`}</Text>
+              </Paper>
               <FormErrorMessage />
               <Group justify="flex-end">
                 <Button onClick={onClose}>{t`Cancel`}</Button>

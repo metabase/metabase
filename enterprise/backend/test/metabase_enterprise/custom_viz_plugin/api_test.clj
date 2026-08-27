@@ -1,0 +1,834 @@
+(ns ^:synchronized metabase-enterprise.custom-viz-plugin.api-test
+  (:require
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
+   [metabase-enterprise.custom-viz-plugin.test-util :as cvp.tu]
+   [metabase.config.core :as config]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+(use-fixtures :each
+  (fn [thunk]
+    (mt/with-temporary-setting-values [csp-img-enabled true
+                                       custom-viz-enabled true]
+      (thunk))))
+
+(defmacro ^:private with-dev-mode-enabled [& body]
+  `(with-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
+     ~@body))
+
+(defn- multipart-upload!
+  "Send a multipart `bundle-bytes` tar.gz to `path` as user `user`, expecting `status`.
+
+  Defaults to POST (the create-new-plugin endpoint); pass `:method :put` for the
+  replace-bundle endpoint."
+  [user status path ^bytes bundle-bytes & {:keys [method] :or {method :post}}]
+  (mt/user-http-request user method status path
+                        {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                        {:file bundle-bytes}))
+
+;;; ------------------------------------------------ Auth & Permissions ------------------------------------------------
+
+(deftest authorization-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "non-admin cannot list plugins (admin list)"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "ee/custom-viz-plugin/"))))
+    (testing "admin can list plugins"
+      (is (sequential? (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/"))))
+    (testing "non-admin cannot delete plugins"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "auth-test"
+                                                      :display_name "auth-test"
+                                                      :status       :active}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :delete 403 (str "ee/custom-viz-plugin/" id))))))
+    (testing "non-admin cannot update plugins"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "auth-test-2"
+                                                      :display_name "auth-test-2"
+                                                      :status       :active}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "ee/custom-viz-plugin/" id)
+                                     {:enabled false})))))
+    (testing "non-admin cannot set dev URL"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "auth-test-3"
+                                                      :display_name "auth-test-3"
+                                                      :status       :active}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "ee/custom-viz-plugin/" id "/dev-url")
+                                     {:dev_bundle_url "http://localhost:5174"})))))
+    (testing "non-admin cannot refresh plugins"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "auth-test-4"
+                                                      :display_name "auth-test-4"
+                                                      :status       :active}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 (str "ee/custom-viz-plugin/" id "/refresh"))))))
+    (testing "non-admin cannot upload a new bundle"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "auth-test-5"
+                                                      :display_name "auth-test-5"
+                                                      :status       :active}]
+        (is (= "You don't have permissions to do that."
+               (multipart-upload! :rasta 403 (str "ee/custom-viz-plugin/" id "/bundle")
+                                  (cvp.tu/valid-bundle-bytes "auth-test-5")
+                                  :method :put)))))))
+
+(deftest feature-flag-test
+  (testing "endpoints require :custom-viz premium feature"
+    (mt/with-premium-features #{}
+      (mt/assert-has-premium-feature-error
+       "Custom Visualizations"
+       (mt/user-http-request :crowberto :get 402 "ee/custom-viz-plugin/")))))
+
+;;; ------------------------------------------------ /list endpoint ------------------------------------------------
+
+(deftest list-endpoint-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "/list is available to non-admin users"
+      (is (sequential? (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list"))))
+    (testing "/list only returns active and enabled plugins"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "active-viz"
+                                               :display_name "Active Viz"
+                                               :status       :active
+                                               :enabled      true
+                                               :bundle_hash  "active-hash"}
+                     :model/CustomVizPlugin _ {:identifier   "disabled-viz"
+                                               :display_name "Disabled Viz"
+                                               :status       :active
+                                               :enabled      false
+                                               :bundle_hash  "disabled-hash"}
+                     :model/CustomVizPlugin _ {:identifier   "error-viz"
+                                               :display_name "Error Viz"
+                                               :status       :error
+                                               :enabled      true
+                                               :bundle_hash  "error-hash"}]
+        (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+              identifiers (set (map :identifier result))]
+          (is (contains? identifiers "active-viz"))
+          (is (not (contains? identifiers "disabled-viz")))
+          (is (not (contains? identifiers "error-viz"))))))
+    (testing "/list does not expose the raw bundle blob"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "bundle-viz"
+                                               :display_name "Bundle Viz"
+                                               :status       :active
+                                               :enabled      true
+                                               :bundle_hash  "abcd"}]
+        (let [result (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")]
+          (doseq [plugin result]
+            (is (not (contains? plugin :bundle)))))))
+    (testing "/list bundle_url is suffixed with ?v=<bundle_hash> so a re-uploaded bundle bypasses the immutable browser cache"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "cachebust-viz"
+                                               :display_name "Cachebust Viz"
+                                               :status       :active
+                                               :enabled      true
+                                               :bundle_hash  "deadbeefcafe"}]
+        (let [result (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+              entry  (first (filter #(= "cachebust-viz" (:identifier %)) result))]
+          (is (re-find #"\?v=deadbeefcafe$" (:bundle_url entry))))))))
+
+;;; ------------------------------------------------ Bundle bytes not exposed ------------------------------------------------
+
+(deftest bundle-bytes-not-exposed-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "bytes-sec"
+                                                    :display_name "Bytes Sec"
+                                                    :status       :active
+                                                    :enabled      true
+                                                    :bundle       (.getBytes "pretend-zip-bytes" "UTF-8")
+                                                    :bundle_hash  "feedface"}]
+      (testing "GET / (admin list) does not expose :bundle"
+        (let [plugins (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")]
+          (doseq [plugin plugins]
+            (is (not (contains? plugin :bundle))))))
+      (testing "PUT /:id response does not expose :bundle"
+        (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
+                                         {:enabled false})]
+          (is (not (contains? resp :bundle))))))))
+
+;;; ------------------------------------------------ Duplicate Validation ------------------------------------------------
+
+(deftest duplicate-identifier-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "uploading a bundle whose identifier already exists returns a 400"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "dup-viz"
+                                               :display_name "dup-viz"
+                                               :status       :active}]
+        (is (re-find #"identifier.*already exists"
+                     (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
+                                        (cvp.tu/valid-bundle-bytes "dup-viz"))))))))
+
+;;; ------------------------------------------------ CRUD ------------------------------------------------
+
+(deftest delete-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "admin can delete a plugin"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "delete-viz"
+                                                      :display_name "Delete Viz"
+                                                      :status       :active}]
+        (mt/user-http-request :crowberto :delete 204 (str "ee/custom-viz-plugin/" id))
+        (is (nil? (t2/select-one :model/CustomVizPlugin :id id)))))
+    (testing "404 for non-existent plugin"
+      (mt/user-http-request :crowberto :delete 404 "ee/custom-viz-plugin/99999"))))
+
+(deftest update-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "admin can disable a plugin"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "update-viz"
+                                                      :display_name "Update Viz"
+                                                      :status       :active
+                                                      :enabled      true}]
+        (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
+                                         {:enabled false})]
+          (is (false? (:enabled resp))))))
+    (testing "404 for non-existent plugin"
+      (mt/user-http-request :crowberto :put 404 "ee/custom-viz-plugin/99999"
+                            {:enabled false}))))
+
+;;; ------------------------------------------------ Dev URL Security ------------------------------------------------
+
+(deftest dev-url-security-test
+  (mt/with-premium-features #{:custom-viz}
+    (with-dev-mode-enabled
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "dev-sec"
+                                                      :display_name "dev-sec"
+                                                      :status       :active}]
+        (testing "SECURITY: rejects file:// dev URL"
+          (is (= 400
+                 (:status-code
+                  (ex-data
+                   (try
+                     (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")
+                     (catch Exception e e)))))))
+        (testing "SECURITY: rejects ftp:// dev URL via API"
+          (is (= 400
+                 (:status-code
+                  (ex-data
+                   (try
+                     (cache/set-or-clear-dev-bundle! id "ftp://evil.com/bundle")
+                     (catch Exception e e)))))))
+        (testing "admin can set valid http dev URL"
+          (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id "/dev-url")
+                                           {:dev_bundle_url "http://localhost:5174"})]
+            (is (= "http://localhost:5174" (:dev_bundle_url resp)))))
+        (testing "admin can clear dev URL"
+          (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id "/dev-url")
+                                           {:dev_bundle_url nil})]
+            (is (nil? (:dev_bundle_url resp)))))))))
+
+;;; ------------------------------------------------ Asset Endpoint Security ------------------------------------------------
+
+(deftest asset-endpoint-security-test
+  (mt/with-premium-features #{:custom-viz}
+    (let [manifest {:name "sec-test"
+                    :icon "icon.svg"}]
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "sec-test"
+                                                      :display_name "sec-test"
+                                                      :status       :active
+                                                      :bundle_hash  "abc123"
+                                                      :manifest     manifest}]
+        (testing "SECURITY: rejects unsupported asset types"
+          (let [resp (mt/user-http-request :crowberto :get 404 (str "ee/custom-viz-plugin/" id "/asset")
+                                           :path "script.js")]
+            (is (some? resp))))
+        (testing "SECURITY: rejects path traversal in asset path"
+          (let [resp (mt/user-http-request :crowberto :get 404 (str "ee/custom-viz-plugin/" id "/asset")
+                                           :path "../../../etc/passwd")]
+            (is (some? resp))))
+        (testing "SECURITY: rejects HTML files (XSS vector)"
+          (let [resp (mt/user-http-request :crowberto :get 404 (str "ee/custom-viz-plugin/" id "/asset")
+                                           :path "evil.html")]
+            (is (some? resp))))
+        (testing "404 for non-existent plugin"
+          (mt/user-http-request :crowberto :get 404 "ee/custom-viz-plugin/99999/asset"
+                                :path "icon.svg"))))))
+
+;;; ------------------------------------------------ Plugin Registration ------------------------------------------------
+
+(deftest register-plugin-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "successful registration creates plugin and persists manifest fields"
+        (with-redefs [config/mb-version-info {:tag "v1.60.0"}
+                      config/is-dev?         false]
+          (let [zip  (cvp.tu/make-tgz-bytes
+                      [["metabase-plugin.json" (json/encode
+                                                {:name     "new-register-viz"
+                                                 :icon     "icon.svg"
+                                                 :metabase {:version ">=1.59.0"}
+                                                 :sdk      {:version "2.0.0"}})]
+                       ["dist/index.js" "console.log('hi')"]])
+                resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)
+                row  (t2/select-one :model/CustomVizPlugin :identifier "new-register-viz")]
+            (is (= "new-register-viz" (:identifier resp)))
+            (is (false? (:dev_only resp))
+                "upload-registered plugins are not dev-only")
+            (is (= "new-register-viz" (:display_name row)))
+            (is (= "icon.svg" (:icon row)))
+            (is (= ">=1.59.0" (:metabase_version row)))
+            (is (= "2.0.0" (get-in row [:manifest :sdk :version])))
+            (is (= :active (:status row)))
+            (is (some? (:bundle_hash row)) "bundle_hash is populated")))))))
+
+(deftest register-plugin-incompatible-version-warns-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "uploading a plugin with an unsatisfied metabase.version succeeds with a soft warning"
+        (with-redefs [config/mb-version-info {:tag "v1.60.0"}
+                      config/is-dev?         false]
+          (let [zip  (cvp.tu/valid-bundle-bytes "warned-viz" {:metabase-version ">=1.99"
+                                                              :sdk-version      "2.0.0"})
+                resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)]
+            (is (= ["metabase-version-mismatch"]
+                   (map :type (:warnings resp)))))))
+      (testing "uploading an unstamped plugin succeeds with an sdk-version-mismatch warning"
+        (let [zip  (cvp.tu/valid-bundle-bytes "unstamped-viz")
+              resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)]
+          (is (= ["sdk-version-mismatch"]
+                 (map :type (:warnings resp)))))))))
+
+(deftest register-plugin-malformed-manifest-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "POST returns 400 when a manifest field has the wrong JSON type"
+        (let [zip  (cvp.tu/valid-bundle-bytes "malformed-viz" {:sdk-version 2})
+              resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
+          (is (re-find #"metabase-plugin\.json is invalid" (or (:message resp) (str resp))))
+          (is (not (t2/exists? :model/CustomVizPlugin :identifier "malformed-viz"))
+              "nothing is persisted"))))))
+
+(deftest register-plugin-missing-manifest-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "POST returns 400 when zip is missing metabase-plugin.json"
+        (let [zip  (cvp.tu/make-tgz-bytes [["dist/index.js" "console.log('hi')"]])
+              resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
+          (is (re-find #"metabase-plugin\.json" (or (:message resp) (str resp)))))))))
+
+(deftest register-plugin-missing-bundle-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "POST returns 400 when zip is missing dist/index.js"
+        (let [zip  (cvp.tu/make-tgz-bytes
+                    [["metabase-plugin.json" (json/encode {:name "no-bundle-viz"})]])
+              resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
+          (is (re-find #"index\.js" (or (:message resp) (str resp)))))))))
+
+(deftest register-plugin-invalid-manifest-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "POST returns 400 when manifest has no name field"
+        (let [zip  (cvp.tu/make-tgz-bytes
+                    [["metabase-plugin.json" (json/encode {:icon "icon.svg"})]
+                     ["dist/index.js" "console.log('hi')"]])
+              resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
+          (is (re-find #"\"name\"" (or (:message resp) (str resp)))))))))
+
+(deftest register-plugin-not-a-zip-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "POST returns 400 when the uploaded bytes are not a zip"
+        (let [resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
+                                      (.getBytes "this is plain text, not a zip" "UTF-8"))]
+          (is (some? resp)))))))
+
+(deftest register-plugin-oversize-rejected-by-multipart-test
+  (testing "uploads larger than max-bundle-bytes are rejected by Ring multipart middleware (413, before reaching the handler)"
+    (mt/with-premium-features #{:custom-viz}
+      (mt/with-model-cleanup [:model/CustomVizPlugin]
+        ;; one byte over the cap is enough — the multipart layer aborts streaming
+        ;; before the body is fully buffered.
+        (let [oversized (byte-array (inc cache/max-bundle-bytes))]
+          (multipart-upload! :crowberto 413 "ee/custom-viz-plugin/" oversized))))))
+
+(deftest register-dev-plugin-test
+  (mt/with-premium-features #{:custom-viz}
+    (with-dev-mode-enabled
+      (mt/with-model-cleanup [:model/CustomVizPlugin]
+        (testing "dev plugin registration with manifest name"
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "dev-chart"
+                                                                            :icon "icon.svg"
+                                                                            :sdk  {:version "2.0.0"}})
+                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+            (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
+                                             {:dev_bundle_url "http://localhost:5174"})]
+              (is (= "dev-chart" (:identifier resp)))
+              (is (= "dev-chart" (:display_name resp))
+                  "display_name comes from manifest name")
+              (is (true? (:dev_only resp))
+                  "dev-registered plugins are dev-only")
+              (is (= "active" (:status resp))
+                  "dev plugins are immediately active")
+              (is (= "2.0.0" (get-in resp [:manifest :sdk :version]))
+                  "the dev manifest, including any sdk.version stamp, is persisted"))))
+        (testing "dev plugin registration with explicit identifier overrides manifest"
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "manifest-name"})
+                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+            (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
+                                             {:dev_bundle_url "http://localhost:5174"
+                                              :identifier     "my-override"})]
+              (is (= "my-override" (:identifier resp))
+                  "explicit identifier takes precedence over manifest name")
+              (is (= [] (:warnings resp))
+                  "dev-only plugins are exempt from version warnings, even unstamped"))))
+        (testing "dev plugin registration fails with helpful message when no identifier and no manifest"
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly nil)]
+            (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
+                                             {:dev_bundle_url "http://localhost:5174"})]
+              (is (str/includes? resp "metabase-plugin.json")
+                  "error should mention the manifest file"))))
+        (testing "dev plugin registration fails with helpful message when manifest missing name"
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:icon "icon.svg"})]
+            (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
+                                             {:dev_bundle_url "http://localhost:5174"})]
+              (is (str/includes? resp "name")
+                  "error should mention the missing name field"))))))))
+
+;;; ------------------------------------------------ Bundle Replace ------------------------------------------------
+
+(deftest replace-bundle-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "PUT /:id/bundle replaces an existing plugin's bundle and refreshes derived fields"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "replace-viz"
+                                                      :display_name "old name"
+                                                      :status       :active
+                                                      :bundle       (.getBytes "old" "UTF-8")
+                                                      :bundle_hash  "oldhash"}]
+        (let [zip    (cvp.tu/make-tgz-bytes
+                      [["metabase-plugin.json" (json/encode
+                                                {:name "replace-viz"
+                                                 :icon "new-icon.svg"})]
+                       ["dist/index.js" "console.log('new')"]])
+              resp   (multipart-upload! :crowberto 200
+                                        (str "ee/custom-viz-plugin/" id "/bundle") zip
+                                        :method :put)
+              row    (t2/select-one :model/CustomVizPlugin :id id)]
+          (is (= "replace-viz" (:identifier resp)))
+          (is (= "new-icon.svg" (:icon row)))
+          (is (not= "oldhash" (:bundle_hash row))
+              "bundle_hash should change when a new bundle is uploaded"))))))
+
+(deftest replace-bundle-identifier-mismatch-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "PUT /:id/bundle refuses a zip whose manifest name differs from the plugin's identifier"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "mismatch-viz"
+                                                      :display_name "mismatch-viz"
+                                                      :status       :active
+                                                      :bundle_hash  "abc"}]
+        (let [zip  (cvp.tu/valid-bundle-bytes "some-other-identifier")
+              resp (multipart-upload! :crowberto 400
+                                      (str "ee/custom-viz-plugin/" id "/bundle") zip
+                                      :method :put)]
+          (is (re-find #"does not match" (or (:message resp) (str resp)))))))))
+
+;;; ------------------------------------------------ Update / Refresh ------------------------------------------------
+
+(deftest refresh-upload-plugin-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "refresh returns 400 for upload-backed plugins (users should POST a new bundle instead)"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "refresh-upload"
+                                                      :display_name "refresh-upload"
+                                                      :status       :active
+                                                      :bundle_hash  "abc"}]
+        (let [resp (mt/user-http-request :crowberto :post 400
+                                         (str "ee/custom-viz-plugin/" id "/refresh"))]
+          (is (re-find #"upload a new bundle" (or (:message resp) (str resp)))))))))
+
+(deftest refresh-dev-plugin-test
+  (mt/with-premium-features #{:custom-viz}
+    (with-dev-mode-enabled
+      (testing "refresh re-fetches manifest for dev-only plugins"
+        (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier     "dev-refresh"
+                                                        :display_name   "dev-refresh"
+                                                        :status         :active
+                                                        :dev_bundle_url "http://localhost:5174"}]
+          (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5174")
+                                      cache/fetch-dev-manifest (constantly {:name "Updated Name"
+                                                                            :icon "new-icon.svg"
+                                                                            :sdk  {:version "2.0.1"}})]
+            (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/custom-viz-plugin/" id "/refresh"))]
+              (is (= "Updated Name" (:display_name resp)))
+              (is (= "2.0.1" (get-in resp [:manifest :sdk :version]))
+                  "the refreshed dev manifest, including any sdk.version stamp, is persisted")
+              (is (= [] (:warnings resp))
+                  "dev-only plugins get no warnings even for an untested SDK version"))))))))
+
+;;; ------------------------------------------------ /list version warnings ------------------------------------------------
+
+(deftest list-annotates-incompatible-versions-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "/list includes plugins with version incompatibilities, annotated with soft warnings"
+      (with-redefs [config/mb-version-info {:tag "v1.60.0"}
+                    config/is-dev?         false]
+        (mt/with-temp [:model/CustomVizPlugin _ {:identifier        "compat-viz"
+                                                 :display_name      "Compatible"
+                                                 :status            :active
+                                                 :enabled           true
+                                                 :bundle_hash       "compat-hash"
+                                                 :metabase_version  ">=1.59"
+                                                 :manifest          {:sdk {:version "2.0.0"}}}
+                       :model/CustomVizPlugin _ {:identifier        "incompat-viz"
+                                                 :display_name      "Incompatible"
+                                                 :status            :active
+                                                 :enabled           true
+                                                 :bundle_hash       "incompat-hash"
+                                                 :metabase_version  ">=1.99"
+                                                 :manifest          {:sdk {:version "2.0.0"}}}
+                       :model/CustomVizPlugin _ {:identifier        "unstamped-viz"
+                                                 :display_name      "Unstamped"
+                                                 :status            :active
+                                                 :enabled           true
+                                                 :bundle_hash       "unstamped-hash"}]
+          (let [result    (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+                by-id     (into {} (map (juxt :identifier identity)) result)
+                warnings  #(map :type (get-in by-id [% :warnings]))]
+            (is (= #{"compat-viz" "incompat-viz" "unstamped-viz"}
+                   (into #{} (filter #{"compat-viz" "incompat-viz" "unstamped-viz"}) (keys by-id))))
+            (is (= [] (warnings "compat-viz")))
+            (is (= ["metabase-version-mismatch"] (warnings "incompat-viz")))
+            (is (= ["sdk-version-mismatch"] (warnings "unstamped-viz")))))))))
+
+;;; ------------------------------------------------ Sandbox-host Endpoint ------------------------------------------------
+
+;; Pinned independently of the source constant on purpose: the donor is unauthed, so a change to
+;; the served body must break a test rather than silently ride along with the source.
+(def ^:private inert-donor-doc
+  "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
+
+(deftest sandbox-host-endpoint-test
+  (testing "GET /sandbox-host returns minimal HTML with a per-document CSP"
+    (mt/with-premium-features #{:custom-viz}
+      (let [resp (mt/user-http-request-full-response
+                  :rasta :get 200 "ee/custom-viz-plugin/sandbox-host")
+            headers (:headers resp)]
+        (testing "the body is exactly the inert donor document (pinned: this endpoint is unauthed, nothing may be added to it)"
+          (is (= inert-donor-doc (:body resp))))
+        (testing "response is served as HTML"
+          (is (str/starts-with? (get headers "Content-Type") "text/html")))
+        (testing "the CSP is exactly the per-document sandbox policy (pinned)"
+          (is (= "default-src 'none'; script-src 'unsafe-eval'; frame-ancestors *;"
+                 (get headers "Content-Security-Policy"))))
+        (testing "no X-Frame-Options is served (frame-ancestors is the framing policy, so EAJS customer pages can frame it)"
+          (is (nil? (get headers "X-Frame-Options"))))
+        (testing "hardening headers are present"
+          (is (= "nosniff"     (get headers "X-Content-Type-Options")))
+          (is (= "no-referrer" (get headers "Referrer-Policy")))
+          (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
+          ;; no-store, not public: the gate's 200-vs-404 depends on headers/session a
+          ;; URL-keyed shared cache can't see, so a cached 200 must never be replayable.
+          (is (= "no-store" (get headers "Cache-Control")))))))
+  (testing "GET /sandbox-host requires the :custom-viz premium feature"
+    (mt/with-premium-features #{}
+      (mt/assert-has-premium-feature-error
+       "Custom Visualizations"
+       (mt/user-http-request :rasta :get 402 "ee/custom-viz-plugin/sandbox-host"))))
+  (testing "GET /sandbox-host is a 404 when the custom-viz kill switch is off"
+    (mt/with-premium-features #{:custom-viz}
+      (mt/with-temporary-setting-values [custom-viz-enabled false]
+        (let [resp (client/client-full-response :get 404 "ee/custom-viz-plugin/sandbox-host")]
+          (testing "and the 404 never carries the eval-permitting CSP"
+            (is (not (str/includes? (str (get-in resp [:headers "Content-Security-Policy"])) "unsafe-eval")))))))))
+
+(defn- get-sandbox-host
+  "GET the donor endpoint, as `:rasta` when `authed?`, asserting `expected-status`.
+   A nil `sec-fetch-site`/`sec-fetch-dest` means the header is not sent at all."
+  [{:keys [authed? sec-fetch-site sec-fetch-dest expected-status]}]
+  (let [headers (cond-> {}
+                  sec-fetch-site (assoc "sec-fetch-site" sec-fetch-site)
+                  sec-fetch-dest (assoc "sec-fetch-dest" sec-fetch-dest))
+        args    (cond-> []
+                  (seq headers) (conj {:request-options {:headers headers}}))]
+    (if authed?
+      (apply mt/user-http-request-full-response :rasta :get expected-status "ee/custom-viz-plugin/sandbox-host" args)
+      (apply client/client-full-response :get expected-status "ee/custom-viz-plugin/sandbox-host" args))))
+
+(deftest sandbox-host-fetch-metadata-gate-test
+  ;; The whole gate in one table. Every 200 also pins the body: the donor is reachable without
+  ;; authentication and its response carries an eval-permitting CSP, so it must ALWAYS be this
+  ;; exact empty document. Never add content, data, or anything request-dependent to it.
+  (mt/with-premium-features #{:custom-viz}
+    (doseq [{:keys [description expected-status] :as scenario}
+            [{:description     "an unauthed browser-attested same-origin iframe navigation is served (the EAJS path)"
+              :sec-fetch-site  "same-origin"
+              :sec-fetch-dest  "iframe"
+              :expected-status 200}
+             {:description     "cross-site framing of the donor URL is a 404"
+              :sec-fetch-site  "cross-site"
+              :sec-fetch-dest  "iframe"
+              :expected-status 404}
+             {:description     "a top-level navigation (URL pasted in a tab) is a 404"
+              :sec-fetch-site  "none"
+              :sec-fetch-dest  "document"
+              :expected-status 404}
+             {:description     "a non-iframe use (script/img/fetch) is a 404"
+              :sec-fetch-site  "same-origin"
+              :sec-fetch-dest  "empty"
+              :expected-status 404}
+             {:description     "absent fetch metadata is rejected (the unauthed donor requires an attested same-origin iframe load)"
+              :expected-status 404}
+             {:description     "a partial fetch-metadata set (only one of the two headers) is rejected"
+              :sec-fetch-site  "same-origin"
+              :expected-status 404}
+             {:description     "an unauthed cross-site top-level load is a 404"
+              :sec-fetch-site  "cross-site"
+              :sec-fetch-dest  "document"
+              :expected-status 404}
+             {:description     "a session-authed request with no fetch metadata is served (older browsers)"
+              :authed?         true
+              :expected-status 200}
+             {:description     "a session-authed same-origin iframe navigation is served"
+              :authed?         true
+              :sec-fetch-site  "same-origin"
+              :sec-fetch-dest  "iframe"
+              :expected-status 200}
+             {:description     "a session-authed request with a present cross-site attestation is a 404 (an authed user must not be framable cross-site)"
+              :authed?         true
+              :sec-fetch-site  "cross-site"
+              :sec-fetch-dest  "document"
+              :expected-status 404}]]
+      (testing description
+        (let [resp (get-sandbox-host scenario)]
+          (if (= 200 expected-status)
+            (is (= inert-donor-doc (:body resp)))
+            (is (= "Not found" (:body resp)))))))))
+
+(deftest custom-viz-list-still-requires-auth-test
+  (testing "splitting out the unauthed donor route must not expose the other custom-viz routes"
+    (mt/with-premium-features #{:custom-viz}
+      (is (= "Unauthenticated" (client/client :get 401 "ee/custom-viz-plugin/list")))
+      (is (= "Unauthenticated" (client/client :get 401 "ee/custom-viz-plugin/"))))))
+
+;;; ------------------------------------------------ Bundle Endpoint ------------------------------------------------
+
+(deftest bundle-endpoint-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "bundle-test"
+                                                    :display_name "bundle-test"
+                                                    :status       :active
+                                                    :bundle_hash  "abc123"}]
+      (testing "returns bundle with correct content-type and ETag"
+        (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
+                                    cache/resolve-bundle     (constantly {:content "console.log('hello')" :hash "deadbeef"})]
+          (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/bundle"))]
+            (is (= "console.log('hello')" resp)))))
+      (testing "returns 503 when bundle is not available"
+        (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
+                                    cache/resolve-bundle     (constantly nil)]
+          (let [resp (mt/user-http-request :crowberto :get 503 (str "ee/custom-viz-plugin/" id "/bundle"))]
+            (is (some? resp))))))))
+
+(deftest bundle-and-list-auth-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "auth-bundle"
+                                                    :display_name "auth-bundle"
+                                                    :status       :active
+                                                    :enabled      true
+                                                    :bundle_hash  "abc123"}]
+      (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
+                                  cache/resolve-bundle     (constantly {:content "console.log('hi')" :hash "h1"})]
+        (testing "authenticated non-admin user can access /bundle"
+          (is (= "console.log('hi')"
+                 (mt/user-http-request :rasta :get 200 (str "ee/custom-viz-plugin/" id "/bundle")))))
+        (testing "unauthenticated user cannot access /bundle"
+          (is (= "Unauthenticated"
+                 (client/client :get 401 (str "ee/custom-viz-plugin/" id "/bundle"))))))
+      (testing "authenticated non-admin user can access /list"
+        (is (sequential? (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list"))))
+      (testing "unauthenticated user cannot access /list"
+        (is (= "Unauthenticated"
+               (client/client :get 401 "ee/custom-viz-plugin/list")))))))
+
+;;; ------------------------------------------------ Audit Log ------------------------------------------------
+
+(deftest audit-log-create-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (testing "registering a plugin records a custom-viz-plugin-create audit event"
+        (let [resp  (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/"
+                                       (cvp.tu/valid-bundle-bytes "audit-create-viz" {:icon "icon.svg"}))
+              entry (mt/latest-audit-log-entry "custom-viz-plugin-create" (:id resp))]
+          (is (partial=
+               {:topic    :custom-viz-plugin-create
+                :user_id  (mt/user->id :crowberto)
+                :model    "CustomVizPlugin"
+                :model_id (:id resp)
+                :details  {:identifier   "audit-create-viz"
+                           :display_name "audit-create-viz"
+                           :status       "active"
+                           :enabled      true}}
+               entry))
+          (is (some? (get-in entry [:details :bundle_hash]))
+              "bundle_hash should be recorded in audit details"))))))
+
+(deftest audit-log-create-dev-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (with-dev-mode-enabled
+      (mt/with-model-cleanup [:model/CustomVizPlugin]
+        (testing "registering a dev plugin records a custom-viz-plugin-create audit event"
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest    (constantly {:name "audit-dev-chart" :icon "icon.svg"})
+                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+            (let [resp  (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
+                                              {:dev_bundle_url "http://localhost:5174"})
+                  entry (mt/latest-audit-log-entry "custom-viz-plugin-create" (:id resp))]
+              (is (partial=
+                   {:topic    :custom-viz-plugin-create
+                    :user_id  (mt/user->id :crowberto)
+                    :model    "CustomVizPlugin"
+                    :model_id (:id resp)}
+                   entry))
+              (is (= "audit-dev-chart" (get-in entry [:details :identifier]))))))))))
+
+(deftest audit-log-delete-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (testing "deleting a plugin records a custom-viz-plugin-delete audit event"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "audit-delete-viz"
+                                                      :display_name "Audit Delete Viz"
+                                                      :status       :active}]
+        (mt/user-http-request :crowberto :delete 204 (str "ee/custom-viz-plugin/" id))
+        (is (partial=
+             {:topic    :custom-viz-plugin-delete
+              :user_id  (mt/user->id :crowberto)
+              :model    "CustomVizPlugin"
+              :model_id id
+              :details  {:identifier   "audit-delete-viz"
+                         :display_name "Audit Delete Viz"
+                         :status       "active"}}
+             (mt/latest-audit-log-entry "custom-viz-plugin-delete" id)))))))
+
+(deftest audit-log-update-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (testing "updating a plugin records a custom-viz-plugin-update audit event with changed fields"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "audit-update-viz"
+                                                      :display_name "Audit Update Viz"
+                                                      :status       :active
+                                                      :enabled      true}]
+        (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id)
+                              {:enabled false})
+        (let [entry (mt/latest-audit-log-entry "custom-viz-plugin-update" id)]
+          (is (partial=
+               {:topic    :custom-viz-plugin-update
+                :user_id  (mt/user->id :crowberto)
+                :model    "CustomVizPlugin"
+                :model_id id}
+               entry))
+          (is (= {:previous {:enabled true}
+                  :new      {:enabled false}}
+                 (select-keys (:details entry) [:previous :new]))))))))
+
+(deftest audit-log-replace-bundle-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (testing "replacing a bundle records a custom-viz-plugin-update audit event"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "audit-replace-viz"
+                                                      :display_name "audit-replace-viz"
+                                                      :status       :active
+                                                      :bundle       (.getBytes "old" "UTF-8")
+                                                      :bundle_hash  "old-sha"}]
+        (multipart-upload! :crowberto 200 (str "ee/custom-viz-plugin/" id "/bundle")
+                           (cvp.tu/valid-bundle-bytes "audit-replace-viz")
+                           :method :put)
+        (let [entry (mt/latest-audit-log-entry "custom-viz-plugin-update" id)]
+          (is (partial=
+               {:topic    :custom-viz-plugin-update
+                :user_id  (mt/user->id :crowberto)
+                :model    "CustomVizPlugin"
+                :model_id id}
+               entry))
+          (is (= "old-sha" (get-in entry [:details :previous :bundle_hash]))
+              "old bundle_hash is recorded under :previous")
+          (is (not= "old-sha" (get-in entry [:details :new :bundle_hash]))
+              "new bundle_hash differs from the old one"))))))
+
+;;; ------------------------------------------------ Dev Mode Gating ------------------------------------------------
+
+(deftest dev-mode-gating-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "POST /dev returns 403 when dev mode is disabled"
+      (is (= "Custom visualization plugin dev mode is not enabled."
+             (mt/user-http-request :crowberto :post 403 "ee/custom-viz-plugin/dev"
+                                   {:dev_bundle_url "http://localhost:5174"}))))
+    (testing "PUT /:id/dev-url returns 403 when dev mode is disabled"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "dev-gate"
+                                                      :display_name "dev-gate"
+                                                      :status       :active}]
+        (is (= "Custom visualization plugin dev mode is not enabled."
+               (mt/user-http-request :crowberto :put 403 (str "ee/custom-viz-plugin/" id "/dev-url")
+                                     {:dev_bundle_url "http://localhost:5174"})))))
+    (testing "GET /:id/dev-sse returns 403 when dev mode is disabled"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "dev-gate-sse"
+                                                      :display_name "dev-gate-sse"
+                                                      :status       :active}]
+        (is (= "Custom visualization plugin dev mode is not enabled."
+               (mt/user-http-request :crowberto :get 403 (str "ee/custom-viz-plugin/" id "/dev-sse"))))))
+    (testing "dev endpoints work when dev mode is enabled"
+      (with-dev-mode-enabled
+        (mt/with-model-cleanup [:model/CustomVizPlugin]
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest    (constantly {:name "gated-dev" :icon "icon.svg"})
+                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+            (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
+                                             {:dev_bundle_url "http://localhost:5174"})]
+              (is (= "gated-dev" (:identifier resp))))))))))
+
+(deftest dev-sse-proxy-test
+  (mt/with-premium-features #{:custom-viz}
+    (with-dev-mode-enabled
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier     "dev-sse-proxy"
+                                                      :display_name   "dev-sse-proxy"
+                                                      :status         :active
+                                                      :dev_bundle_url "http://localhost:5199"}]
+        (testing "GET /:id/dev-sse returns 404 when no dev server URL is configured"
+          (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)]
+            (is (re-find #"No dev server URL configured"
+                         (str (mt/user-http-request :crowberto :get 404 (str "ee/custom-viz-plugin/" id "/dev-sse")))))))
+        (testing "GET /:id/dev-sse forwards Server-Sent Events from the dev server"
+          (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5199")
+                                      http/get (fn [_url _opts]
+                                                 {:headers {:content-type "text/event-stream"}
+                                                  :body    (java.io.ByteArrayInputStream.
+                                                            (.getBytes "data: hello\n\n" "UTF-8"))})]
+            (let [resp (mt/user-http-request-full-response
+                        :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/dev-sse"))]
+              (testing "response is served as an event stream"
+                (is (str/starts-with? (get-in resp [:headers "Content-Type"]) "text/event-stream")))
+              (testing "the dev server's event is forwarded to the browser"
+                (is (str/includes? (str (:body resp)) "data: hello"))))))
+        (testing "GET /:id/dev-sse refuses an upstream response that is not an event stream"
+          (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly "http://localhost:5199")
+                                      http/get (fn [_url _opts]
+                                                 {:headers {:content-type "text/html"}
+                                                  :body    (java.io.ByteArrayInputStream.
+                                                            (.getBytes "<html>internal secrets</html>" "UTF-8"))})]
+            (let [resp (mt/user-http-request-full-response
+                        :crowberto :get 400 (str "ee/custom-viz-plugin/" id "/dev-sse"))]
+              (testing "the internal service's body is never relayed to the browser"
+                (is (not (str/includes? (str (:body resp)) "internal secrets")))))))))))
+
+(deftest list-excludes-dev-plugins-when-dev-mode-disabled-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "upload-viz-list"
+                                             :display_name "Upload Viz"
+                                             :status       :active
+                                             :enabled      true
+                                             :bundle_hash  "abc"}
+                   :model/CustomVizPlugin _ {:identifier     "dev-viz-list"
+                                             :display_name   "Dev Viz"
+                                             :status         :active
+                                             :enabled        true
+                                             :dev_bundle_url "http://localhost:5174"}]
+      (testing "dev-only plugins are hidden from /list when dev mode is off"
+        (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+              identifiers (set (map :identifier result))]
+          (is (contains? identifiers "upload-viz-list"))
+          (is (not (contains? identifiers "dev-viz-list")))))
+      (testing "dev-only plugins are visible in /list when dev mode is on"
+        (with-dev-mode-enabled
+          (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
+                identifiers (set (map :identifier result))]
+            (is (contains? identifiers "upload-viz-list"))
+            (is (contains? identifiers "dev-viz-list"))))))))

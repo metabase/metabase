@@ -1,17 +1,16 @@
-import type { LocationDescriptor } from "history";
-import type { MouseEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
-import type { RecentItem } from "metabase-types/api";
+import type { To } from "metabase/router";
+import type { ColorName } from "metabase/ui/colors/types";
+import type { IconName, RecentItem } from "metabase-types/api";
 
+import { METABASE_DOCS_LABELS } from "./constants";
 import type { PaletteActionImpl } from "./types";
 
 export const processResults = (
   results: (string | PaletteActionImpl)[],
-  searchTerm: string,
+  hasSearchTerm: boolean,
 ): (string | PaletteActionImpl)[] => {
   const groupedResults = _.groupBy(
     results.filter((r): r is PaletteActionImpl => !(typeof r === "string")),
@@ -22,13 +21,23 @@ export const processResults = (
   const search = processSection(t`Results`, groupedResults["search"]);
   const recent = processSection(t`Recents`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
-  const docs = processSection(t`Documentation`, groupedResults["docs"]);
+  const docs = processSection(
+    METABASE_DOCS_LABELS.section,
+    groupedResults["docs"],
+  );
 
-  if (searchTerm.trim().length === 0) {
+  if (!hasSearchTerm) {
     return [...recent];
   }
 
-  return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
+  return [
+    ...recent,
+    // Get the first 5 actions, the first index is the section title
+    ...actions.slice(0, 6),
+    ...admin,
+    ...search,
+    ...docs,
+  ];
 };
 
 export const processSection = (
@@ -87,8 +96,9 @@ export const getCommandPaletteIcon = (
   item: PaletteActionImpl,
 ): { name: IconName; c: ColorName } => {
   const icon = {
+    // Unjustified type cast. FIXME
     name: item.icon as IconName,
-    c: item.extra?.iconColor || "brand",
+    c: item.extra?.iconColor || "core-brand",
   };
 
   return icon;
@@ -97,21 +107,13 @@ export const getCommandPaletteIcon = (
 export const isAbsoluteURL = (url: string) =>
   url.startsWith("http://") || url.startsWith("https://");
 
-export const locationDescriptorToURL = (
-  locationDescriptor: LocationDescriptor,
-) => {
-  if (typeof locationDescriptor === "string") {
-    return locationDescriptor;
+export const navigationTargetToURL = (target: To) => {
+  if (typeof target === "string") {
+    return target;
   } else {
-    const { pathname = "", query = null, hash = null } = locationDescriptor;
-    const queryString = query
-      ? "?" + new URLSearchParams(query).toString()
-      : "";
+    const { pathname = "", search = "", hash = null } = target;
     const hashString = hash ? "#" + hash : "";
 
-    return `${pathname}${queryString}${hashString}`;
+    return `${pathname}${search}${hashString}`;
   }
 };
-
-export const isNormalClick = (e: MouseEvent): boolean =>
-  !e.ctrlKey && !e.shiftKey && !e.metaKey && !e.altKey && e.button === 0;

@@ -6,13 +6,13 @@ import type {
 } from "metabase-types/api";
 
 export function extractMetabotBufferContext(
-  view: EditorView,
+  view: EditorView | undefined,
   databaseId: DatabaseId | null,
   bufferId: string,
 ): MetabotCodeEditorBufferContext {
-  const state = view.state;
-  const selection = state.selection.main;
-  const cursorLine = state.doc.lineAt(selection.head);
+  const state = view?.state;
+  const selection = state?.selection.main;
+  const cursorLine = state?.doc.lineAt(selection!.head);
 
   const buffer: MetabotCodeEditorBufferContext = {
     id: bufferId,
@@ -21,12 +21,12 @@ export function extractMetabotBufferContext(
       database_id: databaseId,
     },
     cursor: {
-      line: cursorLine.number,
-      column: cursorLine.from,
+      line: cursorLine?.number ?? 0,
+      column: cursorLine?.from ?? 0,
     },
   };
 
-  if (!selection.empty) {
+  if (selection && !selection.empty) {
     const startLine = state.doc.lineAt(selection.from);
     const endLine = state.doc.lineAt(selection.to);
 

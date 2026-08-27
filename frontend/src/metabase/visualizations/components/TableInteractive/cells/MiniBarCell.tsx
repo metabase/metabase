@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type d3 from "d3";
 
 import CS from "metabase/css/core/index.css";
 import {
@@ -6,7 +7,7 @@ import {
   type CellAlign,
   type CellFormatter,
 } from "metabase/data-grid";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import type { ColumnSettings } from "metabase-types/api";
 
 import S from "./MiniBarCell.module.css";
@@ -17,7 +18,7 @@ const BORDER_RADIUS = 3;
 
 const LABEL_MIN_WIDTH = 30;
 
-const resolveMax = (min: number, max: number, number_style: string) => {
+const resolveMax = (min: number, max: number, number_style?: string) => {
   // For pure percent columns with values within [0, 1] use 1 as top range of minibar
   if (number_style === "percent" && min >= 0 && max <= 1) {
     return 1;
@@ -27,13 +28,14 @@ const resolveMax = (min: number, max: number, number_style: string) => {
 
 export interface MiniBarCellProps<TValue> {
   value: TValue;
-  extent: [number, number];
+  extent: ReturnType<typeof d3.extent> | null;
   formatter?: CellFormatter<TValue>;
   backgroundColor?: string;
   align?: CellAlign;
   rowIndex: number;
   columnId: string;
   columnSettings: ColumnSettings;
+  className?: string;
   style?: React.CSSProperties;
   barWidth?: number | string;
   barHeight?: number | string;
@@ -42,19 +44,25 @@ export interface MiniBarCellProps<TValue> {
 
 export const MiniBarCell = <TValue,>({
   value,
-  extent: [min, max],
+  extent,
   formatter,
   backgroundColor,
   align,
   rowIndex,
   columnId,
   columnSettings,
+  className,
   style,
   barWidth = BAR_WIDTH,
   barHeight = BAR_HEIGHT,
-  barColor = color("brand"),
+  barColor = color("core-brand"),
 }: MiniBarCellProps<TValue>) => {
-  if (typeof value !== "number") {
+  const [min, max] = extent ?? [undefined, undefined];
+  if (
+    typeof value !== "number" ||
+    typeof min !== "number" ||
+    typeof max !== "number"
+  ) {
     return null;
   }
 
@@ -63,7 +71,7 @@ export const MiniBarCell = <TValue,>({
   const resolvedMax = resolveMax(min, max, columnSettings["number_style"]);
   const barPercent =
     (Math.abs(value) / Math.max(Math.abs(min), Math.abs(resolvedMax))) * 100;
-  const barVizColor = isNegative ? color("error") : barColor;
+  const barVizColor = isNegative ? color("feedback-negative") : barColor;
 
   const barStyle = !hasNegative
     ? {
@@ -91,7 +99,8 @@ export const MiniBarCell = <TValue,>({
 
   return (
     <BaseCell
-      className={S.root}
+      data-testid="mini-bar-cell"
+      className={cx(S.root, className)}
       backgroundColor={backgroundColor}
       align={align}
       style={style}
@@ -142,7 +151,7 @@ export const MiniBarCell = <TValue,>({
                 left: "50%",
                 top: 0,
                 bottom: 0,
-                borderLeft: `1px solid ${color("white")}`,
+                borderLeft: `1px solid ${color("core-white")}`,
               }}
             />
           )}

@@ -4,44 +4,80 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.logging :as log]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models.transforms.job-run :as transforms.job-run]
-   [metabase.models.transforms.transform-run :as transform-run]
    [metabase.notification.seed :as notification.seed]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.freshness :as freshness]
    [metabase.transforms.jobs :as jobs]
+   [metabase.transforms.models.job-run :as transforms.job-run]
+   [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.test-dataset :as transforms-dataset]
-   [metabase.transforms.test-util :refer [with-transform-cleanup!]]
-   [toucan2.core :as t2]))
+   [metabase.transforms.test-util :refer [transform-run-timeout-seconds with-transform-cleanup!]]
+   [metabase.transforms.util :as transforms.u]
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CyclicBarrier TimeUnit)))
 
-(deftest basic-deps-test
-  (let [ordering {1 #{2 3}
-                  2 #{3 4}
-                  3 #{}
-                  4 #{5}
-                  5 #{}
-                  6 #{7 8}
-                  7 #{}
-                  8 #{}}]
-    (is (= #{1 2 3 4 5}
-           (#'jobs/get-deps ordering [1])))
-    (is (= #{1 2 3 4 5 6 7 8}
-           (#'jobs/get-deps ordering [1 6])))
-    (is (= #{2 3 4 5 6 7 8}
-           (#'jobs/get-deps ordering [2 6])))
-    (is (= #{1 2 3 4 5}
-           (#'jobs/get-deps ordering [1 2 3])))))
+(set! *warn-on-reflection* true)
 
-(deftest cycle-deps-test
-  (let [ordering {1 #{2}
-                  2 #{3}
-                  3 #{1}}]
-    (is (= #{1 2 3}
-           (#'jobs/get-deps ordering [1])))))
+(deftest job-transform-ids-test
+  (testing "single tag, single transform"
+    (mt/with-temp [:model/TransformTag tag {:name "tag-a"}
+                   :model/TransformJob job {:name "job-1" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                   :model/Transform t {:name "t1"}
+                   :model/TransformTransformTag _ {:transform_id (:id t) :tag_id (:id tag) :position 0}]
+      (is (= #{(:id t)}
+             (#'jobs/job-transform-ids (:id job))))))
+  (testing "job has 2 tags, transform has only 1 — must still be found"
+    (mt/with-temp [:model/TransformTag tag-a {:name "tag-a"}
+                   :model/TransformTag tag-b {:name "tag-b"}
+                   :model/TransformJob job {:name "job-2" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag-a) :position 0}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag-b) :position 1}
+                   :model/Transform t {:name "t2"}
+                   :model/TransformTransformTag _ {:transform_id (:id t) :tag_id (:id tag-a) :position 0}]
+      (is (= #{(:id t)}
+             (#'jobs/job-transform-ids (:id job))))))
+  (testing "job has 2 tags, two transforms with different tag subsets — both found"
+    (mt/with-temp [:model/TransformTag tag-a {:name "tag-a"}
+                   :model/TransformTag tag-b {:name "tag-b"}
+                   :model/TransformJob job {:name "job-3" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag-a) :position 0}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag-b) :position 1}
+                   :model/Transform t1 {:name "t3a"}
+                   :model/TransformTransformTag _ {:transform_id (:id t1) :tag_id (:id tag-a) :position 0}
+                   :model/Transform t2 {:name "t3b"}
+                   :model/TransformTransformTag _ {:transform_id (:id t2) :tag_id (:id tag-b) :position 0}]
+      (is (= #{(:id t1) (:id t2)}
+             (#'jobs/job-transform-ids (:id job))))))
+  (testing "job tag with no matching transforms — empty set"
+    (mt/with-temp [:model/TransformTag tag {:name "tag-orphan"}
+                   :model/TransformJob job {:name "job-4" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
+      (is (= #{} (#'jobs/job-transform-ids (:id job))))))
+  (testing "job with no tags — empty set"
+    (mt/with-temp [:model/TransformJob job {:name "job-5" :schedule "0 0 * * * ? *"}]
+      (is (= #{} (#'jobs/job-transform-ids (:id job)))))))
+
+(deftest run-job-skips-empty-transforms-test
+  (testing "run-job! returns nil and creates no job run when there are no transforms to execute"
+    (mt/with-temp [:model/TransformTag tag {:name "empty-tag"}
+                   :model/TransformJob job {:name "empty-job" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
+      (let [result (jobs/run-job! (:id job) {:run-method :cron})]
+        (is (nil? result))
+        (is (= 0 (t2/count :model/TransformJobRun :job_id (:id job))))))))
 
 (deftest next-transform-test
   (let [ordering {1 #{2 3}
@@ -93,8 +129,8 @@
 
 (def ^:private query-source {:type "query"})
 
-(deftest run-transform-feature-flag-test
-  (testing "Query transforms run without any features"
+(deftest run-query-transform-without-features-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
     (mt/with-premium-features #{}
       (let [query-transform {:id 3
                              :source query-source
@@ -102,58 +138,149 @@
             run-id 102
             logged-messages (atom [])
             run-called? (atom false)]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)
-                      transforms.execute/execute! (fn [_ _]
-                                                    (reset! run-called? true))
-                      transforms.job-run/add-run-activity! (constantly nil)]
-          (#'jobs/run-transform! run-id :scheduled nil query-transform)
-          (is (empty? (filter (comp #{:warn} :level) @logged-messages))
-              "Should not log warnings when feature is enabled")
-          (is @run-called?
-              "Should call run-mbql-transform! when feature is enabled")))))
-  (testing "Query transforms are skipped when hosted without :transforms feature"
-    (mt/with-premium-features #{:hosting}
-      (let [query-transform {:id 1
-                             :source query-source
-                             :name "Test Query Transform"}
-            run-id 100
-            logged-messages (atom [])]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)]
-          (#'jobs/run-transform! run-id :scheduled nil query-transform)
-          (is (= 1 (count @logged-messages))
-              "Should log exactly one warning")
-          (is (= :warn (:level (first @logged-messages)))
-              "Should log at warn level")
-          (is (re-matches #".*Skip running transform 1 due to lacking premium features.*"
-                          (:message (first @logged-messages)))
-              "Warning message should indicate transform was skipped due to missing features")))))
-
-  (testing "Query transforms run with :transforms feature"
-    (mt/with-premium-features #{:hosting :transforms}
-      (let [query-transform {:id 3
-                             :source query-source
-                             :name "Test Query Transform"}
-            run-id 102
-            logged-messages (atom [])
-            run-called? (atom false)]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)
-                      transforms.execute/execute! (fn [_ _]
-                                                    (reset! run-called? true))
-                      transforms.job-run/add-run-activity! (constantly nil)]
-          (#'jobs/run-transform! run-id :scheduled nil query-transform)
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                               (swap! logged-messages conj {:level level :message message}))
+                                    transform-run/running-run-for-transform-id (constantly nil)
+                                    transforms.execute/execute! (fn [_ _]
+                                                                  (reset! run-called? true))]
+          (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
+                                  :add-run-activity! (constantly nil)}
+                                 (promise) query-transform)
           (is (empty? (filter (comp #{:warn} :level) @logged-messages))
               "Should not log warnings when feature is enabled")
           (is @run-called?
               "Should call run-mbql-transform! when feature is enabled"))))))
 
+(deftest run-query-transform-skipped-hosted-without-basic-feature-test
+  (mt/with-premium-features #{:hosting}
+    (let [query-transform {:id 1
+                           :source query-source
+                           :name "Test Query Transform"}
+          run-id 100
+          logged-messages (atom [])]
+      (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                             (swap! logged-messages conj {:level level :message message}))
+                                  transform-run/running-run-for-transform-id (constantly nil)]
+        (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
+                                :add-run-activity! (constantly nil)}
+                               (promise) query-transform)
+        (is (= 1 (count @logged-messages))
+            "Should log exactly one warning")
+        (is (= :warn (:level (first @logged-messages)))
+            "Should log at warn level")
+        (is (re-matches #".*Skip running transform 1 due to lacking premium features.*"
+                        (:message (first @logged-messages)))
+            "Warning message should indicate transform was skipped due to missing features")))))
+
+(deftest run-query-transform-with-transforms-basic-feature-test
+  (mt/with-premium-features #{:hosting :transforms-basic}
+    (let [query-transform {:id 3
+                           :source query-source
+                           :name "Test Query Transform"}
+          run-id 102
+          logged-messages (atom [])
+          run-called? (atom false)]
+      (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                             (swap! logged-messages conj {:level level :message message}))
+                                  transform-run/running-run-for-transform-id (constantly nil)
+                                  transforms.execute/execute! (fn [_ _]
+                                                                (reset! run-called? true))]
+        (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
+                                :add-run-activity! (constantly nil)}
+                               (promise) query-transform)
+        (is (empty? (filter (comp #{:warn} :level) @logged-messages))
+            "Should not log warnings when feature is enabled")
+        (is @run-called?
+            "Should call run-mbql-transform! when feature is enabled")))))
+
+(deftest run-query-transform-skipped-when-transforms-enabled-false-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled "false"]
+    (mt/with-premium-features #{:hosting :transforms-basic}
+      (let [query-transform {:id 4
+                             :source query-source
+                             :name "Disabled Transform"}
+            run-id 103
+            logged-messages (atom [])
+            run-called? (atom false)]
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                               (swap! logged-messages conj {:level level :message message}))
+                                    transform-run/running-run-for-transform-id (constantly nil)
+                                    transforms.execute/execute! (fn [_ _]
+                                                                  (reset! run-called? true))]
+          (#'jobs/run-transform! {:parent-run [:job run-id] :run-method :scheduled :user-id nil
+                                  :add-run-activity! (constantly nil)}
+                                 (promise) query-transform)
+          (is (= 1 (count @logged-messages))
+              "Should log exactly one warning")
+          (is (= :warn (:level (first @logged-messages)))
+              "Should log at warn level")
+          (is (re-matches #".*Skip running transform 4 due to lacking premium features.*"
+                          (:message (first @logged-messages)))
+              "Warning message should indicate transform was skipped")
+          (is (false? @run-called?)
+              "Should not execute when transforms-enabled is explicitly false"))))))
+
+(deftest run-transform-locked-meter-test
+  ;; `transform-metered-as` is `defenterprise`; the OSS impl returns nil for everything,
+  ;; which makes `transform-locked?` short-circuit to false regardless of `:locked-meters`.
+  ;; Mock the routing so the test exercises the lock-check branch under any classpath.
+  (with-redefs [premium-features/transform-metered-as (fn [source-type]
+                                                        (case (keyword source-type)
+                                                          :native "transform-basic"
+                                                          :mbql   "transform-basic"
+                                                          :python "transform-advanced"
+                                                          nil))]
+    (testing "scheduled run-transform! is skipped (with warn log) when the meter is locked"
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs true}]
+          (let [transform       {:id          7
+                                 :source_type :native
+                                 :source      query-source
+                                 :name        "Locked Transform"}
+                logged          (atom [])
+                run-called?     (atom false)]
+            (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                                   (swap! logged conj {:level level :message message}))
+                                        transform-run/running-run-for-transform-id (constantly nil)
+                                        transforms.execute/execute! (fn [_ _] (reset! run-called? true))]
+              (#'jobs/run-transform! {:parent-run [:job 200] :run-method :scheduled :user-id nil
+                                      :add-run-activity! (constantly nil)}
+                                     (promise) transform)
+              (is (false? @run-called?)
+                  "execute! must not be called when the meter is locked")
+              (is (some #(re-matches #".*Skip running transform 7 due to locked meter.*"
+                                     (:message %))
+                        @logged)
+                  "Should log warning naming the locked-meter reason"))))))
+    (testing "scheduled run-transform! runs normally when the meter is not locked"
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs false}]
+          (let [transform   {:id 8 :source_type :native :source query-source :name "Unlocked"}
+                run-called? (atom false)]
+            (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
+                                        transforms.execute/execute! (fn [_ _] (reset! run-called? true))]
+              (#'jobs/run-transform! {:parent-run [:job 201] :run-method :scheduled :user-id nil
+                                      :add-run-activity! (constantly nil)}
+                                     (promise) transform)
+              (is (true? @run-called?)))))))
+    (testing "non-metered transform (transform-metered-as → nil) is never blocked by lock state"
+      ;; Override the outer mock with one that returns nil for every source-type.
+      (with-redefs [premium-features/transform-metered-as (constantly nil)]
+        (mt/with-premium-features #{:hosting :transforms-basic}
+          (mt/with-temporary-setting-values [locked-meters {:transform-basic-runs    true
+                                                            :transform-advanced-runs true}]
+            (let [transform   {:id 9 :source_type :native :source query-source :name "Non-metered"}
+                  run-called? (atom false)]
+              (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
+                                          transforms.execute/execute! (fn [_ _] (reset! run-called? true))]
+                (#'jobs/run-transform! {:parent-run [:job 202] :run-method :scheduled :user-id nil
+                                        :add-run-activity! (constantly nil)}
+                                       (promise) transform)
+                (is (true? @run-called?)
+                    "Non-metered transforms are not gated by lock state")))))))))
+
 (deftest job-run-boom-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-model-cleanup [:model/Notification
@@ -187,69 +314,39 @@
                                                                    :tag_id (:id tag)
                                                                    :position 0}]
                   (let [run-id-atom (atom nil)]
-                    (with-redefs [jobs/run-transforms! (fn [run-id & _]
-                                                         (reset! run-id-atom run-id)
-                                                         (throw (ex-info "Uncaught error" {})))]
+                    (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                                                                       (reset! run-id-atom run-id)
+                                                                       (throw (ex-info "Uncaught error" {})))]
                       (try
                         (jobs/run-job! (:id job) {:run-method :cron})
                         (catch clojure.lang.ExceptionInfo _))
                       (is (some? @run-id-atom))
                       (is (=? {:status :failed
                                :message string?}
-                              (t2/select-one :model/TransformJobRun :id @run-id-atom)))
-                        ;; crowberto is a superuser/admin, so they receive the notification
-                      (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
-                      (is (mt/received-email-body? :crowberto #"Uncaught error")))))))))))))
+                              (t2/select-one :model/TransformJobRun :id @run-id-atom))))))))))))))
 
-(deftest job-run-boom-manual-no-email-test
-  (mt/with-premium-features #{:transforms}
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/dataset transforms-dataset/transforms-test
-        (mt/with-model-cleanup [:model/Notification
-                                :model/TransformJobRun]
-          (mt/with-fake-inbox
-            (notification.seed/seed-notification!)
-            (let [mp (mt/metadata-provider)
-                  table (t2/select-one :model/Table (mt/id :transforms_products))
-                  ;; generate sql for different dbs
-                  sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
-                          (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
-                          (lib/limit 10)
-                          qp.compile/compile
-                          :query)]
-              (with-transform-cleanup! [target0 {:type "table"
-                                                 :schema (:schema table)
-                                                 :name "t0"}]
-                (mt/with-temp [:model/TransformTag tag {:name "test-tag"}
-                               :model/TransformJob job {:name "test-job"
-                                                        :schedule "0 0 * * * ? *"}
-                               :model/TransformJobTransformTag _ {:job_id (:id job)
-                                                                  :tag_id (:id tag)
-                                                                  :position 0}
-                               ;; independent transform
-                               :model/Transform t0 {:name "transform0"
-                                                    :source {:type :query
-                                                             :query (lib/native-query mp sql)}
-                                                    :creator_id (mt/user->id :crowberto)
-                                                    :target target0}
-                               :model/TransformTransformTag _tag0 {:transform_id (:id t0)
-                                                                   :tag_id (:id tag)
-                                                                   :position 0}]
-                  (let [run-id-atom (atom nil)]
-                    (with-redefs [jobs/run-transforms! (fn [run-id & _]
-                                                         (reset! run-id-atom run-id)
-                                                         (throw (ex-info "Uncaught error" {})))]
-                      (try
-                        (jobs/run-job! (:id job) {:run-method :manual})
-                        (catch clojure.lang.ExceptionInfo _))
-                      (is (some? @run-id-atom))
-                      (is (=? {:status :failed
-                               :message string?}
-                              (t2/select-one :model/TransformJobRun :id @run-id-atom)))
-                      (is (zero? (count @mt/inbox))))))))))))))
+(deftest reap-orphaned-runs-test
+  (mt/with-premium-features #{:transforms-basic}
+    (mt/with-model-cleanup [:model/TransformJobRun]
+      (mt/with-temp [:model/TransformJob job {:name "stalled-cron-job"
+                                              :schedule "0 0 * * * ? *"}]
+        (let [run (t2/insert-returning-instance! :model/TransformJobRun
+                                                 {:job_id     (:id job)
+                                                  :run_method :cron
+                                                  :status     :started
+                                                  :is_active  true})]
+          ;; push last_heartbeat past the heartbeat-staleness threshold so the reaper fires
+          (t2/update! :model/TransformJobRun
+                      :id (:id run)
+                      {:last_heartbeat #t "2000-01-01T00:00:00Z"})
+          (#'jobs/reap-orphaned-runs!)
+          (is (=? {:status    :timeout
+                   :is_active nil
+                   :message   "Timed out: crashed"}
+                  (t2/select-one :model/TransformJobRun :id (:id run)))))))))
 
 (deftest job-run-with-tranform-run-failure-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic :hosting}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-model-cleanup [:model/Notification]
@@ -304,7 +401,8 @@
                                  ;; depends on faulty transform
                                  :model/Transform t2 {:name "transform2"
                                                       :source {:type :query
-                                                               :query (lib/native-query mp (str/replace sql (:name table) (:name target1)))}
+                                                               :query (lib/native-query mp (format "SELECT * FROM %s"
+                                                                                                   (sql.u/quote-name driver/*driver* :table (:schema target1) (:name target1))))}
                                                       :creator_id (mt/user->id :crowberto)
                                                       :target target2}
                                  :model/TransformTransformTag _tag2 {:transform_id (:id t2)
@@ -339,11 +437,13 @@
                              (count @mt/inbox)))
                       (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
                       (is (mt/received-email-body? :crowberto #"transform1"))
-                      (is (mt/received-email-body? :crowberto #"transform2")))))))))))))
+                      ;; transform2 is a dependent that never ran; those are summarized as a count,
+                      ;; so the email carries the tally rather than the name
+                      (is (mt/received-email-body? :crowberto #"1 downstream transform\(s\)")))))))))))))
 
 (deftest run-mbql-transform-anonymous-user-routing-error-test
   (mt/when-ee-evailable
-   (mt/with-premium-features #{:database-routing :transforms}
+   (mt/with-premium-features #{:database-routing :transforms-basic :hosting}
      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
        (mt/dataset transforms-dataset/transforms-test
          (mt/with-model-cleanup [:model/Notification]
@@ -353,7 +453,7 @@
                (notification.seed/seed-notification!)
                (let [mp (mt/metadata-provider)
                      table (t2/select-one :model/Table (mt/id :transforms_products))
-                      ;; generate sql for different dbs
+                     ;; generate sql for different dbs
                      sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
                              (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
                              (lib/limit 10)
@@ -373,7 +473,7 @@
                                   :model/TransformJobTransformTag _ {:job_id (:id job)
                                                                      :tag_id (:id tag)
                                                                      :position 0}
-                                   ;; independent transform
+                                  ;; independent transform
                                   :model/Transform t0 {:name "transform0"
                                                        :source {:type :query
                                                                 :query (lib/native-query mp sql)}
@@ -382,11 +482,274 @@
                                   :model/TransformTransformTag _tag0 {:transform_id (:id t0)
                                                                       :tag_id (:id tag)
                                                                       :position 0}]
-                      ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
-                      ;; without a user context (e.g., from a cron job or background task).
-                      ;; previously this could produce the wrong error message from the QP routing middleware.
+                     ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
+                     ;; without a user context (e.g., from a cron job or background task).
+                     ;; previously this could produce the wrong error message from the QP routing middleware.
                      (try
                        (jobs/run-job! (:id job) {:run-method :cron})
                        (catch Exception _))
                      (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
                      (is (mt/received-email-body? :crowberto #"transform0")))))))))))))
+
+(deftest get-plan-ignores-unrelated-routing-enabled-transforms-test
+  (when config/ee-available?
+    (testing "get-plan must not scan unrelated transforms on routing-enabled databases"
+      ;; Regression: a transform on a routing-enabled database is unrunnable (by design), but historically
+      ;; `get-plan` would fetch *every* transform in the system and call `table-dependencies` on each to
+      ;; build a global dependency graph. The routing-enabled transform would throw during that scan,
+      ;; taking down the whole scheduler and sending a misleading failure email naming the zombie
+      ;; transform — even when no job was asking to run it.
+      (mt/with-premium-features #{:database-routing :transforms-basic}
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Database       _destination {:engine             :h2
+                                                             :router_database_id (mt/id)
+                                                             :details            {:destination_database true}}
+                         :model/DatabaseRouter _            {:database_id    (mt/id)
+                                                             :user_attribute "db_name"}
+                         ;; Zombie transform on a routing-enabled database, NOT tagged to any job.
+                         :model/Transform      _zombie      {:name       "zombie-transform"
+                                                             :source     {:type  :query
+                                                                          :query (lib/native-query mp "SELECT 1")}
+                                                             :creator_id (mt/user->id :crowberto)
+                                                             :target     {:type     "table"
+                                                                          :database (mt/id)
+                                                                          :schema   "PUBLIC"
+                                                                          :name     "zombie_out"}}]
+            (testing "get-plan with empty transform-ids must not throw on unrelated zombies"
+              (is (empty? (:order (#'jobs/get-plan #{})))))))))))
+
+(deftest run-transforms-skips-fresh-pulled-in-deps-test
+  (mt/with-premium-features #{:transforms-basic}
+    ;; b (2) depends on a (1), plus independent c (3); only b and c are requested, so a is pulled in.
+    (let [plan [{:id 1} {:id 2} {:id 3}]
+          deps {1 #{} 2 #{1} 3 #{}}
+          ran  (atom #{})]
+      (testing "a fresh pulled-in dep is not executed, but its dependent still runs"
+        (with-redefs [freshness/fresh-dep-ids (fn [_now dep-ids]
+                                                ;; only pulled-in deps are offered for gating
+                                                (is (= #{1} (set dep-ids)))
+                                                #{1})
+                      jobs/run-transform!     (fn [_ _ t] (swap! ran conj (:id t)))]
+          (is (= {::jobs/status :succeeded}
+                 (jobs/run-transforms! 0 #{2 3} {:order plan :deps deps} {:run-method :cron})))
+          (is (= #{2 3} @ran) "transform 1 (fresh dep) was skipped; 2 and 3 ran")))
+      (testing "skip-fresh-deps? false (manual run_all) force-refreshes the whole plan"
+        (reset! ran #{})
+        (with-redefs [freshness/fresh-dep-ids (fn [& _] (throw (ex-info "must not gate when disabled" {})))
+                      jobs/run-transform!     (fn [_ _ t] (swap! ran conj (:id t)))]
+          (is (= {::jobs/status :succeeded}
+                 (jobs/run-transforms! 0 #{2 3} {:order plan :deps deps}
+                                       {:run-method :manual :skip-fresh-deps? false})))
+          (is (= #{1 2 3} @ran) "with skipping disabled, the dep runs too"))))
+    (testing "a plan that is entirely skipped exits cleanly as succeeded with nothing run"
+      (let [ran (atom #{})]
+        (with-redefs [freshness/fresh-dep-ids (fn [_now _dep-ids] #{1})
+                      jobs/run-transform!     (fn [_ _ t] (swap! ran conj (:id t)))]
+          (is (= {::jobs/status :succeeded}
+                 (jobs/run-transforms! 0 #{} {:order [{:id 1}] :deps {1 #{}}} {:run-method :cron})))
+          (is (= #{} @ran)))))))
+
+(deftest run-transforms!-race-condition-test
+  ;; Previously a race would ensure one transform run got the duplicate key error and aborted.
+  ;; Because it is possible to set up transforms to run on overlapping schedules, such races are inevitable.
+  ;; On duplicate key error we should go back to the waiting loop until the is_active slot is available.
+  (testing "Two concurrent run-transforms! that race on is_active state will both eventually run"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (let [mp (mt/metadata-provider)
+                table (t2/select-one :model/Table (mt/id :transforms_products))
+                sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
+                        (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
+                        (lib/limit 10)
+                        qp.compile/compile
+                        :query)]
+            (with-transform-cleanup! [target {:type   :table
+                                              :schema (:schema table)
+                                              :name   "race_test"}]
+              (binding [tu.thread-local/*thread-local* false]
+                (mt/with-temp [:model/TransformTag tag {:name "race-tag"}
+                               :model/TransformJob job {:name "race-job" :schedule "0 0 * * * ? *"}
+                               :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                               :model/Transform transform {:name       "race-transform"
+                                                           :source     {:type  :query
+                                                                        :query (lib/native-query mp sql)}
+                                                           :creator_id (mt/user->id :crowberto)
+                                                           :target     target}
+                               :model/TransformTransformTag _ {:transform_id (:id transform)
+                                                               :tag_id       (:id tag)
+                                                               :position     0}]
+                  (mt/with-model-cleanup [:model/TransformJobRun :model/TransformRun]
+                    (let [barrier-enter   (CyclicBarrier. 2)
+                          barrier-exit    (CyclicBarrier. 2)
+                          tl-tripped      (ThreadLocal.)
+                          await-barrier   (fn [^CyclicBarrier barrier]
+                                            (when-not (.get tl-tripped)
+                                              (.await barrier 5 TimeUnit/SECONDS)))
+                          on-enter        (fn [] (await-barrier barrier-enter))
+                          on-exit         (fn [] (await-barrier barrier-exit) (.set tl-tripped true))
+                          original-insert transforms.u/try-start-unless-already-running]
+                      ;; with-redefs, not with-dynamic-fn-redefs: run-transforms! dispatches each transform on an
+                      ;; ExecutorService worker (transforms-sql-worker), which doesn't convey dynamic bindings, so a
+                      ;; proxy-based redef is invisible there and the barrier choreography silently no-ops. A global
+                      ;; root swap is seen by every thread.
+                      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                      (with-redefs [transforms.u/try-start-unless-already-running
+                                    (fn [transform-id run-method user-id & kwargs]
+                                      (on-enter)
+                                      (let [[ret ex] (try
+                                                       [(apply original-insert transform-id run-method user-id kwargs)]
+                                                       (catch Throwable t [nil t]))]
+                                        (on-exit)
+                                        (if ex (throw ex) ret)))]
+                        (let [plan (#'jobs/get-plan #{(:id transform)})
+                              run1 (transforms.job-run/start-run! (:id job) :manual)
+                              run2 (transforms.job-run/start-run! (:id job) :manual)
+                              fut1 (future
+                                     (try
+                                       {:result (jobs/run-transforms! (:id run1) #{(:id transform)} plan
+                                                                      {:run-method :manual})}
+                                       (catch Exception e
+                                         {:error e})))
+                              fut2 (future
+                                     (try
+                                       {:result (jobs/run-transforms! (:id run2) #{(:id transform)} plan
+                                                                      {:run-method :manual})}
+                                       (catch Exception e
+                                         {:error e})))
+                              ;; each run-transforms! does a real transform execution, so give it the full run timeout
+                              timeout-ms (* 1000 transform-run-timeout-seconds)
+                              results [(deref fut1 timeout-ms {:error :timeout})
+                                       (deref fut2 timeout-ms {:error :timeout})]]
+                          (is (every? #(= :succeeded (-> % :result ::jobs/status)) results)
+                              "Both threads should succeed"))))))))))))))
+
+(deftest run-transforms-parallel-dispatch-test
+  (mt/with-premium-features #{:transforms-basic}
+    (testing "Independent transforms dispatch concurrently up to the configured limit"
+      (let [plan    [{:id 1} {:id 2} {:id 3} {:id 4}]
+            deps    {1 #{} 2 #{} 3 #{} 4 #{}}
+            barrier (CyclicBarrier. 4)]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
+          (with-redefs [jobs/run-transform! (fn [_ _ _]
+                                              (.await barrier 5 TimeUnit/SECONDS))]
+            (is (= {::jobs/status :succeeded}
+                   (jobs/run-transforms! 0 #{1 2 3 4} {:order plan :deps deps} {:run-method :manual}))
+                "all four independents must reach the barrier (i.e. be live simultaneously)")))))
+    (testing "Dependents wait for their dependencies even when concurrency > 1"
+      (let [plan  [{:id 1} {:id 2}]
+            deps  {1 #{} 2 #{1}}
+            order (atom [])]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
+          (with-redefs [jobs/run-transform! (fn [_ _ transform]
+                                              (when (= 1 (:id transform))
+                                                (Thread/sleep 100))
+                                              (swap! order conj (:id transform)))]
+            (jobs/run-transforms! 0 #{1 2} {:order plan :deps deps} {:run-method :manual})
+            (is (= [1 2] @order) "a must complete before b starts")))))
+    (testing "Dependents of a failed transform are skipped transitively"
+      (let [plan [{:id 1} {:id 2} {:id 3}]
+            deps {1 #{} 2 #{1} 3 #{2}}]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
+          (with-redefs [jobs/run-transform! (fn [_ _ transform]
+                                              (when (= 1 (:id transform))
+                                                (throw (ex-info "boom" {}))))]
+            (let [result (jobs/run-transforms! 0 #{1 2 3} {:order plan :deps deps} {:run-method :manual})]
+              (is (= :failed (::jobs/status result)))
+              (is (= #{1 2 3} (set (map (comp :id ::jobs/transform) (::jobs/failures result))))
+                  "a failed, b & c skipped as dep-failed"))))))
+    (testing "Concurrency is capped by the setting"
+      (let [plan       (mapv (fn [i] {:id i}) (range 1 9))
+            deps       (into {} (map (fn [i] [i #{}]) (range 1 9)))
+            ;; 2-party barrier: workers must pair up before either can exit. This gives
+            ;; deterministic "two alive" windows we can observe via the live counter — no sleeps.
+            partner-up (CyclicBarrier. 2)
+            live       (atom 0)
+            max-live   (atom 0)]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 2]
+          (with-redefs [jobs/run-transform! (fn [_ _ _]
+                                              (let [n (swap! live inc)]
+                                                (swap! max-live max n))
+                                              (.await partner-up 5 TimeUnit/SECONDS)
+                                              (swap! live dec))]
+            (jobs/run-transforms! 0 (set (range 1 9)) {:order plan :deps deps} {:run-method :manual})
+            (is (= 2 @max-live) "should never exceed the concurrency setting")))))
+    (testing "Python transforms are serialized in their own lane (n=1)"
+      (let [py       (fn [id] {:id id :source {:type :python}})
+            plan     [(py 1) (py 2) (py 3) (py 4)]
+            deps     {1 #{} 2 #{} 3 #{} 4 #{}}
+            live     (atom 0)
+            max-live (atom 0)]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 4]
+          (with-redefs [jobs/run-transform! (fn [_ _ _]
+                                              (let [n (swap! live inc)]
+                                                (swap! max-live max n))
+                                              ;; A short sleep gives any (hypothetical) parallel
+                                              ;; python worker a window to show up in the counter.
+                                              (Thread/sleep 50)
+                                              (swap! live dec))]
+            (jobs/run-transforms! 0 #{1 2 3 4} {:order plan :deps deps} {:run-method :manual})
+            (is (= 1 @max-live)
+                "python transforms must run one at a time even with concurrency=4")))))
+    (testing "SQL and Python lanes run in parallel without contending for slots"
+      (let [py          (fn [id] {:id id :source {:type :python}})
+            sql         (fn [id] {:id id})
+            plan        [(sql 1) (sql 2) (sql 3) (py 4) (py 5)]
+            deps        {1 #{} 2 #{} 3 #{} 4 #{} 5 #{}}
+            sql-barrier (CyclicBarrier. 3)
+            py-live     (atom 0)
+            max-py      (atom 0)]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-sql-concurrency 3]
+          (with-redefs [jobs/run-transform! (fn [_ _ transform]
+                                              (if (= :python (-> transform :source :type))
+                                                (do (let [n (swap! py-live inc)]
+                                                      (swap! max-py max n))
+                                                    (Thread/sleep 50)
+                                                    (swap! py-live dec))
+                                                (.await sql-barrier 5 TimeUnit/SECONDS)))]
+            (is (= {::jobs/status :succeeded}
+                   (jobs/run-transforms! 0 #{1 2 3 4 5} {:order plan :deps deps} {:run-method :manual}))
+                "all three SQL transforms reach the barrier (run in parallel)")
+            (is (= 1 @max-py) "python lane stays single-slot")))))))
+
+(deftest compile-transform-failure-messages-test
+  (let [root    {::jobs/transform {:id 1 :name "root"} ::jobs/message "boom\nsome detail"}
+        child-a {::jobs/transform {:id 2 :name "child-a"} ::jobs/cascade? true
+                 ::jobs/message "Failed to run because one or more of the transforms it depends on failed."}
+        child-b {::jobs/transform {:id 3 :name "child-b"} ::jobs/cascade? true
+                 ::jobs/message "Failed to run because one or more of the transforms it depends on failed."}]
+    (testing "cascade failures are collapsed into a single summary line"
+      (let [message (#'jobs/compile-transform-failure-messages [root child-a child-b])]
+        (is (str/includes? message "boom"))
+        (is (str/includes? message "2 downstream transforms did not run because a transform they depend on failed: child-a, child-b"))
+        (is (not (str/includes? message "Failed to run because one or more")))))
+    (testing "singular form for a single cascade failure"
+      (let [message (#'jobs/compile-transform-failure-messages [root child-a])]
+        (is (str/includes? message "1 downstream transform did not run because a transform it depends on failed: child-a"))))
+    (testing "no summary line when there are no cascade failures"
+      (is (not (str/includes? (#'jobs/compile-transform-failure-messages [root]) "downstream"))))
+    (testing "all-cascade failures are reported in full rather than dropped"
+      (let [message (#'jobs/compile-transform-failure-messages [child-a child-b])]
+        (is (str/includes? message "child-a"))
+        (is (str/includes? message "child-b"))
+        (is (str/includes? message "Failed to run because one or more"))))))
+
+(deftest notify-transform-failures-skips-cascades-test
+  (testing "only root-cause failures are emailed; cascades are summarized as a count"
+    (mt/with-temp [:model/TransformJob job {:name "cascade-job" :schedule "0 0 * * * ? *"}
+                   :model/Transform root {:name "root-t"}
+                   :model/Transform child {:name "child-t"}]
+      (let [published (atom [])]
+        (with-redefs [events/publish-event! (fn [topic payload] (swap! published conj [topic payload]))]
+          (#'jobs/notify-transform-failures
+           (:id job)
+           [{::jobs/transform root ::jobs/message "boom"}
+            {::jobs/transform child ::jobs/cascade? true
+             ::jobs/message "Failed to run because one or more of the transforms it depends on failed."}]))
+        (is (seq @published))
+        (doseq [[topic payload] @published]
+          (is (= :event/transform-failed topic))
+          (is (= ["root-t"] (map :transform_name (:failures payload))))
+          (is (= 1 (:failure_count payload)))
+          (is (= 1 (:skipped_count payload))))))))

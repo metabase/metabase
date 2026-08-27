@@ -8,12 +8,12 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockState } from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 import {
   createMockRecentCollectionItem,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import type { MentionSuggestionProps } from "./MentionSuggestion";
 import { MentionSuggestion } from "./MentionSuggestion";
@@ -58,6 +58,7 @@ const setup = (props: SetupProps = {}) => {
     run: jest.fn().mockReturnThis(),
   };
 
+  // Unjustified type cast. FIXME
   const editor = {
     commands: {
       focus: jest.fn(),

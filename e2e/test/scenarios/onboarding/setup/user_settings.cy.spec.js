@@ -53,13 +53,14 @@ describe("user > settings", () => {
     cy.get("@membership.all").should("have.length", 0);
   });
 
-  it("should have a change password tab", () => {
+  it("should have an authentication tab", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
 
     cy.visit("/account/profile");
     cy.wait("@getUser");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Password").should("exist");
+    cy.findByTestId("account-header")
+      .findByRole("tab", { name: "Authentication" })
+      .should("be.visible");
   });
 
   it("should redirect to the login page when the user has signed out but tries to visit `/account/profile` (metabase#15471)", () => {
@@ -247,7 +248,6 @@ describe("user > settings", () => {
 
   describe("dark mode", () => {
     const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
 
     it("should toggle through light and dark mode when clicking on the label or icon", () => {
       cy.visit("/account/profile");
@@ -260,9 +260,22 @@ describe("user > settings", () => {
       H.popover().findByText("Light").click();
       assertLightMode();
 
-      //Need to take focus off the inpout
+      //Need to take focus off the input
       H.navigationSidebar().findByRole("link", { name: /Home/ }).click();
-      cy.realPress([metaKey, "Shift", "L"]);
+      // Wait for navigation to complete so kbar shortcut handlers are re-registered
+      cy.location("pathname").should("eq", "/");
+      // Use eventConstructor: "KeyboardEvent" so tinykeys' instanceof check
+      // passes. cy.trigger() defaults to generic Event which kbar rejects.
+      // Chrome v123+ headless also intercepts cy.realPress() CDP keyboard
+      // events before they reach the page.
+      cy.get("body").trigger("keydown", {
+        eventConstructor: "KeyboardEvent",
+        key: "L",
+        code: "KeyL",
+        metaKey: isMac,
+        ctrlKey: !isMac,
+        shiftKey: true,
+      });
       assertDarkMode();
     });
 
@@ -313,7 +326,7 @@ describe("user > settings", () => {
 
         cy.findByTestId("viz-type-button").click();
         cy.findByTestId("sidebar-left")
-          .findByText("Other charts")
+          .findByText("More charts")
           .then(($text) => {
             cy.wrap(win.getComputedStyle($text[0]).color).should(
               "eq",
@@ -345,7 +358,7 @@ describe("user > settings", () => {
 
         cy.findByTestId("viz-type-button").click();
         cy.findByTestId("sidebar-left")
-          .findByText("Other charts")
+          .findByText("More charts")
           .then(($text) => {
             cy.wrap(win.getComputedStyle($text[0]).color).should(
               "eq",
@@ -400,7 +413,7 @@ const assertLightMode = () =>
   cy.get("body").should("have.css", "background-color", "rgb(249, 249, 250)");
 
 const assertDarkMode = () =>
-  cy.get("body").should("have.css", "background-color", "rgb(5, 14, 21)");
+  cy.get("body").should("have.css", "background-color", "rgb(7, 23, 34)");
 
 /**
  * Stub the current user authentication method

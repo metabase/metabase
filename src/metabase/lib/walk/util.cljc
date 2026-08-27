@@ -7,11 +7,14 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [not-empty]]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
+   [metabase.util.performance :as perf :refer [not-empty]]))
 
 (defn- transduce-stages
   ([rf query]
@@ -48,7 +51,8 @@
   (transduce-stages
    (comp (filter (fn [stage]
                    (= (:lib/type stage) :mbql.stage/native)))
-         (mapcat :template-tags))
+         (mapcat :template-tags)
+         (map (juxt :name identity)))
    (fn rf
      ([m]
       (not-empty (persistent! m)))
@@ -71,7 +75,7 @@
     (lib.walk/walk-clauses
      query
      (fn [_query _path-type _stage-or-join-path clause]
-       (lib.util.match/match-lite clause
+       (match/match-one clause
          [:metric _opts (id :guard pos-int?)]
          (vswap! metric-ids conj! id)
 
@@ -86,7 +90,7 @@
     (lib.walk/walk-clauses
      query
      (fn [_query _path-type _stage-or-join-path clause]
-       (lib.util.match/match-lite clause
+       (match/match-one clause
          [:segment _opts (id :guard pos-int?)]
          (vswap! segment-ids conj! id)
 
@@ -101,7 +105,7 @@
     (lib.walk/walk-clauses
      query
      (fn [_query _path-type _stage-or-join-path clause]
-       (lib.util.match/match-lite clause
+       (match/match-one clause
          [:measure _opts (id :guard pos-int?)]
          (vswap! measure-ids conj! id)
 
@@ -124,6 +128,25 @@
     (stage-values-set query (keep :source-card))
     (all-metric-ids query)
     (all-template-tag-card-ids query))))
+
+(mu/defn all-source-card-ids-recursive :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
+  "Like [[all-source-card-ids]], but follows each source Card into its own query, returning every Card the query reads
+  at any depth."
+  [query :- ::lib.schema/query]
+  (loop [seen #{}, layer (set (all-source-card-ids query))]
+    (let [layer (set/difference layer seen)]
+      (if (perf/empty? layer)
+        (not-empty seen)
+        (do
+          (lib.metadata/bulk-metadata query :metadata/card layer)
+          (recur (set/union seen layer)
+                 (into #{}
+                       (mapcat (fn [card-id]
+                                 (some-> (lib.metadata/card query card-id)
+                                         :dataset-query
+                                         not-empty
+                                         all-source-card-ids)))
+                       layer)))))))
 
 (mu/defn any-native-stage?
   "Returns true if any stage of this query is native."
@@ -165,7 +188,7 @@
                        ::lib.schema.mbql-clause/clause]]
   (let [field-ids (volatile! (transient #{}))
         walk-clause (fn [clause]
-                      (lib.util.match/match-lite clause
+                      (match/match-one clause
                         [:field _opts (id :guard pos-int?)]
                         (vswap! field-ids conj! id)
 
@@ -183,8 +206,8 @@
   (let [joined-field-ids (volatile! (transient #{}))
         implicit-join-field-opt? #(and (:source-field %) (not (:join-alias %)))
         walk-clause (fn [clause]
-                      (lib.util.match/match-lite clause
-                        [:field (opts :guard implicit-join-field-opt?) id]
+                      (match/match-one clause
+                        [:field (_opts :guard implicit-join-field-opt?) (id :guard pos-int?)]
                         (vswap! joined-field-ids conj! id)
 
                         _ nil)
@@ -230,6 +253,14 @@
                (mapcat all-field-ids))
          (all-template-tags query))))
 
+(mu/defn all-template-tag-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
+  "Set of all Table IDs referenced in table template tags."
+  [query :- ::lib.schema/query]
+  (not-empty
+   (into #{}
+         (keep :table-id)
+         (all-template-tags query))))
+
 ;;; TODO (Cam 10/1/25) -- overlapping responsibilities with [[metabase.lib.template-tags/template-tags->snippet-ids]]
 (mu/defn all-template-tag-snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/snippet]]
   "Set of all Native Query Snippet IDs used in template tags."
@@ -239,3 +270,121 @@
          (comp (filter #(= (:type %) :snippet))
                (keep :snippet-id))
          (all-template-tags query))))
+
+(mr/def ::referenced-entity-ids
+  [:map
+   [:table [:set ::lib.schema.id/table]]
+   [:card [:set ::lib.schema.id/card]]
+   [:metric [:set ::lib.schema.id/metric]]
+   [:measure [:set ::lib.schema.id/measure]]
+   [:segment [:set ::lib.schema.id/segment]]
+   [:snippet [:set ::lib.schema.id/snippet]]])
+
+(mr/def ::referenced-entity-ids.options
+  [:map
+   [:include-implicitly-joinable? {:optional true} :boolean]])
+
+(mu/defn- implicitly-joinable-table-ids :- [:set ::lib.schema.id/table]
+  "The ids of Tables reachable by one FK hop out of the columns of `source-table-ids` and the result metadata of
+  `source-card-ids` -- i.e. the Tables a caller exposing implicitly-joinable columns would need on top of the directly
+  referenced ones. Loads those columns/Fields and the FK-target Fields into `metadata-providerable`'s cache while
+  discovering the ids, so that caller hits the cache instead of fetching one entity at a time.
+
+  Note `implicitly-joined-field-ids` above means Fields *already* joined in a query; this is about Fields that are
+  *joinable* (reachable via an FK) but not joined yet."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   source-table-ids      :- [:set ::lib.schema.id/table]
+   source-card-ids       :- [:set ::lib.schema.id/card]]
+  (let [table-columns  (when (seq source-table-ids)
+                         (lib.metadata/metadatas metadata-providerable {:lib/type :metadata/column, :table-ids source-table-ids}))
+        cards          (lib.metadata/bulk-metadata metadata-providerable :metadata/card source-card-ids)
+        result-columns (mapcat :result-metadata cards)
+        card-columns   (lib.metadata/bulk-metadata metadata-providerable :metadata/column
+                                                   (into #{} (keep :id) result-columns))
+        fk-fields      (lib.metadata/bulk-metadata metadata-providerable :metadata/column
+                                                   (into #{} (keep :fk-target-field-id)
+                                                         (concat table-columns card-columns result-columns)))]
+    (into #{} (keep :table-id) fk-fields)))
+
+(mu/defn all-referenced-entity-ids :- ::referenced-entity-ids
+  "Return a map of all referenced entity IDs in `queries`.
+
+  With `:include-implicitly-joinable?` true, `:table` additionally includes the Tables reachable by one FK hop out of
+  the source Tables' columns and the source Cards' result metadata (see [[implicitly-joinable-table-ids]]); discovering
+  them warms those columns/Fields in `(first queries)`'s cache. Defaults to false."
+  ([queries :- [:sequential ::lib.schema/query]]
+   (all-referenced-entity-ids queries nil))
+
+  ([queries :- [:sequential ::lib.schema/query]
+    {:keys [include-implicitly-joinable?]} :- [:maybe ::referenced-entity-ids.options]]
+   (let [source-table-ids (into #{} (mapcat all-source-table-ids) queries)
+         source-card-ids (into #{} (mapcat all-source-card-ids) queries)
+         implicitly-joined-field-ids (into #{} (mapcat all-implicitly-joined-field-ids) queries)
+         template-tag-field-ids (into #{} (mapcat all-template-tag-field-ids) queries)
+         template-tag-table-ids (into #{} (mapcat all-template-tag-table-ids) queries)
+         template-tag-card-ids (into #{} (mapcat all-template-tag-card-ids) queries)
+         template-tag-snippet-ids (into #{} (mapcat all-template-tag-snippet-ids) queries)
+         metric-ids (into #{} (mapcat all-metric-ids) queries)
+         measure-ids (into #{} (mapcat all-measure-ids) queries)
+         segment-ids (into #{} (mapcat all-segment-ids) queries)
+         all-card-ids (set/union source-card-ids template-tag-card-ids)
+         field-ids (set/union implicitly-joined-field-ids template-tag-field-ids)
+         all-field-table-ids (if (seq queries)
+                               (->> (lib.metadata/bulk-metadata (first queries) :metadata/column field-ids)
+                                    (into #{} (keep :table-id)))
+                               #{})
+         joinable-table-ids (if (and include-implicitly-joinable? (seq queries))
+                              (implicitly-joinable-table-ids (first queries) source-table-ids all-card-ids)
+                              #{})]
+     {:table (set/union source-table-ids all-field-table-ids template-tag-table-ids joinable-table-ids)
+      :card all-card-ids
+      :metric metric-ids
+      :measure measure-ids
+      :segment segment-ids
+      :snippet template-tag-snippet-ids})))
+
+(defn- remap-field-clause-ids
+  "Remap the Field ID and any `:source-field`/`:fk-field-id` option of a single `:field` clause via `id->new-id`
+  (a `nil` result leaves a value unchanged). Non-`:field` clauses and non-clauses are returned unchanged."
+  [id->new-id clause]
+  (if (lib.util/clause-of-type? clause :field)
+    (let [[tag opts id-or-name] clause
+          remap (fn [x] (if (pos-int? x) (or (id->new-id x) x) x))]
+      [tag
+       (cond-> opts
+         (:source-field opts) (update :source-field remap)
+         (:fk-field-id opts)  (update :fk-field-id remap))
+       (remap id-or-name)])
+    clause))
+
+(mu/defn replace-field-ids :- ::lib.schema/query
+  "Return `query` with every Field ID reference remapped by `id->new-id` (a function; a map works). Covers `:field`
+  refs everywhere they appear (filters, aggregations, breakouts, expressions, order-by, join conditions and fields,
+  nested stages), the `:source-field`/`:fk-field-id` options inside `:field` refs, and native `:template-tags`
+  `:dimension` refs. A field id for which `id->new-id` returns `nil` is left unchanged; name-based refs are untouched."
+  [query      :- ::lib.schema/query
+   id->new-id :- ifn?]
+  (let [remap #(remap-field-clause-ids id->new-id %)]
+    (-> query
+        (lib.walk/walk-clauses (fn [_query _path-type _path clause]
+                                 (remap clause)))
+        (lib.walk/walk-stages (fn [_query _path stage]
+                                (cond-> stage
+                                  (:template-tags stage)
+                                  (update :template-tags update-vals
+                                          (fn [tag]
+                                            (cond-> tag
+                                              (:dimension tag) (update :dimension remap))))))))))
+
+(mu/defn replace-table-ids :- ::lib.schema/query
+  "Return `query` with every source Table ID remapped by `id->new-id` (a function; a map works). Covers
+  `:source-table` in every stage and join. A table id for which `id->new-id` returns `nil` is left unchanged;
+  `:source-card` refs are untouched."
+  [query      :- ::lib.schema/query
+   id->new-id :- ifn?]
+  (lib.walk/walk-stages
+   query
+   (fn [_query _path stage]
+     (if-let [table-id (:source-table stage)]
+       (assoc stage :source-table (or (id->new-id table-id) table-id))
+       stage))))

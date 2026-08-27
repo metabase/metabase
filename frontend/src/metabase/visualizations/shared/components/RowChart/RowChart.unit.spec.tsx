@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { NumberValue } from "d3-scale";
 
 import { render, screen } from "__support__/ui";
-import { measureTextWidth } from "metabase/lib/measure-text";
+import { measureTextWidth } from "metabase/utils/measure-text";
 
 import type { ChartFont } from "../../types/style";
 
@@ -229,6 +229,22 @@ describe("RowChart", () => {
         "_100_",
         "_200_",
         "_300_",
+      ]);
+    });
+
+    it("should pass the current bar to the data label formatter", () => {
+      const { dataLabels } = setup({
+        labelledSeries: ["series 1", "series 2"],
+        labelsFormatter: (value, bar) => `${bar?.series.seriesKey}_${value}`,
+      });
+
+      expect(dataLabels.map((el) => el.textContent)).toStrictEqual([
+        "series 1_100",
+        "series 1_200",
+        "series 1_300",
+        "series 2_200",
+        "series 2_400",
+        "series 2_600",
       ]);
     });
   });

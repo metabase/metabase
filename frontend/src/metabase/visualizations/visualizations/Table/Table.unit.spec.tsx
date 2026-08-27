@@ -1,0 +1,442 @@
+import userEvent from "@testing-library/user-event";
+import { thaw } from "icepick";
+import { useState } from "react";
+
+import { createMockMetadata } from "__support__/metadata";
+import {
+  fireEvent,
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
+import { loadVisualizationComponents } from "metabase/visualizations";
+import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
+import Visualization from "metabase/visualizations/components/Visualization";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { registerVisualizations } from "metabase/visualizations/register";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import Question from "metabase-lib/v1/Question";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type {
+  DatasetColumn,
+  Series,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
+import {
+  createMockCategoryColumn,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockNumericColumn,
+  createMockSingleSeries,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+  createOrdersTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
+registerVisualizations();
+
+// Chart components are loaded on demand. Register them up front so each test
+// renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["table"]));
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+const ordersTable = createOrdersTable();
+const ordersFields = ordersTable.fields ?? [];
+
+type Display = Extract<VisualizationDisplay, "table" | "object">;
+
+type SetupOptions = {
+  display: Display;
+  visualization_settings?: VisualizationSettings;
+};
+
+const setup = ({ display, visualization_settings = {} }: SetupOptions) => {
+  const onChange = jest.fn();
+
+  const Container = () => {
+    const [question, setQuestion] = useState(
+      new Question(
+        {
+          dataset_query: {
+            type: "query",
+            query: {
+              "source-table": ORDERS_ID,
+            },
+            database: SAMPLE_DB_ID,
+          },
+          display,
+          visualization_settings,
+        },
+        metadata,
+      ),
+    );
+
+    const handleChange = (update: VisualizationSettings) => {
+      onChange(update);
+      setQuestion((q) => {
+        const newQuestion = q.updateSettings(update);
+        return new Question(thaw(newQuestion.card()), metadata);
+      });
+    };
+
+    return (
+      <QuestionChartSettings
+        onChange={handleChange}
+        series={[
+          {
+            card: question.card(),
+            data: createMockDatasetData({
+              rows: [],
+              cols: ordersFields.map((field) =>
+                createMockColumn({
+                  ...field,
+                  id: Number(field.id),
+                  source: "fields",
+                  field_ref: ["field", Number(field.id), null],
+                }),
+              ),
+            }),
+          },
+        ]}
+        initial={{ section: "Data" }}
+        question={question}
+      />
+    );
+  };
+
+  renderWithProviders(<Container />);
+
+  return { onChange };
+};
+
+// these visualizations share column settings, so all the tests should work for both
+(["table", "object"] as const).forEach((display) => {
+  describe(`${display} column settings`, () => {
+    it("should show you related columns in structured queries", async () => {
+      setup({ display });
+      await userEvent.click(screen.getByText("Add or remove columns"));
+
+      expect(screen.getByText("User")).toBeInTheDocument();
+      expect(screen.getByText("Product")).toBeInTheDocument();
+
+      const userColumList = screen.getByTestId("user-table-columns");
+
+      expect(within(userColumList).getByLabelText("Address")).not.toBeChecked();
+      expect(within(userColumList).getByLabelText("State")).not.toBeChecked();
+    });
+
+    it("should allow you to show and hide columns", async () => {
+      setup({ display });
+      await userEvent.click(await screen.findByTestId("Tax-hide-button"));
+
+      expect(
+        await screen.findByRole("listitem", { name: "Tax" }),
+      ).toHaveAttribute("data-enabled", "false");
+
+      await userEvent.click(await screen.findByTestId("Tax-show-button"));
+      //If we can see the hide button, then we know it's been added back in.
+      expect(await screen.findByTestId("Tax-hide-button")).toBeInTheDocument();
+    });
+
+    it("should allow you to update a column name", async () => {
+      setup({ display });
+      await userEvent.click(
+        await screen.findByTestId("Subtotal-settings-button"),
+      );
+      await userEvent.type(
+        await screen.findByDisplayValue("Subtotal"),
+        " Updated",
+      );
+      await userEvent.click(await screen.findByText("Tax"));
+      expect(await screen.findByText("Subtotal Updated")).toBeInTheDocument();
+    });
+
+    it("should rewrite field ref-based column_settings keys to name-based keys on update", async () => {
+      const { onChange } = setup({
+        display,
+        visualization_settings: createMockVisualizationSettings({
+          column_settings: {
+            [JSON.stringify(["ref", ["field", ORDERS.TOTAL, null]])]: {
+              column_title: "Total1",
+            },
+            [JSON.stringify(["ref", ["field", ORDERS.SUBTOTAL, null]])]: {
+              column_title: "Subtotal1",
+            },
+          },
+        }),
+      });
+      await userEvent.click(
+        await screen.findByTestId("Subtotal1-settings-button"),
+      );
+      const input = await screen.findByDisplayValue("Subtotal1");
+      await userEvent.clear(input);
+      await userEvent.type(input, "Subtotal2");
+      await userEvent.click(await screen.findByText("Total1"));
+      expect(onChange).toHaveBeenCalledWith({
+        column_settings: {
+          [getColumnKey(createMockColumn({ name: "TOTAL" }))]: {
+            column_title: "Total1",
+          },
+          [getColumnKey(createMockColumn({ name: "SUBTOTAL" }))]: {
+            column_title: "Subtotal2",
+          },
+        },
+      });
+    });
+  });
+});
+
+describe("table.pivot", () => {
+  const createMockSeriesWithCols = (
+    cols: string[],
+    visualization_settings: VisualizationSettings = {},
+  ): Series => [
+    createMockSingleSeries(
+      { visualization_settings },
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: cols.map((name) => createMockColumn({ name })),
+        }),
+      }),
+    ),
+  ];
+
+  describe("getHidden", () => {
+    const threeCols = createMockSeriesWithCols(["dim1", "dim2", "metric"]);
+    const fourCols = createMockSeriesWithCols([
+      "dim1",
+      "dim2",
+      "dim3",
+      "metric",
+    ]);
+    const getHidden = Table.settings["table.pivot"].getHidden;
+    if (!getHidden) {
+      throw new Error("table.pivot getHidden should be defined");
+    }
+
+    it("should be hidden when cols.length is not 3", () => {
+      expect(getHidden).toBeDefined();
+      expect(getHidden(fourCols)).toBe(true);
+    });
+
+    it("should not be hidden when cols.length is 3", () => {
+      expect(getHidden).toBeDefined();
+      expect(getHidden(threeCols)).toBe(false);
+    });
+  });
+
+  it("should unpivot when table.pivot is stored true but there are not 3 columns", () => {
+    const series = createMockSeriesWithCols(
+      ["dim1", "dim2", "dim3", "metric"],
+      { "table.pivot": true },
+    );
+
+    expect(getComputedSettingsForSeries(series)["table.pivot"]).toBe(false);
+  });
+});
+
+describe("dashboard client-side sorting", () => {
+  beforeAll(() => {
+    mockGetBoundingClientRect();
+  });
+
+  it("sorts numeric, null, and text values in small datasets (#67756)", () => {
+    const series = [
+      createMockSingleSeries(
+        { display: "table" },
+        {
+          data: {
+            cols: [
+              createMockNumericColumn({ display_name: "id", name: "id" }),
+              createMockCategoryColumn({
+                display_name: "name",
+                name: "name",
+              }),
+            ],
+            rows: [
+              [1, "Alice"],
+              [2, null],
+              [3, "Charlie"],
+              [4, null],
+              [5, "Bob"],
+              [6, null],
+              [7, "Delta"],
+              [8, null],
+            ],
+          },
+        },
+      ),
+    ];
+
+    renderWithProviders(
+      <Visualization rawSeries={series} isDashboard width={600} height={400} />,
+    );
+
+    const idHeader = screen.getByRole("columnheader", { name: "id" });
+    const idClickTarget = within(idHeader).getByTestId("cell-data");
+
+    fireEvent.mouseDown(idClickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(idClickTarget, { clientX: 0, clientY: 0 });
+
+    expect(
+      screen
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => within(row).getAllByRole("gridcell")[0].textContent),
+    ).toEqual(["8", "7", "6", "5", "4", "3", "2", "1"]);
+
+    const nameHeader = screen.getByRole("columnheader", { name: "name" });
+    const clickTarget = within(nameHeader).getByTestId("cell-data");
+
+    fireEvent.mouseDown(clickTarget, { clientX: 0, clientY: 0 });
+    fireEvent.mouseUp(clickTarget, { clientX: 0, clientY: 0 });
+
+    const rows = screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) =>
+        within(row)
+          .getAllByRole("gridcell")
+          .map((cell) => cell.textContent),
+      );
+
+    expect(rows).toEqual([
+      ["7", "Delta"],
+      ["3", "Charlie"],
+      ["5", "Bob"],
+      ["1", "Alice"],
+      ["2", ""],
+      ["4", ""],
+      ["6", ""],
+      ["8", ""],
+    ]);
+  });
+});
+
+describe("text_wrapping", () => {
+  describe("in columnSettings", () => {
+    function assertDefined<T>(
+      value: T | undefined | null,
+      name: string,
+    ): asserts value is T {
+      if (value == null) {
+        throw new Error(`${name} should be defined`);
+      }
+    }
+
+    const getTextWrappingSetting = (column: DatasetColumn) => {
+      const textWrappingSetting = Table.columnSettings(column)["text_wrapping"];
+      assertDefined(textWrappingSetting, "text_wrapping setting");
+      return textWrappingSetting;
+    };
+
+    const getGetHidden = (column: DatasetColumn) => {
+      const textWrappingSetting = getTextWrappingSetting(column);
+      assertDefined(textWrappingSetting.getHidden, "text_wrapping getHidden");
+      return textWrappingSetting.getHidden;
+    };
+
+    const getIsValid = (column: DatasetColumn) => {
+      const textWrappingSetting = getTextWrappingSetting(column);
+      assertDefined(textWrappingSetting.isValid, "text_wrapping isValid");
+      return textWrappingSetting.isValid;
+    };
+
+    it("should be available for string columns", () => {
+      const stringColumn = createMockCategoryColumn();
+      const textWrappingSetting = getTextWrappingSetting(stringColumn);
+
+      expect(textWrappingSetting).toBeDefined();
+    });
+
+    it("should not be available for non-string columns", () => {
+      const numberColumn = createMockNumericColumn();
+      const settings = Table.columnSettings(numberColumn);
+
+      expect(settings["text_wrapping"]).toBeUndefined();
+    });
+
+    it("should be hidden when view_as is image", () => {
+      const stringColumn = createMockCategoryColumn();
+      const getHidden = getGetHidden(stringColumn);
+
+      const isHidden = getHidden(stringColumn, {
+        view_as: "image",
+      });
+
+      expect(isHidden).toBe(true);
+    });
+
+    it("should be not valid when view_as is image", () => {
+      const stringColumn = createMockCategoryColumn();
+      const isValid = getIsValid(stringColumn);
+
+      const valueIsValid = isValid(stringColumn, {
+        view_as: "image",
+      });
+
+      expect(valueIsValid).toBe(false);
+    });
+
+    it("should be visible when view_as is null", () => {
+      const stringColumn = createMockCategoryColumn();
+      const getHidden = getGetHidden(stringColumn);
+
+      const isHidden = getHidden(stringColumn, {
+        view_as: null,
+      });
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should be visible when view_as is auto", () => {
+      const stringColumn = createMockCategoryColumn();
+      const getHidden = getGetHidden(stringColumn);
+
+      const isHidden = getHidden(stringColumn, {
+        view_as: "auto",
+      });
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should be visible when view_as is link", () => {
+      const stringColumn = createMockCategoryColumn();
+      const getHidden = getGetHidden(stringColumn);
+
+      const isHidden = getHidden(stringColumn, {
+        view_as: "link",
+      });
+
+      expect(isHidden).toBe(false);
+    });
+
+    it("should be valid when view_as is link", () => {
+      const stringColumn = createMockCategoryColumn();
+      const isValid = getIsValid(stringColumn);
+
+      const valueIsValid = isValid(stringColumn, {
+        view_as: "link",
+      });
+
+      expect(valueIsValid).toBe(true);
+    });
+
+    it("should default to false", () => {
+      const stringColumn = createMockCategoryColumn();
+      const textWrappingSetting = getTextWrappingSetting(stringColumn);
+
+      expect(textWrappingSetting.getDefault?.(stringColumn, {})).toBe(false);
+    });
+  });
+});

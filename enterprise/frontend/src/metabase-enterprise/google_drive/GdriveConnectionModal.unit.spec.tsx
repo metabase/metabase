@@ -9,13 +9,13 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { GdrivePayload } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { GdriveConnectionModal } from "./GdriveConnectionModal";
 

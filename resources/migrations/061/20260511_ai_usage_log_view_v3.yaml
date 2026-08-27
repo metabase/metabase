@@ -1,0 +1,40 @@
+## Update v_ai_usage_log to v3 — expose cache_creation_tokens and cache_read_tokens.
+##
+## Must run after 20260504_metabot_conversation_pii_compliance.yaml (BOT-1406),
+## because v3 of the view projects embedding_hostname, embedding_path, user_agent,
+## and sanitized_user_agent from metabot_conversation — columns that migration
+## introduces. Liquibase processes change-log files alphabetically, so the
+## filename date is what enforces the ordering.
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2026-05-11T00:00:01
+      author: tsplude
+      runOnChange: true
+      comment: Update v_ai_usage_log to v3 - expose cache_creation_tokens, cache_read_tokens
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v3/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v3/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v3/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v2/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v2/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v2/h2-ai_usage_log.sql
+            relativeToChangelogFile: true

@@ -11,40 +11,42 @@ name: Backend-Cloverage
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 10 * * 1-5' # every weekday at 5am US eastern time
+  # re-enable once we figure out the correctness of the reports in DEV-1104
+  # schedule:
+  #   - cron: '0 10 * * 1-5' # every weekday at 5am US eastern time
 
 jobs:
   setup-oss:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: get-modules
         run: |
-          modules=$(ls -1d src/metabase/*/ | xargs -n1 basename | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "modules=$modules" >> $GITHUB_OUTPUT
+          modules=$(for d in src/metabase/*/; do basename "$d"; done | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "modules=$modules" >> "$GITHUB_OUTPUT"
 
   be-linter-cloverage:
     needs: setup-oss
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         modules: ${{ fromJson(needs.setup-oss.outputs.modules) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
       - name: Build static viz frontend
-        run: yarn build-static-viz
+        run: bun run build-static-viz
         env:
           MB_EDITION: ee
       - name: Collect the test coverage
@@ -56,42 +58,43 @@ jobs:
 
       - name: Upload coverage to codecov.io
         if: always()
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/coverage/codecov.json
           flags: back-end
 
   setup-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: get-modules
         run: |
-          modules=$(ls -1d enterprise/backend/src/metabase_enterprise/*/ | xargs -n1 basename | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "modules=$modules" >> $GITHUB_OUTPUT
+          modules=$(for d in enterprise/backend/src/metabase_enterprise/*/; do basename "$d"; done | tr '_' '-' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "modules=$modules" >> "$GITHUB_OUTPUT"
 
   be-linter-cloverage-enterprise:
     needs: setup-ee
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         modules: ${{ fromJson(needs.setup-ee.outputs.modules) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
       - name: Build static viz frontend
-        run: yarn build-static-viz
+        run: bun run build-static-viz
         env:
           MB_EDITION: ee
       - name: Collect the test coverage
@@ -103,7 +106,7 @@ jobs:
 
       - name: Upload coverage to codecov.io
         if: always()
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/coverage/codecov.json

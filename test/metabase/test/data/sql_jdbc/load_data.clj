@@ -146,9 +146,9 @@
             (if chunk-size
               (transduce
                (partition-all chunk-size)
-                ;; we are very deliberately not passing `rf` directly here, because calling the completing arity with it
-                ;; breaks things since we're not supposed to be doing that inside `reduce`. We have to use `transduce` here
-                ;; to get the `partition-all` transducer to work correctly tho which is why we're not just using reduce
+               ;; we are very deliberately not passing `rf` directly here, because calling the completing arity with it
+               ;; breaks things since we're not supposed to be doing that inside `reduce`. We have to use `transduce` here
+               ;; to get the `partition-all` transducer to work correctly tho which is why we're not just using reduce
                (fn
                  ([acc]
                   acc)

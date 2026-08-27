@@ -27,8 +27,6 @@
    :type                   :question
    :description            nil
    :display                :table
-   :enable_embedding       false
-   :embedding_params       nil
    :name                   (:name card)
    :parameters             []
    :parameter_mappings     []
@@ -49,9 +47,6 @@
    :cards               []
    :archived            false
    :collection_position nil
-   :enable_embedding    false
-   :embedding_params    nil
-   :embedding_type      nil
    :parameters          []
    :archived_directly   (:archived_directly dashboard)})
 
@@ -132,9 +127,8 @@
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard}]
         (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
-
-       ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
-       ;; otherwise revert a card to earlier revision might toggle the public sharing settings
+        ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
+        ;; otherwise revert a card to earlier revision might toggle the public sharing settings
         (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
                                       (->> (t2/select-one-fn :object :model/Revision
                                                              :model       "Dashboard"

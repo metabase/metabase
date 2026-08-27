@@ -1,18 +1,15 @@
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { useSelector } from "metabase/lib/redux";
-import { getUserId } from "metabase/selectors/user";
+import { getUserId } from "metabase/current-user";
+import { dayjs } from "metabase/dayjs";
+import { useSelector } from "metabase/redux";
 import { Box, Flex, Stack, Text, Timeline } from "metabase/ui";
-import type { Revision, TableId } from "metabase-types/api";
+import type { FieldDiff, Revision, TableId } from "metabase-types/api";
 
 import { RevisionDiff } from "./RevisionDiff";
 import S from "./RevisionHistory.module.css";
 import type { DefinitionType, RevisionActionDescriptor } from "./types";
-
-dayjs.extend(relativeTime);
 
 type RevisionItemProps = {
   revision: Revision;
@@ -54,7 +51,7 @@ export function RevisionItem({
               {action}
             </Text>
           </Stack>
-          <Text size="sm" c="text-tertiary" title={formattedDate}>
+          <Text size="sm" c="text-disabled" title={formattedDate}>
             {timeAgo}
           </Text>
         </Flex>
@@ -86,14 +83,14 @@ export function RevisionItem({
   );
 }
 
-type RevisionDiffMap = Record<string, { before?: unknown; after?: unknown }>;
+type RevisionDiffMap = Record<string, FieldDiff>;
 
 function getDiffKeys(revision: Revision): string[] {
   if (!revision.diff) {
     return [];
   }
 
-  const diff = revision.diff as unknown as RevisionDiffMap;
+  const diff = revision.diff;
   let keys = Object.keys(diff);
 
   if (revision.is_creation) {
@@ -106,11 +103,12 @@ function getDiffKeys(revision: Revision): string[] {
 function getDiffForKey(
   diff: Revision["diff"],
   key: string,
-): { before?: unknown; after?: unknown } | undefined {
+): FieldDiff | undefined {
   if (!diff) {
     return undefined;
   }
 
-  const revisionDiff = diff as unknown as RevisionDiffMap;
+  // Unjustified type cast. FIXME
+  const revisionDiff = diff as RevisionDiffMap;
   return revisionDiff[key];
 }

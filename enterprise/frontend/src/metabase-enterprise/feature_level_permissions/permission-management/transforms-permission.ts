@@ -7,24 +7,28 @@ import {
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
-  DataPermission,
   DataPermissionType,
-  DataPermissionValue,
-  type EntityId,
+  type PermissionOption,
   type PermissionSectionConfig,
-  type PermissionSubject,
 } from "metabase/admin/permissions/types";
 import { getSchemasPermission } from "metabase/admin/permissions/utils/graph";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
+} from "metabase-types/api";
 
-export const TRANSFORMS_PERMISSION_OPTIONS = {
+export const TRANSFORMS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   no: {
     get label() {
       return t`No`;
     },
     value: DataPermissionValue.NO,
     icon: "close",
-    iconColor: "danger",
+    iconColor: "feedback-negative",
   },
   yes: {
     get label() {
@@ -32,7 +36,7 @@ export const TRANSFORMS_PERMISSION_OPTIONS = {
     },
     value: DataPermissionValue.YES,
     icon: "check",
-    iconColor: "success",
+    iconColor: "feedback-positive",
   },
 };
 
@@ -75,7 +79,7 @@ const getTransformsDisabledTooltip = (
 };
 
 export const buildTransformsPermission = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,

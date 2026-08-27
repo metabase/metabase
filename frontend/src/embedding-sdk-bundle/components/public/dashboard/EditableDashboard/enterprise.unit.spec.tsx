@@ -7,7 +7,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { addEnterpriseAutoRefreshTests } from "../shared-tests/auto-refresh.spec";
@@ -121,16 +121,34 @@ describe("EditableDashboard", () => {
 
     // We should be in the query builder
     expect(
-      await screen.findByRole("button", { name: "Back to Test dashboard" }),
+      await screen.findByLabelText(/Back to Test dashboard/),
     ).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Back to Test dashboard" }),
-    );
+    await userEvent.click(screen.getByLabelText(/Back to Test dashboard/));
 
     // We should be back in the dashboard
+    expect(screen.getByText("Test dashboard")).toBeInTheDocument();
+  });
+
+  it("should allow to go back to the dashboard after editing a question from the dashcard menu (EMB-2012)", async () => {
+    await setupEnterprise({ dashboardName: "Test dashboard" });
+
+    const dashcard = screen.getAllByTestId("dashcard").at(0);
+    await userEvent.click(within(dashcard!).getByTestId("dashcard-menu"));
+
+    const menu = await screen.findByRole("menu");
+    await userEvent.click(within(menu).getByText("Edit question"));
+
+    // We should be in the question view
     expect(
-      screen.getByText("You're editing this dashboard."),
+      await screen.findByTestId("query-visualization-root"),
     ).toBeInTheDocument();
+
+    // The back button should be there, just like when drilling into a question
+    const backButton = await screen.findByLabelText("Back to Test dashboard");
+    await userEvent.click(backButton);
+
+    // We should be back on the dashboard
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
   });
 
   it("should allow to pass `dataPickerProps.entityTypes` to the query builder", async () => {
@@ -180,6 +198,16 @@ describe("EditableDashboard", () => {
     await setupEnterprise();
 
     expect(screen.getByTestId("dashboard-name-heading")).toBeEnabled();
+  });
+
+  // eslint-disable-next-line jest/expect-expect -- Just want to ensure the type passes
+  it('should accept "drillThroughQuestionProps.dataPicker"', async () => {
+    <EditableDashboard
+      dashboardId={1}
+      drillThroughQuestionProps={{
+        dataPicker: "staged",
+      }}
+    />;
   });
 });
 

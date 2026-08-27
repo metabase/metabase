@@ -117,7 +117,7 @@
                    (or (lib.binning/resolve-bin-width query column value)
                        (lib.binning/resolve-bin-width
                         query
-                        ;; One of the "superfluous" options is ::lib.field/binning, which we want to preserve here.
+                        ;; One of the "superfluous" options is :lib/binning, which we want to preserve here.
                         (lib.underlying/top-level-column query column :rename-superfluous-options? false)
                         value))]
           (case (:strategy binning)

@@ -1,9 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { hasFeature } from "metabase/admin/databases/utils";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers/EntityPicker/types";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
+import { hasFeature } from "metabase/databases";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -11,14 +11,13 @@ import type {
   Database,
   DatabaseId,
   DraftTransformSource,
+  TemplateTag,
   Transform,
   TransformRun,
   TransformRunMethod,
   TransformRunStatus,
   TransformSource,
 } from "metabase-types/api";
-
-import { CHECKPOINT_TEMPLATE_TAG } from "./constants";
 
 export function parseTimestampWithTimezone(
   timestamp: string,
@@ -63,18 +62,44 @@ export function formatRunMethod(trigger: TransformRunMethod) {
   }
 }
 
+export type DatabaseValidationResult = {
+  isValid: boolean;
+  message?: string;
+};
+
+export function validateDatabase(database: Database): DatabaseValidationResult {
+  if (database.is_sample) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled on the Sample Database.`,
+    };
+  }
+  if (database.is_audit) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled on the Usage Analytics database.`,
+    };
+  }
+  if (database.router_user_attribute || database.router_database_id) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled when database routing is enabled.`,
+    };
+  }
+  if (!hasFeature(database, "transforms/table")) {
+    return {
+      isValid: false,
+      message: t`Transforms can't be enabled on this database.`,
+    };
+  }
+  return { isValid: true };
+}
+
 export function doesDatabaseSupportTransforms(database?: Database): boolean {
   if (!database) {
     return false;
   }
-
-  return (
-    !database.is_sample &&
-    !database.is_audit &&
-    !database.router_user_attribute &&
-    !database.router_database_id &&
-    hasFeature(database, "transforms/table")
-  );
+  return validateDatabase(database).isValid;
 }
 
 export function sourceDatabaseId(source: TransformSource): DatabaseId | null {
@@ -95,6 +120,12 @@ export function getTransformRunName(run: TransformRun): string {
 
 export function isErrorStatus(status: TransformRunStatus | null) {
   return status === "failed" || status === "timeout";
+}
+
+export function isActiveRunStatus(
+  status: TransformRunStatus | null | undefined,
+) {
+  return status === "started" || status === "canceling";
 }
 
 export function isTransformRunning(transform: Transform) {
@@ -166,8 +197,6 @@ export function isCompleteSource(
   return source.type !== "python" || source["source-database"] != null;
 }
 
-const ALLOWED_TRANSFORM_VARIABLES = [CHECKPOINT_TEMPLATE_TAG];
-
 export type ValidationResult = {
   isValid: boolean;
   errorMessage?: string;
@@ -177,22 +206,37 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     const tags = Object.values(Lib.templateTags(query));
-    // Allow snippets, cards, and the special transform variables ({checkpoint})
-    const hasInvalidTags = tags.some(
-      (t) =>
-        t.type !== "card" &&
-        t.type !== "snippet" &&
-        !ALLOWED_TRANSFORM_VARIABLES.includes(t.name),
-    );
-    if (hasInvalidTags) {
-      return {
-        isValid: false,
-        errorMessage: t`In transforms, you can use snippets and question or model references, but not variables.`,
-      };
+
+    const invalidResults = tags
+      .map(validateTemplateTag)
+      .filter((result) => !result.isValid);
+
+    if (invalidResults.length > 0) {
+      return invalidResults[0];
     }
   }
 
   return { isValid: Lib.canSave(query, "question") };
+}
+
+const ALLOWED_TEMPLATE_TYPES = new Set(["card", "snippet", "table"]);
+
+function validateTemplateTag(tag: TemplateTag): ValidationResult {
+  // Allow snippets, cards, and the special transform variables ({checkpoint})
+  if (ALLOWED_TEMPLATE_TYPES.has(tag.type)) {
+    return { isValid: true };
+  }
+
+  // Variable template tags need to be either optional in the query text
+  // or have a default value.
+  if (Lib.isVariableTemplateTag(tag) && tag.required && tag.default == null) {
+    return {
+      isValid: false,
+      errorMessage: t`Variables in transforms must either be optional or have a default value.`,
+    };
+  }
+
+  return { isValid: true };
 }
 
 export const getLibQuery = (
@@ -235,3 +279,25 @@ export const getRootCollectionItem = ({
   }
   return null;
 };
+
+export function isMissingSourceDatabase(transform: Transform) {
+  return transform.source_database_id == null;
+}
+
+/**
+ * Returns the duration in ms of a transform run, or null when it cannot be
+ * measured (run still in progress, missing timestamps, unparseable values).
+ */
+export function getRunDurationMs(
+  run: Pick<TransformRun, "start_time" | "end_time"> | null | undefined,
+): number | null {
+  if (run == null || run.end_time == null) {
+    return null;
+  }
+  const start = Date.parse(run.start_time);
+  const end = Date.parse(run.end_time);
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return null;
+  }
+  return end - start;
+}

@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
+   [metabase.request.current :as request.current]
+   [metabase.request.user-agent :as request.user-agent]
    [metabase.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -40,7 +42,14 @@
                               {"front-end-https" "on"}         true
                               {"front-end-https" "off"}        false
                               {"origin" "https://mysite.com"}  true
-                              {"origin" "http://mysite.com"}   false}]
+                              {"origin" "http://mysite.com"}   false
+                              ;; a blank proto header must fall through to the boolean HTTPS indicators (BOT-1617)
+                              {"x-forwarded-proto" "" "x-forwarded-ssl" "on"}          true
+                              {"x-forwarded-proto" "" "front-end-https" "on"}          true
+                              {"x-forwarded-proto" "  " "origin" "https://mysite.com"} true
+                              ;; the first hop of a comma-separated chain wins
+                              {"x-forwarded-proto" "https, http"} true
+                              {"x-forwarded-proto" "HTTPS"}       true}]
     (testing (pr-str (list 'https? {:headers headers}))
       (is (= expected
              (req.util/https? {:headers headers}))))))
@@ -53,23 +62,26 @@
     (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
             :embedded           false
-            :ip_address         "0:0:0:0:0:0:0:1"}
+            :ip_address         "0:0:0:0:0:0:0:1"
+            :token_exchange     false}
            (req.util/device-info @mock-request))))
   (testing "SDK request"
     (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
             :embedded           true
-            :ip_address         "0:0:0:0:0:0:0:1"}
+            :ip_address         "0:0:0:0:0:0:0:1"
+            :token_exchange     false}
            (req.util/device-info (update @mock-request :headers assoc "x-metabase-client" "embedding-sdk-react")))))
   (testing "Modular embedding request"
     (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
             :embedded           true
-            :ip_address         "0:0:0:0:0:0:0:1"}
+            :ip_address         "0:0:0:0:0:0:0:1"
+            :token_exchange     false}
            (req.util/device-info (update @mock-request :headers assoc "x-metabase-client" "embedding-simple"))))))
 
 (deftest ^:parallel describe-user-agent-test
-  (are [user-agent expected] (= expected (req.util/describe-user-agent user-agent))
+  (are [user-agent expected] (= expected (request.user-agent/describe-user-agent user-agent))
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"
     "Browser (Chrome/Windows)"
 
@@ -92,31 +104,29 @@
   (let [request (ring.mock/request :get "api/session")]
     (testing "request with no forwarding"
       (is (= "127.0.0.1"
-             (req.util/ip-address request))))
-
+             (request.current/ip-address request))))
     (testing "request with forwarding"
       (let [mock-request (-> (ring.mock/request :get "api/session")
                              (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
         (is (= "5.6.7.8"
-               (req.util/ip-address mock-request))))
-      (testing "multiple IP addresses"
+               (request.current/ip-address mock-request))))
+      (testing "multiple IP addresses -- takes the last (proxy-appended, trusted) entry, not the first"
         (let [mock-request (-> (ring.mock/request :get "api/session")
                                (ring.mock/header "X-Forwarded-For" "1.2.3.4, 5.6.7.8"))]
-          (is (= "1.2.3.4"
-                 (req.util/ip-address mock-request)))))
+          (is (= "5.6.7.8"
+                 (request.current/ip-address mock-request)))))
       (testing "different header than default X-Forwarded-For"
         (mt/with-temporary-setting-values [source-address-header "X-ProxyUser-Ip"]
           (let [mock-request (-> (ring.mock/request :get "api/session")
                                  (ring.mock/header "x-proxyuser-ip" "1.2.3.4"))]
             (is (= "1.2.3.4"
-                   (req.util/ip-address mock-request)))))))
-
+                   (request.current/ip-address mock-request)))))))
     (testing "forwarding explicitly disabled via MB_NOT_BEHIND_PROXY=true"
       (mt/with-temp-env-var-value! [mb-not-behind-proxy "true"]
         (let [mock-request (-> (ring.mock/request :get "api/session")
                                (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
           (is (= "127.0.0.1"
-                 (req.util/ip-address mock-request))))))))
+                 (request.current/ip-address mock-request))))))))
 
 (def ^:private mock-geojs-responses
   "Canned GeoJS responses for test IPs. These mock what GeoJS would return."
@@ -189,6 +199,6 @@
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/requests))))))
   (testing "increments :metabase-geocoding/errors on failed geocoding"
     (mt/with-prometheus-system! [_ system]
-      (with-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
         (req.util/geocode-ip-addresses ["8.8.8.8"])
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))

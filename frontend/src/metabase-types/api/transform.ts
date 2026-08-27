@@ -1,34 +1,49 @@
 import type { Collection, CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type { RowValue } from "./dataset";
+import type { RequestableIndexes } from "./index-manager";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { DatasetQuery } from "./query";
+import type { DatasetQuery, DateTimeAbsoluteUnit, JoinStrategy } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { SortDirection } from "./sorting";
 import type { ConcreteTableId, SchemaName, Table } from "./table";
 import type { UserId, UserInfo } from "./user";
+import type { CardDisplayType } from "./visualization";
 
 export type TransformId = number;
 export type TransformTagId = number;
 export type TransformJobId = number;
 export type TransformRunId = number;
 
+export const PENDING_RUN_ID = -1;
+
+export type InspectorLensId = string;
+export type InspectorCardId = string;
+export type InspectorSectionId = string;
+
 export type TransformOwner = Pick<
   UserInfo,
   "id" | "email" | "first_name" | "last_name"
 >;
+
+export type TransformType = "native" | "python" | "mbql";
 
 export type Transform = {
   id: TransformId;
   name: string;
   description: string | null;
   source: TransformSource;
-  source_type: "native" | "python" | "mbql";
+  source_type: TransformType;
   target: TransformTarget;
   collection_id: CollectionId | null;
   created_at: string;
   updated_at: string;
   source_readable: boolean;
+  can_read?: boolean;
+  can_write?: boolean;
+  can_execute?: boolean;
+
+  source_database_id?: DatabaseId | null;
 
   // true when transform was deleted but still referenced by runs
   deleted?: boolean;
@@ -41,25 +56,61 @@ export type Transform = {
   owner_email?: string | null;
   owner?: TransformOwner | null;
 
+  last_checkpoint_value?: string | null;
+
+  // set by the job transforms endpoint on transforms pulled into the plan
+  // only as dependencies (not tagged for the job); `scheduled` says whether
+  // any active job's schedule covers them
+  dependency?: boolean;
+  scheduled?: boolean;
+
   // hydrated fields
   collection?: Collection | null;
   tag_ids?: TransformTagId[];
   table?: Table | null;
   last_run?: TransformRun | null;
   creator?: UserInfo;
+  requestable_indexes?: RequestableIndexes | null;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
   Pick<Transform, "name" | "description" | "source" | "target">;
 
-export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
+export type TaggedTransform = Transform & { type: "transform" };
+
+export type UnsavedTransform = {
+  type: "unsaved-transform";
+  id: TransformId;
+  name: string;
+  source: DraftTransformSource;
+  target: {
+    name: string;
+    schema: string | null;
+    type: TransformTargetType;
+  };
+};
+
+export type PythonTransformTableEntry = {
+  alias: string;
+  table_id: ConcreteTableId;
+  schema?: SchemaName | null;
+  database_id: DatabaseId;
+};
+
+export type PythonTransformTableAliases = PythonTransformTableEntry[];
+
+export type LookbackUnit = "millisecond" | "second" | DateTimeAbsoluteUnit;
+
+// Only supported for temporal checkpoint columns.
+export type TransformLookback = {
+  value: number;
+  unit: LookbackUnit;
+};
 
 export type TransformSourceCheckpointStrategy = {
   type: "checkpoint";
-  // For native queries
-  "checkpoint-filter"?: string;
-  // For MBQL and Python queries
-  "checkpoint-filter-unique-key"?: string;
+  "checkpoint-filter-field-id": number;
+  lookback?: TransformLookback | null;
 };
 
 export type SourceIncrementalStrategy = TransformSourceCheckpointStrategy;
@@ -90,6 +141,16 @@ export type TransformSource = QueryTransformSource | PythonTransformSource;
 export type TransformTargetAppendStrategy = {
   type: "append";
 };
+
+export type MergeKeyColumn = {
+  name?: string;
+  "field-id"?: number | null;
+};
+
+export type TransformTargetMergeStrategy = {
+  type: "merge";
+  "unique-key": MergeKeyColumn[];
+};
 export type DraftTransformSource =
   | Transform["source"]
   | PythonTransformSourceDraft;
@@ -98,7 +159,9 @@ export type DraftTransform = Partial<
   Pick<Transform, "id" | "name" | "description" | "target">
 > & { source: DraftTransformSource };
 
-export type TargetIncrementalStrategy = TransformTargetAppendStrategy;
+export type TargetIncrementalStrategy =
+  | TransformTargetAppendStrategy
+  | TransformTargetMergeStrategy;
 
 export type TransformTargetType = "table" | "table-incremental";
 
@@ -127,6 +190,10 @@ export type TransformRun = {
   message: string | null;
   run_method: TransformRunMethod;
 
+  checkpoint_filter_field_id?: number | null;
+  checkpoint_lo_value?: string | null;
+  checkpoint_hi_value?: string | null;
+
   // hydrated fields
   transform?: Transform;
 };
@@ -151,9 +218,51 @@ export const TRANSFORM_RUN_SORT_COLUMNS = [
   "status",
   "run-method",
   "transform-tags",
+  "duration",
 ] as const;
 export type TransformRunSortColumn =
   (typeof TRANSFORM_RUN_SORT_COLUMNS)[number];
+
+export type TransformJobRunId = number;
+
+export const TRANSFORM_JOB_RUN_STATUSES = [
+  "started",
+  "succeeded",
+  "failed",
+  "timeout",
+] as const;
+export type TransformJobRunStatus = (typeof TRANSFORM_JOB_RUN_STATUSES)[number];
+
+export type TransformJobRun = {
+  id: TransformJobRunId;
+  job_id: TransformJobId;
+  status: TransformJobRunStatus;
+  run_method: TransformRunMethod;
+  start_time: string;
+  end_time: string | null;
+  message: string | null;
+  is_active: boolean | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export const TRANSFORM_JOB_RUN_SORT_COLUMNS = [
+  "start_time",
+  "end_time",
+] as const;
+export type TransformJobRunSortColumn =
+  (typeof TRANSFORM_JOB_RUN_SORT_COLUMNS)[number];
+
+// A transform run that made up a given job run. Superset of TransformRun so it
+// can be passed to the existing run-rendering components.
+export type TransformRunForJobRun = TransformRun & {
+  transform_id: TransformId | null;
+  job_run_id: TransformJobRunId | null;
+  transform_name?: string | null;
+  transform_entity_id?: string | null;
+  metered_as?: string | null;
+  user_id?: UserId | null;
+};
 
 export type TransformTag = {
   id: TransformTagId;
@@ -169,6 +278,7 @@ export type TransformJob = {
   description: string | null;
   schedule: string;
   ui_display_type: ScheduleDisplayType;
+  active: boolean;
   created_at: string;
   updated_at: string;
 
@@ -215,6 +325,7 @@ export type UpdateTransformJobRequest = {
   description?: string | null;
   schedule?: string;
   ui_display_type?: ScheduleDisplayType;
+  active?: boolean;
   tag_ids?: TransformTagId[];
 };
 
@@ -233,31 +344,123 @@ export type RunTransformResponse = {
 };
 
 export type ListTransformsRequest = {
-  last_run_start_time?: string;
-  last_run_statuses?: TransformRunStatus[];
-  tag_ids?: TransformTagId[];
+  "last-run-start-time"?: string;
+  "last-run-statuses"?: TransformRunStatus[];
+  "tag-ids"?: TransformTagId[];
+  "database-id"?: DatabaseId;
 };
 
 export type ListTransformJobsRequest = {
-  last_run_start_time?: string;
-  last_run_statuses?: TransformRunStatus[];
-  next_run_start_time?: string;
-  tag_ids?: TransformTagId[];
+  "last-run-start-time"?: string;
+  "last-run-statuses"?: TransformRunStatus[];
+  "next-run-start-time"?: string;
+  "tag-ids"?: TransformTagId[];
 };
 
 export type ListTransformRunsRequest = {
   statuses?: TransformRunStatus[];
-  transform_ids?: TransformId[];
-  transform_tag_ids?: TransformTagId[];
-  start_time?: string;
-  end_time?: string;
-  run_methods?: TransformRunMethod[];
-  sort_column?: TransformRunSortColumn;
-  sort_direction?: SortDirection;
+  "transform-ids"?: TransformId[];
+  "transform-tag-ids"?: TransformTagId[];
+  "start-time"?: string;
+  "end-time"?: string;
+  "run-methods"?: TransformRunMethod[];
+  "sort-column"?: TransformRunSortColumn;
+  "sort-direction"?: SortDirection;
 } & PaginationRequest;
 
 export type ListTransformRunsResponse = {
   data: TransformRun[];
+} & PaginationResponse;
+
+export type ListTransformJobRunsRequest = {
+  jobId: TransformJobId;
+  status?: TransformJobRunStatus;
+  "run-method"?: TransformRunMethod;
+  "start-time"?: string;
+  "sort-column"?: TransformJobRunSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListTransformJobRunsResponse = {
+  data: TransformJobRun[];
+} & PaginationResponse;
+
+export type ListJobRunTransformRunsRequest = {
+  jobId: TransformJobId;
+  runId: TransformJobRunId;
+};
+
+export type CancelJobRunRequest = {
+  jobId: TransformJobId;
+  runId: TransformJobRunId;
+};
+
+export type TransformDagRunId = number;
+
+export const TRANSFORM_DAG_DIRECTIONS = ["upstream", "downstream"] as const;
+export type TransformDagDirection = (typeof TRANSFORM_DAG_DIRECTIONS)[number];
+
+export type RunTransformDagRequest = {
+  id: TransformId;
+  direction: TransformDagDirection;
+  skip_fresh_deps?: boolean;
+};
+
+export type RunTransformDagResponse = {
+  dag_run_id: TransformDagRunId | null;
+  message: string;
+};
+
+export type ListDagTransformsRequest = {
+  transformId: TransformId;
+  direction: TransformDagDirection;
+};
+
+export type DagTransform = Pick<Transform, "id" | "name">;
+
+export type ListDagRunTransformRunsRequest = {
+  dagRunId: TransformDagRunId;
+};
+
+export const TRANSFORM_GRAPH_RUN_TYPES = ["job", "dag", "transform"] as const;
+export type TransformGraphRunType = (typeof TRANSFORM_GRAPH_RUN_TYPES)[number];
+
+export const TRANSFORM_GRAPH_RUN_SORT_COLUMNS = [
+  "start_time",
+  "end_time",
+] as const;
+export type TransformGraphRunSortColumn =
+  (typeof TRANSFORM_GRAPH_RUN_SORT_COLUMNS)[number];
+
+export type TransformGraphRun = {
+  run_type: TransformGraphRunType;
+  id: number;
+  entity_id: number | null;
+  name: string | null;
+  direction: TransformDagDirection | null;
+  transform_count: number | null;
+  run_method: TransformRunMethod | null;
+  status: TransformRunStatus | null;
+  is_active: boolean | null;
+  start_time: string;
+  end_time: string | null;
+  message: string | null;
+  user_id: UserId | null;
+};
+
+export type ListTransformGraphRunsRequest = {
+  types?: TransformGraphRunType[];
+  statuses?: TransformRunStatus[];
+  "transform-ids"?: TransformId[];
+  "start-time"?: string;
+  "end-time"?: string;
+  "run-methods"?: TransformRunMethod[];
+  "sort-column"?: TransformGraphRunSortColumn;
+  "sort-direction"?: SortDirection;
+} & PaginationRequest;
+
+export type ListTransformGraphRunsResponse = {
+  data: TransformGraphRun[];
 } & PaginationResponse;
 
 export type TestPythonTransformRequest = {
@@ -288,22 +491,205 @@ export type UpdatePythonLibraryRequest = {
   source: string;
 };
 
-export type ExtractColumnsFromQueryRequest = {
-  query: DatasetQuery;
+export type InspectorFieldStats = {
+  distinct_count?: number;
+  nil_percent?: number;
+  // Numeric stats
+  min?: number;
+  max?: number;
+  avg?: number;
+  q1?: number;
+  q3?: number;
+  // Temporal stats
+  earliest?: string;
+  latest?: string;
 };
 
-export type ExtractColumnsFromQueryResponse = {
-  columns: string[];
+export type InspectorField = {
+  id?: number;
+  name: string;
+  display_name?: string;
+  base_type?: string;
+  semantic_type?: string;
+  stats?: InspectorFieldStats;
 };
 
-export type CheckQueryComplexityRequest = string;
+export type InspectorSummaryTable = {
+  table_name: string;
+  row_count?: number;
+  column_count: number;
+};
 
-export type QueryComplexity = {
-  is_simple: boolean;
-  reason: string;
+export type InspectorSummary = {
+  inputs: InspectorSummaryTable[];
+  output: InspectorSummaryTable;
+};
+
+export type InspectorSource = {
+  table_id?: ConcreteTableId;
+  table_name: string;
+  schema?: SchemaName;
+  db_id?: DatabaseId;
+  row_count?: number;
+  column_count: number;
+  fields: InspectorField[];
+};
+
+export type InspectorTarget = {
+  table_id: ConcreteTableId;
+  table_name: string;
+  schema?: SchemaName;
+  row_count?: number;
+  column_count: number;
+  fields: InspectorField[];
+};
+
+export type InspectorComparisonCard = {
+  id: InspectorCardId;
+  source: "input" | "output";
+  table_name: string;
+  field_name: string;
+  title: string;
+  display: CardDisplayType;
+  dataset_query: DatasetQuery;
+};
+
+export type InspectorColumnComparison = {
+  id: string;
+  output_column: string;
+  cards: InspectorComparisonCard[];
+};
+
+export type InspectorStatus = "not-run" | "ready";
+
+export type InspectorVisitedFields = {
+  all?: number[];
+};
+
+export type InspectorLensComplexityLevel = "fast" | "slow" | "very-slow";
+
+export type InspectorLensComplexity = {
+  level: InspectorLensComplexityLevel;
+  score?: number;
+};
+
+export type InspectorLensMetadata = {
+  id: InspectorLensId;
+  display_name: string;
+  description?: string;
+  complexity?: InspectorLensComplexity;
+};
+
+export type InspectorDiscoveryResponse = {
+  name: string;
+  description?: string;
+  status: InspectorStatus;
+  sources: InspectorSource[];
+  target?: InspectorTarget;
+  visited_fields?: InspectorVisitedFields;
+  available_lenses: InspectorLensMetadata[];
+};
+
+export type InspectorLayoutType = "flat" | "comparison";
+
+export type InspectorSection = {
+  id: InspectorSectionId;
+  title: string;
+  description?: string;
+  layout?: InspectorLayoutType;
+};
+
+export type InspectorCardDisplayType = CardDisplayType | "hidden";
+
+type InspectorCardMetadata = {
+  card_type: "join_step" | "table_count" | "base_count";
+  dedup_key: Array<string | number>;
+  table_id?: ConcreteTableId;
+  join_step?: number;
+  join_alias?: string;
+  join_strategy?: JoinStrategy;
+  group_id?: string;
+  group_role?: "input" | "output";
+  group_order?: number;
+  field_id?: number;
+};
+
+export type InspectorCard = {
+  id: InspectorCardId;
+  section_id?: InspectorSectionId;
+  title: string;
+  display: InspectorCardDisplayType;
+  dataset_query: DatasetQuery;
+  interestingness?: number;
+  summary?: boolean;
+  visualization_settings?: Record<string, unknown>;
+  metadata: InspectorCardMetadata;
+};
+
+export type InspectorSummaryHighlight = {
+  label: string;
+  value?: string | number;
+  card_id?: InspectorCardId;
+};
+
+export type InspectorLensSummary = {
+  text?: string;
+  highlights?: InspectorSummaryHighlight[];
+};
+
+// open schema with name key always present
+export type InspectorTriggerCondition = {
+  name: string;
+  card_id: InspectorCardId;
+  [key: string]: unknown;
+};
+
+export type InspectorAlertTrigger = {
+  id: string;
+  condition: InspectorTriggerCondition;
+  severity: "info" | "warning" | "error";
+  message: string;
+};
+
+export type LensParams = Record<string, string | number>;
+
+export type InspectorDrillLensTrigger = {
+  lens_id: InspectorLensId;
+  condition: InspectorTriggerCondition;
+  params?: LensParams;
+  reason?: string;
+};
+
+export type InspectorLens = {
+  id: InspectorLensId;
+  display_name: string;
+  summary?: InspectorLensSummary;
+  sections: InspectorSection[];
+  cards: InspectorCard[];
+  drill_lenses?: InspectorLensMetadata[];
+  alert_triggers?: InspectorAlertTrigger[];
+  drill_lens_triggers?: InspectorDrillLensTrigger[];
+};
+
+export type GetInspectorLensRequest = {
+  transformId: TransformId;
+  lensId: InspectorLensId;
+  lensParams?: LensParams;
 };
 
 export type MetabotSuggestedTransform = SuggestedTransform & {
   active: boolean;
   suggestionId: string; // internal unique identifier for marking active/inactive
+};
+
+export type RunInspectorQueryRequest = {
+  transformId: TransformId;
+  lensId: InspectorLensId;
+  query: DatasetQuery;
+  lensParams?: unknown;
+};
+
+export type LensHandle = {
+  id: InspectorLensId;
+  params?: LensParams;
 };

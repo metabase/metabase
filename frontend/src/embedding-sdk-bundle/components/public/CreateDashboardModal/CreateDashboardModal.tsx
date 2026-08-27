@@ -1,3 +1,4 @@
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   getCollectionIdSlugFromReference,
@@ -7,9 +8,10 @@ import type {
   MetabaseDashboard,
   SdkCollectionId,
 } from "embedding-sdk-bundle/types";
-import { useCollectionQuery, useLocale } from "metabase/common/hooks";
-import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
-import { useSelector } from "metabase/lib/redux";
+import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/common/CreateDashboard/CreateDashboardModal";
+import { useLocale } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
 
 import { createDashboardModalSchema } from "./CreateDashboardModal.schema";
 
@@ -22,6 +24,11 @@ export interface CreateDashboardModalProps {
    * Initial collection in which to create a dashboard. You can use predefined system values like `root` or `personal`.
    */
   initialCollectionId?: SdkCollectionId;
+
+  /**
+   * The collection to save the dashboard to. This will hide the collection picker from the save modal.
+   */
+  targetCollection?: SdkCollectionId;
 
   /**
    * Whether the modal is open or not.
@@ -41,6 +48,7 @@ export interface CreateDashboardModalProps {
 
 const CreateDashboardModalInner = ({
   initialCollectionId = "personal",
+  targetCollection,
   isOpen = true,
   onCreate,
   onClose,
@@ -55,9 +63,20 @@ const CreateDashboardModalInner = ({
     getCollectionIdSlugFromReference(state, initialCollectionId),
   );
 
-  const { isLoading: isCollectionQueryLoading } = useCollectionQuery({
-    id: collectionIdSlug,
-  });
+  const resolvedTargetCollection = useSelector((state) =>
+    targetCollection
+      ? getCollectionIdValueFromReference(state, targetCollection)
+      : undefined,
+  );
+
+  const { isLoading: isCollectionQueryLoading } = useGetCollectionQuery(
+    // To avoid `/api/collection/undefined` and 404.
+    collectionIdSlug === null || collectionIdSlug === undefined
+      ? skipToken
+      : { id: collectionIdSlug },
+  );
+
+  useTrackSdkComponentMount("CreateDashboardModal", null, {});
 
   if (isLocaleLoading || isCollectionQueryLoading) {
     return null;
@@ -69,6 +88,7 @@ const CreateDashboardModalInner = ({
       onCreate={onCreate}
       onClose={() => onClose?.()}
       collectionId={collectionId}
+      targetCollection={resolvedTargetCollection}
     />
   );
 };

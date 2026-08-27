@@ -12,7 +12,7 @@ import {
   isScalarFunnel,
 } from "../visualizations/funnel";
 
-import { copyColumn } from "./column";
+import { copyColumn, rewriteRemappedReferences } from "./column";
 
 /**
  * Creates visualization columns for a visualizer entity.
@@ -45,6 +45,22 @@ export const getVisualizationColumns = (
     ];
   }
 
+  // Per-source rename maps so remapped_from/to rewrites don't leak across sources.
+  const columnRenamesBySource = new Map<
+    VisualizerDataSourceId,
+    Map<string, string>
+  >();
+  Object.values(columnValuesMapping).forEach((mappings) =>
+    mappings.forEach((mapping) => {
+      if (typeof mapping !== "string") {
+        const existing =
+          columnRenamesBySource.get(mapping.sourceId) ?? new Map();
+        existing.set(mapping.originalName, mapping.name);
+        columnRenamesBySource.set(mapping.sourceId, existing);
+      }
+    }),
+  );
+
   const visualizationColumns: DatasetColumn[] = [];
   // For all other chart types, create visualization columns from column mappings
   Object.entries(columnValuesMapping).forEach(
@@ -63,11 +79,16 @@ export const getVisualizationColumns = (
             return;
           }
 
-          const visualizationColumn = copyColumn(
-            columnMapping.name,
-            datasetColumn,
-            dataSource.name,
-            visualizationColumns,
+          const columnRenames =
+            columnRenamesBySource.get(columnMapping.sourceId) ?? new Map();
+          const visualizationColumn = rewriteRemappedReferences(
+            copyColumn(
+              columnMapping.name,
+              datasetColumn,
+              dataSource.name,
+              visualizationColumns,
+            ),
+            columnRenames,
           );
 
           visualizationColumns.push(visualizationColumn);

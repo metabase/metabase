@@ -66,7 +66,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     cy.visit("/admin/settings/public-sharing");
     cy.findByTestId("enable-public-sharing-setting").within(() => {
       cy.findByText("Enabled").should("be.visible");
-      cy.findByText("Enabled").click();
+      cy.findByLabelText("Enabled").click();
       cy.findByText("Disabled").should("be.visible");
     });
   });

@@ -4,20 +4,15 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
-import { getAccentColors } from "metabase/lib/colors/groups";
 import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import { getAccentColors } from "metabase/ui/colors/groups";
+import type { ChartSettingSegmentsEditorProps } from "metabase/visualizations/types";
 import type { ScalarSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
 import S from "./ChartSettingSegmentsEditor.module.css";
-
-export interface ChartSettingSegmentsEditorProps {
-  value: ScalarSegment[];
-  onChange: (value: ScalarSegment[]) => void;
-  canRemoveAll?: boolean;
-}
 
 export const ChartSettingSegmentsEditor = ({
   value: segments,
@@ -27,7 +22,7 @@ export const ChartSettingSegmentsEditor = ({
   const onChangeProperty = (
     index: number,
     property: keyof ScalarSegment,
-    value: number | string,
+    value: number | string | null,
   ) =>
     onChange([
       ...segments.slice(0, index),
@@ -71,9 +66,11 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   <NumberInput
                     className={CS.full}
-                    value={segment.min}
+                    value={segment.min ?? ""}
                     onBlur={(e) => {
-                      const newValue = parseFloat(e.target.value);
+                      const rawValue = e.target.value;
+                      const newValue =
+                        rawValue === "" ? null : parseFloat(rawValue);
                       if (newValue !== segment.min) {
                         onChangeProperty(index, "min", newValue);
                       }
@@ -85,9 +82,11 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   <NumberInput
                     className={CS.full}
-                    value={segment.max}
+                    value={segment.max ?? ""}
                     onBlur={(e) => {
-                      const newValue = parseFloat(e.target.value);
+                      const rawValue = e.target.value;
+                      const newValue =
+                        rawValue === "" ? null : parseFloat(rawValue);
                       if (newValue !== segment.max) {
                         onChangeProperty(index, "max", newValue);
                       }
@@ -99,7 +98,7 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   {(segments.length > 1 || canRemoveAll) && (
                     <Button
-                      leftSection={<Icon name="trash" c="text-tertiary" />}
+                      leftSection={<Icon name="trash" c="text-disabled" />}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
@@ -134,16 +133,20 @@ export const ChartSettingSegmentsEditor = ({
 function getColorPalette() {
   return [
     ...getAccentColors(),
-    Color(color("error")).hex(),
-    Color(color("warning")).hex(),
-    Color(color("success")).hex(),
-    Color(color("background-tertiary")).hex(),
+    Color(color("feedback-negative")).hex(),
+    Color(color("feedback-warning")).hex(),
+    Color(color("feedback-positive")).hex(),
+    Color(color("background_page-tertiary")).hex(),
   ];
 }
 
 function newSegment(segments: ScalarSegment[]) {
   const palette = getColorPalette();
   const lastSegment = segments[segments.length - 1];
+  const lastMax =
+    typeof lastSegment?.max === "number" && Number.isFinite(lastSegment.max)
+      ? lastSegment.max
+      : null;
   const lastColorIndex = lastSegment
     ? _.findIndex(palette, (color) => color === lastSegment.color)
     : -1;
@@ -153,8 +156,8 @@ function newSegment(segments: ScalarSegment[]) {
       : palette[0];
 
   return {
-    min: lastSegment ? lastSegment.max : 0,
-    max: lastSegment ? lastSegment.max * 2 : 1,
+    min: lastMax !== null ? lastMax : 0,
+    max: lastMax !== null ? lastMax * 2 : 1,
     color: nextColor,
     label: "",
   };

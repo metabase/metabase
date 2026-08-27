@@ -34,10 +34,20 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
             cy.findByText("New embed").click();
           });
 
+        embedModalEnableEmbeddingCard().should(
+          "contain.text",
+          "To continue, enable guest embeds and agree to the usage conditions.",
+        );
+
         embedModalEnableEmbeddingCard().within(() => {
-          cy.findByText(
-            "To continue, enable guest embeds and agree to the usage conditions.",
-          ).should("exist");
+          cy.log("usage conditions should be a link");
+          cy.findByRole("link", { name: "usage conditions" })
+            .should(
+              "have.attr",
+              "href",
+              "https://metabase.com/license/embedding",
+            )
+            .should("have.attr", "target", "_blank");
         });
 
         cy.log("shows tooltip with fair usage info");
@@ -69,16 +79,14 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
           .should("be.visible")
           .should("be.disabled");
 
-        // Going to the next step and selecting "Orders in a dashboard" explicitely
+        // Selecting "Orders in a dashboard" explicitly on the first step
         // because sometimes it selects another one that's been used recently
         // see EMB-1106
-        cy.log(
-          "Navigating to embed flow step 2 and selecting an item to embed",
-        );
-        cy.findByRole("button", { name: "Next" }).click();
-        cy.get('[data-testid="embed-recent-item-card"]')
-          .should("have.length.greaterThan", 0)
-          .contains("Orders in a dashboard")
+        cy.log("Selecting an item to embed on the first step");
+        cy.findByTestId("embed-browse-entity-button").click();
+        H.entityPickerModal()
+          .findAllByText("Orders in a dashboard")
+          .first()
           .click();
 
         cy.log("Preview should load after embedding is enabled");
@@ -102,13 +110,21 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
             cy.findByText("New embed").click();
           });
 
+        embedModalEnableEmbeddingCard()
+          .should("contain.text", "Agree to the")
+          .should("contain.text", "to continue.");
+
         embedModalEnableEmbeddingCard().within(() => {
-          cy.findByText("Agree to the usage conditions to continue.").should(
-            "exist",
-          );
+          cy.findByRole("link", { name: "usage conditions" })
+            .should(
+              "have.attr",
+              "href",
+              "https://metabase.com/license/embedding",
+            )
+            .should("have.attr", "target", "_blank");
 
           cy.findByText(
-            "To continue, enable guest embeds and agree to the usage conditions.",
+            /To continue, enable guest embeds and agree to the/,
           ).should("not.exist");
         });
 

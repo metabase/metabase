@@ -1,8 +1,13 @@
 import { type ReactNode, forwardRef } from "react";
 
+import {
+  FlexibleSizeComponent,
+  type FlexibleSizeProps,
+} from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { SdkLoader } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkLoader";
+import { useArePluginsReady } from "embedding-sdk-bundle/hooks/private/use-are-plugins-ready";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   getInitStatus,
@@ -12,14 +17,19 @@ import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 
 export type PublicComponentWrapperProps = {
   children: ReactNode;
-} & CommonStylingProps;
+} & CommonStylingProps &
+  Pick<FlexibleSizeProps, "height" | "width">;
 
 export const PublicComponentWrapper = forwardRef<
   HTMLDivElement,
   PublicComponentWrapperProps
->(function PublicComponentWrapper({ children, className, style }, ref) {
+>(function PublicComponentWrapper(
+  { children, className, style, height, width },
+  ref,
+) {
   const initStatus = useSdkSelector(getInitStatus);
   const usageProblem = useSdkSelector(getUsageProblem);
+  const pluginsReady = useArePluginsReady();
 
   let content = children;
 
@@ -41,9 +51,26 @@ export const PublicComponentWrapper = forwardRef<
     content = null;
   }
 
+  // Wait for EE plugins to be initialized before rendering children.
+  if (!pluginsReady && content === children) {
+    content = <SdkLoader />;
+  }
+
+  // EMB-875: wrap loader/error early returns in FlexibleSizeComponent so the
+  // box matches the post-init tree's box (which renders its own
+  // FlexibleSizeComponent inside). Prevents loader from collapsing in a
+  // 0-height container then jumping to centered after init.
+  const isEarlyReturn = content !== children;
+
   return (
     <PublicComponentStylesWrapper className={className} style={style} ref={ref}>
-      {content}
+      {isEarlyReturn ? (
+        <FlexibleSizeComponent height={height} width={width}>
+          {content}
+        </FlexibleSizeComponent>
+      ) : (
+        content
+      )}
     </PublicComponentStylesWrapper>
   );
 });

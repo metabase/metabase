@@ -14,12 +14,14 @@
    [metabase.embedding-rest.api.common :as api.embed.common]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.parameters.schema :as parameters.schema]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
-   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]))
+   [ring.util.codec :as codec]
+   [toucan2.core :as t2]))
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
@@ -50,12 +52,13 @@
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map
                        [:token api.embed.common/EncodedToken]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (let [unsigned-token (check-and-unsign token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        card           (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/process-query-for-card-with-params
      :export-format    :api
-     :card-id          card-id
+     :card             card
      :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
      :constraints      {:max-results max-results}
@@ -67,9 +70,12 @@
                                  [:token     string?]
                                  [:param-key string?]]]
   (let [unsigned-token (check-and-unsign token)
-        card           (api.embed.common/card-for-unsigned-token
-                        unsigned-token
-                        :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))]
+        ;; resolving param values needs the Card's real query, so skip the query stripping
+        ;; in [[metabase.public-sharing-rest.api/remove-card-non-public-columns]]
+        card           (binding [qp.perms/*param-values-query* true]
+                         (api.embed.common/card-for-unsigned-token
+                          unsigned-token
+                          :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))]
     (api.embed.common/card-param-values {:unsigned-token unsigned-token
                                          :card           card
                                          :param-key      param-key})))
@@ -85,9 +91,12 @@
                                  [:param-key ms/NonBlankString]]
    {:keys [value]}           :- [:map [:value :string]]]
   (let [unsigned-token (check-and-unsign token)
-        card           (api.embed.common/card-for-unsigned-token
-                        unsigned-token
-                        :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))]
+        ;; resolving param values needs the Card's real query, so skip the query stripping
+        ;; in [[metabase.public-sharing-rest.api/remove-card-non-public-columns]]
+        card           (binding [qp.perms/*param-values-query* true]
+                         (api.embed.common/card-for-unsigned-token
+                          unsigned-token
+                          :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))]
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned-token
                                                  :card           card
                                                  :param-key      param-key
@@ -114,7 +123,8 @@
   [{:keys [token param-key]} :- [:map
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
+  (check-and-unsign token)
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            nil
@@ -128,7 +138,8 @@
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [{:keys [token param-key prefix]} :- api.embed.common/SearchParams
-   query-params]
+   query-params :- api.embed.common/QueryParams]
+  (check-and-unsign token)
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            prefix
@@ -144,7 +155,8 @@
   [{:keys [token param-key]} :- [:map
                                  [:token api.embed.common/EncodedToken]
                                  [:param-key ms/NonBlankString]]
-   {:keys [value]}]
+   {:keys [value]} :- [:map [:value :string]]]
+  (check-and-unsign token)
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -157,16 +169,19 @@
                                            [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+        dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card             (api/check-404 (t2/select-one :model/Card card-id))
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
      :export-format    :api
-     :dashboard-id     dashboard-id
-     :dashcard-id      dashcard-id
-     :card-id          card-id
+     :dashboard        dashboard
+     :dashcard         dashcard
+     :card             card
      :embedding-params embedding-params
      :token-params     token-params
      :query-params     (api.embed.common/parse-query-params query-params))))
@@ -179,12 +194,13 @@
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map
                        [:token api.embed.common/EncodedToken]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (let [unsigned-token (check-and-unsign token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        card           (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/process-query-for-card-with-params
      :export-format    :api
-     :card-id          card-id
+     :card             card
      :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
      :query-params     (api.embed.common/parse-query-params query-params)
@@ -200,16 +216,19 @@
                                            [:token api.embed.common/EncodedToken]
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
-   query-params]
+   query-params :- api.embed.common/QueryParams]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+        dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card             (api/check-404 (t2/select-one :model/Card card-id))
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
      :export-format    :api
-     :dashboard-id     dashboard-id
-     :dashcard-id      dashcard-id
-     :card-id          card-id
+     :dashboard        dashboard
+     :dashcard         dashcard
+     :card             card
      :embedding-params embedding-params
      :token-params     token-params
      :query-params     (api.embed.common/parse-query-params query-params)
@@ -229,16 +248,18 @@
        [:y ms/Int]]
    {:keys [parameters latField lonField]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]
-       [:latField string?]
-       [:lonField string?]]]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned-token   (check-and-unsign token)
         card-id    (api.embed.common/unsigned-token->card-id unsigned-token)
-        parameters (json/decode+kw parameters)
-        lat-field  (json/decode+kw latField)
-        lon-field  (json/decode+kw lonField)]
+        card       (api/check-404 (t2/select-one :model/Card card-id))]
     (request/as-admin
-      (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-card
+       card
+       (api.embed.common/tile-parameters-for-card
+        card (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
+       zoom x y latField lonField))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -256,13 +277,17 @@
        [:y           ms/Int]]
    {:keys [parameters latField lonField]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]
-       [:latField string?]
-       [:lonField string?]]]
+       [:parameters {:optional true} ::parameters.schema/api.parameter-values]
+       [:latField ::api.tiles/legacy-ref]
+       [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        parameters       (json/decode+kw parameters)
-        lat-field        (json/decode+kw latField)
-        lon-field        (json/decode+kw lonField)]
+        dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+        dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card             (api/check-404 (t2/select-one :model/Card card-id))]
     (request/as-admin
-      (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-dashcard
+       dashboard dashcard card
+       (api.embed.common/tile-parameters-for-dashboard
+        dashboard (embed/get-in-unsigned-token-or-throw unsigned-token [:params]) parameters)
+       zoom x y latField lonField))))

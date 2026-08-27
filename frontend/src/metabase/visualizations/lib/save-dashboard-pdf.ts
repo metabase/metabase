@@ -1,7 +1,9 @@
 import Color from "color";
 import { t } from "ttag";
 
-import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { isStorybookActive } from "metabase/env";
+import { getCspNonce } from "metabase/utils/csp";
+import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -9,7 +11,18 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
+import {
+  fixParameterLegendOffsetForExport,
+  resolveSvgVarPaint,
+  restoreNestedSvgOverflow,
+} from "./image-exports";
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
+
+// DOM ids on exportable nodes so the PDF exporter and downloads thunk can find them
+export const DASHBOARD_PDF_EXPORT_ROOT_ID =
+  "Dashboard-Parameters-And-Cards-Container";
+export const DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID =
+  "Dashboard-Parameters-Content";
 
 const TARGET_ASPECT_RATIO = 21 / 17;
 
@@ -139,7 +152,7 @@ const createHeaderElement = (dashboardName: string, marginBottom: number) => {
     font-size: 24px;
     font-weight: 700;
     color: var(--mb-color-text-primary);
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
     padding: 24px 16px 16px 16px;
     margin-bottom: ${marginBottom}px;
   `;
@@ -154,6 +167,7 @@ const PAGE_PADDING = 16;
 interface SavePdfProps {
   fileName: string;
   selector: string;
+  parametersNodeSelector: string;
   dashboardName: string;
   includeBranding: boolean;
 }
@@ -173,6 +187,7 @@ async function isValidColor(str: string) {
 export const saveDashboardPdf = async ({
   fileName,
   selector,
+  parametersNodeSelector,
   dashboardName,
   includeBranding,
 }: SavePdfProps) => {
@@ -187,7 +202,7 @@ export const saveDashboardPdf = async ({
 
   const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
   const parametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+    ?.querySelector(parametersNodeSelector)
     ?.cloneNode(true);
 
   let parametersHeight = 0;
@@ -231,15 +246,10 @@ export const saveDashboardPdf = async ({
     width: contentWidth,
     useCORS: true,
     backgroundColor,
-    scale: window.devicePixelRatio || 1,
-    /**
-     * html2canvas-pro creates inline <style> elements that can be blocked by
-     * CSP (observed from Firefox). We created a temporary patch to support
-     * nonce until the library officially implements it.
-     *
-     * @see https://github.com/metabase/metabase/issues/66234
-     */
-    nonce: window.MetabaseNonce,
+    scale: Math.min(window.devicePixelRatio || 1, 2),
+    // We have patched html2canvas so that we can use our Nonce token. Without the patch, it complains
+    // that the token is not long enough
+    cspNonce: getCspNonce(),
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
@@ -256,11 +266,12 @@ export const saveDashboardPdf = async ({
           card.style.boxShadow = "none";
 
           // Set a clean border if needed
-          card.style.border = "1px solid var(--mb-color-border)";
+          card.style.border = "1px solid var(--mb-color-border-neutral)";
         }
       });
 
       if (parametersNode instanceof HTMLElement) {
+        fixParameterLegendOffsetForExport(parametersNode);
         node.insertBefore(parametersNode, node.firstChild);
       }
       node.insertBefore(pdfHeader, node.firstChild);
@@ -269,8 +280,22 @@ export const saveDashboardPdf = async ({
         const branding = createBrandingElement(size);
         node.insertBefore(branding, node.firstChild);
       }
+
+      resolveSvgVarPaint(node);
+      restoreNestedSvgOverflow(node);
     },
   });
+
+  // For Storybook/Loki visual testing, display the canvas as an image and skip PDF generation
+  if (isStorybookActive) {
+    const blob = await new Promise<Blob | null>((resolve) =>
+      image.toBlob(resolve, "image/png"),
+    );
+    if (blob) {
+      openImageBlobOnStorybook({ canvas: image, blob });
+    }
+    return;
+  }
 
   const { default: jspdf } = await import("jspdf");
 
@@ -359,8 +384,14 @@ export const saveDashboardPdf = async ({
       }
     }
 
+    pageCanvas.width = 0;
+    pageCanvas.height = 0;
+
     prevBreak = pageBreak;
   });
+
+  image.width = 0;
+  image.height = 0;
 
   pdf.save(fileName);
 };

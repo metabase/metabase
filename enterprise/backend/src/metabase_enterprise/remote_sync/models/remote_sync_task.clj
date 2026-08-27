@@ -2,8 +2,8 @@
   "Model for tracking remote sync tasks and their progress."
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.models.interface :as mi]
+   [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -19,6 +19,10 @@
 (methodical/defmethod t2/table-name :model/RemoteSyncTask [_model] :remote_sync_task)
 
 (derive :model/RemoteSyncTask :metabase/model)
+
+(t2/deftransforms :model/RemoteSyncTask
+  {:conflicts mi/transform-json
+   :outcome   mi/transform-json})
 
 (declare current-task)
 
@@ -80,6 +84,39 @@
               {:progress progress
                :last_progress_report_at (mi/now)}))
 
+(def ^:private default-progress-throttle-ms
+  "Minimum ms between throttled (non-boundary) progress writes."
+  10000)
+
+(defn make-progress-reporter
+  "Returns a stateful progress reporter for `task-id`.
+
+  Call the returned fn with a fraction in [0.0, 1.0]. It writes progress (and bumps
+  `last_progress_report_at`) at most once per throttle window and never moves the fraction backward.
+  Pass `{:force? true}` to write immediately regardless of the throttle — use at phase boundaries.
+
+  Options:
+   - :throttle-ms  minimum ms between throttled writes (default 10000)
+   - :now-fn       0-arg fn returning current millis (default `System/currentTimeMillis`)
+   - :write-fn     1-arg fn taking the clamped fraction (default `update-progress!` for `task-id`)"
+  ([task-id] (make-progress-reporter task-id nil))
+  ([task-id {:keys [throttle-ms now-fn write-fn]
+             :or   {throttle-ms default-progress-throttle-ms}}]
+   (let [now-fn        (or now-fn #(System/currentTimeMillis))
+         write-fn      (or write-fn (fn [f] (update-progress! task-id f)))
+         last-ms       (volatile! nil)
+         last-fraction (volatile! -1.0)]
+     (fn report!
+       ([fraction] (report! fraction nil))
+       ([fraction {:keys [force?]}]
+        (let [now (now-fn)
+              f   (-> (double fraction) (max 0.0) (min 1.0))]
+          (when (and (>= f @last-fraction)
+                     (or force? (nil? @last-ms) (>= (- now @last-ms) throttle-ms)))
+            (vreset! last-ms now)
+            (vreset! last-fraction f)
+            (write-fn f))))))))
+
 (defn set-version!
   "Sets the version value for a sync task.
 
@@ -93,13 +130,17 @@
 (defn complete-sync-task!
   "Marks a sync task as completed.
 
-  Takes the ID of the sync task to mark as completed.
+  Takes the ID of the sync task to mark as completed and an optional `outcome` map describing the result
+  (e.g. `{:kind \"pulled\" :count 12 :branch \"main\"}`). The UI renders the outcome to a localized
+  confirmation message; we store structured data rather than customer-facing copy.
 
   Returns the number of rows updated (should be 1 if successful)."
-  [task-id]
-  (t2/update! :model/RemoteSyncTask task-id
-              {:progress 1.0
-               :ended_at (mi/now)}))
+  ([task-id] (complete-sync-task! task-id nil))
+  ([task-id outcome]
+   (t2/update! :model/RemoteSyncTask task-id
+               {:progress 1.0
+                :ended_at (mi/now)
+                :outcome  outcome})))
 
 (defn fail-sync-task!
   "Marks a sync task as failed.
@@ -123,11 +164,37 @@
                           [:<> :started_at nil]
                           [:= :ended_at nil]
                           [:<
-                           (t/minus (t/offset-date-time) (t/millis (settings/remote-sync-task-time-limit-ms)))
+                           (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms)))
                            :last_progress_report_at]]
                   :limit 1
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
+
+(defn supersede-stale-tasks!
+  "Marks any genuinely stale task rows as cancelled and terminated.
+
+  A task is considered stale if it has `started_at` set, `ended_at` nil, and `last_progress_report_at`
+  is older than `remote-sync-task-time-limit-ms`. The DB schema requires `last_progress_report_at`
+  to be non-null with a default of `current_timestamp`, so a brand-new task always has a recent
+  value (set on insert) and is not considered stale.
+
+  Called from `create-task-with-lock!` before creating a new task, to clean up rows whose owning
+  JVM/thread is gone or hung. Returns nothing meaningful.
+
+  Combined with `handle-task-result!`'s already-terminated check, this means a stale task's thread
+  that eventually wakes up and tries to complete will detect that its row is terminated and exit
+  without writing the setting or overwriting bookkeeping."
+  []
+  (let [cutoff (t/minus (t/offset-date-time)
+                        (t/millis (setting/get :remote-sync-task-time-limit-ms)))]
+    (t2/query {:update (t2/table-name :model/RemoteSyncTask)
+               :set    {:cancelled     true
+                        :ended_at      (mi/now)
+                        :error_message "Superseded after staleness timeout"}
+               :where  [:and
+                        [:<> :started_at nil]
+                        [:= :ended_at nil]
+                        [:< :last_progress_report_at cutoff]]})))
 
 (defn most-recent-task
   "Gets the most recently run task, including currently running tasks.
@@ -206,7 +273,31 @@
   [task]
   (and (nil? (:ended_at task))
        (t/< (:last_progress_report_at task)
-            (t/minus (t/offset-date-time) (t/millis (settings/remote-sync-task-time-limit-ms))))))
+            (t/minus (t/offset-date-time) (t/millis (setting/get :remote-sync-task-time-limit-ms))))))
+
+(defn conflict?
+  "Checks if a task ended with conflicts.
+
+  Takes a RemoteSyncTask instance.
+
+  Returns true if the task has conflicts stored, false otherwise."
+  [task]
+  (and (some? (:ended_at task))
+       (false? (:cancelled task))
+       (nil? (:error_message task))
+       (some? (:conflicts task))))
+
+(defn conflict-sync-task!
+  "Marks a sync task as having conflicts.
+
+  Takes the ID of the sync task and a collection of conflicts (vector of strings).
+  Conflicts are automatically serialized to JSON via the model transform.
+
+  Returns the number of rows updated (should be 1 if successful)."
+  [task-id conflicts]
+  (t2/update! :model/RemoteSyncTask task-id
+              {:ended_at (mi/now)
+               :conflicts conflicts}))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
 
@@ -222,6 +313,7 @@
   (for [task tasks]
     (assoc task :status (cond
                           (failed? task) :errored
+                          (conflict? task) :conflict
                           (successful? task) :successful
                           (cancelled? task) :cancelled
                           (timed-out? task) :timed-out

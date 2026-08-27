@@ -27,7 +27,7 @@ Here's a high-level overview:
 
 ### 1. Enable JWT SSO in your Metabase
 
-1. Configure JWT by going to **Admin Settings** > **Settings** > **Authentication** and clicking on **Setup**
+1. Configure JWT by going to **Admin** > **Settings** > **Authentication** and clicking on **JWT**
 2. Enter the JWT Identity Provider URI, for example `http://localhost:9090/sso/metabase`. This is a new endpoint you will add in your backend to handle authentication.
 3. Generate a key and copy it to your clipboard.
 
@@ -187,7 +187,7 @@ Additionally, if you have SAML set up, but you'd prefer to use JWT SSO, you'll n
 
 **Admin setting changes in Metabase**:
 
-In **Admin Settings** > **Authentication** > **JWT SSO**, set the `JWT Identity Provider URI` to the URL of your JWT SSO endpoint, e.g., `http://localhost:9090/sso/metabase`.
+In **Admin** > **Authentication** > **JWT SSO**, set the `JWT Identity Provider URI` to the URL of your JWT SSO endpoint, e.g., `http://localhost:9090/sso/metabase`.
 
 **Before:**
 
@@ -206,7 +206,7 @@ const authConfig = defineMetabaseAuthConfig({
 });
 ```
 
-The SDK now uses the JWT Identity Provider URI setting configured in your Metabase admin settings (Admin > Settings > Authentication > JWT).
+The SDK now uses the JWT Identity Provider URI setting configured in your Metabase Admin (Admin > Settings > Authentication > JWT).
 
 ### Update the `fetchRequestToken` function signature
 
@@ -281,9 +281,11 @@ app.get("/sso/metabase", async (req, res) => {
 });
 ```
 
+For modular embedding, Metabase exchanges the JWT via `POST /auth/sso` with a JSON body (not a `GET` redirect). Full app embedding typically uses the `GET` redirect shown above. See [JWT-based authentication](../people-and-groups/authenticating-with-jwt.md).
+
 ## Embedding Metabase in a different domain
 
-{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embbedding=true is_plural=true %}
+{% include plans-blockquote.html feature="Authenticated modular embeds" convert_pro_link_to_embedding=true is_plural=true %}
 
 This section applies only to **authenticated embeds**. Guest embeds work cross-domain without additional configuration.
 
@@ -291,13 +293,13 @@ If you want to embed Metabase in another domain (say, if Metabase is hosted at `
 
 ### Allow your domain in CORS
 
-Go to **Admin settings** > **Embedding** > **Modular embedding** and add your embedding domain under **Cross-Origin Resource Sharing (CORS)** (such as `https://*.example.com`).
+Go to **Admin** > **Embedding** > **Modular embedding** and add your embedding domain under **Cross-Origin Resource Sharing (CORS)** (such as `https://*.example.com`).
 
 ### Configure session cookies when testing locally
 
 When you use `useExistingUserSession: true` during development on a different domain, the browser must send the existing Metabase session cookie cross-origin into the iframe. To allow this, you'll need to set the session cookie's SameSite value to "none".
 
-You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
+You can set session cookie's SameSite value in **Admin** > **Embedding** > **Security** > **SameSite cookie setting**.
 
 SameSite values include:
 

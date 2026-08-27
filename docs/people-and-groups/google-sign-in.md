@@ -7,7 +7,7 @@ redirect_from:
 
 # Google Sign-In
 
-Enabling [Google Sign-In](https://developers.google.com/identity/sign-in/web/sign-in) for single sign-on (SSO) lets your team log in with a click instead of using email and password. SSO can also be used to let people create Metabase accounts without asking an admin to add each person manually. You can find SSO options under **Settings** > **Admin settings** > **Authentication**.
+Enabling [Google Sign-In](https://developers.google.com/identity/sign-in/web/sign-in) for single sign-on (SSO) lets your team log in with a click instead of using email and password. SSO can also be used to let people create Metabase accounts without asking an admin to add each person manually. You can find SSO options under **Settings** > **Admin** > **Authentication**.
 
 If you'd like to have people authenticate with [SAML][saml-docs] or [JWT][jwt-docs], Metabase's [Pro and Enterprise](https://www.metabase.com/pricing/) let you do just that.
 
@@ -32,15 +32,15 @@ Next, you'll have to create authorization credentials and [get a Google API Clie
 
 Once you have your Google API `Client ID` (ending in `.apps.googleusercontent.com`), visit your Metabase and:
 
-1. Click on the settings **Gear** icon in the upper right.
-2. Select **Admin settings**.
+1. Click on the settings **grid** icon in the upper right.
+2. Select **Admin**.
 3. In the **Settings** tab, click on **Authentication**.
 4. On the **Sign in with Google** card, click **Set up**.
 5. In the **Client ID** field, paste your Google API Client ID.
 
 ## Creating Metabase accounts with Google Sign-in
 
-> On [paid plans](https://www.metabase.com/pricing/), you're [charged for each active account](../cloud/how-billing-works.md#what-counts-as-a-user-account).
+> On [paid plans](https://www.metabase.com/pricing/), you're [charged for each active account](https://www.metabase.com/how-billing-works#what-counts-as-a-user-account).
 
 If people's Google account email addresses are from a specific domain, and you want to allow them to sign up on their own, you can enter that domain in the **Domain** field.
 

@@ -8,13 +8,13 @@ import {
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { SiteUrlWidget } from "./SiteUrlWidget";
 
@@ -33,6 +33,7 @@ const setup = (props: { isHosted?: boolean; isEnvSetting?: boolean }) => {
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
       createMockSettingDefinition({
+        // Unjustified type cast. FIXME
         key: key as SettingKey,
         value,
         is_env_setting: props.isEnvSetting && key === "site-url",

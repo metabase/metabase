@@ -65,16 +65,18 @@ export const ButtonBar = ({
       justify="space-between"
       align="center"
       p="md"
+      miw={0}
       style={{
-        borderTop: "1px solid var(--mb-color-border)",
+        borderTop: "1px solid var(--mb-color-border-neutral)",
+        overflowX: "auto",
       }}
     >
-      <Flex gap="md">
+      <Flex gap="md" mr="md">
         <NewCollectionDialog />
         <NewDashboardDialog />
       </Flex>
       {error && (
-        <Text c="error" px="md" lh="1rem">
+        <Text c="feedback-negative" px="md" lh="1rem">
           {error}
         </Text>
       )}

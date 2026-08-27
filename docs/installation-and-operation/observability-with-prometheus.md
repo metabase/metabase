@@ -162,8 +162,10 @@ Metrics exported by Metabase include:
 - `metabase_email_messages_created`
 - `metabase_email_message_errors_total`
 - `metabase_email_message_errors_created`
+- `metabase_security_center_last_sync_timestamp_seconds`
+- `metabase_security_center_vulnerable_advisories`
 
 ## Further reading
 
 - [Running Metabase](../troubleshooting-guide/running.md)
-- [Monitoring Metabase](./monitoring-metabase.md)
+- [Profiling your Metabase](../troubleshooting-guide/profiling-metabase.md)

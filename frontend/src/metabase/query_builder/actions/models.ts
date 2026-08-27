@@ -1,13 +1,14 @@
-import { push } from "react-router-redux";
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { addUndo } from "metabase/redux/undo";
+import { SET_METADATA_DIFF } from "metabase/redux/query-builder";
 import type {
   DatasetEditorTab,
   Dispatch,
   GetState,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
+import { navigate } from "metabase/router";
 
 import { getQuestion } from "../selectors";
 
@@ -26,8 +27,8 @@ export const setDatasetEditorTab =
     dispatch(runDirtyQuestionQuery());
   };
 
-export const onCancelCreateNewModel = () => async (dispatch: Dispatch) => {
-  await dispatch(push("/"));
+export const onCancelCreateNewModel = () => async () => {
+  navigate("/");
 };
 
 export const turnQuestionIntoModel =
@@ -37,17 +38,14 @@ export const turnQuestionIntoModel =
       return;
     }
 
-    const model = question
-      .setType("model")
-      .setPinned(true)
-      .setDisplay("table")
-      .setSettings({});
+    const model = question.setType("model").setDisplay("table").setSettings({});
     await dispatch(apiUpdateQuestion(model, { rerunQuery: true }));
 
     dispatch(
       addUndo({
         message: t`This is a model now.`,
-        actions: [apiUpdateQuestion(question, { rerunQuery: true })],
+        action: () =>
+          dispatch(apiUpdateQuestion(question, { rerunQuery: true })),
       }),
     );
   };
@@ -70,12 +68,11 @@ export const turnModelIntoQuestion =
     dispatch(
       addUndo({
         message: t`This is a question now.`,
-        actions: [apiUpdateQuestion(model)],
+        action: () => dispatch(apiUpdateQuestion(model)),
       }),
     );
   };
 
-export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
 export const setMetadataDiff = createAction(SET_METADATA_DIFF);
 
 export const onModelPersistenceChange =

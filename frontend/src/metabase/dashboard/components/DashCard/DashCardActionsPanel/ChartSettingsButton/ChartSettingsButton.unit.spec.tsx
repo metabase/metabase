@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ChartSettingsButton } from "metabase/dashboard/components/DashCard/DashCardActionsPanel/ChartSettingsButton/ChartSettingsButton";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
-import registerVisualizations from "metabase/visualizations/register";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockColumn,
   createMockDashboard,

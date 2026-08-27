@@ -23,10 +23,12 @@ const MODEL_NAME: Record<EnabledSearchModel, string> = {
   dashboard: "Dashboard",
   database: "Database",
   dataset: "Model",
+  measure: "Measure",
   metric: "Metric",
   table: "Table",
   "indexed-entity": "Indexed record",
   document: "Document",
+  exploration: "Research",
   transform: "Transform",
 };
 
@@ -79,6 +81,7 @@ const setup = async ({
   setupSearchEndpoints(
     availableModels.map((type, index) =>
       createMockSearchResult({
+        // Unjustified type cast. FIXME
         model: type as SearchModel,
         id: index + 1,
         database_id: TEST_DATABASE.id,
@@ -103,9 +106,9 @@ const setup = async ({
 };
 
 const getCheckboxes = () => {
-  return within(screen.getByTestId("type-filter-checkbox-group")).getAllByRole(
-    "checkbox",
-  ) as HTMLInputElement[];
+  return within(
+    screen.getByTestId("type-filter-checkbox-group"),
+  ).getAllByRole<HTMLInputElement>("checkbox");
 };
 
 describe("TypeFilterContent", () => {

@@ -29,4 +29,6 @@ export function readClipboard() {
 }
 
 const isMac = Cypress.platform === "darwin";
+
 export const metaKey = isMac ? "Meta" : "Control";
+export const holdMetaKey = isMac ? { metaKey: true } : { ctrlKey: true };

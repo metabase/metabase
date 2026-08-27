@@ -24,10 +24,10 @@
 #      working directory.
 #
 #   2. Use the -C flag to specify the project directory:
-#      mise exec -C /path/to/metabase -- yarn build
+#      mise exec -C /path/to/metabase -- bun run build
 #
 #   3. Set MISE_PROJECT_DIR environment variable:
-#      MISE_PROJECT_DIR=/path/to/metabase yarn build
+#      MISE_PROJECT_DIR=/path/to/metabase bun run build
 #
 #  For more info, see: docs/developers-guide/devenv.md > 'IDE and editor setup' Section
 
@@ -35,11 +35,14 @@
 # Automatically install tools when entering the project directory
 auto_install = true
 
+# Uses the version in each tool's idiomatic version file when installing
+idiomatic_version_file_enable_tools = ["bun", "node"]
+
 [env]
 # Add bin/ to PATH so mage and other project scripts are available
 _.path = ["{{ config_root }}/bin"]
 
-# Disable corepack - we use yarn classic installed via mise
+# Disable corepack - we use bun installed via mise
 COREPACK_ENABLE_AUTO_PIN = "0"
 
 # =============================================================================
@@ -47,24 +50,25 @@ COREPACK_ENABLE_AUTO_PIN = "0"
 # =============================================================================
 
 [tools]
-# Node.js - for frontend development
-# We pin to a specific version to ensure consistency across the team.
-# This should match .nvmrc for compatibility with other version managers.
-node = "22.13.1"
+# Node.js - for frontend development, installed with the version specified in .nvmrc
 
-# Yarn Classic - for package management
-# IMPORTANT: Metabase requires Yarn 1.x (Classic), NOT Yarn 2+ (Berry)
-yarn = "1.22.22"
+# Bun - for package management and running scripts, installed with the version specified in package.json
 
 # Java - for Clojure backend
 # We require Eclipse *Temurin* (AdoptOpenJDK successor) for consistency.
-java = "temurin-21.0.9+10.0.LTS"
+java = "temurin-25.0.3+9.0.LTS"
 
 # Clojure CLI - for backend development and REPL
 clojure = "1.12.3"
 
 # Babashka
 babashka = "1.12.212"
+
+# Python - for sqlglot installation via uv
+python = "3.12"
+
+# Uv - for sqlglot installation
+uv = "0.10.2"
 
 # =============================================================================
 # Other Tools (quality of life)
@@ -107,6 +111,6 @@ op = "latest"
 # https://github.com/jqlang/jq
 jq = "latest"
 
-# claude code - Terminal AI coding agent
-# https://github.com/anthropics/claude-code
-claude = "latest"
+# actionlint - Linting for Github Actions workflows
+# https://github.com/rhysd/actionlint
+actionlint = "latest"

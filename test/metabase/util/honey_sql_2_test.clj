@@ -49,7 +49,6 @@
   (testing "Basic format test not including a specific quoting option"
     (is (= ["SELECT setting"]
            (sql/format {:select [[:setting]]} {:quoted false}))))
-
   (testing "`:h2` quoting will uppercase and quote the identifier"
     (is (= ["SELECT \"SETTING\""]
            (sql/format {:select [[:setting]]} {:dialect :h2})))))
@@ -59,28 +58,22 @@
     (is (= ["WHERE name = 'Cam'"]
            (sql/format {:where [:= :name (h2x/literal "Cam")]}
                        {:quoted false}))))
-
   (testing (str "`literal` should properly escape single-quotes inside the literal string double-single-quotes is how "
                 "to escape them in SQL")
     (is (= ["WHERE name = 'Cam''s'"]
            (sql/format {:where [:= :name (h2x/literal "Cam's")]}
                        {:quoted false}))))
-
-  (testing "`literal` should only escape single quotes that aren't already escaped -- with two single quotes..."
-    (is (= ["WHERE name = 'Cam''s'"]
+  (testing "`literal` escapes every single quote unconditionally -- no \"already escaped\" exception"
+    (is (= ["WHERE name = 'Cam''''s'"]
            (sql/format {:where [:= :name (h2x/literal "Cam''s")]}
-                       {:quoted false}))))
-
-  (testing "...or with a slash"
-    (is (= ["WHERE name = 'Cam\\'s'"]
+                       {:quoted false})))
+    (is (= ["WHERE name = 'Cam\\''s'"]
            (sql/format {:where [:= :name (h2x/literal "Cam\\'s")]}
                        {:quoted false}))))
-
   (testing "`literal` should escape strings that start with a single quote"
     (is (= ["WHERE name = '''s'"]
            (sql/format {:where [:= :name (h2x/literal "'s")]}
                        {:quoted false}))))
-
   (testing "`literal` should handle namespaced keywords correctly"
     (is (= ["WHERE name = 'ab/c'"]
            (sql/format {:where [:= :name (h2x/literal :ab/c)]}
@@ -91,54 +84,43 @@
     (is (= ["SELECT `A`.`B`.`C.D`.`E.F`"]
            (sql/format {:select [[(h2x/identifier :field "A" :B "C.D" :E.F)]]}
                        {:dialect :mysql}))))
-
   (testing "`identifer` should handle slashes"
     (is (= ["SELECT `A/B`.`C\\D`.`E/F`"]
            (sql/format {:select [[(h2x/identifier :field "A/B" "C\\D" :E/F)]]}
                        {:dialect :mysql}))))
-
   (testing "`identifier` should also handle strings with quotes in them (ANSI)"
     ;; two double-quotes to escape, e.g. "A""B"
     (is (= ["SELECT \"A\"\"B\""]
            (sql/format {:select [[(h2x/identifier :field "A\"B")]]}
                        {:dialect :ansi}))))
-
   (testing "`identifier` should also handle strings with quotes in them (MySQL)"
     ;; double-backticks to escape backticks seems to be the way to do it
     (is (= ["SELECT `A``B`"]
            (sql/format {:select [[(h2x/identifier :field "A`B")]]}
                        {:dialect :mysql}))))
-
   (testing "`identifier` shouldn't try to change `lisp-case` to `snake-case` or vice-versa"
     (is (= ["SELECT \"A-B\".\"c-d\".\"D_E\".\"f_g\""]
            (sql/format {:select [[(h2x/identifier :field "A-B" :c-d "D_E" :f_g)]]}
                        {:dialect :ansi}))))
-
   (testing "`identifier` should ignore `nil` or empty components."
     (is (= ["SELECT \"A\".\"B\".\"C\""]
            (sql/format {:select [[(h2x/identifier :field "A" "B" nil "C")]]}
                        {:dialect :ansi}))))
-
   (testing "`identifier` should handle nested identifiers"
     (is (= (h2x/identifier :field "A" "B" "C" "D")
            (h2x/identifier :field "A" (h2x/identifier :field "B" "C") "D")))
-
     (is (= ["SELECT \"A\".\"B\".\"C\".\"D\""]
            (sql/format {:select [[(h2x/identifier :field "A" (h2x/identifier :field "B" "C") "D")]]}
                        {:dialect :ansi}))))
-
   (testing "the `identifier` function should unnest identifiers for you so drivers that manipulate `:components` don't need to worry about that"
     (is (= (h2x/identifier :field "A" "B" "C" "D")
            (h2x/identifier :field "A" (h2x/identifier :field "B" "C") "D"))))
-
   (testing "the `identifier` function should remove nils so drivers that manipulate `:components` don't need to worry about that"
     (is (= (h2x/identifier :field "table" "field")
            (h2x/identifier :field nil "table" "field"))))
-
   (testing "the `identifier` function should convert everything to strings so drivers that manipulate `:components` don't need to worry about that"
     (is (= (h2x/identifier :field "keyword" "qualified/keyword")
            (h2x/identifier :field :keyword :qualified/keyword))))
-
   (testing "Should get formatted correctly inside aliases"
     ;; Apparently you have to wrap the alias form in ANOTHER vector to make it work -- see
     ;; https://clojurians.slack.com/archives/C1Q164V29/p1675301408026759
@@ -166,9 +148,26 @@
                           :mysql          0.1M)}]
            (app-db/query {:select [[(/ 1 10) :one_tenth]]})))))
 
-(deftest ^:parallel quoted-cast-test
-  (is (= ["SELECT CAST(? AS \"bird type\")" "toucan"]
-         (sql/format {:select [[(h2x/quoted-cast "bird type" "toucan")]]} {:quoted true, :dialect :ansi}))))
+(deftest ^:parallel cast-test
+  (testing "a sane bare type-name token is emitted raw, since most dialects reject a quoted type name in a CAST"
+    (is (= ["SELECT CAST(? AS date)" "toucan"]
+           (sql/format {:select [[(h2x/cast "date" "toucan")]]} {:quoted true, :dialect :ansi}))))
+  (testing "a type name that isn't a bare token is quoted, so a hostile type cannot inject SQL"
+    (is (= ["SELECT CAST(? AS \"date) UNION SELECT 1 --\")" "toucan"]
+           (sql/format {:select [[(h2x/cast "date) UNION SELECT 1 --" "toucan")]]}
+                       {:quoted true, :dialect :ansi})))))
+
+(deftest ^:parallel raw-type-name?-test
+  (are [expected sql-type] (= expected (h2x/raw-type-name? sql-type))
+    true  "timestamp"
+    true  :varchar
+    true  "double precision"
+    true  "decimal(10, 2)"
+    true  "VARCHAR(10)"
+    false "integer); select 1 --"
+    false "\"quoted\""
+    false "schema.type"
+    false "decimal(10, 2); --"))
 
 (defn- ->sql [expr]
   (sql/format {:select [[expr]]} {:quoted false}))
@@ -246,7 +245,6 @@
              (h2x/with-database-type-info (h2x/with-database-type-info :field "date") nil))))))
 
 (deftest ^:parallel is-of-type?-test
-  #_{:clj-kondo/ignore [:equals-true]}
   (are [expr tyype expected] (= expected (h2x/is-of-type? expr tyype))
     typed-form     "text"   true
     typed-form     "TEXT"   true
@@ -290,15 +288,12 @@
   (is (= ["public" "db" "table" "field"]
          (h2x/identifier->components
           (h2x/identifier :field :public :db :table :field))))
-
   (is (= ["public" "db" "table"]
          (h2x/identifier->components
           (h2x/identifier :table :public :db :table))))
-
   (is (= ["public" "db"]
          (h2x/identifier->components
           (h2x/identifier :database :public :db))))
-
   (is (=  ["count"]
           (h2x/identifier->components
            (h2x/identifier :field-alias :count)))))

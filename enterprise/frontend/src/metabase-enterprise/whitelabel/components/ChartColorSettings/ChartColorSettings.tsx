@@ -6,8 +6,8 @@ import _ from "underscore";
 import { ColorPicker } from "metabase/common/components/ColorPicker";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
-import { color } from "metabase/lib/colors";
 import { Button, Group } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 
 import {
   TableBody,

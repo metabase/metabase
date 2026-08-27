@@ -13,7 +13,7 @@ import { useSharingModal } from "./use-sharing-modal";
 const mockDispatch = jest.fn();
 const mockOpenEmbedJsWizard = jest.fn();
 
-jest.mock("metabase/lib/redux", () => ({
+jest.mock("metabase/redux", () => ({
   useDispatch: () => mockDispatch,
 }));
 
@@ -21,6 +21,7 @@ jest.mock("metabase/embedding/hooks/use-open-embed-js-wizard", () => ({
   useOpenEmbedJsWizard: () => mockOpenEmbedJsWizard,
 }));
 
+// Unjustified type cast. FIXME
 const mockResource = { id: 1 } as Dashboard;
 const mockResourceType = "dashboard" as const;
 
@@ -136,6 +137,7 @@ describe("useSharingModal", () => {
     expect(result.current.modalType).toBe(STATIC_LEGACY_EMBEDDING_TYPE);
 
     act(() => {
+      // Unjustified type cast. FIXME
       result.current.setModalType("public-link" as DashboardSharingModalType);
     });
 

@@ -19,14 +19,14 @@
 (derive ::FakedCard :metabase/model)
 
 (defn- do-with-model-i18n-strs! [thunk]
-  (with-redefs [revision.diff/model-str->i18n-str (fn [model-str]
-                                                    (case model-str
-                                                      "Dashboard"     (deferred-tru "Dashboard")
-                                                      "Card"          (deferred-tru "Card")
-                                                      "Segment"       (deferred-tru "Segment")
-                                                      "Metric"        (deferred-tru "Metric")
-                                                      "NonExistModel" "NonExistModel"
-                                                      "FakeCard"      "FakeCard"))]
+  (mt/with-dynamic-fn-redefs [revision.diff/model-str->i18n-str (fn [model-str]
+                                                                  (case model-str
+                                                                    "Dashboard"     (deferred-tru "Dashboard")
+                                                                    "Card"          (deferred-tru "Card")
+                                                                    "Segment"       (deferred-tru "Segment")
+                                                                    "Metric"        (deferred-tru "Metric")
+                                                                    "NonExistModel" "NonExistModel"
+                                                                    "FakeCard"      "FakeCard"))]
     (thunk)))
 
 (defmethod revision/serialize-instance ::FakedCard
@@ -79,7 +79,6 @@
              :model/Card
              {:name "Tips by State", :private false}
              {:name "Spots by State", :private false}))))
-
     (is (= "made this Card private."
            (u/build-sentence
             ((get-method revision/diff-strings :default)
@@ -95,7 +94,6 @@
              :model/Card
              {:name "Tips by State", :private false}
              {:name "Spots by State", :private true})))))
-
   (testing "Check that several changes are handled nicely"
     (is (= "turned this to a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\"."
            (u/build-sentence
@@ -140,7 +138,6 @@
                    :message      "yay!"})]
                 (for [revision (revision/revisions ::FakedCard card-id)]
                   (dissoc revision :timestamp :id :model_id))))))
-
     (testing "test that most_recent is correct"
       (mt/with-temp [:model/Card {card-id :id}]
         (doseq [i (range 3)]
@@ -215,15 +212,12 @@
             (testing "first revision should be recorded"
               (new-revision 1)
               (is (= 1 (count (revision/revisions ::FakedCard card-id)))))
-
             (testing "repeatedly push reivisions with the same object shouldn't create new revision"
               (dorun (repeatedly 5 #(new-revision 1)))
               (is (= 1 (count (revision/revisions ::FakedCard card-id)))))
-
             (testing "push a revision with different object should create new revision"
               (new-revision 2)
               (is (= 2 (count (revision/revisions ::FakedCard card-id)))))))))
-
     (testing "Check that we don't record revision on dashboard if it has a filter"
       (mt/with-temp
         [:model/Dashboard     {dash-id :id} {:parameters [{:name "Category Name"
@@ -273,11 +267,9 @@
                   (-> (revision/add-revision-details ::FakedCard (first revisions) (last revisions))
                       (dissoc :timestamp :id :model_id)
                       mt/derecordize))))))
-
     (testing "test that we return a description even when there is no change between revision"
       (is (= "created a revision with no change."
              (str (:description (revision/add-revision-details ::FakedCard {:name "Apple"} {:name "Apple"}))))))
-
     (testing "that we return a descrtiopn when there is no previous revision"
       (is (= "modified this."
              (str (:description (revision/add-revision-details ::FakedCard {:name "Apple"} nil))))))))
@@ -439,7 +431,6 @@
                                                         {:object       {:name "New Object"}
                                                          :is_reversion false
                                                          :is_creation  true}))))
-
          (testing "reversion"
            (is (= {:has_multiple_changes false
                    :description          "reverted to an earlier version."}
@@ -450,7 +441,6 @@
                                                         {:object       {:name "New Object"}
                                                          :is_reversion true
                                                          :is_creation  false}))))
-
          (testing "multiple changes"
            {:description          "changed the display from table to bar and turned this into a model."
             :has_multiple_changes true}
@@ -463,7 +453,6 @@
                                                                  :display :bar}
                                                   :is_reversion false
                                                   :is_creation  false}))
-
          (testing "changes contains unspecified keys will not be mentioned"
            (is (= {:description          "turned this to a model."
                    :has_multiple_changes false}

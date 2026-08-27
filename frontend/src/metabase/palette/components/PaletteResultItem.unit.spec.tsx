@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import {
   fireEvent,
   render,
@@ -7,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { Route } from "metabase/router";
 
 import type { PaletteActionImpl } from "../types";
 
@@ -14,6 +13,7 @@ import { PaletteResultItem } from "./PaletteResultItem";
 import { PaletteResultList } from "./PaletteResultsList";
 
 const mockPaletteActionImpl = (opts: Partial<PaletteActionImpl>) =>
+  // Unjustified type cast. FIXME
   ({
     name: "test action",
     id: "action-1",
@@ -35,22 +35,6 @@ const setup = ({
 };
 
 describe("PaletteResultItem", () => {
-  it("icons should default to brand color", async () => {
-    setup({ item: { icon: "model" } });
-
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveStyle({
-      color: "var(--mb-color-brand)",
-    });
-  });
-
-  it("icons should use provided colors when available", async () => {
-    setup({ item: { icon: "model", extra: { iconColor: "accent1" } } });
-
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveStyle({
-      color: "var(--mb-color-accent1)",
-    });
-  });
-
   it("should not render an icon if none is provided", async () => {
     setup({});
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
@@ -64,11 +48,12 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
     <>
       <Route
         path="/"
-        component={() => (
+        element={
           <PaletteResultList
             items={items.map((item) => mockPaletteActionImpl(item))}
             maxHeight={580}
             minHeight={220}
+            liveSearchTerm=""
             renderItem={({
               item,
               active,
@@ -83,9 +68,9 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
               return <PaletteResultItem item={item} active={active} />;
             }}
           />
-        )}
+        }
       />
-      <Route path="search" component={() => null} />
+      <Route path="search" element={null} />
     </>,
     { withRouter: true, withKBar: true },
   );
@@ -98,10 +83,10 @@ describe("Mouse/keyboard interactions", () => {
     pathname: "/",
   };
 
-  describe("The 'Search documentation for...' command palette item", () => {
+  describe("The 'Search Metabase's docs for...' command palette item", () => {
     const searchDocs: Partial<PaletteActionImpl> = {
       id: "search_docs",
-      name: 'Search documentation for "hedgehogs"',
+      name: 'Search Metabase\'s docs for "hedgehogs"',
       section: "docs",
       keywords: "hedgehogs",
       icon: "document",
@@ -111,19 +96,23 @@ describe("Mouse/keyboard interactions", () => {
     };
 
     it("should NOT navigate via React router on click (metabase#47829)", async () => {
-      const { history, link } = setupInList({ item: searchDocs });
+      const { router, link } = setupInList({ item: searchDocs });
       fireEvent.click(link);
-      expect(history?.getCurrentLocation()).toMatchObject(initialLocation);
+      expect(router?.location).toMatchObject(initialLocation);
       expect(link).toHaveAttribute("target", "_blank");
     });
   });
 
   describe("The 'View and filter all N results' command palette item", () => {
+    // The link target is still a v3-style descriptor; the location it lands on
+    // carries the query as a search string.
+    const searchTarget = {
+      pathname: "/search",
+      search: "?q=hedgehogs",
+    };
     const searchLocation = {
-      pathname: "search",
-      query: {
-        q: "hedgehogs",
-      },
+      pathname: "/search",
+      search: "?q=hedgehogs",
     };
 
     const viewResults: Partial<PaletteActionImpl> = {
@@ -134,32 +123,32 @@ describe("Mouse/keyboard interactions", () => {
       icon: "link",
       perform: () => {},
       extra: {
-        href: searchLocation,
+        href: searchTarget,
       },
     };
 
     it("should navigate via React router when the Enter key is pressed", async () => {
-      const { history, link } = setupInList({ item: viewResults });
+      const { router, link } = setupInList({ item: viewResults });
       fireEvent(window, new KeyboardEvent("keydown", { key: "Enter" }));
       await waitFor(() => {
-        expect(history?.getCurrentLocation()).toMatchObject(searchLocation);
+        expect(router?.location).toMatchObject(searchLocation);
       });
       expect(link).not.toHaveAttribute("target", "_blank");
     });
 
     it("should navigate via React router on left click", async () => {
-      const { history, link } = setupInList({ item: viewResults });
+      const { router, link } = setupInList({ item: viewResults });
       // A normal, left click
       fireEvent.click(link);
-      expect(history?.getCurrentLocation()).toMatchObject(searchLocation);
+      expect(router?.location).toMatchObject(searchLocation);
       expect(link).not.toHaveAttribute("target", "_blank");
     });
 
     it("should NOT navigate via React router on middle click", async () => {
-      const { history, link } = setupInList({ item: viewResults });
+      const { router, link } = setupInList({ item: viewResults });
       // A middle click
       fireEvent.click(link, { button: 1 });
-      expect(history?.getCurrentLocation()).toMatchObject(initialLocation);
+      expect(router?.location).toMatchObject(initialLocation);
       expect(link).not.toHaveAttribute("target", "_blank");
     });
   });

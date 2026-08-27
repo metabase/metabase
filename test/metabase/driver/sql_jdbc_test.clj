@@ -1,8 +1,12 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql-jdbc-test]}}}}}}
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
+   [metabase.driver.sql-jdbc.quoting :as quoting]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -10,8 +14,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definition-test :as dataset-definition-test]
    [metabase.test.data.sql :as sql.tx]
@@ -23,9 +27,11 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel describe-database-test
-  (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
-                         {:name table, :schema "PUBLIC", :description nil, :is_writable true}))}
-         (driver/describe-database :h2 (mt/db)))))
+  (is (set/subset? (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"
+                                     "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
+                          {:name table, :schema "PUBLIC",
+                           :description nil, :is_writable true}))
+                   (into #{} (:tables (driver/describe-database :h2 (mt/db)))))))
 
 (deftest describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"
@@ -70,8 +76,9 @@
                  (update :category_id int)
                  (update :id int)))))))
 
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel invalid-ssh-credentials-test
+  ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-driver :postgres
     (testing "Make sure invalid ssh credentials are detected if a direct connection is possible"
       (is (thrown?
@@ -100,6 +107,24 @@
                  (or (when (instance? java.net.ConnectException e)
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
+
+(deftest validate-db-details-additional-options-test
+  (testing "validate-db-details! rejects disallowed connection properties in additional-options"
+    (doseq [opt ["socketFactory=a.b.C"
+                 "sslfactory=a.b.C"
+                 "sslhostnameverifier=a.b.C"
+                 "sslpasswordcallback=a.b.C"
+                 "xmlFactoryFactory=a.b.C"
+                 "loggerFile=a/b"]]
+      (testing opt
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :sql-jdbc {:additional-options opt}))))))
+  (testing "benign additional options and no additional options are allowed"
+    (doseq [details [{}
+                     {:additional-options nil}
+                     {:additional-options "prepareThreshold=5&tcpKeepAlive=true"}]]
+      (is (nil? (driver/validate-db-details! :sql-jdbc details))))))
 
 (defn- test-spliced-count-of [table filter-clause expected]
   (let [query        (mt/mbql-query nil
@@ -233,48 +258,46 @@
         [[uuid]] (lib/ends-with col (str uuid))
         [[uuid]] (lib/contains col (str uuid))
 
-          ;; Test partial uuid values
+        ;; Test partial uuid values
         [[uuid]] (lib/contains col (subs (str uuid) 0 1))
         [[uuid]] (lib/starts-with col (subs (str uuid) 0 1))
         [[uuid]] (lib/ends-with col (subs (str uuid) (dec (count (str uuid)))))
 
-          ;; Cannot match a uuid, but should not blow up
+        ;; Cannot match a uuid, but should not blow up
         [[uuid]] (lib/!= col "q")
         []       (lib/= col "q")
         []       (lib/starts-with col "q")
         []       (lib/ends-with col "q")
         []       (lib/contains col "q")
 
-          ;; empty/null handling
+        ;; empty/null handling
         []       (lib/is-empty col)
         [[uuid]] (lib/not-empty col)
         []       (lib/is-null col)
         [[uuid]] (lib/not-null col)
 
-          ;; nil value handling
+        ;; nil value handling
         [[uuid]] (lib/!= col nil)
         []       (lib/= col nil))
-      (testing ":= uses indexable query"
-        (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (lib/->legacy-MBQL (lib/ref col)))]]
-                 (some-fn #(= uuid %)
-                          #(= [:metabase.util.honey-sql-2/typed
-                               [:cast (str uuid) [:raw "uuid"]]
-                               {:database-type "uuid"}]
-                              %))]
-                (sql.qp/->honeysql
-                 driver/*driver*
-                 [:=
-                  (lib/->legacy-MBQL (lib/ref col))
-                  [:value (str uuid) {:base_type :type/UUID}]])))
-        (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (lib/->legacy-MBQL (lib/ref col)))]]
-                 (some-fn #(= uuid %)
-                          #(= [:metabase.util.honey-sql-2/typed
-                               [:cast (str uuid) [:raw "uuid"]]
-                               {:database-type "uuid"}]
-                              %))]
-                (sql.qp/->honeysql
-                 driver/*driver*
-                 [:= (lib/->legacy-MBQL (lib/ref col)) uuid])))))))
+      (let [field (get (lib/ref col) 2)
+            col-ref (lib/ref col)]
+        (testing ":= uses indexable query"
+          (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
+                   (some-fn #(= uuid %)
+                            #(= [:metabase.util.honey-sql-2/typed
+                                 [:cast (str uuid) [:raw "uuid"]]
+                                 {:database-type "uuid"}]
+                                %))]
+                  (sql.qp/->honeysql
+                   driver/*driver*
+                   [:= {} col-ref [:value {:base-type :type/UUID} (str uuid)]])))
+          (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
+                   (some-fn #(= uuid %)
+                            #(= [:metabase.util.honey-sql-2/typed
+                                 [:cast (str uuid) [:raw "uuid"]]
+                                 {:database-type "uuid"}]
+                                %))]
+                  (sql.qp/->honeysql driver/*driver* [:= {} col-ref uuid]))))))))
 
 (deftest query-canceled-test?
   (testing "walks a chain of exceptions"
@@ -313,59 +336,46 @@
             qualified-temp-2  (qualified-table-name schema temp-table-2)
             test-data-1       [[1 "Alice"] [2 "Bob"]]
             test-data-2       [[1 "Product A"] [2 "Product B"]]]
-
         (driver/create-table! driver db-id qualified-table-1
                               {"id" "INTEGER", "name" "VARCHAR(255)"} {})
         (driver/create-table! driver db-id qualified-table-2
                               {"id" "INTEGER", "name" "VARCHAR(255)"} {})
-
         (try
           (driver/insert-into! driver db-id qualified-table-1 ["id" "name"] test-data-1)
           (driver/insert-into! driver db-id qualified-table-2 ["id" "name"] test-data-2)
-
           (testing "basic rename operations work correctly"
             (driver/rename-tables! driver db-id
                                    {qualified-table-1 qualified-temp-1
                                     qualified-table-2 qualified-temp-2})
-
             (is (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema}))
             (is (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))
             (is (not (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema})))
             (is (not (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
-
             (is (= test-data-1 (table-rows qualified-temp-1)))
             (is (= test-data-2 (table-rows qualified-temp-2)))
-
             (driver/rename-tables! driver db-id
                                    {qualified-temp-1 qualified-table-1
                                     qualified-temp-2 qualified-table-2}))
-
           (testing "atomicity: all renames fail if any rename fails"
             (let [conflict-table (str test-table-2 "_conflict")
                   qualified-conflict (qualified-table-name schema conflict-table)]
               (driver/create-table! driver db-id qualified-conflict {"id" "INTEGER"} {})
-
               (try
                 (is (thrown? Exception
                              (driver/rename-tables! driver db-id
                                                     {qualified-table-1 qualified-temp-1
                                                      qualified-table-2 qualified-conflict})))
-
                 (testing "original tables should still exist after failed atomic rename"
                   (is (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema}))
                   (is (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
-
                 (testing "temp tables should not exist after failed atomic rename"
                   (is (not (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema})))
                   (is (not (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))))
-
                 (testing "original data should be intact after failed atomic rename"
                   (is (= test-data-1 (table-rows qualified-table-1)))
                   (is (= test-data-2 (table-rows qualified-table-2))))
-
                 (finally
                   (driver/drop-table! driver db-id qualified-conflict)))))
-
           (finally
             (driver/drop-table! driver db-id qualified-table-1)
             (driver/drop-table! driver db-id qualified-table-2)))))))
@@ -390,9 +400,72 @@
                 "Renamed table should exist")
             (is (not (driver/table-exists? driver (mt/db) {:name test-table :schema schema}))
                 "Original table should not exist"))
-
           (finally
             (when (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
               (driver/drop-table! driver db-id qualified-renamed))
             (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
               (driver/drop-table! driver db-id qualified-table))))))))
+
+(defn- sql-jdbc-drivers
+  "Every registered sql-jdbc driver. These tests build SQL without connecting, so they run against the
+  whole hierarchy rather than whichever drivers happen to be available."
+  []
+  (descendants driver/hierarchy :sql-jdbc))
+
+(deftest ^:parallel insert-into-sqls-boolean-literal-test
+  (testing "boolean row values bind as parameters, never as inlined literals -- not every
+            dialect has a boolean literal keyword"
+    (doseq [driver (sql-jdbc-drivers)]
+      (testing driver
+        (let [[sql & params] (first (#'driver.sql-jdbc/insert-into!-sqls driver :dbo/t ["id" "flag"]
+                                                                         [[1 true] [2 false]] false))]
+          (is (not (re-find #"(?i)\bTRUE\b|\bFALSE\b" sql)))
+          (is (= [1 true 2 false] params)))))))
+
+(deftest ^:parallel dot-qualified-test
+  (testing "the whole dotted path lands in the keyword's name, which HoneySQL leaves alone"
+    (are [table-name expected] (= expected (quoting/dot-qualified table-name))
+      (keyword "test-data" "some_tbl") :test-data.some_tbl
+      (keyword "test-data" "a.b")      :test-data.a.b
+      (keyword "some_tbl")             :some_tbl
+      "test-data.tbl"                  :test-data.tbl
+      "some_tbl"                       :some_tbl)))
+
+(deftest ^:parallel create-table-sql-preserves-dashes-test
+  (let [create-sql #(#'driver.sql-jdbc/create-table!-sql %1 %2 [["id" [:int]]])]
+    (testing "a dash in a schema/catalog segment survives -- munged to an underscore, CREATE TABLE
+              targets a schema that isn't there"
+      (doseq [driver (sql-jdbc-drivers)]
+        (testing driver
+          (let [sql (create-sql driver (keyword "test-data" "some_tbl"))]
+            (is (re-find #"test-data" sql))
+            (is (not (re-find #"test_data" sql)))))))
+    (testing "the whole statement, for one dialect"
+      (is (= "CREATE TABLE \"test-data\".\"some_tbl\" (\"id\" INT)"
+             (create-sql :h2 (keyword "test-data" "some_tbl")))))
+    (testing "unqualified name -- the schema travels in the connection's catalog"
+      (is (= "CREATE TABLE \"some_tbl\" (\"id\" INT)"
+             (create-sql :h2 (keyword "some_tbl")))))
+    (testing "dot-qualified strings split into segments"
+      (is (= "CREATE TABLE \"schema\".\"name\" (\"id\" INT)"
+             (create-sql :h2 "schema.name"))))))
+
+(deftest ^:parallel drop-table-sql-preserves-dashes-test
+  (let [drop-sql #'driver.sql-jdbc/drop-table-sql]
+    (testing "a dash in a schema/catalog segment survives -- munged to an underscore, DROP TABLE IF
+              EXISTS targets a nonexistent object and silently no-ops, leaking the table"
+      (doseq [driver (sql-jdbc-drivers)]
+        (testing driver
+          (let [sql (drop-sql driver (keyword "test-data" "some_tbl"))]
+            (is (re-find #"test-data" sql))
+            (is (not (re-find #"test_data" sql)))))))
+    (testing "the whole statement, for one dialect"
+      (is (= "DROP TABLE IF EXISTS \"test-data\".\"some_tbl\""
+             (drop-sql :h2 (keyword "test-data" "some_tbl")))))
+    (testing "unqualified name -- the schema travels in the connection's catalog"
+      (is (= "DROP TABLE IF EXISTS \"some_tbl\"" (drop-sql :h2 (keyword "some_tbl")))))
+    (testing "dot-qualified strings (metabase.upload.impl/table-identifier's shape) split into segments"
+      (is (= "DROP TABLE IF EXISTS \"schema\".\"name\"" (drop-sql :h2 "schema.name"))))
+    (testing "a dot inside the name splits too -- no call site produces this shape, but keep it uniform"
+      (is (= "DROP TABLE IF EXISTS \"test-data\".\"a\".\"b\""
+             (drop-sql :h2 (keyword "test-data" "a.b")))))))

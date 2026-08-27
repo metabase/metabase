@@ -5,13 +5,13 @@ import { setupUserEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import type { User, UserListResult } from "metabase-types/api";
+import { createMockState } from "metabase/redux/store/mocks";
+import type { User } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { EditUserModal } from "../EditUserModal";
 
@@ -30,7 +30,7 @@ export const setup = ({
   userData: Partial<User>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }) => {
-  setupUserEndpoints(createMockUser(userData) as unknown as UserListResult);
+  setupUserEndpoints(createMockUser(userData));
 
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({}),

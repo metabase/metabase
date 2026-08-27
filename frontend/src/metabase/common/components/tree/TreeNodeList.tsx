@@ -6,8 +6,10 @@ import { Box } from "metabase/ui";
 
 import type { ITreeNodeItem, TreeNodeComponent } from "./types";
 
-interface TreeNodeListProps<TData = unknown>
-  extends Omit<BoxProps, "children"> {
+interface TreeNodeListProps<TData = unknown> extends Omit<
+  BoxProps,
+  "children"
+> {
   items: ITreeNodeItem<TData>[];
   expandedIds: Set<ITreeNodeItem<TData>["id"]>;
   selectedId?: ITreeNodeItem<TData>["id"];
@@ -17,6 +19,7 @@ interface TreeNodeListProps<TData = unknown>
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   TreeNode: TreeNodeComponent<TData>;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
+  wrapNodes?: boolean;
 }
 
 function BaseTreeNodeList<TData = unknown>({
@@ -29,9 +32,10 @@ function BaseTreeNodeList<TData = unknown>({
   TreeNode,
   rightSection,
   role,
+  wrapNodes,
   ...boxProps
 }: TreeNodeListProps<TData>) {
-  const selectedRef = useScrollOnMount();
+  const selectedRef = useScrollOnMount<HTMLLIElement>();
 
   return (
     <Box component="ul" role={role} {...boxProps}>
@@ -44,8 +48,8 @@ function BaseTreeNodeList<TData = unknown>({
           typeof onSelect === "function" ? () => onSelect(item) : undefined;
         const onItemToggle = () => onToggleExpand(item.id);
 
-        return (
-          <Fragment key={item.id}>
+        const node = (
+          <>
             <TreeNode
               ref={isSelected ? selectedRef : null}
               item={item}
@@ -67,9 +71,18 @@ function BaseTreeNodeList<TData = unknown>({
                 onToggleExpand={onToggleExpand}
                 TreeNode={TreeNode}
                 rightSection={rightSection}
+                wrapNodes={wrapNodes}
               />
             )}
-          </Fragment>
+          </>
+        );
+
+        return wrapNodes ? (
+          <li role="none" key={item.id}>
+            {node}
+          </li>
+        ) : (
+          <Fragment key={item.id}>{node}</Fragment>
         );
       })}
     </Box>

@@ -2,19 +2,94 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.core :as semantic.core]
+   [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
+   [metabase-enterprise.semantic-search.repair :as semantic.repair]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.analytics.core :as analytics]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.core :as appdb]
    [metabase.search.engine :as search.engine]
    [metabase.search.in-place.legacy :as in-place.legacy]
    [metabase.search.in-place.scoring :as in-place.scoring]
    [metabase.search.settings :as search.settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
+
+(deftest supported?-requires-an-embedder-test
+  (testing "a pgvector store alone is not enough to select the engine — auto-activation without a
+            configured embedding backend would loop every index and query embed into failure"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-dynamic-fn-redefs [semantic.util/semantic-search-available? (constantly true)]
+        (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                    (constantly {:provider "no-such-provider"})]
+          (is (false? (semantic.core/supported?))))
+        (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                    (constantly semantic.tu/mock-embedding-model)]
+          (is (true? (semantic.core/supported?))))))))
+
+(deftest ^:synchronized build-hnsw-index-async-deduplicates-local-builds-test
+  (let [started        (CountDownLatch. 1)
+        release        (CountDownLatch. 1)
+        reset-complete (CountDownLatch. 1)
+        build-running? (atom false)
+        calls          (atom 0)]
+    (add-watch build-running? ::reset-complete
+               (fn [_ _ previous current]
+                 (when (and previous (not current))
+                   (.countDown reset-complete))))
+    (with-redefs-fn {#'semantic.core/hnsw-index-build-running? build-running?}
+      #(mt/with-dynamic-fn-redefs
+         [semantic.util/semantic-search-active?            (constantly true)
+          semantic.env/get-pgvector-datasource!             (constantly ::pgvector)
+          semantic.env/get-index-metadata                   (constantly ::index-metadata)
+          semantic.pgvector-api/ensure-active-hnsw-index!
+          (fn [& _]
+            (swap! calls inc)
+            (.countDown started)
+            (.await release))]
+         (try
+           (semantic.core/build-hnsw-index-async!)
+           (is (.await started 5 TimeUnit/SECONDS) "the first build started")
+           (semantic.core/build-hnsw-index-async!)
+           (is (= 1 @calls) "the overlapping request did not start another future")
+           (finally
+             (.countDown release)))
+         (is (.await reset-complete 5 TimeUnit/SECONDS) "the build future reset its local gate")))))
+
+(deftest ^:synchronized repair-snapshot-precedes-canonical-document-read-test
+  (let [events       (atom [])
+        active-state (atom [nil {:metadata-row {:id 17}}])
+        documents    (map (fn [document]
+                            (swap! events conj :document-read)
+                            document)
+                          [{}])]
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-dynamic-fn-redefs
+        [semantic.core/capture-repair-snapshot-at       (fn [_]
+                                                          (swap! events conj :snapshot)
+                                                          ::snapshot-at)
+         semantic.env/get-pgvector-datasource!          (constantly ::pgvector)
+         semantic.env/get-index-metadata                (constantly ::index-metadata)
+         semantic.env/get-configured-embedding-model    (constantly ::embedding-model)
+         semantic.index-metadata/get-active-index-state (fn [& _]
+                                                          (let [state (first @active-state)]
+                                                            (swap! active-state subvec 1)
+                                                            state))
+         semantic.pgvector-api/init-semantic-search!    (fn [& _])
+         semantic.repair/with-repair-table!             (fn [_ _ f] (f "repair"))
+         semantic.pgvector-api/gate-updates!            (fn [_ _ docs & _] (dorun docs))]
+        (is (= {:index-id 17, :orphans 0, :snapshot-at ::snapshot-at}
+               (semantic.core/repair-index! documents))))
+      (is (= [:snapshot :document-read] @events)))))
 
 (deftest fallback-engine-available-with-semantic-test
   (mt/with-premium-features #{:semantic-search}
@@ -40,25 +115,28 @@
                 reset-called-atoms! #(do (reset! semantic-called? false)
                                          (reset! appdb-called? false)
                                          (reset! legacy-called? false))]
-            (with-redefs [semantic.pgvector-api/query
-                          (fn [& _]
-                            (reset! semantic-called? true)
-                            {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}]
-                             :raw-count 0})
-                          appdb/results
-                          (fn [_]
-                            (reset! appdb-called? true)
-                            [{:id 2 :name "appdb-result" :model "card" :collection_id 1 :score 0.9}])
-                          in-place.scoring/score-and-result
-                          (fn [result _]
-                            {:result (dissoc result :score)
-                             :score  (:score result)})
-                          in-place.legacy/results
-                          (fn [_]
-                            (reset! legacy-called? true)
-                            (reify clojure.lang.IReduceInit
-                              (reduce [_this rf init]
-                                (reduce rf init [{:id 2 :name "legacy-result" :model "card" :collection_id 1 :score 0.7}]))))]
+            (mt/with-dynamic-fn-redefs [;; supported? requires a configured embedder; pin the mock so semantic is selectable
+                                        semantic.embedding/get-configured-model
+                                        (constantly semantic.tu/mock-embedding-model)
+                                        semantic.pgvector-api/query
+                                        (fn [& _]
+                                          (reset! semantic-called? true)
+                                          {:results [{:id 1 :name "semantic-result" :model "card" :collection_id 1  :score 0}]
+                                           :raw-count 0})
+                                        appdb/results
+                                        (fn [_]
+                                          (reset! appdb-called? true)
+                                          [{:id 2 :name "appdb-result" :model "card" :collection_id 1 :score 0.9}])
+                                        in-place.scoring/score-and-result
+                                        (fn [result _]
+                                          {:result (dissoc result :score)
+                                           :score  (:score result)})
+                                        in-place.legacy/results
+                                        (fn [_]
+                                          (reset! legacy-called? true)
+                                          (reify clojure.lang.IReduceInit
+                                            (reduce [_this rf init]
+                                              (reduce rf init [{:id 2 :name "legacy-result" :model "card" :collection_id 1 :score 0.7}]))))]
               (testing "API defaults to semantic engine when configured"
                 (let [response (mt/user-http-request :crowberto :get 200 "search" :q "test")]
                   (is @semantic-called? "Semantic search should be called by default")
@@ -129,38 +207,57 @@
               metrics (atom {:metabase-search/semantic-fallback-results-usage 0
                              :metabase-search/semantic-fallback-triggered 0
                              :metabase-search/semantic-results-before-fallback 0})]
-          (with-redefs [analytics/inc! (fn [metric & _args]
-                                         (case metric
-                                           :metabase-search/semantic-fallback-triggered
-                                           (swap! metrics update
-                                                  :metabase-search/semantic-fallback-triggered
-                                                  inc))
-                                         nil)
-                        analytics/observe! (fn [metric cnt]
-                                             (case metric
-                                               :metabase-search/semantic-fallback-results-usage
-                                               (swap! metrics update
-                                                      :metabase-search/semantic-fallback-results-usage
-                                                      + cnt)
-                                               :metabase-search/semantic-results-before-fallback
-                                               (swap! metrics update
-                                                      :metabase-search/semantic-results-before-fallback
-                                                      + cnt))
-                                             nil)]
+          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & _args]
+                                                       (case metric
+                                                         :metabase-search/semantic-fallback-triggered
+                                                         (swap! metrics update
+                                                                :metabase-search/semantic-fallback-triggered
+                                                                inc))
+                                                       nil)
+                                      analytics/observe! (fn [metric cnt]
+                                                           (case metric
+                                                             :metabase-search/semantic-fallback-results-usage
+                                                             (swap! metrics update
+                                                                    :metabase-search/semantic-fallback-results-usage
+                                                                    + cnt)
+                                                             :metabase-search/semantic-results-before-fallback
+                                                             (swap! metrics update
+                                                                    :metabase-search/semantic-results-before-fallback
+                                                                    + cnt))
+                                                           nil)]
             (with-search-engine-mocks! [semantic-result] fallback-results
               (fn []
                 (let [results (semantic.core/results search-ctx)]
                   (testing "semantic result comes first"
                     (is (= semantic-result (first results))))
-
                   (testing "fallback results are appended, and duplicate model/id pairs are removed"
                     (is (= (rest fallback-results)
                            (rest results))))
-
                   (testing "Results metrics are collected"
                     (is (= 4 (:metabase-search/semantic-fallback-results-usage @metrics)))
                     (is (= 1 (:metabase-search/semantic-fallback-triggered @metrics)))
                     (is (= 1 (:metabase-search/semantic-results-before-fallback @metrics)))))))))))))
+
+(deftest fallback-results-zero-semantic-distance-test
+  (testing "fallback results record :semantic-distance as 0 in their score breakdown, leaving other scores intact"
+    (mt/with-premium-features #{:semantic-search}
+      (mt/with-temporary-setting-values [semantic-search-min-results-threshold 3]
+        (let [semantic-result  (assoc (make-card-result 1 "semantic-card" :score 0.9)
+                                      :all-scores [{:name :semantic-distance :score 0.95 :weight 10 :contribution 9.5}])
+              fallback-results [(assoc (make-card-result 2 "fallback-card" :score 0.5)
+                                       :all-scores [{:name :text :score 1 :weight 5 :contribution 5}])]
+              search-ctx       (assoc search-context :weights {:semantic-distance 10})]
+          (with-search-engine-mocks! [semantic-result] fallback-results
+            (fn []
+              (let [results     (vec (semantic.core/results search-ctx))
+                    result-by-id (fn [id] (some #(when (= id (:id %)) %) results))]
+                (testing "fallback result gains a zero semantic-distance entry, keeping its existing scores"
+                  (is (=? [{:name :text :score 1}
+                           {:name :semantic-distance :score 0 :weight 10 :contribution 0}]
+                          (:all-scores (result-by-id 2)))))
+                (testing "genuine semantic result keeps its computed distance"
+                  (is (=? [{:name :semantic-distance :score 0.95}]
+                          (:all-scores (result-by-id 1)))))))))))))
 
 (deftest test-semantic-search-fallback-failure-resilient
   (testing "semantic search is resilient to fallback engine failure"

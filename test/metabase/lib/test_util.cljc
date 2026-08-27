@@ -92,6 +92,20 @@
    (providers.mock/mock-metadata-provider
     (assoc-in cards [:cards 0 :type] :metric))))
 
+(def metadata-provider-with-nfc-path
+  "[[meta/metadata-provider]] with `orders.product-id` overridden to be a JSON-unfolded field (i.e. with
+  `:nfc-path`). Engine is forced to `:postgres` so tests that go through QP preprocessing can rely on the
+  `:native-pivot-tables` driver feature being available. Useful for testing code paths that handle
+  nested-field columns."
+  (providers.mock/mock-metadata-provider
+   meta/metadata-provider
+   {:database (assoc meta/database :engine :postgres)
+    :fields   [(merge (meta/field-metadata :orders :product-id)
+                      {:nfc-path       ["payload" "product_id"]
+                       :base-type      :type/Text
+                       :effective-type :type/Text
+                       :database-type  "text"})]}))
+
 (defn query-with-source-card
   "Returns a query against `:source-card 1`, with a metadata provider that has that Card. Card's name is `My Card`.
   Card 'exports' two columns, `USER_ID` and `count`."
@@ -227,7 +241,9 @@
   (if (instance? #?(:clj  CachedProxyMetadataProvider
                     :cljs metabase.lib.metadata.cached-provider/CachedProxyMetadataProvider)
                  metadata-provider)
-    (.-metadata-provider metadata-provider)
+    (let [p #?(:clj  ^CachedProxyMetadataProvider metadata-provider
+               :cljs metadata-provider)]
+      (.-metadata-provider p))
     metadata-provider))
 
 (mu/defn make-mock-cards
@@ -368,7 +384,7 @@
    {mbql-query :dataset-query, metadata :result-metadata} :- [:map
                                                               [:dataset-query :map]
                                                               [:result-metadata [:sequential {:min 1} :map]]]]
-  (let [mbql-query (cond-> (assoc (lib.convert/->pMBQL mbql-query)
+  (let [mbql-query (cond-> (assoc (lib.convert/->mbql5 mbql-query)
                                   :lib/metadata (lib.metadata/->metadata-provider metadata-providerable))
                      metadata
                      (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.util/->stage-metadata (mapv #(dissoc % :id :table-id) metadata))))]

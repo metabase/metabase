@@ -21,7 +21,6 @@
                         :col          0}])]
           (is (= 1 (count result)))
           (is (= (:id normal-card) (:card_id (first result))))))
-
       (testing "Adding an in_document card throws an exception"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
@@ -33,7 +32,6 @@
                 :size_y       3
                 :row          1
                 :col          0}]))))))
-
   (testing "Cannot add multiple cards if any of them has a document_id"
     (mt/with-temp [:model/Dashboard dashboard    {}
                    :model/Document  document    {}
@@ -63,6 +61,5 @@
                 :size_y       3
                 :row          0
                 :col          8}])))
-
         ;; Verify that no cards were added due to transaction rollback
         (is (= 0 (t2/count :model/DashboardCard :dashboard_id (:id dashboard))))))))

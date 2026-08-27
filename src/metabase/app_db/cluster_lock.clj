@@ -1,100 +1,534 @@
 (ns metabase.app-db.cluster-lock
-  "Utility for taking a cluster wide lock using the application database"
+  "Utility for taking a cluster wide lock using the application database.
+
+  Supports two modes:
+  - `:exclusive` (default) — row-level `FOR UPDATE`. Two exclusive holders of the
+    same lock-name serialize.
+  - `:share` — row-level `FOR SHARE`. Multiple shared holders of the same lock-name
+    can proceed in parallel, but any shared holder blocks an exclusive acquirer
+    and vice versa.
+
+  This lets callers build intent-lock patterns (shared on a root + exclusive on
+  a leaf) — see [[metabase.permissions.models.data-permissions/with-db-scoped-permissions-lock]]
+  for an example.
+
+  Lock ordering rule: if you acquire multiple cluster locks, always acquire them
+  in a consistent order across call sites to avoid deadlock. The multi-lock arity
+  of [[do-with-cluster-lock]] acquires them in the order given; prefer that over
+  manually nesting `with-cluster-lock` forms."
   (:require
    [clojure.string :as str]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
+   [metabase.app-db.transient-error :as transient-error]
+   [metabase.config.core :as config]
+   [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection PreparedStatement SQLIntegrityConstraintViolationException)))
+   (java.sql Connection PreparedStatement SQLException SQLIntegrityConstraintViolationException)
+   (java.util.concurrent ConcurrentHashMap)
+   (java.util.concurrent.locks Lock ReentrantReadWriteLock)
+   (java.util.function Function)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private cluster-lock-timeout-seconds 1)
 
+(defn- duplicate-lock-row?
+  "Whether `e` indicates that another transaction inserted this lock row first."
+  [^Throwable e]
+  (or (instance? SQLIntegrityConstraintViolationException e)
+      (instance? SQLIntegrityConstraintViolationException (ex-cause e))
+      ;; PostgreSQL reports this as a generic PSQLException, so fall back to checking the message.
+      (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))))
+
 (defn- retryable?
+  "Errors that mean we failed to *acquire* the lock and should retry acquisition."
   [^Throwable e]
   ;; We can retry getting the cluster lock if either we tried to concurrently insert the pk
   ;; for the lock resulting in a SQLIntegrityConstraintViolationException or if the query
   ;; was cancelled via timeout waiting to get the SELECT FOR UPDATE lock
-  (or (instance? SQLIntegrityConstraintViolationException e)
-      (instance? SQLIntegrityConstraintViolationException (ex-cause e))
-      ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
-      (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))
+  (or (duplicate-lock-row? e)
+      (true? (::acquisition-timeout (ex-data e)))
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
+
+(defn- retry-if-error?
+  "Should we retry after exception `e`? Always retry lock-acquisition failures. When `retry-transient?`
+  is set, *also* retry transient db errors (deadlocks, lock timeouts, serialization failures) — on
+  multi-master appdbs like MariaDB Galera row locks aren't replicated across nodes, so the lock can't
+  serialize writers and the conflicting commit surfaces as a deadlock. Only callers whose locked body is
+  safe to re-run from scratch (idempotent, no side effects outside the appdb transaction) should opt in."
+  [retry-transient? ^Throwable e]
+  (or (retryable? e)
+      (and retry-transient?
+           (transient-error/transient-error? (mdb.connection/db-type) e))))
 
 (def ^:private default-retry-config
   {:max-retries 4
    :delay-ms 1000 ;; Constant delay between retries.
    :retry-if (fn [_ e] (retryable? e))})
 
+;; MySQL 8.0+ supports `SELECT ... FOR SHARE`, but MariaDB (all versions as of
+;; writing) only understands the older `LOCK IN SHARE MODE` syntax.
+;; `LOCK IN SHARE MODE` works on all supported MySQL-family versions including
+;; MySQL 8, so we use it uniformly for `:mysql`.
+(defn- lock-clause
+  "Returns the trailing locking clause to append to the base SELECT."
+  [mode]
+  (case mode
+    :exclusive " FOR UPDATE"
+    :share     (if (= (mdb.connection/db-type) :mysql)
+                 " LOCK IN SHARE MODE"
+                 " FOR SHARE")))
+
+(def ^:private base-lock-sql
+  (delay
+    (first (mdb.query/compile {:select [:lock.lock_name]
+                               :from [[:metabase_cluster_lock :lock]]
+                               :where [:= :lock.lock_name [:raw "?"]]}))))
+
+(defn- lock-sql ^String [mode]
+  (str @base-lock-sql (lock-clause mode)))
+
 (defn- prepare-statement
-  "Create a prepared statement to query cache"
-  ^PreparedStatement [^Connection conn lock-name-str timeout]
-  (let [stmt (.prepareStatement conn ^String (first (mdb.query/compile {:select [:lock.lock_name]
-                                                                        :from [[:metabase_cluster_lock :lock]]
-                                                                        :where [:= :lock.lock_name [:raw "?"]]
-                                                                        :for :update})))]
+  "Create a prepared statement to acquire a lock row in the given mode."
+  ^PreparedStatement [^Connection conn lock-name-str timeout mode]
+  (let [stmt (.prepareStatement conn (lock-sql mode))]
     (try
+      (u.connection/set-query-timeout! stmt timeout)
       (doto stmt
-        (.setQueryTimeout timeout)
         (.setString 1 lock-name-str)
         (.setMaxRows 1))
       (catch Throwable e
         (.close stmt)
         (throw e)))))
 
-(defn- do-with-cluster-lock*
-  [lock-name-str timeout-seconds thunk]
-  (t2/with-transaction [conn]
-    (with-open [stmt (prepare-statement conn lock-name-str timeout-seconds)
-                result-set (.executeQuery stmt)]
-      (when-not (.next result-set)
-        ;; this record will not be visible until the tx commits, so there's no need to lock it
-        ;; we instead rely on concurrent threads having constraint violation trying to insert their own record
-        (t2/query-one {:insert-into [:metabase_cluster_lock]
-                       :columns [:lock_name]
-                       :values [[lock-name-str]]})))
-    (log/debug "Obtained cluster lock")
-    (thunk)))
+(def ^:private lock-wait-timeout-error-code
+  "MySQL's ER_LOCK_WAIT_TIMEOUT."
+  1205)
+
+(defn- session-lock-wait-timeout
+  [^Connection conn]
+  (with-open [stmt (.createStatement conn)
+              rset (.executeQuery stmt "SELECT @@session.innodb_lock_wait_timeout")]
+    (when (.next rset)
+      (.getLong rset 1))))
+
+(defn- set-session-lock-wait-timeout!
+  [^Connection conn seconds]
+  (with-open [stmt (.createStatement conn)]
+    (.execute stmt (str "SET SESSION innodb_lock_wait_timeout = " (long seconds)))))
+
+(defn- do-with-lock-wait-timeout
+  "Run `f` with InnoDB's session lock-wait timeout set to `timeout-seconds`, restoring the old value afterwards.
+  Used where the driver cannot carry the timeout itself (see [[u.connection/set-query-timeout!]]): acquisition blocks
+  on the lock row, so the lock-wait timeout is what bounds it.
+  A timeout here means we lost the race for the lock, so it surfaces as an acquisition failure the retry loop knows."
+  [^Connection conn timeout-seconds f]
+  ;; the connection is usually pooled, so the old value has to go back before it is handed to anyone else
+  (let [previous (session-lock-wait-timeout conn)]
+    (set-session-lock-wait-timeout! conn timeout-seconds)
+    (try
+      (f)
+      (catch SQLException e
+        (if (= (.getErrorCode e) lock-wait-timeout-error-code)
+          (throw (ex-info "Timed out waiting for the cluster lock row"
+                          {::acquisition-timeout true}
+                          e))
+          (throw e)))
+      (finally
+        (when previous
+          (set-session-lock-wait-timeout! conn previous))))))
+
+(defn- lock-wait-timeout-code?
+  "Whether `e` or one of its causes has MySQL's ER_LOCK_WAIT_TIMEOUT error code. The server can raise this independently
+  of the JDBC timeout, so it does not always arrive as a `SQLTimeoutException` or through
+  [[do-with-lock-wait-timeout]]."
+  [^Throwable e]
+  (loop [^Throwable e e]
+    (cond
+      (nil? e)                                                            false
+      (and (instance? SQLException e)
+           (= (.getErrorCode ^SQLException e) lock-wait-timeout-error-code)) true
+      :else                                                               (recur (.getCause e)))))
+
+(defn- lock-wait-timed-out?
+  "Whether `e` indicates a row-lock timeout rather than another failure."
+  [^Throwable e]
+  (or (instance? java.sql.SQLTimeoutException e)
+      (instance? java.sql.SQLTimeoutException (ex-cause e))
+      (true? (::acquisition-timeout (ex-data e)))
+      (lock-wait-timeout-code? e)
+      (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
+
+(defn- checkout-connection!
+  "Check out an app-db connection for the out-of-band insert.
+
+  The caller already holds one connection, so this second checkout can time out when the pool is exhausted. Tag that
+  failure so [[fall-back-in-band?]] can retry on the caller's connection."
+  ^Connection []
+  (try
+    (.getConnection ^javax.sql.DataSource mdb.connection/*application-db*)
+    (catch Exception e
+      (throw (ex-info "Could not check out a connection to insert the cluster lock row"
+                      {::checkout-failed true}
+                      e)))))
+
+(defn- insert-lock-row-out-of-band!
+  "Insert and commit the lock row on a dedicated connection.
+
+  Lock acquisition assumes that each lock row is created once and remains available. A row created inside
+  `with-temp` would instead be rolled back, forcing later acquisitions to repeat the insert race. On MariaDB,
+  each repetition can incur the full lock-wait timeout.
+
+  This temporarily holds both the caller's connection and the dedicated connection. Once committed, later
+  acquisitions find the row and do not return to this path for the same lock name.
+
+  TODO (Chris 2026-08-21) -- This addresses a MariaDB CI failure with no local reproduction, so the explanation is
+  based on observed cross-connection behavior rather than direct measurement. If the failure persists, revisit this
+  path before adding more workarounds."
+  [lock-name-str timeout]
+  (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
+                                  :columns     [:lock_name]
+                                  :values      [[[:raw "?"]]]})]
+    (with-open [conn (checkout-connection!)
+                stmt (.prepareStatement conn ^String sql)]
+      ;; The row must be durable before the SELECT below can find it, and the pool does not guarantee autocommit.
+      (when-not (.getAutoCommit conn)
+        (.setAutoCommit conn true))
+      (.setString stmt 1 lock-name-str)
+      (let [insert! (fn []
+                      (try
+                        (.executeUpdate stmt)
+                        (catch Exception e
+                          ;; Another transaction inserted the durable row first; that satisfies this operation.
+                          (when-not (duplicate-lock-row? e)
+                            (throw e)))))]
+        ;; Bound the wait on this connection. Because the caller uses another session, an uncommitted row from a
+        ;; competing transaction could otherwise block this insert for the server's default lock-wait timeout.
+        (u.connection/set-query-timeout! stmt timeout)
+        ;; Set a lock-wait timeout for MySQL-family servers. MariaDB's driver carries the query timeout as
+        ;; `max_statement_time`, which does not reliably interrupt a statement already waiting on a row lock.
+        (if (= (mdb.connection/db-type) :mysql)
+          (do-with-lock-wait-timeout conn timeout insert!)
+          (insert!))))))
+
+(defn- fall-back-in-band?
+  "Whether a failed out-of-band insert can be retried on the caller's own connection.
+
+  This covers a failed connection checkout and a lock-wait timeout on the dedicated connection. In either case, the
+  caller's connection needs no second checkout and cannot be blocked by its own locks."
+  [^Throwable e]
+  (or (true? (::checkout-failed (ex-data e)))
+      (lock-wait-timed-out? e)))
+
+(defn- insert-lock-row-in-band!
+  "Insert the lock row on the caller's connection, within its transaction.
+
+  The row is not visible until the transaction commits, so it does not need to be locked yet; concurrent
+  inserters receive a constraint violation and retry. This uses raw JDBC to guarantee that the insert runs on
+  `conn` (ambient resolution would select another connection under a detached lock) and uses the same timeout
+  as the SELECT, because concurrent first-time inserts block on the winner's uncommitted unique-index entry."
+  [^Connection conn lock-name-str timeout]
+  (let [[sql] (mdb.query/compile {:insert-into [:metabase_cluster_lock]
+                                  :columns     [:lock_name]
+                                  :values      [[[:raw "?"]]]})]
+    (with-open [insert-stmt (.prepareStatement conn ^String sql)]
+      (u.connection/set-query-timeout! insert-stmt timeout)
+      (.setString insert-stmt 1 lock-name-str)
+      (.executeUpdate insert-stmt))))
+
+(defn- acquire-lock-row!*
+  [^Connection conn lock-name-str timeout mode ambient-transaction?]
+  (let [inserted-out-of-band?
+        (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
+                    result-set (.executeQuery stmt)]
+          (when-not (.next result-set)
+            ;; Only tests can have a surrounding transaction that never commits. `with-temp` rolls back its lock
+            ;; row, causing the next acquisition to repeat an insert race intended to happen once. Production
+            ;; transactions commit these rows normally; `load-from-h2!` is one such transactional caller.
+            (if (and ambient-transaction? config/is-test?)
+              (try
+                (insert-lock-row-out-of-band! lock-name-str timeout)
+                true
+                (catch Exception e
+                  ;; The caller usually causes a timeout. On MySQL and MariaDB, its earlier SELECT ... FOR UPDATE
+                  ;; can hold a gap lock over this key, and the dedicated connection cannot outwait the caller's
+                  ;; transaction. `load-from-h2!`, for example, holds batch-permissions locks while inserting
+                  ;; Databases in one long transaction. The pool can also refuse the second connection when enough
+                  ;; threads are already holding one here. Retry on the caller's connection, which needs no checkout
+                  ;; and cannot be blocked by the caller's own locks.
+                  (if (fall-back-in-band? e)
+                    (do (insert-lock-row-in-band! conn lock-name-str timeout)
+                        false)
+                    (throw e))))
+              (do (insert-lock-row-in-band! conn lock-name-str timeout)
+                  false))))]
+    (when inserted-out-of-band?
+      ;; The dedicated connection committed the row; now acquire its lock on the caller's connection.
+      (with-open [stmt (prepare-statement conn lock-name-str timeout mode)
+                  result-set (.executeQuery stmt)]
+        (when-not (.next result-set)
+          ;; The insert relies on the dedicated connection being in autocommit. Without the row there is no lock to
+          ;; hold, and returning here would let the body run as though we had one.
+          (throw (ex-info "Cluster lock row is missing after it was committed on a dedicated connection"
+                          {:lock-name lock-name-str}))))))
+  (log/debugf "Obtained cluster lock: %s (%s)" lock-name-str mode))
+
+(defn- acquire-lock-row!
+  [^Connection conn lock-name-str timeout mode ambient-transaction?]
+  (if (u.connection/server-rejects-query-timeout? conn)
+    (do-with-lock-wait-timeout conn timeout #(acquire-lock-row!* conn lock-name-str timeout mode ambient-transaction?))
+    (acquire-lock-row!* conn lock-name-str timeout mode ambient-transaction?)))
+
+(def ^:private ^:dynamic *detached-locks-held*
+  "Lock-name strings currently held by [[do-with-detached-cluster-lock]] in this dynamic scope. A detached
+  hold lives on a dedicated connection, so re-acquiring the same name from this scope — detached or
+  transactional — would block against our own row lock; acquisitions fail fast instead."
+  #{})
+
+(defn- do-with-cluster-locks*
+  "Acquire all `locks` (each a `{:lock-name-str, :mode}` map) inside a single
+  transaction, then run `thunk`."
+  [locks timeout-seconds thunk]
+  (doseq [{:keys [lock-name-str]} locks]
+    (when (*detached-locks-held* lock-name-str)
+      (throw (ex-info "Cluster lock is already held detached in this scope"
+                      {:lock-name lock-name-str}))))
+  ;; Read this before opening our transaction: only the caller's preexisting transaction could roll back the lock row.
+  (let [ambient-transaction? (mdb.connection/in-transaction?)]
+    (t2/with-transaction [conn]
+      (doseq [{:keys [lock-name-str mode]} locks]
+        (acquire-lock-row! conn lock-name-str timeout-seconds mode ambient-transaction?))
+      (thunk))))
+
+;; ---------- h2 in-process rw locks ----------
+;;
+;; h2 does not respect query timeout when taking SELECT ... FOR UPDATE locks, and
+;; Metabase does not support multi-instance h2 deployments. So for h2 we take an
+;; in-process `ReentrantReadWriteLock` keyed by lock-name. Shared mode → read lock,
+;; exclusive mode → write lock. Still supports reentrancy within a single thread.
+
+(defonce ^:private ^ConcurrentHashMap h2-locks (ConcurrentHashMap.))
+
+(defn- h2-rw-lock ^ReentrantReadWriteLock [lock-name-str]
+  (.computeIfAbsent h2-locks lock-name-str
+                    (reify Function (apply [_ _] (ReentrantReadWriteLock.)))))
+
+(defn- do-with-h2-cluster-locks*
+  [locks thunk]
+  (let [^java.util.List held (java.util.ArrayList.)]
+    (try
+      (doseq [{:keys [lock-name-str mode]} locks]
+        (let [rw (h2-rw-lock lock-name-str)
+              ^Lock lock (if (= mode :share) (.readLock rw) (.writeLock rw))]
+          (.lock lock)
+          (.add held lock)
+          (log/debugf "Obtained h2 cluster lock: %s (%s)" lock-name-str mode)))
+      (thunk)
+      (finally
+        (doseq [^Lock lock (reverse held)]
+          (.unlock lock))))))
+
+;; ---------- public API ----------
+
+(defn- keyword->lock-name-str [kw]
+  (str (namespace kw) "/" (name kw)))
+
+(defn- normalize-lock-spec
+  "Turn an element of `:locks` into a `{:lock-name-str, :mode}` map. Each element
+  may be a bare keyword (→ exclusive) or a `{:lock, :mode}` map."
+  [spec]
+  (cond
+    (keyword? spec)
+    {:lock-name-str (keyword->lock-name-str spec) :mode :exclusive}
+
+    (map? spec)
+    (let [{:keys [lock mode] :or {mode :exclusive}} spec]
+      (when-not (keyword? lock)
+        (throw (ex-info "Cluster-lock spec map must have a :lock keyword" {:spec spec})))
+      {:lock-name-str (keyword->lock-name-str lock) :mode mode})
+
+    :else
+    (throw (ex-info "Invalid cluster-lock spec" {:spec spec}))))
+
+(defn- parse-opts
+  "Turn user-supplied `opts` into `{:locks, :timeout-seconds, :retry-config}`."
+  [opts]
+  (cond
+    (keyword? opts)
+    {:locks [(normalize-lock-spec opts)]}
+
+    (map? opts)
+    (let [{:keys [lock locks timeout-seconds retry-config retry-transient?]} opts]
+      (when (and lock locks)
+        (throw (ex-info "Cluster-lock opts must specify exactly one of :lock or :locks"
+                        {:opts opts})))
+      (when-not (or lock locks)
+        (throw (ex-info "Cluster-lock opts must specify :lock or :locks" {:opts opts})))
+      (cond-> {:locks            (if lock
+                                   [(normalize-lock-spec (if (map? lock)
+                                                           lock
+                                                           {:lock lock :mode (or (:mode opts) :exclusive)}))]
+                                   (mapv normalize-lock-spec locks))
+               :retry-transient? (boolean retry-transient?)}
+        timeout-seconds (assoc :timeout-seconds timeout-seconds)
+        retry-config    (assoc :retry-config retry-config)))
+
+    :else
+    (throw (ex-info "Invalid cluster-lock opts" {:opts opts}))))
 
 (mu/defn do-with-cluster-lock
   "Impl for `with-cluster-lock`.
 
-  Call `thunk` after first synchronizing with the metabase cluster by taking a lock in the appdb."
-  [opts :- [:or :keyword
+  Call `thunk` after first synchronizing with the metabase cluster by taking one
+  or more locks in the appdb. `opts` can be:
+
+  - a keyword `lock-name` — shorthand for exclusive lock on that name with default
+    timeout and retry config.
+  - a map with `:lock` (a keyword) or `:locks` (a seq of specs), plus optional
+    `:mode`, `:timeout-seconds`, `:retry-config`, and `:retry-transient?`:
+
+      {:lock ::foo}                                     ; exclusive on ::foo
+      {:lock ::foo :mode :share}                        ; shared on ::foo
+      {:lock ::foo :timeout-seconds 5}                  ; with timeout override
+      {:lock ::foo :retry-transient? true}              ; also retry deadlocks (see below)
+      {:locks [::foo ::bar]}                            ; two exclusive locks
+      {:locks [{:lock ::root :mode :share}              ; intent-lock pattern:
+               {:lock ::leaf :mode :exclusive}]         ;  shared root + exclusive
+       :timeout-seconds 5}                              ;  leaf, with timeout
+
+  In the `:locks` form, each element is either a bare keyword (exclusive) or a
+  map `{:lock, :mode}`. Per-element timeout/retry config is not supported —
+  those live on the top-level opts map. All locks are acquired in order inside
+  a single transaction.
+
+  `:retry-transient?` (default false) additionally retries transient db errors —
+  deadlocks, lock timeouts, serialization failures — that surface from inside the
+  locked body. On multi-master appdbs (e.g. MariaDB Galera) row locks aren't
+  replicated across nodes, so the lock can't serialize writers and the conflicting
+  commit comes back as a deadlock. Only opt in when the body is safe to re-run from
+  scratch — idempotent, with no side effects outside the appdb transaction (a
+  rolled-back deadlock undoes only the db writes, not external calls)."
+  [opts :- [:or
+            :keyword
             [:map
-             [:lock-name                        :keyword]
-             [:timeout-seconds {:optional true} :int]
-             [:retry-config    {:optional true} [:ref ::retry/retry-overrides]]]]
+             [:lock             {:optional true} :keyword]
+             [:locks            {:optional true} [:sequential
+                                                  [:or :keyword
+                                                   [:map
+                                                    [:lock :keyword]
+                                                    [:mode {:optional true} [:enum :exclusive :share]]]]]]
+             [:mode             {:optional true} [:enum :exclusive :share]]
+             [:timeout-seconds  {:optional true} :int]
+             [:retry-config     {:optional true} [:ref ::retry/retry-overrides]]
+             [:retry-transient? {:optional true} :boolean]]]
    thunk :- ifn?]
-  (cond
-    ;; h2 does not respect the query timeout when taking the lock
-    ;; we do not support multiple instances for h2 however, so an in-process lock is sufficient.
-    (= (mdb.connection/db-type) :h2) (locking do-with-cluster-lock (thunk))
-    (keyword? opts) (do-with-cluster-lock {:lock-name opts} thunk)
-    :else (let [{:keys [timeout-seconds retry-config lock-name] :or {timeout-seconds cluster-lock-timeout-seconds}} opts
-                lock-name-str (str (namespace lock-name) "/" (name lock-name))
-                config (merge default-retry-config retry-config)]
-            (try
-              (retry/with-retry config
-                (do-with-cluster-lock* lock-name-str timeout-seconds thunk))
-              (catch Throwable e
-                (if (retryable? e)
-                  (throw (ex-info "Failed to run statement with cluster lock"
-                                  {:retries (:max-retries config)}
-                                  e))
-                  (throw e)))))))
+  (let [{:keys [locks timeout-seconds retry-config retry-transient?]
+         :or   {timeout-seconds cluster-lock-timeout-seconds}} (parse-opts opts)]
+    (cond
+      ;; h2 does not respect the query timeout when taking the lock and is not cross-process,
+      ;; so we fall back to an in-process ReentrantReadWriteLock per lock name.
+      (= (mdb.connection/db-type) :h2)
+      (do-with-h2-cluster-locks* locks thunk)
+
+      :else
+      (let [config (assoc (merge default-retry-config retry-config)
+                          :retry-if (fn [_ e] (retry-if-error? retry-transient? e)))]
+        (try
+          (retry/with-retry config
+            (do-with-cluster-locks* locks timeout-seconds thunk))
+          (catch Throwable e
+            ;; only a genuine lock-acquisition failure gets the "Failed to obtain cluster lock" wrapper;
+            ;; an exhausted transient body error (e.g. deadlock) propagates raw so the message stays truthful.
+            (if (retryable? e)
+              (throw (ex-info (str "Failed to obtain cluster lock: "
+                                   (str/join ", " (map :lock-name-str locks)))
+                              {:lock-names (mapv :lock-name-str locks)
+                               :retries (:max-retries config)}
+                              e))
+              (throw e))))))))
 
 (defmacro with-cluster-lock
   "Run `body` in a transaction that tries to take a lock from the metabase_cluster_lock table of
-  the specified name to coordinate concurrency with other metabase instances sharing the appdb."
+  the specified name to coordinate concurrency with other metabase instances sharing the appdb.
+  (On an h2 appdb the lock is an in-process read-write lock and no transaction is involved.)
+
+  `lock-options` may be a lock-name keyword, or an options map
+  `{:lock, :locks, :mode, :timeout-seconds, :retry-config, :retry-transient?}` —
+  see [[do-with-cluster-lock]] for the full description of each.
+
+  For long-running work whose appdb writes should commit incrementally instead of riding the lock's
+  transaction, see [[with-detached-cluster-lock]]."
   ([lock-options & body]
    `(do-with-cluster-lock ~lock-options (fn [] ~@body))))
+
+(mu/defn do-with-detached-cluster-lock
+  "Impl for [[with-detached-cluster-lock]]."
+  [{:keys [lock timeout-seconds retry-config]
+    :or   {timeout-seconds cluster-lock-timeout-seconds}}
+   :- [:map
+       [:lock            :keyword]
+       [:timeout-seconds {:optional true} :int]
+       [:retry-config    {:optional true} [:ref ::retry/retry-overrides]]]
+   thunk :- ifn?]
+  (let [lock-name-str (keyword->lock-name-str lock)]
+    (when (*detached-locks-held* lock-name-str)
+      (throw (ex-info "Cluster lock is already held detached in this scope"
+                      {:lock-name lock-name-str})))
+    (if (= (mdb.connection/db-type) :h2)
+      ;; the h2 in-process lock never holds a transaction, so it is already 'detached'
+      (do-with-h2-cluster-locks* [{:lock-name-str lock-name-str :mode :exclusive}]
+                                 #(binding [*detached-locks-held* (conj *detached-locks-held* lock-name-str)]
+                                    (thunk)))
+      (mdb.connection/with-unshared-connection [conn]
+        (.setAutoCommit ^Connection conn false)
+        (let [config (merge default-retry-config retry-config)]
+          (try
+            (retry/with-retry config
+              ;; clear the aborted transaction a failed previous attempt leaves behind
+              (.rollback ^Connection conn)
+              ;; A detached hold owns its connection, so the caller's transaction cannot roll back its row.
+              (acquire-lock-row! conn lock-name-str timeout-seconds :exclusive false))
+            (catch Throwable e
+              (if (retryable? e)
+                (throw (ex-info (str "Failed to obtain cluster lock: " lock-name-str)
+                                {:lock-names [lock-name-str]
+                                 :retries    (:max-retries config)}
+                                e))
+                (throw e)))))
+        ;; the body runs outside the retry above, so its errors are never retried (its work has already
+        ;; committed) and never mistaken for acquisition failure
+        (let [result (binding [*detached-locks-held* (conj *detached-locks-held* lock-name-str)]
+                       (thunk))]
+          ;; releases the row lock; on a body throw the pool's check-in rollback releases it instead
+          (.commit ^Connection conn)
+          result)))))
+
+(defmacro with-detached-cluster-lock
+  "Like [[with-cluster-lock]], but holds the (exclusive) lock row on a dedicated connection
+  (see [[metabase.app-db.connection/with-unshared-connection]]) while `body` runs on ordinary pooled
+  connections: `body`'s appdb work commits incrementally in its own short transactions instead of riding
+  one long transaction that holds the lock. The lock is released when `body` completes (commit) or
+  throws (pool check-in rollback) — but `body`'s already-committed work is NOT rolled back by a throw,
+  so only use this for long-running work that is idempotent/self-healing (the audit boot pipeline).
+
+  Not reentrant: re-acquiring a lock this scope already holds detached — in either detached or
+  transactional form — throws instead of self-deadlocking against the dedicated connection. (The
+  reverse — requesting a detached hold on a lock this scope holds transactionally — is not detected
+  and times out; don't.) Taking *different* locks inside `body` works normally. Hold duration is
+  bounded by the connection pool's limits: c3p0's `unreturnedConnectionTimeout`, when configured,
+  destroys the connection and silently releases the lock, and with the appdb checkout timeout set to
+  0 (wait forever) a body blocked on pool checkout holds the lock indefinitely.
+
+  `opts` is `{:lock, :timeout-seconds, :retry-config}` as in [[with-cluster-lock]]; retries apply to
+  lock acquisition only, never to `body`."
+  [opts & body]
+  `(do-with-detached-cluster-lock ~opts (fn [] ~@body)))
 
 (def card-statistics-lock
   "A shared keyword that any method doing a batch update of card statistics can use for the cluster lock"

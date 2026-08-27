@@ -2,7 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import { uploadTranslationDictionaryViaAPI } from "e2e/support/helpers/e2e-content-translation-helpers";
 
-import { germanFieldNames } from "./constants";
+import { germanFieldNames } from "./helpers/constants";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -16,12 +16,13 @@ describe("scenarios > content translation > guest embeds > questions", () => {
       );
     });
 
+    // Unjustified type cast. FIXME
     let productsQuestionId = null as unknown as number;
 
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       H.createQuestion(
         {
@@ -41,6 +42,7 @@ describe("scenarios > content translation > guest embeds > questions", () => {
       });
     });
 
+    // Unjustified type cast. FIXME
     let visitEmbeddedQuestion = null as unknown as ({
       locale,
     }: {
@@ -48,6 +50,7 @@ describe("scenarios > content translation > guest embeds > questions", () => {
     }) => void;
 
     beforeEach(() => {
+      // Unjustified type cast. FIXME
       H.restore("snapshot-for-questions" as any);
       visitEmbeddedQuestion = ({ locale }) => {
         H.visitEmbeddedPage(

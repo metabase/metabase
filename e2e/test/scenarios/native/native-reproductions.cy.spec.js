@@ -59,23 +59,6 @@ describe("issue 12439", () => {
     H.sidebar().contains("Y-axis");
   });
 });
-
-describe("issue 15029", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should allow dots in the variable reference (metabase#15029)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type(
-      "select * from products where RATING = {{number.of.stars}}",
-    );
-
-    cy.findAllByText("Variable name").parent().findByText("number.of.stars");
-  });
-});
-
 describe("issue 16886", () => {
   const ORIGINAL_QUERY = "select 1 from orders";
   const SELECTED_TEXT = "select 1";
@@ -308,114 +291,6 @@ describe("issue 20044", () => {
       cy.get("[data-testid=cell-data]").contains("1");
       cy.findByText("Explore results").should("not.exist");
     });
-  });
-});
-
-describe("issue 20625", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.updateSetting("native-query-autocomplete-match-style", "prefix");
-    cy.signInAsNormalUser();
-  });
-
-  // realpress messes with cypress 13
-  it("should continue to request more prefix matches from the server when the limit was hit (metabase#20625)", () => {
-    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**", {
-      statusCode: 200,
-      body: [
-        // This result has 50 items, which is the limit
-        // as set by the backend.
-        // This is needed to trigger the second autocomplete.
-        ["ORDERS", "Table"],
-        ["PEOPLE", "Table"],
-        ["REVIEWS", "Table"],
-        ["ACTIVE_SUBSCRIPTION", "ACCOUNTS :type/Boolean :type/Category"],
-        ["ADDRESS", "PEOPLE :type/Text"],
-        ["BIRTH_DATE", "PEOPLE :type/Date"],
-        ["BUTTON_LABEL", "ANALYTIC_EVENTS :type/Text :type/Category"],
-        ["CANCELED_AT", "ACCOUNTS :type/DateTime :type/CancelationTimestamp"],
-        ["CATEGORY", "PRODUCTS :type/Text :type/Category"],
-        ["CREATED_AT", "ACCOUNTS :type/DateTime :type/CreationTimestamp"],
-        ["CREATED_AT", "ORDERS :type/DateTime :type/CreationTimestamp"],
-        ["CREATED_AT", "PEOPLE :type/DateTime :type/CreationTimestamp"],
-        ["CREATED_AT", "PRODUCTS :type/DateTime :type/CreationTimestamp"],
-        ["CREATED_AT", "REVIEWS :type/DateTime :type/CreationTimestamp"],
-        ["DATE_RECEIVED", "FEEDBACK :type/DateTime"],
-        ["DATE_RECEIVED", "INVOICES :type/DateTime"],
-        ["EAN", "PRODUCTS :type/Text"],
-        ["EMAIL", "ACCOUNTS :type/Text :type/Email"],
-        ["EMAIL", "FEEDBACK :type/Text :type/Email"],
-        ["EMAIL", "PEOPLE :type/Text :type/Email"],
-        ["EVENT", "ANALYTIC_EVENTS :type/Text :type/Category"],
-        ["EXPECTED_INVOICE", "INVOICES :type/Boolean :type/Category"],
-        ["FIRST_NAME", "ACCOUNTS :type/Text :type/Name"],
-        ["LAST_NAME", "ACCOUNTS :type/Text :type/Name"],
-        ["LATITUDE", "ACCOUNTS :type/Float :type/Latitude"],
-        ["LATITUDE", "PEOPLE :type/Float :type/Latitude"],
-        ["LEGACY_PLAN", "ACCOUNTS :type/Boolean :type/Category"],
-        ["LONGITUDE", "ACCOUNTS :type/Float :type/Longitude"],
-        ["LONGITUDE", "PEOPLE :type/Float :type/Longitude"],
-        ["NAME", "PEOPLE :type/Text :type/Name"],
-        ["PAGE_URL", "ANALYTIC_EVENTS :type/Text :type/URL"],
-        ["PAYMENT", "INVOICES :type/Float"],
-        ["PRICE", "PRODUCTS :type/Float"],
-        ["RATING_MAPPED", "FEEDBACK :type/Text :type/Category"],
-        ["REVIEWER", "REVIEWS :type/Text"],
-        ["SEATS", "ACCOUNTS :type/Integer"],
-        ["SOURCE", "ACCOUNTS :type/Text :type/Source"],
-        ["SOURCE", "PEOPLE :type/Text :type/Source"],
-        ["STATE", "PEOPLE :type/Text :type/State"],
-        ["TIMESTAMP", "ANALYTIC_EVENTS :type/DateTime"],
-        ["TITLE", "PRODUCTS :type/Text :type/Title"],
-        ["TRIAL_CONVERTED", "ACCOUNTS :type/Boolean :type/Category"],
-        ["TRIAL_ENDS_AT", "ACCOUNTS :type/DateTime"],
-        ["USER_ID", "ORDERS :type/Integer :type/FK"],
-        ["VENDOR", "PRODUCTS :type/Text :type/Company"],
-        ["VENDOR_ID", "PRODUCTS :type/Integer :type/FK"],
-        ["USER_NAME", "PRODUCTS :type/Text :type/Name"],
-        ["TEST_COLUMN_1", "PRODUCTS :type/Text :type/Name"],
-        ["TEST_COLUMN_2", "PRODUCTS :type/Text :type/Name"],
-        ["TEST_COLUMN_3", "PRODUCTS :type/Text :type/Name"],
-      ],
-    }).as("autocomplete");
-
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("e");
-
-    // autocomplete_suggestions?prefix=s
-    cy.wait("@autocomplete");
-
-    H.NativeEditor.type("o");
-
-    // autocomplete_suggestions?prefix=so
-    cy.wait("@autocomplete");
-  });
-
-  it("should not continue to request more prefix matches from the server when the limit was not hit (metabase#20625)", () => {
-    cy.intercept("GET", "/api/database/*/autocomplete_suggestions**", {
-      statusCode: 200,
-      body: [
-        // This result has less than 50 items, which is under the limit
-        // as set by the backend.
-        // It will not be necessary to trigger the second autocomplete.
-        ["ORDERS", "Table"],
-        ["PEOPLE", "Table"],
-        ["REVIEWS", "Table"],
-        ["ACTIVE_SUBSCRIPTION", "ACCOUNTS :type/Boolean :type/Category"],
-        ["ADDRESS", "PEOPLE :type/Text"],
-      ],
-    }).as("autocomplete");
-
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("e");
-
-    // autocomplete_suggestions?prefix=s
-    cy.wait("@autocomplete");
-
-    H.NativeEditor.type("o");
-
-    cy.get("@autocomplete.all").should("have.length", 1);
   });
 });
 
@@ -762,7 +637,7 @@ describe("issue 35785", () => {
           name: "from",
           "display-name": "From",
           type: "date",
-          default: "2022-10-02",
+          default: "2025-10-02",
           required: true,
         },
       },

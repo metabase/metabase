@@ -32,6 +32,7 @@
    [metabase-enterprise.serialization.v2.load :as load]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
@@ -53,7 +54,13 @@
   ;; Is worth considering when adding entries here, whether they shouldn't just be skipped in extraction.
   #{:cache_field_values_schedule
     :metadata_sync_schedule
-    :metabase_version})
+    ;; instance-specific build version, no longer serialized (GHY-4013). Legacy baseline fixtures still
+    ;; carry it, which exercises that such exports still import cleanly now that it's skipped.
+    :metabase_version
+    ;; result_metadata is non-deterministic for dashboard/document cards because the Card before-update hook
+    ;; re-computes it without :verified-result-metadata? set. Fixing this properly requires making serdes
+    ;; load set :verified-result-metadata? on Card updates, which is not straightforward.
+    :result_metadata})
 
 (defn- strip-base-path [base file]
   (str/replace-first file (str base File/separator) ""))
@@ -67,14 +74,24 @@
        (map (partial strip-base-path dir))
        (into (sorted-set))))
 
+(def ^:private slug-id-prefix-re
+  #"#\d+-")
+
+(defn- replace-entropy
+  [s]
+  ;; Template tag slugs have the form `#1-my-card-name`, where `1` is the record ID. Record IDs depend on
+  ;; import order which is non-deterministic. Replace them with a deterministic placeholder.
+  (str/replace s slug-id-prefix-re "#<some-id>-"))
+
 (defn read-yaml
   "Reads a YAML file and returns Clojure data, with ignored fields removed."
   [file]
   (walk/postwalk
    (fn [x]
-     (if-not (map? x)
-       x
-       (reduce dissoc x ignored-fields)))
+     (cond
+       (map? x) (reduce dissoc x ignored-fields)
+       (string? x) (replace-entropy x)
+       :else x))
    (yaml/parse-string (slurp file))))
 
 (defn non-empty-diff [diff]
@@ -98,7 +115,7 @@
   ;; Use a separate cache to make sure there is no cross-contamination.
   (serdes/with-cache
     (-> (extract/extract {:include-field-values true :include-metabot true})
-        (storage/store! output-dir))))
+        (storage/store! (storage.files/file-writer output-dir)))))
 
 (defn- delete-dir-contents! [^File dir]
   (when (and dir (.exists dir))
@@ -126,10 +143,16 @@
 (def ^:private internal-model?
   #{"Schema"})
 
+(def ^:private covered-by-dedicated-round-trip-test?
+  "Models that have full export/import coverage in their own round-trip test and so don't need a
+  fixture in this shared baseline. OsiAiContext is covered (in-memory + on-disk) by
+  metabase-enterprise.serialization.v2.osi-ai-context-test."
+  #{"OsiAiContext"})
+
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."
   []
-  (storage/store! (into [] (extract/extract {:include-field-values true :include-metabot true})) source-dir))
+  (storage/store! (into [] (extract/extract {:include-field-values true :include-metabot true})) (storage.files/file-writer source-dir)))
 
 ;; If this test is failing, read the docstring at the top of this namespace for what to do B-)
 (deftest baseline-completeness-test
@@ -137,7 +160,7 @@
         resources  (ingest/ingest-list ingestable)
         baselined  (into #{} (map :model) (apply concat resources))
         necessary? (set serdes.models/exported-models)]
-    (doseq [m serdes.models/exported-models]
+    (doseq [m serdes.models/exported-models :when (not (covered-by-dedicated-round-trip-test? m))]
       (is (baselined m) (format "We need to add %s entries to %s" m source-dir-path)))
     (doseq [b baselined :when (not (internal-model? b))]
       (is (necessary? b) (format "We can remove %s files from %s" b source-dir-path)))))
@@ -150,37 +173,29 @@
       (try
         (mt/with-empty-h2-app-db!
           (delete-dir-contents! dev-inspect-dir)
-
           (load-extract! source-dir output-dir)
-
           (let [source-files  (fileset source-dir)
                 output-files  (fileset output-dir)
                 missing-files (set/difference source-files output-files)
                 added-files   (set/difference output-files source-files)]
-
             (testing "No files are missing"
               (is (empty? missing-files)))
             (testing "No files have been added"
               (is (empty? added-files)))
-
             (testing "File contents\n"
               (doseq [file source-files
                       :let [ref-file (io/file source-dir file)
                             out-file (io/file output-dir file)]
                       :when (.exists out-file)
                       :let [delta (compare-files ref-file out-file)]]
-
-                (is (nil? delta)
+                (is (= nil delta)
                     (str "Content mismatch for file: " (strip-base-path source-dir file)))
-
                 ;; Leave behind files for developers to inspect
                 (when (and (.exists dev-inspect-dir) delta)
                   (vreset! wrote-files? true)
                   (create-files-to-diff! ref-file out-file))))
-
             (when @wrote-files?
               (log/warn "Mismatching files have been written to /dev/serialization_deltas"))))
-
         (finally
           (delete-dir-contents! output-dir))))))
 

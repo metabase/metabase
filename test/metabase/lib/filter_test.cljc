@@ -46,7 +46,6 @@
          f
          venues-category-id-metadata
          categories-id-metadata)))
-
     (testing "between"
       (test-clause
        [:between
@@ -61,7 +60,6 @@
        venues-category-id-metadata
        42
        categories-id-metadata))
-
     (testing "inside"
       (test-clause
        [:inside
@@ -73,7 +71,6 @@
        venues-latitude-metadata
        venues-longitude-metadata
        42.7 13 4 27.3))
-
     (testing "emptiness"
       (doseq [[op f] [[:is-null   lib/is-null]
                       [:not-null  lib/not-null]
@@ -85,7 +82,6 @@
           [:field {:lib/uuid string?} (meta/id :venues :name)]]
          f
          venues-name-metadata)))
-
     (testing "string tests"
       (doseq [[op f] [[:starts-with      lib/starts-with]
                       [:ends-with        lib/ends-with]
@@ -99,7 +95,6 @@
          f
          venues-name-metadata
          "part")))
-
     (testing "time-interval"
       (test-clause
        [:time-interval
@@ -111,7 +106,6 @@
        checkins-date-metadata
        3
        :day))
-
     (testing "segment"
       (let [id 7]
         (test-clause
@@ -137,7 +131,6 @@
                    :filters [original-filter]}]}]
     (testing "no filter"
       (is (nil? (lib/filters q2))))
-
     (testing "setting a simple filter via the helper function"
       (let [result-query
             (lib/filter q1 (lib/between venues-category-id-metadata 42 100))
@@ -147,7 +140,6 @@
         (testing "and getting the current filter"
           (is (=? [result-filter]
                   (lib/filters result-query))))))
-
     (testing "setting a simple filter expression"
       (is (=? simple-filtered-query
               (-> q1
@@ -354,7 +346,6 @@
        :name "Created At excludes 3 hour of day selections"}
       {:clause [:not-in (lib/get-hour created-at) 0 1 2]
        :name "Created At excludes 3 hour of day selections"}
-
       {:clause [:= (created-at-with :day-of-week) "2023-10-02"]
        :name "Created At: Day of week is Monday"}
       {:clause [:= (lib.expression/get-day-of-week created-at :iso) 1]
@@ -373,7 +364,6 @@
        :name "Created At excludes 3 day of week selections"}
       {:clause [:not-in (lib.expression/get-day-of-week created-at :iso) 1 2 3]
        :name "Created At excludes 3 day of week selections"}
-
       {:clause [:= (created-at-with :month-of-year) "2023-01-01"]
        :name "Created At: Month of year is on Jan"}
       {:clause [:= (lib/get-month created-at) 1]
@@ -392,7 +382,6 @@
        :name "Created At excludes 3 month of year selections"}
       {:clause [:not-in (lib/get-month created-at) 1 2 3]
        :name "Created At excludes 3 month of year selections"}
-
       {:clause [:= (created-at-with :quarter-of-year) "2023-01-03"]
        :name "Created At: Quarter of year is on Q1"}
       {:clause [:= (lib/get-quarter created-at) 1]
@@ -411,7 +400,6 @@
        :name "Created At excludes 3 quarter of year selections"}
       {:clause [:not-in (lib/get-quarter created-at) 1 2 3]
        :name "Created At excludes 3 quarter of year selections"}
-
       {:clause [:= (lib/get-year created-at) 2001]
        :name "Created At is in 2001"}
       {:clause [:= (lib/get-year created-at) 2001 2002 2003]
@@ -422,7 +410,6 @@
        :name "Created At excludes 3 year of era selections"}
       {:clause [:not-in (lib/get-year created-at) 2001 2002 2003]
        :name "Created At excludes 3 year of era selections"}
-
       {:clause [:is-null created-at]
        :name "Created At is empty"}
       {:clause [:not-null created-at]
@@ -769,6 +756,22 @@
                                      "CREATED_AT"]
                                     "2023-01-01T00:00:00Z"])))))
 
+(deftest ^:parallel boolean-literal-filter-test
+  (testing "Boolean literals can be used as filters"
+    (doseq [bool [false true]]
+      (testing (str bool " literal is wrapped in :value clause with :lib/uuid for removal support")
+        (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+              query' (lib/filter query bool)]
+          (is (=? {:stages [{:filters [[:value {:lib/uuid string?
+                                                :effective-type :type/Boolean
+                                                :base-type :type/Boolean}
+                                        bool]]}]}
+                  query'))
+          (testing "can be removed"
+            (let [filters (lib/filters query')
+                  query'' (lib/remove-clause query' (first filters))]
+              (is (empty? (lib/filters query''))))))))))
+
 (deftest ^:parallel describe-filter-operator-test
   (testing "default variant"
     (are [expected operator] (= expected (lib/describe-filter-operator operator))
@@ -809,3 +812,64 @@
       "Between"  :between
       "Is empty" :is-null
       "Not empty" :not-null)))
+
+(deftest ^:parallel cross-field-comparison-filter-display-names-test
+  (testing "#15748 a comparison filter between two field refs renders both field names"
+    (check-display-names
+     [{:clause [:< (meta/field-metadata :orders :total) (meta/field-metadata :orders :subtotal)]
+       :name "Total is less than Subtotal"}
+      {:clause [:> (meta/field-metadata :orders :total) (meta/field-metadata :orders :subtotal)]
+       :name "Total is greater than Subtotal"}])))
+
+(deftest ^:parallel multi-value-and-include-current-display-names-test
+  (testing "multi-value equality renders an \"N selections\" display name"
+    (let [city (meta/field-metadata :people :city)]
+      (check-display-names
+       [{:clause [:= city "Indiantown" "Indian Valley"], :name "City is 2 selections"}])))
+  (testing "an include-current relative interval renders the composed column-prefixed sentence"
+    (let [created-at (meta/field-metadata :products :created-at)]
+      (check-display-names
+       [{:clause [:time-interval created-at -1 :month], :options {:include-current true}
+         :name "Created At is in the previous month or this month"}]))))
+
+(deftest ^:parallel max-of-string-column-is-text-typed-test
+  (testing "#21973 #22154 a plain max/min aggregation over a Text column stays Text-typed in a later stage
+            (so the FE offers string filter operators)"
+    (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                      (lib/aggregate (lib/max (meta/field-metadata :people :name)))
+                      (lib/breakout (meta/field-metadata :people :source))
+                      lib/append-stage)
+          max-col (m/find-first (comp #{"max"} :name) (lib/filterable-columns query))]
+      (is (some? max-col))
+      (is (= :type/Text (lib/type-of query max-col))))))
+
+(deftest ^:parallel distinct-aggregation-and-breakout-filterable-column-test
+  (testing "#36508 a distinct aggregation column is numeric-typed (so the FE offers numeric filter operators)"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                           (lib/aggregate (lib/distinct (meta/field-metadata :people :email)))
+                           (lib/breakout (meta/field-metadata :people :source))
+                           lib/append-stage)
+          distinct-col (m/find-first (comp #{"count"} :name) (lib/filterable-columns query))]
+      (is (some? distinct-col))
+      (is (isa? (lib/type-of query distinct-col) :type/Number))))
+  (testing "#25927 a breakout column stays filterable when the stage carries an expression over an aggregation"
+    (let [base      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/breakout (meta/field-metadata :orders :product-id))
+                        (lib/aggregate (lib/count))
+                        lib/append-stage)
+          count-col (m/find-first (comp #{"count"} :name) (lib/visible-columns base))
+          query     (lib/expression base "x2" (lib/* 2 count-col))]
+      (is (some (comp #{"Product ID"} :display-name) (lib/filterable-columns query))))))
+
+(deftest ^:parallel filterable-columns-layered-on-card-source-test
+  (testing "an expression layered on a structured card source is offered as a filterable column"
+    (let [base     (lib.tu/query-with-source-card)
+          user-id  (m/find-first (comp #{"USER_ID"} :name) (lib/visible-columns base))
+          query    (lib/expression base "Total100" (lib/+ user-id 100))]
+      (is (some (comp #{"Total100"} :name) (lib/filterable-columns query)))))
+  (testing "an explicit join layered on a card source exposes the joined table's columns for filtering"
+    (let [base    (lib.tu/query-with-source-card)
+          user-id (m/find-first (comp #{"USER_ID"} :name) (lib/visible-columns base))
+          query   (lib/join base (lib/join-clause (meta/table-metadata :venues)
+                                                  [(lib/= user-id (meta/field-metadata :venues :id))]))]
+      (is (some (comp #{"PRICE"} :name) (lib/filterable-columns query))))))

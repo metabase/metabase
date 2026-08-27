@@ -1,13 +1,12 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/components/DatabaseConnectionHealthInfo";
 import { useListDatabasesQuery } from "metabase/api";
-import { ForwardRefLink } from "metabase/common/components/Link";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { Box, Flex, Icon, Menu, Text, UnstyledButton } from "metabase/ui";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database, DatabaseId } from "metabase-types/api";
@@ -57,7 +56,7 @@ export const DestinationDatabasesList = ({
             {destinationDatabases.length > previewCount && (
               <Text
                 component={Link}
-                c="brand"
+                c="core-brand"
                 td="underline"
                 to={Urls.viewDestinationDatabases(primaryDatabaseId)}
               >
@@ -92,7 +91,6 @@ const DestinationDatabasesListItem = ({
         <DatabaseConnectionHealthInfo
           databaseId={database.id}
           displayText="tooltip"
-          data-testid="destination-db-health-info"
         />
         <Text>{database.name}</Text>
       </Flex>

@@ -1,5 +1,4 @@
 import { memo, useCallback, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -8,10 +7,7 @@ import {
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
-import { dependencyGraph } from "metabase/lib/urls/dependencies";
+import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import {
   FieldOrderPicker,
   NameDescriptionInput,
@@ -26,6 +22,8 @@ import {
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import {
   Box,
   Button,
@@ -36,11 +34,20 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
+import * as Urls from "metabase/urls";
+import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
+import { dependencyGraph } from "metabase/urls/dependencies";
+import {
+  type FieldId,
+  type Table,
+  type TableFieldOrder,
+  isConcreteTableId,
+} from "metabase-types/api";
 
 import S from "./TableSection.module.css";
 import { MeasureList } from "./components/MeasureList";
 import { SegmentList } from "./components/SegmentList";
+import { TableActionsMenu } from "./components/TableActionsMenu";
 import { TableAttributesEditSingle } from "./components/TableAttributesEditSingle";
 import { TableCollection } from "./components/TableCollection";
 import { TableMetadata } from "./components/TableMetadata";
@@ -52,7 +59,7 @@ interface Props {
   activeTab: DataStudioTableMetadataTab;
   canPublish: boolean;
   hasLibrary: boolean;
-  onSyncOptionsClick: () => void;
+  onUpdate: () => void;
 }
 
 type TableModalType = "library" | "publish" | "unpublish";
@@ -63,7 +70,7 @@ const TableSectionBase = ({
   activeTab,
   canPublish,
   hasLibrary,
-  onSyncOptionsClick,
+  onUpdate,
 }: Props) => {
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
@@ -90,26 +97,24 @@ const TableSectionBase = ({
     });
   };
 
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleTabChange = useCallback(
-    (tab: string | null) => {
-      if (!Urls.isDataStudioTableMetadataTab(tab)) {
+    (tab: DataStudioTableMetadataTab | null) => {
+      if (tab == null) {
         return;
       }
 
-      dispatch(
-        push(
-          Urls.dataStudioData({
-            databaseId: table.db_id,
-            schemaName: table.schema,
-            tableId: table.id,
-            tab,
-          }),
-        ),
+      navigate(
+        Urls.dataStudioData({
+          databaseId: table.db_id,
+          schemaName: table.schema,
+          tableId: table.id,
+          tab,
+        }),
       );
     },
-    [dispatch, table.db_id, table.schema, table.id],
+    [table.db_id, table.schema, table.id, navigate],
   );
 
   const handleNameChange = async (name: string) => {
@@ -121,6 +126,7 @@ const TableSectionBase = ({
     if (error) {
       sendErrorToast(t`Failed to update table name`);
     } else {
+      onUpdate();
       sendSuccessToast(t`Table name updated`, async () => {
         const { error } = await updateTable({
           id: table.id,
@@ -206,95 +212,102 @@ const TableSectionBase = ({
     setModalType(undefined);
   };
 
+  const handleSuccessCloseModal = () => {
+    onUpdate();
+    handleCloseModal();
+  };
+
+  const registerDependencyGraphTrackingEvent = () => {
+    if (isConcreteTableId(table.id)) {
+      trackDependencyEntitySelected({
+        entityId: table.id,
+        triggeredFrom: "data-structure",
+        eventDetail: "table",
+      });
+    }
+  };
+
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
-      <Box className={S.header}>
-        <NameDescriptionInput
-          description={table.description ?? ""}
-          descriptionPlaceholder={t`Give this table a description`}
-          name={table.display_name}
-          nameIcon="table2"
-          nameMaxLength={254}
-          namePlaceholder={t`Give this table a name`}
-          onNameChange={handleNameChange}
-          onDescriptionChange={handleDescriptionChange}
-        />
-      </Box>
-
-      <Group justify="stretch" gap="sm">
-        {canPublish && isLibraryEnabled && !remoteSyncReadOnly && (
-          <Button
-            flex="1"
-            p="sm"
-            leftSection={
-              <Icon name={table.is_published ? "unpublish" : "publish"} />
-            }
-            onClick={handlePublishToggle}
-          >
-            {table.is_published ? t`Unpublish` : t`Publish`}
-          </Button>
-        )}
-        <Button
-          flex="1"
-          leftSection={<Icon name="settings" />}
-          onClick={onSyncOptionsClick}
-        >
-          {t`Sync settings`}
-        </Button>
-        {isDependencyGraphEnabled && (
-          <Tooltip label={t`Dependency graph`}>
-            <Button
-              component={ForwardRefLink}
-              to={dependencyGraph({
-                entry: { id: Number(table.id), type: "table" },
-              })}
-              p="sm"
-              leftSection={<Icon name="dependencies" />}
-              style={{
-                flexGrow: 0,
-                width: 40,
-              }}
-              aria-label={t`Dependency graph`}
-            />
-          </Tooltip>
-        )}
-
-        <Box style={{ flexGrow: 0, width: 40 }}>
-          <TableLink table={table} />
-        </Box>
-      </Group>
-
-      <TableAttributesEditSingle table={table} />
-
-      <TableSectionGroup title={t`Metadata`}>
-        <TableMetadata table={table} />
-      </TableSectionGroup>
-
-      {table.is_published && <TableCollection table={table} />}
-
       <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List mb="md">
-            <Tabs.Tab
-              value="field"
-              leftSection={<Icon name="list" />}
-            >{t`Fields`}</Tabs.Tab>
-            <Tabs.Tab
-              value="segments"
-              leftSection={<Icon name="segment2" />}
-            >{t`Segments`}</Tabs.Tab>
-            <Tabs.Tab
-              value="measures"
-              leftSection={<Icon name="sum" />}
-            >{t`Measures`}</Tabs.Tab>
+            <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
+            <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
+            <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
+            <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
           </Tabs.List>
+
+          <Tabs.Panel value="details">
+            <Stack gap="md">
+              <Box className={S.header}>
+                <NameDescriptionInput
+                  description={table.description ?? ""}
+                  descriptionPlaceholder={t`Give this table a description`}
+                  name={table.display_name}
+                  nameIcon="table2"
+                  nameMaxLength={254}
+                  namePlaceholder={t`Give this table a name`}
+                  onNameChange={handleNameChange}
+                  onDescriptionChange={handleDescriptionChange}
+                />
+              </Box>
+
+              <Group justify="stretch" gap="sm">
+                {canPublish && isLibraryEnabled && !remoteSyncReadOnly && (
+                  <Button
+                    flex="1"
+                    size="md"
+                    variant={table.is_published ? "default" : "filled"}
+                    leftSection={
+                      <Icon
+                        name={table.is_published ? "unpublish" : "publish"}
+                      />
+                    }
+                    onClick={handlePublishToggle}
+                  >
+                    {table.is_published ? t`Unpublish` : t`Publish`}
+                  </Button>
+                )}
+
+                {isDependencyGraphEnabled && (
+                  <Tooltip label={t`Dependency graph`}>
+                    <Button
+                      component={ForwardRefLink}
+                      to={dependencyGraph({
+                        entry: { id: Number(table.id), type: "table" },
+                      })}
+                      p="sm"
+                      w="2.5rem"
+                      flex="0 1 auto"
+                      leftSection={<Icon name="dependencies" />}
+                      aria-label={t`Dependency graph`}
+                      onClickCapture={registerDependencyGraphTrackingEvent}
+                      onAuxClick={registerDependencyGraphTrackingEvent}
+                    />
+                  </Tooltip>
+                )}
+
+                <Box style={{ flexGrow: 0, width: 40 }}>
+                  <TableLink table={table} />
+                </Box>
+                <TableActionsMenu table={table} />
+              </Group>
+
+              <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
+
+              <TableSectionGroup title={t`Metadata`}>
+                <TableMetadata table={table} />
+              </TableSectionGroup>
+
+              {table.is_published && <TableCollection table={table} />}
+            </Stack>
+          </Tabs.Panel>
 
           <Tabs.Panel value="field">
             <Stack gap="md">
               <Group gap="md" justify="flex-start" wrap="nowrap">
-                {isUpdatingSorting && (
-                  <Loader data-testid="loading-indicator" size="xs" />
-                )}
+                {isUpdatingSorting && <Loader size="xs" />}
 
                 {!isSorting && hasFields && (
                   <ResponsiveButton
@@ -380,13 +393,13 @@ const TableSectionBase = ({
       <PLUGIN_LIBRARY.PublishTablesModal
         isOpened={modalType === "publish"}
         tableIds={[table.id]}
-        onPublish={handleCloseModal}
+        onPublish={handleSuccessCloseModal}
         onClose={handleCloseModal}
       />
       <PLUGIN_LIBRARY.UnpublishTablesModal
         isOpened={modalType === "unpublish"}
         tableIds={[table.id]}
-        onUnpublish={handleCloseModal}
+        onUnpublish={handleSuccessCloseModal}
         onClose={handleCloseModal}
       />
     </Stack>

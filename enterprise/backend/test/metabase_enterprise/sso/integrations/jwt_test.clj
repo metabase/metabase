@@ -4,16 +4,21 @@
    [buddy.sign.util :as buddy-util]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
+   [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
+   [metabase-enterprise.sso.providers.jwt :as providers.jwt]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase-enterprise.tenants.auth-provider] ;; make sure the auth provider is actually registered
    [metabase.appearance.settings :as appearance.settings]
+   [metabase.auth-identity.provider :as auth-identity.provider]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -56,7 +61,6 @@
               :message "SSO has not been enabled and/or configured",
               :status  "error-sso-disabled"}
              (client/client :get 400 "/auth/sso")))
-
            (testing "SSO requests fail if they don't have a valid premium-features token"
              (sso.test-setup/call-with-default-jwt-config!
               (fn []
@@ -68,7 +72,6 @@
                      :message "SSO has not been enabled and/or configured",
                      :status  "error-sso-disabled"}
                     (client/client :get 400 "/auth/sso")))))))))
-
        (testing "SSO requests fail if JWT is enabled but hasn't been configured"
          (mt/with-temporary-setting-values
            [jwt-enabled
@@ -82,7 +85,6 @@
               :message "SSO has not been enabled and/or configured",
               :status  "error-sso-disabled"}
              (client/client :get 400 "/auth/sso")))))
-
        (testing "SSO requests fail if JWT is configured but hasn't been enabled"
          (mt/with-temporary-setting-values
            [jwt-enabled
@@ -98,7 +100,6 @@
               :message "SSO has not been enabled and/or configured",
               :status  "error-sso-disabled"}
              (client/client :get 400 "/auth/sso")))))
-
        (testing "The JWT idp uri must also be included for SSO to be configured"
          (mt/with-temporary-setting-values
            [jwt-enabled true
@@ -111,7 +112,6 @@
               :message "SSO has not been enabled and/or configured",
               :status  "error-sso-disabled"}
              (client/client :get 400 "/auth/sso")))))
-
        (testing "The JWT Shared Secret must also be included for SSO to be configured"
          (mt/with-temporary-setting-values
            [jwt-enabled true
@@ -170,13 +170,17 @@
               (is
                (= {"extra" "keypairs", "are" "also present"}
                   (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))
-
         (testing "with SAML and JWT configured, a GET request without JWT params should redirect to SAML IdP"
           (let [response (client/client-full-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
                                                       :return_to default-redirect-uri)]
             (is (not (sso.test-setup/successful-login? response)))))
-
+        (testing "with SAML and JWT configured, a POST without jwt in JSON body dispatches to SAML (not JWT login)"
+          (let [response (client/client-real-response :post 401 "/auth/sso"
+                                                      {:request-options {:redirect-strategy :none}}
+                                                      {}
+                                                      :return_to default-redirect-uri)]
+            (is (not (sso.test-setup/successful-login? response)))))
         (testing "with SAML and JWT configured, a GET request with preferred_method=jwt should sign in via JWT"
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -199,7 +203,6 @@
               (is
                (= {"extra" "keypairs", "are" "also present"}
                   (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))
-
         (testing "with SAML and JWT configured, a GET request with preferred_method=saml should redirect to SAML IdP"
           (let [response (client/client-full-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -221,7 +224,7 @@
                                                     :last_name  "Toucan"
                                                     :extra      "keypairs"
                                                     :are        "also present"
-                                                       ;; registered claims should not be synced as login attributes
+                                                    ;; registered claims should not be synced as login attributes
                                                     :iss        "issuer"
                                                     :exp        (+ (buddy-util/now) 3600)
                                                     :iat        (buddy-util/now)}
@@ -235,6 +238,93 @@
           (is
            (= {"extra" "keypairs", "are" "also present"}
               (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))))
+
+(deftest request-jwt-test
+  (let [token "some.jwt.token"]
+    (testing "GET reads jwt from query params"
+      (is (= token (sso.i/request-jwt {:request-method :get :params {:jwt token}}))))
+    (testing "GET ignores jwt in body"
+      (is (nil? (sso.i/request-jwt {:request-method :get :body {:jwt token}}))))
+    (testing "POST reads jwt from JSON body"
+      (is (= token (sso.i/request-jwt {:request-method :post :body {:jwt token}}))))
+    (testing "POST ignores jwt in query params"
+      (is (nil? (sso.i/request-jwt {:request-method :post :params {:jwt token}}))))
+    (testing "other methods return nil"
+      (is (nil? (sso.i/request-jwt {:request-method :put
+                                    :params       {:jwt token}
+                                    :body         {:jwt token}}))))))
+
+(deftest post-jwt-body-happy-path-test
+  (testing "Happy path login via POST /auth/sso with JSON body {:jwt ...}, same behavior as GET with query param"
+    (with-jwt-default-setup!
+      (let [jwt-payload (jwt/sign
+                         {:email      "rasta@metabase.com"
+                          :first_name "Rasta"
+                          :last_name  "Toucan"
+                          :extra      "keypairs"
+                          :are        "also present"
+                          :iss        "issuer"
+                          :exp        (+ (buddy-util/now) 3600)
+                          :iat        (buddy-util/now)}
+                         default-jwt-secret)
+            response    (client/client-real-response :post 302 "/auth/sso"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     {:jwt jwt-payload}
+                                                     :return_to default-redirect-uri)]
+        (is (sso.test-setup/successful-login? response))
+        (testing "redirect URI"
+          (is
+           (= default-redirect-uri
+              (get-in response [:headers "Location"]))))
+        (testing "login attributes"
+          (is
+           (= {"extra" "keypairs", "are" "also present"}
+              (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))))))
+
+(deftest post-jwt-query-param-ignored-test
+  (testing "POST /auth/sso does not authenticate when jwt is only in the query string"
+    (with-jwt-default-setup!
+      (let [jwt-payload (jwt/sign
+                         {:email      "rasta@metabase.com"
+                          :first_name "Rasta"
+                          :last_name  "Toucan"
+                          :exp        (+ (buddy-util/now) 3600)
+                          :iat        (buddy-util/now)}
+                         default-jwt-secret)
+            response    (client/client-real-response :post 302 "/auth/sso"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     {}
+                                                     :return_to default-redirect-uri
+                                                     :jwt       jwt-payload)]
+        (is (not (sso.test-setup/successful-login? response)))))))
+
+(deftest post-jwt-body-precedence-test
+  (testing "POST /auth/sso uses jwt from JSON body, not from query params"
+    (with-jwt-default-setup!
+      (let [body-jwt    (jwt/sign
+                         {:email      "rasta@metabase.com"
+                          :first_name "Rasta"
+                          :last_name  "Toucan"
+                          :source     "body"
+                          :exp        (+ (buddy-util/now) 3600)
+                          :iat        (buddy-util/now)}
+                         default-jwt-secret)
+            query-jwt   (jwt/sign
+                         {:email      "crowberto@metabase.com"
+                          :first_name "Crowberto"
+                          :last_name  "Bird"
+                          :source     "query"
+                          :exp        (+ (buddy-util/now) 3600)
+                          :iat        (buddy-util/now)}
+                         default-jwt-secret)
+            response    (client/client-real-response :post 302 "/auth/sso"
+                                                     {:request-options {:redirect-strategy :none}}
+                                                     {:jwt body-jwt}
+                                                     :return_to default-redirect-uri
+                                                     :jwt       query-jwt)]
+        (is (sso.test-setup/successful-login? response))
+        (is (= {"source" "body"}
+               (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com")))))))
 
 (deftest no-open-redirect-test
   (testing "Check that we prevent open redirects to untrusted sites"
@@ -447,6 +537,31 @@
                                      (u/the-id (t2/select-one-pk :model/User :email "newuser@metabase.com")))
                                     "admins")))))))))))
 
+(deftest group-names->ids-no-mappings-input-validation-test
+  (testing "with no mappings, group names are matched by exact value"
+    (mt/with-temporary-setting-values [jwt-group-mappings nil]
+      (let [captured (atom nil)]
+        (with-redefs [t2/select-pks-set (fn [_model _col in-clause]
+                                          (reset! captured (second in-clause))
+                                          #{})]
+          (testing "a string group name is bound as a parameter"
+            (#'providers.jwt/group-names->ids ["developers"])
+            (let [[query & params] (sql/format {:select [:id]
+                                                :from   [:permissions_group]
+                                                :where  [:in :name @captured]})]
+              (is (str/includes? query "IN (?)"))
+              (is (= ["developers"] params))))
+          (testing "non-string group names are ignored"
+            (reset! captured nil)
+            (#'providers.jwt/group-names->ids ["developers" {:select :x}])
+            (is (= #{"developers"} @captured))
+            (let [[query & params] (sql/format {:select [:id]
+                                                :from   [:permissions_group]
+                                                :where  [:in :name @captured]})]
+              (is (str/includes? query "IN (?)"))
+              (is (= ["developers"] params))
+              (is (not (str/includes? query "select"))))))))))
+
 (deftest login-as-existing-user-test
   (testing "login as an existing user works"
     (testing "An existing user will be reactivated upon login"
@@ -463,7 +578,6 @@
                                                         :last_name "User"}
                                                        default-jwt-secret))]
             (is (sso.test-setup/successful-login? response)))
-
           ;; then log in again
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -475,7 +589,6 @@
                                                         :last_name "User"}
                                                        default-jwt-secret))]
             (is (sso.test-setup/successful-login? response))))))
-
     (testing "Existing user login attributes are not changed on subsequent logins"
       (with-jwt-default-setup!
         (mt/with-model-cleanup [:model/User]
@@ -495,7 +608,6 @@
             (testing "initial login attributes are stored"
               (is (= nil
                      (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com")))))
-
           ;; Log in again with different attributes
           (let [response (client/client-real-response :get 302 "/auth/sso"
                                                       {:request-options {:redirect-strategy :none}}
@@ -529,11 +641,9 @@
                                                       :last_name "User"}
                                                      default-jwt-secret))]
           (is (sso.test-setup/successful-login? response)))
-
         ;; deactivate the user
         (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
         (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
-
         (let [response (client/client-real-response :get 302 "/auth/sso"
                                                     {:request-options {:redirect-strategy :none}}
                                                     :return_to default-redirect-uri
@@ -545,10 +655,12 @@
                                                      default-jwt-secret))]
           (is (sso.test-setup/successful-login? response))
           (is (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
-
         ;; deactivate the user again
         (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
         (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
+        ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
                       appearance.settings/site-name               (constantly "test")]
           (is (=? {:body "Sorry, but you'll need a test account to view this page. Please contact your administrator."}
@@ -739,6 +851,9 @@
                                                       :name "Tenant McTenantson"
                                                       :is_active false}
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
+          ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+          ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)]
             (testing "with user provisioning turned off"
               (testing "a new user cannot log into a deactivated tenant, and the tenant doesn't get activated"
@@ -884,6 +999,9 @@
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
+      ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
                     appearance.settings/site-name               (constantly "test")]
         (is (=? {:body "Sorry, but you'll need a test account to view this page. Please contact your administrator."}
@@ -898,7 +1016,7 @@
                                               default-jwt-secret))))))))
 
 (deftest non-string-jwt-claims-dropped-test
-  (testing "JWT claims with non-string values are dropped and warning is logged"
+  (testing "JWT claims are stringified or joined as appropriate; unstringable values are dropped (UXW-3921)"
     (with-jwt-default-setup!
       (mt/with-log-messages-for-level [jwt-log-messages [metabase-enterprise :warn]]
         (let [response (client/client-full-response :get 302 "/auth/sso"
@@ -918,20 +1036,17 @@
                                                       "@attribute" "foo"}
                                                      default-jwt-secret))]
           (is (sso.test-setup/successful-login? response))
-
-          (testing "only string attributes are saved to jwt_attributes"
+          (testing "scalar attributes are stringified, array attributes are joined with commas, unstringable values dropped"
             (is (= {"string_attr" "valid-string"
                     "number_attr" "42"
-                    "boolean_attr" "false"}
+                    "boolean_attr" "false"
+                    "array_attr" "item1,item2"}
                    (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
-
           (testing "warning messages are logged for non-stringable values"
-            (is (some #(re-find #"Dropping attribute 'array_attr' with non-stringable value: \[\"item1\" \"item2\"\]" %) (map :message (jwt-log-messages))))
-            (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
-            (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value: null" %) (map :message (jwt-log-messages)))))
+            (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value" %) (map :message (jwt-log-messages)))))
           (testing "warning messages are logged for `@`-prefixed keys"
             (is (some #(re-find #"Dropping attribute '@attribute', keys beginning with `@` are reserved" %) (map :message (jwt-log-messages)))))
-
           (testing "no warning for valid string attribute"
             (is (not (some #(re-find #"string_attr" %) (map :message (jwt-log-messages)))))))))))
 
@@ -974,14 +1089,22 @@
           (testing "with hash header (legacy usage)"
             (is (=? expected-body
                     (:body (do-request {"x-metabase-client" "embedding-sdk-react"
-                                        "x-metabase-sdk-jwt-hash" (token-utils/generate-token)}))))))))))
+                                        "x-metabase-sdk-jwt-hash" (token-utils/generate-token)})))))
+          (testing "POST /auth/sso with jwt in JSON body matches GET behavior"
+            (let [do-post (fn [headers]
+                            (client/client-real-response :post 200 "/auth/sso"
+                                                         {:request-options {:headers headers}}
+                                                         {:jwt jwt-payload}))]
+              (is (=? expected-body
+                      (:body (do-post {"x-metabase-client" "embedding-sdk-react"})))))))))))
 
 (deftest jwt-token-not-configured-test
   (testing "should not return a session token when jwt is not configured"
     (mt/with-temporary-setting-values
-      [jwt-enabled true
+      [jwt-enabled              true
        jwt-identity-provider-uri nil
-       jwt-shared-secret nil]
+       jwt-shared-secret        nil
+       slack-connect-enabled    false]
       (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
@@ -997,7 +1120,7 @@
               result       (client/client-real-response :get 400 "/auth/sso"
                                                         {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
                                                         :jwt   jwt-payload)]
-          (is result nil))))))
+          (is result))))))
 
 (deftest jwt-token-embedding-disabled-test
   (testing "should not return a session token when embedding is disabled"
@@ -1017,7 +1140,7 @@
               result       (client/client-real-response :get 402 "/auth/sso"
                                                         {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
                                                         :jwt   jwt-payload)]
-          (is result nil))))))
+          (is result))))))
 
 (deftest jwt-token-no-hash-test
   (testing "should not return a session token when token=false"
@@ -1038,7 +1161,7 @@
                                                         {:request-options {:redirect-strategy :none}}
                                                         :return_to default-redirect-uri
                                                         :jwt       jwt-payload)]
-          (is result nil))))))
+          (is result))))))
 
 (deftest tenant-user-assigned-to-tenant-group-via-mapping-test
   (testing "JWT user with tenant claim can be assigned to tenant user groups via group mapping"
@@ -1073,6 +1196,75 @@
                       (is (contains? (group-memberships (u/the-id user)) "Tenant Engineers")))
                     (testing "user is assigned to All tenant users (magic group for tenant users)"
                       (is (contains? (group-memberships (u/the-id user)) "All tenant users")))))))))))))
+
+(deftest jwt-with-valid-tenant-claim-must-never-create-wedged-internal-user-test
+  (testing (str "UXW-4898: if the tenant login step is missing from the login! method chain (as happens when "
+                "metabase-enterprise.tenants.auth-provider was never loaded — see metabase-enterprise.tenants.init), "
+                "a JWT carrying a valid @tenant plus a mapped tenant group must NOT succeed and silently create an "
+                "internal user, which would permanently wedge the account. It must fail loudly and leave no user row.")
+    (with-jwt-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Tenant _ {:slug "tenant-mctenantson"
+                                          :name "Tenant McTenantson"}
+                         :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Administrators"
+                                                                        :is_tenant_group true}]
+            (mt/with-temporary-setting-values
+              [jwt-group-sync true
+               jwt-group-mappings {"Tenant Administrators" [tenant-group-id]}
+               jwt-attribute-groups "groups"]
+              (mt/with-model-cleanup [:model/User]
+                (let [dispatch-val :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists
+                      method       (methodical/primary-method auth-identity.provider/login! dispatch-val)]
+                  (is (some? method)
+                      "tenant login method should be registered at startup (see metabase-enterprise.tenants.init)")
+                  (try
+                    (alter-var-root #'auth-identity.provider/login! methodical/remove-primary-method dispatch-val)
+                    (let [response (client/client-real-response :get 400 "/auth/sso"
+                                                                {:request-options {:redirect-strategy :none}}
+                                                                :return_to default-redirect-uri
+                                                                :jwt
+                                                                (jwt/sign
+                                                                 {:email "wedgeduser@metabase.com"
+                                                                  :first_name "Wedged"
+                                                                  :last_name "User"
+                                                                  "@tenant" "tenant-mctenantson"
+                                                                  :groups ["Tenant Administrators"]}
+                                                                 default-jwt-secret))]
+                      (is (not (sso.test-setup/successful-login? response)))
+                      (testing "no half-provisioned user row is left behind"
+                        (is (nil? (t2/select-one :model/User :email "wedgeduser@metabase.com")))))
+                    (finally
+                      (alter-var-root #'auth-identity.provider/login!
+                                      methodical/add-primary-method dispatch-val method))))))))))))
+
+(deftest jwt-without-tenant-claim-mapped-to-tenant-group-fails-loudly-test
+  (testing (str "EMB-2118/#78009: a JWT with no @tenant claim whose groups map to a tenant group must not succeed "
+                "and silently create an internal user with a swallowed group-sync failure. The tenant-group "
+                "mismatch must fail the login and roll back user creation.")
+    (with-jwt-default-setup!
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Administrators"
+                                                                        :is_tenant_group true}]
+            (mt/with-temporary-setting-values
+              [jwt-group-sync true
+               jwt-group-mappings {"Tenant Administrators" [tenant-group-id]}
+               jwt-attribute-groups "groups"]
+              (mt/with-model-cleanup [:model/User]
+                (let [response (client/client-real-response :get 400 "/auth/sso"
+                                                            {:request-options {:redirect-strategy :none}}
+                                                            :return_to default-redirect-uri
+                                                            :jwt
+                                                            (jwt/sign
+                                                             {:email "tenantless@metabase.com"
+                                                              :first_name "Tenantless"
+                                                              :last_name "User"
+                                                              :groups ["Tenant Administrators"]}
+                                                             default-jwt-secret))]
+                  (is (not (sso.test-setup/successful-login? response)))
+                  (testing "user creation is rolled back"
+                    (is (nil? (t2/select-one :model/User :email "tenantless@metabase.com")))))))))))))
 
 (deftest tenant-user-assigned-to-tenant-group-via-name-matching-test
   (testing "JWT user with tenant claim can be assigned to tenant user groups via group name matching (no explicit mappings)"
@@ -1210,3 +1402,95 @@
                              (group-memberships (u/the-id user)))))
                     (testing "user is no longer in Group A"
                       (is (not (contains? (group-memberships (u/the-id user)) "Group A"))))))))))))))
+
+(deftest tenant-attributes-from-jwt-test
+  (testing "Tenant attributes can be set via JWT"
+    (testing "New tenant gets attributes from JWT"
+      (mt/with-model-cleanup [:model/Tenant]
+        (with-jwt-default-setup!
+          (mt/with-additional-premium-features #{:tenants}
+            (mt/with-temporary-setting-values [use-tenants true]
+              (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+                (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                            {:request-options {:redirect-strategy :none}}
+                                                            :return_to default-redirect-uri
+                                                            :jwt
+                                                            (jwt/sign
+                                                             {:email "newuser@metabase.com"
+                                                              "@tenant" "new-tenant-with-attrs"
+                                                              "@tenant.attributes" {"plan" "enterprise"
+                                                                                    "region" "us-west"}
+                                                              :first_name "New"
+                                                              :last_name "User"}
+                                                             default-jwt-secret))]
+                  (is (sso.test-setup/successful-login? response))
+                  (let [tenant (t2/select-one :model/Tenant :slug "new-tenant-with-attrs")]
+                    (is (some? tenant))
+                    (is (= {"plan" "enterprise" "region" "us-west"}
+                           (:attributes tenant)))))))))))
+    (testing "Existing tenant - new attributes added, existing preserved"
+      (with-jwt-default-setup!
+        (mt/with-additional-premium-features #{:tenants}
+          (mt/with-temporary-setting-values [use-tenants true]
+            (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "existing-tenant"
+                                                          :name "Existing Tenant"
+                                                          :attributes {"plan" "enterprise"}}]
+              (mt/with-model-cleanup [:model/User]
+                (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                            {:request-options {:redirect-strategy :none}}
+                                                            :return_to default-redirect-uri
+                                                            :jwt
+                                                            (jwt/sign
+                                                             {:email "newuser@metabase.com"
+                                                              "@tenant" "existing-tenant"
+                                                              "@tenant.attributes" {"plan" "basic"
+                                                                                    "region" "us-east"}
+                                                              :first_name "New"
+                                                              :last_name "User"}
+                                                             default-jwt-secret))]
+                  (is (sso.test-setup/successful-login? response))
+                  (let [tenant (t2/select-one :model/Tenant tenant-id)]
+                    (testing "existing 'plan' attribute is preserved, not overwritten"
+                      (is (= "enterprise" (get (:attributes tenant) "plan"))))
+                    (testing "new 'region' attribute is added"
+                      (is (= "us-east" (get (:attributes tenant) "region"))))))))))))
+    (testing "Invalid @tenant.attributes is ignored"
+      (mt/with-model-cleanup [:model/Tenant]
+        (with-jwt-default-setup!
+          (mt/with-additional-premium-features #{:tenants}
+            (mt/with-temporary-setting-values [use-tenants true]
+              (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+                (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                            {:request-options {:redirect-strategy :none}}
+                                                            :return_to default-redirect-uri
+                                                            :jwt
+                                                            (jwt/sign
+                                                             {:email "newuser2@metabase.com"
+                                                              "@tenant" "tenant-invalid-attrs"
+                                                              "@tenant.attributes" "not-a-map"
+                                                              :first_name "New"
+                                                              :last_name "User"}
+                                                             default-jwt-secret))]
+                  (is (sso.test-setup/successful-login? response))
+                  (let [tenant (t2/select-one :model/Tenant :slug "tenant-invalid-attrs")]
+                    (is (some? tenant))
+                    (testing "tenant created but with no attributes since the value wasn't a map"
+                      (is (nil? (:attributes tenant))))))))))))))
+
+(deftest successful-jwt-login-does-not-log-pii-test
+  (testing "Successful JWT authentication should not log user's first or last name"
+    (with-jwt-default-setup!
+      (mt/with-log-messages-for-level [log-messages [metabase-enterprise.sso.providers.jwt :info]]
+        ;; client-full-response uses mock client (in-process, future) so dynamic bindings are conveyed
+        (let [response (client/client-full-response :get 302 "/auth/sso"
+                                                    {:request-options {:redirect-strategy :none}}
+                                                    :return_to default-redirect-uri
+                                                    :jwt
+                                                    (jwt/sign
+                                                     {:email      "rasta@metabase.com"
+                                                      :first_name "Rasta"
+                                                      :last_name  "Toucan"}
+                                                     default-jwt-secret))]
+          (is (sso.test-setup/successful-login? response))
+          (is (not-any? #(re-find #"Rasta|Toucan" (:message %)) (log-messages))
+              "Log messages should not contain user's first or last name"))))))

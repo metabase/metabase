@@ -1,7 +1,21 @@
 (ns metabase.lib.computed
-  "A first cut at smarter, more granular memoization of derived data about queries.
+  "Caching layer for internal `metabase.lib` results, keying on the queries themselves using weak maps.
 
-  Only a corner of the vision is implemented here so far, it's expanding as needed in response to user perf issues."
+  There are two levels of caching available here, plus a dummy for testing and benchmarking:
+  - **Ephemeral:** uses a *global* weak map, with the query map as the key.
+  - **Sticky:** uses an Atom held in a dynamic var; the lifetime of the cache is that of the dynamic binding.
+      - When the dynamic var is nil, this falls back to *ephemeral* style as above.
+  - **None:** for tests and when measuring the impact of caching; an always-miss \"cache\" with the same API.
+
+  Caching based on weak maps using the queries as keys has several notable properties:
+  - The keys (queries) are based on pointer equality (ie. [[identical?]], not [[=]]).
+  - Since Clojure maps are immutable, this implies any [[assoc]], [[update]], etc. invalidates the cache.
+  - If the query goes out of scope, its caches are GC'd on the next GC run.
+  - Works in CLJ and CLJS; both platforms have weak maps that support Clojure maps as keys.
+  - Over-long retention is possible but cycles are not.
+      - Weak map *values* are strongly held, so if cached values retain other queries their caches will survive too.
+      - But once there are no pointers to those values' keys outside the weak map, the entire tangle will be GC'd.
+  - There's a Grafana metric tracking the number of items held in the weak map. It tends to sawtooth as usual for GC."
   (:refer-clojure :exclude [get-in])
   (:require
    [metabase.util :as u]
@@ -33,7 +47,7 @@
   However, there is no LRU or other eviction logic, and so the memory use will continue to grow as it is held.
   The best approach is to bind this var around a well-defined chunk of related lib calls like `qp.preprocess`.
 
-  Soon this limitation should be removed by making queries `map`-likes with a private atom and evict-on-update."
+  This limitation could be removed by making queries `map`-likes with a private atom and evict-on-update logic."
   nil)
 
 (defn- weak-value-factory [_ignored-key]

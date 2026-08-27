@@ -1,13 +1,13 @@
-import type { Location } from "history";
 import { useEffect } from "react";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { parseHashOptions } from "metabase/lib/browser";
-import { isWithinIframe } from "metabase/lib/dom";
+import type { EmbeddingHashOptions } from "metabase/embedding/types";
 import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
+import type { Location } from "metabase/router";
+import { parseHashOptions } from "metabase/utils/browser";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import { DEFAULT_EMBED_DISPLAY_PARAMS } from "../constants";
-import type { EmbeddingHashOptions } from "../lib/types";
 
 export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
   const {
@@ -19,6 +19,7 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
     hide_download_button = null,
     downloads = DEFAULT_EMBED_DISPLAY_PARAMS.downloadsEnabled,
     locale,
+    // Unjustified type cast. FIXME
   } = parseHashOptions(location.hash) as EmbeddingHashOptions & {
     // this parameter is not supported anymore, but we access it in this hook to log an error
     hide_download_button?: boolean | null;

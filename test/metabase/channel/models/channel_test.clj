@@ -1,10 +1,12 @@
 (ns metabase.channel.models.channel-test
   (:require
    [clojure.test :refer :all]
+   [metabase.channel.models.channel] ;; ensure known-labels are loaded
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (deftest channel-details-is-encrypted
@@ -12,6 +14,26 @@
     (mt/with-model-cleanup [:model/Channel]
       (let [channel (t2/insert-returning-instance! :model/Channel notification.tu/default-can-connect-channel)]
         (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details :channel (:id channel))))))))
+
+(deftest channel-details-json-encoding-test
+  (testing "JSON-encoding a Channel includes :details only for callers who can write it"
+    (mt/with-temp
+      [:model/Channel channel {:name    "prod-webhook"
+                               :type    :channel/http
+                               :active  true
+                               :details {:url         "https://example.com/hook"
+                                         :auth-method "header"
+                                         :auth-info   {:Authorization "Bearer token-value"}}}]
+      (testing "a user who cannot write the channel gets no :details"
+        (mt/with-test-user :rasta
+          (let [encoded (json/encode channel)]
+            (is (not (re-find #"token-value" encoded)))
+            (is (nil? (:details (json/decode+kw encoded))))
+            (testing "but the rest of the channel is still present"
+              (is (re-find #"prod-webhook" encoded))))))
+      (testing "a user who can write the channel still gets :details"
+        (mt/with-test-user :crowberto
+          (is (re-find #"token-value" (json/encode channel))))))))
 
 (deftest deactivate-channel-test
   (mt/with-temp
@@ -25,7 +47,6 @@
       (is (pos? (t2/update! :model/Channel id {:name "New name"})))
       (is (zero? (t2/update! :model/Channel id {:active true})))
       (is (t2/exists? :model/PulseChannel pc-id)))
-
     (testing "deactivate channel"
       (t2/update! :model/Channel id {:active false})
       (testing "will delete pulse channels"
@@ -46,20 +67,69 @@
           (is (some? (insert! {:details {:type    "email/handlebars-text"
                                          :subject "Hello {{name}}"
                                          :body    "Welcome {{name}}"}}))))
-
         (testing "invalid template"
           (is (thrown? Exception
                        (insert! {:details {:type    "email/handlebars-text"
                                            :subject "Hello {{name}"
                                            :body    nil}})))))
-
       (testing "template is a resource path"
         (testing "success"
           (is (some? (insert! {:details {:type    "email/handlebars-resource"
                                          :subject "Hello {{name}}"
-                                         :path    "/path/to/resource"}}))))
+                                         :path    "password_reset"}}))))
+        (testing "invalid path"
+          (is (thrown? Exception
+                       (insert! {:details {:type    "email/handlebars-resource"
+                                           :subject "Hello {{name}}"
+                                           :path    "/path/to/resource"}}))))
         (testing "invalid template"
           (is (thrown? Exception
                        (insert! {:details {:type    "email/handlebars-resource"
                                            :subject "Hello {{name}}"
                                            :path    nil}}))))))))
+
+(deftest channel-template-create-prometheus-metric-test
+  (testing "creating a ChannelTemplate increments the template-create prometheus counter"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-model-cleanup [:model/ChannelTemplate]
+        (t2/insert-returning-instance! :model/ChannelTemplate
+                                       {:channel_type :channel/email
+                                        :name         "Test Template"
+                                        :details      {:type    :email/handlebars-text
+                                                       :subject "Hello {{name}}"
+                                                       :body    "Welcome {{name}}"}})
+        (is (= 1.0 (mt/metric-value system :metabase-notification/template-create
+                                    {:channel-type :channel/email})))))))
+
+(deftest channel-template-update-prometheus-metric-test
+  (testing "updating a ChannelTemplate increments the template-update prometheus counter"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-temp [:model/ChannelTemplate {id :id} {:channel_type :channel/email
+                                                      :name         "Test Template"
+                                                      :details      {:type    :email/handlebars-text
+                                                                     :subject "Hello"
+                                                                     :body    "Original body"}}]
+        (t2/update! :model/ChannelTemplate id {:details {:type    :email/handlebars-text
+                                                         :subject "Hello"
+                                                         :body    "Updated body"}})
+        (is (= 1.0 (mt/metric-value system :metabase-notification/template-update
+                                    {:channel-type :channel/email})))))))
+
+(deftest channel-template-create-logging-test
+  (testing "creating a user-provided template logs template metadata, without leaking the template body"
+    (mt/with-log-messages-for-level [messages :info]
+      (mt/with-model-cleanup [:model/ChannelTemplate]
+        (t2/insert-returning-instance! :model/ChannelTemplate
+                                       {:channel_type :channel/email
+                                        :name         "Test Template"
+                                        :details      {:type    :email/handlebars-text
+                                                       :subject "Hello"
+                                                       :body    "Secret {{password}}"}})
+        (is (some (fn [{:keys [message]}]
+                    (and (re-find #"ChannelTemplate create" message)
+                         (re-find #"handlebars-text" message)))
+                  (messages)))
+        (testing "the template body itself is not logged"
+          (is (not (some (fn [{:keys [message]}]
+                           (re-find #"Secret" message))
+                         (messages)))))))))

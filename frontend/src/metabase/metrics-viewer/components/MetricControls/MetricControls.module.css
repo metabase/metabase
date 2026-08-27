@@ -1,0 +1,7 @@
+.root {
+  container-name: metric-controls;
+  container-type: inline-size;
+  position: relative;
+  width: 100%;
+  height: 2.5rem;
+}

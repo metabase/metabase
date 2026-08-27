@@ -1,6 +1,6 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
-  (:refer-clojure :exclude [mapv])
+  (:refer-clojure :exclude [mapv select-keys])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
@@ -13,15 +13,17 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
+   [metabase.driver.sql-jdbc.quoting :refer [dot-qualified quote-columns quote-identifier
                                              quote-table with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv]])
+   [metabase.util.performance :refer [mapv select-keys]]
+   [next.jdbc])
   (:import
    (java.sql Connection SQLException SQLTimeoutException)))
 
@@ -51,8 +53,19 @@
 ;;; |                                     Default SQL JDBC metabase.driver impls                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private disallowed-additional-opts
+  "JDBC connection properties that are not needed to connect to a warehouse and are rejected for every
+  SQL-JDBC driver. Matched case-insensitively against the raw `additional-options` string."
+  #"(?i)(?:socketFactory|sslfactory|sslhostnameverifier|sslpasswordcallback|xmlFactoryFactory|loggerFile)")
+
+(defmethod driver/validate-db-details! :sql-jdbc
+  [_driver details]
+  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
+    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
+
 (defmethod driver/can-connect? :sql-jdbc
   [driver details]
+  (driver/validate-db-details! driver details)
   (sql-jdbc.conn/can-connect? driver details))
 
 (defmethod driver/table-rows-seq :sql-jdbc
@@ -72,6 +85,7 @@
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
 (defmethod driver/database-supports? [:sql-jdbc :jdbc/statements] [_driver _feature _db] true)
+(defmethod driver/database-supports? [:sql-jdbc :jdbc/set-query-timeout] [_driver _feature _db] true)
 
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
@@ -111,14 +125,11 @@
   [driver database & {:as args}]
   (sql-jdbc.sync/describe-indexes driver database args))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :sql-jdbc
-  [driver database table]
-  (sql-jdbc.sync/describe-table-fks driver database table))
-
-(defmethod driver/describe-fks :sql-jdbc
-  [driver database & {:as args}]
-  (sql-jdbc.sync/describe-fks driver database args))
+(mu/defmethod driver/describe-fks :sql-jdbc :- ::driver/describe-fks.result
+  [driver          :- :keyword
+   database        :- ::lib.schema.metadata/database
+   & {:as options} :- ::driver/describe-fks.options]
+  (sql-jdbc.sync/describe-fks driver database options))
 
 (defmethod driver/describe-table-indexes :sql-jdbc
   [driver database table]
@@ -160,11 +171,14 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
       (jdbc/execute! conn sql))))
 
+(defn- drop-table-sql [driver table-name]
+  (first (sql/format {:drop-table [:if-exists (dot-qualified table-name)]}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
+  (let [sql (drop-table-sql driver table-name)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
@@ -175,18 +189,24 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod create-index-sql :default
-  [driver schema table-name index-name column-names & _]
-  (with-quoting driver
-    (let [index-spec (into [(keyword (if schema (str (name schema) "." (name table-name)) table-name))]
-                           (map keyword)
-                           column-names)]
-      (first (sql/format {:create-index [(keyword index-name) index-spec]}
-                         :quoted true
-                         :dialect (sql.qp/quote-style driver))))))
+  [driver schema table-name index-name column-names & {:keys [unique if-not-exists]}]
+  (let [index-spec (into [(keyword (if schema (str (name schema) "." (name table-name)) table-name))]
+                         (map keyword)
+                         column-names)
+        index-ref  (cond-> (if unique
+                             [:unique (keyword index-name)]
+                             [(keyword index-name)])
+                     if-not-exists (conj :if-not-exists))]
+    (first (sql.qp/format-honeysql driver {:create-index [index-ref index-spec]}))))
+
+(defmethod driver/compile-create-index :sql-jdbc
+  [driver schema table {index-name :name, :keys [columns] :as structured}]
+  [[(create-index-sql driver schema table index-name (map :name columns)
+                      (select-keys structured [:kind :unique :if-not-exists]))]])
 
 (defmethod driver/create-index! :sql-jdbc
-  [driver database-id schema table-name index-name column-names & _]
-  (let [sql (create-index-sql driver schema table-name index-name column-names)]
+  [driver database-id schema table-name index-name column-names & {:as opts}]
+  (let [sql (create-index-sql driver schema table-name index-name column-names opts)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
       (jdbc/execute! conn sql))
     nil))
@@ -199,11 +219,9 @@
 
 (defmethod drop-index-sql :default
   [driver schema _table-name index-name]
-  (first (sql/format {:drop-index [(keyword (if schema
-                                              (str (name schema) "." (name index-name))
-                                              (name index-name)))]}
-                     :quoted true
-                     :dialect (sql.qp/quote-style driver))))
+  (first (sql.qp/format-honeysql driver {:drop-index [(keyword (if schema
+                                                                 (str (name schema) "." (name index-name))
+                                                                 (name index-name)))]})))
 
 (defmethod driver/drop-index! :sql-jdbc
   [driver database-id schema table-name index-name & _]
@@ -221,25 +239,36 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
+(defn- lift-boolean [v] (if (boolean? v) [:lift v] v))
+(defn- lift-booleans
+  "Wraps all boolean in `[:lift v]` for HoneySQL to bind it as a parameter."
+  [row]
+  (mapv lift-boolean row))
+
 (defn- insert-into!-sqls [driver table-name column-names values inline?]
-  (let [;; We need to partition the insert into multiple statements for both performance and correctness.
-        ;;
-        ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
-        ;; little faster but not by much (3.63m), and 10,000 threw an error:
-        ;;     PreparedStatement can have at most 65,535 parameters
-        ;; One imagines that `(long (/ 65535 (count columns)))` might be best, but I don't trust the 65K limit to apply
-        ;; across all drivers. With that in mind, 100 seems like a safe compromise.
-        ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
-        chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
-        dialect    (sql.qp/quote-style driver)
-        sqls       (map #(sql/format {:insert-into (keyword table-name)
-                                      :columns     (quote-columns driver column-names)
-                                      :values      %}
-                                     :inline inline?
-                                     :quoted true
-                                     :dialect dialect)
-                        chunks)]
-    sqls))
+  ;; We need to partition the insert into multiple statements for both performance and correctness.
+  ;;
+  ;; Tim Macdonald (April 2023) -- On Postgres with a large file:
+  ;; tested 1000 (3.63m), 100 (3.76m), 50 (4.03m), and 25 (4.27m).
+  ;; 10,000 threw an error: `PreparedStatement can have at most 65,535 parameters`
+  ;; `(long (/ 65535 (count columns)))` might be best, but the 65K limit may not apply on all drivers.
+  ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
+  (let [dialect        (sql.qp/quote-style driver)
+        columns-quoted (quote-columns driver column-names)
+        table-name-k   (keyword table-name)
+        chunk-size     (or driver/*insert-chunk-rows* 100)]
+    (->> values
+         (sequence (comp
+                    (partition-all chunk-size)
+                    (map (fn chunk-sql [row-chunk]
+                           (sql/format {:insert-into table-name-k
+                                        :columns     columns-quoted
+                                        ;; HoneySQL inlines true/false unless we do this, even when
+                                        ;; the rest of the query is parameterized.
+                                        :values      (mapv lift-booleans row-chunk)}
+                                       :inline inline?
+                                       :quoted true
+                                       :dialect dialect))))))))
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
@@ -299,11 +328,36 @@
             exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
        (into #{} (sql-jdbc.sync/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))
 
+(defmulti set-role-statement
+  "SQL for setting the active role for a Connection, such as USE ROLE or equivalent, for the given driver.
+
+  The currently open `java.sql.Connection` is provided so we can use things like
+
+  ```sql
+  SELECT quote_ident(?)
+  ```
+
+  to quote identifiers as needed.
+
+  This may either return a raw SQL string, or `[sql & args]` to be passed in to a parameterized statement. It is
+  preferable to pass the role separately whenever possible to prevent possible SQL injection issues."
+  {:added "0.61.0" :arglists '([driver ^java.sql.Connection connection ^String role])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod set-role-statement :default
+  [driver _connection role]
+  ;; fall back to implementations of the deprecated `:sql` driver method
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (driver.sql/set-role-statement driver role))
+
 (defmethod driver/set-role! :sql-jdbc
-  [driver conn role]
-  (let [sql (driver.sql/set-role-statement driver role)]
-    (with-open [stmt (.createStatement ^Connection conn)]
-      (.execute stmt sql))))
+  [driver ^Connection conn role]
+  (let [sql-args (set-role-statement driver conn role)
+        sql-args (if (string? sql-args)
+                   [sql-args]
+                   sql-args)]
+    (next.jdbc/execute! conn sql-args)))
 
 (defmethod driver/current-user-table-privileges :sql-jdbc
   [driver database & {:as args}]
@@ -375,46 +429,3 @@
      (->> (.getMetaData conn)
           sql-jdbc.describe-database/all-schemas
           (m/find-first #(= % schema))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Workspace Isolation                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
-
-(defmethod driver/check-isolation-permissions :sql-jdbc
-  [driver database test-table]
-  (let [test-workspace {:id   perm-check-workspace-id
-                        :name "_mb_perm_check_"}]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     database
-     {:write? true}
-     (fn [^Connection conn]
-       (.setAutoCommit conn false)
-       (try
-         (let [init-result (try
-                             (driver/init-workspace-isolation! driver database test-workspace)
-                             (catch Exception e
-                               (throw (ex-info (format "Failed to initialize workspace isolation (CREATE SCHEMA/USER): %s"
-                                                       (ex-message e))
-                                               {:step :init} e))))
-               workspace-with-details (merge test-workspace init-result)]
-           (when test-table
-             (try
-               (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
-               (catch Exception e
-                 (throw (ex-info (format "Failed to grant read access to table %s.%s: %s"
-                                         (:schema test-table) (:name test-table) (ex-message e))
-                                 {:step :grant :table test-table} e)))))
-           (try
-             (driver/destroy-workspace-isolation! driver database workspace-with-details)
-             (catch Exception e
-               (throw (ex-info (format "Failed to destroy workspace isolation (DROP SCHEMA/USER): %s"
-                                       (ex-message e))
-                               {:step :destroy} e)))))
-         nil
-         (catch Exception e
-           (ex-message e))
-         (finally
-           (.rollback conn)))))))

@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAuditInfoEndpoint,
@@ -11,7 +9,9 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { createMockState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -20,7 +20,6 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { DashboardInfoSidebar } from "../DashboardInfoSidebar";
 
@@ -55,7 +54,6 @@ export async function setup({
     }),
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
-      dashboards: [dashboard],
     }),
   });
 
@@ -66,15 +64,16 @@ export async function setup({
   renderWithProviders(
     <Route
       path="*"
-      component={() => (
+      element={
         <MockDashboardContext
           dashboard={dashboard}
+          // Unjustified type cast. FIXME
           setDashboardAttributes={setDashboardAttribute as any}
           closeSidebar={onClose}
         >
           <DashboardInfoSidebar />
         </MockDashboardContext>
-      )}
+      }
     />,
     { storeInitialState: state, withRouter: true },
   );

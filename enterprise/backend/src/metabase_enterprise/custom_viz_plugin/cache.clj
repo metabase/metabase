@@ -1,0 +1,450 @@
+(ns metabase-enterprise.custom-viz-plugin.cache
+  "Storage layer for custom visualization plugin bundles.
+
+   Plugins are uploaded as tar+gzip archives. The raw archive bytes (and their
+   SHA-256 hash) are stored in `custom_viz_plugin.bundle` / `bundle_hash`. On the
+   first read of a bundle file or static asset, the archive is lazily extracted to
+   a per-instance scratch directory under the OS temp dir and files are then
+   served straight from the local filesystem. When a plugin's bundle is replaced
+   or the plugin is deleted, the on-disk directory is evicted.
+
+   Dev-only plugins (no uploaded bundle) live entirely off `dev_bundle_url` and
+   bypass this storage; only the dev http fetch helpers below are used for them."
+  (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
+   [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
+   [metabase.util :as u]
+   [metabase.util.compress :as u.compress]
+   [metabase.util.files :as u.files]
+   [metabase.util.http :as u.http]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
+  (:import
+   (java.nio.file CopyOption FileAlreadyExistsException Files FileVisitOption Path)
+   (java.nio.file.attribute FileAttribute)))
+
+(set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------ Hash ------------------------------------------------
+
+(defn- bytes-hash [^bytes b]
+  (-> b buddy-hash/sha256 codecs/bytes->hex))
+
+(defn- string-hash [^String s]
+  (bytes-hash (.getBytes s "UTF-8")))
+
+;;; ------------------------------------------------ Layout ------------------------------------------------
+
+;; The uploaded archive has the same layout as the previous git-sourced plugins:
+;;   metabase-plugin.json  (manifest, at the archive root)
+;;   dist/index.js         (the JS bundle)
+;;   dist/assets/<icon>    (the manifest icon — the only servable asset)
+
+(def ^:private ^:const bundle-rel-path "index.js")
+
+(defn- asset-rel-path ^String [^String asset-name] (str "assets/" asset-name))
+
+(defn- dist-path
+  "Prefix a relative path with `dist/` to match the bundle layout."
+  ^String [^String rel-path]
+  (str "dist/" rel-path))
+
+;;; ------------------------------------------------ Size Limits ------------------------------------------------
+
+(def ^:const max-bundle-mib
+  "Maximum size of an uploaded plugin bundle, in MiB."
+  5)
+
+(def ^:const max-bundle-bytes
+  "Maximum size of an uploaded plugin bundle, in bytes. See [[max-bundle-mib]]."
+  (* max-bundle-mib 1024 1024))
+
+(def ^:const ^:private max-uncompressed-bytes
+  "Cap on total uncompressed bytes from a bundle archive. Set to 5x the
+   compressed cap, which comfortably fits a real JS bundle + image assets but
+   refuses tar bombs (which need 1000x+ ratios to be interesting)."
+  (* 5 max-bundle-bytes))
+
+(def ^:const ^:private max-entries
+  "Cap on entry count in a bundle archive. A real plugin is just the manifest, the
+   JS bundle, and the icon (plus a couple of directory entries); 16 leaves slack
+   without inviting denial-of-service via metadata-only entries."
+  16)
+
+(def ^:private untgz-opts
+  {:max-uncompressed-bytes max-uncompressed-bytes
+   :max-entries            max-entries})
+
+;;; ------------------------------------------------ Validate Bundle ------------------------------------------------
+
+(defn- delete-recursive! [^Path path]
+  (when (u.files/exists? path)
+    (with-open [stream (Files/walk path (into-array FileVisitOption []))]
+      (doseq [^Path p (rseq (vec (iterator-seq (.iterator stream))))]
+        (try (Files/delete p)
+             (catch Exception e
+               (log/warnf "Failed to delete %s: %s" p (ex-message e))))))))
+
+(defn validate-bundle!
+  "Extract an uploaded tar+gzip `bundle-bytes` into a scratch directory and
+   validate its contents against the expected layout. Returns
+   `{:bytes bundle-bytes :hash sha :manifest m :version-str v}` on success.
+   Throws ex-info with `:status-code 400` for any user-facing failure. Version
+   mismatches don't fail validation; they surface as soft warnings at read time
+   (see `manifest/warnings`)."
+  [^bytes bundle-bytes]
+  (when (or (nil? bundle-bytes) (zero? (alength bundle-bytes)))
+    (throw (ex-info "Bundle is empty" {:status-code 400})))
+  (let [scratch (Files/createTempDirectory "custom-viz-validate-"
+                                           (into-array FileAttribute []))]
+    (try
+      (try
+        (u.compress/untgz bundle-bytes (.toFile scratch) untgz-opts)
+        (catch Exception e
+          (if (:status-code (ex-data e))
+            ;; tar-bomb / oversize / entry-count failures carry their own clear message — re-raise.
+            (throw e)
+            (throw (ex-info (str "Bundle is not a valid tar.gz archive: " (ex-message e))
+                            {:status-code 400}
+                            e)))))
+      (let [manifest-file (.resolve scratch ^String (manifest/manifest-path))
+            bundle-file   (.resolve scratch ^String (dist-path bundle-rel-path))
+            _             (when-not (u.files/regular-file? manifest-file)
+                            (throw (ex-info (str (manifest/manifest-path) " not found in bundle")
+                                            {:status-code 400})))
+            parsed        (or (manifest/parse-manifest (String. (Files/readAllBytes manifest-file) "UTF-8"))
+                              (throw (ex-info (str (manifest/manifest-path) " is not valid JSON")
+                                              {:status-code 400})))
+            _             (when-not (u.files/regular-file? bundle-file)
+                            (throw (ex-info (str (dist-path bundle-rel-path) " not found in bundle")
+                                            {:status-code 400})))
+            version-str   (get-in parsed [:metabase :version])]
+        (when-let [error (manifest/validation-error parsed)]
+          (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
+                          {:status-code 400})))
+        (when (str/blank? (:name parsed))
+          (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
+                          {:status-code 400})))
+        {:bytes       bundle-bytes
+         :hash        (bytes-hash bundle-bytes)
+         :manifest    parsed
+         :version-str version-str})
+      (finally
+        (delete-recursive! scratch)))))
+
+;;; ------------------------------------------------ FS Cache ------------------------------------------------
+
+(defn- custom-viz-cache-root
+  "The on-disk cache root for extracted plugin bundles. Placed under the OS
+   temp dir so it's per-instance and naturally reclaimed when the host is
+   rebooted; [[ensure-unpacked!]] will lazily re-extract from the DB on the
+   next serve after a wipe."
+  ^Path []
+  (doto (u.files/get-path (System/getProperty "java.io.tmpdir") "metabase-custom-viz")
+    u.files/create-dir-if-not-exists!))
+
+(defn- plugin-cache-dir ^Path [id ^String bundle-hash]
+  (u.files/append-to-path (custom-viz-cache-root) (str id "-" bundle-hash)))
+
+(defn- safe-resolve
+  "Resolve `rel-path` under `base`, refusing to escape it. Used on the serve
+   side to guard against caller-supplied asset paths that attempt traversal —
+   the archive extraction itself is already zip-slip-safe via
+   [[u.compress/untgz]]."
+  ^Path [^Path base ^String rel-path]
+  (let [resolved (.normalize (.resolve base rel-path))]
+    (when (.startsWith resolved base)
+      resolved)))
+
+(defn- evict-other-cache-dirs!
+  "Delete cache dirs for `id` that don't match `keep-hash`."
+  [id ^String keep-hash]
+  (let [keep   (str id "-" keep-hash)
+        prefix (str id "-")]
+    (doseq [^Path child (u.files/files-seq (custom-viz-cache-root))
+            :let [name (str (.getFileName child))]
+            :when (and (str/starts-with? name prefix) (not= name keep))]
+      (delete-recursive! child))))
+
+(defn- unpack-bundle!
+  "Extract `bundle-bytes` into `dir`, creating it. Atomic-ish: unpacks into a
+   sibling temp directory and renames into place so other threads never observe
+   a half-written cache dir. Zip-slip is handled by `u.compress/untgz`, which
+   resolves each entry under the temp dir via `TarArchiveEntry.resolveIn`."
+  [^Path dir ^bytes bundle-bytes]
+  (let [parent (.getParent dir)
+        _      (u.files/create-dir-if-not-exists! parent)
+        tmp    (Files/createTempDirectory parent (str (.getFileName dir) ".tmp.")
+                                          (into-array FileAttribute []))]
+    (try
+      (u.compress/untgz bundle-bytes (.toFile tmp) untgz-opts)
+      (Files/move tmp dir (into-array CopyOption []))
+      (catch FileAlreadyExistsException _
+        ;; Another thread won the race; keep their copy and discard ours.
+        (delete-recursive! tmp))
+      (catch Throwable t
+        (delete-recursive! tmp)
+        (throw t)))))
+
+(defn- ensure-unpacked!
+  "Guarantee that the cache dir for `plugin` is on disk. If `bundle` is null in the
+   row (dev-only plugin) this returns nil. Returns the directory `Path` on success.
+
+   Recomputes the SHA-256 of the stored bytes against `bundle_hash` before unpacking
+   so a mismatch (DB corruption or tampering with one column but not the other) is
+   refused rather than served."
+  ^Path [{:keys [id bundle_hash]}]
+  (when bundle_hash
+    (let [dir (plugin-cache-dir id bundle_hash)]
+      (when-not (u.files/exists? dir)
+        (when-let [bundle-bytes (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)]
+          (let [actual-hash (bytes-hash bundle-bytes)]
+            (when-not (= actual-hash bundle_hash)
+              (throw (ex-info "Bundle integrity check failed: stored bytes do not match bundle_hash"
+                              {:plugin-id id :expected bundle_hash :actual actual-hash}))))
+          (unpack-bundle! dir bundle-bytes)
+          (evict-other-cache-dirs! id bundle_hash)))
+      dir)))
+
+(defn purge-plugin-cache!
+  "Remove on-disk cache dirs for `plugin` (typically because it's being deleted or
+   updated). Safe to call even if no dir exists."
+  [{:keys [id]}]
+  (let [prefix (str id "-")]
+    (doseq [^Path child (u.files/files-seq (custom-viz-cache-root))
+            :when (str/starts-with? (str (.getFileName child)) prefix)]
+      (delete-recursive! child))))
+
+;;; ------------------------------------------------ Save Bundle ------------------------------------------------
+
+(defn- derived-columns
+  "DB columns derived from a validated bundle."
+  [{:keys [bytes hash manifest version-str]}]
+  {:status           :active
+   :error_message    nil
+   :bundle           bytes
+   :bundle_hash      hash
+   :manifest         manifest
+   :display_name     (or (:name manifest) (:identifier manifest))
+   :icon             (:icon manifest)
+   :metabase_version version-str})
+
+(defn save-bundle!
+  "Persist a validated bundle for an existing plugin row, evict stale on-disk
+   caches, and return the refreshed row."
+  [{:keys [id]} validated]
+  (t2/update! :model/CustomVizPlugin id (derived-columns validated))
+  (purge-plugin-cache! {:id id})
+  (custom-viz-plugin/select-one-non-blob :id id))
+
+(defn insert-bundle!
+  "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
+   the inserted row."
+  [identifier validated]
+  (t2/insert-returning-instance!
+   :model/CustomVizPlugin
+   (merge {:identifier identifier
+           :enabled    true}
+          (derived-columns validated))))
+
+;;; ------------------------------------------------ Read From Cache ------------------------------------------------
+
+(defn- read-cached-bytes
+  "Read the bytes of `dist-rel-path` from the on-disk cache for `plugin`. Returns
+   nil if the plugin has no bundle or the file is missing."
+  ^bytes [plugin ^String dist-rel-path]
+  (when-let [dir (try (ensure-unpacked! plugin)
+                      (catch Exception e
+                        (log/warnf "Failed to unpack plugin %d bundle: %s"
+                                   (:id plugin) (ex-message e))
+                        nil))]
+    (when-let [^Path file (safe-resolve dir dist-rel-path)]
+      (when (u.files/regular-file? file)
+        (Files/readAllBytes file)))))
+
+(defn get-bundle
+  "Get the JS bundle for an upload-backed plugin. Returns
+   `{:content str :hash str}` or nil."
+  [plugin]
+  (when-let [bytes (read-cached-bytes plugin (dist-path bundle-rel-path))]
+    {:content (String. bytes "UTF-8")
+     :hash    (or (:bundle_hash plugin) (bytes-hash bytes))}))
+
+(defn- asset-whitelisted?
+  "Check whether an asset path is servable for the plugin. Only the manifest `icon`
+   is servable — see [[metabase-enterprise.custom-viz-plugin.manifest/asset-paths]]."
+  [{:keys [manifest]} ^String asset-path]
+  (when manifest
+    (let [allowed (set (manifest/asset-paths manifest))]
+      (contains? allowed asset-path))))
+
+(defn get-asset
+  "Get a static asset for an upload-backed plugin. Returns a byte array or nil."
+  ^bytes [plugin ^String asset-name]
+  (read-cached-bytes plugin (dist-path (asset-rel-path asset-name))))
+
+;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
+
+(defn- allowed-schemes
+  "Set of URL schemes allowed for dev bundle URLs."
+  []
+  #{"http" "https"})
+
+(def ^:private dev-network-policy
+  :loopback-and-private)
+
+(defn- disallowed-address-ex
+  [^String label ^String url]
+  (ex-info (str label " must resolve to a loopback or private network address.")
+           {:status-code 400 :url url}))
+
+(defn- validate-url!
+  "Validate that a URL uses an allowed scheme and does not name an address the dev fetches would refuse to
+   connect to. Throws on invalid input."
+  [^String url ^String label]
+  (let [scheme (some-> (java.net.URI. url) .getScheme u/lower-case-en)]
+    (when-not (contains? (allowed-schemes) scheme)
+      (throw (ex-info (str label " must use http or https, got: " scheme)
+                      {:status-code 400 :url url})))
+    (when-not (u.http/host-allowed-for-network-policy? dev-network-policy url)
+      (throw (disallowed-address-ex label url)))))
+
+(defn- rethrow-if-refused!
+  "Re-throw `e` as a 400 if it is the network policy refusing to connect, otherwise do nothing. Without this
+   the surrounding catch would report a refused address as a dev server that happens to be down."
+  [^Exception e ^String url]
+  (when (:ssrf (ex-data e))
+    (throw (disallowed-address-ex "Dev bundle URL" url))))
+
+(defn dev-base-url
+  "Validate and normalize the dev base URL. Ensures http/https scheme and trailing slash."
+  ^String [^String url]
+  (validate-url! url "Dev bundle URL")
+  (if (str/ends-with? url "/") url (str url "/")))
+
+(defn- dev-url
+  "Build a full dev URL by joining the base URL with a relative path."
+  ^String [^String base-url ^String relative-path]
+  (str (dev-base-url base-url) relative-path))
+
+(def dev-http-opts
+  "clj-http options for every fetch of a caller-supplied dev bundle URL, including the SSE proxy in the api ns."
+  {:socket-timeout     5000
+   :connection-timeout 5000
+   :redirect-strategy  :none
+   :dns-resolver       (u.http/network-policy-dns-resolver dev-network-policy)})
+
+;; Content-type
+;; The address policy has to keep allowing loopback and private addresses, so a dev URL can still be pointed
+;; at an internal service. Requiring the content-type specific content-type narrows the possibilities
+
+(def ^:private bundle-content-types
+  #{"application/javascript" "text/javascript"})
+
+(def ^:private manifest-content-types
+  #{"application/json" "text/json"})
+
+(defn- check-content-type!
+  [resp allowed ^String url]
+  (let [ctype (u.http/response-content-type resp)]
+    (when-not (contains? allowed ctype)
+      (throw (ex-info (str "Dev bundle URL returned " (or ctype "no content type")
+                           ", expected " (str/join " or " (sort allowed)))
+                      {:status-code 400 :url url})))))
+
+(defn fetch-dev-bundle
+  "Fetch a JS bundle from a dev base URL.
+   Returns {:content str :hash str}, or nil when the dev server is unreachable or
+   responds with an error status (e.g. mid-rebuild). Throws a 400 when the URL is
+   disallowed or the response has an unexpected content type."
+  [^String base-url]
+  ;; build (and thereby validate) the URL outside the try -- validation failures must surface as the 400s
+  ;; they are, not be swallowed by the catch as a dev server that happens to be down
+  (let [url (dev-url base-url bundle-rel-path)]
+    (when-let [resp (try
+                      (http/get url (assoc dev-http-opts :as :string))
+                      (catch Exception e
+                        (rethrow-if-refused! e base-url)
+                        (log/debugf "Failed to fetch dev bundle from %s: %s" base-url (ex-message e))
+                        nil))]
+      (check-content-type! resp bundle-content-types base-url)
+      (let [content (:body resp)]
+        {:content content
+         :hash    (string-hash content)}))))
+
+(defn fetch-dev-manifest
+  "Fetch and parse the manifest from a dev base URL.
+   Returns the parsed manifest map, or nil when the dev server is unreachable or
+   responds with an error status. Throws ex-info with `:status-code 400` when the
+   URL is disallowed, the response has an unexpected content type, or the
+   manifest is structurally invalid."
+  [^String base-url]
+  ;; as in [[fetch-dev-bundle]], validate the URL outside the try
+  (let [url (dev-url base-url (manifest/manifest-path))]
+    (when-let [parsed (when-let [resp (try
+                                        (http/get url (assoc dev-http-opts :as :string))
+                                        (catch Exception e
+                                          (rethrow-if-refused! e base-url)
+                                          (log/debugf "No manifest at %s: %s" base-url (ex-message e))
+                                          nil))]
+                        (check-content-type! resp manifest-content-types base-url)
+                        (manifest/parse-manifest (:body resp)))]
+      (when-let [error (manifest/validation-error parsed)]
+        (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
+                        {:status-code 400})))
+      parsed)))
+
+(defn fetch-dev-asset
+  "Fetch a static asset from a dev base URL.
+   Returns the bytes. Throws on fetch failure; disallowed addresses and
+   unexpected content types surface as 400s."
+  ^bytes [^String base-url ^String asset-name]
+  (let [url  (dev-url base-url (asset-rel-path asset-name))
+        resp (try
+               (http/get url (assoc dev-http-opts :as :byte-array))
+               (catch Exception e
+                 (rethrow-if-refused! e base-url)
+                 (throw e)))]
+    (check-content-type! resp (some-> (manifest/asset-content-type asset-name) hash-set) base-url)
+    (:body resp)))
+
+(defn set-or-clear-dev-bundle!
+  "Set or clear the dev base URL for a plugin. Persists to the database."
+  [id dev-bundle-url]
+  (let [url (not-empty dev-bundle-url)]
+    (some-> url (validate-url! "Dev bundle URL"))
+    (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})))
+
+(defn resolve-dev-bundle
+  "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil.
+   Always returns nil when dev mode is disabled."
+  [id]
+  (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
+    (not-empty (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
+
+;;; ------------------------------------------------ Resolve ------------------------------------------------
+
+(defn resolve-bundle
+  "Resolve the JS bundle for a plugin, respecting dev bundle URL if set.
+   Returns {:content str :hash str} or nil."
+  [plugin]
+  (let [id      (:id plugin)
+        dev-url (resolve-dev-bundle id)]
+    (if dev-url
+      (fetch-dev-bundle dev-url)
+      (get-bundle plugin))))
+
+(defn resolve-asset
+  "Resolve a static asset for a plugin, respecting dev base URL if set.
+   Only serves assets whitelisted by the plugin's manifest.
+   Returns a byte array or nil."
+  ^bytes [plugin ^String asset-name]
+  (when (asset-whitelisted? plugin asset-name)
+    (if-let [dev-url (resolve-dev-bundle (:id plugin))]
+      (fetch-dev-asset dev-url asset-name)
+      (get-asset plugin asset-name))))

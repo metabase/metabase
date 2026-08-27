@@ -25,7 +25,9 @@
 
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
-  #{:model/AnalysisFinding
+  #{:model/AgentApiCallLog
+    :model/AiUsageLog
+    :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
     :model/CacheConfig
@@ -33,8 +35,21 @@
     :model/CloudMigration
     :model/ContentTranslation
     :model/DashboardFavorite
+    :model/DataApp
+    :model/DataComplexityScore
     :model/DatabaseRouter
     :model/Dependency
+    :model/DependencyStatus
+    :model/ExplorationQueryResult
+    :model/McpQueryHandle
+    :model/McpSessionLog
+    :model/McpToolCallLog
+    :model/MetabotConversation
+    :model/MetabotGroupLimit
+    :model/MetabotInstanceLimit
+    :model/MetabotMessage
+    :model/MetabotPermissions
+    :model/PremiumFeaturesCache
     :model/PythonLibrary
     :model/Query
     :model/QueryCache
@@ -43,32 +58,34 @@
     :model/QueryTable
     :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/ReplacementRun
     :model/SearchIndexMetadata
+    :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking
+    :model/SourceDimensionDaily
+    :model/SourceDimensionProfileDaily
+    :model/SourceMetricDaily
+    :model/SourceSegmentCompositeDaily
+    :model/SourceSegmentDaily
+    :model/SsoRelayState
+    :model/StoredResult
+    :model/StoredResultUse
     :model/SupportAccessGrantLog
+    :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/Transform
     :model/TransformRun
     :model/TransformRunCancelation
+    :model/TransformDagRun
     :model/TransformJob
     :model/TransformJobRun
     :model/TransformJobTransformTag
     :model/TransformTag
     :model/TransformTransformTag
     :model/Undo
-    :model/UserKeyValue
-    :model/Workspace
-    :model/WorkspaceGraph
-    :model/WorkspaceInput
-    :model/WorkspaceInputExternal
-    :model/WorkspaceLog
-    :model/WorkspaceMerge
-    :model/WorkspaceMergeTransform
-    :model/WorkspaceOutput
-    :model/WorkspaceOutputExternal
-    :model/WorkspaceTransform})
+    :model/UserKeyValue})
 
 (defn- all-model-names []
   (into (sorted-set)

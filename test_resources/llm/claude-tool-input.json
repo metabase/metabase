@@ -1,0 +1,154 @@
+[ {
+  "type" : "message_start",
+  "message" : {
+    "model" : "claude-sonnet-4-5-20250929",
+    "id" : "msg_01JaVDFooYCJgjDYdVv7UZuA",
+    "type" : "message",
+    "role" : "assistant",
+    "content" : [ ],
+    "stop_reason" : null,
+    "stop_sequence" : null,
+    "usage" : {
+      "input_tokens" : 737,
+      "cache_creation_input_tokens" : 0,
+      "cache_read_input_tokens" : 0,
+      "cache_creation" : {
+        "ephemeral_5m_input_tokens" : 0,
+        "ephemeral_1h_input_tokens" : 0
+      },
+      "output_tokens" : 18,
+      "service_tier" : "standard"
+    }
+  }
+}, {
+  "type" : "content_block_start",
+  "index" : 0,
+  "content_block" : {
+    "type" : "tool_use",
+    "id" : "toolu_012iDFpxaJuqVBQEqVVyfu6T",
+    "name" : "structured_output",
+    "input" : { }
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : ""
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "{\"currenc"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "ies\": [{\"cou"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "ntry\":\"CA"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "N\",\"curr"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "ency\":\"CAD\""
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "},{\"country"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "\":\"USA\",\""
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "cur"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "rency\":\""
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "USD\"},{\"coun"
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "try\":\""
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "MEX\","
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : "\"currency\""
+  }
+}, {
+  "type" : "content_block_delta",
+  "index" : 0,
+  "delta" : {
+    "type" : "input_json_delta",
+    "partial_json" : ":\"MXN\"}]}"
+  }
+}, {
+  "type" : "content_block_stop",
+  "index" : 0
+}, {
+  "type" : "message_delta",
+  "delta" : {
+    "stop_reason" : "tool_use",
+    "stop_sequence" : null
+  },
+  "usage" : {
+    "input_tokens" : 737,
+    "cache_creation_input_tokens" : 0,
+    "cache_read_input_tokens" : 0,
+    "output_tokens" : 82
+  }
+}, {
+  "type" : "message_stop"
+} ]

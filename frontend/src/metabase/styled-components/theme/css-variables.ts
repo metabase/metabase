@@ -1,18 +1,25 @@
+// WARNING: This file is referenced by CssVarsDeclarationPlugin.
+// If you move or rename it, update the path in css-vars-declaration-plugin.js.
+
 // eslint-disable-next-line no-restricted-imports
 import { css } from "@emotion/react";
 import { getIn } from "icepick";
 
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
-import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
+import {
+  getDynamicCssVariables,
+  getIsDarkThemeFromPalette,
+} from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import {
   SDK_TO_MAIN_APP_COLORS_MAPPING,
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
   SDK_UNCHANGEABLE_COLORS,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
-import { deriveFullMetabaseTheme } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
+import { deriveFullMetabaseTheme } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { ColorSettings } from "metabase-types/api";
 
 const createColorVars = (
@@ -62,10 +69,12 @@ export function getMetabaseSdkCssVariables({
   font: string;
   whitelabelColors?: ColorSettings | null;
 }) {
+  const colorScheme = getIsDarkThemeFromPalette(theme) ? "dark" : "light";
+
   return css`
     :root {
-      --mb-default-font-family: ${font};
-      ${createColorVars("light", whitelabelColors)}
+      --mb-default-font-family: ${getFontFamilyValue(font)};
+      ${createColorVars(colorScheme, whitelabelColors)}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
@@ -78,7 +87,7 @@ export function getMetabaseSdkCssVariables({
  * These CSS variables are part of the core design system colors.
  *
  * Only keep colors that depend on the theme and are not specified anywhere else here.
- * You don't need to add new colors from `frontend/src/metabase/lib/colors/colors.ts` here since
+ * You don't need to add new colors from `frontend/src/metabase/ui/colors/colors.ts` here since
  * they're already included in `getMetabaseSdkCssVariables`
  **/
 function getSdkDesignSystemCssVariables(theme: MantineTheme) {

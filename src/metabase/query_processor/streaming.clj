@@ -2,9 +2,11 @@
   (:refer-clojure :exclude [every? some mapv not-empty])
   (:require
    [clojure.string :as str]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming.csv :as qp.csv]
@@ -213,6 +215,32 @@
     (binding [qp.pipeline/*result* (streaming-result-fn results-writer os)]
       (f rff))))
 
+(defn- status-code
+  "Get a status code for the supplied error object."
+  [err]
+  (cond
+    ;; A raw exception thrown outside the QP's exception-formatting (e.g. during setup) arrives here as
+    ;; a Throwable, not a formatted map, so the keyword lookups below can't read its declared status
+    ;; code off it. Pull it from ex-data.
+    (and (instance? Throwable err) (:status-code (ex-data err)))
+    (:status-code (ex-data err))
+    ;; If the error is setting its own status code use that
+    (:status-code err) (:status-code err)
+    (-> err :ex-data :status-code) (-> err :ex-data :status-code)
+    ;; If the connection pool is saturated (checkout timed out, or the checkout queue is full) return 503 so clients
+    ;; retry/back off
+    (-> err :error_type qp.error-type/connection-pool-saturated?)
+    503
+    ;; If this is a permission error return 403
+    (-> err :error_type qp.error-type/permission-error?)
+    403
+    ;; If this is a client error return 400
+    (-> err :error_type qp.error-type/client-error?)
+    400
+    ;; Use 500 for all other error statuses
+    :else
+    500))
+
 (defn -streaming-response
   "Impl for [[streaming-response]]."
   ^StreamingResponse [export-format filename-prefix f]
@@ -238,7 +266,8 @@
              (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
              (when (or (instance? Throwable result)
                        (= (:status result) :failed))
-               (streaming-response/write-error! os result export-format)))))))))
+               (analytics/inc! :metabase-export/errors {:format (name export-format)})
+               (streaming-response/write-error! os result export-format (status-code result))))))))))
 
 (defn transforming-query-response
   "Decorate the streaming rff to transform the top-level payload."

@@ -1,33 +1,29 @@
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
+import { skipToken, useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useSearchListQuery } from "metabase/common/hooks";
+import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
-import { Search } from "metabase/entities/search";
+import type { SearchFilters } from "metabase/common/search/types";
+import { navigate } from "metabase/router";
+import { Box, Loader, Stack, rem } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
 import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,
-} from "metabase/lib/constants";
-import { useDispatch } from "metabase/lib/redux";
-import { modelToUrl } from "metabase/lib/urls";
-import {
-  EmptyStateContainer,
-  ResultsContainer,
-  ResultsFooter,
-  SearchResultsList,
-} from "metabase/nav/components/search/SearchResults/SearchResults.styled";
-import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
-import { SearchContextTypes } from "metabase/search/constants";
-import type { SearchFilters } from "metabase/search/types";
-import { Loader } from "metabase/ui";
+} from "metabase/utils/constants";
 import type {
   CollectionItem,
+  SearchContext,
   SearchModel,
+  SearchResult as SearchResultType,
   SearchResponse as SearchResultsType,
 } from "metabase-types/api";
+
+import S from "./SearchResults.module.css";
 
 export type SearchResultsFooter =
   | (({
@@ -47,11 +43,23 @@ export type SearchResultsProps = {
   models?: SearchModel[];
   footerComponent?: SearchResultsFooter;
   onFooterSelect?: () => void;
-  isSearchBar?: boolean;
+  context: SearchContext;
 };
 
 export const SearchLoadingSpinner = () => (
-  <Loader size="lg" data-testid="loading-indicator" label={t`Loading…`} />
+  <Loader size="lg" label={t`Loading…`} />
+);
+
+export const EmptyStateContainer = ({
+  children,
+  "data-testid": dataTestId,
+}: {
+  children: ReactNode;
+  "data-testid"?: string;
+}) => (
+  <Box mt={rem(64)} mb="xl" data-testid={dataTestId}>
+    {children}
+  </Box>
 );
 
 export const SearchResults = ({
@@ -62,10 +70,8 @@ export const SearchResults = ({
   models,
   footerComponent,
   onFooterSelect,
-  isSearchBar = false,
+  context,
 }: SearchResultsProps) => {
-  const dispatch = useDispatch();
-
   const [debouncedSearchText, setDebouncedSearchText] = useState<string>();
 
   const isWaitingForDebounce = searchText !== debouncedSearchText;
@@ -82,27 +88,27 @@ export const SearchResults = ({
     q?: string;
     limit: number;
     models?: SearchModel[];
-    context?: "search-bar" | "search-app";
+    context: SearchContext;
   } & SearchFilters = {
     q: debouncedSearchText,
     limit: DEFAULT_SEARCH_LIMIT,
+    context,
     ...searchFilters,
     models: models ?? searchFilters.type,
   };
 
-  if (isSearchBar) {
-    query.context = SearchContextTypes.SEARCH_BAR;
-  }
-
-  const {
-    data: list = [],
-    metadata,
-    isLoading,
-  } = useSearchListQuery({
-    query,
-    reload: true,
-    enabled: !!debouncedSearchText,
-  });
+  const { data: response, isLoading } = useSearchQuery(
+    debouncedSearchText ? query : skipToken,
+    { refetchOnMountOrArgChange: true },
+  );
+  const list = useMemo(() => response?.data ?? [], [response?.data]);
+  const metadata = useMemo<Omit<SearchResultsType, "data"> | undefined>(() => {
+    if (!response) {
+      return undefined;
+    }
+    const { data: _data, ...rest } = response;
+    return rest;
+  }, [response]);
 
   const hasResults = list.length > 0;
   const showFooter = hasResults && footerComponent && metadata;
@@ -111,23 +117,28 @@ export const SearchResults = ({
     return showFooter ? [...list, footerComponent] : list;
   }, [footerComponent, list, showFooter]);
 
-  const onEnterSelect = (item?: CollectionItem | SearchResultsFooter) => {
+  type ItemType =
+    | CollectionItem
+    | SearchResultsProps["footerComponent"]
+    | SearchResultType;
+
+  const onEnterSelect = (item?: ItemType) => {
     if (showFooter && cursorIndex === dropdownItemList.length - 1) {
       onFooterSelect?.();
     }
 
     if (item && typeof item !== "function") {
       if (onEntitySelect) {
-        onEntitySelect(Search.wrapEntity(item, dispatch));
+        onEntitySelect(item);
       } else if (item && modelToUrl(item)) {
-        dispatch(push(modelToUrl(item)));
+        navigate(modelToUrl(item));
       }
     }
   };
 
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation<
-    CollectionItem | SearchResultsProps["footerComponent"],
-    HTMLLIElement
+    ItemType,
+    HTMLElement
   >({
     list: dropdownItemList,
     onEnter: onEnterSelect,
@@ -143,8 +154,12 @@ export const SearchResults = ({
   }
 
   return hasResults ? (
-    <SearchResultsList data-testid="search-results-list" gap={0}>
-      <ResultsContainer>
+    <Stack
+      className={S.searchResultsList}
+      data-testid="search-results-list"
+      gap={0}
+    >
+      <Box component="ul" p="sm" className={S.resultsContainer}>
         {list.map((item, index) => {
           const isIndexedEntity = item.model === "indexed-entity";
           const onClick =
@@ -152,33 +167,32 @@ export const SearchResults = ({
               ? onEntitySelect
               : undefined;
           const ref = getRef(item);
-          const wrappedResult = Search.wrapEntity(item, dispatch);
 
           return (
             <li key={`${item.model}:${item.id}`} ref={ref}>
               <SearchResult
-                result={wrappedResult}
+                result={item}
                 compact={true}
                 showDescription={true}
                 isSelected={cursorIndex === index}
                 onClick={onClick}
                 index={index}
-                context="search-bar"
+                context={context}
                 searchTerm={searchText}
               />
             </li>
           );
         })}
-      </ResultsContainer>
+      </Box>
       {showFooter && (
-        <ResultsFooter ref={getRef(footerComponent)}>
+        <Box ref={getRef(footerComponent)}>
           {footerComponent({
             metadata,
             isSelected: cursorIndex === dropdownItemList.length - 1,
           })}
-        </ResultsFooter>
+        </Box>
       )}
-    </SearchResultsList>
+    </Stack>
   ) : (
     <EmptyStateContainer data-testid="search-results-empty-state">
       <EmptyState message={t`Didn't find anything`} icon="search" />

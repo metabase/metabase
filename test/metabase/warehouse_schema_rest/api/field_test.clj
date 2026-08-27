@@ -78,6 +78,29 @@
       (is (=? {:target {:id (mt/id :categories :id)}}
               (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))))))
 
+(deftest ^:parallel get-field-table-ids-test
+  (testing "POST /api/field/table-ids"
+    (is (= {:table_ids (sort [(mt/id :categories) (mt/id :venues)])}
+           (mt/user-http-request :rasta :post 200 "field/table-ids"
+                                 {:field_ids [(mt/id :venues :name)
+                                              (mt/id :venues :category_id)
+                                              (mt/id :categories :name)]})))))
+
+(deftest ^:parallel get-field-table-ids-empty-and-missing-test
+  (testing "POST /api/field/table-ids accepts empty and missing field IDs"
+    (is (= {:table_ids []}
+           (mt/user-http-request :rasta :post 200 "field/table-ids"
+                                 {:field_ids []})))
+    (is (= {:table_ids []}
+           (mt/user-http-request :rasta :post 200 "field/table-ids"
+                                 {:field_ids [2147483647]})))))
+
+(deftest ^:parallel get-field-table-ids-too-many-test
+  (testing "POST /api/field/table-ids rejects oversized field ID requests"
+    (is (= "field_ids may contain at most 1000 IDs."
+           (mt/user-http-request :rasta :post 400 "field/table-ids"
+                                 {:field_ids (vec (range 1 1002))})))))
+
 (deftest ^:parallel get-field-summary-test
   (testing "GET /api/field/:id/summary"
     ;; TODO -- why doesn't this come back as a dictionary ?
@@ -193,7 +216,7 @@
   (testing "PUT /api/field/:id"
     (testing "updating coercion strategies"
       (testing "Refingerprints field when updated"
-        (with-redefs [quick-task/submit-task! (fn [task] (task))]
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/dataset integer-coerceable
             (sync/sync-database! (t2/select-one :model/Database :id (mt/id)))
             (let [field-id      (mt/id :t :f)
@@ -268,15 +291,12 @@
         ;; now update the values via the API
         (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
                (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
-
     (testing "Should return nothing for a field whose `has_field_values` is not `list`"
       (is (= {:values [], :field_id (mt/id :venues :id), :has_more_values false}
              (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :venues :id))))))
-
     (testing "Sensitive fields do not have field values and should return empty"
       (is (= {:values [], :field_id (mt/id :users :password), :has_more_values false}
              (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :users :password))))))
-
     (testing "External remapping"
       (mt/with-column-remappings [venues.category_id categories.name]
         (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:has_field_values "list"}
@@ -335,14 +355,11 @@
         (is (= {:values [], :field_id true, :has_more_values false}
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))
-
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 (format "field/%d/values" field-id)
                                      {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))
-
         (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"], :has_more_values false}
                (into {} (t2/select-one [:model/FieldValues :values :human_readable_values, :has_more_values] :field_id field-id))))
-
         (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true, :has_more_values false}
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 (format "field/%d/values" field-id)))))))))
@@ -492,6 +509,45 @@
                (mt/user-http-request :rasta :post 403 (format "field/%d/dimension" field-id)
                                      {:name "some dimension name", :type "external"})))))))
 
+(deftest fk-target-field-cross-database-test
+  (testing "PUT /api/field/:id rejects fk_target_field_id from a different database"
+    (mt/with-temp [:model/Database db1    {:name "db1" :engine :h2}
+                   :model/Database db2    {:name "db2" :engine :h2}
+                   :model/Table    table1 {:schema "PUBLIC" :name "t1" :db_id (:id db1)}
+                   :model/Table    table2 {:schema "PUBLIC" :name "t2" :db_id (:id db2)}
+                   :model/Field    field1 {:name "Field 1" :table_id (:id table1) :base_type :type/Integer}
+                   :model/Field    field2 {:name "Field 2" :table_id (:id table2) :base_type :type/Integer}]
+      (is (= "Target field must belong to the same database"
+             (-> (mt/user-http-request :crowberto :put 400 (format "field/%d" (:id field1))
+                                       {:semantic_type :type/FK :fk_target_field_id (:id field2)})
+                 :errors vals first))))))
+
+(deftest dimension-human-readable-field-cross-database-test
+  (testing "POST /api/field/:id/dimension rejects human_readable_field_id from a different database"
+    (mt/with-temp [:model/Database db1    {:name "db1" :engine :h2}
+                   :model/Database db2    {:name "db2" :engine :h2}
+                   :model/Table    table1 {:schema "PUBLIC" :name "t1" :db_id (:id db1)}
+                   :model/Table    table2 {:schema "PUBLIC" :name "t2" :db_id (:id db2)}
+                   :model/Field    field1 {:name "Field 1" :table_id (:id table1) :base_type :type/Integer}
+                   :model/Field    field2 {:name "Field 2" :table_id (:id table2) :base_type :type/Integer}]
+      (is (= "Target field must belong to the same database"
+             (-> (create-dimension-via-API! (:id field1)
+                                            {:name "test dim" :type "external" :human_readable_field_id (:id field2)}
+                                            :expected-status-code 400)
+                 :errors vals first))))))
+
+(deftest dimension-human-readable-field-same-database-test
+  (testing "POST /api/field/:id/dimension accepts human_readable_field_id from the same database"
+    (mt/with-temp [:model/Database db1    {:name "db1" :engine :h2}
+                   :model/Table    table1 {:schema "PUBLIC" :name "t1" :db_id (:id db1)}
+                   :model/Table    table2 {:schema "PUBLIC" :name "t2" :db_id (:id db1)}
+                   :model/Field    field1 {:name "Field 1" :table_id (:id table1) :base_type :type/Integer}
+                   :model/Field    field2 {:name "Field 2" :table_id (:id table2) :base_type :type/Integer}]
+      (is (=? {:field_id (:id field1)
+               :human_readable_field_id (:id field2)}
+              (create-dimension-via-API! (:id field1)
+                                         {:name "test dim" :type "external" :human_readable_field_id (:id field2)}))))))
+
 (deftest delete-dimension-test
   (testing "DELETE /api/field/:id/dimension"
     (testing "Ensure we can delete a dimension"
@@ -634,7 +690,6 @@
   (testing "Checking update of the fk_target_field_id along with an FK change"
     (mt/with-temp [:model/Field {field-id-1 :id} {:name "Field Test 1"}
                    :model/Field {field-id-2 :id} {:name "Field Test 2"}]
-
       (testing "before change"
         (is (= {:name               "Field Test 2"
                 :display_name       "Field Test 2"
@@ -707,7 +762,6 @@
         (testing "after API request"
           (is (= nil
                  (dimension-for-field field-id))))))
-
     (testing "Change from supported type to supported type will leave the dimension"
       (mt/with-temp [:model/Field {field-id :id} {:name      "Field Test"
                                                   :base_type "type/Integer"}]
@@ -901,3 +955,25 @@
             (data-perms/set-database-permission! pg (mt/id) :perms/create-queries :query-builder)
             (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
                    (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))))))
+
+(deftest update-has-field-values-test
+  (testing "PUT /api/field/:id can change has_field_values across the list/search/none filtering types"
+    (mt/with-temp [:model/Field {fid :id} {:base_type :type/Integer :has_field_values "list"}]
+      (doseq [v ["search" "none" "list"]]
+        (testing (format "has_field_values = %s" v)
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" fid) {:has_field_values v})
+          (is (= (keyword v)
+                 (t2/select-one-fn :has_field_values :model/Field :id fid))))))))
+
+(deftest discard-field-values-test
+  (testing "POST /api/field/:id/discard_values"
+    (mt/with-temp [:model/Field       {fid :id} {:table_id (mt/id :venues)}
+                   :model/FieldValues {fv :id}  {:field_id fid :values [1 2 3]}]
+      (testing "requires metadata write permissions"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 (format "field/%d/discard_values" fid))))
+        (is (t2/exists? :model/FieldValues :id fv)))
+      (testing "an admin can discard the cached field values"
+        (is (= {:status "success"}
+               (mt/user-http-request :crowberto :post 200 (format "field/%d/discard_values" fid))))
+        (is (not (t2/exists? :model/FieldValues :id fv)))))))

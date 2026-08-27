@@ -1,6 +1,8 @@
 (ns metabase.util.password-test
   (:require
    [clojure.test :refer :all]
+   [environ.core :as env]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.password :as u.password]))
@@ -69,6 +71,11 @@
         (is (= expected
                (u.password/is-valid? input)))))))
 
+(deftest default-password-complexity-config-test
+  (testing "When MB_PASSWORD_COMPLEXITY is unset, default is :normal"
+    (with-redefs [env/env (dissoc env/env :mb-password-complexity)]
+      (is (= :normal (config/config-kw :mb-password-complexity))))))
+
 (deftest is-valid?-weak-test
   (testing "Do some tests with password complexity requirements set to :weak.
             Common password list should not be checked."
@@ -77,6 +84,19 @@
                                 "ABCDEF"   true
                                 "ABCDE1"   true
                                 "passw0rd" true}]
+        (testing (pr-str (list 'is-valid? input))
+          (is (= expected
+                 (u.password/is-valid? input))))))))
+
+(deftest is-valid?-strong-enough-test
+  (testing "Do some tests with password complexity requirements set to :strong-enough."
+    (mt/with-temp-env-var-value! [:mb-password-complexity "strong-enough"]
+      (doseq [[input expected] {"ABC"                false
+                                "ABCDEFGHIJKLM"    false
+                                "abcdefghijklmno"  true
+                                "123456789012345"  true
+                                "unc0mmonpw12345"  true
+                                "123456789987654321" false}]
         (testing (pr-str (list 'is-valid? input))
           (is (= expected
                  (u.password/is-valid? input))))))))

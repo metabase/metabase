@@ -2,21 +2,20 @@ name: Loki Visual Regression Testing
 
 on:
   pull_request:
-  merge_group:
 
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
       frontend_loki_ci: ${{ steps.changes.outputs.frontend_loki_ci }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
         with:
           token: ${{ github.token }}
@@ -25,7 +24,7 @@ jobs:
   visual-test:
     needs: files-changed
     if: needs.files-changed.outputs.frontend_ci == 'true' || needs.files-changed.outputs.frontend_sources == 'true' || needs.files-changed.outputs.frontend_loki_ci == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     services:
       docker:
         image: docker:19.03.12
@@ -40,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend
@@ -49,19 +48,19 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        run: NODE_ENV=development yarn build-pure:cljs
+        run: NODE_ENV=development bun run build-pure:cljs
 
       - name: Run Loki Visual Tests
-        run: yarn test-visual:loki:ci
+        run: bun run test-visual:loki:ci
 
       - name: Generate Visual Report on Failure
         if: failure()
-        run: yarn test-visual:loki-report
+        run: bun run test-visual:loki-report
 
       - name: Upload Artifact
         id: artifact-upload-step
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loki-report
           include-hidden-files: true

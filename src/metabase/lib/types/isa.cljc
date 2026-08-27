@@ -1,6 +1,6 @@
 (ns metabase.lib.types.isa
   "Ported from frontend/src/metabase-lib/types/utils/isa.js"
-  (:refer-clojure :exclude [isa? any? boolean? number? string? integer? some])
+  (:refer-clojure :exclude [isa? any? boolean? string? integer? some])
   (:require
    [metabase.lib.types.constants :as lib.types.constants]
    [metabase.types.core]
@@ -154,6 +154,11 @@
   [column]
   (clojure.core/isa? (column-type column) :type/Date))
 
+(defn ^:export date-with-time?
+  "Is `column` a datetime (date with time)?"
+  [column]
+  (clojure.core/isa? (column-type column) :type/DateTime))
+
 (defn ^:export creation-timestamp?
   "Is `column` a creation timestamp column?"
   [column]
@@ -267,14 +272,17 @@
     (or (clojure.core/isa? col-type :type/Text)
         (clojure.core/isa? col-type :type/TextLike))))
 
-(defn valid-filter-for?
-  "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`.
+(defn compatible-type?
+  "Given two columns, returns true if they have compatible types.
 
-  That's the case if both are from the same family (strings, numbers, temporal) or if the `src-column` [[isa?]] subtype
-  of `dst-column`."
+  That's the case if both are from the same family (strings, numbers, dates/datetimes, times, booleans) or if
+  `src-column`'s base-type is a subtype of `dst-column`'s base-type."
   [src-column dst-column]
   (or
    (and (string? src-column)   (string? dst-column))
    (and (numeric? src-column)  (numeric? dst-column))
-   (and (temporal? src-column) (temporal? dst-column))
+   (and (date-without-time? src-column) (date-or-datetime? dst-column))
+   (and (date-with-time? src-column) (date-with-time? dst-column))
+   (and (time? src-column) (time? dst-column))
+   (and (boolean? src-column)  (boolean? dst-column))
    (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))

@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.filter-test
   "Tests for the `:filter` clause."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.filter-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.filter-test]}}}}}}
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -8,10 +10,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.test :as mt]
@@ -176,6 +178,7 @@
     (testing ":between with dates"
       ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this
       ;; test's results
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
       #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (when (= driver/*driver* :snowflake)
         (driver/notify-database-updated driver/*driver* (mt/id)))
@@ -395,6 +398,52 @@
                  :order-by [[:asc $id]]
                  :limit    3})))))))
 
+(mt/defdataset strings-that-need-escaping
+  [["escaping_table"
+    [{:field-name "string1", :base-type :type/Text}]
+    [["\\Backslash"]
+     ["Back\\slash"]
+     ["Backslash\\"]
+     ["_Underscore"]
+     ["Under_score"]
+     ["Underscore_"]
+     ["%ile"]
+     ["per%cent"]
+     ["100%"]
+     ["_many%\\escapes"]
+     ["more%___%esca\\pes%"]
+     ["%backslash\\%before_percent_"]
+     ["\\backslash\\_before%underscore\\"]]]])
+
+;; TODO: (Braden 2026-01-08) This set can be expanded further!
+;; - :athena, :vertica, :clickhouse, :presto all support these clauses but have issues loading the test dataset.
+;; - :mongo supports `:starts-with` etc. but is not SQL; its regex-based fuzzy matching could be upgraded.
+(doseq [driver #{:h2 :sqlserver :mysql :maria :postgres :oracle :sqlite}]
+  (defmethod driver/database-supports? [driver :test/escaping-like-metacharacters]
+    [_driver _feature _database]
+    true))
+
+(defmethod driver/database-supports? [:default :test/escaping-like-metacharacters]
+  [_driver _feature _database]
+  false)
+
+(deftest ^:parallel starts-with-escaped-char-in-literal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/escaping-like-metacharacters)
+    (mt/dataset strings-that-need-escaping
+      (doseq [[lit exp] {"\\" [[1 "\\Backslash"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "_"  [[4 "_Underscore"]
+                               [10 "_many%\\escapes"]]
+                         "%"  [[7 "%ile"]
+                               [12 "%backslash\\%before_percent_"]]}]
+        (testing (str "literal argument starts with " lit)
+          (is (=? exp
+                  (mt/formatted-rows
+                   [int identity]
+                   (mt/run-mbql-query escaping_table
+                     {:filter   [:starts-with $string1 lit]
+                      :limit    3})))))))))
+
 ;;; --------------------------------------------------- ends-with ----------------------------------------------------
 
 (deftest ^:parallel ends-with-test
@@ -473,6 +522,23 @@
                  :order-by [[:asc $id]]
                  :limit 3})))))))
 
+(deftest ^:parallel ends-with-escaped-char-in-literal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/escaping-like-metacharacters)
+    (mt/dataset strings-that-need-escaping
+      (doseq [[lit exp] {"\\" [[3  "Backslash\\"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "_"  [[6  "Underscore_"]
+                               [12 "%backslash\\%before_percent_"]]
+                         "%"  [[9  "100%"]
+                               [11 "more%___%esca\\pes%"]]}]
+        (testing (str "literal argument ends with " lit)
+          (is (=? exp
+                  (mt/formatted-rows
+                   [int identity]
+                   (mt/run-mbql-query escaping_table
+                     {:filter   [:ends-with $string1 lit]
+                      :limit    3})))))))))
+
 ;;; ---------------------------------------------------- contains ----------------------------------------------------
 
 (deftest ^:parallel contains-test
@@ -546,6 +612,57 @@
                 {:filter   [:contains $name $name]
                  :order-by [[:asc $id]]
                  :limit 3})))))))
+
+(deftest ^:parallel contains-with-escaped-char-in-literal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/escaping-like-metacharacters)
+    (mt/dataset strings-that-need-escaping
+      (doseq [[lit exp] {"\\" [[1 "\\Backslash"]
+                               [2 "Back\\slash"]
+                               [3 "Backslash\\"]
+                               [10 "_many%\\escapes"]
+                               [11 "more%___%esca\\pes%"]
+                               [12 "%backslash\\%before_percent_"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "_"  [[4 "_Underscore"]
+                               [5 "Under_score"]
+                               [6 "Underscore_"]
+                               [10 "_many%\\escapes"]
+                               [11 "more%___%esca\\pes%"]
+                               [12 "%backslash\\%before_percent_"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "%"  [[7 "%ile"]
+                               [8 "per%cent"]
+                               [9 "100%"]
+                               [10 "_many%\\escapes"]
+                               [11 "more%___%esca\\pes%"]
+                               [12 "%backslash\\%before_percent_"]
+                               [13 "\\backslash\\_before%underscore\\"]]}]
+        (testing (str "literal argument contains " lit)
+          (is (=? exp
+                  (mt/formatted-rows
+                   [int identity]
+                   (mt/run-mbql-query escaping_table
+                     {:filter   [:contains $string1 lit]
+                      :order-by [[:asc $id]]
+                      :limit    8}))))))
+      (testing "two literal contains filters"
+        (let [mp            (mt/metadata-provider)
+              id-field      (lib.metadata/field mp (mt/id :escaping_table :id))
+              string1-field (lib.metadata/field mp (mt/id :escaping_table :string1))
+              query         (-> (lib/query mp (lib.metadata/table mp (mt/id :escaping_table)))
+                                (lib/filter (lib/and
+                                             (lib/contains string1-field "\\")
+                                             (lib/contains string1-field "%")))
+                                (lib/order-by id-field)
+                                (lib/with-fields [id-field string1-field])
+                                (lib/limit 8))]
+          (is (= [[10 "_many%\\escapes"]
+                  [11 "more%___%esca\\pes%"]
+                  [12 "%backslash\\%before_percent_"]
+                  [13 "\\backslash\\_before%underscore\\"]]
+                 (mt/formatted-rows
+                  [int identity]
+                  (qp/process-query query)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             NESTED AND/OR CLAUSES                                              |
@@ -920,34 +1037,35 @@
                    :order-by [[$id :asc]]
                    :limit 1}))))))))
 
-(deftest ^:parallel order-by-nulls-test
+(deftest order-by-nulls-test
   (testing "Check that we can sort by numeric columns that contain NULLs (#6615)"
     (mt/dataset daily-bird-counts
       (mt/test-drivers (mt/normal-drivers)
-        ;; the rows returned should be the ones with a nil count, in increasing ID order
-        (is (= (if (mt/sorts-nil-first? driver/*driver* :type/Integer)
-                 ;; if nils come first, we expect the first three rows having a nil count, in id ascending order
-                 [[1 "2018-09-20T00:00:00Z" nil]
-                  [8 "2018-09-27T00:00:00Z" nil]
-                  [15 "2018-10-04T00:00:00Z" nil]]
-                 ;; if nils come last, we expect the first three rows having a count of 0, in id ascending order
-                 [[2 "2018-09-21T00:00:00Z" 0]
-                  [3 "2018-09-22T00:00:00Z" 0]
-                  [9 "2018-09-28T00:00:00Z" 0]])
-               (mt/formatted-rows
-                [int identity int]
-                (mt/run-mbql-query bird-count
-                  {:order-by [[:asc $count] [:asc $id]]
-                   :limit    3}))))))))
+        (mt/with-temporary-setting-values [report-timezone "UTC"]
+          ;; the rows returned should be the ones with a nil count, in increasing ID order
+          (is (= (if (mt/sorts-nil-first? driver/*driver* :type/Integer)
+                   ;; if nils come first, we expect the first three rows having a nil count, in id ascending order
+                   [[1 "2018-09-20T00:00:00Z" nil]
+                    [8 "2018-09-27T00:00:00Z" nil]
+                    [15 "2018-10-04T00:00:00Z" nil]]
+                   ;; if nils come last, we expect the first three rows having a count of 0, in id ascending order
+                   [[2 "2018-09-21T00:00:00Z" 0]
+                    [3 "2018-09-22T00:00:00Z" 0]
+                    [9 "2018-09-28T00:00:00Z" 0]])
+                 (mt/formatted-rows
+                  [int identity int]
+                  (mt/run-mbql-query bird-count
+                    {:order-by [[:asc $count] [:asc $id]]
+                     :limit    3})))))))))
 
 (deftest filter-on-specific-date-test
   (testing (str "Filtering on a specific date (DATE column) should work correctly regardless of report timezone/DB"
                 " timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                  (mt/metadata-provider)
-                                 {:database {:timezone "US/Pacific"}})
+                                 {:database {:timezone "America/Los_Angeles"}})
               checkins          (lib.metadata/table metadata-provider (mt/id :checkins))
               checkins-id       (lib.metadata/field metadata-provider (mt/id :checkins :id))
               checkins-date     (lib.metadata/field metadata-provider (mt/id :checkins :date))
@@ -983,10 +1101,10 @@
   (testing (str "Filtering on a specific date (TIMESTAMP WITH TIME ZONE column) should work correctly regardless of"
                 " report timezone/DB timezone support (#39769)")
     (mt/test-drivers (mt/normal-drivers)
-      (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (let [metadata-provider (lib.tu/merged-mock-metadata-provider
                                  (mt/metadata-provider)
-                                 {:database {:timezone "US/Pacific"}})
+                                 {:database {:timezone "America/Los_Angeles"}})
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
               orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -1138,3 +1256,85 @@
                     (lib/limit 2))]
       (is (= [[3 "Artisan"] [4 "Asian"]]
              (mt/formatted-rows [int str] (qp/process-query query)))))))
+
+(defn- lib-field
+  "Column metadata for `table`.`field` in the current dataset."
+  [mp table field]
+  (lib.metadata/field mp (mt/id table field)))
+
+(defn- lib-filtered-count
+  "Build `SELECT count(*) FROM <table> WHERE <filter>` entirely with lib and return the integer count.
+  `filter-fn` receives the metadata provider and returns a lib filter expression."
+  [table filter-fn]
+  (let [mp    (mt/metadata-provider)
+        query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                  (lib/aggregate (lib/count))
+                  (lib/filter (filter-fn mp)))]
+    ;; mongo returns no rows instead of 0 for an empty count (#5419)
+    (or (ffirst (mt/formatted-rows [int] (qp/process-query query)))
+        0)))
+
+(deftest ^:parallel does-not-contain-keeps-null-rows-test
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset airports
+      (testing "`:does-not-contain` must keep rows with a NULL value (metabase#13332, metabase#37100)"
+        ;; region.name has 8 NULLs out of 415 rows; the NULL rows must survive the filter
+        (is (= 412
+               (lib-filtered-count :region
+                                   (fn [mp]
+                                     (lib/does-not-contain (lib-field mp :region :name) "Cali")))))))))
+
+(deftest ^:parallel compare-two-fields-filter-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "a comparison filter with two field operands (metabase#17963)"
+      ;; orders.discount is NULL for most rows; under SQL three-valued logic those rows fail `>`
+      ;; and must land in the complement, so the two disjoint filters partition every row.
+      (let [total  18760
+            gt     (lib-filtered-count :orders
+                                       (fn [mp]
+                                         (lib/> (lib-field mp :orders :discount)
+                                                (lib-field mp :orders :quantity))))
+            not-gt (lib-filtered-count :orders
+                                       (fn [mp]
+                                         (lib/or (lib/<= (lib-field mp :orders :discount)
+                                                         (lib-field mp :orders :quantity))
+                                                 (lib/is-null (lib-field mp :orders :discount)))))]
+        (is (pos? gt))
+        (is (< gt total))
+        (is (= total (+ gt not-gt)))))))
+
+(deftest ^:parallel date-vs-datetime-equality-filter-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "`=` filters on a datetime column distinguish a date-only literal from an exact timestamp (metabase#43057)"
+      (let [total     18760
+            whole-day (lib-filtered-count :orders
+                                          (fn [mp]
+                                            (lib/= (lib/with-temporal-bucket (lib-field mp :orders :created_at) :day)
+                                                   "2019-06-26")))
+            exact     (lib-filtered-count :orders
+                                          (fn [mp]
+                                            (lib/= (lib-field mp :orders :created_at)
+                                                   "2019-06-26T00:40:07.285Z")))]
+        (testing "a date-only literal matches the whole day, not a single instant"
+          (is (< 1 whole-day))      ; more than one row => day granularity, not instant matching
+          (is (< whole-day total))) ; and the filter is not a no-op
+        (testing "an exact timestamp matches a single instant, not the whole day"
+          ;; drivers that truncate fractional seconds match 0 rows; all match at most one, strictly fewer than the day
+          (is (<= exact 1))
+          (is (< exact whole-day)))))))
+
+(deftest ^:parallel exclude-temporal-extract-filter-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
+    (testing "an exclude-date filter on an extracted temporal unit filters rows out"
+      ;; every row is either in Q1 or not; the two extractions partition all rows, and excluding
+      ;; Q1 must actually drop rows (a dropped filter would leave the count at the total).
+      (let [total  18760
+            not-q1 (lib-filtered-count :orders
+                                       (fn [mp]
+                                         (lib/!= (lib/get-quarter (lib-field mp :orders :created_at)) 1)))
+            q1     (lib-filtered-count :orders
+                                       (fn [mp]
+                                         (lib/= (lib/get-quarter (lib-field mp :orders :created_at)) 1)))]
+        (is (pos? q1))
+        (is (< not-q1 total))
+        (is (= total (+ not-q1 q1)))))))

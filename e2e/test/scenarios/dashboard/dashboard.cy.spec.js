@@ -9,20 +9,11 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { cancelConfirmationModal } from "e2e/test/scenarios/admin/performance/helpers/modals-helpers";
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import {
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
-
-import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
-import {
-  adaptiveRadioButton,
-  cacheStrategySidesheet,
-  durationRadioButton,
-  openSidebarCacheStrategyForm,
-} from "../admin/performance/helpers/e2e-strategy-form-helpers";
 
 const { H } = cy;
 
@@ -32,7 +23,6 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 // and then immediately editing it again. After saving,
 // we exit the edit mode and that can happen after
 // `H.editDashboard` is called for some reason
-const DASHBOARD_SAVE_WAIT_TIME = 450;
 
 describe("scenarios > dashboard", () => {
   beforeEach(() => {
@@ -41,7 +31,7 @@ describe("scenarios > dashboard", () => {
   });
 
   describe("create", () => {
-    it("new dashboard UI flow", { tags: "@smoke" }, () => {
+    it("new dashboard UI flow", { tags: "@prerelease" }, () => {
       cy.intercept("POST", "/api/dashboard").as("createDashboard");
       cy.intercept("POST", "/api/card").as("createQuestion");
 
@@ -147,7 +137,13 @@ describe("scenarios > dashboard", () => {
 
       H.checkSavedToCollectionQuestionToast(true);
 
-      H.entityPickerModal().findByText("New dashboard").click();
+      // The "New dashboard" button stays disabled until the selected
+      // collection's details (incl. can_write) load; clicking too early is a
+      // no-op, so wait for it to be enabled before clicking.
+      H.entityPickerModal()
+        .findByRole("button", { name: "New dashboard" })
+        .should("be.enabled")
+        .click();
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
         cy.findByText("Create").click();
@@ -1102,13 +1098,13 @@ describe("scenarios > dashboard", () => {
         );
 
         cy.log("should not be visible (below the fold)");
-        cy.visit(`/dashboard/${dashboard.id}}`);
+        cy.visit(`/dashboard/${dashboard.id}`);
         cy.findByText(TARGET_TEXT).should("not.be.visible");
 
         cy.log("should scroll into view w/ scrollTo hash param");
         cy.visit(`/dashboard/${dashboard.id}#scrollTo=${targetCard.id}`);
-        cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
-        cy.location("hash").should("not.include", "scrollTo"); // scrollTo param should get removed
+        // wait for scroll to complete (hash cleared) then verify visibility
+        cy.location("hash").should("not.include", "scrollTo");
         cy.findByText(TARGET_TEXT).should("be.visible");
       },
     );
@@ -1214,7 +1210,7 @@ describe("scenarios > dashboard", () => {
           .eq(0);
       dragOnXAxis(card(), 100);
       assertPreventLeave();
-      H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+      H.saveDashboard();
 
       // remove
       H.editDashboard();
@@ -1262,7 +1258,7 @@ describe("scenarios > dashboard", () => {
       // can be a side effect
       cy.url().should("include", "tab-1");
       assertPreventLeave();
-      H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+      H.saveDashboard();
 
       // rename tab
       H.editDashboard();
@@ -1456,7 +1452,7 @@ describe("scenarios > dashboard", () => {
     // toggle full-width
     H.editDashboard();
     cy.findByLabelText("Toggle width").click();
-    H.popover().findByText("Full width").click();
+    H.popover().findByLabelText("Full width").click();
     H.assertDashboardFullWidth();
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
@@ -1471,7 +1467,7 @@ describe("scenarios > dashboard", () => {
     // toggle back to fixed
     H.editDashboard();
     cy.findByLabelText("Toggle width").click();
-    H.popover().findByText("Full width").click();
+    H.popover().findByLabelText("Full width").click();
     H.assertDashboardFixedWidth();
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
@@ -1502,13 +1498,27 @@ describe("scenarios > dashboard", () => {
         event: "revert_version_clicked",
         event_detail: "dashboard",
       });
+
+      // Simulate a backend failure on revert and confirm we surface
+      // the error message as a toast (UXW-310).
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing dashboard" },
+      }).as("failedRevert");
+
+      H.sidesheet().within(() => {
+        cy.findAllByTestId("question-revert-button").first().click();
+      });
+      cy.wait("@failedRevert");
+
+      H.undoToast().should("contain.text", "Cannot revert: missing dashboard");
     });
   });
 });
 
 function checkOptionsForFilter(filter) {
   cy.findByText("Available filters").parent().contains(filter).click();
-  H.popover()
+  H.selectDropdown()
     .should("contain", "Columns")
     .and("contain", "COUNT(*)")
     .and("not.contain", "Dashboard filters");
@@ -1524,175 +1534,6 @@ function assertScrollBarExists() {
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
 }
-
-describe("LOCAL TESTING ONLY > dashboard", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  /**
-   * WARNING:
-   *    https://github.com/metabase/metabase/issues/15656
-   *    - We are currently not able to test translations in CI
-   *    - DO NOT unskip this test even after the issue is fixed
-   *    - To be used for local testing only
-   *    - Make sure you have translation resources built first.
-   *        - Run `./bin/i18n/build-translation-resources`
-   *        - Then start the server and Cypress tests
-   */
-
-  it(
-    "dashboard filter should not show placeholder for translated languages (metabase#15694)",
-    { tags: "@skip" },
-    () => {
-      cy.request("GET", "/api/user/current").then(
-        ({ body: { id: USER_ID } }) => {
-          cy.request("PUT", `/api/user/${USER_ID}`, { locale: "fr" });
-        },
-      );
-      H.createQuestionAndDashboard({
-        questionDetails: {
-          name: "15694",
-          query: { "source-table": PEOPLE_ID },
-        },
-        dashboardDetails: {
-          parameters: [
-            {
-              name: "Location",
-              slug: "location",
-              id: "5aefc725",
-              type: "string/=",
-              sectionId: "location",
-            },
-          ],
-        },
-      }).then(({ body: { card_id, dashboard_id } }) => {
-        H.addOrUpdateDashboardCard({
-          card_id,
-          dashboard_id,
-          card: {
-            parameter_mappings: [
-              {
-                parameter_id: "5aefc725",
-                card_id,
-                target: ["dimension", ["field", PEOPLE.STATE, null]],
-              },
-            ],
-          },
-        });
-
-        cy.visit(`/dashboard/${dashboard_id}?location=AK&location=CA`);
-        H.filterWidget().contains(/\{0\}/).should("not.exist");
-      });
-    },
-  );
-});
-
-describe("scenarios > dashboard > caching", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-  });
-
-  /**
-   * @note There is a similar test for the cache config form that appears in the question sidebar.
-   * It's in the Cypress describe block labeled "scenarios > question > caching"
-   */
-  it("can configure cache for a dashboard, on an enterprise instance", () => {
-    interceptPerformanceRoutes();
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    openSidebarCacheStrategyForm("dashboard");
-
-    H.sidesheet().within(() => {
-      cy.findByText(/Caching settings/).should("be.visible");
-      durationRadioButton().click();
-      cy.findByLabelText("Cache results for this many hours").type("48");
-      cy.findByRole("button", { name: /Save/ }).click();
-      cy.wait("@putCacheConfig");
-      cy.log(
-        "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
-      );
-      cy.findByLabelText(/When to get new results/).should(
-        "contain",
-        "Duration",
-      );
-      cy.findByLabelText(/When to get new results/).click();
-      adaptiveRadioButton().click();
-      cy.findByLabelText(/Minimum query duration/).type("999");
-      cy.findByRole("button", { name: /Save/ }).click();
-      cy.wait("@putCacheConfig");
-      cy.findByLabelText(/When to get new results/).should(
-        "contain",
-        "Adaptive",
-      );
-    });
-  });
-
-  /**
-   * @note There is a similar test for closing the cache form when it's dirty
-   * It's in the Cypress describe block labeled "scenarios > question > caching"
-   */
-  it("should guard closing caching form if it's dirty on different actions", () => {
-    interceptPerformanceRoutes();
-    /**
-     * we need to populate the history via react router by clicking route's links
-     * in order to imitate a user who clicks "back" and "forward" button
-     */
-    cy.visit("/");
-    cy.findByTestId("main-navbar-root").findByText("Our analytics").click();
-    cy.findByTestId("collection-table")
-      .findByText("Orders in a dashboard")
-      .click();
-
-    openSidebarCacheStrategyForm("dashboard");
-
-    cacheStrategySidesheet().within(() => {
-      cy.findByText(/Caching settings/).should("be.visible");
-      durationRadioButton().click();
-    });
-    // Action 1: clicking on cross button
-    cacheStrategySidesheet().findByRole("button", { name: /Close/ }).click();
-    cancelConfirmationModal();
-    // Action 2: ESC button
-    cy.get("body").type("{esc}");
-    cancelConfirmationModal();
-    // Action 3: click outside
-    // When a user clicks somewhere outside he basically clicks on the top one
-    cy.findAllByTestId("modal-overlay")
-      .should("have.length.gte", 1)
-      .last()
-      .click();
-    cancelConfirmationModal();
-    // Action 4: browser's Back action
-    cy.go("back");
-    cancelConfirmationModal();
-  });
-
-  it("can click 'Clear cache' for a dashboard", () => {
-    interceptPerformanceRoutes();
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    openSidebarCacheStrategyForm("dashboard");
-
-    H.sidesheet().within(() => {
-      cy.findByText(/Caching settings/).should("be.visible");
-      cy.findByRole("button", {
-        name: /Clear cache for this dashboard/,
-      }).click();
-    });
-
-    cy.findByTestId("confirm-modal").within(() => {
-      cy.findByRole("button", { name: /Clear cache/ }).click();
-    });
-    cy.wait("@invalidateCache");
-    H.sidesheet().within(() => {
-      cy.findByText("Cache cleared").should("be.visible");
-    });
-  });
-});
 
 describe("scenarios > dashboard > permissions", () => {
   let dashboardId;

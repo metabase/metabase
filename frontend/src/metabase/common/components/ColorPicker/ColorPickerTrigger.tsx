@@ -5,8 +5,10 @@ import { ColorInput } from "metabase/common/components/ColorInput";
 import { ColorPill } from "metabase/common/components/ColorPill";
 import { Group } from "metabase/ui";
 
-export interface ColorPickerTriggerProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface ColorPickerTriggerProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
   value: string;
   placeholder?: string;
   isAuto?: boolean;

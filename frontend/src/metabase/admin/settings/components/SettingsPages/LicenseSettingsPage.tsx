@@ -1,10 +1,9 @@
-import { isEEBuild } from "metabase/lib/utils";
-import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { PLUGIN_ADMIN_SETTINGS, PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
 import { SettingsLicense } from "../SettingsLicense";
 
 export function LicenseSettingsPage() {
-  if (isEEBuild()) {
+  if (PLUGIN_IS_EE_BUILD.isEEBuild()) {
     return <PLUGIN_ADMIN_SETTINGS.LicenseAndBillingSettings />;
   }
 

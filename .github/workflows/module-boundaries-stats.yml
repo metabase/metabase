@@ -1,0 +1,31 @@
+name: Module Boundaries Stats
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 40 1 * * 5 # every Friday at 1:40
+
+jobs:
+  module-boundaries-stats:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: 'package.json'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: get module boundary stats
+        id: get-stats
+        run: node frontend/lint/module-boundaries-stats.mjs | tee -a "$GITHUB_OUTPUT"
+      - name: Upload stats
+        env:
+          NAMED_MODULES: ${{ steps.get-stats.outputs.NAMED_MODULES }}
+          ENFORCED_MODULES: ${{ steps.get-stats.outputs.ENFORCED_MODULES }}
+          UNMODULED: ${{ steps.get-stats.outputs.UNMODULED }}
+          VIOLATIONS: ${{ steps.get-stats.outputs.VIOLATIONS }}
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+        run: bun .github/scripts/upload-module-boundaries-stats.ts

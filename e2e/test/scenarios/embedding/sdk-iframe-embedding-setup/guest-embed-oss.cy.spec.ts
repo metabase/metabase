@@ -119,13 +119,14 @@ describe(
 
     describe("Happy path", () => {
       it("Navigates through the guest-embed flow for a question and opens its embed page", () => {
+        cy.intercept("GET", "api/preview_embed/card/*").as("previewEmbed");
         visitNewEmbedPage();
 
         H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
         H.waitForSimpleEmbedIframesToLoad();
 
-        // Experience step
+        // Combined experience + resource step
         getEmbedSidebar().within(() => {
           cy.findByLabelText("Guest").should("be.visible").should("be.checked");
 
@@ -138,6 +139,19 @@ describe(
           cy.findByTestId("upsell-card").should("be.visible");
 
           cy.findByText("Chart").click();
+
+          cy.findByTestId("embed-browse-entity-button").click();
+        });
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Select a chart").should("be.visible");
+          cy.findByTestId("item-picker-level-0")
+            .findByText("Our analytics")
+            .click();
+          cy.findByText(FIRST_QUESTION_NAME).click();
+        });
+
+        getEmbedSidebar().within(() => {
           cy.findByText("Next").click();
         });
 
@@ -147,20 +161,6 @@ describe(
             "authType=guest-embed,experience=chart,isDefaultExperience=false",
         });
 
-        // Entity selection step
-        getEmbedSidebar().within(() => {
-          cy.findByTestId("embed-browse-entity-button").click();
-        });
-
-        H.entityPickerModal().within(() => {
-          cy.findByText("Select a chart").should("be.visible");
-          cy.findByText(FIRST_QUESTION_NAME).click();
-        });
-
-        getEmbedSidebar().within(() => {
-          cy.findByText("Next").click();
-        });
-
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_resource_selection_completed",
           event_detail: "isDefaultResource=false,experience=chart",
@@ -168,13 +168,16 @@ describe(
 
         // Options step
         cy.findByLabelText("Allow people to drill through on data points")
+          .scrollIntoView()
           .should("be.visible")
           .should("be.disabled");
         cy.findByLabelText("Allow downloads")
+          .scrollIntoView()
           .should("be.visible")
           .should("be.disabled")
           .should("be.checked");
         cy.findByLabelText("Allow people to save new questions")
+          .scrollIntoView()
           .should("be.visible")
           .should("be.disabled");
 
@@ -237,6 +240,15 @@ describe(
           cy.findAllByText(/Copy code/)
             .first()
             .click();
+        });
+
+        cy.log(
+          'Embed preview requests should not have "X-Metabase-Client" header (EMB-945)',
+        );
+        cy.wait("@previewEmbed").then(({ request }) => {
+          expect(request?.headers?.["x-metabase-embedded-preview"]).to.equal(
+            "true",
+          );
         });
 
         H.expectUnstructuredSnowplowEvent({

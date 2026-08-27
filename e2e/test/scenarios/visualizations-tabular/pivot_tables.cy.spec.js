@@ -247,7 +247,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         type: "query",
         query: {
           "source-table": ORDERS_ID,
-          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2022-06-01"],
+          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2025-06-01"],
           aggregation: [["count"]],
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
@@ -481,81 +481,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pivot tables can only be used with aggregated queries.");
-  });
-
-  describe("custom columns (metabase#14604)", () => {
-    it("should work with custom columns as values", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            expressions: {
-              "Twice Total": ["*", ["field", ORDERS.TOTAL, null], 2],
-            },
-            aggregation: [
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              ["sum", ["expression", "Twice Total"]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          type: "query",
-        },
-        display: "pivot",
-      });
-
-      // value headings
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sum of Total");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sum of Twice Total");
-
-      // check values in the table
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("42,156.87"); // sum of total for 2022
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("84,313.74"); // sum of "twice total" for 2022
-
-      // check grand totals
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("1,510,621.68"); // sum of total grand total
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("3,021,243.37"); // sum of "twice total" grand total
-    });
-
-    it("should work with custom columns as pivoted columns", () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": PRODUCTS_ID,
-            expressions: {
-              category_foo: [
-                "concat",
-                ["field", PRODUCTS.CATEGORY, null],
-                "foo",
-              ],
-            },
-            aggregation: [["count"]],
-            breakout: [["expression", "category_foo"]],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "pivot",
-      });
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("category_foo");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Doohickeyfoo");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("42"); // count of Doohickeyfoo
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("200"); // grand total
-    });
+    cy.findByText(
+      "Pivot tables are only supported for questions built in the query builder.",
+    );
   });
 
   describe("dashboards", () => {
@@ -611,6 +539,74 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.findByText("1,027"); // primary data value
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("3,798"); // subtotal value
+    });
+
+    it("should show no-results then hide an empty pivot dashcard (UXW-4145)", () => {
+      const FILTER_ID = "d7988e02";
+
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 16,
+          size_y: 8,
+        },
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        cy.log(
+          "Add an ID filter to the dashboard and map it to the pivot card",
+        );
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: [{ id: FILTER_ID, name: "ID", slug: "id", type: "id" }],
+          dashcards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: FILTER_ID,
+                  card_id,
+                  target: ["dimension", ["field", ORDERS.ID]],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashboard_id);
+      });
+
+      cy.log("Filtering to a value with no rows shows the no-results state");
+      H.filterWidget().click();
+      H.dashboardParametersPopover().within(() => {
+        cy.findByPlaceholderText("Enter an ID").type("-1{enter}");
+        cy.button("Add filter").click();
+      });
+      // Pre-fix this rendered a blank pivot; the grand-total row hid the emptiness.
+      H.getDashboardCard(0).findByText("No results").should("be.visible");
+
+      cy.log("Enabling 'hide if empty' removes the now-empty card");
+      H.editDashboard();
+      cy.findByTestId("dashboardcard-actions-panel").within(() => {
+        cy.icon("palette").click({ force: true });
+      });
+      cy.findByRole("dialog").within(() => {
+        cy.findByLabelText("Hide this card if there are no results").click({
+          force: true,
+        });
+        cy.button("Done").click();
+      });
+      H.saveDashboard();
+
+      cy.findByTestId("dashcard").should("not.exist");
     });
   });
 
@@ -751,32 +747,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     H.popover().findByText(HINT_TEXT).should("not.exist");
   });
 
-  it("should work for user without data permissions (metabase#14989)", () => {
-    cy.request("POST", "/api/card", {
-      name: "14989",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
-            ["field-id", PRODUCTS.CATEGORY],
-          ],
-        },
-        type: "query",
-      },
-      display: "pivot",
-      visualization_settings: {},
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.signIn("nodata");
-      H.visitQuestion(QUESTION_ID);
-    });
-    cy.findAllByTestId("pivot-table-cell").contains("Grand totals");
-    cy.findAllByTestId("pivot-table-cell").contains("Row totals");
-    cy.findAllByTestId("pivot-table-cell").contains("200");
-  });
-
   it("should work with custom mapping of display values (metabase#14985)", () => {
     cy.intercept("POST", "/api/dataset/pivot").as("datasetPivot");
 
@@ -820,13 +790,14 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       // cy.findByText("Pivot Table")
       //   .parent()
       //   .should("have.css", "opacity", "1");
+      cy.findByTestId("more-charts-toggle").click();
       cy.icon("pivot_table").click({ force: true });
     });
 
     cy.wait("@datasetPivot");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.contains("Row totals");
-      cy.findByText("333"); // Row totals for 2024
+      cy.findByText("333"); // Row totals for 2027
       cy.findByText("Grand totals");
     });
   });
@@ -847,8 +818,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             [
               "between",
               ["field", ORDERS.CREATED_AT, null],
-              "2022-11-09",
-              "2022-11-11",
+              "2025-11-09",
+              "2025-11-11",
             ],
             ["!=", ["field", ORDERS.PRODUCT_ID, null], 146],
           ],
@@ -870,18 +841,18 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 9, 2022");
+    cy.findByText("November 9, 2025");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 10, 2022");
+    cy.findByText("November 10, 2025");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 11, 2022");
+    cy.findByText("November 11, 2025");
     collapseRowsFor("Created At: Day");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 9, 2022");
+    cy.findByText("Totals for November 9, 2025");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 10, 2022");
+    cy.findByText("Totals for November 10, 2025");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 11, 2022");
+    cy.findByText("Totals for November 11, 2025");
 
     function collapseRowsFor(column_name) {
       cy.findByText(column_name).parent().find(".Icon-dash").click();
@@ -900,7 +871,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
             ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
           ],
-          filter: [">", ["field", ORDERS.CREATED_AT, null], "2026-01-01"],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2029-01-01"],
         },
         database: SAMPLE_DB_ID,
       },
@@ -933,7 +904,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
             ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
           ],
-          filter: [">", ["field", ORDERS.CREATED_AT, null], "2026-01-01"],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2029-01-01"],
         },
         database: SAMPLE_DB_ID,
       },
@@ -1157,52 +1128,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     H.popover().findByText("Address").click();
 
     H.main().findByText("User → Address").should("be.visible");
-  });
-
-  it("should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)", () => {
-    const query = {
-      type: "query",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
-          ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
-        ],
-      },
-      database: SAMPLE_DB_ID,
-    };
-
-    H.visitQuestionAdhoc({
-      dataset_query: query,
-      display: "pivot",
-      visualization_settings: {
-        "pivot_table.column_split": {
-          rows: ["CATEGORY", "EAN"],
-          columns: [],
-          values: ["count"],
-        },
-      },
-    });
-
-    cy.findByTestId("question-row-count").should(
-      "have.text",
-      "Showing 205 rows",
-    );
-
-    H.saveQuestion(undefined, undefined, {
-      path: ["Our analytics"],
-    });
-    cy.wait("@createCard");
-    cy.url().should("include", "/question/");
-    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
-    cy.reload();
-    cy.wait("@cardPivotQuery");
-
-    cy.findByTestId("question-row-count").should(
-      "have.text",
-      "Showing 205 rows",
-    );
   });
 
   describe("issue 37380", () => {

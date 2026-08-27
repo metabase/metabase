@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { Database, Schema } from "metabase-types/api";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
 
@@ -14,6 +14,7 @@ const setup = ({ databases, schemas }: SetupOpts) => {
   const metadata = createMockMetadata({ databases, schemas });
 
   return {
+    // Unjustified type cast. FIXME
     databases: databases.map(({ id }) =>
       checkNotNull(metadata.database(id)),
     ) as Database[],

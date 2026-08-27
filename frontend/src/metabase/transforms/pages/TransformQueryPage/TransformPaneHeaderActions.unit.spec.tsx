@@ -1,6 +1,5 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import { Route } from "metabase/router";
 import * as transformsUtils from "metabase/transforms/utils";
 import type { DraftTransformSource } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks";
@@ -26,7 +25,7 @@ const mockPythonSource: DraftTransformSource = {
   type: "python",
   body: "# Python script",
   "source-database": 1,
-  "source-tables": {},
+  "source-tables": [],
 };
 
 type SetupOpts = {
@@ -71,7 +70,7 @@ function setup({
 
   const { unmount } = renderWithProviders(
     <Route
-      component={() => (
+      element={
         <TransformPaneHeaderActions
           handleCancel={handleCancel}
           handleSave={handleSave}
@@ -81,7 +80,7 @@ function setup({
           source={resolvedSource}
           transform={transform}
         />
-      )}
+      }
       path="/"
     />,
     {
@@ -165,7 +164,7 @@ describe("TransformPaneHeaderActions", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should render nothing for native transforms when workspaces not available", () => {
+    it("should render nothing for native transforms", () => {
       setup({ isEditMode: false, isNative: true });
 
       expect(
@@ -189,20 +188,10 @@ describe("TransformPaneHeaderActions", () => {
         screen.getByRole("link", { name: /edit definition/i }),
       ).toBeInTheDocument();
     });
-
-    describe("workspaces feature availability", () => {
-      it("should render EditDefinitionButton when workspaces feature is not available", () => {
-        setup({ isEditMode: false, isNative: false });
-
-        expect(
-          screen.getByRole("link", { name: /edit definition/i }),
-        ).toBeInTheDocument();
-      });
-    });
   });
 
   describe("Python transforms", () => {
-    it("should not render EditDefinitionButton for Python transforms (moved to EditTransformMenu in header)", () => {
+    it("should not render EditDefinitionButton for Python transforms", () => {
       setup({ isEditMode: false, isPython: true });
       expect(
         screen.queryByRole("link", { name: /edit definition/i }),

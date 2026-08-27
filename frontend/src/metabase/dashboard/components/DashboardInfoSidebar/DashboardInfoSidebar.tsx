@@ -6,26 +6,27 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { skipToken, useListRevisionsQuery } from "metabase/api";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
+import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
+import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import {
   Sidesheet,
   SidesheetCard,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
-import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
-import { Timeline } from "metabase/common/components/Timeline";
-import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
+import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
+import { InsightsTabOrLink } from "metabase/common/components/upsells/components/InsightsTabOrLink";
+import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/common/utils/dashboard";
+import { getUser } from "metabase/current-user";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
-import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import {
   type DashboardContextReturned,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { getUser } from "metabase/selectors/user";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Stack, Tabs, Text } from "metabase/ui";
 import type {
   Dashboard,
@@ -36,7 +37,6 @@ import type {
 
 import { DashboardDetails } from "./DashboardDetails";
 import { DashboardEntityIdCard } from "./DashboardEntityIdCard";
-import { InsightsUpsellTab } from "./components/InsightsUpsellTab";
 
 enum Tab {
   Overview = "overview",
@@ -206,7 +206,7 @@ const OverviewTab = ({
           onBlur={handleDescriptionBlur}
         />
         {!!descriptionError && (
-          <Text color="error" size="xs" mt="xs">
+          <Text color="feedback-negative" size="xs" mt="xs">
             {descriptionError}
           </Text>
         )}
@@ -252,7 +252,7 @@ const HistoryTab = ({
 
   return (
     <SidesheetCard>
-      <Timeline
+      <RevisionHistoryTimeline
         events={events}
         data-testid="dashboard-history-list"
         revert={(revision) =>

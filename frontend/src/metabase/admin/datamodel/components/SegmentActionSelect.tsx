@@ -1,9 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Link } from "react-router";
 import { t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
+import { Link } from "metabase/common/components/Link";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
 
 import S from "./SegmentActionSelect.module.css";

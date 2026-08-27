@@ -7,18 +7,17 @@ import type {
   SdkIframeEmbedAuthTypeSettings,
   SdkIframeEmbedBaseSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import type { BaseRecentItem } from "metabase-types/api";
+import type {
+  BaseRecentItem,
+  SdkIframeEmbedSetupTheme,
+} from "metabase-types/api";
 
-export type SdkIframeEmbedSetupExperience =
-  | "dashboard"
-  | "chart"
-  | "exploration"
-  | "browser"
-  | "metabot";
+export type { SdkIframeEmbedSetupTheme } from "metabase-types/api";
+
+export type { SdkIframeEmbedSetupExperience } from "metabase/plugins/oss/embedding-iframe-sdk-setup";
 
 export type SdkIframeEmbedSetupStep =
   | "select-embed-experience"
-  | "select-embed-resource"
   | "select-embed-options"
   | "get-code";
 
@@ -56,7 +55,8 @@ export type SdkIframeEmbedSetupTemplateSettings =
  */
 export type SdkIframeEmbedSetupSettings = Omit<
   SdkIframeEmbedBaseSettings,
-  "instanceUrl"
-> &
-  Partial<SdkIframeEmbedSetupGuestEmbedSettings> &
+  "instanceUrl" | "theme"
+> & {
+  theme?: SdkIframeEmbedSetupTheme;
+} & Partial<SdkIframeEmbedSetupGuestEmbedSettings> &
   SdkIframeEmbedSetupTemplateSettings;

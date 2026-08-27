@@ -24,6 +24,7 @@ import {
   formatDateRange,
   getInterval,
   getUnitOptions,
+  isOutOfBounds,
   setInterval,
 } from "../utils";
 
@@ -32,6 +33,8 @@ import { setDefaultOffset, setUnit } from "./utils";
 interface DateIntervalPickerProps {
   value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
+  minDate?: Date;
+  maxDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
@@ -40,6 +43,8 @@ interface DateIntervalPickerProps {
 export function DateIntervalPicker({
   value,
   availableUnits,
+  minDate,
+  maxDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onSubmit,
@@ -47,6 +52,7 @@ export function DateIntervalPicker({
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value, availableUnits);
   const dateRangeText = formatDateRange(value);
+  const outOfBounds = isOutOfBounds(value, minDate, maxDate);
 
   const handleIntervalChange = (inputValue: number | string) => {
     if (typeof inputValue === "number") {
@@ -67,6 +73,9 @@ export function DateIntervalPicker({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    if (outOfBounds) {
+      return;
+    }
     onSubmit();
   };
 
@@ -110,7 +119,7 @@ export function DateIntervalPicker({
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>
-        {renderSubmitButton({ value, isDisabled: false })}
+        {renderSubmitButton({ value, isDisabled: outOfBounds })}
       </Group>
     </form>
   );

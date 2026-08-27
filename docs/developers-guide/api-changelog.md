@@ -4,6 +4,63 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.64.0
+
+- `POST /api/slack/bug-report` now requires bug reporting to be enabled (`MB_BUG_REPORTING_ENABLED`).
+  `diagnosticInfo.reporter` is now a boolean: `true` attributes the report to the authenticated user, `false` (or
+  omitting it) submits the report anonymously. The previous `{ "name": ..., "email": ... }` object is still accepted
+  and treated as `true`; the name and email in it are ignored. The request body is validated against a fixed set of
+  keys; undeclared keys are dropped. This change is
+  backported to 0.58 and later; see the per-version entries below.
+
+- Self-hosted environments must now explicitly enable transforms before beginning to use them via the API. Admins can enable transforms in Data Studio or by setting the MB_TRANSFORMS_ENABLED environment variable to true.
+
+- The endpoints that fetch prefill values for action forms have been converted from GET to POST so that parameter values are sent in the JSON request body instead of the URL query string. `parameters` is now a JSON object in the request body rather than a JSON-encoded query-string parameter:
+
+  - `GET /api/action/:action-id/execute` has been replaced by `POST /api/action/:action-id/execute/values`.
+  - `GET /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute` has been replaced by
+    `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute/values`.
+  - `GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute` has been replaced by
+    `POST /api/public/dashboard/:uuid/dashcard/:dashcard-id/execute/values`.
+
+  The GET variants have been removed without a deprecation period.
+
+## Metabase 0.63.15
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
+
+## Metabase 0.62.18
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
+
+## Metabase 0.61.20
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
+
+## Metabase 0.61.0
+
+- `POST /api/metabot/describe/card` and `POST /api/metabot/describe/dashboard/:id` have been removed. These endpoints
+  provided LLM-powered autodescription of cards and dashboards using the legacy OpenAI client. This functionality has
+  been superseded by the Metabot agent.
+
+## Metabase 0.60.26
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
+
+## Metabase 0.59.30
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
+
+## Metabase 0.58.32
+
+- `POST /api/slack/bug-report`: `diagnosticInfo.reporter` is now a boolean and bug reporting must be enabled. See the
+  0.64.0 entry.
+
 ## Metabase 0.57.0
 
 - MBQL queries (in Cards and elsewhere) are now serialized as MBQL 5 as opposed to MBQL 4 (aka legacy MBQL) in the
@@ -14,16 +71,19 @@ title: API changelog
 ## Metabase 0.56.13
 
 - `/api/collection/graph` endpoints now no longer return 'none' permissions in the returned graph. Missing fields in
-  between group ids and collection id indicate that that the group provides no permissions for the collection. For
+  between group ids and collection id indicate that the group provides no permissions for the collection. For
   example, what was returned in versions before 0.56.13:
   ```json
-  {"revision": 2, "groups": {"1": {"root": "write", "1": "read", "2": "none"}}}
+  {
+    "revision": 2,
+    "groups": { "1": { "root": "write", "1": "read", "2": "none" } }
+  }
   ```
   becomes:
   ```json
-  {"revision": 2, "groups": {"1": {"root": "write", "1": "read"}}}
+  { "revision": 2, "groups": { "1": { "root": "write", "1": "read" } } }
   ```
-  in versions 0.56.13 and up. 
+  in versions 0.56.13 and up.
 
 ## Metabase 0.55.0
 

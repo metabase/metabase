@@ -10,6 +10,7 @@ jest.mock("metabase/plugins", () => ({
 }));
 
 const mockIsPluginEnabled = (enabled: boolean) => {
+  // Unjustified type cast. FIXME
   (PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled as jest.Mock).mockReturnValue(
     enabled,
   );
@@ -115,6 +116,7 @@ describe("getCommonEmbedSettings", () => {
             isSso: true,
             useExistingUserSession: true,
             drills: true,
+            hiddenParameters: [],
           },
         },
         {
@@ -126,6 +128,7 @@ describe("getCommonEmbedSettings", () => {
             isSso: true,
             useExistingUserSession: true,
             drills: true,
+            hiddenParameters: [],
           },
         },
         {
@@ -170,7 +173,11 @@ describe("getCommonEmbedSettings", () => {
         },
       );
 
-      it("should reset hiddenParameters for chart but not for dashboard in non-guest mode", () => {
+      it("should reset hiddenParameters for chart and dashboard when switching to non-guest (SSO) mode", () => {
+        // When recentlyCreatedDashboards/Questions populates a
+        // dashboardId or questionId, the embed wizard starts in guest mode and
+        // sets all parameters as disabled in hiddenParameters. This test ensures
+        // those guest mode restrictions are removed when switching to SSO mode.
         const chartResult = getCommonEmbedSettings({
           experience: "chart",
           isGuestEmbedsEnabled: false,
@@ -188,7 +195,7 @@ describe("getCommonEmbedSettings", () => {
         });
 
         expect(chartResult).toHaveProperty("hiddenParameters", []);
-        expect(dashboardResult).not.toHaveProperty("hiddenParameters");
+        expect(dashboardResult).toHaveProperty("hiddenParameters", []);
       });
 
       it("should handle `false` for isGuest and `useExistingUserSession`", () => {
@@ -205,6 +212,7 @@ describe("getCommonEmbedSettings", () => {
           isSso: true,
           useExistingUserSession: false,
           drills: true,
+          hiddenParameters: [],
         });
       });
 
@@ -235,6 +243,7 @@ describe("getCommonEmbedSettings", () => {
             isSso: true,
             useExistingUserSession: true,
             drills: true,
+            hiddenParameters: [],
           },
         },
         {

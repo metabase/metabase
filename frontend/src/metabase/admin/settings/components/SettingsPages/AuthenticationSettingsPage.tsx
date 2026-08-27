@@ -2,9 +2,12 @@ import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellSSO } from "metabase/admin/upsells";
-import { useGetSettingsQuery } from "metabase/api";
-import { hasAnySsoFeature } from "metabase/common/utils/plan";
-import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
+import {
+  type AuthSettingsPageTab,
+  PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_MULTI_FACTOR_AUTH,
+} from "metabase/plugins";
+import { hasAnySsoFeature, useGetSettingsQuery } from "metabase/settings";
 import { Box, Flex, Stack } from "metabase/ui";
 
 import { ApiKeysAuthCard } from "../../auth/components/ApiKeysAuthCard";
@@ -12,7 +15,11 @@ import { GoogleAuthCard } from "../../auth/containers/GoogleAuthCard/GoogleAuthC
 import { LdapAuthCard } from "../../auth/containers/LdapAuthCard";
 import { ManageApiKeys } from "../ApiKeys/ManageApiKeys";
 
-export function AuthenticationSettingsPage({ tab }: { tab: string }) {
+export function AuthenticationSettingsPage({
+  tab,
+}: {
+  tab: AuthSettingsPageTab;
+}) {
   const hasSSO = useHasSso();
 
   if (hasSSO) {
@@ -30,6 +37,7 @@ export function AuthenticationSettingsPage({ tab }: { tab: string }) {
           <GoogleAuthCard />
           <LdapAuthCard />
           <ApiKeysAuthCard />
+          <PLUGIN_MULTI_FACTOR_AUTH.AdminAuthCard />
         </Stack>
         <Box style={{ flexShrink: 0 }}>
           <UpsellSSO location="authentication-sidebar" />

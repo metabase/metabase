@@ -5,8 +5,11 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.embeddings.provider :as embeddings.provider]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (java.io Closeable)))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
@@ -21,7 +24,19 @@
       (is (= {:table-name "bar"} (sut {:table-name "bar"} {:index-table-qualifier "%s"})))
       (testing "qualifier applies to derived index names"
         (is (= "foo_bar_embed_hnsw_idx" (-> (sut {:table-name "bar"} {:index-table-qualifier "foo_%s"})
-                                            semantic.index/hnsw-index-name)))))))
+                                            semantic.index/hnsw-index-name)))))
+    (testing "hashes over-long identifiers within Postgres's 63-byte limit"
+      (let [long-table (apply str "index_" (repeat 60 "x"))
+            fits-table (apply str "index_" (repeat 42 "x"))]
+        (testing "an unqualified over-long name is hashed whole"
+          (is (= (semantic.index/hash-identifier-if-exceeds-pg-limit long-table)
+                 (:table-name (sut {:table-name long-table} {:index-table-qualifier "%s"})))))
+        (testing "a schema qualifier is preserved; only the table component is hashed"
+          (is (= (str "semantic_search." (semantic.index/hash-identifier-if-exceeds-pg-limit long-table))
+                 (:table-name (sut {:table-name long-table} {:index-table-qualifier "semantic_search.%s"})))))
+        (testing "a schema-qualified name over 63 bytes whose table component fits is left intact"
+          (is (= (str "semantic_search." fits-table)
+                 (:table-name (sut {:table-name fits-table} {:index-table-qualifier "semantic_search.%s"})))))))))
 
 (deftest create-tables-if-not-exists!-test
   (let [pgvector       (semantic.env/get-pgvector-datasource!)
@@ -31,17 +46,17 @@
                          (semantic.index-metadata/create-tables-if-not-exists! %1 %2)
                          (fn [_] (semantic.index-metadata/drop-tables-if-exists! %1 %2)))]
     (testing "creates metadata and control tables when they don't exist"
-      (with-open [_ (sut pgvector index-metadata)]
+      (with-open [^Closeable _ (sut pgvector index-metadata)]
         (is (semantic.tu/table-exists-in-db? (:metadata-table-name index-metadata)))
         (is (semantic.tu/table-exists-in-db? (:control-table-name index-metadata)))
         (is (semantic.tu/table-exists-in-db? (:gate-table-name index-metadata)))))
     (testing "is idempotent when tables already exist"
-      (with-open [_ (sut pgvector index-metadata)]
+      (with-open [^Closeable _ (sut pgvector index-metadata)]
         (let [table-names-snap (semantic.tu/get-table-names pgvector)
               _                (sut pgvector index-metadata)]
           (is (= table-names-snap (semantic.tu/get-table-names pgvector))))))))
 
-(defn- open-tables! [pgvector index-metadata]
+(defn- open-tables! ^Closeable [pgvector index-metadata]
   (semantic.tu/closeable
    (semantic.index-metadata/create-tables-if-not-exists! pgvector index-metadata)
    (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))))
@@ -88,9 +103,7 @@
           ;; note: I might recommend this to throw if no control row, this behaviour is ok for now
           (sut pgvector index-metadata index-id1)
           (is (= [] (semantic.tu/get-control-rows pgvector index-metadata))))
-
         (semantic.index-metadata/ensure-control-row-exists! pgvector index-metadata)
-
         (testing "sets specified index as active"
           (sut pgvector index-metadata index-id1)
           (is (=? [{:active_id index-id1}] (semantic.tu/get-control-rows pgvector index-metadata)))
@@ -116,6 +129,22 @@
                    :metadata-row (first (semantic.tu/get-metadata-rows pgvector index-metadata))}
                   (sut pgvector index-metadata))))))))
 
+(deftest revisioned-active-index-state-round-trip-test
+  (let [pgvector        (semantic.env/get-pgvector-datasource!)
+        index-metadata  (semantic.tu/unique-index-metadata)
+        embedding-model (semantic.tu/resolved-mock-embedding-model :model-revision "revision-1")
+        index           (-> (semantic.index/default-index embedding-model)
+                            (semantic.index-metadata/qualify-index index-metadata))]
+    (with-open [_ (open-tables! pgvector index-metadata)]
+      (semantic.index-metadata/ensure-control-row-exists! pgvector index-metadata)
+      (let [index-id (semantic.index-metadata/record-new-index-table! pgvector index-metadata index)]
+        (semantic.index-metadata/activate-index! pgvector index-metadata index-id)
+        (let [{:keys [index metadata-row]} (semantic.index-metadata/get-active-index-state pgvector index-metadata)
+              reloaded-model (:embedding-model index)]
+          (is (= embedding-model reloaded-model))
+          (is (= "revision-1" (:model_revision metadata-row)))
+          (is (= 4 (count (embeddings.provider/embed-text reloaded-model "round-trip")))))))))
+
 (defn- default-index [embedding-model index-metadata]
   (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix semantic.tu/mock-table-suffix]
     (-> (semantic.index/default-index embedding-model)
@@ -137,8 +166,7 @@
 (deftest find-compatible-index!-test
   (let [pgvector         (semantic.env/get-pgvector-datasource!)
         embedding-model1 semantic.tu/mock-embedding-model
-        embedding-model2 (assoc semantic.tu/mock-embedding-model
-                                :model-name "mock2")
+        embedding-model2 (semantic.tu/resolved-mock-embedding-model :model-name "mock2")
         sut              semantic.index-metadata/find-compatible-index!
         ;; warning: the setup-scenario can currently only set up a happy path
         ;; other variables include:
@@ -190,6 +218,16 @@
                 (testing "no metadata"
                   (is (nil? (sut' model))))))))))))
 
+(deftest embedding-space-id-is-part-of-index-compatibility-test
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
+        index-metadata (semantic.tu/unique-index-metadata)
+        model           semantic.tu/mock-embedding-model]
+    (with-open [_ (open-tables! pgvector index-metadata)]
+      (setup-scenario! pgvector index-metadata {:active model})
+      (is (some? (semantic.index-metadata/find-compatible-index! pgvector index-metadata model)))
+      (is (nil? (semantic.index-metadata/find-compatible-index!
+                 pgvector index-metadata (assoc model :embedding-space-id "replacement-space")))))))
+
 (deftest create-new-index-spec-test
   (let [pgvector         (semantic.env/get-pgvector-datasource!)
         index-metadata   (semantic.tu/unique-index-metadata)
@@ -217,10 +255,11 @@
           (is (=? [{:id                index-id
                     :provider          (:provider embedding-model)
                     :model_name        (:model-name embedding-model)
+                    :model_revision    nil
                     :vector_dimensions (:vector-dimensions embedding-model)
+                    :embedding_space_id (:embedding-space-id embedding-model)
                     :table_name        (:table-name index)
                     :index_version     (:version index)}]
                   (semantic.tu/get-metadata-rows pgvector index-metadata)))))
-
       (testing "enforces unique table-name constraint"
         (is (thrown-with-msg? Exception #"duplicate key" (sut pgvector index-metadata index)))))))

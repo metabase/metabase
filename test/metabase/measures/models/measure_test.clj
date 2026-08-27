@@ -4,7 +4,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.request.session :as session]
@@ -41,16 +40,6 @@
   [referenced-measure-id]
   (measure-definition [:measure {:lib/uuid (str (random-uuid))} referenced-measure-id]))
 
-(deftest identity-hash-test
-  (testing "Measure hashes are composed of the measure name and table identity-hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Database db {:name "field-db" :engine :h2}
-                     :model/Table table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                     :model/Measure measure {:name "total sales" :table_id (:id table) :created_at now
-                                             :definition (measure-definition (lib/count))}]
-        (is (= (serdes/raw-hash ["total sales" (serdes/identity-hash table) (:created_at measure)])
-               (serdes/identity-hash measure)))))))
-
 (deftest update-measure-cycle-detection-test
   (testing "Updating a measure to reference a non-existent measure should fail"
     (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure"
@@ -83,14 +72,12 @@
            Exception
            #"[Cc]ycle"
            (t2/update! :model/Measure measure-1-id {:definition (measure-definition-referencing measure-2-id)})))))
-
 ;;; ------------------------------------------------ Metric Reference Tests ------------------------------------------------
 
   (defn- metric-query
     "Create a metric-style dataset query (a query with a single aggregation)."
     []
     (measure-definition (lib/count)))
-
   (deftest insert-measure-with-metric-reference-test
     (testing "Inserting a measure that references a metric should fail"
       (mt/with-temp [:model/Card {metric-id :id} {:name "Test Metric"
@@ -107,7 +94,6 @@
                             :table_id (mt/id :venues)
                             :creator_id (mt/user->id :rasta)
                             :definition (measure-definition (lib.metadata/metric mp metric-id))})))))))
-
   (deftest insert-measure-with-nested-metric-reference-test
     (testing "Inserting a measure with metric nested in arithmetic expression should fail"
       (mt/with-temp [:model/Card {metric-id :id} {:name "Test Metric"
@@ -123,11 +109,10 @@
                            {:name "Bad Measure"
                             :table_id (mt/id :venues)
                             :creator_id (mt/user->id :rasta)
-                          ;; Metric nested in an arithmetic expression: metric + 1
+                            ;; Metric nested in an arithmetic expression: metric + 1
                             :definition (measure-definition
                                          (lib/+ (lib.metadata/metric mp metric-id)
                                                 1))})))))))
-
   (deftest update-measure-with-metric-reference-test
     (testing "Updating a measure to reference a metric should fail"
       (mt/with-temp [:model/Measure {measure-id :id} {:name "Good Measure"
@@ -241,6 +226,69 @@
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :rasta
         (is (false? (mi/can-write? measure)))))))
+
+(deftest can-read?-superuser-test
+  (testing "Superusers can read measures"
+    (mt/with-temp [:model/Measure measure {:name "Test Measure"
+                                           :table_id (mt/id :venues)
+                                           :creator_id (mt/user->id :rasta)
+                                           :definition (measure-definition (lib/count))}]
+      (mt/with-test-user :crowberto
+        (is (true? (mi/can-read? measure)))))))
+
+(deftest can-read?-with-view-data-and-query-builder-test
+  (testing "Users with view-data :unrestricted and create-queries :query-builder can read measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/User {user-id :id} {}
+                     :model/Measure measure {:name "Test Measure"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (perms/add-user-to-group! user-id group-id)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
+        (session/with-current-user user-id
+          (is (true? (mi/can-read? measure))))))))
+
+(deftest can-read?-with-manage-table-metadata-test
+  (testing "Users with manage-table-metadata :yes can read measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/User {user-id :id} {}
+                     :model/Measure measure {:name "Test Measure"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (perms/add-user-to-group! user-id group-id)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/manage-table-metadata :yes)
+        (session/with-current-user user-id
+          (is (true? (mi/can-read? measure))))))))
+
+(deftest can-read?-without-permissions-test
+  (testing "Users with no table permissions cannot read measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/Measure measure {:name "Test Measure"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (session/with-current-user user-id
+          (is (false? (mi/can-read? measure))))))))
+
+(deftest can-read?-view-data-only-not-enough-test
+  (testing "Users with only view-data :unrestricted (no query builder perms) cannot read measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/User {user-id :id} {}
+                     :model/Measure measure {:name "Test Measure"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (perms/add-user-to-group! user-id group-id)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+        (session/with-current-user user-id
+          (is (false? (mi/can-read? measure))))))))
 
 (deftest can-create?-superuser-test
   (testing "Superusers can create measures"

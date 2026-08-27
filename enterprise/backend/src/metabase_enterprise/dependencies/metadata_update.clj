@@ -2,6 +2,7 @@
   (:require
    [clojure.core.cache :as cache]
    [medley.core :as m]
+   [metabase-enterprise.dependencies.async :as async]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.metadata-provider :as deps.metadata-provider]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -186,15 +187,17 @@
                             (if (= new-metadata old-metadata)
                               ::graph/stop
                               [node-id new-metadata]))))))]
-
     (doseq [[card-id new-metadata] updates]
       (t2/update! :model/Card card-id {:result_metadata new-metadata}))))
 
-(derive ::update-card-dependents-metadata :metabase/event)
-(derive :event/card-update ::update-card-dependents-metadata)
+(events/derive! ::update-card-dependents-metadata :metabase/event)
+(events/derive! :event/card-update ::update-card-dependents-metadata)
 
 (methodical/defmethod events/publish-event! ::update-card-dependents-metadata
   [_ {{:keys [id dataset_query]} :object :keys [previous-object]}]
   (when (and (premium-features/has-feature? :dependencies)
+             (seq dataset_query)
              (not (lib/any-native-stage? dataset_query)))
-    (update-dependent-mbql-cards-metadata! dataset_query :card id previous-object :metadata/card)))
+    (async/submit!
+     (fn []
+       (update-dependent-mbql-cards-metadata! dataset_query :card id previous-object :metadata/card)))))

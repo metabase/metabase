@@ -2,13 +2,16 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { canMoveItem, isRootTrashCollection } from "metabase/collections/utils";
 import {
-  BulkActionButton,
-  BulkActionDangerButton,
-} from "metabase/common/components/BulkActionBar";
+  canDelete,
+  useDeleteItem,
+  useSetArchive,
+} from "metabase/archive/hooks";
+import { isRootTrashCollection } from "metabase/common/collections/utils";
+import { BulkActionButton } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useDispatch } from "metabase/lib/redux";
+import { canMoveItem } from "metabase/common/hooks";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
@@ -32,6 +35,8 @@ export const ArchivedBulkActions = ({
   setSelectedAction,
 }: ArchivedBulkActionsProps) => {
   const dispatch = useDispatch();
+  const archive = useSetArchive();
+  const deleteItem = useDeleteItem();
 
   const hasSelectedItems = useMemo(
     () => !!selectedItems && !_.isEmpty(selectedItems),
@@ -59,13 +64,13 @@ export const ArchivedBulkActions = ({
   }, [selected]);
 
   const handleBulkRestore = () => {
-    const actions = selected.map((item) => item.setArchived(false));
+    const actions = selected.map((item) => archive(item, false));
     Promise.all(actions).finally(unselect);
   };
 
   // delete
-  const canDelete = useMemo(() => {
-    return selected.every((item) => item.can_delete);
+  const canDeleteAll = useMemo(() => {
+    return selected.every((item) => canDelete(item));
   }, [selected]);
 
   const handleBulkDeletePermanentlyStart = async () => {
@@ -74,19 +79,30 @@ export const ArchivedBulkActions = ({
   };
 
   const handleBulkDeletePermanently = async () => {
-    const actions = selected.map((item) => item.delete());
-    Promise.all(actions).finally(unselect);
-    dispatch(
-      addUndo({
-        message: ngettext(
-          msgid`${selected.length} item has been permanently deleted.`,
-          `${selected.length} items have been permanently deleted.`,
-          selected.length,
-        ),
-        undo: false,
-        canDismiss: true,
-      }),
-    );
+    const itemsToDelete = selected.filter(canDelete);
+    try {
+      await Promise.all(
+        itemsToDelete.map((item) => deleteItem(item, { notify: false })),
+      );
+      dispatch(
+        addUndo({
+          message: ngettext(
+            msgid`${itemsToDelete.length} item has been permanently deleted.`,
+            `${itemsToDelete.length} items have been permanently deleted.`,
+            itemsToDelete.length,
+          ),
+          canDismiss: true,
+        }),
+      );
+    } catch {
+      dispatch(
+        addUndo({
+          message: t`There was an error permanently deleting these items.`,
+        }),
+      );
+    } finally {
+      unselect();
+    }
   };
 
   // move
@@ -109,12 +125,13 @@ export const ArchivedBulkActions = ({
       <BulkActionButton onClick={handleBulkMoveStart} disabled={!canMove}>
         {t`Move`}
       </BulkActionButton>
-      <BulkActionDangerButton
+      <BulkActionButton
+        danger
         onClick={handleBulkDeletePermanentlyStart}
-        disabled={!canDelete}
+        disabled={!canDeleteAll}
       >
         {t`Delete permanently`}
-      </BulkActionDangerButton>
+      </BulkActionButton>
 
       {/* This should probably be external so that we can hide
           the bar when any other modals are displayed */}

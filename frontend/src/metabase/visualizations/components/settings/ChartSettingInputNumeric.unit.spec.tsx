@@ -121,6 +121,93 @@ describe("ChartSettingInputNumber", () => {
     expect(onChange).toHaveBeenCalledWith(9412);
   });
 
+  it("does not truncate mid-edit decimal values", async () => {
+    const { input, onChange } = setup();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    await user.clear(input);
+    await user.type(input, "0.");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue("0.");
+    expect(onChange).toHaveBeenLastCalledWith(0);
+
+    await user.clear(input);
+    await user.type(input, "0.00");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue("0.00");
+    expect(onChange).toHaveBeenLastCalledWith(0);
+
+    await user.clear(input);
+    await user.type(input, ".5");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue(".5");
+    expect(onChange).toHaveBeenLastCalledWith(0.5);
+
+    await user.clear(input);
+    await user.type(input, "1.50");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue("1.50");
+    expect(onChange).toHaveBeenLastCalledWith(1.5);
+  });
+
+  it("normalizes the displayed value on blur", async () => {
+    const { input } = setup();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    await user.clear(input);
+    await user.type(input, "0.");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue("0.");
+
+    await user.click(document.body);
+    expect(input).toHaveDisplayValue("0");
+
+    await user.clear(input);
+    await user.type(input, ".5");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue(".5");
+
+    await user.click(document.body);
+    expect(input).toHaveDisplayValue("0.5");
+
+    await user.clear(input);
+    await user.type(input, "1.50");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue("1.50");
+
+    await user.click(document.body);
+    expect(input).toHaveDisplayValue("1.5");
+  });
+
+  it("does not truncate when deleting characters from a decimal value", async () => {
+    const { input, onChange } = setup();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    // Type "1.5" then delete the "5" — should stay "1.", not collapse to "1"
+    await user.clear(input);
+    await user.type(input, "1.5");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue("1.5");
+    expect(onChange).toHaveBeenLastCalledWith(1.5);
+
+    await user.type(input, "{Backspace}");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue("1.");
+    expect(onChange).toHaveBeenLastCalledWith(1);
+
+    // Type "0.009" then delete the "9" — should stay "0.00", not collapse to "0"
+    await user.clear(input);
+    await user.type(input, "0.009");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue("0.009");
+    expect(onChange).toHaveBeenLastCalledWith(0.009);
+
+    await user.type(input, "{Backspace}");
+    act(() => jest.runAllTimers());
+    expect(input).toHaveDisplayValue("0.00");
+    expect(onChange).toHaveBeenLastCalledWith(0);
+  });
+
   it("does not allow non-numeric values", async () => {
     const { input, onChange } = setup();
 

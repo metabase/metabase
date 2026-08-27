@@ -2,10 +2,13 @@ import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
-import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
+import { getStorybookSdkAuthConfigForUser } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import { MetabotQuestion } from "embedding-sdk-package";
+import { MetabaseProvider } from "embedding-sdk-package/components/public/MetabaseProvider";
+import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHostedBundleStoryDecorator";
 import {
   MOCK_AD_HOC_QUESTION_ID,
+  mockGeneratedCardChunk,
   mockStreamResponse,
 } from "embedding-sdk-shared/test/mocks/mock-metabot-response";
 import { Flex, Stack } from "metabase/ui";
@@ -15,13 +18,22 @@ import "./MetabotQuestion";
 
 type MetabotQuestionProps = ComponentProps<typeof MetabotQuestion>;
 
+const config = getStorybookSdkAuthConfigForUser("admin");
+
 export default {
   title: "EmbeddingSDK/MetabotQuestion",
   component: MetabotQuestion,
   parameters: {
     layout: "fullscreen",
   },
-  decorators: [CommonSdkStoryWrapper],
+  decorators: [
+    (Story: StoryFn) => (
+      <MetabaseProvider authConfig={config}>
+        <Story />
+      </MetabaseProvider>
+    ),
+    getHostedBundleStoryDecorator(),
+  ],
 };
 
 const Template: StoryFn<MetabotQuestionProps> = () => {
@@ -42,15 +54,21 @@ export const Centered = {
   },
 };
 
-export const RedirectReaction = {
+export const GeneratedChart = {
   render: Template,
   parameters: {
     msw: {
       handlers: [
         mockStreamResponse([
-          `0:"Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})"`,
-          `2:{"type":"navigate_to","version":1,"value":"${MOCK_AD_HOC_QUESTION_ID}"}
-`,
+          { type: "text-start", id: "t1" },
+          {
+            type: "text-delta",
+            id: "t1",
+            delta: `Here is the [question link](${MOCK_AD_HOC_QUESTION_ID})`,
+          },
+          { type: "text-end", id: "t1" },
+          mockGeneratedCardChunk(),
+          { type: "finish", finishReason: "stop" },
         ]),
       ],
     },
@@ -62,7 +80,7 @@ export const MetabotError = {
   parameters: {
     msw: {
       handlers: [
-        http.post("*/api/ee/metabot-v3/agent-streaming", () => {
+        http.post("*/api/metabot/agent-streaming", () => {
           return new HttpResponse(null, {
             status: 500,
           });
@@ -105,9 +123,9 @@ const CenteredLayoutPreview = ({ children }: { children: React.ReactNode }) => (
   <Stack align="center" justify="center">
     <Flex
       m="40px"
-      bg="background-primary"
+      bg="background_page-primary"
       style={{
-        border: "1px solid var(--mb-color-border)",
+        border: "1px solid var(--mb-color-border-neutral)",
         borderRadius: "16px",
       }}
     >

@@ -3,7 +3,7 @@ description: Cypress preparation steps
 
 inputs:
   working-directory:
-    description: "Optional working directory for yarn commands"
+    description: "Optional working directory for bun commands"
     required: false
     default: "."
 
@@ -15,28 +15,33 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Install Chrome v111
-      uses: browser-actions/setup-chrome@v2
+    # e2e/support/config.js imports the reporter, so it has to be in place before Cypress bundles.
+    - name: Prepare CI Conductor
+      uses: ./.github/actions/prepare-ci-conductor
+
+    - name: Install Chrome v144
+      uses: browser-actions/setup-chrome@2e1d749697dd1612b833dba4a722266286fbefcd # v2.1.2
       with:
-        # https://chromium.cypress.io/linux/stable/111.0.5563.146
-        chrome-version: 1097615
+        chrome-version: 144
       id: setup-chrome
 
-    - name: Get cache keys
-      uses: ./.github/actions/get-cache-keys
-      id: get-cache-keys
+    - name: Cache spec
+      id: cache-spec
+      shell: bash
+      run: .github/scripts/cache-keys.sh | tee -a "$GITHUB_OUTPUT"
 
-    - name: Get Cypress cache
-      uses: actions/cache/restore@v4
+    - name: Restore Cypress binary
+      uses: actions/cache/restore@v5
       with:
-        path: ~/.cache/Cypress
-        key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
+        path: ${{ steps.cache-spec.outputs.cypress-path }}
+        key: ${{ steps.cache-spec.outputs.cypress-key }}
+        restore-keys: ${{ steps.cache-spec.outputs.cypress-restore-key }}
 
     - name: Ensure that Cypress executable is ready
       run: |
-        yarn cypress install
-        yarn cypress cache path
-        yarn cypress cache list
-        yarn cypress verify
+        bun run cypress install
+        bun run cypress cache path
+        bun run cypress cache list
+        bun run cypress verify
       shell: bash
       working-directory: ${{ inputs.working-directory }}

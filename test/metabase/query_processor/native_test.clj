@@ -1,4 +1,5 @@
 (ns ^:mb/driver-tests metabase.query-processor.native-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.native-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -7,9 +8,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.date-time-zone-functions-test :as dt-fn-test]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -48,6 +49,7 @@
     ;; allow duplicate column names in the `SELECT` list (all of them, I think?). That was the original intention of
     ;; this test but because of a coding error it only ever ran against H2. I updated it to run against PG as well
     ;; until we can verify it works on other drivers without issue.
+    ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
     #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-drivers #{:h2 :postgres}
       (let [mp (lib.tu/mock-metadata-provider
@@ -59,14 +61,12 @@
                           :result-metadata [{:base_type      :type/BigInteger
                                              :display_name   "ID"
                                              :effective_type :type/BigInteger
-                                             :field_ref      [:field "ID" {:base-type :type/BigInteger}]
                                              :fingerprint    nil
                                              :name           "ID"
                                              :semantic_type  :type/PK}
                                             {:base_type      :type/BigInteger
                                              :display_name   "ID"
                                              :effective_type :type/BigInteger
-                                             :field_ref      [:field "ID_2" {:base-type :type/BigInteger}]
                                              :fingerprint    nil
                                              :name           "ID"
                                              :semantic_type  :type/PK}]}]})
@@ -77,8 +77,9 @@
                                               [:field "ID_2" {:base-type :type/Integer}]]}
                     :database (mt/id)
                     :type     :query})]
-        (is (=? ["ID" "ID_2"]
-                (map :name (mt/cols (qp/process-query query)))))))))
+        (mt/with-native-query-testing-context query
+          (is (=? ["ID" "ID_2"]
+                  (map :name (mt/cols (qp/process-query query))))))))))
 
 (deftest ^:parallel native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"

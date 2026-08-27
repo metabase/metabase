@@ -1,0 +1,22 @@
+## Add outcome column to remote_sync_task: structured result data, rendered to a localized message on read (GHY-3747)
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-06-18T00:00:00
+      author: ericnormand
+      comment: Add remote_sync_task.outcome, a JSON map describing the task result (e.g. {"kind":"pulled","count":12,"branch":"main"}); the UI renders it to a localized confirmation message rather than storing customer-facing copy
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: outcome
+                  type: ${text.type}
+                  remarks: JSON describing the task outcome (kind plus counts/branch), rendered to a localized confirmation message in the UI
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: remote_sync_task
+            columnName: outcome

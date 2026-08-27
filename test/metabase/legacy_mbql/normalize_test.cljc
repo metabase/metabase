@@ -41,28 +41,28 @@
 (deftest ^:parallel normalize-test-3
   (testing "METRICS shouldn't get normalized in some kind of wacky way"
     (is (= {:aggregation [[:+ [:metric 10] 1]]}
-           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:aggregation ["+" ["METRIC" 10] 1]})))))
+           (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery {:aggregation ["+" ["METRIC" 10] 1]})))))
 
 ;; TODO (Tamas 2026-01-05): Remove this test once FE tests switch to using MBQL5
 (deftest ^:parallel normalize-measure-test
   (testing "MEASURES shouldn't get normalized in some kind of wacky way"
     (is (= {:aggregation [[:+ [:measure 10] 1]]}
-           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:aggregation ["+" ["MEASURE" 10] 1]})))))
+           (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery {:aggregation ["+" ["MEASURE" 10] 1]})))))
 
 (deftest ^:parallel normalize-test-4
   (testing "Nor should SEGMENTS"
     (is (= {:filter [:= [:+ [:segment 10] 1] 10]}
-           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:filter ["=" ["+" ["SEGMENT" 10] 1] 10]})))))
+           (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery {:filter ["=" ["+" ["SEGMENT" 10] 1] 10]})))))
 
 (deftest ^:parallel normalize-test-5
   (testing "field literals should be exempt too"
     (is (= {:order-by [[:desc [:field "SALES_TAX" {:base-type :type/Number}]]]}
-           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]})))))
+           (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]})))))
 
 (deftest ^:parallel normalize-test-6
   (testing "... but they should be converted to strings if passed in as a KW for some reason"
     (is (= {:order-by [[:desc [:field "SALES/TAX" {:base-type :type/Number}]]]}
-           (mbql.normalize/normalize ::mbql.s/MBQLQuery {:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]})))))
+           (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery {:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]})))))
 
 (deftest ^:parallel normalize-test-7
   (testing "modern :field clauses should get normalized"
@@ -860,7 +860,6 @@
 
     {:query {:breakout [10 20]}}
     {:query {:breakout [[:field 10 nil] [:field 20 nil]]}}}
-
    "should handle seqs"
    {{:query {:breakout '(10 20)}}
     {:query {:breakout [[:field 10 nil] [:field 20 nil]]}}
@@ -1042,22 +1041,18 @@
    "ORDER BY: MBQL 2 [field direction] should get translated to MBQL 3+ [direction field]"
    {{:query {:order-by [[[:field-id 10] :asc]]}}
     {:query {:order-by [[:asc [:field 10 nil]]]}}}
-
    "MBQL 2 old order-by names should be handled"
    {{:query {:order-by [[10 :ascending]]}}
     {:query {:order-by [[:asc [:field 10 nil]]]}}}
-
    "field-id should be added if needed"
    {{:query {:order-by [[10 :asc]]}}
     {:query {:order-by [[:asc [:field 10 nil]]]}}
 
     {:query {:order-by [[:asc 10]]}}
     {:query {:order-by [[:asc [:field 10 nil]]]}}}
-
    "we should handle seqs no prob"
    {{:query {:order-by '((1 :ascending))}}
     {:query {:order-by [[:asc [:field 1 nil]]]}}}
-
    "duplicate order-by clauses should get removed"
    {{:query {:order-by [[:asc [:field-id 1]]
                         [:desc [:field-id 2]]
@@ -1405,7 +1400,6 @@
                   (testing (str "\n" message)
                     (is (= query
                            (mbql.normalize/normalize query)))))))]
-
       (testing "Keys in native query maps should not get normalized"
         (test-normalization
          {:projections [:count]
@@ -1415,7 +1409,6 @@
                         {"$sort" {"_id" 1}}
                         {"$project" {"_id" false, "count" true}}]
           :collection  "venues"}))
-
       (testing "`nil` values inside native :params shouldn't get removed"
         (test-normalization {:query "SELECT ?" :params [nil]})))))
 

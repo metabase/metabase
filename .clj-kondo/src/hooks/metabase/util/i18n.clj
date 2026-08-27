@@ -1,7 +1,6 @@
 (ns hooks.metabase.util.i18n
   (:require
    [clj-kondo.hooks-api :as api]
-   [clojure.string :as str]
    [hooks.common]))
 
 (defn- valid-apostrophes?
@@ -13,23 +12,23 @@
       (let [c (first chars)]
         (if (= c \')
           (cond
-              ;; Doubled quotes: skip both
+            ;; Doubled quotes: skip both
             (and (next chars) (= (second chars) \'))
             (recur (nthrest chars 2))
 
-              ;; Placeholder escape. We allow for intentional escaping, like either '{0}` or '{{`, but not 'arbitrary
-              ;; strings' So basically, just require the *next* character to be a `{`, find the next single-quote, and
-              ;; continue on from there.
-              ;;
-              ;; Technically a string like "foo bar's happy but i'm not" is totally fine, but we'll say it's invalid
-              ;; because... that inner string literal is probably not what we actually want. So since we've never done
-              ;; this intentionally as far as I can tell, let's just remove the possibility to avoid ambiguity.
+            ;; Placeholder escape. We allow for intentional escaping, like either '{0}` or '{{`, but not 'arbitrary
+            ;; strings' So basically, just require the *next* character to be a `{`, find the next single-quote, and
+            ;; continue on from there.
+            ;;
+            ;; Technically a string like "foo bar's happy but i'm not" is totally fine, but we'll say it's invalid
+            ;; because... that inner string literal is probably not what we actually want. So since we've never done
+            ;; this intentionally as far as I can tell, let's just remove the possibility to avoid ambiguity.
             (= (second chars) \{)
             (let [at-closing (drop-while #(not= \' %) (next chars))]
               (if (seq at-closing)
                 (recur (next at-closing))
                 false))
-              ;; Unpaired single quote: invalid
+            ;; Unpaired single quote: invalid
             :else
             false)
           (recur (rest chars)))))))

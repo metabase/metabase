@@ -27,6 +27,9 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "useExistingUserSession",
     "isGuest",
     "jwtProviderUri",
+    "pluginsConfig",
+    "guestEmbedProviderUri",
+    "allowedCustomVisualizations",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
@@ -35,8 +38,11 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withDownloads",
     "withSubscriptions",
     "initialParameters",
+    "parameters",
     "hiddenParameters",
     "drills",
+    "enableEntityNavigation",
+    "customContext",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "questionId",
@@ -45,9 +51,11 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withDownloads",
     "withAlerts",
     "initialSqlParameters",
+    "sqlParameters",
     "hiddenParameters",
     "drills",
     "entityTypes",
+    "customContext",
   ] satisfies (keyof QuestionEmbedOptions)[],
   exploration: [
     "template",
@@ -62,9 +70,11 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "collectionVisibleColumns",
     "collectionEntityTypes",
     "collectionPageSize",
+    "collectionShowDashboardQuestions",
     "dataPickerEntityTypes",
     "withNewQuestion",
     "withNewDashboard",
+    "enableEntityNavigation",
   ] satisfies (keyof BrowserEmbedOptions)[],
   metabot: [
     "layout",
@@ -87,6 +97,7 @@ export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
     "withTitle",
     "withDownloads",
     "initialParameters",
+    "parameters",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "token",
@@ -94,6 +105,7 @@ export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
     "withDownloads",
     "entityTypes",
     "initialSqlParameters",
+    "sqlParameters",
   ] satisfies (keyof QuestionEmbedOptions)[],
   exploration: [] satisfies (keyof ExplorationEmbedOptions)[],
   browser: [] satisfies (keyof BrowserEmbedOptions)[],
@@ -134,3 +146,9 @@ export const DISABLE_UPDATE_FOR_KEYS = [
 ] as const satisfies AllowedEmbedSettingKey[];
 
 export const METABASE_CONFIG_IS_PROXY_FIELD_NAME = "__isProxy";
+
+/**
+ * Used to allow parallel loading of EmbedJS iframes
+ */
+export const EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME =
+  "embed-js-identifier";

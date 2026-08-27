@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import type { ConfirmationState } from "metabase/common/hooks/use-confirmation";
+import type { AdminPath, AdminPathKey } from "metabase/redux/store";
 import type { Member, Membership, User } from "metabase-types/api";
-import type { AdminPath, AdminPathKey } from "metabase-types/store";
 
 const REVOKE_MANAGING_CONFIRMATION = {
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045

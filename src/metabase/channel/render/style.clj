@@ -14,15 +14,26 @@
 ;; TODO - we should move other CSS definitions from `metabase.channel.render` namespaces into this one, so they're all
 ;; in one place.
 
+(defn- sanitize-css-value
+  "Remove characters that are unsafe in CSS values rendered inside a `<style>` block.
+  Allows alphanumerics plus punctuation that appears in legitimate CSS values
+  (e.g. `#FF0000`, `1.5em`, `100%`, `1px solid black`, `Lato, \"Helvetica Neue\"`, `780px !important`, `3/2`)."
+  [v]
+  (-> v
+      (str/replace #"[^\p{L}\p{N} #%.,!+\-/\"'()]" "")
+      ;; block those that can fetch remote url
+      (str/replace #"(?i)(url|expression|image|image-set)\s*\(" "blocked(")))
+
 (defn style
   "Compile one or more CSS style maps into a string.
 
      (style {:font-weight 400, :color \"white\"}) -> \"font-weight: 400; color: white;\""
   [& style-maps]
   (str/join " " (for [[k v] (into {} style-maps)
-                      :let  [v (if (keyword? v) (name v) (str v))]
+                      :let  [v (-> (if (keyword? v) (name v) (str v))
+                                   sanitize-css-value)]
                       :when (seq v)]
-                  (str (name k) ": " v ";"))))
+                  (str (sanitize-css-value (name k)) ": " v ";"))))
 
 (def ^:const color-gold
   "Used as color for 'We were unable to display this Pulse' messages."
@@ -56,9 +67,21 @@
   "Color for dark text."
   "#4C5773")
 
+(def ^:const color-text-primary
+  "Color that matches text-primary used in the frontend"
+  "#303D46")
+
 (def ^:const color-border
   "Used as color for the border of table, table header, and table body rows for charts with `:table` visualization."
   "#F0F0F0")
+
+(def ^:const color-pivot-header-bg
+  "Background fill for the column-header cells of a rendered `:pivot` table."
+  "#F5F6F7")
+
+(def ^:const color-pivot-label-bg
+  "Background fill for the row-label cells of a rendered `:pivot` table."
+  "#FAFAFA")
 
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
 ;; Too much of a hassle to have it be a fn in one version of the code an a constant in another
@@ -102,6 +125,66 @@
      :font-weight 700
      :color       (or color color-text-dark)})))
 
+(def object-detail-border
+  "1px border used for the object-detail table outline and the separators between rows."
+  (str "1px solid " color-border))
+
+(def ^:private object-detail-cell-padding "0.75em 1em")
+
+(defn- object-detail-cell-style
+  "Shared base style for the label and value cells of an object-detail key/value row."
+  []
+  (merge
+   (font-style)
+   {:font-weight    700
+    :vertical-align :top
+    :white-space    :normal
+    :padding        object-detail-cell-padding}))
+
+(defn object-detail-table-style
+  "Style for the outer table wrapping an object-detail key/value view in a Pulse."
+  []
+  {:max-width       "100%"
+   :width           "100%"
+   :border          object-detail-border
+   :border-radius   "6px"
+   :border-collapse "separate"
+   :border-spacing  0})
+
+(defn object-detail-label-style
+  "Style for the label (left) cell of an object-detail key/value row in a Pulse."
+  []
+  (merge
+   (object-detail-cell-style)
+   {:font-size  :12.5px
+    :color      color-gray-3
+    :text-align :left
+    :width      "40%"}))
+
+(defn object-detail-value-style
+  "Style for the value (right) cell of an object-detail key/value row in a Pulse."
+  []
+  (merge
+   (object-detail-cell-style)
+   {:font-size  :14px
+    :color      color-text-dark
+    :word-break :break-word}))
+
+(defn object-detail-empty-value-style
+  "Style for the muted \"Empty\" placeholder shown for a missing object-detail value."
+  []
+  (merge
+   (font-style)
+   {:color       color-gray-3
+    :font-weight 400}))
+
+(defn object-detail-more-records-style
+  "Style for the \"Showing 1 of N records\" note under an object-detail view."
+  []
+  {:color       color-gray-2
+   :padding-top :12px
+   :font-size   :12px})
+
 (defn- register-font! [filename]
   (with-open [is (io/input-stream (io/resource filename))]
     (.registerFont (GraphicsEnvironment/getLocalGraphicsEnvironment)
@@ -117,7 +200,7 @@
                          " "
                          (trs "This is a known issue with certain JVMs. See {0} and for more details."
                               "https://github.com/metabase/metabase/issues/7986"))]
-        (log/error e message)
+        (log/error message (ex-message e))
         (throw (ex-info message {} e))))))
 
 (defonce ^{:doc      "Makes custom fonts available to Java so that CSSBox can render them."
@@ -176,3 +259,36 @@
    :max-height "30px"
    :object-fit "contain"
    :display    "block"})
+
+(defn pivot-table-style
+  "Style for the `<table>` element of a rendered `:pivot` table."
+  []
+  (merge (font-style)
+         ;; CSSBox ignores border-collapse, so for a uniform 1px grid we set border-spacing:0 and draw each line
+         ;; once via per-cell borders (see pivot-cell-style: right+bottom, plus top/left on the first row/column).
+         {:border-collapse :collapse
+          :border-spacing  0
+          :font-size       (format "%spx" font-size)}))
+
+(defn pivot-cell-style
+  "Style for one cell of a rendered `:pivot` table. `header?`/`label?` select the cell role; `first-col?` is the
+  leftmost column; `bg`, when non-nil, is the conditional-formatting background color for a value cell. Each cell
+  draws only its right+bottom border (plus top/left on the first row/column) so abutting cells form a uniform 1px
+  grid -- CSSBox renders `border-collapse:collapse` as `separate`, which would otherwise double interior lines."
+  [header? label? first-col? bg]
+  (let [edge (str "1px solid " color-border)]
+    (merge {:border-right  edge
+            :border-bottom edge
+            :padding       "5px 10px"
+            :white-space   :nowrap}
+           (when header?    {:border-top  edge})
+           (when first-col? {:border-left edge})
+           (cond
+             header? {:background  color-pivot-header-bg
+                      :font-weight 700
+                      :text-align  :left}
+             label?  {:background  color-pivot-label-bg
+                      :font-weight 600
+                      :text-align  :left}
+             :else   {:text-align :right})
+           (when bg {:background-color bg}))))

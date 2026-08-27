@@ -1,12 +1,28 @@
 const { H } = cy;
 
+import {
+  MetabaseProvider,
+  StaticQuestion,
+  type StaticQuestionProps,
+} from "@metabase/embedding-sdk-react";
+
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, modal, popover } from "e2e/support/helpers";
+import {
+  createQuestion,
+  modal,
+  popover,
+  selectScheduleTime,
+} from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { mountStaticQuestion } from "e2e/support/helpers/embedding-sdk-component-testing";
+import {
+  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+  mountSdk,
+  mountSdkContent,
+  mountStaticQuestion,
+} from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding-sdk > static-question", () => {
@@ -40,6 +56,74 @@ describe("scenarios > embedding-sdk > static-question", () => {
 
       cy.log("should not show question title by default");
       cy.findByText("47563").should("not.exist");
+    });
+  });
+
+  it("should not render the top bar when it has no visible children, and restore it when children appear", () => {
+    cy.intercept("GET", "/api/card/*").as("getCard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("GET", "/api/user/current").as("getUser");
+
+    cy.get<number>("@questionId").then((questionId) => {
+      const consoleErrorSpy = cy.spy(console, "error").as("consoleError");
+
+      const renderQuestion = (props: Partial<StaticQuestionProps>) => (
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <StaticQuestion questionId={questionId} {...props} />
+        </MetabaseProvider>
+      );
+
+      mountSdk(
+        renderQuestion({ title: false, withChartTypeSelector: false }),
+      ).then(({ rerender }) => {
+        cy.wait("@getUser");
+        cy.wait("@getCard");
+
+        getSdkRoot().within(() => {
+          cy.findByText("Product ID").should("be.visible");
+          cy.findByTestId("static-question-top-bar").should("not.exist");
+        });
+
+        rerender(renderQuestion({ title: true, withChartTypeSelector: false }));
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("static-question-top-bar")
+            .should("exist")
+            .and("be.visible");
+        });
+
+        rerender(
+          renderQuestion({ title: false, withChartTypeSelector: false }),
+        );
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("static-question-top-bar").should("not.exist");
+        });
+
+        rerender(renderQuestion({ title: false, withDownloads: true }));
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("static-question-top-bar")
+            .should("exist")
+            .and("be.visible");
+        });
+
+        rerender(renderQuestion({ title: false, withDownloads: false }));
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("static-question-top-bar").should("not.exist");
+        });
+
+        cy.then(() => {
+          const refWarningCalls = consoleErrorSpy
+            .getCalls()
+            .filter((call: sinon.SinonSpyCall) =>
+              String(call.args[0]).includes("cannot be given refs"),
+            );
+
+          expect(refWarningCalls).to.have.length(0);
+        });
+      });
     });
   });
 
@@ -122,6 +206,13 @@ describe("scenarios > embedding-sdk > static-question", () => {
     });
 
     it("should be able to create, edit, and delete alerts", () => {
+      // QuestionAlertListModal stays in null-render limbo until
+      // /api/notification?card_id=... resolves. On fetch (microtask
+      // resolution), the click can land before the recipients/channels
+      // queries have fired; wait for the GET both on first open and on
+      // re-open so the modal has its picked variant by the time we assert.
+      cy.intercept("GET", "/api/notification?card_id=*").as("listAlerts");
+
       mountStaticQuestion({
         withAlerts: true,
       });
@@ -130,6 +221,8 @@ describe("scenarios > embedding-sdk > static-question", () => {
       getSdkRoot().button("Alerts").should("be.visible").click();
 
       cy.log("alerts modal is open");
+      cy.wait("@listAlerts");
+      selectScheduleTime();
       modal().within(() => {
         cy.findByRole("heading", { name: "New alert" }).should("be.visible");
         cy.button("Done").click();
@@ -138,6 +231,7 @@ describe("scenarios > embedding-sdk > static-question", () => {
 
       cy.log("alerts list modal");
       getSdkRoot().button("Alerts").should("be.visible").click();
+      cy.wait("@listAlerts");
       modal().within(() => {
         cy.findByRole("heading", { name: "Edit alerts" }).should("be.visible");
         cy.findByText("Alert when this has results").should("be.visible");
@@ -150,6 +244,7 @@ describe("scenarios > embedding-sdk > static-question", () => {
       });
 
       popover().findByRole("option", { name: "weekly" }).click();
+      selectScheduleTime();
       modal().within(() => {
         cy.button("Save changes").click();
         cy.findByRole("heading", { name: "Edit alerts" }).should("be.visible");
@@ -171,5 +266,66 @@ describe("scenarios > embedding-sdk > static-question", () => {
       getSdkRoot().button("Alerts").should("be.visible").click();
       modal().findByRole("heading", { name: "New alert" }).should("be.visible");
     });
+
+    it("should hide the Alerts button when the question's container is narrow", () => {
+      cy.intercept("GET", "/api/card/*").as("getCard");
+
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(
+          <div style={{ width: 400 }}>
+            <StaticQuestion questionId={questionId} withAlerts />
+          </div>,
+        );
+      });
+
+      cy.wait("@getCard");
+
+      getSdkRoot().button("Alerts").should("not.exist");
+    });
+
+    it("should show the Alerts button when the question's container is wide", () => {
+      mountStaticQuestion({ withAlerts: true });
+
+      getSdkRoot().button("Alerts").should("be.visible");
+    });
+  });
+
+  it("should not request /api/card/undefined when clicking a data point on a query-only ad-hoc card", () => {
+    // A query-only ad-hoc card has no saved card id. A static question must not
+    // navigate on a chart click — previously it did, fetching
+    // `GET /api/card/undefined` (the new card's id was `undefined`).
+    cy.intercept("GET", "/api/card/undefined").as("getUndefinedCard");
+
+    mountSdkContent(
+      <StaticQuestion
+        card={{
+          query: {
+            database: SAMPLE_DB_ID,
+            type: "query",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+              ],
+              limit: 5,
+            },
+          },
+        }}
+      />,
+    );
+
+    getSdkRoot().within(() => {
+      cy.log("the aggregated query renders a cartesian chart");
+      H.cartesianChartCircle().should("have.length.greaterThan", 0);
+
+      cy.log("clicking a data point must not navigate to a new card");
+      H.cartesianChartCircle().first().click();
+
+      // The chart stays put (retry gives any erroneous navigation time to fire).
+      H.cartesianChartCircle().should("have.length.greaterThan", 0);
+    });
+
+    cy.get("@getUndefinedCard.all").should("have.length", 0);
   });
 });

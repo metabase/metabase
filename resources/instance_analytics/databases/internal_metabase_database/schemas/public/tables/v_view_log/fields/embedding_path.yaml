@@ -1,0 +1,22 @@
+name: embedding_path
+display_name: Embedding Path
+created_at: '2026-04-21T08:37:34.889621Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, public, v_view_log]
+database_type: varchar
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/Category
+dimensions: []
+position: 16
+custom_position: 0
+database_position: 16
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: public, model: Schema}
+- {id: v_view_log, model: Table}
+- {id: embedding_path, model: Field}
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

@@ -19,7 +19,8 @@ export const useGetLastCollection = ():
       (item) => item.model === "collection",
     );
     return lastCollectionIndex !== -1
-      ? (previousPath[lastCollectionIndex] as OmniPickerCollectionItem)
+      ? // Unjustified type cast. FIXME
+        (previousPath[lastCollectionIndex] as OmniPickerCollectionItem)
       : null;
   }, [previousPath]);
 
@@ -31,10 +32,14 @@ export const useGetLastCollection = ():
 /**
  * gets the narrowed search scope for the currently selected collection, if it is selectable */
 export const useCurrentSearchScope = (): SearchScope => {
-  const { searchScope } = useOmniPickerContext();
+  const { searchScope, options } = useOmniPickerContext();
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
 
   const lastCollection = useGetLastCollection();
+
+  if (options.disableSearchScope) {
+    return "all";
+  }
 
   if (searchScope || !lastCollection) {
     return searchScope;

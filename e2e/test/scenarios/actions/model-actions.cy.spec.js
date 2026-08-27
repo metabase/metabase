@@ -83,7 +83,11 @@ describe(
       cy.intercept("POST", "/api/action/*/execute").as("executeAction");
       cy.intercept("POST", "/api/action").as("createAction");
       cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
-      cy.intercept("GET", "/api/search?archived=true").as("getArchived");
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/search",
+        query: { archived: "true" },
+      }).as("getArchived");
       cy.intercept("GET", "/api/search?*").as("getSearchResults");
       cy.intercept("GET", "/api/database?*").as("getDatabase");
     });
@@ -124,6 +128,11 @@ describe(
         .should("be.checked");
       cy.findByRole("button", { name: "Update" }).click();
 
+      cy.wait("@updateAction");
+      // The action editor closes after the update; wait until it is gone
+      // before asserting on the action list behind it.
+      cy.findByTestId("action-creator").should("not.exist");
+
       cy.findByLabelText("Action list")
         .findByText(
           "DELETE FROM orders WHERE id = {{ id }} AND status = 'pending'",
@@ -140,7 +149,9 @@ describe(
 
       cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
 
-      cy.findByLabelText("Actions menu").click();
+      cy.findByTestId("model-actions-header")
+        .findByLabelText("Actions")
+        .click();
       H.popover().findByText("Disable basic actions").click();
       H.modal().within(() => {
         cy.findByText("Disable basic actions?").should("be.visible");
@@ -269,10 +280,10 @@ describe(
         cy.button(actionName).click();
         cy.wait("@executeAction");
 
-        cy.findByLabelText("User ID").should("not.exist");
-        cy.findByLabelText(
-          'User ID: This value does not exist in table "people".',
-        ).should("exist");
+        cy.findByLabelText("User ID").should("exist");
+        cy.findByText('This value does not exist in table "people".').should(
+          "exist",
+        );
 
         cy.findByText("Unable to update the record.").should("exist");
       });
@@ -475,10 +486,15 @@ describe(
           });
 
         H.popover().within(() => {
-          cy.findByLabelText("Required").uncheck();
+          cy.findByLabelText("Required").uncheck({ force: true });
         });
 
         cy.findByRole("button", { name: "Update" }).click();
+
+        cy.wait("@updateAction");
+        // The action editor closes after the update; wait until it is gone
+        // before clicking through to the run modal behind it.
+        cy.findByTestId("action-creator").should("not.exist");
 
         runActionFor(SAMPLE_QUERY_ACTION.name);
 
@@ -504,9 +520,12 @@ describe(
           });
 
         H.popover().within(() => {
-          cy.findByLabelText("Required").check();
+          cy.findByLabelText("Required").check({ force: true });
         });
         cy.findByRole("button", { name: "Update" }).click();
+
+        cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
 
         runActionFor(SAMPLE_QUERY_ACTION.name);
 
@@ -533,6 +552,9 @@ describe(
             });
           cy.findByRole("button", { name: "Update" }).click();
         });
+
+        cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
 
         runActionFor(SAMPLE_QUERY_ACTION.name);
 
@@ -572,6 +594,9 @@ describe(
           });
 
         cy.findByRole("button", { name: "Update" }).click();
+
+        cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
 
         runActionFor("Create");
 
@@ -629,10 +654,13 @@ describe(
           });
 
         H.popover().within(() => {
-          cy.findByLabelText("Required").uncheck();
+          cy.findByLabelText("Required").uncheck({ force: true });
         });
 
         cy.findByRole("button", { name: "Update" }).click();
+
+        cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
 
         cy.signOut();
 
@@ -680,6 +708,7 @@ describe(
         cy.findByRole("button", { name: "Update" }).click();
 
         cy.wait("@updateAction");
+        cy.findByTestId("action-creator").should("not.exist");
 
         cy.signOut();
 
@@ -774,6 +803,7 @@ describe(
 
           cy.findByText(
             "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
+            { timeout: 30000 },
           );
         });
 
@@ -816,7 +846,9 @@ function assertQueryEditorDisabled() {
   H.NativeEditor.get().should("not.be.focused");
   H.NativeEditor.get().should("have.attr", "contenteditable", "false");
 
-  H.NativeEditor.type("QWERTY", { focus: false });
+  // Type straight into the page: the editor helper waits for focus, and this
+  // editor is read only, so it never takes it.
+  cy.realType("QWERTY");
   cy.findByText("QWERTY").should("not.exist");
 }
 

@@ -3,6 +3,7 @@
 
   These tests should build content then mock out distrubution by usual channels (e.g. email) and check the results of
   the distributed content for correctness."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.pulse-integration-test]}}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.string :as str]
@@ -64,7 +65,7 @@
   element. In our test cases that's the Tax Rate column."
   [pulse]
   (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
-                           (with-redefs [channel.settings/bcc-enabled? (constantly false)]
+                           (mt/with-dynamic-fn-redefs [channel.settings/bcc-enabled? (constantly false)]
                              (mt/with-test-user nil
                                (pulse.send/send-pulse! pulse))))
         html-body  (-> channel-messages :channel/email first :message first :content)
@@ -188,7 +189,7 @@
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
   attachment name -> column name -> column data"
   [pulse]
-  (with-redefs [channel.settings/bcc-enabled? (constantly false)]
+  (mt/with-dynamic-fn-redefs [channel.settings/bcc-enabled? (constantly false)]
     (->> (mt/with-test-user nil
            (pulse.test-util/with-captured-channel-send-messages!
              (pulse.send/send-pulse! pulse)))
@@ -201,7 +202,7 @@
                    (= :attachment type)
                    (= "text/csv" content-type))
               [(strip-timestamp file-name)
-               (let [[h & r] (csv/read-csv (slurp content))]
+               (let [[h & r] (csv/read-csv (u/strip-bom (slurp content)))]
                  (zipmap h (apply mapv vector r)))])))
          (into {}))))
 
@@ -426,16 +427,29 @@
                         "Example Month"
                         "Example Day"
                         "Example Week Number"
-                        "Example Week: Week"
+                        "Example Week"
                         "Example Hour"
                         "Example Minute"
                         "Example Second"]
                        (map :display_name model-card-metadata))))
-              (testing "metamodel card"
-                (is (= (map :display_name model-card-metadata)
+              (testing "metamodel card — QP adds temporal suffix since it computes display names fresh"
+                (is (= ["Full Datetime Utc"
+                        "Full Datetime Pacific"
+                        "Example Timestamp"
+                        "Example Timestamp With Time Zone"
+                        "Example Date"
+                        "Example Time"
+                        "Example Year"
+                        "Example Month"
+                        "Example Day"
+                        "Example Week Number"
+                        "Example Week: Week"
+                        "Example Hour"
+                        "Example Minute"
+                        "Example Second"]
                        (map :display_name meta-model-card-metadata))))
               (testing "metamodel results"
-                (is (= (sort (map :display_name model-card-metadata))
+                (is (= (sort (map :display_name meta-model-card-metadata))
                        (sort (keys metamodel-results))))))
             ;; Note that these values are obtained by inspection since the UI formats are in the FE code.
             ;;
@@ -471,7 +485,7 @@
                       "Example Month"                    "12"
                       "Example Day"                      "11"
                       "Example Week Number"              "50"
-                      "Example Week: Week"               "December 10, 2023 - December 16, 2023"
+                      "Example Week"                     "December 10, 2023 - December 16, 2023"
                       "Example Hour"                     "15"
                       "Example Minute"                   "30"
                       "Example Second"                   "45"}
@@ -598,7 +612,7 @@
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                        :user_id          (mt/user->id :rasta)}]
           (let [attachment-name->cols (mt/with-fake-inbox
-                                        (with-redefs [channel.settings/bcc-enabled? (constantly false)]
+                                        (mt/with-dynamic-fn-redefs [channel.settings/bcc-enabled? (constantly false)]
                                           (mt/with-test-user nil
                                             (pulse.send/send-pulse! pulse)))
                                         (->>
@@ -609,7 +623,7 @@
                                                    (= :attachment type)
                                                    (= "text/csv" content-type))
                                               [(strip-timestamp file-name)
-                                               (first (csv/read-csv (slurp content)))])))
+                                               (first (csv/read-csv (u/strip-bom (slurp content))))])))
                                          (into {})))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= ["THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"]
@@ -628,7 +642,7 @@
   "Simulate sending the pulse email, get the html body of the response and return the scalar value of the card."
   [pulse]
   (mt/with-fake-inbox
-    (with-redefs [channel.settings/bcc-enabled? (constantly false)]
+    (mt/with-dynamic-fn-redefs [channel.settings/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
         (pulse.send/send-pulse! pulse)))
     (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
@@ -690,7 +704,7 @@
   If not pulse is sent, return `nil`."
   [pulse]
   (mt/with-fake-inbox
-    (with-redefs [channel.settings/bcc-enabled? (constantly false)]
+    (mt/with-dynamic-fn-redefs [channel.settings/bcc-enabled? (constantly false)]
       (mt/with-test-user nil
         (pulse.send/send-pulse! pulse)))
     (when-some [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
@@ -841,7 +855,7 @@
              :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                              :user_id          (mt/user->id :rasta)}]
             (mt/with-fake-inbox
-              (with-redefs [channel.settings/bcc-enabled? (constantly false)]
+              (mt/with-dynamic-fn-redefs [channel.settings/bcc-enabled? (constantly false)]
                 (mt/with-test-user nil
                   (pulse.send/send-pulse! pulse)))
               (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
@@ -853,7 +867,7 @@
                 (testing "The text card should always be present"
                   (is (true? (str/includes? html-body card-text))))))))))))
 
-(deftest ^:sequential xray-dashboards-work-test
+(deftest ^:synchronized xray-dashboards-work-test
   (testing "Dashboards produced by generated by X-Rays should not produce bad results (#38350)"
     ;; Disable search index, as the way the database is reset at the end can flake somehow.
     ;; This test has nothing to do with search, so not wasting more time on understanding it.
@@ -876,7 +890,7 @@
                            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                            :user_id          (mt/user->id :rasta)}]
               (mt/with-fake-inbox
-                (with-redefs [channel.settings/bcc-enabled? (constantly false)]
+                (mt/with-dynamic-fn-redefs [channel.settings/bcc-enabled? (constantly false)]
                   (mt/with-test-user nil
                     (pulse.send/send-pulse! pulse)))
                 (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
@@ -953,7 +967,7 @@
                        :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                        :user_id          (mt/user->id :rasta)}]
           (mt/with-fake-inbox
-            (with-redefs [channel.settings/bcc-enabled? (constantly false)]
+            (mt/with-dynamic-fn-redefs [channel.settings/bcc-enabled? (constantly false)]
               (mt/with-test-user nil
                 (pulse.send/send-pulse! pulse)))
             (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])))))))))

@@ -1,0 +1,101 @@
+## Add heartbeat tracking to transform_run and transform_job_run for dead-process orphan detection
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-06-03T00:00:00
+      author: bronsa
+      comment: Add last_heartbeat column to transform_run for heartbeat-based orphan detection
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: last_heartbeat
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: last_heartbeat
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Heartbeat timestamp stamped periodically while the run executes; a stale value means the owning process died
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: transform_run
+            columnName: last_heartbeat
+
+  - changeSet:
+      id: v63.2026-06-12T00:00:00
+      author: bronsa
+      comment: Add last_heartbeat column to transform_job_run for heartbeat-based orphan detection
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_job_run
+                columnName: last_heartbeat
+      changes:
+        - addColumn:
+            tableName: transform_job_run
+            columns:
+              - column:
+                  name: last_heartbeat
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: Heartbeat timestamp stamped periodically while the run executes; a stale value means the owning process died
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: transform_job_run
+            columnName: last_heartbeat
+
+  - changeSet:
+      id: v63.2026-06-12T00:00:01
+      author: bronsa
+      comment: Index transform_job_run on (is_active, last_heartbeat) so the every-minute reaper scan is O(active rows)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_job_run
+                indexName: idx_transform_job_run_active_runs
+      changes:
+        - createIndex:
+            tableName: transform_job_run
+            indexName: idx_transform_job_run_active_runs
+            columns:
+              - column:
+                  name: is_active
+              - column:
+                  name: last_heartbeat
+      rollback:
+        - dropIndex:
+            tableName: transform_job_run
+            indexName: idx_transform_job_run_active_runs
+
+  - changeSet:
+      id: v63.2026-06-12T00:00:02
+      author: bronsa
+      comment: Index task_run on status so the task-run reaper's locking scan only touches started rows
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: task_run
+                indexName: idx_task_run_status
+      changes:
+        - createIndex:
+            tableName: task_run
+            indexName: idx_task_run_status
+            columns:
+              - column:
+                  name: status
+      rollback:
+        - dropIndex:
+            tableName: task_run
+            indexName: idx_task_run_status

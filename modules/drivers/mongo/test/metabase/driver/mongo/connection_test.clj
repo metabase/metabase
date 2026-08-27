@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.connection-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
@@ -10,7 +11,8 @@
    [metabase.test :as mt])
   (:import
    (com.mongodb MongoCredential ServerAddress)
-   (com.mongodb.client MongoDatabase)))
+   (com.mongodb.client MongoDatabase)
+   (com.mongodb.spi.dns InetAddressResolver)))
 
 (set! *warn-on-reflection* true)
 
@@ -21,6 +23,29 @@
    :dbname "datadb"
    :authdb "authdb"
    :use-srv true})
+
+(deftest warehouse-inet-address-resolver-test
+  (let [resolver (-> (mongo.connection/db-details->mongo-client-settings {:host "db.example.com"})
+                     .getInetAddressResolver)]
+    (testing "external-only rejects private and loopback topology hosts"
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"private or internal network address"
+                              (.lookupByName ^InetAddressResolver resolver "127.0.0.1")))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"private or internal network address"
+                              (.lookupByName ^InetAddressResolver resolver "10.0.0.5")))))
+    (testing "allow-private permits private addresses but still rejects loopback"
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+        (is (seq (.lookupByName ^InetAddressResolver resolver "10.0.0.5")))
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (.lookupByName ^InetAddressResolver resolver "127.0.0.1"))))))
+  (testing "a Mongo connection using an SSH tunnel permits its local tunnel entrance"
+    (let [resolver (-> (mongo.connection/db-details->mongo-client-settings
+                        {:host "localhost" :tunnel-enabled true})
+                       .getInetAddressResolver)]
+      (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+        (is (seq (.lookupByName ^InetAddressResolver resolver "localhost")))))))
 
 (deftest ^:parallel fqdn?-test
   (testing "test hostname is fqdn"
@@ -50,7 +75,20 @@
                             (-> db-details
                                 (assoc :host "localhost")
                                 mongo.db/details-normalized
-                                mongo.connection/db-details->connection-string))))))
+                                mongo.connection/db-details->connection-string))))
+    (testing "uses x509 credentials"
+      (let [db-details (assoc db-details
+                              :additional-options "authMechanism=MONGODB-X509"
+                              :use-conn-uri false
+                              :ssl true
+                              :ssl-use-client-auth true
+                              :client-ssl-key (-> "ssl/mongo/metabase.key" io/resource slurp)
+                              :client-ssl-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
+                              :ssl-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
+            settings (mongo.connection/db-details->mongo-client-settings db-details)
+            ^MongoCredential credential (.getCredential settings)]
+        (is (= "test-user" (.getUserName credential)))
+        (is (= "MONGODB-X509" (.getMechanism credential)))))))
 
 (deftest ^:parallel srv-connection-properties-test
   (testing "connection properties when using SRV"
@@ -131,10 +169,10 @@
                             :dbname         "test"
                             :host           "localhost"
                             :tunnel-enabled true
-                           ;; we want to use a bogus port here on purpose -
-                           ;; so that locally, it gets a ConnectionRefused,
-                           ;; and in CI it does too. Apache's SSHD library
-                           ;; doesn't wrap every exception in an SshdException
+                            ;; we want to use a bogus port here on purpose -
+                            ;; so that locally, it gets a ConnectionRefused,
+                            ;; and in CI it does too. Apache's SSHD library
+                            ;; doesn't wrap every exception in an SshdException
                             :tunnel-port    21212
                             :tunnel-user    "bogus"}]
                (driver.u/can-connect-with-details? engine details :throw-exceptions))

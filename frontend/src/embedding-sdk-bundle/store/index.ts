@@ -1,59 +1,60 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { useContext } from "react";
 
-import {
-  MetabaseReduxContext,
-  useDispatch,
-  useStore,
-} from "metabase/lib/redux";
 import * as pulse from "metabase/notifications/pulse/reducers";
-import { PLUGIN_REDUCERS } from "metabase/plugins";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";
+import { metabaseReduxContext, useDispatch, useStore } from "metabase/redux";
 import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 import { getStore } from "metabase/store";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
+import { sdkListenerMiddleware } from "./listener-middleware";
 import { sdk } from "./reducer";
 import type { SdkDispatch, SdkStore } from "./types";
 
+// Unjustified type cast. FIXME
 export const sdkReducers = {
   ...commonReducers,
   pulse: combineReducers(pulse),
   qb: combineReducers(qb),
   visualizer,
   sdk,
-  plugins: combineReducers({
-    metabotPlugin: PLUGIN_REDUCERS.metabotPlugin,
-  }),
 } as unknown as Record<string, Reducer>;
 
 export const getSdkStore = () =>
-  getStore(sdkReducers, null, {
-    embed: {
-      options: {
-        entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
+  // Unjustified type cast. FIXME
+  getStore(
+    sdkReducers,
+    {
+      embed: {
+        options: {
+          entity_types: DEFAULT_EMBEDDING_ENTITY_TYPES,
+        },
+      },
+      app: {
+        isDndAvailable: false,
       },
     },
-    app: {
-      isDndAvailable: false,
-    },
-  }) as unknown as SdkStore;
+    [sdkListenerMiddleware.middleware],
+  ) as unknown as SdkStore;
 
 export const useSdkDispatch = () => {
   useCheckSdkReduxContext();
 
+  // Unjustified type cast. FIXME
   return useDispatch() as SdkDispatch;
 };
 
 export const useSdkStore = () => {
   useCheckSdkReduxContext();
 
+  // Unjustified type cast. FIXME
   return useStore() as SdkStore;
 };
 
 const useCheckSdkReduxContext = () => {
-  const context = useContext(MetabaseReduxContext);
+  const context = useContext(metabaseReduxContext);
 
   if (!context) {
     console.warn(

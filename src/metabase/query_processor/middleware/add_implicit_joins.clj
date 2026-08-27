@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.add-implicit-joins
   "Middleware that creates corresponding `:joins` for Tables referred to by `:field` clauses with `:source-field` info
   in the options and adds `:join-alias` info to those `:field` clauses."
-  (:refer-clojure :exclude [alias mapv some empty? not-empty get-in])
+  (:refer-clojure :exclude [mapv some empty? not-empty get-in])
   (:require
    [better-cond.core :as b]
    [clojure.set :as set]
@@ -16,13 +16,13 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.performance :refer [mapv some empty? not-empty get-in]]))
 
 (defn- implicitly-joined-fields
@@ -34,8 +34,8 @@
   [x]
   (into []
         (distinct)
-        (lib.util.match/match (dissoc x :lib/stage-metadata)
-          [:field (_opts :guard (every-pred :source-field (complement :join-alias))) _id-or-oname]
+        (match/match-many (dissoc x :lib/stage-metadata)
+          [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-oname]
           &match)))
 
 (defn- join-alias [dest-table-name source-fk-field-name source-fk-join-alias]
@@ -82,7 +82,6 @@
         (let [{source-table-id :table-id}          (lib.metadata/field metadata-providerable pk-id)
               {table-name :name, :as source-table} (lib.metadata/table metadata-providerable source-table-id)
               alias-for-join                       (join-alias table-name (or fk-field-name (:name fk-field)) fk-join-alias)]
-
           (-> (lib/join-clause source-table)
               (lib/with-join-alias alias-for-join)
               (lib/with-join-conditions [(lib/= [:field
@@ -119,8 +118,8 @@
   (-> join
       (assoc :alias new-alias)
       (update :conditions lib.walk/walk-clauses* (fn [clause]
-                                                   (lib.util.match/match-one clause
-                                                     [:field (_opts :guard #(= (:join-alias %) join-alias)) _id-or-name]
+                                                   (match/match-one clause
+                                                     [:field {:join-alias (ja :guard (= ja join-alias))} _id-or-name]
                                                      (lib/update-options &match assoc :join-alias new-alias))))))
 
 (mu/defn- implicitly-joined-fields->joins :- [:sequential ::join]
@@ -129,8 +128,8 @@
    field-clauses-with-source-field :- [:sequential :mbql.clause/field]]
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
-                                    (lib.util.match/match-one clause
-                                      [:field (opts :guard (every-pred :source-field (complement :join-alias))) (id :guard integer?)]
+                                    (match/match-one clause
+                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (_id :guard integer?)]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
                             not-empty)
@@ -174,42 +173,14 @@
                    join-alias])))
         (visible-joins query path stage)))
 
-;;; TODO (Cam 7/17/25) -- it seems weird to be updating quite possibly the least important part of stage metadata --
-;;; legacy `:field-ref`, which is generally only provided by the QP as a courtesy for use for legacy purposes as a key
-;;; in viz settings and nothing else. Why aren't we adding `:metabase.lib.join/join-alias` keys or anything like that?
-;;; Why aren't we adding metadata for the fields we spliced in here? It all seems kinda fishy. It might be possible to
-;;; take this out completely without breaking anything.
-(mu/defn- add-implicit-joins-aliases-to-metadata :- ::lib.schema/stage
-  "Add `:join-alias`es to legacy field refs for fields containing `:source-field` in `:lib/stage-metadata` of `query`.
-  It is required, that `:source-query` has already it's joins resolved. It is valid, when no `:join-alias` could be
-  found. For examaple during remaps, metadata contain fields with `:source-field`, that are not used further in their
-  `:source-query`."
-  [query :- ::lib.schema/query
-   path  :- ::lib.walk/path
-   stage :- ::lib.schema/stage]
-  (let [fk-field-info->join-alias (construct-fk-field-info->join-alias query path stage)]
-    (letfn [(update-legacy-field-ref [field-ref]
-              ;; field ref should be a LEGACY field ref.
-              (lib.util.match/replace field-ref
-                [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
-                (let [join-alias (fk-field-info->join-alias (field-opts->fk-field-info query opts))]
-                  (if (some? join-alias)
-                    [:field id-or-name (assoc opts :join-alias join-alias)]
-                    &match))))
-            (update-col [col]
-              (m/update-existing col :field-ref update-legacy-field-ref))
-            (update-cols [cols]
-              (mapv update-col cols))]
-      (update-in stage [:lib/stage-metadata :columns] update-cols))))
-
 (mu/defn- add-join-alias-to-fields-with-source-field :- ::lib.schema/stage
   "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`. Ignore `:lib/stage-metadata`."
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (or (when-let [fk-field-info->join-alias (not-empty (construct-fk-field-info->join-alias query path stage))]
-        (let [stage' (lib.util.match/replace stage
-                       [:field (opts :guard (every-pred :source-field (complement :join-alias))) id-or-name]
+        (let [stage' (match/replace stage
+                       [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name]
                        (if-not (some #{:lib/stage-metadata} &parents)
                          (let [join-alias (or (fk-field-info->join-alias (field-opts->fk-field-info query opts))
                                               (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
@@ -287,8 +258,8 @@
         (let [next-stage (get-in query next-path)]
           (when-let [reused-join-aliases (not-empty (::reused-join-aliases next-stage))]
             (when-let [referenced-fields (not-empty
-                                          (set (lib.util.match/match (dissoc next-stage :joins :lib/stage-metadata)
-                                                 :field
+                                          (set (match/match-many (dissoc next-stage :joins :lib/stage-metadata)
+                                                 [:field & _]
                                                  (when (contains? reused-join-aliases (lib/current-join-alias &match))
                                                    &match))))]
               (log/debugf "Adding referenced fields from next stage: %s" (pr-str referenced-fields))
@@ -334,12 +305,9 @@
   "Get a set of join aliases that `join` has an immediate dependency on."
   [join :- ::lib.schema.join/join]
   (set
-   (lib.util.match/match (:conditions join)
-     [:field (opts :guard :join-alias) _id-or-name]
-     (let [join-alias (:join-alias opts)]
-       (when (and join-alias
-                  (not= join-alias (:alias join)))
-         join-alias)))))
+   (match/match-many (:conditions join)
+     [:field {:join-alias (join-alias :guard (and join-alias (not= join-alias (:alias join))))} _id-or-name]
+     join-alias)))
 
 (mu/defn- topologically-sort-joins :- ::lib.schema.join/joins
   "Sort `joins` by topological dependency order: joins that are referenced by the `:condition` of another will be sorted
@@ -379,7 +347,7 @@
          (mapv (fn [join]
                  (dissoc join ::original-position))))))
 
-(mu/defn- resolve-implicit-joins-this-level :- ::lib.schema/stage
+(mu/defn- resolve-implicit-joins :- ::lib.schema/stage
   "Add new `:joins` for tables referenced by `:field` forms with a `:source-field`. Add `:join-alias` info to those
   `:fields`. Add additional `:fields` to source query if needed to perform the join."
   [query :- ::lib.schema/query
@@ -398,23 +366,15 @@
         (cond-> (seq required-joins) (update :joins topologically-sort-joins))
         (assoc ::reused-join-aliases reused-join-aliases))))
 
-(mu/defn- resolve-implicit-joins :- ::lib.schema/stage
-  [query :- ::lib.schema/query
-   path  :- ::lib.walk/path
-   stage :- ::lib.schema/stage]
-  (-> stage
-      (->> (resolve-implicit-joins-this-level query path))
-      (cond->> (:lib/stage-metadata stage) (add-implicit-joins-aliases-to-metadata query path))))
-
 (mu/defn- first-pass :- [:maybe ::lib.schema/stage]
-  "The first pass adds all of the new joins ([[resolve-implicit-joins-this-level]]) and updates
+  "The first pass adds all of the new joins ([[resolve-implicit-joins]]) and updates
   metadata ([[add-implicit-joins-aliases-to-metadata]])."
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
-             (lib.util.match/match-one stage
-               [:field (_opts :guard (every-pred :source-field (complement :join-alias))) _id-or-name]))
+             (match/match-one stage
+               [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) _id-or-name] true))
     (when (and driver/*driver*
                (not (driver.u/supports? driver/*driver* :left-join (lib.metadata/database query))))
       (throw (ex-info (tru "{0} driver does not support left join." driver/*driver*)
@@ -440,7 +400,7 @@
   [query :- ::lib.schema/query]
   (-> query
       (lib.walk/walk-stages first-pass)
-        ;; The second pass must go backwards, pushing implicitly joined fields downward until they are resolved.
-        ;; See #63245 and
-        ;; [[metabase.query-processor.middleware.add-implicit-joins-test/implicit-join-from-much-earlier-stage-test]].
+      ;; The second pass must go backwards, pushing implicitly joined fields downward until they are resolved.
+      ;; See #63245 and
+      ;; [[metabase.query-processor.middleware.add-implicit-joins-test/implicit-join-from-much-earlier-stage-test]].
       (lib.walk/walk-stages second-pass {:reversed? true})))

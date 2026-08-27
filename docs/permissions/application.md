@@ -11,7 +11,7 @@ redirect_from:
 
 Application settings are useful for granting groups access to some, but not all, of Metabase's administrative features.
 
-To set application permissions, got to the top right of the screen and click on the **gear** icon > **Admin settings** > **Permissions** > **Application**.
+To set application permissions, go to the top right of the screen and click the **grid** icon > **Admin** > **Permissions** > **Application**.
 
 ## Settings access
 
@@ -21,7 +21,6 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Email](../configuring-metabase/email.md)
 - [Slack](../configuring-metabase/slack.md)
 - [Webhooks](../configuring-metabase/webhooks.md)
-- [Authentication](../people-and-groups/start.md)
 - [Maps](../configuring-metabase/custom-maps.md)
 - [Localization](../configuring-metabase/localization.md)
 - [Appearance](../configuring-metabase/appearance.md)
@@ -31,10 +30,21 @@ Settings access defines which groups can view and edit the settings under the Ad
 
 ## Monitoring access
 
-Monitoring access sets permissions for the following:
+People in groups with Monitoring access can view:
 
-- [Tools](../usage-and-performance-tools/tools.md)
+- [Monitor](../monitor/start.md), including:
+  - [Erroring questions](../monitor/erroring-questions.md)
+  - [Background tasks](../monitor/background-tasks.md)
+  - [Scheduled jobs](../monitor/scheduled-jobs.md)
+  - [Application logs](../monitor/application-logs.md) (read-only)
+  - [Model persistence log](../monitor/model-persistence-log.md)
+- The **Help** tab in Admin
 - [Troubleshooting](../troubleshooting-guide/index.md)
+
+The following Monitor pages aren't included in Monitoring access:
+
+- [Dependency diagnostics](../monitor/dependency-diagnostics.md): Available to admins and people in the [Data Analysts](../people-and-groups/managing.md#data-analysts) group
+- [Alerts management](../monitor/alerts-management.md): Available to admins only
 
 ## Subscriptions and alerts
 

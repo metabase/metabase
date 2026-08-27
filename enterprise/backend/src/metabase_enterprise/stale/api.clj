@@ -8,7 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections-rest.api :as api.collection]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
@@ -20,9 +20,11 @@
 (defn- effective-children-ids
   "Returns effective children ids for collection."
   [collection _permissions-set]
-  (let [visible-collection-ids (set (collection/visible-collection-ids {:permission-level :write}))
-        all-descendants (map :id (collection/descendants-flat collection))]
-    (filterv visible-collection-ids all-descendants)))
+  (into []
+        (comp (map :id)
+              (remove #(= % (collection/trash-collection-id)))
+              (filter #(collection/visible-collection-id? % :write)))
+        (collection/descendants-flat collection [:= :archived false])))
 
 (defmulti present-model-items
   "Given a model and a list of items, return the items in the format the API client expects. Note that order does not
@@ -70,7 +72,8 @@
                                :dataset_query
                                :card_schema
                                :last_used_at
-                               [{:select   [:status]
+                               [^:allow-subquery
+                                {:select   [:status]
                                  :from     [:moderation_review]
                                  :where    [:and
                                             [:= :moderated_item_type "card"]
@@ -94,7 +97,7 @@
   "For dashboards, we want `here` and `location` since they can contain cards as children."
   [dashboards]
   (for [{parent-coll :collection
-         :as dashboard} (api.collection/annotate-dashboards dashboards)]
+         :as dashboard} (collections/annotate-dashboards dashboards)]
     (assoc dashboard
            :location (or (some-> parent-coll collection/children-location)
                          "/")
@@ -114,7 +117,6 @@
                                [nil :dashboard_id]
                                [nil :location]
                                [nil :database_id]]
-
                               :id [:in (set (map :id dashboards))])
                    :can_write :can_delete :can_restore [:collection :effective_location])
        annotate-dashboard-with-collection-info

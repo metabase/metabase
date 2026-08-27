@@ -6,10 +6,10 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { getPlan } from "metabase/common/utils/plan";
+import { createMockState } from "metabase/redux/store/mocks";
+import { getPlan, getSettings } from "metabase/settings";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { CloudPanel } from "./CloudPanel";
 
@@ -30,8 +30,9 @@ const setup = () => {
     },
   );
 
-  const storeUrl = store.getState().settings.values["store-url"];
-  const plan = getPlan(store.getState().settings.values["token-features"]);
+  const settings = getSettings(store.getState());
+  const storeUrl = settings["store-url"];
+  const plan = getPlan(settings["token-features"]);
   const metabaseStoreLink = `${storeUrl}/checkout?migration-source-plan=${plan}&migration-id=${BASE_RESPONSE.external_id}`;
 
   return { mockMigrationStart, store, metabaseStoreLink };
@@ -92,6 +93,7 @@ describe("CloudPanel", () => {
     await userEvent.click(cancelButton);
 
     await expectCancelConfirmationModal();
+    // Unjustified type cast. FIXME
     expect((store.getState() as any).undo).toHaveLength(0);
     await userEvent.click(
       within(
@@ -106,6 +108,7 @@ describe("CloudPanel", () => {
         }),
       ).toBeTruthy();
     });
+    // Unjustified type cast. FIXME
     expect((store.getState() as any).undo).toHaveLength(1);
 
     fetchMockCloudMigrationGetSequence([CANCELED_RESPONSE]);
@@ -133,11 +136,13 @@ describe("CloudPanel", () => {
     const { mockMigrationStart, metabaseStoreLink } = setup();
 
     await expectErrorState();
-    await expectInitState();
-    await userEvent.click(screen.getByRole("button", { name: "Try for free" }));
+    expect(
+      screen.queryByRole("heading", { name: "Migrate to Metabase Cloud" }),
+    ).not.toBeInTheDocument();
 
-    await expectStartConfirmationModal();
-    await userEvent.click(screen.getByRole("button", { name: /Migrate now/ }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Restart the process/ }),
+    );
 
     fetchMockCloudMigrationGetSequence([
       { ...INIT_RESPONSE, id: 2 },

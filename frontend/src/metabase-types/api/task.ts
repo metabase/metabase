@@ -2,7 +2,7 @@ import type { Log } from "metabase-types/api/util";
 
 import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { SortingOptions } from "./sorting";
+import type { SortDirection, SortingOptions } from "./sorting";
 
 // "unknown" status is only expected for historical tasks (before Task['status'] was introduced)
 export type TaskStatus = "success" | "started" | "failed" | "unknown";
@@ -20,7 +20,14 @@ export interface Task {
   run_id: number | null;
 }
 
-export type ListTasksSortColumn = "started_at" | "ended_at" | "duration";
+export type ListTasksSortColumn =
+  | "started_at"
+  | "ended_at"
+  | "duration"
+  | "task"
+  | "status"
+  | "db_name"
+  | "db_engine";
 
 export type ListTasksRequest = {
   status?: TaskStatus;
@@ -32,7 +39,7 @@ export type ListTasksResponse = {
   data: Task[];
 } & PaginationResponse;
 
-type Trigger = {
+export type Trigger = {
   description: string | null;
   schedule: string;
   timezone: string;
@@ -49,7 +56,7 @@ type Trigger = {
   data: Record<string, unknown>;
 };
 
-type Job = {
+export type Job = {
   key: string;
   class: string;
   description: string;
@@ -69,13 +76,13 @@ export type TaskRunEntityType = "database" | "card" | "dashboard";
 export type TaskRunStatus = "started" | "success" | "failed" | "abandoned";
 export type TaskRunDateFilterOption =
   | "thisday"
-  | "past1days~"
-  | "past1weeks~"
-  | "past7days~"
-  | "past30days~"
-  | "past1months~"
-  | "past3months~"
-  | "past12months~";
+  | "past1days"
+  | "past1weeks"
+  | "past7days"
+  | "past30days"
+  | "past1months"
+  | "past3months"
+  | "past12months";
 
 export interface TaskRun {
   id: number;
@@ -85,7 +92,7 @@ export interface TaskRun {
   started_at: string;
   ended_at: string | null;
   status: TaskRunStatus;
-  entity_name?: string;
+  entity_name: string | null;
   task_count: number;
   success_count: number;
   failed_count: number;
@@ -98,15 +105,29 @@ export interface TaskRunExtended extends TaskRun {
 export interface RunEntity {
   entity_type: TaskRunEntityType;
   entity_id: number;
-  entity_name?: string;
+  entity_name: string | null;
 }
+
+export type TaskRunStartedAtParam =
+  | TaskRunDateFilterOption
+  | `${TaskRunDateFilterOption}~`;
+
+export type ListTaskRunsSortColumn =
+  | "started_at"
+  | "ended_at"
+  | "run_type"
+  | "status"
+  | "entity_name"
+  | "task_count";
 
 export type ListTaskRunsRequest = {
   "run-type"?: TaskRunType;
   "entity-type"?: TaskRunEntityType;
   "entity-id"?: number;
   status?: TaskRunStatus;
-  "started-at"?: TaskRunDateFilterOption;
+  "started-at"?: TaskRunStartedAtParam;
+  "sort-column"?: ListTaskRunsSortColumn;
+  "sort-direction"?: SortDirection;
 } & PaginationRequest;
 
 export type ListTaskRunsResponse = {
@@ -115,5 +136,5 @@ export type ListTaskRunsResponse = {
 
 export type ListTaskRunEntitiesRequest = {
   "run-type": TaskRunType;
-  "started-at": TaskRunDateFilterOption;
+  "started-at": TaskRunStartedAtParam;
 };

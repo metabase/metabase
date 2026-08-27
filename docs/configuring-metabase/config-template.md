@@ -69,6 +69,7 @@ config:
   settings:
     admin-email: null
     aggregated-query-row-limit: null
+    ai-features-enabled: true
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -92,6 +93,7 @@ config:
       linkedin.com,
       twitter.com,
       x.com
+    analytics-pii-retention-enabled: false
     anon-tracking-enabled: true
     api-key: null
     application-colors: {}
@@ -102,27 +104,31 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
-    audit-max-retention-days: null
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
-    can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
+    csp-img-allowed-hosts: ''
+    csp-img-enabled: false
+    csv-field-separator: ','
     custom-formatting: {}
     custom-geojson: null
     custom-geojson-enabled: true
     custom-homepage: false
     custom-homepage-dashboard: null
+    custom-viz-enabled: false
     dashboards-save-last-used-parameters: true
     db-connection-timeout-ms: 10000
     db-query-timeout-minutes: 20
     default-maps-enabled: true
+    disable-auto-sync: false
     disable-cors-on-localhost: false
     download-row-limit: null
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
     email-from-name: null
+    email-max-recipients-per-message: 50
     email-max-recipients-per-second: null
     email-reply-to: null
     email-smtp-host: null
@@ -135,6 +141,7 @@ config:
     email-smtp-security-override: ssl
     email-smtp-username: null
     email-smtp-username-override: null
+    embedded-metabot-enabled: true
     embedding-app-origins-interactive: null
     embedding-app-origins-sdk: ''
     embedding-homepage: hidden
@@ -146,8 +153,9 @@ config:
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
-    enable-query-caching: true
     enable-xrays: true
+    explorations-worker-count: 2
+    fingerprint-max-fields-per-table: 10000
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
     google-auth-client-id: null
@@ -160,7 +168,8 @@ config:
     http-channel-host-strategy: external-only
     humanization-strategy: simple
     index-update-thread-count: 2
-    install-analytics-database: true
+    jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
+    jdbc-data-warehouse-connection-pool-max-pending-checkouts: 0
     jdbc-data-warehouse-max-connection-pool-size: 15
     jdbc-network-timeout-ms: 1800000
     jwt-attribute-email: email
@@ -168,6 +177,7 @@ config:
     jwt-attribute-groups: groups
     jwt-attribute-lastname: last_name
     jwt-attribute-tenant: '@tenant'
+    jwt-attribute-tenant-attributes: '@tenant.attributes'
     jwt-enabled: false
     jwt-group-mappings: {}
     jwt-group-sync: false
@@ -197,11 +207,67 @@ config:
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
     license-token-missing-banner-dismissal-timestamp: []
-    load-analytics-content: true
+    llm-anthropic-api-base-url: https://api.anthropic.com
+    llm-anthropic-api-key: null
+    llm-anthropic-model: claude-opus-4-5-20251101
+    llm-azure-api-base-url: null
+    llm-azure-api-key: null
+    llm-azure-deployment-name: null
+    llm-azure-model-family: null
+    llm-bedrock-access-key-id: null
+    llm-bedrock-region: us-east-1
+    llm-bedrock-secret-access-key: null
+    llm-bedrock-session-token: null
+    llm-connection-timeout-ms: 10000
+    llm-deepseek-api-base-url: https://api.deepseek.com
+    llm-deepseek-api-key: null
+    llm-google-api-base-url: https://aiplatform.googleapis.com
+    llm-google-location: null
+    llm-google-oauth-access-token: null
+    llm-google-project-id: null
+    llm-google-service-account-key: null
+    llm-max-tokens: 4096
+    llm-metabot-provider: anthropic/claude-sonnet-4-6
+    llm-mini-model: null
+    llm-mistral-api-base-url: https://api.mistral.ai/v1
+    llm-mistral-api-key: null
+    llm-moonshot-api-base-url: https://api.moonshot.ai/v1
+    llm-moonshot-api-key: null
+    llm-openai-api-base-url: https://api.openai.com
+    llm-openai-api-key: null
+    llm-openai-model: gpt-5.4
+    llm-openrouter-api-base-url: https://openrouter.ai/api
+    llm-openrouter-api-key: null
+    llm-providers: []
+    llm-rate-limit-per-ip: 100
+    llm-rate-limit-per-user: 20
+    llm-request-timeout-ms: 120000
+    llm-vllm-api-base-url: null
+    llm-vllm-api-key: null
+    llm-vllm-request-timeout-ms: 300000
+    llm-zai-api-base-url: https://api.z.ai/api/paas/v4
+    llm-zai-api-key: null
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+    mcp-apps-cors-custom-origins: ''
+    mcp-apps-cors-enabled-clients: []
+    metabot-advanced-permissions: false
+    metabot-chat-system-prompt: ''
+    metabot-enabled: true
+    metabot-icon: metabot
+    metabot-limit-reset-rate: monthly
+    metabot-limit-unit: tokens
+    metabot-name: Metabot
+    metabot-nlq-system-prompt: ''
+    metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
+    metabot-recent-views-enabled: true
+    metabot-show-illustrations: true
+    metabot-slack-signing-secret: null
+    metabot-sql-system-prompt: ''
+    mfa-challenge-signing-key: null
+    mfa-enforcement: 'off'
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
@@ -212,19 +278,30 @@ config:
     not-behind-proxy: false
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
-    notification-temp-file-size-max-bytes: 10485760
     notification-thread-pool-size: 3
+    oidc-allowed-networks: allow-all
+    oidc-providers: []
+    oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
+    query-caching-early-refresh-ratio: 0.1
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
+    queue-backend: null
+    queue-max-retries: 5
+    queue-no-listener-max-age-ms: 86400000
     redirect-all-requests-to-https: false
     remote-sync-auto-import: false
     remote-sync-auto-import-rate: 5
+    remote-sync-branch: null
     remote-sync-check-changes-cache-ttl-seconds: 60
+    remote-sync-git-timeout-seconds: 60
     remote-sync-task-time-limit-ms: 300000
+    remote-sync-token: null
     remote-sync-transforms: false
+    remote-sync-type: read-only
+    remote-sync-url: null
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500
@@ -250,19 +327,18 @@ config:
     saml-keystore-path: null
     saml-slo-enabled: false
     saml-user-provisioning-enabled: true
+    scan-max-fields-per-table: 10000
     scim-enabled: null
     sdk-encryption-validation-key: null
     search-language: null
     search-typeahead-enabled: true
-    send-email-on-first-login-from-new-device: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
-    session-cookies: null
+    session-cookies: false
     session-timeout: null
     setup-embedding-autoenabled: false
     setup-license-active-at-setup: false
     show-database-syncing-modal: null
-    show-google-sheets-integration: null
     show-homepage-data: true
     show-homepage-xrays: true
     show-metabase-links: true
@@ -273,21 +349,34 @@ config:
     slack-app-token: null
     slack-bug-report-channel: metabase-bugs
     slack-connect-attribute-team-id: https://slack.com/team_id
-    slack-connect-authentication-mode: sso
+    slack-connect-authentication-mode: link-only
     slack-connect-client-id: null
     slack-connect-client-secret: null
     slack-connect-enabled: false
+    slack-connect-signing-secret-version: 0
     slack-connect-user-provisioning-enabled: true
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
+    sql-tools-parser-backend: sqlglot
     ssh-heartbeat-interval-sec: 180
     start-of-week: sunday
     subscription-allowed-domains: null
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
+    sync-max-fields-per-table: 10000
     synchronous-batch-updates: false
+    thread-interrupt-escalation-timeout-ms: 0
+    transform-run-job-sql-concurrency: 3
+    transform-timeout: 240
+    transforms-enabled: null
     unaggregated-query-row-limit: null
     uploads-settings: null
+    usage-metadata-enabled: false
+    usage-metadata-last-completed-day: null
+    usage-metadata-retention-days: 90
+    usage-metadata-schedule: 0 0 2 * * ? *
+    use-native-pivot-tables: false
     user-visibility: all
+    warehouse-allowed-networks: null
 ```

@@ -6,8 +6,11 @@
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.util :as lib.util]))
 
-(defn- param [field-name] (lib.parms.parse.types/param {:k field-name}))
-(defn- optional [& args] (lib.parms.parse.types/optional {:args (vec args)}))
+(defn- param [field-name]
+  {:lib/type ::lib.parms.parse.types/param, :k field-name})
+
+(defn- optional [& args]
+  {:lib/type ::lib.parms.parse.types/optional, :args (vec args)})
 
 (defn- normalize-tokens
   [tokens]
@@ -103,6 +106,14 @@
             "[[{{this}} -- and]] that" [(optional (param "this") " -- and") " that"]
             "SELECT /* \n --{{foo}} */ {{bar}}" ["SELECT /* \n --{{foo}} */ " (param "bar")]}
 
+           "-- inside {{...}} card ref tags should not trigger comment mode"
+           {"SELECT * FROM {{#35885-monthly-revenue--customer---replacement-}}"
+            ["SELECT * FROM " (param "#35885-monthly-revenue--customer---replacement-")]}
+
+           "/* */ inside {{...}} card ref tags should not trigger comment mode"
+           {"SELECT * FROM {{#1-revenue/*monthly*/}}"
+            ["SELECT * FROM " (param "#1-revenue/*monthly*/")]}
+
            "JSON queries that contain non-param fragments like '}}'"
            {"{x: {y: \"{{param}}\"}}"         ["{x: {y: \"" (param "param") "\"}}"]
             "{$match: {{{date}}, field: 1}}}" ["{$match: {" (param "date") ", field: 1}}}"]}
@@ -115,7 +126,6 @@
         (is (= expected
                (normalize-tokens (params.parse/parse s)))
             (lib.util/format "%s should get parsed to %s" (pr-str s) (pr-str expected))))))
-
   (testing "Testing that invalid/unterminated template lib.parms.parse.types/clauses throw an exception"
     (doseq [invalid ["select * from foo [[where bar = {{baz}} "
                      "select * from foo [[where bar = {{baz]]"
@@ -131,7 +141,6 @@
   (testing "SQL comments are ignored when handle-sql-comments = false, e.g. in Mongo driver queries"
     (doseq [[query result] [["{{{foo}}: -- {{bar}}}"
                              ["{" (param "foo") ": -- " (param "bar") "}"]]
-
                             ["{{{foo}}: \"/* {{bar}} */\"}"
                              ["{" (param "foo") ": \"/* " (param "bar") " */\"}"]]]]
       (is (= result (normalize-tokens (params.parse/parse query false)))))))

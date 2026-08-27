@@ -1,7 +1,8 @@
 (ns metabase.lib.schema.metadata.fingerprint
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (mr/def ::percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
@@ -22,12 +23,17 @@
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
   [:map
    {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-   [:min {:optional true} [:maybe number?]]
-   [:max {:optional true} [:maybe number?]]
-   [:avg {:optional true} [:maybe number?]]
-   [:q1  {:optional true} [:maybe number?]]
-   [:q3  {:optional true} [:maybe number?]]
-   [:sd  {:optional true} [:maybe number?]]])
+   [:min             {:optional true} [:maybe number?]]
+   [:max             {:optional true} [:maybe number?]]
+   [:avg             {:optional true} [:maybe number?]]
+   [:q1              {:optional true} [:maybe number?]]
+   [:q3              {:optional true} [:maybe number?]]
+   [:sd              {:optional true} [:maybe number?]]
+   [:skewness        {:optional true} [:maybe number?]]
+   [:excess-kurtosis {:optional true} [:maybe number?]]
+   [:mode-fraction   {:optional true} [:maybe [:ref ::percent]]]
+   [:top-3-fraction  {:optional true} [:maybe [:ref ::percent]]]
+   [:zero-fraction   {:optional true} [:maybe [:ref ::percent]]]])
 
 (mr/def ::fingerprint.text
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
@@ -37,20 +43,29 @@
    [:percent-url    {:optional true} [:maybe [:ref ::percent]]]
    [:percent-email  {:optional true} [:maybe [:ref ::percent]]]
    [:percent-state  {:optional true} [:maybe [:ref ::percent]]]
-   [:average-length {:optional true} [:maybe number?]]])
+   [:percent-blank  {:optional true} [:maybe [:ref ::percent]]]
+   [:average-length {:optional true} [:maybe number?]]
+   [:mode-fraction  {:optional true} [:maybe [:ref ::percent]]]
+   [:top-3-fraction {:optional true} [:maybe [:ref ::percent]]]])
 
 (mr/def ::fingerprint.temporal
   "Schema for fingerprint information for Fields deriving from `:type/Temporal`."
   [:map
    {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-   [:earliest {:optional true} [:maybe :string]]
-   [:latest   {:optional true} [:maybe :string]]])
+   [:earliest             {:optional true} [:maybe :string]]
+   [:latest               {:optional true} [:maybe :string]]
+   [:mode-fraction        {:optional true} [:maybe [:ref ::percent]]]
+   [:top-3-fraction       {:optional true} [:maybe [:ref ::percent]]]])
 
 (mr/def ::fingerprint.type-specific
   "Schema for type-specific fingerprint information."
   [:and
-   {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}
-   [:map-of ::lib.schema.common/base-type :map]
+   ;; the keys are base types, and prod has fingerprints stored under lower-cased ones (#63397), so normalize them
+   ;; here -- a `[:map-of ::lib.schema.common/base-type ...]` conjunct would do it too, but `:map-of` silently drops
+   ;; the entries it can't normalize instead of surfacing them
+   {:decode/normalize (fn [m]
+                        (some-> (lib.schema.common/normalize-map-no-kebab-case m)
+                                (perf/update-keys lib.schema.common/normalize-base-type)))}
    [:map
     [:type/Number   {:optional true} [:ref ::fingerprint.number]]
     [:type/Text     {:optional true} [:ref ::fingerprint.text]]

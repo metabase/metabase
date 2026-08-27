@@ -1,36 +1,127 @@
 name: Loki Visual Stress Test Flake Fix
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'frontend/**/*.stories.tsx'
+      - 'enterprise/frontend/**/*.stories.tsx'
   workflow_dispatch:
     inputs:
-      stories_filter:
-        description: "Regex pattern to filter stories (e.g. 'DataGrid' or 'static-viz|viz')"
+      story_files:
+        description: "Comma-separated story file paths relative to repo root"
         type: string
         required: true
       burn_in:
-        description: "Number of times to run the test (e.g. 50)"
+        description: "Number of times to run the test (e.g. 10)"
         type: string
         required: true
-        default: "50"
+        default: "10"
 
 jobs:
+  detect-changed-stories:
+    name: Detect changed stories
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      story_files: ${{ steps.detect.outputs.story_files }}
+      should_run: ${{ steps.detect.outputs.should_run }}
+    steps:
+      - name: Detect changed story files
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          validate_paths() {
+            local files="$1"
+            for file in $(echo "$files" | tr ',' '\n'); do
+              file=$(echo "$file" | xargs)  # trim whitespace
+              if [[ -z "$file" ]]; then
+                continue
+              fi
+              if [[ ! "$file" =~ ^(frontend/|enterprise/frontend/).+\.stories\. ]]; then
+                echo "::error::Invalid story path: $file"
+                echo "Paths must start with 'frontend/' or 'enterprise/frontend/' and contain '.stories.'"
+                return 1
+              fi
+            done
+            return 0
+          }
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            FILES=$(echo "${{ inputs.story_files }}" | tr ',' '\n' | xargs -n1 | paste -sd',')
+            if ! validate_paths "$FILES"; then
+              exit 1
+            fi
+            echo "story_files=$FILES" >> "$GITHUB_OUTPUT"
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          FILES=$( \
+            gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+              --paginate \
+              --jq '.[] | select(.status != "removed") | .filename' \
+            | grep '\.stories\.tsx$' \
+            | xargs -n1 \
+            | sort -u \
+            | paste -sd',' \
+          )
+
+          if [[ -z "$FILES" ]]; then
+            echo "No changed story files found"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! validate_paths "$FILES"; then
+            exit 1
+          fi
+
+          echo "Changed story files: $FILES"
+          echo "story_files=$FILES" >> "$GITHUB_OUTPUT"
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+
   workflow-summary:
-    name: Stress test inputs
-    runs-on: ubuntu-22.04
+    name: Summary
+    needs: detect-changed-stories
+    if: needs.detect-changed-stories.outputs.should_run == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          STORY_FILES: ${{ needs.detect-changed-stories.outputs.story_files }}
+          BURN_IN: ${{ inputs.burn_in || 10 }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_ACTOR: ${{ github.event.pull_request.user.login }}
+          ACTOR: ${{ github.actor }}
         run: |
-          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `stories_filter`: ${{ inputs.stories_filter }}' >> $GITHUB_STEP_SUMMARY
-          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+          {
+            echo '## Loki Stress Test'
+            echo ''
+            echo "**Branch:** \`${BRANCH_NAME}\`"
+            echo ''
+            echo '**Story files:**'
+            echo "${STORY_FILES}" | tr ',' '\n' | while read -r file; do
+              echo "- \`$file\`"
+            done
+            echo ''
+            echo "**Burn-in:** ${BURN_IN} runs"
+            echo ''
+            if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+              echo "Triggered by PR #${PR_NUMBER} from @${PR_ACTOR}"
+            else
+              echo "Triggered manually by @${ACTOR}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
   stress-test-loki:
-    runs-on: ubuntu-latest
+    needs: detect-changed-stories
+    if: needs.detect-changed-stories.outputs.should_run == 'true'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     name: Stress test Loki visual tests
     services:
@@ -47,7 +138,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend
@@ -56,17 +147,23 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        run: NODE_ENV=development yarn build-pure:cljs
+        run: NODE_ENV=development bun run build-pure:cljs
 
-      - name: Build Storybook (once)
-        run: yarn build-storybook
+      - name: Build Storybook
+        run: bun run build-storybook
+        env:
+          STORYBOOK_STORIES_FILTER: ${{ needs.detect-changed-stories.outputs.story_files }}
 
-      - name: Stress-test Loki "${{ inputs.stories_filter }}" ${{ inputs.burn_in }} times
+      - name: Stress-test Loki
         run: |
-          BURN_IN=${{ inputs.burn_in }}
-          STORIES_FILTER='${{ inputs.stories_filter }}'
+          # Loki's output is piped through tee below, and a pipeline normally reports the exit status of its last command.
+          # Without this a failed loki run would look like a pass, because tee itself succeeded.
+          set -o pipefail
+          BURN_IN=${{ inputs.burn_in || '10' }}
+          STORY_FILES='${{ needs.detect-changed-stories.outputs.story_files }}'
 
-          echo "Running Loki visual tests $BURN_IN times for stories matching: $STORIES_FILTER"
+          echo "Story files: $STORY_FILES"
+          echo "Running Loki $BURN_IN times"
           echo ""
 
           FAILED=0
@@ -75,17 +172,19 @@ jobs:
             echo "Run $i of $BURN_IN"
             echo "=========================================="
 
-            if yarn test-visual:loki \
+            if bun run test-visual:loki \
               --reactUri file:./storybook-static \
-              --verboseRenderer \
-              --storiesFilter "$STORIES_FILTER"; then
+              --verboseRenderer 2>&1 | tee .loki-run.log; then
               echo "✅ Run $i passed"
+            elif grep -q 'No stories were found' .loki-run.log; then
+              echo "::notice::Every story in the changed files is loki-skipped, nothing to stress test"
+              exit 0
             else
               echo "❌ Run $i FAILED"
               FAILED=$((FAILED + 1))
 
-              mkdir -p .loki/failures/run-$i
-              cp -r .loki/difference/* .loki/failures/run-$i/ 2>/dev/null || true
+              mkdir -p ".loki/failures/run-$i"
+              cp -r .loki/difference/* ".loki/failures/run-$i/" 2>/dev/null || true
             fi
             echo ""
           done
@@ -101,12 +200,11 @@ jobs:
 
       - name: Generate Visual Report on Failure
         if: failure()
-        run: yarn test-visual:loki-report
+        run: bun run test-visual:loki-report
 
       - name: Upload Artifact
-        id: artifact-upload-step
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loki-stress-test-report
           include-hidden-files: true

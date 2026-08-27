@@ -1,11 +1,12 @@
 import type { Extension } from "@uiw/react-codemirror";
+import { useMemo } from "react";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 
 import type { CodeLanguage } from "./types";
 import { useExtensions } from "./utils";
 
-type Props = {
+export type CodeEditorProps = {
   className?: string;
   highlightRanges?: { start: number; end: number }[];
   id?: string;
@@ -31,7 +32,7 @@ export function CodeEditor({
   onChange,
   extensions: externalExtensions,
   ...rest
-}: Props) {
+}: CodeEditorProps) {
   const extensions = useExtensions({
     language,
     extensions: externalExtensions,
@@ -39,14 +40,19 @@ export function CodeEditor({
     proposedValue,
   });
 
+  const basicSetup = useMemo(
+    () => ({
+      lineNumbers,
+      foldGutter: false,
+      highlightActiveLine: false,
+      highlightActiveLineGutter: false,
+    }),
+    [lineNumbers],
+  );
+
   return (
     <CodeMirror
-      basicSetup={{
-        lineNumbers,
-        foldGutter: false,
-        highlightActiveLine: false,
-        highlightActiveLineGutter: false,
-      }}
+      basicSetup={basicSetup}
       className={className}
       extensions={extensions}
       id={id}

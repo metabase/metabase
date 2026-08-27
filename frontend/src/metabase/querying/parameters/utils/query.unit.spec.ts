@@ -1,25 +1,35 @@
 import { createMockMetadata } from "__support__/metadata";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
   columnFinder,
-  createQuery,
-  createQueryWithClauses,
+  createMetadataProvider,
 } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import type {
   ParameterTarget,
   ParameterType,
   ParameterValueOrArray,
 } from "metabase-types/api";
-import { createMockField } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockField,
+  createMockNativeDatasetQuery,
+  createMockParameter,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PRODUCTS,
+  SAMPLE_DB_ID,
   createOrdersTable,
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { applyParameter } from "./query";
+import { applyParameter, convertParametersToMbql } from "./query";
 
 type FilterParameterCase = {
   type: ParameterType;
@@ -58,9 +68,31 @@ const METADATA = createMockMetadata({
   ],
 });
 
+const PROVIDER = createMetadataProvider({ metadata: METADATA });
+
+const BASE_QUESTION = new Question(
+  createMockCard({
+    dataset_query: createMockStructuredDatasetQuery({
+      database: SAMPLE_DB_ID,
+      query: { "source-table": ORDERS_ID },
+    }),
+  }),
+  METADATA,
+);
+
+const NATIVE_QUESTION = new Question(
+  createMockCard({
+    dataset_query: createMockNativeDatasetQuery({
+      database: SAMPLE_DB_ID,
+      native: { query: "SELECT count(*) FROM orders" },
+    }),
+  }),
+  METADATA,
+);
+
 describe("applyParameter", () => {
   describe("filter parameters", () => {
-    const query = createQuery({ metadata: METADATA });
+    const query = Lib.createTestQuery(PROVIDER, DEFAULT_TEST_QUERY);
     const stageIndex = 0;
     const columns = Lib.filterableColumns(query, stageIndex);
     const findColumn = columnFinder(query, columns);
@@ -347,7 +379,9 @@ describe("applyParameter", () => {
     );
 
     it("should ignore parameters with stage index out of range (metabase#55678)", () => {
-      const query = Lib.appendStage(createQuery());
+      const query = Lib.appendStage(
+        Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+      );
       const stageIndex = 1;
       const column = Lib.filterableColumns(query, stageIndex)[0];
       const columnRef = Lib.legacyRef(query, stageIndex, column);
@@ -368,12 +402,18 @@ describe("applyParameter", () => {
   });
 
   describe("temporal unit parameters", () => {
-    const query = createQueryWithClauses({
-      breakouts: [
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
         {
-          tableName: "ORDERS",
-          columnName: "CREATED_AT",
-          temporalBucketName: "Month",
+          source: { type: "table", id: ORDERS_ID },
+          breakouts: [
+            {
+              type: "column",
+              name: "CREATED_AT",
+              sourceName: "ORDERS",
+              unit: "month",
+            },
+          ],
         },
       ],
     });
@@ -417,5 +457,43 @@ describe("applyParameter", () => {
         });
       },
     );
+  });
+});
+
+describe("convertParametersToMbql", () => {
+  it("should do nothing to a native question", () => {
+    expect(
+      convertParametersToMbql(NATIVE_QUESTION, { isComposed: false }),
+    ).toBe(NATIVE_QUESTION);
+  });
+
+  it("should convert a question with parameters into a new question with filters", () => {
+    const parameters = [
+      createMockParameter({
+        type: "string/starts-with",
+        name: "foo",
+        id: "foo_id",
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      }),
+      createMockParameter({
+        type: "string/=",
+        name: "bar",
+        id: "bar_id",
+        target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      }),
+    ];
+
+    const question = BASE_QUESTION.setParameters(parameters).setParameterValues(
+      {
+        foo_id: "abc",
+      },
+    );
+
+    const questionWithFilters = convertParametersToMbql(question, {
+      isComposed: false,
+    });
+
+    expect(Lib.stageCount(questionWithFilters.query())).toBe(1);
+    expect(Lib.filters(questionWithFilters.query(), -1)).toHaveLength(1);
   });
 });

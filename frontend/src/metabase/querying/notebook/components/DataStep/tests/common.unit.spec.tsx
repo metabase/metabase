@@ -1,19 +1,22 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
-import { fireEvent, getIcon, screen } from "__support__/ui";
-import { METAKEY } from "metabase/lib/browser";
-import { checkNotNull } from "metabase/lib/types";
-import type { IconName } from "metabase/ui";
+import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
+import { mockGetBoundingClientRect } from "__support__/utils";
+import { METAKEY } from "metabase/utils/browser";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
   columnFinder,
-  createQuery,
-  findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { CardType } from "metabase-types/api";
+import type { CardType, IconName } from "metabase-types/api";
+import { createMockSearchResult } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
   createSavedStructuredCard,
@@ -23,35 +26,58 @@ import { DEFAULT_QUESTION, createMockNotebookStep } from "../../../test-utils";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
+const findAggregationOperator = (
+  query: Lib.Query,
+  operatorShortName: string,
+) => {
+  const operators = Lib.availableAggregationOperators(query, 0);
+  const operator = operators.find(
+    (operator) =>
+      Lib.displayInfo(query, 0, operator).shortName === operatorShortName,
+  );
+  if (!operator) {
+    throw new Error(`Could not find aggregation operator ${operatorShortName}`);
+  }
+  return operator;
+};
+
 const createQueryWithFields = (columnNames: string[]) => {
-  const query = createQuery();
-  const findColumn = columnFinder(query, Lib.fieldableColumns(query, 0));
-  const columns = columnNames.map((name) => findColumn("ORDERS", name));
-  return Lib.withFields(query, 0, columns);
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        fields: columnNames.map((name) => ({
+          type: "column",
+          sourceName: "ORDERS",
+          name,
+        })),
+      },
+    ],
+  });
 };
 
 const createQueryWithAggregation = () => {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const count = findAggregationOperator(query, "count");
   const aggregation = Lib.aggregationClause(count);
   return Lib.aggregate(query, 0, aggregation);
 };
 
 const createQueryWithBreakout = () => {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const columns = Lib.breakoutableColumns(query, 0);
   const findColumn = columnFinder(query, columns);
   const column = findColumn("ORDERS", "TAX");
   return Lib.breakout(query, 0, column);
 };
 
-function setup(opts: SetupOpts = {}) {
+async function setup(opts: SetupOpts = {}) {
   return baseSetup({
     ...opts,
   });
 }
 
-const setupEmptyQuery = () => {
+const setupEmptyQuery = async () => {
   const question = Question.create({
     DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
   });
@@ -61,25 +87,34 @@ const setupEmptyQuery = () => {
 
 describe("DataStep", () => {
   const scrollBy = HTMLElement.prototype.scrollBy;
-  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  mockGetBoundingClientRect();
 
   beforeAll(() => {
     HTMLElement.prototype.scrollBy = jest.fn();
     // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
-    HTMLElement.prototype.getBoundingClientRect = jest
-      .fn()
-      .mockReturnValue({ height: 1, width: 1 });
+    // position fields are zeroed so floating-ui (Mantine popovers) does not
+    // compute a `NaN` offset from the otherwise-undefined `top`/`left`.
+    HTMLElement.prototype.getBoundingClientRect = jest.fn().mockReturnValue({
+      height: 1,
+      width: 1,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      x: 0,
+      y: 0,
+    });
   });
 
   afterAll(() => {
     HTMLElement.prototype.scrollBy = scrollBy;
-    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
 
     jest.resetAllMocks();
   });
 
   it("should render without a table selected", async () => {
-    setupEmptyQuery();
+    await setupEmptyQuery();
 
     expect(await screen.findByTestId("mini-picker")).toBeInTheDocument(); // popover
     expect(
@@ -87,8 +122,8 @@ describe("DataStep", () => {
     ).toBeInTheDocument(); // search input
   });
 
-  it("should render with a selected table", () => {
-    setup();
+  it("should render with a selected table", async () => {
+    await setup();
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(getIcon("table")).toBeInTheDocument();
@@ -104,7 +139,7 @@ describe("DataStep", () => {
   it.each<{ type: CardType; icon: IconName }>([
     { type: "question", icon: "table2" },
     { type: "model", icon: "model" },
-  ])("should render with a selected card", ({ type, icon }) => {
+  ])("should render with a selected card", async ({ type, icon }) => {
     const card = createSavedStructuredCard({
       id: 1,
       type,
@@ -121,14 +156,14 @@ describe("DataStep", () => {
       ),
     );
     const step = createMockNotebookStep({ query });
-    setup({ step });
+    await setup({ step });
 
     expect(screen.getByText(card.name)).toBeInTheDocument();
     expect(getIcon(icon)).toBeInTheDocument();
   });
 
   it("should change a table", async () => {
-    const { getNextTableName } = setup();
+    const { getNextTableName } = await setup();
 
     await userEvent.click(screen.getByText("Orders"));
     await userEvent.click(await screen.findByText("Products"));
@@ -138,7 +173,7 @@ describe("DataStep", () => {
 
   describe("fields selection", () => {
     it("should render with all columns selected", async () => {
-      setup();
+      await setup();
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).toBeChecked();
@@ -150,7 +185,7 @@ describe("DataStep", () => {
 
     it("should render with a single column selected", async () => {
       const query = createQueryWithFields(["ID"]);
-      setup({ step: createMockNotebookStep({ query }) });
+      await setup({ step: createMockNotebookStep({ query }) });
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
@@ -162,7 +197,7 @@ describe("DataStep", () => {
 
     it("should render with multiple columns selected", async () => {
       const query = createQueryWithFields(["ID", "TOTAL"]);
-      setup({ step: createMockNotebookStep({ query }) });
+      await setup({ step: createMockNotebookStep({ query }) });
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
@@ -177,7 +212,7 @@ describe("DataStep", () => {
     it("should allow selecting a column", async () => {
       const query = createQueryWithFields(["ID"]);
       const step = createMockNotebookStep({ query });
-      const { getNextColumn } = setup({ step });
+      const { getNextColumn } = await setup({ step });
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Tax"));
@@ -188,7 +223,7 @@ describe("DataStep", () => {
     });
 
     it("should allow de-selecting a column", async () => {
-      const { getNextColumn } = setup();
+      const { getNextColumn } = await setup();
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Tax"));
@@ -201,7 +236,7 @@ describe("DataStep", () => {
     it("should allow selecting all columns", async () => {
       const query = createQueryWithFields(["ID"]);
       const step = createMockNotebookStep({ query });
-      const { getNextColumn } = setup({ step });
+      const { getNextColumn } = await setup({ step });
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Select all"));
@@ -212,7 +247,7 @@ describe("DataStep", () => {
     });
 
     it("should leave one column when de-selecting all columns", async () => {
-      const { getNextQuery } = setup();
+      const { getNextQuery } = await setup();
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Select all"));
@@ -221,28 +256,28 @@ describe("DataStep", () => {
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
     });
 
-    it("should not display fields picker in read-only mode", () => {
-      setup({ readOnly: true });
+    it("should not display fields picker in read-only mode", async () => {
+      await setup({ readOnly: true });
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 
-    it("should not display fields picker until a table is selected", () => {
-      setupEmptyQuery();
+    it("should not display fields picker until a table is selected", async () => {
+      await setupEmptyQuery();
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 
-    it("should not display fields picker if a query has aggregations", () => {
+    it("should not display fields picker if a query has aggregations", async () => {
       const query = createQueryWithAggregation();
       const step = createMockNotebookStep({ query });
-      setup({ step });
+      await setup({ step });
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 
-    it("should not display fields picker if a query has breakouts", () => {
+    it("should not display fields picker if a query has breakouts", async () => {
       const query = createQueryWithBreakout();
       const step = createMockNotebookStep({ query });
-      setup({ step });
+      await setup({ step });
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
@@ -250,7 +285,7 @@ describe("DataStep", () => {
 
   describe("link to data source", () => {
     it("should show the tooltip on hover", async () => {
-      setup();
+      await setup();
 
       await userEvent.hover(screen.getByText("Orders"));
       expect(await screen.findByRole("tooltip")).toHaveTextContent(
@@ -259,15 +294,35 @@ describe("DataStep", () => {
     });
 
     it("should show a search input when no data is selected", async () => {
-      setupEmptyQuery();
+      await setupEmptyQuery();
 
       expect(
         await screen.findByPlaceholderText(/search for tables and more/i),
       ).toBeInTheDocument();
     });
 
-    it("meta click should open the data source in a new window", () => {
-      const { mockWindowOpen } = setup();
+    it("should exclude other users' personal collections from the inline data-source search", async () => {
+      await setupEmptyQuery();
+
+      await userEvent.type(
+        await screen.findByPlaceholderText(/search for tables and more/i),
+        "accounts",
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.callHistory.lastCall("path:/api/search")).toBeTruthy();
+      });
+
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
+      const url = new URL(checkNotNull(call?.request?.url));
+      expect(url.searchParams.get("context")).toBe("data-picker");
+      expect(url.searchParams.get("filter_items_in_personal_collection")).toBe(
+        "exclude-others",
+      );
+    });
+
+    it("meta click should open the data source in a new window", async () => {
+      const { mockWindowOpen } = await setup();
 
       const dataSource = screen.getByText("Orders");
       fireEvent.click(dataSource, { metaKey: true });
@@ -276,8 +331,8 @@ describe("DataStep", () => {
       mockWindowOpen.mockClear();
     });
 
-    it("ctrl click should open the data source in a new window", () => {
-      const { mockWindowOpen } = setup();
+    it("ctrl click should open the data source in a new window", async () => {
+      const { mockWindowOpen } = await setup();
 
       const dataSource = screen.getByText("Orders");
       fireEvent.click(dataSource, { ctrlKey: true });
@@ -286,8 +341,8 @@ describe("DataStep", () => {
       mockWindowOpen.mockClear();
     });
 
-    it("middle click should open the data source in a new window", () => {
-      const { mockWindowOpen } = setup();
+    it("middle click should open the data source in a new window", async () => {
+      const { mockWindowOpen } = await setup();
 
       const dataSource = screen.getByText("Orders");
       const middleClick = new MouseEvent("auxclick", {
@@ -302,7 +357,7 @@ describe("DataStep", () => {
     });
 
     it("regular click should open the mini picker", async () => {
-      const { mockWindowOpen } = setup();
+      const { mockWindowOpen } = await setup();
 
       const dataSource = screen.getByText("Orders");
 
@@ -314,11 +369,30 @@ describe("DataStep", () => {
   });
 
   describe("metrics", () => {
+    it("should hide metrics from the mini picker", async () => {
+      const step = createMockNotebookStep({
+        question: DEFAULT_QUESTION.setType("metric"),
+      });
+      const existingMetric = createMockSearchResult({
+        name: "Existing metric",
+        model: "metric",
+      });
+      await setup({ step, searchItems: [existingMetric] });
+
+      await userEvent.click(screen.getByText("Orders"));
+      await userEvent.type(
+        screen.getByPlaceholderText(/search for tables and more/i),
+        "Existing metric",
+      );
+
+      expect(screen.queryByText("Existing metric")).not.toBeInTheDocument();
+    });
+
     it("should automatically aggregate by count for metrics", async () => {
       const step = createMockNotebookStep({
         question: DEFAULT_QUESTION.setType("metric"),
       });
-      const { getNextQuery } = setup({ step });
+      const { getNextQuery } = await setup({ step });
 
       await userEvent.click(screen.getByText("Orders"));
       await userEvent.click(await screen.findByText("Products"));
@@ -336,7 +410,7 @@ describe("DataStep", () => {
 
     it("should not automatically aggregate by count for non-metrics", async () => {
       const step = createMockNotebookStep();
-      const { getNextQuery } = setup({ step });
+      const { getNextQuery } = await setup({ step });
 
       await userEvent.click(screen.getByText("Orders"));
       await userEvent.click(await screen.findByText("Products"));

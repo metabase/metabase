@@ -64,6 +64,9 @@
                                  ^"[Ljava.lang.String;" cmd-array
                                  ^"[Ljava.lang.String;" env-array
                                  ^File (when dir (File. ^String dir)))]
+    ;; Close child stdin so subprocesses that read from it see EOF immediately
+    ;; instead of blocking forever on the JVM-owned pipe.
+    (.close (.getOutputStream proc))
     (with-open [out-reader (BufferedReader. (InputStreamReader. (.getInputStream proc)))
                 err-reader (BufferedReader. (InputStreamReader. (.getErrorStream proc)))]
       (let [exit-code (future (.waitFor proc))

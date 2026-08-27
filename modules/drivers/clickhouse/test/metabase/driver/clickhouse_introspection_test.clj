@@ -1,9 +1,11 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-introspection-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-introspection-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.clickhouse-introspection-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse]
@@ -442,29 +444,30 @@
 (deftest clickhouse-filtered-aggregate-functions-test-table-metadata
   (mt/test-driver :clickhouse
     (mt/dataset introspection_db
-      (is (= {:name "aggregate_functions_filter_test"
-              :fields #{(merge base-field
-                               {:name "id",
-                                :database-type "Int32",
-                                :base-type :type/Integer,
+      (is (=? {:name   "aggregate_functions_filter_test"
+               :fields [(merge base-field
+                               {:name              "id"
+                                :database-type     "Int32"
+                                :base-type         :type/Integer
                                 :database-required true
                                 :database-position 0})
                         (merge base-field
-                               {:name "idx"
-                                :database-type "UInt8"
-                                :base-type :type/Integer
+                               {:name              "idx"
+                                :database-type     "UInt8"
+                                :base-type         :type/Integer
                                 :database-position 1})
                         (merge base-field
-                               {:name "lowest_value"
-                                :database-type "SimpleAggregateFunction(min, UInt8)"
-                                :base-type :type/Integer
+                               {:name              "lowest_value"
+                                :database-type     "SimpleAggregateFunction(min, UInt8)"
+                                :base-type         :type/Integer
                                 :database-position 3})
                         (merge base-field
-                               {:name "count"
-                                :database-type "SimpleAggregateFunction(sum, Int64)"
-                                :base-type :type/BigInteger
-                                :database-position 4})}}
-             (driver/describe-table :clickhouse (mt/db) {:name "aggregate_functions_filter_test"}))))))
+                               {:name              "count"
+                                :database-type     "SimpleAggregateFunction(sum, Int64)"
+                                :base-type         :type/BigInteger
+                                :database-position 4})]}
+              (-> (driver/describe-table :clickhouse (mt/db) {:name "aggregate_functions_filter_test"})
+                  (update :fields (partial sort-by :database-position))))))))
 
 (deftest clickhouse-filtered-aggregate-functions-test-result-set
   (mt/test-driver :clickhouse
@@ -510,17 +513,18 @@
                                               :clickhouse :db
                                               {:database-name "default"})
                                              {:db-filters-type "all"})}]
-        (let [describe-result (driver/describe-database :clickhouse db)]
+        (let [describe-result (driver/describe-database :clickhouse db)
+              tables          (into #{} (:tables describe-result))]
           ;; check the existence of at least some test tables here
           (doseq [table test-tables]
-            (is (contains? (:tables describe-result) table)))
+            (is (contains? tables table)))
           ;; should not contain any ClickHouse system tables
           (is (not (some #(= (:schema %) "system")
-                         (:tables describe-result))))
+                         tables)))
           (is (not (some #(= (:schema %) "information_schema")
-                         (:tables describe-result))))
+                         tables)))
           (is (not (some #(= (:schema %) "INFORMATION_SCHEMA")
-                         (:tables describe-result)))))))))
+                         tables))))))))
 
 (deftest ^:parallel clickhouse-describe-database-multiple
   (mt/test-driver :clickhouse
@@ -567,7 +571,6 @@
                         (catch Throwable _e
                           ::thrown)))
                 "Sync should not throw an exception when encountering a parameterized view")
-
             ;; Verify that the table AFTER the problematic view was still synced
             (let [table-after (t2/select-one :model/Table :db_id (u/the-id db) :name "table_after_view")]
               (is (some? table-after)
@@ -583,5 +586,3 @@
                [(format "DROP VIEW IF EXISTS %s.parameterized_view" db-name)
                 (format "DROP TABLE IF EXISTS %s.table_after_view" db-name)]
                details))))))))
-
-

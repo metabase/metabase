@@ -1,8 +1,10 @@
 (ns metabase.channel.impl.http-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.channel.impl.http-test]}}}}}}
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [compojure.core :as compojure]
    [compojure.route :as compojure.route]
    [metabase.channel.core :as channel]
@@ -12,6 +14,7 @@
    [metabase.server.middleware.json :as mw.json]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [ring.adapter.jetty :as jetty]
    [ring.middleware.params :refer [wrap-params]]
    [toucan2.core :as t2])
@@ -49,7 +52,13 @@
    handler
    middlewares))
 
-(def middlewares [mw.json/wrap-json-body
+(defn- wrap-keywordize-json-body
+  [handler]
+  (fn [req]
+    (handler (update req :body #(cond-> % (map? %) walk/keywordize-keys)))))
+
+(def middlewares [wrap-keywordize-json-body
+                  mw.json/wrap-json-body
                   mw.json/wrap-streamed-json-response
                   wrap-params])
 
@@ -151,7 +160,6 @@
                             (can-connect? {:url         (str url (:path route))
                                            :auth-method "none"
                                            :method      "get"}))]
-
         (testing "connect successfully with 200"
           (is (true? (can-connect?* get-200))))
         (testing "connect successfully with 302 redirect to 200"
@@ -182,7 +190,6 @@
                                   :method      "get"
                                   :auth-method "header"
                                   :auth-info   {:x-api-key "SECRET"}}))))
-
       (testing "fail to connect with header auth"
         (is (= {:request-status 401
                 :request-body   "Unauthorized"}
@@ -244,15 +251,12 @@
       (is (= {:errors {:url [(deferred-tru "value must be a valid URL.")]}}
              (exception-data (can-connect? {:url         "not-an-url"
                                             :auth-method "none"})))))
-
     (testing "testing missing auth-method"
       (is (= {:errors {:auth-method ["missing required key"]}}
              (exception-data (can-connect? {:url "https://www.secret_service.xyz"})))))
-
     (testing "include undefined key"
       (is (=? {:errors {:xyz ["disallowed key"]}}
               (exception-data (can-connect? {:xyz "hello world"})))))
-
     (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
       (with-server [url [get-400]]
         (is (= {:request-body   "Bad request"
@@ -260,7 +264,6 @@
                (exception-data (can-connect? {:url         (str url (:path get-400))
                                               :method      "get"
                                               :auth-method "none"})))))
-
       (with-server [url [(make-route :get "/test_http_channel_400"
                                      (fn [_]
                                        {:status 400
@@ -285,7 +288,6 @@
                       {:method       :get
                        :url          "https://www.secret_service.xyz"})
                (first @requests)))))
-
     (testing "default method is post"
       (with-captured-http-requests [requests]
         (channel/send! {:type    :channel/http
@@ -296,7 +298,6 @@
                       {:method       :post
                        :url          "https://www.secret_service.xyz"})
                (first @requests)))))
-
     (testing "preserves req headers when use auth-method=:header"
       (with-captured-http-requests [requests]
         (channel/send! {:type    :channel/http
@@ -311,7 +312,6 @@
                        :headers      {:Authorization "Bearer 123"
                                       :X-Request-Id "123"}})
                (first @requests)))))
-
     (testing "preserves req query-params when use auth-method=:query-param"
       (with-captured-http-requests [requests]
         (channel/send! {:type    :channel/http
@@ -326,6 +326,58 @@
                        :query-params {:token "123"
                                       :page 1}})
                (first @requests)))))))
+
+(deftest send!-humanized-invalid-url-test
+  (mu/disable-enforcement
+    (testing "a missing webhook URL throws a human-readable error rather than an NPE (#76802)"
+      (doseq [channel [{:type :channel/http}
+                       {:type :channel/http :details {}}
+                       {:type :channel/http :details {:url "" :auth-method "none"}}]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"No URL is configured for this webhook"
+                              (channel/send! channel nil)))))
+    (testing "an unparseable webhook URL throws a human-readable error (#76802)"
+      (mt/with-temporary-setting-values [http-channel-host-strategy :external-only]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid webhook URL"
+                              (channel/send! {:type    :channel/http
+                                              :details {:url "not-a-url" :auth-method "none"}}
+                                             nil)))))))
+
+(deftest send!-rejects-any-local-ula-cgnat-test
+  (testing "under :external-only, hosts the old valid-host? let through -- any-local (0.0.0.0 / [::]),
+           IPv6 ULA, IPv4 CGNAT -- are rejected up front"
+    (mt/with-temporary-setting-values [http-channel-host-strategy :external-only]
+      (doseq [host ["0.0.0.0" "[::]" "[fc00::1]" "100.64.0.1"]]
+        (testing host
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"internal hosting metadata are prohibited"
+               (channel/send! {:type    :channel/http
+                               :details {:url (str "http://" host ":80/") :auth-method "none"}}
+                              {}))))))))
+
+(deftest send!-attaches-dns-resolver-test
+  (testing "a connection-time SSRF :dns-resolver is attached for restrictive policies, but not for :allow-all"
+    ;; 8.8.8.8 is a public IP literal, so the up-front check needs no DNS lookup
+    (doseq [[strategy resolver?] [[:allow-all false]
+                                  [:allow-private true]
+                                  [:external-only true]]]
+      (with-captured-http-requests [requests]
+        (mt/with-temporary-setting-values [http-channel-host-strategy strategy]
+          (channel/send! {:type :channel/http
+                          :details {:url         "https://8.8.8.8"
+                                    :auth-method "none"
+                                    :method      "get"}}
+                         {:url          "http://127.0.0.1/"
+                          :dns-resolver ::caller-supplied}))
+        ;; unrelated background http/request calls can land in the atom too (Clojure conveys the
+        ;; `binding` into async tasks), so pick out our request by URL rather than assuming it is first
+        (let [req (first (filter #(= "https://8.8.8.8" (:url %)) @requests))]
+          (is (some? req) "the rendered request cannot override the configured webhook URL")
+          (is (= resolver? (some? (:dns-resolver req)))
+              (str strategy " controls whether the policy DNS resolver is present"))
+          (is (not= ::caller-supplied (:dns-resolver req))
+              "the rendered request cannot override the policy DNS resolver"))))))
 
 (deftest alert-http-channel-e2e-test
   (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]

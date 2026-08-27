@@ -1,7 +1,5 @@
 import type { BaseChartSettingsProps } from "../BaseChartSettings/types";
-import type { CommonChartSettingsProps, Widget } from "../types";
+import type { CommonChartSettingsProps } from "../types";
 
-export type QuestionChartSettingsProps = {
-  widgets?: Widget[];
-} & CommonChartSettingsProps &
+export type QuestionChartSettingsProps = CommonChartSettingsProps &
   Pick<BaseChartSettingsProps, "initial" | "computedSettings" | "question">;

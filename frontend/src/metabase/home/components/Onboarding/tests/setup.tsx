@@ -1,12 +1,19 @@
-import { Route } from "react-router";
-
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupBugReportingDetailsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupPropertiesEndpoints,
+  setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
+import type { ChecklistItemValue } from "metabase/redux/store";
+import {
+  createMockAppState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -14,20 +21,14 @@ import {
   createMockTokenStatus,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockAppState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { Onboarding } from "../Onboarding";
-import type { ChecklistItemValue } from "../types";
 
 export type SetupProps = {
   isAdmin?: boolean;
-  applicationName?: string;
-  enableXrays?: boolean;
-  hasExampleDashboard?: boolean;
-  isHosted?: boolean;
+  isAnalyst?: boolean;
+  canWriteToCollections?: boolean;
+  aiFeaturesEnabled?: boolean;
   openItem?: ChecklistItemValue;
   showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
@@ -36,10 +37,9 @@ export type SetupProps = {
 
 export const setup = ({
   isAdmin = true,
-  applicationName,
-  enableXrays = true,
-  hasExampleDashboard = true,
-  isHosted = false,
+  isAnalyst = false,
+  canWriteToCollections = true,
+  aiFeaturesEnabled = true,
   openItem,
   showMetabaseLinks = true,
   tokenFeatures = {},
@@ -48,18 +48,23 @@ export const setup = ({
   const hasTokenFeatures = Object.entries(tokenFeatures).length > 0;
   setupPropertiesEndpoints(createMockSettings());
   setupBugReportingDetailsEndpoint();
+  // The AI item's "Connect to an AI provider" modal reads admin settings.
+  setupSettingsEndpoints([]);
+  setupLlmProvidersEndpoint();
+  setupLlmProviderTypesEndpoint();
   const state = createMockState({
     app: createMockAppState({
       tempStorage: {
         "last-opened-onboarding-checklist-item": openItem,
       },
     }),
-    currentUser: createMockUser({ is_superuser: isAdmin }),
+    currentUser: createMockUser({
+      is_superuser: isAdmin,
+      is_data_analyst: isAnalyst,
+      can_write_any_collection: canWriteToCollections,
+    }),
     settings: mockSettings({
-      "application-name": applicationName,
-      "enable-xrays": enableXrays,
-      "example-dashboard-id": hasExampleDashboard ? 1 : null,
-      "is-hosted?": isHosted,
+      "ai-features-enabled?": aiFeaturesEnabled,
       "show-metabase-links": showMetabaseLinks,
       "token-features": createMockTokenFeatures(tokenFeatures),
       "token-status": hasTokenFeatures
@@ -72,12 +77,16 @@ export const setup = ({
     setupEnterpriseOnlyPlugin(plugin);
   });
 
-  renderWithProviders(
-    <Route path="/getting-started" component={Onboarding} />,
+  // `store` lets a test assert on actions whose effect is rendered by the
+  // app-level modal host, which lives outside this page's tree.
+  const { store } = renderWithProviders(
+    <Route path="/getting-started" element={<Onboarding />} />,
     {
       initialRoute: "/getting-started",
       storeInitialState: state,
       withRouter: true,
     },
   );
+
+  return { store };
 };

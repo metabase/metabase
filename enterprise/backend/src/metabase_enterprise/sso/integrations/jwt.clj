@@ -39,7 +39,7 @@
 (defn jwt->session
   "Given a JWT, return a valid session token for the associated user (creating the user if necessary)."
   [jwt request]
-  (-> (session-data jwt request) :session :key))
+  (-> (session-data jwt (assoc request :token-exchange? true)) :session :key))
 
 (defn- throw-react-sdk-embedding-disabled
   []
@@ -71,13 +71,15 @@
           (when redirect
             (str return-to-param redirect))))))
 
-(defmethod sso.i/sso-get :jwt
-  [{{:keys [jwt redirect]} :params, :as request}]
+(defn- handle-jwt-sso-request
+  [request]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
-  (let [result (session-data jwt request)
+  (let [jwt (sso.i/request-jwt request)
+        result (session-data jwt request)
         is-react-sdk? (embed.util/has-react-sdk-header? request)
         is-embedded-analytics-js? (embed.util/has-embedded-analytics-js-header? request)
-        is-modular-embedding? (or is-react-sdk? is-embedded-analytics-js?)]
+        is-modular-embedding? (or is-react-sdk? is-embedded-analytics-js?)
+        redirect (get-in request [:params :redirect])]
     (cond
       ;; Embedding feature checks
       (and is-react-sdk? (not (embed.settings/enable-embedding-sdk)))
@@ -104,8 +106,10 @@
       :else
       (redirect-to-idp (sso-settings/jwt-identity-provider-uri) redirect))))
 
+(defmethod sso.i/sso-get :jwt
+  [request]
+  (handle-jwt-sso-request request))
+
 (defmethod sso.i/sso-post :jwt
-  [_]
-  (throw
-   (ex-info (tru "POST not valid for JWT SSO requests")
-            {:status "error-post-jwt-not-valid" :status-code 501})))
+  [request]
+  (handle-jwt-sso-request request))

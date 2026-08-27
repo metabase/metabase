@@ -9,11 +9,13 @@ function _ToolbarButton(
   {
     label,
     icon,
+    iconUrl,
     isHighlighted,
     ...buttonProps
   }: {
     label: ReactNode;
     icon?: IconName;
+    iconUrl?: string;
     isHighlighted?: boolean;
   } & ButtonProps,
   ref: Ref<HTMLButtonElement>,
@@ -22,7 +24,13 @@ function _ToolbarButton(
     <Button
       ref={ref}
       variant={isHighlighted ? "filled" : "subtle"}
-      leftSection={icon ? <Icon name={icon} /> : undefined}
+      leftSection={
+        iconUrl ? (
+          <img src={iconUrl} alt="" width={16} height={16} />
+        ) : icon ? (
+          <Icon name={icon} aria-hidden />
+        ) : undefined
+      }
       py="sm"
       px="md"
       {...buttonProps}

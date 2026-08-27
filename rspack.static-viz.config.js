@@ -3,6 +3,9 @@ const YAML = require("json-to-pretty-yaml");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 
 const { WEBPACK_BUNDLE } = require("./frontend/build/shared/constants");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
@@ -26,14 +29,21 @@ module.exports = (env) => {
     context: SRC_PATH,
 
     performance: {
-      hints: false,
+      // The static-viz bundle runs inside the backend's GraalVM context, so its size is
+      // a startup-time and memory cost. Fail the build if it grows past the budget -
+      // sudden growth almost always means app code (metabase/ui, api, metabase-lib) leaked in.
+      // Dev builds use the unminified cljs_dev output, so the budget only applies to
+      // production builds.
+      hints: devMode ? false : "error",
+      maxAssetSize: 3.5 * 1024 * 1024,
+      maxEntrypointSize: 3.5 * 1024 * 1024,
     },
 
     entry: {
       "lib-static-viz": {
-        import: "./static-viz/index.js",
+        import: "./app-static-viz.ts",
         library: {
-          name: "StaticViz",
+          name: "MetabaseStaticViz",
           type: "var",
         },
       },
@@ -43,11 +53,12 @@ module.exports = (env) => {
       path: BUILD_PATH + "/app/dist",
       filename: "[name].bundle.js",
       publicPath: "/app/dist",
-      globalObject: "{}",
+      globalObject: "globalThis",
     },
 
     module: {
       rules: [
+        SIDE_EFFECT_FREE_RULE,
         {
           test: /\.css$/i,
           use: "null-loader",
@@ -76,8 +87,8 @@ module.exports = (env) => {
                   },
                 },
 
-                sourceMaps: true,
-                minify: false, // produces same bundle size, but cuts 1s locally
+                sourceMaps: false,
+                minify: true,
                 env: {
                   targets: ["defaults"],
                 },
@@ -112,7 +123,7 @@ module.exports = (env) => {
       ],
     },
     resolve: {
-      extensions: [".web.js", ".js", ".jsx", ".ts", ".tsx"],
+      extensions: [".js", ".jsx", ".ts", ".tsx"],
       alias: {
         assets: ASSETS_PATH,
         metabase: SRC_PATH,
@@ -127,17 +138,18 @@ module.exports = (env) => {
         "ee-overrides":
           process.env.MB_EDITION === "ee"
             ? ENTERPRISE_SRC_PATH + "/static-viz-overrides"
-            : SRC_PATH + "/lib/noop",
+            : SRC_PATH + "/utils/noop",
       },
       fallback: {
         crypto: require.resolve("crypto-browserify"),
         stream: require.resolve("stream-browserify"),
         buffer: require.resolve("buffer/"),
         process: require.resolve("process/browser"),
+        querystring: require.resolve("querystring-es3"),
       },
     },
     optimization: {
-      minimize: false,
+      minimize: true,
     },
     plugins: [
       new rspack.EnvironmentPlugin({

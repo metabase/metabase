@@ -95,7 +95,7 @@ You can think of semantic types as adding meaning and context to a field to comm
 
 ## Editing data and semantic types
 
-Admins, and people with [permission to manage table metadata](../permissions/data.md#manage-table-metadata-permissions), can cast data types and edit semantic types in the Admin settings' Table Metadata tab.
+Admins, and people with [permission to manage table metadata](../permissions/data.md#manage-table-metadata-permissions), can cast data types and edit semantic types in the Admin's Table Metadata tab.
 
 ### Cast data types
 

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { Route } from "react-router";
 
 import {
   setupAutoDashboardEndpoints,
@@ -12,12 +11,13 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
+import { Route } from "metabase/router";
 import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { AutomaticDashboardApp } from "./AutomaticDashboardApp";
 
@@ -38,7 +38,7 @@ const setup = async () => {
   setupDatabaseListEndpoint([TEST_DATABASE_WITH_ACTIONS]);
 
   renderWithProviders(
-    <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />,
+    <Route path="/auto/dashboard/*" element={<AutomaticDashboardApp />} />,
     {
       withRouter: true,
       initialRoute: `/auto/dashboard/table/${dashboardId}`,

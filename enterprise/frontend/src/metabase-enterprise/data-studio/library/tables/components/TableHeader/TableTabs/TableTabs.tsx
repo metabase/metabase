@@ -1,14 +1,12 @@
-import type { Location } from "history";
 import { t } from "ttag";
 
 import {
-  type PaneHeaderTab,
-  PaneHeaderTabs,
-} from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+  type PillTab,
+  PillTabNavigation,
+} from "metabase/common/components/PillTabNavigation";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { getLocation } from "metabase/selectors/routing";
+import { type Location, useLocation } from "metabase/router";
+import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
 type TableTabsProps = {
@@ -16,13 +14,16 @@ type TableTabsProps = {
 };
 
 export function TableTabs({ table }: TableTabsProps) {
-  const location = useSelector(getLocation);
+  const location = useLocation();
   const tabs = getTabs(table, location);
-  return <PaneHeaderTabs tabs={tabs} />;
+  return <PillTabNavigation tabs={tabs} />;
 }
 
-function getTabs(table: Table, location: Location): PaneHeaderTab[] {
-  const tabs: PaneHeaderTab[] = [];
+function getTabs(
+  table: Table,
+  location: Omit<Location, "query" | "action">,
+): PillTab[] {
+  const tabs: PillTab[] = [];
 
   tabs.push({
     label: t`Overview`,

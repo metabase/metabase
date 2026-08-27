@@ -8,6 +8,8 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collection]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -22,6 +24,12 @@
    [:database_ids {:optional true} [:sequential ms/PositiveInt]]
    [:schema_ids {:optional true} [:sequential :string]]
    [:table_ids {:optional true} [:sequential ms/PositiveInt]]])
+
+(mr/def ::publish-table-selectors
+  [:merge
+   ::table-selectors
+   [:map
+    [:collection_id ms/PositiveInt]]])
 
 (mu/defn ^:private table-selectors->filter
   [{:keys [database_ids table_ids schema_ids]}]
@@ -44,7 +52,13 @@
   (if (empty? tables)
     #{}
     (let [input-table-id  (keyword (name input-field) "table_id")
-          output-table-id (keyword (name output-field) "table_id")]
+          output-table-id (keyword (name output-field) "table_id")
+          not-in-tables   (if (map? tables)
+                            [:not [:exists (-> tables
+                                               (assoc :select [1])
+                                               (update :where (fn [where]
+                                                                [:and where [:= :id output-table-id]])))]]
+                            [:not [:in output-table-id tables]])]
       (into #{} (map :table_id)
             (t2/reducible-query {:select [[output-table-id :table_id]]
                                  :from   [[(t2/table-name :model/Dimension) :dim]]
@@ -55,7 +69,7 @@
                                  :where  [:and
                                           [:= :dim.type "external"]
                                           [:in input-table-id tables]
-                                          [:not [:in output-table-id tables]]]})))))
+                                          not-in-tables]})))))
 
 (defn- upstream-table-ids
   "Given a table selector (set of IDs or subquery), find all tables that these tables depend on
@@ -72,7 +86,7 @@
 (defn- table-subquery
   "Create a subquery that selects table IDs matching the given WHERE clause."
   [where]
-  {:select [:id] :from [(t2/table-name :model/Table)] :where where})
+  ^:allow-subquery {:select [:id] :from [(t2/table-name :model/Table)] :where where})
 
 (defn- traverse-graph
   "Recursively traverse the remapping graph starting from initial-ids.
@@ -106,6 +120,28 @@
       #{}
       (traverse-graph downstream-table-ids initial-ids))))
 
+;;; ------------------------------------------------ Collection lifecycle hook ------------------------------------------------
+
+(defenterprise unpublish-downstream-fk-tables!
+  "When tables are unpublished because their Library collection was archived or deleted, also unpublish any tables that
+  depend on them via FK remapping (Dimensions), so implicit joins are not broken. Mirrors the force-unpublish behavior
+  of the `/unpublish-tables` endpoint. `seed-table-ids` are the tables that were just unpublished."
+  :feature :library
+  [seed-table-ids]
+  (when (seq seed-table-ids)
+    (let [downstream-ids      (all-downstream-table-ids [:in :id seed-table-ids])
+          table-ids-to-update (when (seq downstream-ids)
+                                (t2/select-pks-set :model/Table :id [:in downstream-ids] :is_published true))]
+      (when (seq table-ids-to-update)
+        (t2/update! :model/Table :id [:in table-ids-to-update]
+                    {:collection_id nil
+                     :is_published  false})
+        ;; Publish events for audit log and remote sync tracking
+        (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
+          (doseq [table updated-tables]
+            (events/publish-event! :event/table-unpublish {:object  table
+                                                           :user-id api/*current-user-id*})))))))
+
 ;;; ------------------------------------------------ Response Schemas ------------------------------------------------
 
 (mr/def ::publish-tables-response
@@ -113,32 +149,42 @@
   [:map
    [:target_collection [:maybe (ms/InstanceOf :model/Collection)]]])
 
+(defn- can-publish?
+  "Publishing a table means that it's now query-able by a new set of people. So we should not allow you to publish a
+  table if you don't *already* have permissions to query it - otherwise, maybe you can just publish it to circumvent your
+  lack of query permissions."
+  [table]
+  (and (mi/can-write? table) (mi/can-query? table)))
+
+(defn- can-publish-all-tables?
+  "This function returns `true` iff you have permission to publish every table passed."
+  [table-ids]
+  (every? can-publish? (when (seq table-ids)
+                         (t2/select :model/Table :id [:in table-ids]))))
+
 (api.macros/defendpoint :post "/publish-tables" :- ::publish-tables-response
   "Set collection for each of selected tables and all upstream dependencies recursively."
   [_route-params
    _query-params
-   body :- ::table-selectors]
+   body :- ::publish-table-selectors]
   (api/check-data-analyst)
-  (let [target-collection (api/let-404 [colls (seq (t2/select :model/Collection
-                                                              :type collection/library-data-collection-type
-                                                              {:limit 2}))]
-                            (if (next colls)
-                              (throw (ex-info (tru "Multiple library-data collections found.")
-                                              {:status-code 409}))
-                              (first colls)))
-        where             (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
-        upstream-ids      (all-upstream-table-ids where)
-        update-where      (if (seq upstream-ids)
-                            [:or where [:in :id upstream-ids]]
-                            where)
+  (let [target-collection  (api/check-404 (t2/select-one :model/Collection (:collection_id body)))
+        _                  (api/check-400 (= (:type target-collection) collection/library-data-collection-type)
+                                          (tru "Tables can only be published to Library/Data collections."))
+        where              (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
+        upstream-ids       (all-upstream-table-ids where)
+        ;; Don't move already-published upstream tables; only publish unpublished ones.
+        update-where       (if (seq upstream-ids)
+                             [:or where [:and [:in :id upstream-ids] [:= :is_published false]]]
+                             where)
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
-    (t2/query {:update (t2/table-name :model/Table)
-               :set    {:collection_id (:id target-collection)
-                        :is_published  true}
-               :where  update-where})
-    ;; Publish events for audit log and remote sync tracking
+    (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
+      (t2/update! :model/Table :id [:in table-ids-to-update]
+                  {:collection_id (:id target-collection)
+                   :is_published  true})
+      ;; Publish events for audit log and remote sync tracking
       (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-publish {:object  table
@@ -158,12 +204,12 @@
                           where)
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
-    (t2/query {:update (t2/table-name :model/Table)
-               :set    {:collection_id nil
-                        :is_published  false}
-               :where  update-where})
-    ;; Publish events for audit log and remote sync tracking
+    (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
+      (t2/update! :model/Table :id [:in table-ids-to-update]
+                  {:collection_id nil
+                   :is_published  false})
+      ;; Publish events for audit log and remote sync tracking
       (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
         (doseq [table updated-tables]
           (events/publish-event! :event/table-unpublish {:object  table

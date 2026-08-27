@@ -15,7 +15,7 @@
     (thunk)))
 
 (defmacro $ids
-  "MLv2 version of [[metabase.test/$ids]] that uses the [[metabase.lib.test-metadata]] rather than the application
+  "MBQL 5 version of [[metabase.test/$ids]] that uses the [[metabase.lib.test-metadata]] rather than the application
   database."
   {:style/indent :defn}
   ([form]
@@ -27,14 +27,15 @@
 ;;; TODO (Cam 6/13/25) -- rename this `mbql-4-query` or something so it's clear that it returns a legacy MBQL query and
 ;;; not MBQL 5
 (defmacro mbql-query
-  "MLv2 version of [[metabase.test/mbql-query]] that uses the [[metabase.lib.test-metadata]] rather than the application
-  database."
+  "MBQL 5 version of [[metabase.test/mbql-query]] that uses the [[metabase.lib.test-metadata]] rather than the
+  application database."
   {:style/indent :defn}
   ([table-name]
    `(mbql-query ~table-name {}))
 
   ([table-name inner-query]
    {:pre [(map? inner-query)]}
+   (assert (not (:type inner-query)) "Should be an inner-query, not an outer query")
    (do-with-bindings
     #(as-> inner-query <>
        (mbql-query-impl/parse-tokens table-name <>)

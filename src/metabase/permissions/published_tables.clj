@@ -14,7 +14,7 @@
   "Returns `:query-builder` permission if table is published and user has collection access.
   OSS implementation always returns nil - published tables only grant access in EE."
   metabase-enterprise.data-studio.permissions.published-tables
-  [_perm-type _table-id]
+  [_user-id _perm-type _table-id]
   nil)
 
 (defenterprise user-has-any-published-table-permission?
@@ -37,3 +37,20 @@
   metabase-enterprise.data-studio.permissions.published-tables
   [_table]
   false)
+
+(defenterprise published-table-visible-clause
+  "Returns a HoneySQL clause for published tables visible via collection permissions.
+  OSS implementation returns nil."
+  metabase-enterprise.data-studio.permissions.published-tables
+  [_table-id-column _user-info]
+  nil)
+
+(defenterprise published-table-perm-grant-rows
+  "Returns a HoneySQL SELECT producing (id, perm_type, perm_value) rows representing the permission
+  grants that published+visible-collection tables provide. Used as a UNION ALL branch in the
+  table_permissions CTE built by `visible-table-filter-with-cte`.
+
+  OSS implementation returns nil — published tables only grant access in EE."
+  metabase-enterprise.data-studio.permissions.published-tables
+  [_user-info _perm-types _active-only?]
+  nil)

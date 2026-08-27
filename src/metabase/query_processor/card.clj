@@ -13,7 +13,6 @@
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.core :as queries]
@@ -33,9 +32,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv select-keys not-empty]]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [mapv select-keys not-empty]]))
 
 (set! *warn-on-reflection* true)
 
@@ -118,8 +116,7 @@
                                           filter-stage-added?))
                                     lib/append-stage)
           query                   (-> query
-                                      ;; don't want default constraints overriding anything that's already there
-                                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                                      (dissoc :constraints :middleware)
                                       (m/assoc-some :constraints (not-empty constraints)
                                                     :parameters  (not-empty (cond-> parameters
                                                                               filter-stage-added? add-stage-to-temporal-unit-parameters))
@@ -143,8 +140,8 @@
   false)
 
 (mu/defn- card-template-tag-parameters
-  "Template tag parameters that have been specified for the query for Card with `card-id`, if any, returned as a map in
-  the format
+  "Template tag parameters that have been specified for the Card's `query` (`:dataset_query`), if any, returned as a map
+  in the format
 
     {\"template_tag_parameter_name\" :parameter-type, ...}
 
@@ -154,8 +151,8 @@
   Parameter type in this case is something like `:string` or `:number` or `:date/month-year`; parameters passed in as
   parameters to the API request must be allowed for this type (i.e. `:string/=` is allowed for a `:string` parameter,
   but `:number/=` is not)."
-  [card-id :- ::lib.schema.id/card]
-  (let [query (api/check-404 (t2/select-one-fn :dataset_query :model/Card :id card-id))]
+  [query :- [:maybe ::lib.schema/query]]
+  (let [query (api/check-404 query)]
     (into
      {}
      (keep (fn [[param-name {widget-type :widget-type, tag-type :type}]]
@@ -205,19 +202,32 @@
   [{parameter-name :name, :keys [target]}]
   (or
    parameter-name
-   (lib.util.match/match-one target
+   (match/match-one target
      [:template-tag tag-name]
      (name tag-name))))
 
+(defn- target-template-tag-name
+  [tag-id->name target]
+  (match/match-one target
+    [:template-tag (tag-name :guard string?)]
+    tag-name
+
+    [:template-tag (tag-ref :guard map?)]
+    (get tag-id->name (:id tag-ref))))
+
 (mu/defn- validate-card-parameters
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
-  with template tags in the query for Card with `card-id`."
-  [card-id    :- ::lib.schema.id/card
-   parameters :- [:maybe [:ref ::lib.schema.parameter/parameters]]]
+  with template tags in `dataset-query` (the query for the Card with `card-id`)."
+  [card-id       :- ::lib.schema.id/card
+   dataset-query :- [:maybe ::lib.schema/query]
+   parameters    :- [:maybe [:ref ::lib.schema.parameter/parameters]]]
   (when-not *allow-arbitrary-mbql-parameters*
-    (let [template-tags (card-template-tag-parameters card-id)]
+    (let [template-tags (card-template-tag-parameters dataset-query)
+          tag-id->name  (into {} (map (fn [[nm tag]] [(:id tag) nm]))
+                              (lib/all-template-tags-map dataset-query))]
       (doseq [request-parameter parameters
-              :let              [parameter-name (infer-parameter-name request-parameter)]]
+              :let              [parameter-name (or (target-template-tag-name tag-id->name (:target request-parameter))
+                                                    (infer-parameter-name request-parameter))]]
         (let [matching-widget-type (or (get template-tags parameter-name)
                                        (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag named {1}."
                                                             card-id
@@ -256,12 +266,18 @@
   [{:keys [parameters] :as card} :- ::queries.schema/card]
   (let [template-tag-parameters     (queries/card-template-tag-parameters card)
         id->template-tags-parameter (m/index-by :id template-tag-parameters)
-        id->parameter               (m/index-by :id parameters)]
-    (vals (reduce-kv (fn [acc id parameter]
-                       ;; order importance: we want the info from `template-tag` to be merged last
-                       (update acc id #(merge % parameter)))
-                     id->parameter
-                     id->template-tags-parameter))))
+        parameter-ids               (into #{} (map :id) parameters)
+        ;; Preserve the order of card.parameters, merging in template-tag info
+        merged-parameters           (mapv (fn [param]
+                                            (if-let [tt-param (get id->template-tags-parameter (:id param))]
+                                              ;; order importance: we want the info from `template-tag` to be merged last
+                                              (merge param tt-param)
+                                              param))
+                                          parameters)]
+    ;; Append any template-tag parameters not already present in card.parameters
+    (into merged-parameters
+          (remove #(contains? parameter-ids (:id %)))
+          template-tag-parameters)))
 
 (mu/defn- enrich-parameters-from-card :- ::parameters.schema/parameters
   "Allow the FE to omit type and target for parameters by adding them from the card."
@@ -270,7 +286,18 @@
   (let [id->card-param (->> card-parameters
                             (map #(select-keys % [:id :type :target]))
                             (m/index-by :id))]
-    (mapv #(merge (-> % :id id->card-param) %) parameters)))
+    (into []
+          (keep (fn [parameter]
+                  (let [card-param (get id->card-param (:id parameter))
+                        enriched   (merge card-param parameter)
+                        target     (:target card-param)]
+                    (if *allow-arbitrary-mbql-parameters*
+                      enriched
+                      (when (or target (not (:target parameter)))
+                        (-> enriched
+                            (dissoc :target)
+                            (m/assoc-some :target target)))))))
+          parameters)))
 
 (defn- card-read-context
   "The context to use for tracking the view. Return nil if the view should not be tracked"
@@ -311,51 +338,56 @@
 
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for
-  all valid options."
-  [card-id :- ::lib.schema.id/card
+  all valid options.
+
+  `card-transform` is applied after the Card read check and must preserve the Card's identity. Result metadata from a
+  transformed query is returned but not persisted to the Card."
+  [card :- ::queries.schema/card
    export-format
-   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
+   & {:keys [parameters constraints context dashboard-id dashcard middleware qp make-run ignore-cache card-transform]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}]
-  {:pre [(pos-int? card-id) (u/maybe? sequential? parameters)]}
-  (let [card       (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
-                                                   :type :result_metadata :visualization_settings :display
-                                                   :cache_invalidated_at :entity_id :created_at :card_schema
-                                                   :parameters]
-                                                  :id card-id))
-        parameters (some-> parameters parameters.schema/normalize-parameters-without-adding-default-types)
-        parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
-        dash-viz   (when (and (not= context :question)
-                              dashcard-id)
-                     (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id))
-        card-viz   (:visualization_settings card)
-        merged-viz (m/deep-merge card-viz dash-viz)
+  {:pre [(map? card) (pos-int? (:id card)) (u/maybe? sequential? parameters)]}
+  (let [card        (api/read-check card)
+        stored-query (:dataset_query card)
+        card        ((or card-transform identity) card)
+        middleware  (cond-> middleware
+                      (not= stored-query (:dataset_query card))
+                      (assoc :skip-result-metadata-persistence? true))
+        card-id     (:id card)
+        dashcard-id (:id dashcard)
+        parameters  (some-> parameters parameters.schema/normalize-parameters-without-adding-default-types)
+        parameters  (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
+        dash-viz    (when (and (not= context :question) dashcard)
+                      (:visualization_settings dashcard))
+        card-viz    (:visualization_settings card)
+        merged-viz  (m/deep-merge card-viz dash-viz)
         ;; We need to check this here because dashcards don't get selected until this point
-        qp         (if (= :pivot (:display card))
-                     qp.pivot/run-pivot-query
-                     (or qp process-query-for-card-default-qp))
-        runner     (make-run qp export-format)
-        query      (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
-                       (assoc :viz-settings merged-viz)
-                       (update :middleware (fn [middleware]
-                                             (merge
-                                              {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
-                                              middleware))))
-        info       (cond-> {:executed-by            api/*current-user-id*
-                            :context                context
-                            :card-id                card-id
-                            :card-name              (:name card)
-                            :dashboard-id           dashboard-id
-                            :visualization-settings merged-viz}
-                     (and (= (:type card) :model) (seq (:result_metadata card)))
-                     (assoc :metadata/model-metadata (:result_metadata card)))]
+        qp          (if (= :pivot (:display card))
+                      qp.pivot/run-pivot-query
+                      (or qp process-query-for-card-default-qp))
+        runner      (make-run qp export-format)
+        query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
+                        (assoc :viz-settings merged-viz)
+                        (update :middleware (fn [middleware]
+                                              (merge
+                                               {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                               middleware))))
+        info        (cond-> {:executed-by            api/*current-user-id*
+                             :context                context
+                             :card-id                card-id
+                             :card-name              (:name card)
+                             :dashboard-id           dashboard-id
+                             :visualization-settings merged-viz}
+                      (and (= (:type card) :model) (seq (:result_metadata card)))
+                      (assoc :metadata/model-metadata (:result_metadata card)
+                             :metadata/own-model-query? true))]
     (when (seq parameters)
-      (validate-card-parameters card-id (lib/normalize ::lib.schema.parameter/parameters parameters)))
-    (log/tracef "Running query for Card %d:\n%s" card-id
-                (u/pprint-to-str query))
+      (validate-card-parameters card-id (:dataset_query card) (lib/normalize ::lib.schema.parameter/parameters parameters)))
+    (log/tracef "Running query for Card %d (dashcard %s)" card-id dashcard-id)
     (binding [qp.perms/*card-id* card-id]
       (when-let [context (card-read-context info)]
         (events/publish-event! :event/card-read {:object-id card-id

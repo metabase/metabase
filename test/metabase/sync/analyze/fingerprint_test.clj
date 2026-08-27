@@ -11,7 +11,10 @@
    [metabase.test.data :as data]
    [metabase.util :as u]
    [toucan2.core :as t2])
-  (:import [com.mchange.v2.resourcepool CannotAcquireResourceException]))
+  (:import
+   [com.mchange.v2.resourcepool CannotAcquireResourceException]
+   [java.net ConnectException]
+   [java.sql SQLException SQLTimeoutException]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   TESTS FOR WHICH FIELDS NEED FINGERPRINTING                                   |
@@ -148,10 +151,10 @@
 (defn- field-was-fingerprinted?! [fingerprint-versions field-properties]
   (let [fingerprinted? (atom false)]
     (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* fingerprint-versions]
-      (with-redefs [qp/process-query              (fn process-query
-                                                    [_query rff]
-                                                    (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                    sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
+      (mt/with-dynamic-fn-redefs [qp/process-query              (fn process-query
+                                                                  [_query rff]
+                                                                  (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
+                                  sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
         (mt/with-temp [:model/Table table {}
                        :model/Field _     (assoc field-properties :table_id (u/the-id table))]
           [(sync.fingerprint/fingerprint-table! table)
@@ -162,6 +165,27 @@
 
 (def ^:private one-updated-map
   (merge default-stat-map {:updated-fingerprints 1, :fingerprints-attempted 1}))
+
+(deftest fingerprint-table!-limits-fields-per-table-test
+  (testing "fingerprints up to fingerprint-max-fields-per-table fields and skips the rest (avoids OOM on very wide tables)"
+    (let [saved (atom 0)]
+      (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* {2 #{:type/Float}}]
+        (mt/with-dynamic-fn-redefs [qp/process-query                   (fn [_query rff]
+                                                                         (transduce identity (rff :metadata) [[1 1] [2 2] [3 3] [4 4] [5 5]]))
+                                    sync.fingerprint/save-fingerprint! (fn [& _] (swap! saved inc))]
+          (mt/with-temp [:model/Table table {}
+                         :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}
+                         :model/Field _ {:table_id (u/the-id table) :base_type :type/Decimal :fingerprint_version 1 :active true}]
+            (testing "limit of 1 -> only the first eligible field is fingerprinted, the rest skipped"
+              (reset! saved 0)
+              (mt/with-temporary-setting-values [fingerprint-max-fields-per-table 1]
+                (sync.fingerprint/fingerprint-table! table)
+                (is (= 1 @saved))))
+            (testing "limit above the field count -> all eligible fields are fingerprinted"
+              (reset! saved 0)
+              (mt/with-temporary-setting-values [fingerprint-max-fields-per-table 10000]
+                (sync.fingerprint/fingerprint-table! table)
+                (is (= 2 @saved))))))))))
 
 (deftest  fingerprint-table!-test
   (testing "field is a substype of newer fingerprint version"
@@ -266,6 +290,7 @@
                                        :fingerprint_version 1
                                        :last_analyzed       #t "2017-08-09T00:00:00"}]
       (binding [i/*latest-fingerprint-version* 3]
+        ;; fingerprinters/fingerprinter is a multimethod, so we can't use with-dynamic-fn-redefs
         (with-redefs [qp/process-query             (fn [_query rff]
                                                      (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
                       fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
@@ -338,6 +363,47 @@
                                             :group-by [:table_id]
                                             :order-by [[:count :desc]]
                                             :limit 1}))))))))))
+
+(defn- fingerprint-version-after-failure!
+  "Create a fresh text Field at fingerprint_version 0 (eligible for fingerprinting up to version 5), run
+  `fingerprint-table!` with the sample/fingerprint step failing as configured, and return the Field's
+  `fingerprint_version` afterwards. A version of 0 means the Field will be re-selected and retried on the next
+  sync; a version of 5 (the bound latest) means fingerprinting gave up and will not retry."
+  [redefs]
+  (mt/with-temp [:model/Table table {:db_id (mt/id)}
+                 :model/Field field {:table_id            (u/the-id table)
+                                     :active              true
+                                     :base_type           :type/Text
+                                     :fingerprint         nil
+                                     :fingerprint_version 0}]
+    (binding [i/*latest-fingerprint-version*                                 5
+              i/*fingerprint-version->types-that-should-be-re-fingerprinted* {5 #{:type/Text}}]
+      (with-redefs-fn redefs
+        (fn [] (sync.fingerprint/fingerprint-table! table))))
+    (t2/select-one-fn :fingerprint_version :model/Field :id (u/the-id field))))
+
+(defn- table-error-redefs
+  "Sampling query throws `ex` — exercises the whole-table failure path in `fingerprint-table!`."
+  [ex]
+  {#'qp/process-query (fn [& _] (throw ex))})
+
+(def ^:private field-error-redefs
+  "Query returns rows but each Field's fingerprinter yields a Throwable — exercises the per-field failure path in
+  `fingerprint-fields!`."
+  {#'qp/process-query             (fn [_query rff] (transduce identity (rff :metadata) [["a"] ["b"]]))
+   #'fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter (ex-info "fingerprinter boom" {})))})
+
+(deftest retry-loop-on-failed-fingerprint-test
+  (testing "GHY-3695: a Field whose fingerprint reliably fails must not be re-attempted on every sync"
+    (testing "transient connection errors leave fingerprint_version untouched so the next sync retries"
+      (is (= 0 (fingerprint-version-after-failure! (table-error-redefs (ConnectException. "connection refused")))))
+      (is (= 0 (fingerprint-version-after-failure! (table-error-redefs (CannotAcquireResourceException. "pool exhausted"))))))
+    (testing "query timeouts give up — a slow view stays slow, retrying just leaks another long query (GHY-3266)"
+      (is (= 5 (fingerprint-version-after-failure! (table-error-redefs (SQLTimeoutException. "query timed out"))))))
+    (testing "other query errors (permission denied, bad SQL, unsupported type) give up"
+      (is (= 5 (fingerprint-version-after-failure! (table-error-redefs (SQLException. "permission denied"))))))
+    (testing "per-field fingerprinter errors (unsupported coercion/dispatch) give up"
+      (is (= 5 (fingerprint-version-after-failure! field-error-redefs))))))
 
 (deftest abandon-failed-fingerprint-test
   (mt/test-drivers (mt/normal-drivers)

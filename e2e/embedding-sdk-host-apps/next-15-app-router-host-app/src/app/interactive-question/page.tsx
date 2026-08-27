@@ -17,7 +17,7 @@ export default function StaticDashboardPage() {
   }, [searchParams]);
 
   return (
-    <main style={{ padding: "1rem" }}>
+    <main style={{ padding: "1rem", width: "800px" }}>
       <h1 style={{ marginBottom: "4rem" }}>Interactive Question Example</h1>
       <InteractiveQuestion questionId={questionId} />
     </main>

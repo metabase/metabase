@@ -4,13 +4,14 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { hasActionsMenu } from "metabase/lib/click-behavior";
 import type {
   ClickBehavior,
   ClickBehaviorType,
   DashboardCard,
   DatasetColumn,
 } from "metabase-types/api";
+
+import { hasActionsMenu } from "../../../utils";
 
 import { Column } from "./Column";
 
@@ -57,6 +58,7 @@ export function TableClickBehaviorView({
   getClickBehaviorForColumn,
   onColumnClick,
 }: Props) {
+  // Unjustified type cast. FIXME
   const groupedColumns = useMemo(() => {
     const withClickBehaviors = columns.map((column) => ({
       column,

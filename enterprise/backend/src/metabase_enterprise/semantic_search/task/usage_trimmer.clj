@@ -33,7 +33,7 @@
 
 (defmethod task/init! ::SemanticSearchUsageTrimmer
   [_]
-  (when (semantic.u/semantic-search-available?)
+  (when (semantic.u/semantic-search-configured?)
     (let [job (jobs/build
                (jobs/of-type SemanticSearchUsageTrimmer)
                (jobs/with-identity trimmer-job-key))
@@ -41,6 +41,6 @@
                    (triggers/with-identity trimmer-trigger-key)
                    (triggers/start-now)
                    (triggers/with-schedule
-                     ;; daily at 22:59:42
+                    ;; daily at 22:59:42
                     (cron/cron-schedule "42 59 22 * * ?")))]
       (task/schedule-task! job trigger))))

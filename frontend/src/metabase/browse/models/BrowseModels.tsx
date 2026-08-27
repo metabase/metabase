@@ -7,17 +7,15 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
-import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { useSelector } from "metabase/lib/redux";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/current-user";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import {
-  canUserCreateNativeQueries,
-  canUserCreateQueries,
-} from "metabase/selectors/user";
+import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -30,13 +28,9 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 
-import {
-  BrowseContainer,
-  BrowseHeader,
-  BrowseMain,
-  BrowseSection,
-} from "../components/BrowseContainer.styled";
+import S from "../components/BrowseContainer.module.css";
 
 import { ModelsVideo } from "./EmptyStates";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
@@ -44,6 +38,7 @@ import { ModelsTable } from "./ModelsTable";
 import { RecentModels } from "./RecentModels";
 import { trackNewModelInitiated } from "./analytics";
 import type { ModelFilterSettings, ModelResult } from "./types";
+import { useFetchModels } from "./use-fetch-models";
 import { getMaxRecentModelCount, isRecentModel } from "./utils";
 
 const {
@@ -64,15 +59,27 @@ export const BrowseModels = () => {
 
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = isWithinIframe();
 
   const canCreateNewModel =
     !isEmbeddingIframe && hasDataAccess && hasNativeWrite;
 
   return (
-    <BrowseContainer aria-labelledby={titleId}>
-      <BrowseHeader role="heading" data-testid="browse-models-header">
-        <BrowseSection>
+    <Flex
+      className={S.browseContainer}
+      flex={1}
+      direction="column"
+      wrap="nowrap"
+      pt="md"
+      aria-labelledby={titleId}
+    >
+      <Flex
+        className={S.browseHeader}
+        direction="column"
+        role="heading"
+        data-testid="browse-models-header"
+      >
+        <Flex maw="64rem" mx="auto" w="100%">
           <Flex
             w="100%"
             h="2.25rem"
@@ -109,10 +116,10 @@ export const BrowseModels = () => {
               )}
             </Group>
           </Flex>
-        </BrowseSection>
-      </BrowseHeader>
-      <BrowseMain>
-        <BrowseSection>
+        </Flex>
+      </Flex>
+      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
+        <Flex maw="64rem" mx="auto" w="100%">
           <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
               <Stack gap="lg" align="center" data-testid="empty-state">
@@ -156,9 +163,9 @@ export const BrowseModels = () => {
               </>
             )}
           </Stack>
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 };
 
@@ -211,6 +218,7 @@ function useFilteredModels(modelFilters: ModelFilterSettings) {
         },
   );
 
+  // Unjustified type cast. FIXME
   const models = modelsResult.data?.data as ModelResult[] | undefined;
 
   const recentsCap = getMaxRecentModelCount(models?.length ?? 0);

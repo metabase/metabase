@@ -6,20 +6,22 @@ import {
   useListGlossaryQuery,
   useUpdateGlossaryMutation,
 } from "metabase/api";
+import { GlossaryTable } from "metabase/common/components/Glossary/GlossaryTable";
 import {
   trackDataStudioGlossaryTermCreated,
   trackDataStudioGlossaryTermDeleted,
   trackDataStudioGlossaryTermUpdated,
-} from "metabase/data-studio/analytics";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
-import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { GlossaryTable } from "metabase/reference/glossary/GlossaryTable";
+} from "metabase/common/data-studio/analytics";
+import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Box, Card } from "metabase/ui";
 
 import S from "./GlossaryPage.module.css";
 
 export function GlossaryPage() {
+  usePageTitle(t`Glossary`);
   const { data: glossary = [] } = useListGlossaryQuery();
   const [createGlossary] = useCreateGlossaryMutation();
   const [updateGlossary] = useUpdateGlossaryMutation();

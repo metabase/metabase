@@ -8,8 +8,8 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { toggleAutoApplyFilters } from "metabase/dashboard/actions/parameters";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
+import { useDispatch } from "metabase/redux";
 import { Switch, useModalsStack } from "metabase/ui";
 import type { CacheableDashboard, Dashboard } from "metabase-types/api";
 
@@ -35,12 +35,12 @@ export function DashboardSettingsSidebar() {
   if (currentModal === "caching") {
     return (
       <PLUGIN_CACHING.SidebarCacheForm
+        // Unjustified type cast. FIXME
         item={dashboard as CacheableDashboard}
         model="dashboard"
         isOpen={state.caching}
         onClose={closeSidebar}
         onBack={() => close("caching")}
-        pt="md"
       />
     );
   }
@@ -82,7 +82,9 @@ const DashboardSidesheetBody = ({
   const canWrite = dashboard.can_write && !dashboard.archived;
 
   const isCacheable = isDashboardCacheable(dashboard);
-  const showCaching = canWrite && PLUGIN_CACHING.isGranularCachingEnabled();
+  const showCaching =
+    (dashboard.can_set_cache_policy ?? canWrite) &&
+    PLUGIN_CACHING.isGranularCachingEnabled();
 
   if (dashboard.archived) {
     return null;

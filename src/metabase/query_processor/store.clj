@@ -121,8 +121,9 @@
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
     `(cached-fn ~ks (fn [] ~@body))))
 
+;; TODO (Cam 2026-07-17) Deprecate this in 64
 (mu/defn metadata-provider :- ::lib.schema.metadata/metadata-provider
-  "Get the [[metabase.lib.metadata.protocols/MetadataProvider]] that should be used inside the QP. "
+  "Get the [[metabase.lib.metadata.protocols/MetadataProvider]] that should be used inside the QP."
   []
   (or (miscellaneous-value [::metadata-provider])
       (throw (ex-info "QP Store Metadata Provider is not initialized yet; initialize it with `qp.store/with-metadata-provider`."
@@ -161,7 +162,6 @@
                           {:existing-id existing-database-id
                            :new-id      new-database-id
                            :type        qp.error-type/invalid-query}))))
-
       ;; Metadata Providerable
       (let [new-provider (-> database-id-or-metadata-providerable
                              lib.metadata/->metadata-provider
@@ -219,7 +219,7 @@
 ;;;;
 
 (mu/defn ->legacy-metadata
-  "For compatibility: convert MLv2-style metadata as returned by [[metabase.lib.metadata.protocols]]
+  "For compatibility: convert Lib-style metadata as returned by [[metabase.lib.metadata.protocols]]
   or [[metabase.lib.metadata]] functions
   (with `kebab-case` keys and `:lib/type`) to legacy QP/application database style metadata (with `snake_case` keys
   and Toucan 2 model `:type` metadata).

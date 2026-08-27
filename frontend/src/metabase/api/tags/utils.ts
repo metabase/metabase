@@ -1,6 +1,7 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { isNotNull } from "metabase/utils/types";
 import type {
   Alert,
   ApiKey,
@@ -23,15 +24,21 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  GetInspectorLensRequest,
   GetUserKeyValueRequest,
   Group,
   GroupListQuery,
+  InspectorLens,
   LoggerPreset,
   Measure,
+  MeasureId,
+  Metric,
+  MetricId,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
   NotificationChannel,
+  OAuthAuthorization,
   ParameterId,
   PopularItem,
   RecentItem,
@@ -40,6 +47,8 @@ import type {
   SearchResult,
   Segment,
   Table,
+  TableIndexEntry,
+  TableIndexRequest,
   Task,
   TaskRun,
   Timeline,
@@ -57,7 +66,12 @@ import {
   SEARCH_MODELS,
 } from "metabase-types/api";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
-import type { Notification } from "metabase-types/api/notification";
+import type {
+  AdminNotification,
+  Notification,
+} from "metabase-types/api/notification";
+
+import { getLensKey } from "../utils/transform-inspector-lens";
 
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
@@ -106,6 +120,7 @@ export function provideActivityItemListTags(
   return [
     ...ACTIVITY_MODELS.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideActivityItemTags),
+    listTag("activity"),
   ];
 }
 
@@ -455,6 +470,40 @@ export function provideNotificationTags(
   ];
 }
 
+export const provideAdminNotificationTags = (
+  notification: Pick<AdminNotification, "id" | "creator">,
+): TagDescription<TagType>[] => [
+  idTag("notification", notification.id),
+  ...(notification.creator ? provideUserTags(notification.creator) : []),
+];
+
+export const adminNotificationListTag = (): TagDescription<TagType> =>
+  idTag("notification", "LIST-ADMIN");
+
+export const provideAdminNotificationListTags = (
+  notifications: Pick<Notification, "id">[],
+): TagDescription<TagType>[] => [
+  adminNotificationListTag(),
+  ...notifications.map((notification) =>
+    idTag("notification", notification.id),
+  ),
+];
+
+export function provideOAuthAuthorizationListTags(
+  authorizations: OAuthAuthorization[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("oauth-authorization"),
+    ...authorizations.flatMap(provideOAuthAuthorizationTags),
+  ];
+}
+
+export function provideOAuthAuthorizationTags(
+  authorization: OAuthAuthorization,
+): TagDescription<TagType>[] {
+  return [idTag("oauth-authorization", authorization.id)];
+}
+
 export function providePermissionsGroupListTags(
   groups: GroupListQuery[],
 ): TagDescription<TagType>[] {
@@ -567,6 +616,37 @@ export function provideMeasureTags(
   ];
 }
 
+export function provideMeasureDimensionValuesTags(
+  measureId: MeasureId,
+): TagDescription<TagType>[] {
+  return [idTag("measure", measureId)];
+}
+
+export function provideMetricListTags(
+  metrics: Metric[],
+): TagDescription<TagType>[] {
+  return [listTag("card"), ...metrics.flatMap(provideMetricTags)];
+}
+
+export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
+  return [
+    idTag("card", metric.id),
+    ...(metric.collection ? provideCollectionTags(metric.collection) : []),
+  ];
+}
+
+export function provideMetricDimensionValuesTags(
+  metricId: MetricId,
+): TagDescription<TagType>[] {
+  return [idTag("card", metricId)];
+}
+
+export function provideMetricDimensionListTags(
+  metricId: MetricId,
+): TagDescription<TagType>[] {
+  return [listTag("metric-dimension"), idTag("metric-dimension", metricId)];
+}
+
 export function provideSnippetListTags(
   snippets: NativeQuerySnippet[],
 ): TagDescription<TagType>[] {
@@ -596,6 +676,27 @@ export function provideSubscriptionTags(
   subscription: DashboardSubscription,
 ): TagDescription<TagType>[] {
   return [idTag("subscription", subscription.id)];
+}
+
+export function provideTableIndexTags(
+  index: TableIndexRequest,
+): TagDescription<TagType>[] {
+  return [
+    idTag("table-index", index.id),
+    idTag("transform", index.transform_id),
+  ];
+}
+
+export function provideTableIndexListTags(
+  indexes: TableIndexEntry[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("table-index"),
+    ...indexes
+      .map((index) => index.request)
+      .filter(isNotNull)
+      .flatMap(provideTableIndexTags),
+  ];
 }
 
 export function provideTableListTags(
@@ -784,4 +885,16 @@ export function provideTransformJobListTags(
   jobs: TransformJob[],
 ): TagDescription<TagType>[] {
   return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
+}
+
+export function provideInspectorLensTags(
+  lens: InspectorLens | undefined,
+  _error: unknown,
+  { transformId, lensParams }: GetInspectorLensRequest,
+): TagDescription<TagType>[] {
+  const lensKey = getLensKey({ id: lens?.id ?? "", params: lensParams });
+  return [
+    idTag("transform", transformId),
+    idTag("transform-inspector-lens", lensKey),
+  ];
 }

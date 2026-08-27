@@ -1,7 +1,6 @@
 import type React from "react";
 
 import { render, screen } from "__support__/ui";
-import { Search } from "metabase/entities/search";
 import { Text } from "metabase/ui";
 import {
   createMockCollection,
@@ -22,12 +21,10 @@ const setup = (child: React.ReactNode) => {
 describe("useCommandPalette", () => {
   describe("getSearchResultSubtext", () => {
     it("should work for model indexes", async () => {
-      const mockSearchResult = Search.wrapEntity(
-        createMockSearchResult({
-          model: "indexed-entity",
-          model_name: "foo",
-        }),
-      );
+      const mockSearchResult = createMockSearchResult({
+        model: "indexed-entity",
+        model_name: "foo",
+      });
       setup(getSearchResultSubtext(mockSearchResult));
 
       expect(await screen.findByText(/a record in/)).toBeInTheDocument();
@@ -38,42 +35,36 @@ describe("useCommandPalette", () => {
     });
 
     it("should work for cards", async () => {
-      const mockSearchResult = Search.wrapEntity(
-        createMockSearchResult({
-          model: "card",
-          collection: createMockCollection({
-            name: "Foo Collection",
-            id: 2,
-          }),
+      const mockSearchResult = createMockSearchResult({
+        model: "card",
+        collection: createMockCollection({
+          name: "Foo Collection",
+          id: 2,
         }),
-      );
+      });
       setup(getSearchResultSubtext(mockSearchResult));
 
       expect(await screen.findByText("Foo Collection")).toBeInTheDocument();
     });
 
     it("should work for tables", async () => {
-      const mockSearchResult = Search.wrapEntity(
-        createMockSearchResult({
-          model: "table",
-          collection: createMockCollection({ id: undefined, name: undefined }),
-          database_name: "Bar Database",
-        }),
-      );
+      const mockSearchResult = createMockSearchResult({
+        model: "table",
+        collection: createMockCollection({ id: undefined, name: undefined }),
+        database_name: "Bar Database",
+      });
       setup(getSearchResultSubtext(mockSearchResult));
 
       expect(await screen.findByText("Bar Database")).toBeInTheDocument();
     });
 
     it("should should include the schema name in table search results when provided", async () => {
-      const mockSearchResult = Search.wrapEntity(
-        createMockSearchResult({
-          model: "table",
-          collection: createMockCollection({ id: undefined, name: undefined }),
-          database_name: "Bar Database",
-          table_schema: "My Schema",
-        }),
-      );
+      const mockSearchResult = createMockSearchResult({
+        model: "table",
+        collection: createMockCollection({ id: undefined, name: undefined }),
+        database_name: "Bar Database",
+        table_schema: "My Schema",
+      });
       setup(getSearchResultSubtext(mockSearchResult));
 
       expect(
@@ -82,14 +73,12 @@ describe("useCommandPalette", () => {
     });
 
     it("should should include the collection name in table search results when the table is published to a collection", async () => {
-      const mockSearchResult = Search.wrapEntity(
-        createMockSearchResult({
-          model: "table",
-          collection: createMockCollection({ id: 1, name: "Data" }),
-          database_name: "Bar Database",
-          table_schema: "My Schema",
-        }),
-      );
+      const mockSearchResult = createMockSearchResult({
+        model: "table",
+        collection: createMockCollection({ id: 1, name: "Data" }),
+        database_name: "Bar Database",
+        table_schema: "My Schema",
+      });
       setup(getSearchResultSubtext(mockSearchResult));
 
       expect(await screen.findByText("Data")).toBeInTheDocument();

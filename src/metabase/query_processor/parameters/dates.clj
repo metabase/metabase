@@ -8,12 +8,15 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -193,7 +196,6 @@
                  :unit  :day}))
     :filter (fn [_ field-clause]
               (lib/= (with-temporal-unit-if-field field-clause :day) (lib/relative-datetime :current)))}
-
    {:parser #(= % "yesterday")
     :range  (fn [_ dt]
               (let [dt-res (t/local-date dt)]
@@ -202,7 +204,6 @@
                  :unit  :day}))
     :filter (fn [_ field-clause]
               (lib/= (with-temporal-unit-if-field field-clause :day) (lib/relative-datetime -1 :day)))}
-
    ;; Adding a tilde (~) at the end of a past<n><unit>s filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
    ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true}).
@@ -232,7 +233,6 @@
                      (- int-value)
                      (keyword unit))
                     (lib/update-options assoc :include-current (include-current? relative-suffix)))))}
-
    {:parser (regex->parser (re-pattern (str #"next([0-9]+)" temporal-units-regex #"s" relative-suffix-regex))
                            [:int-value :unit :relative-suffix :int-value-1 :unit-1])
     :range  (fn [{:keys [unit int-value unit-range to-period relative-suffix unit-1 int-value-1]} dt]
@@ -251,7 +251,6 @@
                  (keyword unit-1))
                 (-> (lib/time-interval field-clause int-value (keyword unit))
                     (lib/update-options assoc :include-current (include-current? relative-suffix)))))}
-
    {:parser (regex->parser (re-pattern (str #"last" temporal-units-regex))
                            [:unit])
     :range  (fn [{:keys [unit unit-range to-period]} dt]
@@ -259,7 +258,6 @@
                 (unit-range last-unit last-unit)))
     :filter (fn [{:keys [unit]} field-clause]
               (lib/time-interval field-clause :last (keyword unit)))}
-
    {:parser (regex->parser (re-pattern (str #"this" temporal-units-regex))
                            [:unit])
     :range  (fn [{:keys [unit unit-range]} dt]
@@ -302,18 +300,24 @@
         i))
     (catch NumberFormatException _)))
 
-(defn- excluded-datetime [unit date exclusion]
-  (let [year (t/year date)]
-    (case unit
-      :hour (when-let [hour (parse-int-in-range exclusion 0 23)]
-              (format "%sT%02d:00:00" date hour))
-      :day (when-let [day (short-day->day exclusion)]
-             (str (t/adjust date :next-or-same-day-of-week day)))
-      :month (when-let [month (short-month->month exclusion)]
-               (format "%s-%02d-01" year month))
-      :quarter (when-let [quarter (parse-int-in-range exclusion 1 4)]
-                 (format "%s-%02d-01" year (inc (* 3 (dec quarter)))))
-      nil)))
+(def ^:private day->index
+  "0-based index of each day keyword in the canonical week order (Monday=0 ... Sunday=6),
+  matching [[metabase.driver.common/days-of-week]]."
+  {:monday 0, :tuesday 1, :wednesday 2, :thursday 3, :friday 4, :saturday 5, :sunday 6})
+
+(defn- excluded-datetime
+  "Return a numeric value for an exclusion filter. For `:day` exclusions, computes the Metabase-convention
+  day-of-week number (1 = start-of-week, 7 = day before start-of-week)."
+  [unit exclusion]
+  (case unit
+    :hour    (parse-int-in-range exclusion 0 23)
+    :day     (when-let [day (short-day->day exclusion)]
+               (let [day-idx (day->index day)
+                     sow-idx (driver.common/start-of-week->int)]
+                 (inc (mod (- day-idx sow-idx) 7))))
+    :month   (short-month->month exclusion)
+    :quarter (parse-int-in-range exclusion 1 4)
+    nil))
 
 (def ^:private excluded-temporal-unit
   {:hour    :hour-of-day
@@ -383,7 +387,7 @@
    {:parser (regex->parser date-exclude-regex [:unit :exclusions])
     :filter (fn [{:keys [unit exclusions]} field-clause]
               (let [unit (keyword unit)
-                    exclusions (map (partial excluded-datetime unit (t/local-date))
+                    exclusions (map (partial excluded-datetime unit)
                                     (str/split exclusions #"-"))]
                 (when (and (seq exclusions) (every? some? exclusions))
                   (apply lib/!= (with-temporal-unit-if-field field-clause (excluded-temporal-unit unit)) exclusions))))}])
@@ -404,18 +408,18 @@
             (parser-result-decoder parser-result decoder-param)))
         decoders))
 
-(def ^:private TemporalUnit
+(mr/def ::temporal-unit
   (into [:enum] u.date/add-units))
 
-(def ^:private TemporalRange
+(mr/def ::temporal-range
   [:map
    [:start {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:end   {:optional true} (lib.schema.common/instance-of-class Temporal)]
-   [:unit                   TemporalUnit]])
+   [:unit                   ::temporal-unit]])
 
-(mu/defn- adjust-inclusive-range-if-needed :- [:maybe TemporalRange]
+(mu/defn- adjust-inclusive-range-if-needed :- [:maybe ::temporal-range]
   "Make an inclusive date range exclusive as needed."
-  [temporal-range :- [:maybe TemporalRange] {:keys [inclusive-start? inclusive-end?]}]
+  [temporal-range :- [:maybe ::temporal-range] {:keys [inclusive-start? inclusive-end?]}]
   (-> temporal-range
       (m/update-existing :start #(if inclusive-start?
                                    %
@@ -453,7 +457,9 @@
 
 (defn- date-string->raw-range
   [date-string]
-  (let [now (t/local-date-time)]
+  (let [now (if (and driver/*driver* (qp.store/initialized?))
+              (t/local-date-time (qp.timezone/now))
+              (t/local-date-time))]
     ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
     ;; days depending on the user timezone
     (or (execute-decoders relative-date-string-decoders :range now date-string)

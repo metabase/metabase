@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -30,7 +31,7 @@
   [db :- [:map]]
   (if (and (not (:is_audit db))
            (= :query-builder-and-native
-              (perms/full-db-permission-for-user
+              (perms/full-database-permission-for-user
                api/*current-user-id*
                :perms/create-queries
                (u/the-id db))))
@@ -40,7 +41,7 @@
 (defn- get-databases
   [ids]
   (when (seq ids)
-    (perms/prime-db-cache ids)
+    (perms/prime-database-perms-cache {:db-ids (set ids)})
     (into [] (comp (filter mi/can-read?)
                    (map #(assoc % :native_permissions (get-native-perms-info %))))
           (t2/select :model/Database :id [:in ids]))))
@@ -54,7 +55,7 @@
 (defn- collect-recursive-snippets
   ([initial-snippet-ids]
    (when (seq initial-snippet-ids)
-     (let [snippets (t2/select :model/NativeQuerySnippet :id [:in initial-snippet-ids])]
+     (let [snippets (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet :id [:in initial-snippet-ids]))]
        (collect-recursive-snippets (set snippets) snippets (set initial-snippet-ids)))))
   ([all-snippets snippets-to-recurse seen-ids]
    (let [->nested-snippet-ids (fn [snippet]
@@ -67,7 +68,7 @@
                                     snippet-id)))
          nested-snippet-ids   (into #{} (mapcat ->nested-snippet-ids) snippets-to-recurse)
          nested-snippets      (when (seq nested-snippet-ids)
-                                (t2/select :model/NativeQuerySnippet :id [:in nested-snippet-ids]))]
+                                (into [] (filter mi/can-read?) (t2/select :model/NativeQuerySnippet :id [:in nested-snippet-ids])))]
      (if-not (seq nested-snippet-ids)
        all-snippets
        (recur (into all-snippets nested-snippets)
@@ -150,10 +151,7 @@
    (batch-fetch-query-metadata queries nil))
   ([queries opts]
    (batch-fetch-query-metadata*
-    (into []
-          (comp (filter not-empty)
-                (map lib-be/normalize-query))
-          queries)
+    (into [] (keep (comp not-empty lib-be/normalize-query)) queries)
     opts)))
 
 (mu/defn batch-fetch-card-metadata
@@ -232,7 +230,7 @@
                                            [:map
                                             [:card   {:optional true} [:maybe ::queries.schema/card]]
                                             [:series {:optional true} [:maybe [:sequential [:map
-                                                                                            [:dataset_query ::queries.schema/query]]]]]]]]]]]
+                                                                                            [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]]]]]]]]]
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards
                         :let   [all (conj series card)]

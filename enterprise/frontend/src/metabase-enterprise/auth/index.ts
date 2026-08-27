@@ -1,5 +1,3 @@
-import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_IS_PASSWORD_USER,
@@ -7,8 +5,10 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 import type { AuthProvider } from "metabase/plugins/types";
+import { LOGIN, LOGIN_GOOGLE } from "metabase/redux/auth";
+import MetabaseSettings from "metabase/utils/settings";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type { User } from "metabase-types/api";
+import type { OidcAuthProvider, User } from "metabase-types/api";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
@@ -17,9 +17,29 @@ import {
   LdapGroupMembershipFilter,
   LdapUserProvisioning,
 } from "./components/Ldap";
-import { SettingsJWTForm } from "./components/SettingsJWTForm";
-import { SettingsSAMLForm } from "./components/SettingsSAMLForm";
+import { createOidcAuthProvider } from "./components/OidcButton/OidcButton";
 import { SsoButton } from "./components/SsoButton";
+
+const settingsSAMLForm = () =>
+  import(
+    /* webpackChunkName: "auth-saml" */ "./components/SettingsSAMLForm"
+  ).then(({ SettingsSAMLForm }) => ({
+    Component: SettingsSAMLForm,
+  }));
+
+const settingsJWTForm = () =>
+  import(
+    /* webpackChunkName: "auth-jwt" */ "./components/SettingsJWTForm"
+  ).then(({ SettingsJWTForm }) => ({
+    Component: SettingsJWTForm,
+  }));
+
+const settingsOIDCForm = () =>
+  import(
+    /* webpackChunkName: "auth-oidc" */ "./components/SettingsOIDCForm"
+  ).then(({ SettingsOIDCForm }) => ({
+    Component: SettingsOIDCForm,
+  }));
 
 const SSO_PROVIDER = {
   name: "sso",
@@ -34,11 +54,15 @@ PLUGIN_AUTH_PROVIDERS.AuthSettingsPage = AuthSettingsPage;
  */
 export function initializePlugin() {
   if (hasPremiumFeature("sso_saml")) {
-    PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm = SettingsSAMLForm;
+    PLUGIN_AUTH_PROVIDERS.settingsSAMLForm = settingsSAMLForm;
   }
 
   if (hasPremiumFeature("sso_jwt")) {
-    PLUGIN_AUTH_PROVIDERS.SettingsJWTForm = SettingsJWTForm;
+    PLUGIN_AUTH_PROVIDERS.settingsJWTForm = settingsJWTForm;
+  }
+
+  if (hasPremiumFeature("sso_oidc")) {
+    PLUGIN_AUTH_PROVIDERS.settingsOIDCForm = settingsOIDCForm;
   }
 
   // Add provider function that handles SSO and password login
@@ -49,6 +73,16 @@ export function initializePlugin() {
     ) {
       providers = [SSO_PROVIDER, ...providers];
     }
+
+    // Add OIDC provider buttons
+    if (hasPremiumFeature("sso_oidc")) {
+      const oidcProviders: OidcAuthProvider[] =
+        MetabaseSettings.get("oidc-login-providers") ?? [];
+      for (const oidcProvider of oidcProviders) {
+        providers = [createOidcAuthProvider(oidcProvider), ...providers];
+      }
+    }
+
     if (
       hasPremiumFeature("disable_password_login") &&
       !MetabaseSettings.isPasswordLoginEnabled() &&
@@ -65,8 +99,9 @@ export function initializePlugin() {
     const passwordUserFunction = (user: User) =>
       Boolean(
         user.sso_source !== "google" &&
-          user.sso_source !== "ldap" &&
-          MetabaseSettings.isPasswordLoginEnabled(),
+        user.sso_source !== "ldap" &&
+        user.sso_source !== "oidc" &&
+        MetabaseSettings.isPasswordLoginEnabled(),
       );
 
     PLUGIN_IS_PASSWORD_USER.push(passwordUserFunction);

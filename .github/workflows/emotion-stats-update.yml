@@ -1,0 +1,48 @@
+# Weekly count of files importing @emotion/*, imported into eng-stats-importer.
+# Feeds the "Emotion CSS Elimination Progress" chart tracking the migration
+# off Emotion onto Mantine (+ CSS modules as a fallback).
+name: Emotion Stats Update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 40 1 * * 2 # every Tuesday at 1:40
+
+jobs:
+  emotion-stats:
+    if: github.repository == 'metabase/metabase'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare-node-bun
+      - name: Get Emotion file count
+        id: get-emotion-file-count
+        run: |
+          # Match both `import ... from '@emotion/...'` and bare side-effect imports
+          # (`import '@emotion/...'`, used in e.g. frontend/src/types/emotion.d.ts).
+          # `|| true` prevents failing on the day the count reaches 0 — git grep
+          # exits 1 on no matches, which cascades through bash's default pipefail.
+          oss=$(
+            git grep -l -E "(from|import) ['\"]@emotion/" -- \
+              'frontend/**/*.ts' \
+              'frontend/**/*.tsx' \
+              | wc -l || true
+          )
+
+          ee=$(
+            git grep -l -E "(from|import) ['\"]@emotion/" -- \
+              'enterprise/frontend/**/*.ts' \
+              'enterprise/frontend/**/*.tsx' \
+              | wc -l || true
+          )
+
+          echo "$((oss + ee)) files importing @emotion/*"
+
+          echo "EMOTION_FILES=$((oss + ee))" >> "$GITHUB_OUTPUT"
+      - name: Upload count to Stats
+        env:
+          EMOTION_FILES: ${{ steps.get-emotion-file-count.outputs.EMOTION_FILES }}
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+        run: bun .github/scripts/upload-emotion-stats.ts

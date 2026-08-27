@@ -52,7 +52,6 @@
   (testing "incoming maps"
     (testing "become CLJS maps"
       (is (map? ((converters/incoming [:map]) #js {}))))
-
     (testing "have both declared and undeclared keys normalized as :kebab-case-keywords"
       (is (= {:declared-camel   "yes"
               :declared-snake   "also"
@@ -66,7 +65,6 @@
                                    "undeclaredCamel"  7
                                    "undeclared_snake" 8
                                    "undeclared-kebab" 9}))))
-
     (testing "work like maps for their declared keys"
       (let [converted (->half-declared #js {"declaredCamel"  "yes"
                                             "declared_snake" "also"
@@ -79,7 +77,6 @@
         (is (= "also"     (converted :declared-snake)))
         (is (= "finally"  (converted :declared-kebab)))
         (is (= :not-found (converted :does-not-exist :not-found)))
-
         (is (= #{:declared-camel :declared-snake :declared-kebab}
                (set (keys converted))))
         (is (= #{"yes" "also" "finally"}
@@ -90,7 +87,6 @@
                       :declared-kebab "finally"}]
           (is (= native converted))
           (is (= converted native))))))
-
   (testing "outgoing maps"
     (let [input #js {"declaredCamel"    "yes"
                      "declared_snake"   "also"
@@ -99,7 +95,6 @@
                      "undeclared_snake" 8
                      "undeclared-kebab" 9}
           obj   (->half-declared input)]
-
       (testing "are converted per the schema by :js/prop; defaulting to snake_case"
         (let [adjusted (assoc obj :declared-camel "no")]
           (is (not (identical? obj adjusted)))
@@ -127,7 +122,6 @@
           converted ((converters/incoming Grandparent) input)]
       (is (= exp-clj converted))
       (is (test.js/= input ((converters/outgoing Grandparent) converted)))))
-
   (testing "nesting kitchen sink"
     (let [schema    [:map
                      [:foo-bar {:js/prop "fooBar"}
@@ -222,7 +216,6 @@
              ((converters/outgoing :uuid) uuid)))
       (is (= uuid
              ((converters/incoming :uuid) (str uuid))))))
-
   (testing "UUIDs nested in maps work too"
     (let [uuid   (random-uuid)
           schema [:map [:id :uuid]]]
@@ -230,7 +223,6 @@
                      ((converters/outgoing schema) {:id uuid})))
       (is (= {:id uuid}
              ((converters/incoming schema) #js {:id (str uuid)})))))
-
   (testing "UUIDs nested in maps inside a map-of work too"
     (let [uuid   (random-uuid)
           schema [:map-of :string [:map [:id :uuid]]]]

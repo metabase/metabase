@@ -1,12 +1,12 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { Box, Popover, Text, Title } from "metabase/ui";
+import type { ExportFormat } from "metabase-types/api";
 
 import { PublicLinkCopyPanel } from "./PublicLinkCopyPanel";
-import type { ExportFormatType } from "./types";
 
 export type PublicLinkPopoverProps = {
   target: JSX.Element;
@@ -15,10 +15,14 @@ export type PublicLinkPopoverProps = {
   createPublicLink: () => Promise<void>;
   deletePublicLink: () => void;
   url: string | null;
-  extensions?: ExportFormatType[];
-  selectedExtension?: ExportFormatType | null;
-  setSelectedExtension?: (extension: ExportFormatType) => void;
+  extensions?: ExportFormat[];
+  selectedExtension?: ExportFormat | null;
+  setSelectedExtension?: (extension: ExportFormat | null) => void;
   onCopyLink?: () => void;
+  // Removing a public link is a write. Defaults to true; callers pass the
+  // resource's write access so the remove action is hidden when it can't be
+  // performed (e.g. a remote-synced entity on a read-only instance).
+  canRemoveLink?: boolean;
 };
 
 export const PublicLinkPopover = ({
@@ -32,6 +36,7 @@ export const PublicLinkPopover = ({
   selectedExtension,
   setSelectedExtension,
   onCopyLink,
+  canRemoveLink = true,
 }: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
@@ -47,14 +52,6 @@ export const PublicLinkPopover = ({
     deletePublicLink();
   };
 
-  const getMinDropdownHeight = () => {
-    if (isAdmin || extensions.length > 0) {
-      return "10rem";
-    }
-
-    return "auto";
-  };
-
   return (
     <Popover
       opened={isOpen}
@@ -65,22 +62,23 @@ export const PublicLinkPopover = ({
         <Box onClick={isOpen ? onClose : undefined}>{target}</Box>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box
-          p="lg"
-          w="28rem"
-          data-testid="public-link-popover-content"
-          mih={getMinDropdownHeight()}
-        >
-          <Title c="text-secondary" order={4}>{t`Public link`}</Title>
+        <Box p="lg" w="28rem" data-testid="public-link-popover-content">
+          <Title
+            order={4}
+            c="text-primary"
+            fz="md"
+            fw={700}
+            lh="1.5rem"
+          >{t`Public link`}</Title>
           <Text
             color="text-secondary"
             size="sm"
-            mb="xs"
+            mb="sm"
           >{t`Anyone can view this if you give them the link.`}</Text>
           <PublicLinkCopyPanel
             loading={loading}
             url={url}
-            onRemoveLink={isAdmin ? onRemoveLink : undefined}
+            onRemoveLink={isAdmin && canRemoveLink ? onRemoveLink : undefined}
             extensions={extensions}
             selectedExtension={selectedExtension}
             onChangeExtension={setSelectedExtension}

@@ -21,6 +21,15 @@ describe("scenarios > question > saved", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     cy.findAllByText("Orders"); // question and table name appears
 
+    // capture the view header height in the saved state to assert it does not
+    // change after the question transitions to ad-hoc (UXW-3751)
+    let savedHeaderHeight;
+    cy.findByTestId("qb-header")
+      .invoke("outerHeight")
+      .then((h) => {
+        savedHeaderHeight = h;
+      });
+
     // filter to only orders with quantity=100
     H.tableHeaderClick("Quantity");
     H.popover().findByText("Filter by this column").click();
@@ -35,10 +44,17 @@ describe("scenarios > question > saved", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 2 rows"); // query updated
 
+    // view header height should be unchanged in the ad-hoc state
+    cy.findByTestId("qb-header")
+      .invoke("outerHeight")
+      .should((h) => {
+        expect(h).to.equal(savedHeaderHeight);
+      });
+
     // check that save will give option to replace
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByText('Replace original question, "Orders"');
       cy.findByText("Save as new question");
       cy.findByText("Cancel").click();
@@ -104,8 +120,8 @@ describe("scenarios > question > saved", () => {
     });
 
     cy.url().should("include", "/dashboard/");
-    cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
-    H.dashboardCards().findByText("Orders - Duplicate").should("exist");
+    cy.location("hash").should("not.include", "scrollTo");
+    H.dashboardCards().findByText("Orders - Duplicate").should("be.visible");
   });
 
   it("should duplicate a saved question to a collection created on the go", () => {
@@ -173,6 +189,7 @@ describe("scenarios > question > saved", () => {
 
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
+    cy.intercept("POST", "/api/revision/revert").as("revertRevision");
 
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.questionInfoButton().click();
@@ -188,11 +205,30 @@ describe("scenarios > question > saved", () => {
       cy.findByText(/added a description/i);
 
       cy.findByTestId("question-revert-button").click();
+      // The revert mutation invalidates the revision list. On fetch
+      // (microtask resolution) clicking the History tab before that
+      // invalidation lands shows the pre-revert entries — the new
+      // "reverted to an earlier version" row is then never found within
+      // Cypress's default 4s. Wait for the revert request before
+      // re-entering History.
+      cy.wait("@revertRevision");
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i);
       cy.findByText(/This is a question/i).should("not.exist");
+
+      // Simulate a backend failure on revert and confirm we surface
+      // the error message as a toast (UXW-310).
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing card" },
+      }).as("failedRevert");
+
+      cy.findAllByTestId("question-revert-button").first().click();
+      cy.wait("@failedRevert");
     });
+
+    H.undoToast().should("contain.text", "Cannot revert: missing card");
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {
@@ -264,37 +300,43 @@ describe("scenarios > question > saved", () => {
     cy.findAllByTestId("header-cell")
       .filter(":contains(Tax)")
       .as("headerCell")
+      .should("be.visible")
       .then(($cell) => {
-        const originalWidth = $cell[0].getBoundingClientRect().width;
-        cy.wrap(originalWidth).as("originalWidth");
+        cy.wrap($cell[0].getBoundingClientRect().width).as("originalWidth");
       });
 
-    cy.findByTestId("resize-handle-TAX").trigger("mousedown", {
-      button: 0,
-      clientX: 0,
-      clientY: 0,
-    });
+    const moveX = 100;
 
-    // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
-    const stepX = 10;
-    cy.get("body")
-      .trigger("mousemove", {
-        clientX: stepX,
-        clientY: 0,
-      })
-      .trigger("mousemove", {
-        clientX: stepX * 2,
-        clientY: 0,
-      });
-    cy.get("body").trigger("mouseup", { force: true });
-
-    // Wait until column width gets updated
-    cy.wait(10);
-
+    // The TanStack resize handle re-renders while the grid measures itself, so a
+    // single drag is occasionally lost or only partially applied and the column
+    // never grows enough. Re-run the (idempotent, gte-checked) drag until the
+    // column has actually widened, turning a dropped drag into a non-event.
     cy.get("@originalWidth").then((originalWidth) => {
-      cy.get("@headerCell").should(($newCell) => {
-        const newWidth = $newCell[0].getBoundingClientRect().width;
-        expect(newWidth).to.be.gte(originalWidth + stepX * 2);
+      const minWidth = originalWidth + moveX * 0.6;
+
+      const dragUntilResized = (attemptsLeft) => {
+        cy.findByTestId("resize-handle-TAX").trigger("mousedown", {
+          button: 0,
+          clientX: 0,
+          clientY: 0,
+        });
+        cy.get("body")
+          .trigger("mousemove", { clientX: moveX / 2, clientY: 0 })
+          .trigger("mousemove", { clientX: moveX, clientY: 0 })
+          .trigger("mouseup", { button: 0, clientX: moveX, clientY: 0 });
+
+        cy.get("@headerCell").then(($cell) => {
+          const width = $cell[0].getBoundingClientRect().width;
+          if (width < minWidth && attemptsLeft > 0) {
+            dragUntilResized(attemptsLeft - 1);
+          }
+        });
+      };
+
+      dragUntilResized(4);
+
+      cy.get("@headerCell").should(($cell) => {
+        expect($cell[0].getBoundingClientRect().width).to.be.gte(minWidth);
       });
     });
   });
@@ -497,9 +539,6 @@ describe("scenarios > question > saved", () => {
       H.appBar()
         .findByRole("link", { name: /Our analytics/i })
         .click();
-      cy.findByTestId("pinned-items")
-        .findAllByTestId("development-watermark")
-        .should("have.length.above", 0);
 
       cy.findByTestId("collection-table")
         .findByRole("link", { name: /Orders in a dashboard/i })
@@ -601,6 +640,7 @@ describe(
       H.addNotificationHandlerChannel(secondWebhookName, {
         hasNoChannelsAdded: true,
       });
+      H.selectScheduleTime();
       H.modal().button("Done").click();
 
       cy.findByLabelText("Move, trash, and more…").click();
@@ -611,36 +651,6 @@ describe(
         .click();
 
       H.modal().findByText(secondWebhookName).should("be.visible");
-    });
-
-    // There is no api to test individual hooks for new Question Alerts
-    it("should allow you to test a webhook", { tags: "@skip" }, () => {
-      cy.intercept("POST", "/api/pulse/test").as("testAlert");
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByLabelText("Move, trash, and more…").click();
-      H.popover().findByText("Create an alert").click();
-
-      H.modal().within(() => {
-        H.getAlertChannel(firstWebhookName).scrollIntoView();
-
-        H.getAlertChannel(firstWebhookName)
-          .findByRole("checkbox")
-          .click({ force: true });
-
-        H.getAlertChannel(firstWebhookName).button("Send a test").click();
-      });
-
-      cy.wait("@testAlert");
-
-      cy.request(
-        `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
-      ).then(({ body }) => {
-        expect(body).to.have.length(1);
-
-        cy.wrap(atob(body[0].content_base64))
-          .should("have.string", "alert_creator_name")
-          .and("have.string", "Bobby Tables");
-      });
     });
   },
 );

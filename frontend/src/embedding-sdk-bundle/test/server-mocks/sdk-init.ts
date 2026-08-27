@@ -9,6 +9,10 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
+import {
+  createMockEmbedState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import type {
   EnterpriseSettings,
   SettingDefinition,
@@ -20,10 +24,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockEmbedState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 export const setupSdkState = ({
   currentUser = createMockUser(),

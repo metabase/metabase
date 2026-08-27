@@ -1,9 +1,20 @@
 import { ensureMetabaseProviderPropsStore } from "./ensure-metabase-provider-props-store";
 
-type HandleLinkFn = (url: string) => { handled: boolean };
+// On the SDK side, we ask customers for a sync function but in EAJS we actually
+// need an async function internally. Typescript doesn't really like it unless
+// we specify both versions
+type HandleLinkFn = (
+  url: string,
+) => { handled: boolean } | Promise<{ handled: boolean }>;
 
 type SdkGlobalPlugins = {
   handleLink?: HandleLinkFn;
+};
+
+// The store payload is opaque in this module; this is the slice of the
+// provider props that the global plugins need.
+type SdkGlobalPluginsProps = {
+  pluginsConfig?: SdkGlobalPlugins;
 };
 
 // `MetabaseProvider` and most of the sdk code are in two different bundles,
@@ -12,27 +23,21 @@ type SdkGlobalPlugins = {
 // to access the provider props across bundles
 export const getSdkGlobalPlugins = (): SdkGlobalPlugins => {
   return (
-    ensureMetabaseProviderPropsStore().getState().props?.pluginsConfig || {}
+    ensureMetabaseProviderPropsStore<SdkGlobalPluginsProps>().getState().props
+      ?.pluginsConfig || {}
   );
+};
+
+export const MODULAR_EMBEDDING_HANDLE_LINK_PLUGIN: {
+  handleLink: HandleLinkFn;
+} = {
+  handleLink: (_url: string) => Promise.resolve({ handled: false }),
 };
 
 /**
  * Invokes the handleLink plugin if configured in the host app and returns an object with a 'handled' property, indicating if the host app handled the link.
+ * For iframe SDK, this sends a postMessage to the parent window and awaits the response.
  */
-export function handleLinkSdkPlugin(url: string): { handled: boolean } {
-  const globalPlugins = getSdkGlobalPlugins();
-
-  if (!globalPlugins?.handleLink) {
-    return { handled: false };
-  }
-
-  const result = globalPlugins.handleLink(url);
-
-  if (!result || typeof result !== "object" || !("handled" in result)) {
-    throw new Error(
-      "handleLink plugin must return an object with a 'handled' property",
-    );
-  }
-
-  return result;
+export async function handleLinkSdkPlugin(url: string) {
+  return await MODULAR_EMBEDDING_HANDLE_LINK_PLUGIN.handleLink(url);
 }

@@ -6,10 +6,9 @@ import * as Lib from "metabase-lib";
 import { CompileError } from "./errors";
 import { EDITOR_FK_SYMBOLS, getDisplayNameWithSeparator } from "./identifier";
 import type { Node } from "./pratt";
-import type { ExpressionType } from "./types";
 
 export type Resolver = (
-  type: ExpressionType,
+  type: Lib.ExpressionType,
   name: string,
   node?: Node,
 ) => Lib.ExpressionParts | Lib.ExpressionArg;

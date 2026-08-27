@@ -1,10 +1,11 @@
 const { H } = cy;
 import { dedent } from "ts-dedent";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > summarize sidebar", () => {
   beforeEach(() => {
@@ -110,38 +111,6 @@ describe("scenarios > question > summarize sidebar", () => {
     });
   });
 
-  it("should be able to do subsequent aggregation on a custom expression (metabase#14649)", () => {
-    H.createQuestion(
-      {
-        name: "14649_min",
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              [
-                "aggregation-options",
-                ["sum", ["field", ORDERS.SUBTOTAL, null]],
-                { name: "Revenue", "display-name": "Revenue" },
-              ],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-            ],
-          },
-          aggregation: [
-            ["min", ["field", "Revenue", { "base-type": "type/Float" }]],
-          ],
-        },
-
-        display: "scalar",
-      },
-      { visitQuestion: true },
-    );
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("49.54");
-  });
-
   it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.summarize({ mode: "notebook" });
@@ -215,22 +184,45 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
-    H.createQuestion(
-      {
-        name: "12625",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            ["count"],
-            ["sum", ["field", ORDERS.SUBTOTAL, null]],
-            ["sum", ["field", ORDERS.TOTAL, null]],
+    H.createTestQuery({
+      database: SAMPLE_DB_ID,
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            { type: "operator", operator: "count" },
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "SUBTOTAL" }],
+            },
+            {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
           ],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-          "order-by": [["desc", ["aggregation", 1]]],
+          breakouts: [
+            {
+              type: "column",
+              name: "CREATED_AT",
+              sourceName: "ORDERS",
+              unit: "year",
+            },
+          ],
+          orderBys: [
+            {
+              direction: "desc",
+              type: "column",
+              name: "sum",
+              displayName: "Sum of Subtotal",
+            },
+          ],
         },
-      },
-      { visitQuestion: true },
-    );
+      ],
+    })
+      .then((dataset_query) => H.createCard({ name: "12625", dataset_query }))
+      .then((card) => H.visitQuestion(card.id));
 
     H.summarize();
 
@@ -259,27 +251,8 @@ describe("scenarios > question > summarize sidebar", () => {
     removeMetricFromSidebar("Sum of Total");
 
     cy.findAllByTestId("header-cell").should("have.length", 2);
-    cy.get("[data-testid=cell-data]").should("contain", 744); // `Count` for year 2022
+    cy.get("[data-testid=cell-data]").should("contain", 744); // `Count` for year 2025
   });
-
-  // flaky test (#19454)
-  it(
-    "should show an info popover when hovering over summarize dimension options",
-    { tags: "@skip" },
-    () => {
-      H.openReviewsTable();
-
-      H.summarize();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Group by")
-        .parent()
-        .findByText("Title")
-        .trigger("mouseenter");
-
-      H.popover().contains("Title");
-      H.popover().contains("199 distinct values");
-    },
-  );
 });
 
 function removeMetricFromSidebar(metricName) {

@@ -18,10 +18,10 @@
 (deftest product-feedback-test-2
   (testing "fires the proxy in background"
     (let [sent? (promise)]
-      (with-redefs [product-feedback.api/send-feedback! (fn [comments source email]
-                                                          (doseq [prop [comments source email]]
-                                                            (is (not (str/blank? prop)) "got a blank property to send-feedback!"))
-                                                          (deliver sent? true))]
+      (mt/with-dynamic-fn-redefs [product-feedback.api/send-feedback! (fn [comments source email]
+                                                                        (doseq [prop [comments source email]]
+                                                                          (is (not (str/blank? prop)) "got a blank property to send-feedback!"))
+                                                                        (deliver sent? true))]
         (mt/user-http-request :crowberto :post 204 "product-feedback/"
                               {:comments "I like Metabase"
                                :email    "happy_user@test.com"
