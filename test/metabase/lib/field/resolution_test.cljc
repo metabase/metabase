@@ -1880,7 +1880,7 @@
                                                                      :lib/deduplicated-name
                                                                      :lib/original-name)
                                                              (cond->
-                                                                 (= (:display-name col) "Products → ID")
+                                                              (= (:display-name col) "Products → ID")
                                                                (assoc :display-name "[RENAMED]")))))
                                                  (lib.metadata.result-metadata/returned-columns query))]
                               {:id              1

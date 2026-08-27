@@ -263,7 +263,6 @@
                                                        ;; if we have `id` then filter out anything that is definitely not a
                                                        ;; match
                                                        (:id col) (filter #(= (:id %) (:id col)))))]
-
             ;; prefer resolution with `:lib/source-column-alias` over `:id` if multiple versions of the column (e.g.
             ;; with different bucketing units) are returned. If there's only one match then use ID for resolution. On
             ;; very old saved Card source metadata `:lib/source-column-alias` might be set to something like `ID_2`
