@@ -1,28 +1,30 @@
 /*
- * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
+ * Shared components for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 import cx from "classnames";
-import { type PropsWithChildren, useMemo } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Box, Flex, useMantineTheme } from "metabase/ui";
-import type { VisualizationGridSize } from "metabase/visualizations/types";
+import { Box, Ellipsified, Flex, useMantineTheme } from "metabase/ui";
 
 import S from "./ScalarValue.module.css";
-import { findSize, getMaxFontSize } from "./utils";
+import type { ScalarSizeTier } from "./sizing";
 
-export const ScalarWrapper = ({ children }: PropsWithChildren) => (
+export const ScalarWrapper = ({
+  children,
+  xPadding,
+}: PropsWithChildren<{ xPadding?: number }>) => (
   <Flex
     pos="relative"
     direction="column"
-    wrap="wrap"
     justify="center"
     align="center"
     flex={1}
     w="100%"
     h="100%"
+    px={xPadding}
     data-testid="scalar-root"
   >
     {children}
@@ -31,22 +33,14 @@ export const ScalarWrapper = ({ children }: PropsWithChildren) => (
 
 interface ScalarValueProps {
   value: string;
-  height: number;
-  width: number;
-  gridSize?: VisualizationGridSize;
-  totalNumGridCols?: number;
-  fontFamily: string;
+  fontSize: number;
   color?: string;
   disableHover?: boolean;
 }
 
 export const ScalarValue = ({
   value,
-  height,
-  width,
-  gridSize,
-  totalNumGridCols,
-  fontFamily,
+  fontSize,
   color = "inherit",
   disableHover,
 }: ScalarValueProps) => {
@@ -54,50 +48,56 @@ export const ScalarValue = ({
     other: { number: numberTheme },
   } = useMantineTheme();
 
-  const fontSize = useMemo(() => {
-    if (numberTheme?.value?.fontSize) {
-      return numberTheme.value?.fontSize;
-    }
-
-    return findSize({
-      text: value,
-      targetHeight: height,
-      targetWidth: width,
-      fontFamily: fontFamily ?? "Lato",
-      fontWeight: 700,
-      unit: "rem",
-      step: 0.2,
-      min: 1,
-      max: gridSize
-        ? getMaxFontSize(gridSize.width, totalNumGridCols, width)
-        : 4,
-    });
-  }, [
-    fontFamily,
-    gridSize,
-    height,
-    totalNumGridCols,
-    value,
-    width,
-    numberTheme?.value?.fontSize,
-  ]);
-
   return (
     <Box
       component="h1"
       className={cx(
         DashboardS.ScalarValue,
-        QueryBuilderS.ScalarValue,
         S.value,
         !disableHover && S.hoverable,
       )}
-      fz={fontSize}
-      lh={numberTheme?.value?.lineHeight}
+      fz={numberTheme?.value?.fontSize ?? fontSize}
+      lh={numberTheme?.value?.lineHeight ?? 1}
       data-testid="scalar-value"
       // Route color through a CSS variable so `S.hoverable:hover` can override (inline `style` would beat the class on specificity).
       style={{ "--scalar-value-color": color }}
     >
       {value ?? t`null`}
+    </Box>
+  );
+};
+
+export const ScalarTitle = ({ children }: { children: ReactNode }) => (
+  <Box
+    component="h3"
+    fz={14}
+    lh={1.22}
+    fw={700}
+    c="text-primary"
+    ta="center"
+    maw="100%"
+    data-testid="scalar-title"
+  >
+    <Ellipsified tooltip={children}>{children}</Ellipsified>
+  </Box>
+);
+
+export const ScalarActionButtons = ({
+  children,
+  tier,
+}: PropsWithChildren<{ tier: ScalarSizeTier }>) => {
+  if (!children) {
+    return null;
+  }
+  return (
+    <Box
+      pos="absolute"
+      top={tier.menuOffset.top}
+      right={tier.menuOffset.right}
+      className={CS.hoverChild}
+      data-testid="scalar-action-buttons"
+    >
+      {children}
     </Box>
   );
 };

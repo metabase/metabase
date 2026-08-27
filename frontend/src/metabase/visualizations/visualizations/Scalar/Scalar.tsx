@@ -4,9 +4,12 @@ import _ from "underscore";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Stack, Text, Tooltip } from "metabase/ui";
 import {
+  ScalarActionButtons,
+  ScalarTitle,
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
+import { getScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import {
   compactifyValue,
@@ -24,8 +27,6 @@ import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import { SCALAR_CHART_DEFINITION } from "./definition";
 import { scalarToBarTransform } from "./scalars-bar-transform";
-
-const PADDING = 32;
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(
@@ -56,10 +57,9 @@ function ScalarComponent(
     onVisualizationClick,
     height,
     width,
-    gridSize,
-    totalNumGridCols,
-    fontFamily,
     rawSeries,
+    showTitle,
+    actionButtons,
   } = props;
 
   if (rawSeries.length > 1) {
@@ -93,15 +93,22 @@ function ScalarComponent(
   const color = getColor(value, segments);
   const tooltipContent = getTooltipContent(segments);
 
+  const tier = getScalarSizeTier(width, height);
+  const availableWidth = Math.max(width - tier.xPadding * 2, 0);
+
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    width,
+    availableWidth,
     formatOptions,
   );
 
   const label = settings["scalar.label"];
   const sublabel = settings["scalar.sublabel"];
   const isMetricsViewer = label !== undefined;
+
+  const title = showTitle && !isMetricsViewer ? settings["card.title"] : null;
+  const showsInlineTitle = Boolean(title) && tier.showsTitle;
+  const showsTitleOnHover = Boolean(title) && !tier.showsTitle;
 
   const isClickable = onVisualizationClick != null && !isMetricsViewer;
 
@@ -125,45 +132,64 @@ function ScalarComponent(
   };
 
   return (
-    <ScalarWrapper>
-      <ScalarValueContainer
-        className={DashboardS.fullscreenNormalText}
-        tooltip={fullScalarValue}
-        alwaysShowTooltip={fullScalarValue !== displayValue}
-        isClickable={isClickable}
-      >
-        <Tooltip
-          label={tooltipContent}
-          position="bottom"
-          px="0.375rem"
-          py="xs"
-          disabled={!tooltipContent}
-        >
-          <Stack onClick={handleClick} ref={scalarRef} align="center" gap={0}>
-            <ScalarValue
-              color={color}
-              disableHover={isMetricsViewer}
-              fontFamily={fontFamily}
-              gridSize={gridSize}
-              height={Math.max(height - PADDING * 2, 0)}
-              totalNumGridCols={totalNumGridCols}
-              // Unjustified type cast. FIXME
-              value={displayValue as string}
-              width={Math.max(width - PADDING, 0)}
-            />
-            {label && (
-              <Text fz="14px" lh="16px" c="text-primary" mt="md" ta="center">
-                {label}
-              </Text>
-            )}
-            {sublabel && (
-              <Text fz="12px" lh="16px" c="text-secondary" mt="xs" ta="center">
-                {sublabel}
-              </Text>
-            )}
-          </Stack>
-        </Tooltip>
-      </ScalarValueContainer>
+    <ScalarWrapper xPadding={tier.xPadding}>
+      <ScalarActionButtons tier={tier}>{actionButtons}</ScalarActionButtons>
+      <Tooltip label={title} disabled={!showsTitleOnHover} position="bottom">
+        <Stack align="center" gap={tier.valueTitleGap} maw="100%">
+          <ScalarValueContainer
+            className={DashboardS.fullscreenNormalText}
+            tooltip={fullScalarValue}
+            alwaysShowTooltip={fullScalarValue !== displayValue}
+            isClickable={isClickable}
+          >
+            <Tooltip
+              label={tooltipContent}
+              position="bottom"
+              px="0.375rem"
+              py="xs"
+              disabled={!tooltipContent}
+            >
+              <Stack
+                onClick={handleClick}
+                ref={scalarRef}
+                align="center"
+                gap={0}
+              >
+                <ScalarValue
+                  color={color}
+                  disableHover={isMetricsViewer}
+                  fontSize={tier.valueFontSize}
+                  // Unjustified type cast. FIXME
+                  value={displayValue as string}
+                />
+                {label && (
+                  <Text
+                    fz="14px"
+                    lh="16px"
+                    c="text-primary"
+                    mt="md"
+                    ta="center"
+                  >
+                    {label}
+                  </Text>
+                )}
+                {sublabel && (
+                  <Text
+                    fz="12px"
+                    lh="16px"
+                    c="text-secondary"
+                    mt="xs"
+                    ta="center"
+                  >
+                    {sublabel}
+                  </Text>
+                )}
+              </Stack>
+            </Tooltip>
+          </ScalarValueContainer>
+          {showsInlineTitle && <ScalarTitle>{title}</ScalarTitle>}
+        </Stack>
+      </Tooltip>
     </ScalarWrapper>
   );
 }

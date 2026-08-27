@@ -1,1 +1,1 @@
-export * from "./PreviousValueComparison";
+export * from "./PreviousValueComparisonTooltip";

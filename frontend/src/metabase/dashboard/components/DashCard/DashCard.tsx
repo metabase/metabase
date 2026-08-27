@@ -342,8 +342,6 @@ function DashCardInner({
           DashboardS.Card,
           EmbedFrameS.Card,
           CS.relative,
-          CS.roundedSm,
-          !isAction && CS.bordered,
           CS.flex,
           CS.flexColumn,
           CS.hoverParent,

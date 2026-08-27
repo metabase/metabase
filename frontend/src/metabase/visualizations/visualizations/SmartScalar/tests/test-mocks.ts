@@ -29,6 +29,8 @@ interface MockSeriesOptions {
   insights?: Partial<Insight>[];
   field?: string;
   comparisonType?: SmartScalarComparison;
+  comparisonTypes?: SmartScalarComparison[];
+  name?: string;
 }
 
 export const mockSeries = ({
@@ -36,6 +38,8 @@ export const mockSeries = ({
   insights,
   field,
   comparisonType = PREVIOUS_PERIOD_COMPARISON,
+  comparisonTypes,
+  name,
 }: MockSeriesOptions) => {
   const cols = [
     DateTimeColumn({ name: "Month", source: "breakout" }),
@@ -47,10 +51,11 @@ export const mockSeries = ({
   return [
     {
       card: {
+        name,
         display: "smartscalar",
         visualization_settings: {
           "scalar.field": field,
-          "scalar.comparisons": [comparisonType],
+          "scalar.comparisons": comparisonTypes ?? [comparisonType],
         },
         dataset_query: createMockStructuredDatasetQuery(),
       },

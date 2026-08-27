@@ -5,6 +5,7 @@ import {
   VisualizationWrapper,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { Box, Flex } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 
@@ -26,11 +27,33 @@ const MOCK_ROWS = [
 const MOCK_SERIES = mockSeries({
   rows: MOCK_ROWS,
   insights: [{ unit: "month", col: "Count" }],
+  name: "Last invoice",
 });
+
+// spec card sizes: size-200, size-300, and size-400 tiers
+const CARD_SIZES = [
+  { width: 256, height: 126 },
+  { width: 345, height: 170 },
+  { width: 433, height: 214 },
+];
 
 export const Default: StoryFn = () => (
   <VisualizationWrapper>
-    <Visualization rawSeries={MOCK_SERIES} width={500} />
+    <Flex gap="lg" align="flex-start" p="lg">
+      {CARD_SIZES.map(({ width, height }) => (
+        <Box
+          key={`${width}x${height}`}
+          w={width}
+          h={height}
+          style={{
+            borderRadius: 12,
+            boxShadow: "0 0 0 0.5px var(--mb-color-shadow-default)",
+          }}
+        >
+          <Visualization rawSeries={MOCK_SERIES} showTitle width={width} />
+        </Box>
+      ))}
+    </Flex>
   </VisualizationWrapper>
 );
 
@@ -50,7 +73,9 @@ export const EmbeddingTheme: StoryFn = () => {
 
   return (
     <SdkVisualizationWrapper theme={theme}>
-      <Visualization rawSeries={MOCK_SERIES} width={500} />
+      <Box w={433} h={214}>
+        <Visualization rawSeries={MOCK_SERIES} width={433} />
+      </Box>
     </SdkVisualizationWrapper>
   );
 };

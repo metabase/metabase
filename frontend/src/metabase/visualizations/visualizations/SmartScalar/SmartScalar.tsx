@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box } from "metabase/ui";
+import { Box, Stack, Tooltip } from "metabase/ui";
 import {
+  ScalarActionButtons,
+  ScalarTitle,
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
+import { getScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import type {
@@ -15,26 +18,23 @@ import type {
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
-import { PreviousValueComparison } from "./PreviousValueComparison";
-import { ScalarPeriod } from "./ScalarPeriod";
-import { computeTrend } from "./compute";
-import { DASHCARD_HEADER_HEIGHT } from "./constants";
+import { TrendComparisonRow } from "./TrendComparisonRow";
+import { TrendSymbol } from "./TrendSymbol";
+import { CHANGE_TYPE_OPTIONS, computeTrend } from "./compute";
 import { SMART_SCALAR_CHART_DEFINITION } from "./definition";
-import { getValueHeight, getValueWidth, isPeriodVisible } from "./utils";
 
 function SmartScalarComponent({
   onVisualizationClick,
-  isDashboard,
   settings,
   visualizationIsClickable,
   series,
   rawSeries,
-  gridSize,
   width,
   height,
-  totalNumGridCols,
   fontFamily,
   onRenderError,
+  showTitle,
+  actionButtons,
 }: VisualizationProps & VisualizationPassThroughProps) {
   const scalarRef = useRef(null);
   const { getColor } = useBrowserRenderingContext({ fontFamily });
@@ -55,9 +55,7 @@ function SmartScalarComponent({
     return null;
   }
 
-  const { value, clicked, comparisons, display, formatOptions } = trend;
-
-  const innerHeight = isDashboard ? height - DASHCARD_HEADER_HEIGHT : height;
+  const { value, clicked, comparisons, formatOptions } = trend;
 
   const isClickable = onVisualizationClick != null;
 
@@ -77,63 +75,81 @@ function SmartScalarComponent({
     }
   };
 
+  const tier = getScalarSizeTier(width, height);
+  const availableWidth = Math.max(width - tier.xPadding * 2, 0);
+
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    width,
+    availableWidth,
     formatOptions,
   );
 
-  const { valueHeight, comparisonsCount } = getValueHeight(
-    innerHeight,
-    comparisons.length,
-  );
+  const title = showTitle ? settings["card.title"] : null;
+  const showsInlineTitle = Boolean(title) && tier.showsTitle;
+  const showsTitleOnHover = Boolean(title) && !tier.showsTitle;
+
+  const primaryComparison = comparisons[0];
+  const symbolDirection =
+    primaryComparison?.changeArrowIconName ??
+    (primaryComparison?.changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE
+      ? "no_change"
+      : null);
 
   return (
-    <ScalarWrapper>
-      <ScalarValueContainer
-        className={DashboardS.fullscreenNormalText}
-        tooltip={fullScalarValue}
-        alwaysShowTooltip={fullScalarValue !== displayValue}
-        isClickable={isClickable}
-      >
-        <span onClick={handleClick} ref={scalarRef}>
-          <ScalarValue
-            fontFamily={fontFamily}
-            gridSize={gridSize}
-            height={valueHeight}
-            totalNumGridCols={totalNumGridCols}
-            // Unjustified type cast. FIXME
-            value={displayValue as string}
-            width={getValueWidth(width)}
-          />
-        </span>
-      </ScalarValueContainer>
-      {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
-
-      {comparisonsCount === 1 && (
-        <Box maw="100%" data-testid="scalar-previous-value">
-          <PreviousValueComparison
-            comparison={comparisons[0]}
-            fontFamily={fontFamily}
-            formatOptions={formatOptions}
-            tooltipComparisons={comparisons}
-            width={width}
-          />
-        </Box>
-      )}
-
-      {comparisonsCount !== 1 &&
-        comparisons.map((comparison, index) => (
-          <Box maw="100%" key={index} data-testid="scalar-previous-value">
-            <PreviousValueComparison
-              comparison={comparison}
-              fontFamily={fontFamily}
-              formatOptions={formatOptions}
-              tooltipComparisons={[comparison]}
-              width={width}
-            />
+    <ScalarWrapper xPadding={tier.xPadding}>
+      <ScalarActionButtons tier={tier}>{actionButtons}</ScalarActionButtons>
+      <Tooltip label={title} disabled={!showsTitleOnHover} position="bottom">
+        <Stack
+          pos="relative"
+          align="center"
+          gap={tier.valueTitleGap}
+          maw="100%"
+        >
+          <Box pos="relative" maw="100%">
+            <ScalarValueContainer
+              className={DashboardS.fullscreenNormalText}
+              tooltip={fullScalarValue}
+              alwaysShowTooltip={fullScalarValue !== displayValue}
+              isClickable={isClickable}
+            >
+              <span onClick={handleClick} ref={scalarRef}>
+                <ScalarValue
+                  fontSize={tier.valueFontSize}
+                  // Unjustified type cast. FIXME
+                  value={displayValue as string}
+                />
+              </span>
+            </ScalarValueContainer>
+            {symbolDirection != null && (
+              <Box
+                pos="absolute"
+                right="100%"
+                top="50%"
+                mr={tier.symbolGap}
+                style={{ transform: "translateY(-50%)", display: "flex" }}
+              >
+                <TrendSymbol
+                  direction={symbolDirection}
+                  colorName={primaryComparison?.changeColorName}
+                  size={tier.symbolSize}
+                />
+              </Box>
+            )}
           </Box>
-        ))}
+          {showsInlineTitle && <ScalarTitle>{title}</ScalarTitle>}
+          {comparisons.length > 0 && (
+            <Box
+              pos="absolute"
+              top={`calc(100% + ${tier.comparisonGap}px)`}
+              left="50%"
+              w={availableWidth}
+              style={{ transform: "translateX(-50%)" }}
+            >
+              <TrendComparisonRow trend={trend} formatOptions={formatOptions} />
+            </Box>
+          )}
+        </Stack>
+      </Tooltip>
     </ScalarWrapper>
   );
 }

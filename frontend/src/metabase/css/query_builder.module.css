@@ -287,11 +287,6 @@
   font-weight: bold;
 }
 
-/* need to do this ugliness to override the locally scoped font size from Scalar.css */
-.QueryBuilder .ScalarValue {
-  font-size: 5em;
-}
-
 .Overlay {
   background-color: color-mix(
     in srgb,

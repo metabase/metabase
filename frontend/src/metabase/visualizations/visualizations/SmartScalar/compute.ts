@@ -38,8 +38,10 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 export type ComparisonResult = {
   changeArrowIconName: ChangeArrowType | undefined;
   changeColor: string | undefined;
+  changeColorName: ChangeColorName | undefined;
   changeType: ChangeType;
   comparisonDescStr: string | undefined;
+  comparisonDescShortStr: string | undefined;
   comparisonValue: RowValue | undefined;
   display: {
     percentChange: string;
@@ -180,11 +182,23 @@ function buildComparisonObject({
       )
     : undefined;
 
+  const changeColorName = changeArrowIconName
+    ? getArrowColorName(
+        changeArrowIconName,
+        settings["scalar.switch_positive_negative"],
+      )
+    : undefined;
+
   return {
     changeArrowIconName,
     changeColor,
+    changeColorName,
     changeType,
     comparisonDescStr,
+    comparisonDescShortStr: getComparisonDescShortStr({
+      comparison,
+      currentMetricData,
+    }),
     comparisonValue,
     display: {
       percentChange: percentChangeStr,
@@ -798,15 +812,59 @@ function getArrowColor(
   shouldSwitchPositiveNegative: boolean | undefined,
   { getColor }: { getColor: ColorGetter },
 ) {
-  const arrowIconColorNames = shouldSwitchPositiveNegative
-    ? {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-positive"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-negative"),
-      }
-    : {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("feedback-negative"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("feedback-positive"),
-      };
+  return getColor(
+    getArrowColorName(changeArrowIconName, shouldSwitchPositiveNegative),
+  );
+}
+
+export type ChangeColorName = "feedback-positive" | "feedback-negative";
+
+function getArrowColorName(
+  changeArrowIconName: ChangeArrowType,
+  shouldSwitchPositiveNegative: boolean | undefined,
+): ChangeColorName {
+  const arrowIconColorNames: Record<ChangeArrowType, ChangeColorName> =
+    shouldSwitchPositiveNegative
+      ? {
+          [CHANGE_ARROW_ICONS.ARROW_DOWN]: "feedback-positive",
+          [CHANGE_ARROW_ICONS.ARROW_UP]: "feedback-negative",
+        }
+      : {
+          [CHANGE_ARROW_ICONS.ARROW_DOWN]: "feedback-negative",
+          [CHANGE_ARROW_ICONS.ARROW_UP]: "feedback-positive",
+        };
 
   return arrowIconColorNames[changeArrowIconName];
+}
+
+// "Month over month" style abbreviations for the compact comparison line
+const getPeriodAbbreviation = (dateUnit: DateTimeAbsoluteUnit) => {
+  switch (dateUnit) {
+    case "day":
+      return t`DoD`;
+    case "week":
+      return t`WoW`;
+    case "month":
+      return t`MoM`;
+    case "quarter":
+      return t`QoQ`;
+    case "year":
+      return t`YoY`;
+    default:
+      return undefined;
+  }
+};
+
+function getComparisonDescShortStr({
+  comparison,
+  currentMetricData,
+}: {
+  comparison: SmartScalarComparison;
+  currentMetricData: MetricData;
+}) {
+  const { dateUnit } = currentMetricData.dateUnitSettings;
+  if (comparison.type !== COMPARISON_TYPES.PREVIOUS_PERIOD || !dateUnit) {
+    return undefined;
+  }
+  return getPeriodAbbreviation(dateUnit);
 }
