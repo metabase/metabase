@@ -1,6 +1,7 @@
 import type { CustomVisualization } from "custom-viz";
 import type { ComponentType } from "react";
 
+import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type {
   Visualization,
@@ -8,11 +9,14 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
 import type {
+  CustomVizDisplayType,
   CustomVizPluginRuntime,
-  VisualizationDisplay,
+  Series,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { sanitizePluginSettings } from "./custom-viz-settings";
+import { toPluginSeries, toPluginVizSettings } from "./plugin-view";
 
 /**
  * Assign properties derived from a vizDef onto a Visualization component
@@ -30,7 +34,7 @@ export function applyDefaultVisualizationProps(
   Component: ComponentType<VisualizationProps & VisualizationPassThroughProps>,
   vizDef: CustomVisualization<Record<string, unknown>>,
   settings: {
-    identifier: VisualizationDisplay;
+    identifier: CustomVizDisplayType;
     plugin: CustomVizPluginRuntime;
     getUiName: () => string;
     iconUrl?: string | undefined;
@@ -38,12 +42,17 @@ export function applyDefaultVisualizationProps(
   },
 ): Visualization {
   const { plugin, ...componentSettings } = settings;
+  const prefix = getCustomVizSettingKeyPrefix(settings.identifier);
   return Object.assign(Component, {
     settings: {
       ...columnSettings({ getHidden: () => true }),
       ...sanitizePluginSettings(vizDef.settings, vizDef.mount, plugin),
     },
-    checkRenderable: vizDef.checkRenderable,
+    checkRenderable: (series: Series, vizSettings: VisualizationSettings) =>
+      vizDef.checkRenderable(
+        toPluginSeries(series),
+        toPluginVizSettings(vizSettings, prefix),
+      ),
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
     hidden: false,

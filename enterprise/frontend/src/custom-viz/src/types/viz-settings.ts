@@ -232,7 +232,7 @@ export type CreateDefineSetting<TSettings extends BaseVisualizationSettings> =
      * without an explicit ordering a dependency may still be `undefined` when
      * this setting tries to read it.
      */
-    readDependencies?: string[];
+    readDependencies?: (keyof TSettings & string)[];
 
     /**
      * Setting IDs whose current computed values are persisted alongside this
@@ -243,7 +243,7 @@ export type CreateDefineSetting<TSettings extends BaseVisualizationSettings> =
      * related settings so they aren't silently recalculated under the new
      * context and lose user intent.
      */
-    writeDependencies?: string[];
+    writeDependencies?: (keyof TSettings & string)[];
 
     /**
      * Setting IDs that are reset to `null` whenever this setting changes.
@@ -253,7 +253,7 @@ export type CreateDefineSetting<TSettings extends BaseVisualizationSettings> =
      * invalidate derived settings whose stored value becomes stale or meaningless
      * after the change.
      */
-    eraseDependencies?: string[];
+    eraseDependencies?: (keyof TSettings & string)[];
 
     /**
      * Widget to render for this setting: either a built-in widget name

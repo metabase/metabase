@@ -2,6 +2,7 @@ import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { getCustomVizSettingKeyPrefix } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
 import type {
   ComputedVisualizationSettings,
@@ -14,6 +15,7 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 import { getVisualizationRaw } from "../registry";
 import {
@@ -103,7 +105,41 @@ export function getStoredSettingsForSeries(
       normalizeColumnSettings(storedSettings.column_settings),
     );
   }
+  const display = series?.[0]?.card?.display;
+  if (isCustomVizDisplay(display)) {
+    storedSettings = adoptLegacyCustomVizSettings(
+      storedSettings,
+      getCustomVizSettingKeyPrefix(display),
+      getSettingDefinitionsForSeries(series),
+    );
+  }
   return storedSettings;
+}
+
+// Cards saved before plugin settings were namespaced hold them under the bare setting id.
+function adoptLegacyCustomVizSettings(
+  storedSettings: VisualizationSettings,
+  prefix: string,
+  definitions: VisualizationSettingsDefinitions,
+): VisualizationSettings {
+  const legacyKeys = Object.keys(definitions)
+    .filter((key) => key.startsWith(prefix))
+    .map((key) => [key, key.slice(prefix.length)] as const)
+    .filter(
+      ([, legacyKey]) =>
+        !(legacyKey in definitions) && legacyKey in storedSettings,
+    );
+  if (legacyKeys.length === 0) {
+    return storedSettings;
+  }
+  const settings = { ...storedSettings };
+  for (const [key, legacyKey] of legacyKeys) {
+    if (settings[key] === undefined) {
+      settings[key] = settings[legacyKey];
+    }
+    delete settings[legacyKey];
+  }
+  return settings;
 }
 
 export function getComputedSettingsForSeries(

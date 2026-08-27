@@ -25,9 +25,11 @@ import { retry } from "metabase/utils/retry";
 import { registerVisualization, visualizations } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
+  getCustomVizSettingKeyPrefix,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import type { ClickObject } from "metabase/visualizations/types";
 import type { VisualizationProps } from "metabase/visualizations/types/visualization";
 import { useListCustomVizPluginsQuery } from "metabase-enterprise/api";
 import { customVizPluginApi } from "metabase-enterprise/api/custom-viz-plugin";
@@ -39,8 +41,10 @@ import type {
 import { isObject } from "metabase-types/guards";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import { toHostClickObject } from "./click-object";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import { toPluginSeries, toPluginVizSettings } from "./plugin-view";
 import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
 import { reportUnavailableCustomVizPlugin } from "./utils/unavailable-toast";
@@ -584,6 +588,10 @@ function createCustomVizWrapper(
   VisualizationComponent: GenericVizDefinition["VisualizationComponent"],
   plugin: CustomVizPluginRuntime,
 ) {
+  const prefix = getCustomVizSettingKeyPrefix(
+    getCustomPluginIdentifier(plugin),
+  );
+
   return function CustomVizWrapper({
     width,
     height,
@@ -609,19 +617,20 @@ function createCustomVizWrapper(
       [browserRenderingContext],
     );
 
+    const handleClick = (clickObject: ClickObject | null) =>
+      onVisualizationClick(
+        clickObject && toHostClickObject(clickObject, settings),
+      );
+
     const pluginProps: GenericVizPluginProps = {
       width,
       height,
-      // Unjustified type cast. FIXME
-      series: series as unknown as GenericVizPluginProps["series"],
-      // The plugin API mirrors host types with looser public shapes (e.g.
-      // the `column` resolver returns plain strings instead of internal
-      // unions); the runtime value is the host's computed settings.
-      settings: settings as unknown as GenericVizPluginProps["settings"],
+      series: toPluginSeries(series),
+      settings: toPluginVizSettings(settings, prefix),
       renderingContext,
-      // Unjustified type cast. FIXME
-      onClick: onVisualizationClick as unknown as (
-        clickObject: CustomVizClickObject<Record<string, unknown>> | null,
+      // The plugin API mirrors host click objects with looser public types.
+      onClick: handleClick as unknown as (
+        clickObject: CustomVizClickObject | null,
       ) => void,
       // Unjustified type cast. FIXME
       onHover: onHoverChange as unknown as (

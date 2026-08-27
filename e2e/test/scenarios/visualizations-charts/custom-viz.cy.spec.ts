@@ -621,6 +621,17 @@ describe("admin > custom visualizations", () => {
 
       H.saveSavedQuestion();
 
+      cy.log("plugin settings are stored under the plugin's namespace");
+      cy.get("@questionId").then((id) => {
+        cy.request("GET", `/api/card/${id}`).then(({ body }) => {
+          expect(body.visualization_settings).to.have.property(
+            `custom-viz:${H.CUSTOM_VIZ_IDENTIFIER}:threshold`,
+            42,
+          );
+          expect(body.visualization_settings).not.to.have.property("threshold");
+        });
+      });
+
       H.interceptPluginBundle();
       cy.reload();
       cy.wait("@pluginBundle");

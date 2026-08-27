@@ -53,6 +53,7 @@ function prepareWidget(pluginId = 1) {
   const mount = wrapPluginWidget(
     widgetMount,
     createMockCustomVizPluginRuntime({ id: pluginId }),
+    "custom-viz:demo-viz:",
   );
   return {
     mount,

@@ -5,6 +5,7 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
+import { registerVisualization } from "metabase/visualizations";
 import {
   getComputedSettingsForSeries,
   getStoredSettingsForSeries,
@@ -389,3 +390,73 @@ const cardWithTimeseriesBreakoutAndTwoMetrics = ({
     },
   ),
 ];
+
+describe("getStoredSettingsForSeries", () => {
+  describe("custom viz settings saved before namespacing", () => {
+    const PREFIX = "custom-viz:demo-viz:";
+
+    beforeAll(() => {
+      registerVisualization({
+        identifier: "custom:demo-viz",
+        getUiName: () => "Demo viz",
+        checkRenderable: () => undefined,
+        settings: {
+          [`${PREFIX}threshold`]: { widget: "number" },
+          [`${PREFIX}card.title`]: { widget: "input" },
+        },
+      });
+    });
+
+    function customVizSeries(
+      visualization_settings: VisualizationSettings,
+    ): Series {
+      return [
+        createMockSingleSeries({
+          display: "custom:demo-viz",
+          visualization_settings,
+        }),
+      ];
+    }
+
+    it("reads a bare plugin setting under its namespaced key", () => {
+      expect(
+        getStoredSettingsForSeries(customVizSeries({ threshold: 5 })),
+      ).toEqual({ [`${PREFIX}threshold`]: 5 });
+    });
+
+    it("prefers the namespaced key when both are stored", () => {
+      expect(
+        getStoredSettingsForSeries(
+          customVizSeries({ threshold: 5, [`${PREFIX}threshold`]: 7 }),
+        ),
+      ).toEqual({ [`${PREFIX}threshold`]: 7 });
+    });
+
+    it("leaves a host setting alone even when the plugin declares the same id", () => {
+      expect(
+        getStoredSettingsForSeries(customVizSeries({ "card.title": "Title" })),
+      ).toEqual({ "card.title": "Title" });
+    });
+
+    it("returns the stored settings as is when there is nothing to adopt", () => {
+      const series = customVizSeries({ [`${PREFIX}threshold`]: 7 });
+
+      expect(getStoredSettingsForSeries(series)).toBe(
+        series[0].card.visualization_settings,
+      );
+    });
+
+    it("ignores bare plugin ids on other displays", () => {
+      const series: Series = [
+        createMockSingleSeries({
+          display: "table",
+          visualization_settings: { threshold: 5 },
+        }),
+      ];
+
+      expect(getStoredSettingsForSeries(series)).toBe(
+        series[0].card.visualization_settings,
+      );
+    });
+  });
+});

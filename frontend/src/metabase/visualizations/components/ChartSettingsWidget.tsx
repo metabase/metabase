@@ -1,10 +1,11 @@
 import cx from "classnames";
 import type { CSSProperties, ComponentType } from "react";
+import _ from "underscore";
 
 import FormS from "metabase/css/components/form.module.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Box, Group, Icon, Text, Tooltip } from "metabase/ui";
-import type { WidgetMount } from "metabase-types/api";
+import type { VisualizationSettings, WidgetMount } from "metabase-types/api";
 
 import S from "./ChartSettingsWidget.module.css";
 
@@ -21,6 +22,9 @@ type Props = {
   variant?: ChartSettingsWidgetVariant;
   dataTestId?: string;
   id: string;
+  value?: unknown;
+  onChange?: (value?: unknown) => void;
+  onChangeSettings?: (settings: Partial<VisualizationSettings>) => void;
   style?: CSSProperties;
 };
 
@@ -80,7 +84,16 @@ const ChartSettingsWidget = ({
         (PLUGIN_CUSTOM_VIZ.isWidgetMount(Widget) ? (
           <PLUGIN_CUSTOM_VIZ.CustomVizSettingWidget
             mount={Widget}
-            widgetProps={{ ...extraWidgetProps, ...props }}
+            widgetProps={{
+              ..._.pick(
+                extraWidgetProps,
+                "id",
+                "value",
+                "onChange",
+                "onChangeSettings",
+              ),
+              ...props,
+            }}
           />
         ) : (
           <Widget {...extraWidgetProps} {...props} />
