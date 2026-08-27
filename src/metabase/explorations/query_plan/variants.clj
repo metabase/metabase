@@ -9,6 +9,7 @@
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [metabase.api.common :as api]
+   [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib.core :as lib]
    [metabase.query-processor.core :as qp]
@@ -355,7 +356,7 @@
             ;; Postgres and other strict warehouses. No-op for text dims.
             pairs                  (mapv (fn [v] [(lib/= (or field-ref ref-clause) v) (str v)]) top-values)
             case-expr              (lib/case pairs other-bucket-label)
-            expr-name              (or (:display-name dim) (:dimension-id dim) "value")
+            expr-name              (or (block/dimension-label dim) "value")
             with-expr              (lib/expression base-query expr-name case-expr)
             with-bo                (lib/breakout with-expr (lib/expression-ref with-expr expr-name))]
         ;; Order by metric desc within the named buckets. One note: `(Other)`

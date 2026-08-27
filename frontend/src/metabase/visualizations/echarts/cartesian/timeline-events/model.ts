@@ -1,15 +1,17 @@
-import type { OpUnitType } from "dayjs";
-import dayjs from "dayjs";
 import type { SupportedUnit } from "types/dayjs";
 import _ from "underscore";
 
+import { type OpUnitType, dayjs } from "metabase/dayjs";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   BaseCartesianChartModel,
   DateRange,
   TimeSeriesInterval,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { TimelineEventGroup } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import type {
+  TimelineEventCluster,
+  TimelineEventGroup,
+} from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { TimelineEvent } from "metabase-types/api";
 
 import type { ChartLayout } from "../layout/types";
@@ -56,47 +58,41 @@ const groupEventsByUnitStart = (
   }));
 };
 
-export const mergeOverlappingTimelineEventGroups = (
+export const buildTimelineEventClusters = (
   eventGroups: TimelineEventGroup[],
   interval: TimeSeriesInterval,
   intervalWidth: number,
-): TimelineEventGroup[] => {
+): TimelineEventCluster[] => {
   const sortedGroups = [...eventGroups].sort((a, b) =>
     dayjs.utc(a.date).isAfter(dayjs.utc(b.date)) ? 1 : -1,
   );
 
-  const mergedGroups: TimelineEventGroup[] = [];
+  const clusters: TimelineEventCluster[] = [];
 
-  sortedGroups.forEach((currentGroup) => {
-    if (mergedGroups.length === 0) {
-      mergedGroups.push(currentGroup);
-      return;
+  sortedGroups.forEach((group) => {
+    const lastCluster = _.last(clusters);
+
+    if (lastCluster != null) {
+      const lastGroupDate =
+        lastCluster.groups[lastCluster.groups.length - 1].date;
+      const intervalsDiff =
+        dayjs.utc(group.date).diff(dayjs.utc(lastGroupDate), interval.unit) /
+        interval.count;
+      const pixelDiff = intervalsDiff * intervalWidth;
+
+      if (pixelDiff < CHART_STYLE.timelineEvents.minDistance) {
+        clusters[clusters.length - 1] = {
+          date: lastCluster.date,
+          groups: [...lastCluster.groups, group],
+        };
+        return;
+      }
     }
 
-    const lastGroup = _.last(mergedGroups);
-    if (!lastGroup) {
-      return;
-    }
-
-    const lastGroupDate = dayjs.utc(lastGroup.date);
-    const currentGroupDate = dayjs.utc(currentGroup.date);
-
-    const intervalsDiff =
-      currentGroupDate.diff(lastGroupDate, interval.unit) / interval.count;
-    const pixelDiff = intervalsDiff * intervalWidth;
-
-    if (pixelDiff < CHART_STYLE.timelineEvents.minDistance) {
-      const combinedEvents = [...lastGroup.events, ...currentGroup.events];
-      mergedGroups[mergedGroups.length - 1] = {
-        date: lastGroup.date,
-        events: combinedEvents,
-      };
-    } else {
-      mergedGroups.push(currentGroup);
-    }
+    clusters.push({ date: group.date, groups: [group] });
   });
 
-  return mergedGroups;
+  return clusters;
 };
 
 const getTimelineEventsInsideRange = (
@@ -146,7 +142,7 @@ export const getTimelineEventsModel = (
     chartModel.xAxisModel.interval,
     chartLayout,
   );
-  return mergeOverlappingTimelineEventGroups(
+  return buildTimelineEventClusters(
     timelineEventsByUnitStart,
     chartModel.xAxisModel.interval,
     intervalWidth,

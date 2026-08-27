@@ -1,6 +1,7 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
+import { ViewFooterCopyWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterCopyWidget";
 import { ViewFooterDownloadWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget";
 import {
   getFirstQueryResult,
@@ -37,6 +38,9 @@ export const RightViewFooterButtonGroup = () => {
             className={cx(CS.hide, CS.smShow)}
             result={result}
           />
+        )}
+        {ViewFooterCopyWidget.shouldRender({ result }) && (
+          <ViewFooterCopyWidget />
         )}
         <ViewFooterDownloadWidget />
         {QuestionTimelineWidget.shouldRender({ isTimeseries }) && (

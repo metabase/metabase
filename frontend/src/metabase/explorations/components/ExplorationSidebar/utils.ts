@@ -1,12 +1,13 @@
-import dayjs from "dayjs";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { dayjs } from "metabase/dayjs";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import type {
   Comment,
   Exploration,
+  ExplorationDocument,
   ExplorationId,
   ExplorationPageNodeId,
   ExplorationQuery,
@@ -26,6 +27,9 @@ import {
   DEFAULT_SORT_ORDER,
   type ExplorationSortOrder,
 } from "../../sidebar-preferences";
+
+/** Stable tree id for the Summary document node prepended to the sidebar. */
+export const EXPLORATION_SUMMARY_TREE_ID = "summary";
 
 // Distinguishes the kinds of heading rows in the sidebar so each can carry its
 // own icon and reinforce where the user is in the investigation:
@@ -59,6 +63,10 @@ export interface ExplorationTreePage {
   hidden: boolean;
 }
 
+export interface ExplorationTreeDocument {
+  type: "document";
+}
+
 function isExplorationTreePage(
   node: ITreeNodeItem<ExplorationTreeNode>,
 ): node is ITreeNodeItem<ExplorationTreePage> {
@@ -90,7 +98,15 @@ export function isHiddenTreeItem(
   return isExplorationTreePage(node) && node.data?.hidden === true;
 }
 
-export type ExplorationTreeNode = ExplorationTreePage | ExplorationTreeHeading;
+export type ExplorationTreeItem = ExplorationTreePage | ExplorationTreeDocument;
+
+export type ExplorationTreeNode = ExplorationTreeItem | ExplorationTreeHeading;
+
+export type InitialSidebarEntity =
+  | { type: "page"; id: ExplorationPageNodeId }
+  | { type: "summary" };
+
+export type SelectedSidebarEntity = InitialSidebarEntity;
 
 type TreeItemFilter = (treeItem: ITreeNodeItem<ExplorationTreeNode>) => boolean;
 
@@ -110,6 +126,22 @@ function getHeadingHideState(nodes: ITreeNodeItem<ExplorationTreeNode>[]): {
   return {
     pageIds: pages.map((page) => Number(page.page_id)),
     allHidden: pages.length > 0 && pages.every((page) => page.hidden),
+  };
+}
+
+function getSummaryDocumentNode(
+  document: ExplorationDocument | null | undefined,
+): ITreeNodeItem<ExplorationTreeDocument> | null {
+  if (document == null) {
+    return null;
+  }
+  return {
+    id: EXPLORATION_SUMMARY_TREE_ID,
+    name: document.name || t`Summary`,
+    icon: "document",
+    data: {
+      type: "document",
+    },
   };
 }
 
@@ -213,7 +245,13 @@ export function getExplorationSidebarTree(
     }
   });
 
-  return pruneEmptyHeadings(topLevel, keepEmptyRestartableThreads);
+  const pruned = pruneEmptyHeadings(topLevel, keepEmptyRestartableThreads);
+
+  const summaryNode = getSummaryDocumentNode(exploration.document);
+  if (summaryNode != null && treeItemFilter(summaryNode)) {
+    return [summaryNode, ...pruned];
+  }
+  return pruned;
 }
 
 type PageKey = string;
@@ -493,6 +531,10 @@ export function flattenTree(
   );
 }
 
+/**
+ * Depth-first first page in the tree. Kept as a page-only walk so heading
+ * "copy link" and similar callers never land on the Summary node.
+ */
 export function pickInitialSidebarPage(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
 ): ExplorationPageNodeId | null {
@@ -587,6 +629,25 @@ export function getExplorationSidebarModel({
   }
 
   return { tree, contentMode };
+}
+
+/**
+ * Initial sidebar selection. Prefer the Summary once it has been curated
+ * (`is_placeholder === false`); otherwise fall back to the first page.
+ */
+export function pickInitialSidebarEntity(
+  nodes: ITreeNodeItem<ExplorationTreeNode>[],
+  document?: Pick<ExplorationDocument, "is_placeholder"> | null,
+): InitialSidebarEntity | null {
+  if (
+    document != null &&
+    !document.is_placeholder &&
+    nodes.some((node) => node.data?.type === "document")
+  ) {
+    return { type: "summary" };
+  }
+  const pageId = pickInitialSidebarPage(nodes);
+  return pageId != null ? { type: "page", id: pageId } : null;
 }
 
 export type ExplorationSidebarTabsInfo = Record<

@@ -189,7 +189,7 @@
     (catch Exception e
       (log/errorf "Error editing SQL query: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
+        (metabot.tools.u/handle-agent-error e)
         {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -238,5 +238,5 @@
     (catch Exception e
       (log/errorf "Error replacing SQL query: %s" (ex-message e))
       (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
+        (metabot.tools.u/handle-agent-error e)
         {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))

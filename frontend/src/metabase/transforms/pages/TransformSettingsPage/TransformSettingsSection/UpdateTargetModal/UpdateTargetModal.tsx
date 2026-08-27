@@ -10,7 +10,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import {
   Form,
   FormErrorMessage,

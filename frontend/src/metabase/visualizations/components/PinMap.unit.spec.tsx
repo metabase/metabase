@@ -1,10 +1,14 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
+import { renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/utils/settings";
 import { createMockVisualizationProps } from "metabase/visualizations/types/mocks";
-import type { RowValue } from "metabase-types/api";
+import type {
+  DatasetData,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -117,6 +121,95 @@ describe("getPoints", () => {
     ]);
   });
 
+  it("should sum the metric of rows sharing the same grid cell (metabase#69659)", () => {
+    const { points, rows, min, max, warnings } = getPoints({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({
+            name: "lat",
+            display_name: "Latitude",
+            binning_info: { bin_width: 10 },
+          }),
+          createMockColumn({
+            name: "lng",
+            display_name: "Longitude",
+            binning_info: { bin_width: 10 },
+          }),
+          createMockColumn({ name: "id" }),
+          createMockColumn({ name: "count", display_name: "Count" }),
+        ],
+        rows: [
+          [40, -80, 1, 1],
+          [40, -80, 2, 1],
+          [50, -70, 3, 4],
+          [40, -80, 4, 1],
+        ],
+      }),
+      latitudeColumnName: "lat",
+      longitudeColumnName: "lng",
+      metricColumnName: "count",
+      isGridMap: true,
+    });
+
+    expect(points).toEqual([
+      [40, -80, 3],
+      [50, -70, 4],
+    ]);
+    expect(rows).toEqual([
+      [40, -80, 1, 1],
+      [50, -70, 3, 4],
+    ]);
+    expect(min).toBe(3);
+    expect(max).toBe(4);
+    expect(warnings).toEqual([
+      '"Latitude", "Longitude" are unaggregated fields: if there is more than one row with the same values, their measure values will be summed.',
+    ]);
+  });
+
+  it("should not warn or aggregate when grid cells are unique", () => {
+    const { points, warnings } = getPoints({
+      data: createData(
+        ["lat", "lng", "metric"],
+        [
+          [40, -80, 1],
+          [50, -70, 4],
+        ],
+      ),
+      latitudeColumnName: "lat",
+      longitudeColumnName: "lng",
+      metricColumnName: "metric",
+      isGridMap: true,
+    });
+
+    expect(points).toEqual([
+      [40, -80, 1],
+      [50, -70, 4],
+    ]);
+    expect(warnings).toEqual([]);
+  });
+
+  it("should not aggregate points that share coordinates outside grid maps", () => {
+    const { points, warnings } = getPoints({
+      data: createData(
+        ["lat", "lng", "metric"],
+        [
+          [40, -80, 1],
+          [40, -80, 1],
+        ],
+      ),
+      latitudeColumnName: "lat",
+      longitudeColumnName: "lng",
+      metricColumnName: "metric",
+      isPinMap: true,
+    });
+
+    expect(points).toEqual([
+      [40, -80, 1],
+      [40, -80, 1],
+    ]);
+    expect(warnings).toEqual([]);
+  });
+
   it("should extend the bounds by one bin to the north/east for binned coordinates", () => {
     const { bounds } = getPoints({
       data: createMockDatasetData({
@@ -145,7 +238,25 @@ describe("PinMap", () => {
   const setup = ({
     isDashboard = false,
     token,
-  }: { isDashboard?: boolean; token?: string } = {}) => {
+    data = createData(
+      ["lat", "lng"],
+      [
+        [10, 20],
+        [null, 30],
+      ],
+    ),
+    settings = {
+      "map.type": "pin",
+      "map.pin_type": "markers",
+      "map.latitude_column": "lat",
+      "map.longitude_column": "lng",
+    },
+  }: {
+    isDashboard?: boolean;
+    token?: string;
+    data?: DatasetData;
+    settings?: VisualizationSettings;
+  } = {}) => {
     const onRender = jest.fn();
 
     const series = [
@@ -156,15 +267,7 @@ describe("PinMap", () => {
             query: { "source-table": ORDERS_ID },
           }),
         },
-        {
-          data: createData(
-            ["lat", "lng"],
-            [
-              [10, 20],
-              [null, 30],
-            ],
-          ),
-        },
+        { data },
       ),
     ];
 
@@ -173,19 +276,16 @@ describe("PinMap", () => {
       rawSeries: series,
       data: series[0].data,
       card: series[0].card,
-      settings: {
-        "map.type": "pin",
-        "map.pin_type": "markers",
-        "map.latitude_column": "lat",
-        "map.longitude_column": "lng",
-      },
+      settings,
       metadata: createMockMetadata({ databases: [createSampleDatabase()] }),
       isDashboard,
       height: 300,
       onRender,
     });
 
-    const { rerender } = render(<PinMap {...props} token={token} />);
+    const { rerender } = renderWithProviders(
+      <PinMap {...props} token={token} />,
+    );
 
     return { onRender, props, rerender };
   };
@@ -206,14 +306,16 @@ describe("PinMap", () => {
   it("should render the 'Set as default view' button with the PinMapUpdateButton class", () => {
     setup();
 
-    const button = screen.getByText("Set as default view");
+    const button = screen.getByRole("button", { name: "Set as default view" });
     expect(button).toHaveClass("PinMapUpdateButton");
   });
 
   it("should render the 'Draw box to filter' button outside dashboards", async () => {
     setup();
 
-    const button = await screen.findByText("Draw box to filter");
+    const button = await screen.findByRole("button", {
+      name: "Draw box to filter",
+    });
     expect(button).toHaveClass("PinMapUpdateButton");
   });
 
@@ -222,6 +324,43 @@ describe("PinMap", () => {
 
     expect(onRender).toHaveBeenCalledWith({
       warnings: ["We filtered out 1 row(s) containing null values."],
+    });
+  });
+
+  it("should report the unaggregated data warning for grid maps with duplicated cells (metabase#69659)", () => {
+    const { onRender } = setup({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({
+            name: "lat",
+            display_name: "Latitude",
+            binning_info: { bin_width: 10 },
+          }),
+          createMockColumn({
+            name: "lng",
+            display_name: "Longitude",
+            binning_info: { bin_width: 10 },
+          }),
+          createMockColumn({ name: "count", display_name: "Count" }),
+        ],
+        rows: [
+          [40, -80, 1],
+          [40, -80, 1],
+        ],
+      }),
+      settings: {
+        "map.type": "grid",
+        "map.pin_type": "grid",
+        "map.latitude_column": "lat",
+        "map.longitude_column": "lng",
+        "map.metric_column": "count",
+      },
+    });
+
+    expect(onRender).toHaveBeenCalledWith({
+      warnings: [
+        '"Latitude", "Longitude" are unaggregated fields: if there is more than one row with the same values, their measure values will be summed.',
+      ],
     });
   });
 

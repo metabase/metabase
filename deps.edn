@@ -267,7 +267,7 @@
     djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
     integrant/integrant          {:mvn/version "1.0.1"}                   ; component lifecycle management
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
-    io.github.metabase/hawk      {:mvn/version "1.0.18"}                    ; test runner
+    io.github.metabase/hawk      {:mvn/version "1.0.19"}                    ; test runner
     io.opentelemetry/opentelemetry-sdk-testing {:mvn/version "1.54.1"}      ; InMemorySpanExporter for tracing tests; matches sdk impl (clj-otel-sdk 0.2.10 → 1.54.1); api is separately pinned to 1.62.0
     io.zonky.test/embedded-postgres {:mvn/version "2.2.2"}                  ; In-process postgres for dev and testing
     ;; Native postgres binaries for every OS/arch we're likely to run on in
@@ -350,7 +350,6 @@
    :exec-fn     metabase.test-runner/find-and-run-tests-cli
    :exec-args   {}
    :jvm-opts    ["-Dmb.run.mode=test"
-                 "-Dmb.warehouse.allowed.networks=allow-all"
                  "-Dmacaw.run.mode=test"
                  "-Dmb.db.in.memory=true"
                  "-Dmb.jetty.join=false"
@@ -492,7 +491,7 @@
     cider/piggieback                   {:mvn/version "0.6.1"}
     cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
-    io.github.metabase/hawk            {:mvn/version "1.0.18"}
+    io.github.metabase/hawk            {:mvn/version "1.0.19"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     org.clojure/clojurescript          {:mvn/version "1.12.134"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
@@ -567,6 +566,8 @@
     "bin/build/test"
     "bin/lint-migrations-file/src"
     "bin/lint-migrations-file/test"
+    "bin/load-namespaces/src"
+    "bin/load-namespaces/test"
     "bin/release-list/src"
     "bin/release-list/test"
     "modules/drivers/athena/src"
@@ -600,32 +601,31 @@
     "modules/drivers/vertica/src"
     "modules/drivers/vertica/test"]}
 
-  ;; clojure -M:ee:drivers:check
+  ;; clojure -M:ee:drivers:load-namespaces
   ;;
-  ;; checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't
+  ;; checks that all the namespaces we actually ship can be loaded, without any dependencies that we don't
   ;; ship (such as `:dev` dependencies). See #27009 for more context.
-  :check
-  {:extra-deps {athos/clj-check {:git/url "https://github.com/athos/clj-check.git"
-                                 :sha     "d997df866b2a04b7ce7b17533093ee0a2e2cb729"}}
-   :main-opts  ["-m" "clj-check.check"
-                "src"
-                "enterprise/backend/src"
-                "modules/drivers/athena/src"
-                "modules/drivers/bigquery-cloud-sdk/src"
-                "modules/drivers/clickhouse/src"
-                "modules/drivers/databricks/src"
-                "modules/drivers/druid-jdbc/src"
-                "modules/drivers/hive-like/src"
-                "modules/drivers/mongo/src"
-                "modules/drivers/oracle/src"
-                "modules/drivers/presto-jdbc/src"
-                "modules/drivers/redshift/src"
-                "modules/drivers/snowflake/src"
-                "modules/drivers/sparksql/src"
-                "modules/drivers/sqlserver/src"
-                "modules/drivers/starburst/src"
-                "modules/drivers/vertica/src"]
-   :jvm-opts   ["-Dclojure.main.report=stderr"]}
+  :load-namespaces
+  {:extra-paths ["bin/load-namespaces/src"]
+   :main-opts   ["-m" "load-namespaces.core"
+                 "src"
+                 "enterprise/backend/src"
+                 "modules/drivers/athena/src"
+                 "modules/drivers/bigquery-cloud-sdk/src"
+                 "modules/drivers/clickhouse/src"
+                 "modules/drivers/databricks/src"
+                 "modules/drivers/druid-jdbc/src"
+                 "modules/drivers/hive-like/src"
+                 "modules/drivers/mongo/src"
+                 "modules/drivers/oracle/src"
+                 "modules/drivers/presto-jdbc/src"
+                 "modules/drivers/redshift/src"
+                 "modules/drivers/snowflake/src"
+                 "modules/drivers/sparksql/src"
+                 "modules/drivers/sqlserver/src"
+                 "modules/drivers/starburst/src"
+                 "modules/drivers/vertica/src"]
+   :jvm-opts    ["-Dclojure.main.report=stderr"]}
 
   ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
   :eastwood
@@ -899,6 +899,21 @@
   {:main-opts ["-m" "metabase.core.bootstrap" "profile"]
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
                "-Xlog:gc"]}
+
+  ;; Run tests under clj-async-profiler; writes a flamegraph to target/clj-async-profiler/results.
+  ;; Must come after `:test`, whose `:exec-fn` it overrides:
+  ;; clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test:profile-tests :only '[metabase.some-test]'
+  :profile-tests
+  {;; `dev.profile-tests` lives in dev/src and clj-async-profiler is otherwise a `:dev`-only dep;
+   ;; declared here too so the alias stands on its own instead of failing at exec time when `:dev`
+   ;; happens to be absent. Keep the version in step with the one in `:dev`.
+   :extra-paths ["dev/src"]
+   :extra-deps  {com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.6.2"}}
+   :exec-fn  dev.profile-tests/run
+   :jvm-opts ["-Dclj-async-profiler.output-dir=target"
+              ;; without these, inlined frames are attributed to the wrong method
+              "-XX:+UnlockDiagnosticVMOptions"
+              "-XX:+DebugNonSafepoints"]}
 
   ;; get the H2 shell with clojure -X:dev:h2
   :h2

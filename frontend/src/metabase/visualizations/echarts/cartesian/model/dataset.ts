@@ -1,6 +1,6 @@
-import type { Dayjs } from "dayjs";
 import { t } from "ttag";
 
+import type { Dayjs } from "metabase/dayjs";
 import { getObjectKeys } from "metabase/utils/objects";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/utils/types";

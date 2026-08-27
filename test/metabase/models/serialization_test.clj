@@ -277,7 +277,7 @@
           eid    (fn [c] (apply str (repeat 21 c)))]
       (testing "MBQL ref clauses"
         (doseq [[label serialized raw ser-models raw-models]
-                [["field (pMBQL)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{"Database"} #{"Field"}]
+                [["field (MBQL 5)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{"Database"} #{"Field"}]
                  ["field (legacy)" [:field ["DB" "S" "T" "F"] {}] [:field 53 {}]  #{"Database"} #{"Field"}]
                  ["metric"         [:metric {} (eid \a)]          [:metric {} 99] #{"Card"}     #{"Card"}]
                  ["segment"        [:segment {} (eid \b)]         [:segment {} 5]  #{"Segment"}  #{"Segment"}]
@@ -313,3 +313,40 @@
                                        :values_source_type   :card
                                        :values_source_config {:card_id 1, :value_field [:field 53 nil]}
                                        :position             0}])))))
+
+(def ^:private native-query-with-template-tag
+  "A native query with one variable, already past FK resolution (numeric `:database`), as [[serdes/import-mbql]]
+  sees it mid-import."
+  {:lib/type :mbql/query
+   :database 1
+   :stages   [{:lib/type      :mbql.stage/native
+               :native        "SELECT * FROM PRODUCTS WHERE ID = {{id}}"
+               :template-tags {"id" {:type :number :name "id" :display-name "ID" :id "abc-123"}}}]})
+
+(def ^:private query-with-unknown-tag-type
+  "The same query with a template tag whose `:type` this version has no representation for - what an export from a
+  newer Metabase that introduced a new tag type would look like. It normalizes without complaint, so only validating
+  the result catches it."
+  (assoc-in native-query-with-template-tag [:stages 0 :template-tags]
+            {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}}))
+
+(deftest ^:parallel import-mbql-validates-against-local-schema-test
+  (testing "GHY-4241: a query shape this version cannot represent is refused instead of stored"
+    (testing "a query matching this instance's schema imports"
+      (is (=? {:lib/type :mbql/query}
+              (serdes/import-mbql native-query-with-template-tag))))
+    (testing "a query carrying a shape with no representation here is refused"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"does not match this Metabase's query schema"
+           (serdes/import-mbql query-with-unknown-tag-type))))))
+
+(deftest ^:parallel import-mbql-schema-validation-opt-out-test
+  (testing "GHY-4241: binding *skip-schema-validation?* disables the schema check"
+    ;; Skipping does not make the import succeed - `repair-card-template-tag-names` rejects a tag type it does not
+    ;; know on its own. Asserting on that downstream failure keeps this from passing for the wrong reason.
+    (binding [serdes/*skip-schema-validation?* true]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid input.*:template-tags"
+           (serdes/import-mbql query-with-unknown-tag-type))))))

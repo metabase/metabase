@@ -1,6 +1,7 @@
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
+
+import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 
 import { getTimelineEventsSelectionSeries } from "./option";
 import type { TimelineEventsModel } from "./types";
@@ -16,13 +17,27 @@ const renderingContext: RenderingContext = {
 const timelineEventsModel: TimelineEventsModel = [
   {
     date: "2025-01-01T00:00:00Z",
-    events: [createMockTimelineEvent({ id: 1 })],
+    groups: [
+      {
+        date: "2025-01-01T00:00:00Z",
+        events: [createMockTimelineEvent({ id: 1 })],
+      },
+    ],
   },
   {
     date: "2025-02-01T00:00:00Z",
-    events: [
-      createMockTimelineEvent({ id: 2 }),
-      createMockTimelineEvent({ id: 3 }),
+    groups: [
+      {
+        date: "2025-02-01T00:00:00Z",
+        events: [
+          createMockTimelineEvent({ id: 2 }),
+          createMockTimelineEvent({ id: 3 }),
+        ],
+      },
+      {
+        date: "2025-03-01T00:00:00Z",
+        events: [createMockTimelineEvent({ id: 4 })],
+      },
     ],
   },
 ];
@@ -59,6 +74,16 @@ describe("getTimelineEventsSelectionSeries", () => {
       { xAxis: "2025-01-01T00:00:00Z" },
       { xAxis: "2025-02-01T00:00:00Z" },
     ]);
+  });
+
+  it("draws the line at the member group's own date, not the cluster anchor", () => {
+    const series = getTimelineEventsSelectionSeries(
+      timelineEventsModel,
+      [4],
+      renderingContext,
+    );
+
+    expect(series?.markLine?.data).toEqual([{ xAxis: "2025-03-01T00:00:00Z" }]);
   });
 
   it("uses two-point segments spanning the panel extent for split panels", () => {

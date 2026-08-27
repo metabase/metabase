@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import { FixedSizeIcon, Flex, Stack, Text, Tooltip } from "metabase/ui";
 import type { NotificationRunSummary } from "metabase-types/api";
 

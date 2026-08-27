@@ -51,9 +51,18 @@
   (let [url (concrete-tile-url template)]
     (or (relative-template? url)
         (try
-          (let [^URL parsed (io/as-url url)]
+          (let [^URL parsed (io/as-url url)
+                policy      (map-tile-server-allowed-networks)
+                host        (.getHost parsed)]
             (and (contains? #{"http" "https"} (.getProtocol parsed))
-                 (u.http/valid-host? (map-tile-server-allowed-networks) parsed)))
+                 (or (= policy :allow-all)
+                     ;; [[u.http/host-allowed-for-network-policy?]] deliberately allows a host it cannot
+                     ;; resolve, so a DNS outage on a real warehouse surfaces as a connection error rather
+                     ;; than an accusation. Here the value is only being stored, so we can afford to be
+                     ;; stricter -- and need to be: an obfuscated literal like `0xa9fea9fe`
+                     ;; (169.254.169.254) presents as an unresolvable host on a modern JDK.
+                     (and (seq (u.http/host->inet-addresses host))
+                          (u.http/host-allowed-for-network-policy? policy host)))))
           (catch Throwable _ false)))))
 
 (defsetting map-tile-server-url

@@ -37,6 +37,7 @@
   maybe-unverify!
   model-supports-implicit-actions?
   model?
+  parameter-template-tag?
   sole-dashboard-id
   starting-card-schema-version
   update-card!
@@ -55,8 +56,13 @@
   query->database-and-table-ids
   save-queries-and-update-average-execution-times!]
  [metabase.queries.cached-result
+  allowed-chart-sorts
   assert-can-view-cached-result!
-  viewer-can-view-cached-result?])
+  viewer-can-view-cached-result?
+  cached-dataset]
+ [metabase.queries.models.stored-result-use
+  assert-can-view-card-snapshots!
+  carry-pairings-for-document!])
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

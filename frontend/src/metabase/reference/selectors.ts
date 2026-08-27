@@ -32,8 +32,6 @@ export interface ReferenceRouteProps {
 }
 
 interface ReferenceSliceState {
-  isLoading: boolean;
-  error: unknown;
   isEditing: boolean;
   isFormulaExpanded: boolean;
 }
@@ -132,14 +130,6 @@ export const getTableQuestions = createSelector(
     );
   },
 );
-
-export const getLoading = (state: State) =>
-  // Unjustified type cast. FIXME
-  (state as StateWithReference).reference.isLoading;
-
-export const getError = (state: State) =>
-  // Unjustified type cast. FIXME
-  (state as StateWithReference).reference.error;
 
 export const getHasSingleSchema = createSelector(
   [getTablesByDatabase],

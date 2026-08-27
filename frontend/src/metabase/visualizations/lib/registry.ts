@@ -12,20 +12,24 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
-import type {
-  Visualization,
-  VisualizationComponent,
-  VisualizationDefinition,
-} from "../types/visualization";
+import type { VisualizationDefinition } from "../types/definition";
+
+// A chart component carrying its definition as statics.
+// The props stay open because static-viz loads the registry without the React and redux types.
+export type RegisteredVisualizationComponent = ComponentType<any> &
+  VisualizationDefinition;
 
 // The static-viz bundle registers bare definitions with no component; the app
 // bundles register full components carrying their definition statics.
-export type RegisteredVisualization = Visualization | VisualizationDefinition;
+export type RegisteredVisualization =
+  | RegisteredVisualizationComponent
+  | VisualizationDefinition;
 
 // A definition can be registered together with a loader for its component, so
 // the chart itself stays out of the initial bundle. The loaded module carries
 // its definition statics, the same as an eagerly registered visualization.
-export type VisualizationComponentLoader = () => Promise<Visualization>;
+export type VisualizationComponentLoader =
+  () => Promise<RegisteredVisualizationComponent>;
 
 export const visualizations = new Map<
   VisualizationDisplay,
@@ -37,7 +41,7 @@ const componentLoaders = new Map<
   VisualizationDisplay,
   VisualizationComponentLoader
 >();
-const lazyComponents = new Map<VisualizationDisplay, VisualizationComponent>();
+const lazyComponents = new Map<VisualizationDisplay, ComponentType<any>>();
 visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
@@ -57,7 +61,7 @@ export function setDefaultVisualization(
 // forwardRef and lazy return. A bare definition is a plain object.
 function isVisualizationComponent(
   visualization: RegisteredVisualization | undefined,
-): visualization is Visualization {
+): visualization is RegisteredVisualizationComponent {
   return isValidElementType(visualization);
 }
 
@@ -122,9 +126,9 @@ export function registerVisualization(
  * definition was registered with a loader. Callers must render it inside a
  * Suspense boundary.
  */
-export function getVisualizationComponent(
+export function getRegisteredComponent(
   display: VisualizationDisplay | null,
-): VisualizationComponent | undefined {
+): ComponentType<any> | undefined {
   const visualization = getVisualization(display);
 
   if (visualization == null) {
@@ -272,7 +276,7 @@ export function canSavePng(display: VisualizationDisplay) {
   return visualization?.canSavePng ?? true;
 }
 
-export function getDefaultSize(display: VisualizationDisplay) {
+export function getRegisteredDefaultSize(display: VisualizationDisplay) {
   const visualization = visualizations.get(display);
   return visualization?.defaultSize;
 }
