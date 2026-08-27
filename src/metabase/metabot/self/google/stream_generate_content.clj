@@ -303,11 +303,14 @@
                           result))]
       (fn
         ([result]
-         ;; A finishReason that ended the turn early still needs a :usage chunk when the stream carried no
-         ;; usageMetadata, so a truncated turn is never misinterpreted as a complete answer.
+         ;; An early stop that emits no :error chunk still needs a :usage chunk when the stream carried no
+         ;; usageMetadata, so a truncated or filtered turn is never misinterpreted as a complete answer. The
+         ;; reasons that do emit an :error chunk already say what went wrong, so they get no synthetic usage.
          (let [reason @stop-reason
                usage  (or @usage-acc
-                          (when (and reason (not= reason finish-reason-completed))
+                          (when (and reason
+                                     (not= reason finish-reason-completed)
+                                     (finish-reasons-without-error reason))
                             (usage->aisdk-usage nil)))]
            (-> result
                (close-text!)

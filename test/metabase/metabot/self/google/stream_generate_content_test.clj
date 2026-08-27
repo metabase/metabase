@@ -605,6 +605,18 @@
                 :raw-finish-reason "SAFETY"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
+(deftest ^:parallel content-filter-truncation-never-reads-as-complete-test
+  (testing "a filtered turn that carries no usageMetadata still reports the filtering"
+    (let [events [{:responseId "r11e"
+                   :candidates [{:content {:role "model" :parts [{:text "partial"}]}
+                                 :finishReason "SAFETY"}]}]]
+      (is (=? [{:type :start}
+               {:type :text :text "partial"}
+               {:type              :usage
+                :finish-reason     "content-filter"
+                :raw-finish-reason "SAFETY"}]
+              (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
 (deftest ^:parallel stop-reasons-translate-to-aisdk-finish-reasons-test
   (testing "every translation is one of the AI SDK v5 FinishReason values the client knows how to render"
     (is (every? self.core/finish-reasons (vals @#'sgc/stop-reasons)))))
@@ -618,8 +630,9 @@
 
 (deftest ^:parallel malformed-function-call-finish-reason-test
   (testing "MALFORMED_FUNCTION_CALL arrives with no parts at all, so the error part is the only diagnostic"
-    (let [events [{:responseId "r12"
-                   :candidates [{:finishReason "MALFORMED_FUNCTION_CALL"}]}]]
+    (let [events [{:responseId    "r12"
+                   :candidates    [{:finishReason "MALFORMED_FUNCTION_CALL"}]
+                   :usageMetadata {:promptTokenCount 4}}]]
       (is (=? [{:type :start}
                {:type  :error
                 :error {:message #"(?s)Gemini stopped early \(MALFORMED_FUNCTION_CALL\).*"}}
@@ -628,11 +641,21 @@
                 :raw-finish-reason "MALFORMED_FUNCTION_CALL"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
+(deftest ^:parallel finish-reason-with-error-gets-no-synthetic-usage-test
+  (testing "a reason that emits an :error chunk already says what went wrong, so no zero-token :usage is invented"
+    (let [events [{:responseId "r12b"
+                   :candidates [{:finishReason "MALFORMED_FUNCTION_CALL"}]}]]
+      (is (=? [{:type :start}
+               {:type  :error
+                :error {:message #"(?s)Gemini stopped early \(MALFORMED_FUNCTION_CALL\).*"}}]
+              (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
+
 (deftest ^:parallel unknown-finish-reason-test
   (testing "a finish reason we have no message for still reports itself rather than passing silently"
-    (let [events [{:responseId "r13"
-                   :candidates [{:content {:role "model" :parts [{:text "hi"}]}
-                                 :finishReason "SOMETHING_NEW"}]}]]
+    (let [events [{:responseId    "r13"
+                   :candidates    [{:content {:role "model" :parts [{:text "hi"}]}
+                                    :finishReason "SOMETHING_NEW"}]
+                   :usageMetadata {:promptTokenCount 4}}]]
       (is (=? [{:type :start}
                {:type :text :text "hi"}
                {:type :error :error {:message "Gemini stopped early (SOMETHING_NEW)"}}
