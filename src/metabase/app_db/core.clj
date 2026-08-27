@@ -151,7 +151,9 @@
         (let [db-type       (db-type)
               data-source   (data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
-          (mdb.setup/setup-db! db-type data-source auto-migrate? create-sample-content? check-encryption?))
+          (mdb.setup/setup-db! db-type data-source {:auto-migrate?          auto-migrate?
+                                                    :create-sample-content? create-sample-content?
+                                                    :check-encryption?      check-encryption?}))
         (finish-db-setup!))))
   :done)
 

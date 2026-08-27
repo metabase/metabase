@@ -269,15 +269,24 @@
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 (mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
-  use [[metabase.app-db.setup-db!]] instead, which can be called more than once without issue and is thread-safe."
-  ([db-type data-source auto-migrate? create-sample-content?]
-   (setup-db! db-type data-source auto-migrate? create-sample-content? true))
+  use [[metabase.app-db.setup-db!]] instead, which can be called more than once without issue and is thread-safe.
 
-  ([db-type                :- :keyword
-    data-source            :- (ms/InstanceOfClass javax.sql.DataSource)
-    auto-migrate?          :- :boolean
-    create-sample-content? :- :boolean
-    check-encryption?      :- :boolean]
+  Options:
+  - `:auto-migrate?` (default `true`): run pending migrations, otherwise only print them.
+  - `:create-sample-content?` (default `false`): create the sample content on a fresh install.
+  - `:check-encryption?` (default `true`): verify MB_ENCRYPTION_SECRET_KEY against the database after migrating (see
+    [[check-encryption]]). Only the commands that manage encryption turn this off."
+  ([db-type data-source]
+   (setup-db! db-type data-source {}))
+
+  ([db-type     :- :keyword
+    data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+    {:keys [auto-migrate? create-sample-content? check-encryption?]
+     :or   {auto-migrate? true, create-sample-content? false, check-encryption? true}}
+    :- [:map
+        [:auto-migrate?          {:optional true} :boolean]
+        [:create-sample-content? {:optional true} :boolean]
+        [:check-encryption?      {:optional true} :boolean]]]
    (u/profile (trs "Database setup")
      (u/with-us-locale
        (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
