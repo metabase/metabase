@@ -36,6 +36,70 @@ describe("GAUGE_CHART_DEFINITION", () => {
       ).not.toThrow();
     });
 
+    it("accepts a range whose answer lacks its column, so the chart can re-ask", () => {
+      const series = createSeries({
+        referenced_entities: {
+          card: {
+            9: {
+              status: "completed",
+              data: {
+                cols: [createMockColumn({ name: "other" })],
+                rows: [[1]],
+              },
+            },
+          },
+        },
+      });
+
+      expect(() =>
+        checkRenderable(series, {
+          "gauge.segments": [
+            {
+              min: 0,
+              max: { type: "card", id: 9, column: "goal" },
+              color: "red",
+            },
+          ],
+        }),
+      ).not.toThrow();
+    });
+
+    it("refuses to render when a referenced value is not a number", () => {
+      const series = createSeries({
+        referenced_entities: {
+          card: {
+            9: {
+              status: "completed",
+              data: {
+                cols: [createMockColumn({ name: "goal" })],
+                rows: [["x"]],
+              },
+            },
+          },
+        },
+      });
+
+      expect(() =>
+        checkRenderable(series, {
+          "gauge.segments": [
+            {
+              min: 0,
+              max: { type: "card", id: 9, column: "goal" },
+              color: "red",
+            },
+          ],
+        }),
+      ).toThrow("Couldn't load a value one of this gauge's ranges depends on.");
+    });
+
+    it("refuses to render a range bound to a column the question no longer has", () => {
+      expect(() =>
+        checkRenderable(createSeries(), {
+          "gauge.segments": [{ min: 0, max: "missing", color: "red" }],
+        }),
+      ).toThrow("Couldn't load a value one of this gauge's ranges depends on.");
+    });
+
     it("refuses to render when a range's bound will never resolve", () => {
       const series = createSeries({
         referenced_entities: {

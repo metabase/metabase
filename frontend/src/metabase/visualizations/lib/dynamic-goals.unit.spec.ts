@@ -1,5 +1,5 @@
 import { color } from "metabase/ui/colors";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { GoalSegment, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -7,9 +7,9 @@ import {
 
 import type { GoalCard } from "./dynamic-goals";
 import {
-  getGoalSegmentErrors,
   getReferencedEntitiesFromVizSettings,
   getUnansweredGoalEntities,
+  hasFailedGoalReferences,
   hasUnansweredGoalReferences,
   hasUnresolvedGoalReferences,
   resolveGoalSegments,
@@ -341,27 +341,42 @@ describe("resolveGoalSegments", () => {
   });
 });
 
-describe("getGoalSegmentErrors", () => {
+describe("hasFailedGoalReferences", () => {
   const DATA = createMockDatasetData({
     cols: [createMockColumn({ name: "value" })],
     rows: [[50]],
   });
+  const SEGMENTS: GoalSegment[] = [
+    { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
+  ];
 
-  it("reports nothing when every bound resolves", () => {
+  it("is false when every bound resolves", () => {
     expect(
-      getGoalSegmentErrors(DATA, [{ min: 0, max: 100, color: "red" }]),
-    ).toEqual([]);
+      hasFailedGoalReferences(DATA, [{ min: 0, max: 100, color: "red" }]),
+    ).toBe(false);
   });
 
-  it("reports nothing while a reference is still resolving", () => {
-    const errors = getGoalSegmentErrors(DATA, [
-      { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
-    ]);
-
-    expect(errors).toEqual([]);
+  it("is false while a reference is still unanswered", () => {
+    expect(hasFailedGoalReferences(DATA, SEGMENTS)).toBe(false);
   });
 
-  it("reports a bound that will never resolve", () => {
+  it("is false when a foreign answer lacks the column: it gets re-asked", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "other" })], rows: [[1]] },
+          },
+        },
+      },
+    });
+
+    expect(hasFailedGoalReferences(data, SEGMENTS)).toBe(false);
+  });
+
+  it("is true when the referenced query failed", () => {
     const data = createMockDatasetData({
       ...DATA,
       referenced_entities: {
@@ -369,19 +384,29 @@ describe("getGoalSegmentErrors", () => {
       },
     });
 
-    const errors = getGoalSegmentErrors(data, [
-      { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
-    ]);
+    expect(hasFailedGoalReferences(data, SEGMENTS)).toBe(true);
+  });
 
-    expect(errors).toEqual([
-      {
-        type: "card",
-        id: 9,
-        column: "goal",
-        reason: "query-failed",
-        message: "boom",
+  it("is true when the referenced value is not a number", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [["x"]] },
+          },
+        },
       },
-    ]);
+    });
+
+    expect(hasFailedGoalReferences(data, SEGMENTS)).toBe(true);
+  });
+
+  it("is true for a self-column reference to a missing column: nothing re-asks it", () => {
+    expect(
+      hasFailedGoalReferences(DATA, [{ min: 0, max: "missing", color: "red" }]),
+    ).toBe(true);
   });
 });
 
@@ -458,7 +483,7 @@ describe("malformed persisted segments", () => {
     const segments = settings["gauge.segments"];
 
     expect(resolveGoalSegments(data, segments)).toEqual([]);
-    expect(getGoalSegmentErrors(data, segments)).toEqual([]);
+    expect(hasFailedGoalReferences(data, segments)).toBe(false);
     expect(getUnansweredGoalEntities(data, segments)).toEqual([]);
     expect(getReferencedEntitiesFromVizSettings(settings)).toEqual([]);
   });

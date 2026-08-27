@@ -201,16 +201,13 @@ export function getSegmentColor(segment: GoalSegment): string {
   return segment.color ?? color("text-secondary");
 }
 
-export function getGoalSegmentErrors(
+export function hasFailedGoalReferences(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
-): GoalRefError[] {
-  return validGoalSegments(segments).flatMap((segment) => {
-    return [segment.min, segment.max].flatMap((bound) => {
-      const { error } = resolveGoalValue(data, bound);
-      return error ? [error] : [];
-    });
-  });
+): boolean {
+  return validGoalSegments(segments)
+    .flatMap((segment) => [segment.min, segment.max])
+    .some((bound) => isFailed(bound, resolveGoalValue(data, bound)));
 }
 
 export function getUnansweredGoalEntities(
@@ -306,7 +303,7 @@ export function hasUnresolvedGoalReferences(
   return hasGoalReferencesWhere(card, data, isUnresolved);
 }
 
-// Missing columns are worth re-running for; failed queries would just fail again.
+// Missing columns are worth re-running for - failed queries would just fail again.
 export function needsAnswer(resolved: ResolvedGoalValue): boolean {
   return (
     isUnanswered(resolved) || resolved.error?.reason === "column-not-found"
@@ -321,6 +318,17 @@ function isUnanswered(resolved: ResolvedGoalValue): boolean {
 // Unanswered, or answered with an error.
 function isUnresolved(resolved: ResolvedGoalValue): boolean {
   return isUnanswered(resolved) || resolved.error != null;
+}
+
+// Only a foreign reference gets re-asked (see needsAnswer) - every other error is final.
+function isFailed(
+  bound: GoalValue | null,
+  resolved: ResolvedGoalValue,
+): boolean {
+  return (
+    resolved.error != null &&
+    !(isGoalForeignColumnRef(bound) && needsAnswer(resolved))
+  );
 }
 
 export function supportsDynamicGoals(display: VisualizationDisplay): boolean {
