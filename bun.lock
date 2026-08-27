@@ -195,6 +195,7 @@
         "@stardazed/streams-text-encoding": "^1.0.2",
         "@storybook/addon-a11y": "^8.5.0",
         "@storybook/addon-actions": "^8.5.0",
+        "@storybook/addon-docs": "^8.5.0",
         "@storybook/addon-essentials": "^8.5.0",
         "@storybook/addon-interactions": "^8.5.0",
         "@storybook/addon-links": "^8.5.0",
@@ -320,7 +321,6 @@
         "mochawesome": "^7.1.4",
         "mochawesome-merge": "^5.1.1",
         "mochawesome-report-generator": "^6.3.2",
-        "mockdate": "^2.0.2",
         "msw": "^2.7.5",
         "msw-storybook-addon": "^2.0.4",
         "mysql2": "^3.9.8",
@@ -4103,8 +4103,6 @@
     "mochawesome-merge": ["mochawesome-merge@5.1.1", "", { "dependencies": { "fs-extra": "^11.3.0", "glob": "^13.0.1", "yargs": "^17.7.2" }, "bin": { "mochawesome-merge": "bin/mochawesome-merge.js" } }, "sha512-dmhhDu6y1xoVv0Kn6hJrwCgVPEUcA1ktEbjetkeMgva+R0+b5J+YBNMwiz77W9JxW7vn6crNcluLF5gfRs5f5g=="],
 
     "mochawesome-report-generator": ["mochawesome-report-generator@6.3.2", "", { "dependencies": { "chalk": "^4.1.2", "dateformat": "^4.5.1", "escape-html": "^1.0.3", "fs-extra": "^10.0.0", "fsu": "^1.1.1", "lodash.isfunction": "^3.0.9", "opener": "^1.5.2", "prop-types": "^15.7.2", "tcomb": "^3.2.17", "tcomb-validation": "^3.3.0", "yargs": "^17.2.1" }, "bin": { "marge": "bin/cli.js" } }, "sha512-iB6iyOUMyMr8XOUYTNfrqYuZQLZka3K/Gr2GPc6CHPe7t2ZhxxfcoVkpMLOtyDKnWbY1zgu1/7VNRsigrvKnOQ=="],
-
-    "mockdate": ["mockdate@2.0.5", "", {}, "sha512-ST0PnThzWKcgSLyc+ugLVql45PvESt3Ul/wrdV/OPc/6Pr8dbLAIJsN1cIp41FLzbN+srVTNIRn+5Cju0nyV6A=="],
 
     "module-definition": ["module-definition@6.0.1", "", { "dependencies": { "ast-module-types": "^6.0.1", "node-source-walk": "^7.0.1" }, "bin": { "module-definition": "bin/cli.js" } }, "sha512-FeVc50FTfVVQnolk/WQT8MX+2WVcDnTGiq6Wo+/+lJ2ET1bRVi3HG3YlJUfqagNMc/kUlFSoR96AJkxGpKz13g=="],
 
