@@ -118,7 +118,7 @@
 ;; We sometimes need to run cmd stuffs like `clojure -M:migrate rollback n 3` and these
 ;; libraries might not be available in the classpath
 (u/ignore-exceptions
- ;; make sure stuff like `=?` and what not are loaded
+  ;; make sure stuff like `=?` and what not are loaded
   (classloader/require 'mb.hawk.assert-exprs))
 
 (u/ignore-exceptions
@@ -130,9 +130,9 @@
 
 (u/ignore-exceptions
   (classloader/require 'pjstadig.humane-test-output)
- ;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
- ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config.core]] so we don't load that
- ;; namespace before we load [[metabase.core.bootstrap]]
+  ;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
+  ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config.core]] so we don't load that
+  ;; namespace before we load [[metabase.core.bootstrap]]
   (when-not (= (env/env :mb-run-mode) "test")
     ((resolve 'pjstadig.humane-test-output/activate!))))
 
