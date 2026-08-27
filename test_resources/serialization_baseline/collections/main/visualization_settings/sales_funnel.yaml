@@ -1,7 +1,6 @@
 name: Sales Funnel
 entity_id: mkKa6jf-QsuCRnaPOIsYh
 created_at: '2026-04-02T02:59:02.778668Z'
-last_used_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: funnel
 collection_id: cOlViZsEtTiNgS0ExAmP1
@@ -79,7 +78,7 @@ visualization_settings:
   funnel.dimension: CATEGORY
   funnel.metric: count
   funnel.type: funnel
-card_schema: 23
+card_schema: 24
 serdes/meta:
 - id: mkKa6jf-QsuCRnaPOIsYh
   label: sales_funnel

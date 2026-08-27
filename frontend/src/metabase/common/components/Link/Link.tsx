@@ -1,8 +1,9 @@
 import cx from "classnames";
 
-import { RouterLink } from "metabase/router/router-link";
+import type { NavLinkRenderProps } from "metabase/router";
 import { Tooltip } from "metabase/ui";
 
+import { BaseLink } from "./BaseLink";
 import S from "./Link.module.css";
 import type { LinkProps } from "./types";
 
@@ -15,25 +16,30 @@ export const Link = ({
   className,
   ...props
 }: LinkProps): JSX.Element => {
+  const styleClassName = cx(S.link, {
+    [S.disabled]: disabled,
+    [S.brand]: variant === "brand",
+    [S.brandBold]: variant === "brandBold",
+  });
+
+  // Keep the callback form a callback: resolving it here would make every link
+  // track the active route, including the ones that never style themselves by it.
+  const linkClassName =
+    typeof className === "function"
+      ? (state: NavLinkRenderProps) => cx(styleClassName, className(state))
+      : cx(styleClassName, className);
+
   const link = (
-    <RouterLink
+    <BaseLink
       {...props}
-      className={cx(
-        S.link,
-        {
-          [S.disabled]: disabled,
-          [S.brand]: variant === "brand",
-          [S.brandBold]: variant === "brandBold",
-        },
-        className,
-      )}
+      className={linkClassName}
       to={to}
       disabled={disabled}
       tabIndex={disabled ? -1 : undefined}
       aria-disabled={disabled}
     >
       {children}
-    </RouterLink>
+    </BaseLink>
   );
 
   const tooltipProps =

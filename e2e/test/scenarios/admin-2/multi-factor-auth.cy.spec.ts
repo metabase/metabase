@@ -2,9 +2,8 @@ const { H } = cy;
 import * as OTPAuth from "otpauth";
 
 import { USERS } from "e2e/support/cypress_data";
-import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { normal } = USERS;
+const { admin, nodata, normal } = USERS;
 
 const NEW_PASSWORD = "NewPassword2fa!123";
 
@@ -42,12 +41,19 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
     enableMfa();
 
-    cy.log("User enrolls from account security settings");
+    cy.log("User enrolls from account authentication settings");
     cy.signInAsNormalUser();
+
+    cy.log("The old security URL lands on the combined Authentication tab");
     cy.visit("/account/security");
+    cy.url().should("contain", "/account/authentication");
     cy.findByTestId("account-header")
-      .findByRole("tab", { name: "Security" })
+      .findByRole("tab", { name: "Authentication" })
       .should("be.visible");
+
+    cy.log("Password and 2FA now share one tab");
+    cy.findByLabelText("Current password").should("be.visible");
+
     enrollViaUI().then((secret) => {
       totpSecret = secret;
     });
@@ -76,7 +82,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
     enableMfa();
     enrollNormalUser().then(({ secret }) => {
       cy.log("Disabling requires a fresh second factor, not just a password");
-      cy.visit("/account/security");
+      cy.visit("/account/password");
       cy.findByRole("button", { name: "Disable" }).click();
       H.modal().within(() => {
         cy.findByText(
@@ -112,7 +118,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       cy.findByTestId("greeting-message").should("be.visible");
 
       cy.log("Regenerate the recovery codes");
-      cy.visit("/account/security");
+      cy.visit("/account/password");
       cy.findByRole("button", { name: "Generate recovery codes" }).click();
       H.modal().within(() => {
         cy.findByText(
@@ -239,7 +245,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       cy.findByTestId("greeting-message").should("be.visible");
 
       cy.log("Managing the existing enrollment still works without a license");
-      cy.visit("/account/security");
+      cy.visit("/account/authentication");
       cy.findByRole("button", { name: "Disable" }).click();
       H.modal().within(() => {
         cy.findByLabelText(
@@ -249,8 +255,7 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
       });
 
       cy.log("Without the feature there is no way back into setup");
-      cy.url().should("contain", "/account/profile");
-      cy.visit("/account/security");
+      cy.url().should("contain", "/account/authentication");
       cy.findByRole("button", {
         name: "Set up two-factor authentication",
       }).should("be.disabled");
@@ -261,20 +266,74 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
     enableMfa();
     enrollNormalUser();
 
-    cy.log("Admin sees the enrollment and removes it (lockout escape hatch)");
+    cy.log("Admin drills into the enrolled list from the count on the card");
     cy.signInAsAdmin();
     cy.visit("/admin/settings/authentication");
-    mfaSetting().scrollIntoView().should("contain", "1 enrolled user");
-    cy.request("POST", "/api/ee/mfa/admin/remove", {
-      user_id: NORMAL_USER_ID,
+    mfaSetting().scrollIntoView().findByText("1 enrolled user").click();
+
+    enrolledUsersTable()
+      .should("contain", normal.first_name)
+      .and("contain", normal.email);
+
+    cy.log("Admin removes the enrollment (the lockout escape hatch)");
+    cy.findByLabelText(
+      `Actions for ${normal.first_name} ${normal.last_name}`,
+    ).click();
+    H.menu().findByText("Remove two-factor authentication").click();
+    H.modal().within(() => {
+      cy.findByText(
+        `Remove two-factor authentication for ${normal.first_name} ${normal.last_name}?`,
+      ).should("be.visible");
+      cy.button("Remove").click();
     });
 
-    cy.log("After the reset the user signs in with just a password");
+    cy.log("They drop off the enrolled list and the count follows");
+    enrolledUsersTable().should("not.contain", normal.email);
+    cy.visit("/admin/settings/authentication");
+    mfaSetting().scrollIntoView().should("contain", "0 enrolled users");
+
+    cy.log("And they now show up as needing to set 2FA up again");
+    mfaSetting()
+      .findByText(/users? without 2FA/)
+      .click();
+    unenrolledUsersTable().should("contain", normal.email);
+
+    cy.log("After the removal the user signs in with just a password");
     signInWithPassword();
     cy.findByTestId("greeting-message").should("be.visible");
     cy.url().should("not.contain", "/auth/login");
   });
+
+  it("admin can search the users-without-2FA list", () => {
+    enableMfa();
+    enrollNormalUser();
+
+    cy.signInAsAdmin();
+    cy.visit("/admin/settings/authentication");
+    mfaSetting()
+      .scrollIntoView()
+      .findByText(/users? without 2FA/)
+      .click();
+
+    cy.log("The enrolled user is absent — they already have a second factor");
+    unenrolledUsersTable().should("not.contain", normal.email);
+
+    cy.log("Searching narrows to a single person");
+    unenrolledUsersTable().should("contain", nodata.email);
+    cy.findByPlaceholderText("Search…").type(admin.first_name);
+    unenrolledUsersTable()
+      .should("contain", admin.email)
+      .and("not.contain", nodata.email);
+  });
 });
+
+function enrolledUsersTable() {
+  return cy.findByTestId("mfa-enrolled-users-table");
+}
+
+function unenrolledUsersTable() {
+  return cy.findByTestId("mfa-unenrolled-users-table");
+}
 
 function mfaSetting() {
   return cy.findByTestId("mfa-setting");
@@ -324,7 +383,7 @@ function enrollViaUI(): Cypress.Chainable<string> {
       cy.findByText("Your recovery codes").should("be.visible");
       cy.button("Done").click();
     });
-    return cy.wrap(secret, { log: false });
+    return cy.wrap<string>(secret, { log: false });
   });
 }
 

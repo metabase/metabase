@@ -3,7 +3,7 @@ name: E2E Coverage Shard
 # Reusable per-shard worker for the coverage manifest run. Trimmed extract of
 # e2e-test.yml: runs one cypress-split shard against an instrumented build and
 # uploads that shard's per-spec coverage. Intentionally omits the PR-only
-# concerns (failed-spec retry, Trunk quarantine, S3 result upload, timing
+# concerns (failed-spec retry, quarantine, S3 result upload, timing
 # output) since this is a nightly, non-blocking job.
 
 on:
@@ -97,7 +97,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js e2e \
-            --expose grepTags="-@mongo+-@python+-@OSS+-@skip"
+            --expose grepTags="-@mongo+-@python+-@OSS"
         # Don't let a single failing/flaky spec abort the shard — we still want
         # coverage from the specs that did run.
         continue-on-error: true

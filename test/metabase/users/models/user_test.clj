@@ -19,8 +19,8 @@
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.log.capture :as log.capture]
-   [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -360,21 +360,6 @@
                  (user-group-names :lucky))
               "If an INVALID REMOVE is attempted, valid adds should not be persisted"))))))
 
-(deftest password-sync-to-auth-identity-test
-  (testing "Password changes are automatically synced to AuthIdentity via lifecycle hooks"
-    (testing "Password update via t2/update! also syncs to AuthIdentity"
-      (mt/with-temp [:model/User {user-id :id} {:password "initial-password"}]
-        (let [initial-user (t2/select-one [:model/User :password] :id user-id)
-              initial-password-hash (:password initial-user)]
-          (t2/update! :model/User user-id {:password "another-new-password"})
-          (let [updated-user (t2/select-one [:model/User :password] :id user-id)
-                updated-password-hash (:password updated-user)
-                updated-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
-                auth-identity-hash (get-in updated-auth-identity [:credentials :password_hash])]
-            (is (not= initial-password-hash updated-password-hash) "Password should be updated in User table")
-            (is (some? updated-auth-identity) "AuthIdentity should still exist")
-            (is (= updated-password-hash auth-identity-hash) "AuthIdentity password hash should match User table")))))))
-
 (deftest validate-locale-test
   (testing "`:locale` should be validated"
     (testing "creating a new User"
@@ -427,31 +412,6 @@
           (is (pos? (t2/update! :model/User user-id {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
-
-(deftest hash-password-on-update-test
-  (testing "Setting `:password` with [[t2/update!]] should hash the password, just like [[t2/insert!]]"
-    (let [plaintext-password "password-1234"]
-      (mt/with-temp [:model/User {user-id :id} {:password plaintext-password}]
-        (let [salt                     (fn [] (t2/select-one-fn :password_salt :model/User :id user-id))
-              hashed-password          (fn [] (t2/select-one-fn :password :model/User :id user-id))
-              original-hashed-password (hashed-password)]
-          (testing "sanity check: check that password can be verified"
-            (is (u.password/verify-password plaintext-password
-                                            (salt)
-                                            original-hashed-password)))
-          (is (= 1
-                 (t2/update! :model/User user-id {:password plaintext-password})))
-          (let [new-hashed-password (hashed-password)]
-            (testing "password should have been hashed"
-              (is (not= plaintext-password
-                        new-hashed-password)))
-            (testing "even tho the plaintext password is the same, hashed password should be different (different salts)"
-              (is (not= original-hashed-password
-                        new-hashed-password)))
-            (testing "salt should have been set; verify password was hashed correctly"
-              (is (u.password/verify-password plaintext-password
-                                              (salt)
-                                              new-hashed-password)))))))))
 
 (deftest last-acknowledged-version-can-be-read-and-set
   (testing "last-acknowledged-version can be read and set"
@@ -655,12 +615,17 @@
 
 ;;; ------------------------------------------- Unparseable settings column --------------------------------------------
 
+(def ^:private unparseable-settings-plaintext "not-json")
+
 (defn- corrupt-settings-column!
-  "Write a value straight into `core_user.settings` that [[metabase.models.interface/encrypted-json-out]] can neither
-  decrypt nor parse as JSON, simulating a row that was encrypted with a key the instance no longer has."
+  "Write a value straight into `core_user.settings` that [[metabase.models.interface/encrypted-json-out]] hands back
+  un-parsed. The value is run through [[encryption/maybe-encrypt]] so it is encrypted exactly the way the column
+  expects: since #80785 the encrypted read is strict and a plaintext value would throw inside `t2/select` when
+  `MB_ENCRYPTION_SECRET_KEY` is set, never reaching the code under test. What is left after decryption is not JSON, so
+  the transform falls back to returning the raw column value (a String) instead of a map."
   [user-id]
   (t2/query {:update :core_user
-             :set    {:settings "not-decryptable-and-not-json"}
+             :set    {:settings (encryption/maybe-encrypt unparseable-settings-plaintext)}
              :where  [:= :id user-id]}))
 
 (deftest user-local-settings-unparseable-column-test
@@ -706,4 +671,4 @@
             (is (str/includes? (str (first msgs))
                                (str "Discarding unreadable settings for user " user-id)))
             (testing "without leaking the unreadable column contents, which are user data"
-              (is (not (str/includes? (str (first msgs)) "not-decryptable-and-not-json"))))))))))
+              (is (not (str/includes? (str (first msgs)) unparseable-settings-plaintext))))))))))

@@ -3,9 +3,13 @@ import { createMockSearchResults } from "metabase-types/api/mocks";
 
 import { registerSearchStarted, trackFulfilledSearch } from "./analytics";
 
+// hashSearchTerm/shouldReportSearchTerm are stubbed to avoid crypto.subtle / Settings in the hashing
+// path; we only care about the tracking lifecycle here.
 jest.mock("metabase/analytics", () => ({
   trackSchemaEvent: jest.fn(),
   trackSimpleEvent: jest.fn(),
+  hashSearchTerm: jest.fn(async () => "hashed"),
+  shouldReportSearchTerm: jest.fn(() => false),
 }));
 
 // Reached through requireMock rather than a top-level import: the analytics-import lint rule forbids
@@ -13,12 +17,6 @@ jest.mock("metabase/analytics", () => ({
 const { trackSchemaEvent: mockTrackSchemaEvent } = jest.requireMock<{
   trackSchemaEvent: jest.Mock;
 }>("metabase/analytics");
-
-// Avoid crypto.subtle / Settings in the hashing path; we only care about the tracking lifecycle here.
-jest.mock("metabase/common/search/term", () => ({
-  hashSearchTerm: jest.fn(async () => "hashed"),
-  shouldReportSearchTerm: jest.fn(() => false),
-}));
 
 // Real timers, not fake ones: underscore's `_.debounce` binds `Date.now` at import, before jest could
 // install fake timers, so `advanceTimersByTime` never moves the clock it reads. Wait past the 300ms

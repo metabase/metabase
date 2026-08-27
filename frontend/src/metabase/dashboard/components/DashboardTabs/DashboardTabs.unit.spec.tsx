@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { Link } from "metabase/common/components/Link";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
@@ -9,7 +10,7 @@ import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/redux";
 import type { DashboardState } from "metabase/redux/store";
-import { type InjectedRouter, Link, Route, useRouter } from "metabase/router";
+import { Route, useLocation } from "metabase/router";
 import type { DashboardTab } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
@@ -47,9 +48,9 @@ function setup({
   };
 
   const RoutedDashboardComponent = () => {
-    const { location } = useRouter();
+    const location = useLocation();
     const { selectedTabId } = useDashboardTabs();
-    useDashboardUrlQuery(createMockRouter(), location);
+    useDashboardUrlQuery(location);
     return (
       <>
         <DashboardTabs />
@@ -170,22 +171,6 @@ async function duplicateTab(num: number) {
 
 async function findSlug({ tabId, name }: { tabId: number; name: string }) {
   return screen.findByText(new RegExp(createTabSlug({ id: tabId, name })));
-}
-
-function createMockRouter(): InjectedRouter {
-  return {
-    push: jest.fn(),
-    replace: jest.fn(),
-    go: jest.fn(),
-    goBack: jest.fn(),
-    goForward: jest.fn(),
-    setRouteLeaveHook: jest.fn(),
-    createPath: jest.fn(),
-    createHref: jest.fn(),
-    isActive: jest.fn(),
-    // @ts-expect-error missing type definition
-    listen: jest.fn().mockReturnValue(jest.fn()),
-  };
 }
 
 describe("DashboardTabs", () => {

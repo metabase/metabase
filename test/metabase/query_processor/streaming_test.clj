@@ -323,8 +323,6 @@
   [message {:keys [query viz-settings assertions endpoints user expected-status]}]
   (testing message
     (let [expected-status   (or expected-status 200)
-          query-json        (json/encode query)
-          viz-settings-json (some-> viz-settings json/encode)
           public-uuid       (str (random-uuid))
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
@@ -346,9 +344,9 @@
                   (let [results (mt/user-http-request user :post expected-status
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      {:format_rows            true
-                                                       :query                  query-json
-                                                       :visualization_settings viz-settings-json})]
+                                                      (cond-> {:format_rows true
+                                                               :query       query}
+                                                        viz-settings (assoc :visualization_settings viz-settings)))]
                     ((-> assertions export-format) results))
 
                   :card
@@ -781,3 +779,38 @@
       ;; Should not throw any assertion errors
       (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
           "Streaming response should handle cancellation without assertion error"))))
+
+(deftest ^:parallel export-survives-malformed-model-column-settings-test
+  (testing (str "A model whose pinned result_metadata carries a malformed column `:settings` blob still exports. "
+                "Any user with collection-write could plant one and kill CSV/JSON/XLSX export of that model for "
+                "every later reader, including superusers and anonymous public viewers (SEC-868).")
+    (doseq [bad-click-behavior ["x" [1 2] 42]
+            export-format      [:csv :json :xlsx]]
+      (testing (str export-format ", click_behavior = " (pr-str bad-click-behavior))
+        (let [query (assoc (mt/native-query {:query "SELECT 1 AS N"})
+                           :info {:metadata/model-metadata
+                                  [{:name           "N"
+                                    :display_name   "N"
+                                    :base_type      :type/Integer
+                                    :effective_type :type/Integer
+                                    :field_ref      [:field "N" {:base-type :type/Integer}]
+                                    :source         :native
+                                    :settings       {:click_behavior bad-click-behavior}}]})
+              rows  (streaming.test-util/process-query-basic-streaming export-format query ["N"])]
+          (is (= 1 (count (cond-> rows (= export-format :csv) rest)))
+              "the export should contain the one data row, not die mid-stream"))))))
+
+(deftest ^:parallel export-survives-malformed-card-visualization-settings-test
+  (testing (str "A card whose `visualization_settings` carry a malformed value still exports. Same root cause as the "
+                "model `result_metadata[].settings` blob, on the sibling `db->norm` path — the card API validates "
+                "`visualization_settings` only as a map, so every value under it is attacker-controlled (SEC-868).")
+    (doseq [k             [:click_behavior :column_settings :table.columns]
+            bad-value     ["x" 42]
+            export-format [:csv :json :xlsx]]
+      (testing (str export-format ", " k " = " (pr-str bad-value))
+        (let [query (-> (mt/native-query {:query "SELECT 1 AS N"})
+                        (assoc :viz-settings {k bad-value}
+                               :middleware {:process-viz-settings? true}))
+              rows  (streaming.test-util/process-query-basic-streaming export-format query ["N"])]
+          (is (= 1 (count (cond-> rows (= export-format :csv) rest)))
+              "the export should contain the one data row, not die mid-stream"))))))

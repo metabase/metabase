@@ -9,6 +9,7 @@ import {
   getIsEditingParameter,
   getIsSharing,
   getParameters,
+  getSelectedTabId,
   getShowAddQuestionSidebar,
   getSidebar,
 } from "metabase/dashboard/selectors";
@@ -24,6 +25,7 @@ import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDashboardTab,
   createMockField,
   createMockHeadingDashboardCard,
   createMockNativeDatasetQuery,
@@ -461,5 +463,59 @@ describe("dashboard/selectors", () => {
       expect(cards[1].card.id).toBe(1);
       expect(cards[0].card.id).toBe(2);
     });
+  });
+});
+
+describe("getSelectedTabId", () => {
+  const DASHBOARD_ID = 1;
+
+  const createTabbedState = (siteUrl: string) =>
+    createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: DASHBOARD_ID,
+        selectedTabId: null,
+        dashboards: {
+          [DASHBOARD_ID]: createMockStoreDashboard({
+            id: DASHBOARD_ID,
+            tabs: [
+              createMockDashboardTab({ id: 1 }),
+              createMockDashboardTab({ id: 2 }),
+            ],
+          }),
+        },
+      }),
+      settings: createMockSettingsState({ "site-url": siteUrl }),
+    });
+
+  afterEach(() => {
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("initializes from the tab query param", () => {
+    window.history.replaceState({}, "", "/dashboard/1?tab=2-second-tab");
+
+    const state = createTabbedState("http://localhost:3000");
+
+    expect(getSelectedTabId(state)).toBe(2);
+  });
+
+  it("initializes from the tab query param on a subpath deployment (metabase#76946)", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/metabase/dashboard/1?tab=2-second-tab",
+    );
+
+    const state = createTabbedState("http://localhost:3000/metabase");
+
+    expect(getSelectedTabId(state)).toBe(2);
+  });
+
+  it("falls back to the first tab while navigating to another dashboard", () => {
+    window.history.replaceState({}, "", "/dashboard/999?tab=2-second-tab");
+
+    const state = createTabbedState("http://localhost:3000");
+
+    expect(getSelectedTabId(state)).toBe(1);
   });
 });

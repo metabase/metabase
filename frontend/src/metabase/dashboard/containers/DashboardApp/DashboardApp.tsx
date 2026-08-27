@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
@@ -32,10 +32,14 @@ import {
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { Location } from "metabase/router";
-import { Outlet, replace, useRouter } from "metabase/router";
+import { Outlet, useLocation, useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
-import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
+import {
+  parseHashOptions,
+  parseSearchQuery,
+  stringifyHashOptions,
+} from "metabase/utils/browser";
+import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
 import { getDocumentTitle, getFavicon } from "../../selectors";
@@ -74,17 +78,21 @@ export const DASHBOARD_APP_ACTIONS = ({ isEditing }: { isEditing: boolean }) =>
   isEditing ? DASHBOARD_EDITING_ACTIONS : DASHBOARD_VIEW_ACTIONS;
 
 export const DashboardApp = () => {
-  const { location, params, router } = useRouter();
+  const location = useLocation();
+  const params = useParams();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const [error, setError] = useState<string>();
 
-  const parameterQueryParams = location.query;
-  // Unjustified type cast. FIXME
-  const dashboardId = Urls.extractEntityId(params.slug) as DashboardId;
+  const parameterQueryParams = useMemo(
+    () => parseSearchQuery(location.search),
+    [location.search],
+  );
+  const dashboardId = Urls.extractEntityId(params.slug);
 
   useRegisterDashboardMetabotContext();
-  useDashboardUrlQuery(router, location);
+  useDashboardUrlQuery(location);
 
   const extractHashOption = async (
     key: string,
@@ -107,7 +115,7 @@ export const DashboardApp = () => {
         options = await extractHashOption("edit", options);
       }
 
-      if (addCardOnLoad != null) {
+      if (addCardOnLoad != null && dashboardId != null) {
         options = await extractHashOption("add", options);
         const searchParams = new URLSearchParams(window.location.search);
         const tabParam = searchParams.get("tab");
@@ -124,7 +132,10 @@ export const DashboardApp = () => {
       const hashString = stringifyHashOptions(options);
       const hash = hashString ? "#" + hashString : "";
       if (hash !== location.hash) {
-        await dispatch(replace({ ...location, hash }));
+        await navigate(
+          { ...location, hash },
+          { replace: true, state: location.state },
+        );
       }
     } catch (error) {
       // 400: provided entity id format is invalid.
@@ -144,9 +155,21 @@ export const DashboardApp = () => {
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
 
+  // A slug that yields no id (e.g. /dashboard/not-a-number) would otherwise
+  // leave the provider waiting for a fetch that never starts (metabase#78725)
+  useEffect(() => {
+    if (dashboardId == null) {
+      dispatch(setErrorPage({ status: 404 }));
+    }
+  }, [dashboardId, dispatch]);
+
   // Prevent rendering the dashboard app if the route is out of sync
   // metabase#65500
   if (!isRouteInSync(location.pathname)) {
+    return null;
+  }
+
+  if (dashboardId == null) {
     return null;
   }
 

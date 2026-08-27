@@ -1,7 +1,9 @@
-import type { VisualizationGridSize } from "custom-viz";
 import { match } from "ts-pattern";
 
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationGridSize,
+} from "metabase/visualizations/types";
 
 import { LABEL_PADDING, groupHeader } from "../style";
 
@@ -21,7 +23,7 @@ export interface TreemapLabelLayout {
 
 export function shouldShowParentLabels(
   gridSize: VisualizationGridSize | undefined,
-  settings: VisualizationProps["settings"],
+  settings: ComputedVisualizationSettings,
 ) {
   const fitsParentLabels =
     gridSize === undefined ||

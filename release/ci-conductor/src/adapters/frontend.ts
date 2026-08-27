@@ -15,12 +15,12 @@
 //
 // FILE / IDENTITY NOTE: `jest.config.js` sets jest-junit's `addFileAttribute`,
 // so each <testcase> carries the source path as a `file` attribute, which the
-// shared parser surfaces as `file_path`. We deliberately leave jest-junit's
-// `classname`/`name` on their defaults (the same `{ancestors} {title}` blob in
-// both) rather than re-template them: that artifact is also what Trunk ingests,
-// and changing those fields would re-baseline its test identity. So `test_path`
-// and `test_name` carry that blob (redundant but a stable, unique key) and
-// identity is (test_suite, test_path, test_name, file_path).
+// shared parser surfaces as `file_path`. `classname`/`name` stay on jest-junit's
+// defaults — the same `{ancestors} {title}` blob in both — so `test_path` and
+// `test_name` carry that blob (redundant but a stable, unique key) and identity
+// is (test_suite, test_path, test_name, file_path). ci-conductor matches that
+// tuple exactly, so re-templating either field orphans a test's quarantine
+// entry and occurrence history.
 
 import { readFileSync } from "node:fs";
 
@@ -46,23 +46,24 @@ function selectJestJunit(name: string): (entries: string[]) => string[] {
  * (jest-junit XML → the shared normalized shape).
  */
 export function normalizeFrontendJunit(
+  ignorePassingTests: boolean = true,
   dir: string = JUNIT_DIR,
   name: string = JUNIT_NAME,
 ): NormalizedTest[] {
   const files = findJunitFiles(dir, selectJestJunit(name));
   const failures = files.flatMap((file) => {
     try {
-      return parseJunit(readFileSync(file, "utf8"));
+      return parseJunit(readFileSync(file, "utf8"), ignorePassingTests);
     } catch (error) {
       console.error(`[ci-conductor] failed to read ${file}`, error);
       return [];
     }
   });
   log(
-    `scanned ${dir}: ${files.length} JUnit file(s), ${failures.length} failing test(s)`,
+    `scanned ${dir}: ${files.length} JUnit file(s), ${failures.length} ${ignorePassingTests ? "failing " : ""}test(s)`,
   );
   for (const test of failures) {
-    log(`  failing: ${test.path || "(no describe path)"} / ${test.name}`);
+    log(`  ${test.status ?? 'failure'}: ${test.path || "(no describe path)"} / ${test.name}`);
   }
   return failures;
 }

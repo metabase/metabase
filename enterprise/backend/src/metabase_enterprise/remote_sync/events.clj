@@ -240,9 +240,9 @@
   [model-spec]
   (let [event-kws (spec/event-keywords model-spec)
         parent-kw (:parent event-kws)]
-    (derive parent-kw :metabase/event)
+    (events/derive! parent-kw :metabase/event)
     (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
-      (derive event-kw parent-kw))
+      (events/derive! event-kw parent-kw))
     (methodical/add-primary-method!
      #'events/publish-event!
      parent-kw
@@ -259,9 +259,9 @@
 ;; a collection becomes remote-synced). This handler is kept separate from the standard
 ;; spec-based registration.
 
-(derive ::collection-change-event :metabase/event)
-(derive :event/collection-create ::collection-change-event)
-(derive :event/collection-update ::collection-change-event)
+(events/derive! ::collection-change-event :metabase/event)
+(events/derive! :event/collection-create ::collection-change-event)
+(events/derive! :event/collection-update ::collection-change-event)
 
 (defn- hydrate-collection-details
   "Hydrates details for a Collection."
@@ -313,8 +313,8 @@
 
 (def ^:private field-spec (get spec/remote-sync-specs :model/Field))
 
-(derive :event/field-update ::field-update-event)
-(derive ::field-update-event :metabase/event)
+(events/derive! :event/field-update ::field-update-event)
+(events/derive! ::field-update-event :metabase/event)
 
 (methodical/defmethod events/publish-event! ::field-update-event
   [_topic {:keys [object]}]

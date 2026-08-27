@@ -25,6 +25,7 @@ const urls: MetricUrls = {
   about: (id) => `/metric/${id}/about`,
   overview: (id) => `/metric/${id}/overview`,
   query: (id) => `/metric/${id}/query`,
+  dimensions: (id) => `/metric/${id}/dimensions`,
   dependencies: (id) => `/metric/${id}/dependencies`,
   history: (id) => `/metric/${id}/history`,
 };
@@ -87,9 +88,7 @@ describe("MetricTabs", () => {
   }
 
   function getTabLabels() {
-    return Array.from(
-      document.querySelectorAll(".mb-mantine-Tabs-tabLabel"),
-    ).map((element) => element.textContent);
+    return screen.queryAllByRole("link").map((link) => link.textContent);
   }
 
   it("does not show the caching tab in the tabs row regardless of write access", async () => {
@@ -99,6 +98,7 @@ describe("MetricTabs", () => {
         "About",
         "Overview",
         "Definition",
+        "Dimensions",
         "History",
       ]);
     });
@@ -111,19 +111,25 @@ describe("MetricTabs", () => {
         "About",
         "Overview",
         "Definition",
+        "Dimensions",
         "History",
       ]);
     });
   });
 
-  it("should hide the overview tab when metric has no dimensions", async () => {
+  it("hides the overview tab when the metric has no dimensions", async () => {
     setup({ hasDimensions: false });
     await waitFor(() => {
-      expect(getTabLabels()).toEqual(["About", "Definition", "History"]);
+      expect(getTabLabels()).toEqual([
+        "About",
+        "Definition",
+        "Dimensions",
+        "History",
+      ]);
     });
   });
 
-  it("should hide the overview and definition tabs when the query is not editable", async () => {
+  it("should hide the overview, definition, and dimensions tabs when the query is not editable", async () => {
     setup({
       hasDataPermissions: false,
       hasDimensions: true,
@@ -131,6 +137,13 @@ describe("MetricTabs", () => {
     });
     await waitFor(() => {
       expect(getTabLabels()).toEqual(["About", "History"]);
+    });
+  });
+
+  it("shows the dimensions tab for editable metrics", async () => {
+    setup();
+    await waitFor(() => {
+      expect(getTabLabels()).toContain("Dimensions");
     });
   });
 

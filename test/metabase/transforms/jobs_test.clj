@@ -437,7 +437,9 @@
                              (count @mt/inbox)))
                       (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
                       (is (mt/received-email-body? :crowberto #"transform1"))
-                      (is (mt/received-email-body? :crowberto #"transform2")))))))))))))
+                      ;; transform2 is a dependent that never ran; those are summarized as a count,
+                      ;; so the email carries the tally rather than the name
+                      (is (mt/received-email-body? :crowberto #"1 downstream transform\(s\)")))))))))))))
 
 (deftest run-mbql-transform-anonymous-user-routing-error-test
   (mt/when-ee-evailable

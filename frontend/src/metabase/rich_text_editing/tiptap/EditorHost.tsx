@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react";
-import { createContext, useContext } from "react";
+import { type ReactNode, createContext, useContext } from "react";
 
 import type { State } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
@@ -8,6 +8,8 @@ import type {
   Dataset,
   Document,
   RawSeries,
+  StoredResultSort,
+  TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -54,6 +56,25 @@ type Selector<T> = (state: State) => T;
  */
 type DispatchableAction = any;
 
+/**
+ * What the surrounding surface lets the editor do. Hosts declare these instead
+ * of exposing a surface enum the editor has to branch on: a restricted surface
+ * (e.g. exploration Summary) flips the relevant flag to false. Adding a new
+ * surface is "provide a host with these flags", not "find every surface check".
+ */
+export interface EditorCapabilities {
+  canEmbedCharts: boolean;
+  canUseMetabot: boolean;
+  canOpenCardInQueryBuilder: boolean;
+}
+
+/** Capabilities for an unrestricted surface (standalone documents, comments, …). */
+export const DEFAULT_EDITOR_CAPABILITIES: EditorCapabilities = {
+  canEmbedCharts: true,
+  canUseMetabot: true,
+  canOpenCardInQueryBuilder: true,
+};
+
 /** Document state read by most extensions, regardless of which are enabled. */
 export interface EditorDocumentHost {
   selectors: {
@@ -62,6 +83,21 @@ export interface EditorDocumentHost {
   };
 }
 
+/**
+ * Host-contributed UI placed into named holes in CardEmbed's layout.
+ * CardEmbed owns placement; hosts interpret `host_data` and fill slots.
+ */
+export type CardEmbedSlots = {
+  belowTitle?: ReactNode;
+};
+
+export const EMPTY_CARD_EMBED_SLOTS: CardEmbedSlots = {};
+
+export type CardEmbedSlotContext = {
+  childTargetId: string;
+  hostData?: Record<string, unknown> | null;
+};
+
 /** Embedding, rendering and authoring cards: the CardEmbed node, the
  *  create/modify-question modals, and the Metabot embed. */
 export interface EditorCardHost {
@@ -69,7 +105,12 @@ export interface EditorCardHost {
     url: string,
     document?: Document | null,
   ) => DispatchableAction;
-  useCardData: (props: { id: number; skip?: boolean }) => UseCardDataResult;
+  useCardData: (props: {
+    id: number;
+    skip?: boolean;
+    storedResultId?: number;
+    storedResultSort?: StoredResultSort;
+  }) => UseCardDataResult;
   useExternalCardDataLoader: (
     cardId: number,
     opts?: { skip?: boolean },
@@ -82,6 +123,7 @@ export interface EditorCardHost {
     selectedEmbedIndex: number | null,
     regularDataset: Dataset | null | undefined,
   ) => DraftCardOperations;
+  useCardEmbedSlots: (opts: CardEmbedSlotContext) => CardEmbedSlots;
   actions: {
     createDraftCard: (payload: {
       originalCard: Card | undefined;
@@ -93,10 +135,20 @@ export interface EditorCardHost {
     openVizSettingsSidebar: (payload: {
       embedIndex: number;
     }) => DispatchableAction;
+    openTimelineEventsSidebar: (payload: {
+      embedIndex: number;
+      focusedEventIds?: number[];
+    }) => DispatchableAction;
+    selectTimelineEvents: (payload: TimelineEvent[]) => DispatchableAction;
+    deselectTimelineEvents: () => DispatchableAction;
     updateVizSettings: (payload: {
       cardId: number;
       settings: VisualizationSettings;
     }) => DispatchableAction;
+  };
+  selectors: {
+    getSelectedEmbedIndex: Selector<number | null>;
+    getSelectedTimelineEventIds: Selector<number[]>;
   };
 }
 
@@ -106,6 +158,7 @@ export interface EditorCommentsHost {
     getChildTargetId: Selector<string | undefined>;
     getHoveredChildTargetId: Selector<string | undefined>;
   };
+  useCommentUrl: (opts: { childTargetId: string | null }) => string;
   useUnresolvedCommentsCount: (
     nodeId: string,
     opts?: { skip?: boolean },
@@ -152,7 +205,9 @@ export type EditorHost = EditorDocumentHost &
   EditorCommentsHost &
   EditorViewportHost &
   EditorMentionsHost &
-  EditorAnalyticsHost;
+  EditorAnalyticsHost & {
+    capabilities: EditorCapabilities;
+  };
 
 const noop = () => undefined;
 
@@ -164,17 +219,23 @@ const noop = () => undefined;
  * provide one.
  */
 export const DEFAULT_EDITOR_HOST: EditorHost = {
+  capabilities: DEFAULT_EDITOR_CAPABILITIES,
   selectors: {
     getCurrentDocument: () => null,
     getChildTargetId: () => undefined,
     getHoveredChildTargetId: () => undefined,
     getHasUnsavedChanges: () => false,
+    getSelectedEmbedIndex: () => null,
+    getSelectedTimelineEventIds: () => [],
   },
   actions: {
     createDraftCard: () => ({ type: "@@editor-host/noop" }),
     generateDraftCardId: () => -1,
     loadMetadataForDocumentCard: () => ({ type: "@@editor-host/noop" }),
     openVizSettingsSidebar: () => ({ type: "@@editor-host/noop" }),
+    openTimelineEventsSidebar: () => ({ type: "@@editor-host/noop" }),
+    selectTimelineEvents: () => ({ type: "@@editor-host/noop" }),
+    deselectTimelineEvents: () => ({ type: "@@editor-host/noop" }),
     updateVizSettings: () => ({ type: "@@editor-host/noop" }),
     updateMentionsCache: () => ({ type: "@@editor-host/noop" }),
   },
@@ -188,6 +249,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
   navigateToCard: () => ({ type: "@@editor-host/noop" }),
   useCardData: () => ({ isLoading: false, series: null }),
   useExternalCardDataLoader: () => ({ isLoading: false, series: null }),
+  useCommentUrl: () => "",
   useUnresolvedCommentsCount: () => 0,
   useNodeInViewport: () => ({
     ref: () => undefined,
@@ -196,6 +258,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
   }),
   useReportPrefetchLoading: () => undefined,
   useDraftCardOperations: () => ({ ensureDraftCard: () => -1 }),
+  useCardEmbedSlots: () => EMPTY_CARD_EMBED_SLOTS,
 };
 
 const EditorHostContext = createContext<EditorHost>(DEFAULT_EDITOR_HOST);

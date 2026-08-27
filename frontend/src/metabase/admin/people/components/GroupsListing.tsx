@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
-import { useListApiKeysQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
@@ -30,6 +29,7 @@ import {
 import { KEYCODE_ENTER } from "metabase/utils/keyboard";
 import type { ApiKey, GroupInfo } from "metabase-types/api";
 
+import { useListApiKeysQuery } from "../../settings/api/api-key";
 import { groupIdToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
@@ -517,7 +517,6 @@ export const GroupsListing = (props: GroupsListingProps) => {
           <Button
             variant="filled"
             onClick={onCreateAGroupButtonClicked}
-            flex="0 1 140px"
           >{t`Create a group`}</Button>
         )
       }

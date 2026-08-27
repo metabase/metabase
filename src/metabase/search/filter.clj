@@ -18,7 +18,10 @@
 (defn- remove-if-falsey [m k]
   (if (m k) m (dissoc m k)))
 
-(defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
+(defn visible-to?
+  "Whether the search-model described by `spec` may be returned to the user described by `search-ctx`, per the spec's
+  `:visibility`."
+  [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
     :all       true
     :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
@@ -117,7 +120,7 @@
     (if (premium-features/has-feature? :library)
       collection-filter
       [:and
-       [:not= :search_index.model [:inline "table"]]
+       [:not= :search_index.model "table"]
        collection-filter])))
 
 (defn personal-collections-where-clause
@@ -145,13 +148,13 @@
     ;; query on instances with many users.
     ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
     (let [descendant-of-personal-collection
-          [:exists {:select [[[:inline 1]]]
-                    :from   [[:collection :pc]]
-                    :where  [:and
-                             [:not= :pc.personal_owner_id nil]
-                             [:= :pc.location "/"]
-                             [:like :collection.location
-                              [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
+          [:exists ^:allow-subquery {:select [[[:inline 1]]]
+                                     :from   [[:collection :pc]]
+                                     :where  [:and
+                                              [:not= :pc.personal_owner_id nil]
+                                              [:= :pc.location "/"]
+                                              [:like :collection.location
+                                               [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
       (case filter-type
         "only"
         [:or
@@ -180,7 +183,7 @@
        [:= [:inline 0] [:inline 1]])))
   ([search-context model-col source-type-col]
    [:or
-    [:!= model-col [:inline "transform"]]
+    [:!= model-col "transform"]
     (transform-source-type-where-clause search-context source-type-col)]))
 
 (defn filter-clauses
@@ -201,11 +204,15 @@
               ;; NOTE: we limit id-based search to only a subset of the models
               ;; TODO this should just become part of the model spec e.g. :search-by-id?
               [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]]]])
-    [[:dashboard-questions [:or
-                            ;; leverage the fact that only card-related models populate this attribute
-                            [:= nil :search_index.dashboard_id]
-                            (when (:include-dashboard-questions? search-context)
-                              [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]]]
+    [[:dashboard-questions [:and
+                            [:or
+                             ;; leverage the fact that only card-related models populate this attribute
+                             [:= nil :search_index.dashboard_id]
+                             (when (:include-dashboard-questions? search-context)
+                               [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]])]
+                            ;; documents with an exploration id are similar to a Dashboard Question - they aren't
+                            ;; searchable outside of their owning Exploration.
+                            [:= nil :search_index.exploration_id]]]]
     (for [{t :type :keys [context-key required-feature supported-value? field]}
           (vals (dissoc search.config/filters :id :native-query))
           :let [v (get search-context context-key)]]

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { getCollectionName } from "metabase/common/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { EntityItem } from "metabase/common/components/EntityItem";
+import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ItemNameCell,
@@ -18,8 +18,7 @@ import type { ResponsiveProps } from "metabase/common/components/ItemsTable/util
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Ellipsified,
   FixedSizeIcon,
@@ -159,7 +158,7 @@ function preventDefault(event: MouseEvent) {
 }
 
 const ModelRow = ({ model }: { model?: ModelResult }) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleClick = useCallback(
     (event: MouseEvent) => {
@@ -186,10 +185,10 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
       if ((event.ctrlKey || event.metaKey) && event.button === 0) {
         Urls.openInNewTab(subpathSafeUrl);
       } else {
-        dispatch(push(url));
+        navigate(url);
       }
     },
-    [model, dispatch],
+    [model, navigate],
   );
 
   return (
@@ -209,7 +208,7 @@ function NameCell({ model }: { model?: ModelResult }) {
   const getIcon = useGetIcon();
   const headingId = `model-${model?.id || "dummy"}-heading`;
   const icon = getIcon(model ?? { model: "dataset" }) ?? { name: "folder" };
-  const name = <EntityItem.Name name={model?.name || ""} variant="list" />;
+  const name = <EntityItemName name={model?.name || ""} />;
   return (
     <ItemNameCell data-testid="model-name" aria-labelledby={headingId}>
       <Flex id={headingId} align="center" gap="0.5rem" ps="1.4rem" pe="0.5rem">

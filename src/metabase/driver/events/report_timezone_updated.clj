@@ -2,13 +2,14 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
-(derive ::event :metabase/event)
-(derive :event/report-timezone-updated ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/report-timezone-updated ::event)
 
 (defn- notify-all-databases-updated
   "Send notification that all Databases should immediately release cached resources (i.e., connection pools).

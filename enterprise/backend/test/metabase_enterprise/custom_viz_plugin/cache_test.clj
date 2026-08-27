@@ -1,5 +1,6 @@
-(ns ^:synchronous metabase-enterprise.custom-viz-plugin.cache-test
+(ns ^:synchronized metabase-enterprise.custom-viz-plugin.cache-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
@@ -91,13 +92,30 @@
                             #"max uncompressed bytes"
                             (cache/validate-bundle! bytes))))))
 
-(deftest validate-bundle-rejects-incompatible-version-test
-  (testing "plugin requiring incompatible Metabase version is rejected"
+(deftest validate-bundle-accepts-incompatible-version-test
+  (testing "version incompatibilities never fail validation — they surface as soft warnings at read time"
     (with-redefs [config/mb-version-info {:tag "v1.60.0"}
                   config/is-dev?         false]
-      (let [bytes (cvp.tu/valid-bundle-bytes "bad-ver" {:metabase-version ">=1.99.0"})]
-        (is (thrown-with-msg? Exception #"version"
-                              (cache/validate-bundle! bytes)))))))
+      (let [bytes (cvp.tu/valid-bundle-bytes "bad-ver" {:metabase-version ">=1.99.0"})
+            res   (cache/validate-bundle! bytes)]
+        (is (= ">=1.99.0" (:version-str res)))))))
+
+(deftest validate-bundle-rejects-malformed-manifest-test
+  (testing "manifest fields with wrong JSON types are rejected with a 400"
+    (doseq [opts [{:sdk-version 2}
+                  {:metabase-version 1.62}
+                  {:icon 5}]]
+      (let [bytes (cvp.tu/valid-bundle-bytes "bad-types" opts)
+            e     (is (thrown-with-msg? Exception #"metabase-plugin\.json is invalid"
+                                        (cache/validate-bundle! bytes))
+                      (pr-str opts))]
+        (is (= 400 (:status-code (ex-data e))) (pr-str opts)))))
+  (testing "a non-string name is rejected before the blank-name check can choke on it"
+    (let [bytes (cvp.tu/make-tgz-bytes
+                 [["metabase-plugin.json" (json/encode {:name 123})]
+                  ["dist/index.js" "console.log('hi')"]])]
+      (is (thrown-with-msg? Exception #"metabase-plugin\.json is invalid"
+                            (cache/validate-bundle! bytes))))))
 
 ;;; ------------------------------------------------ dev-base-url URL validation ------------------------------------------------
 
@@ -105,8 +123,14 @@
   (testing "accepts http URLs"
     (is (= "http://localhost:5174/" (cache/dev-base-url "http://localhost:5174")))
     (is (= "http://localhost:5174/" (cache/dev-base-url "http://localhost:5174/"))))
-  (testing "accepts https URLs"
-    (is (= "https://dev.example.com/" (cache/dev-base-url "https://dev.example.com"))))
+  (testing "accepts https URLs to private addresses"
+    (is (= "https://192.168.1.50/" (cache/dev-base-url "https://192.168.1.50"))))
+  (testing "SECURITY: rejects URLs that resolve to public addresses"
+    (is (thrown-with-msg? Exception #"loopback or private"
+                          (cache/dev-base-url "https://8.8.8.8"))))
+  (testing "SECURITY: rejects link-local address"
+    (is (thrown-with-msg? Exception #"loopback or private"
+                          (cache/dev-base-url "http://169.254.169.254/latest"))))
   (testing "SECURITY: rejects ftp:// URLs"
     (is (thrown-with-msg? Exception #"http or https"
                           (cache/dev-base-url "ftp://evil.com/bundle"))))
@@ -119,6 +143,52 @@
   (testing "SECURITY: rejects file:// URLs"
     (is (thrown-with-msg? Exception #"http or https"
                           (cache/dev-base-url "file:///etc/passwd")))))
+
+(deftest fetch-dev-manifest-test
+  (testing "returns a well-formed manifest"
+    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
+                                        :body    (json/encode {:name "dev-viz"})})]
+      (is (= {:name "dev-viz"}
+             (cache/fetch-dev-manifest "http://localhost:5174")))))
+  (testing "returns nil when the manifest cannot be fetched"
+    (with-redefs [http/get (fn [& _] (throw (Exception. "connection refused")))]
+      (is (nil? (cache/fetch-dev-manifest "http://localhost:5174")))))
+  (testing "rejects a structurally invalid manifest, same as the upload path"
+    (with-redefs [http/get (constantly {:headers {:content-type "application/json"}
+                                        :body    (json/encode {:name 123})})]
+      (is (thrown-with-msg? Exception #"is invalid"
+                            (cache/fetch-dev-manifest "http://localhost:5174"))))))
+
+(deftest dev-fetch-surfaces-validation-errors-test
+  (testing "a URL that fails validation surfaces as a 400, not as a silently-down dev server --
+            DNS can change between saving the URL and fetching from it"
+    (with-redefs [http/get (fn [& _] (throw (Exception. "should not be reached")))]
+      (doseq [[url pattern] [["https://8.8.8.8" #"loopback or private"]
+                             ["file:///etc/passwd" #"http or https"]]]
+        (let [e (is (thrown-with-msg? Exception pattern (cache/fetch-dev-bundle url)))]
+          (is (= 400 (:status-code (ex-data e)))))
+        (let [e (is (thrown-with-msg? Exception pattern (cache/fetch-dev-manifest url)))]
+          (is (= 400 (:status-code (ex-data e)))))
+        (let [e (is (thrown-with-msg? Exception pattern (cache/fetch-dev-asset url "icon.svg")))]
+          (is (= 400 (:status-code (ex-data e)))))))))
+
+(deftest dev-fetch-requires-the-dev-servers-content-type-test
+  (testing "a response that isn't what the dev server would have served is refused, not parsed --
+            a dev URL may still be pointed at an internal service, and this bounds what it can hand back"
+    (doseq [[what ctype body] [["an internal admin page" "text/html" "<html>secrets</html>"]
+                               ["a response with no content type" nil "{\"name\":\"x\"}"]]]
+      (testing what
+        (with-redefs [http/get (constantly {:headers (when ctype {:content-type ctype})
+                                            :body    body})]
+          (is (thrown-with-msg? Exception #"Dev bundle URL returned"
+                                (cache/fetch-dev-manifest "http://localhost:5174")))
+          (is (thrown-with-msg? Exception #"Dev bundle URL returned"
+                                (cache/fetch-dev-bundle "http://localhost:5174")))))))
+  (testing "the content types the CLI's own dev server serves are accepted"
+    (with-redefs [http/get (constantly {:headers {:content-type "application/javascript; charset=utf-8"}
+                                        :body    "export default {}"})]
+      (is (= "export default {}" (:content (cache/fetch-dev-bundle "http://localhost:5174")))
+          "a charset parameter on the header is stripped before comparison"))))
 
 (deftest set-or-clear-dev-bundle!-test
   (mt/with-premium-features #{:custom-viz}

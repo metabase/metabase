@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import { forgotPassword } from "metabase/redux/auth";
 import type { Location } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Button } from "metabase/ui";
 
-import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";
 import { ForgotPasswordForm } from "../ForgotPasswordForm";
 
@@ -20,21 +20,18 @@ import {
 
 type ViewType = "form" | "disabled" | "success";
 
-interface ForgotPasswordQueryString {
-  email?: string;
-}
-
 interface ForgotPasswordProps {
-  location?: Location<ForgotPasswordQueryString>;
+  location?: Location;
 }
 
 export const ForgotPassword = ({
   location,
 }: ForgotPasswordProps): JSX.Element => {
-  const isEmailConfigured = useSelector(getIsEmailConfigured);
-  const isLdapEnabled = useSelector(getIsLdapEnabled);
+  const isEmailConfigured = useSetting("email-configured?");
+  const isLdapEnabled = useSetting("ldap-enabled");
   const canResetPassword = isEmailConfigured && !isLdapEnabled;
-  const initialEmail = location?.query?.email;
+  const initialEmail =
+    new URLSearchParams(location?.search).get("email") ?? undefined;
 
   const [view, setView] = useState<ViewType>(
     canResetPassword ? "form" : "disabled",

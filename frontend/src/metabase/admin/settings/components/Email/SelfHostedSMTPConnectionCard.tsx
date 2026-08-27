@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Button, Flex, Paper, Title } from "metabase/ui";
 
 import { SelfHostedSMTPConnectionForm } from "./SelfHostedSMTPConnectionForm";

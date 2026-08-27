@@ -1,17 +1,16 @@
 (ns metabase.metabot.context
   (:require
    [clojure.java.io :as io]
-   [malli.core]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   ^{:clj-kondo/ignore [:discouraged-namespace :metabase/modules]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.curation :as curation]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -19,6 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
@@ -70,34 +70,38 @@
   "Schema for the `:type` key of `:user_is_viewing` item."
   (into [:enum] item-types))
 
+(def ^:private ItemQuerySchema
+  "Schema for the `:query` of a viewing context item: whatever query the client currently has open, in any MBQL
+  version.
+
+  Open ([[ms/Map]]) rather than `[:or ::lib.schema/query ::mbql.s/Query]`. Request decoding strips keys a map schema
+  doesn't declare, and both of those schemas would have gutted the query on its way in — a legacy query arrived as
+  `{:database 1}`, which then failed validation and 400'd the request. The real shape is checked downstream anyway:
+  every consumer routes the query through `lib-be/normalize-query` / `lib/query`, which normalize and validate it."
+  ms/Map)
+
 (def DefaultItemSchema
   "Default schema of viewing context item."
   [:map
+   ;; `::mc/default` because the rest of the item is forwarded to the model as the client sent it -- the FE grows
+   ;; these fields (`:id`, `:name`, `:source`, `:sql_engine`, ...) faster than this schema could name them, and
+   ;; dropping one degrades Metabot silently rather than erroring.
+   [::mc/default :any]
    [:type item-type-schema]
-   [:query
-    {:optional true}
-    [:or
-     ::lib.schema/query
-     ::mbql.s/Query]]])
+   [:query {:optional true} ItemQuerySchema]])
 
 (def QcItemSchema
   "Schema viewing context item with query and charts."
   [:map
+   [::mc/default :any]
    [:type (into [:enum] item-types-qc)]
-   [:query
-    {:optional true}
-    [:or
-     ::lib.schema/query
-     ::mbql.s/Query]]
+   [:query {:optional true} ItemQuerySchema]
    [:chart_configs
     {:optional true}
     [:vector
      [:map
-      [:query
-       {:optional true}
-       [:or
-        ::lib.schema/query
-        ::mbql.s/Query]]]]]])
+      [::mc/default :any]
+      [:query {:optional true} ItemQuerySchema]]]]])
 
 (def ViewingItemSchema
   "Schema of user is viewing item."
@@ -107,6 +111,7 @@
   [:and
    [:map-of :keyword :any]
    [:map
+    [::mc/default :any]
     [:user_is_viewing {:optional true} [:vector ViewingItemSchema]]]])
 
 (defn- query-for-sql-parsing
@@ -197,13 +202,15 @@
   which is too restrictive for MBQL viewing context enrichment."
   [[database-id table-ids]]
   (try
-    (let [raw-tables (t2/select [:model/Table :id :name :schema :description]
-                                :db_id database-id
-                                :id [:in table-ids]
-                                :active true
-                                :visibility_type nil)]
+    (let [raw-tables    (t2/select [:model/Table :id :name :schema :description]
+                                   :db_id database-id
+                                   :id [:in table-ids]
+                                   :active true
+                                   :visibility_type nil)
+          queryable-ids (metabot.perms/queryable-table-ids (map :id raw-tables))]
       (into []
-            (comp (m/distinct-by :id)
+            (comp (filter (comp queryable-ids :id))
+                  (m/distinct-by :id)
                   (map table-stub))
             raw-tables))
     (catch Exception e
@@ -334,8 +341,9 @@
    (create-context context nil))
   ([context :- ::context
     opts    :- [:maybe [:map-of :keyword :any]]]
-   (-> context
-       enhance-context-with-schema
-       annotate-transform-source-types
-       (add-recent-views (or opts {}))
-       (set-user-time opts))))
+   (metabot.perms/with-cache
+     (-> context
+         enhance-context-with-schema
+         annotate-transform-source-types
+         (add-recent-views (or opts {}))
+         (set-user-time opts)))))

@@ -179,6 +179,9 @@ export function formatChangeWithSign(
   return change > 0 ? `+${formattedNumber}` : formattedNumber;
 }
 
+export const formatPercent = (percent: number) =>
+  `${(100 * percent).toFixed(Math.abs(percent) === 1 ? 0 : 2)} %`;
+
 export function numberFormatterForOptions(options: FormatNumberOptions) {
   options = {
     ...getDefaultNumberOptions(options),

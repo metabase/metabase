@@ -8,6 +8,7 @@
    [metabase.settings.models.setting-test :as models.setting-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
@@ -429,12 +430,12 @@
 
 (deftest set-user-local-setting-with-unparseable-settings-column-test
   (testing "PUT /api/setting/:key"
-    (testing "works when the user's `settings` column can't be decrypted or parsed (#76900)"
+    (testing "works when the user's `settings` column can't be decrypted or parsed"
       (mt/with-temp [:model/User {user-id :id} {}]
-        ;; simulate a row that was encrypted with a key the instance no longer has: the transform can't decrypt or
-        ;; parse it, so it hands back the raw column value (a String) instead of a map
+        ;; a `settings` column that is encrypted the way the column expects but whose contents aren't JSON: the
+        ;; transform hands back the raw column value (a String) instead of a map
         (t2/query {:update :core_user
-                   :set    {:settings "not-decryptable-and-not-json"}
+                   :set    {:settings (encryption/maybe-encrypt "not-json")}
                    :where  [:= :id user-id]})
         (mt/user-http-request user-id :put 204 "setting/test-user-local-only-setting" {:value "NEW"})
         (is (= "NEW"

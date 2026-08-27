@@ -9,13 +9,14 @@ import { type MouseEvent, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { Link } from "metabase/common/components/Link";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
-import { useDispatch } from "metabase/redux";
-import { Link, push } from "metabase/router";
+import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
+import { useNavigate } from "metabase/router";
 import {
-  Card,
   Ellipsified,
+  LoadingOverlay,
   type RenderRowLink,
   TreeTable,
   type TreeTableColumnDef,
@@ -68,7 +69,7 @@ export const ErroringQuestionsTable = ({
   onSortingChange,
   onRowSelectionChange,
 }: ErroringQuestionsTableProps) => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const columns = useMemo(() => getColumns(), []);
   const sortingState = useMemo(() => getSortingState(sorting), [sorting]);
@@ -81,9 +82,9 @@ export const ErroringQuestionsTable = ({
 
   const handleRowActivate = useCallback(
     (row: Row<ErroringCard>) => {
-      dispatch(push(Urls.card({ id: row.original.id })));
+      navigate(Urls.card({ id: row.original.id }));
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleRowClick = useCallback(
@@ -128,33 +129,33 @@ export const ErroringQuestionsTable = ({
   });
 
   return (
-    <Card
-      flex="0 1 auto"
-      mih={0}
-      p={0}
-      withBorder
+    <MonitorTableCard
+      aria-busy={isFetching}
       data-testid="erroring-questions-table"
     >
       {isLoading ? (
         <TreeTableSkeleton showCheckboxes columnWidths={COLUMN_WIDTHS} />
       ) : (
-        <TreeTable
-          instance={treeTableInstance}
-          hierarchical={false}
-          showCheckboxes
-          onHeaderCheckboxClick={() =>
-            treeTableInstance.table.toggleAllRowsSelected()
-          }
-          headerCheckboxAriaLabel={t`Select all`}
-          ariaLabel={t`Erroring questions`}
-          isRowLoading={(row) => rerunningCardIds.has(row.original.id)}
-          emptyState={<MonitorEmptyState label={t`No results`} />}
-          getRowProps={() => ({ "data-testid": "erroring-question" })}
-          renderRowLink={renderRowLink}
-          onRowClick={handleRowClick}
-        />
+        <>
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            hierarchical={false}
+            showCheckboxes
+            onHeaderCheckboxClick={() =>
+              treeTableInstance.table.toggleAllRowsSelected()
+            }
+            headerCheckboxAriaLabel={t`Select all`}
+            ariaLabel={t`Erroring questions`}
+            isRowLoading={(row) => rerunningCardIds.has(row.original.id)}
+            emptyState={<MonitorEmptyState label={t`No results`} />}
+            getRowProps={() => ({ "data-testid": "erroring-question" })}
+            renderRowLink={renderRowLink}
+            onRowClick={handleRowClick}
+          />
+        </>
       )}
-    </Card>
+    </MonitorTableCard>
   );
 };
 

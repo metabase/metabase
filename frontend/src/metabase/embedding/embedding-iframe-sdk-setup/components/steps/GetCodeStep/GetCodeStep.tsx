@@ -1,4 +1,4 @@
-import { useUpdateSettingsMutation } from "metabase/api";
+import { useUpdateSettingsMutation } from "metabase/settings";
 import { Stack } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
 

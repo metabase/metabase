@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupGetTransformEndpoint,
+  setupListDatabaseSchemasEndpoint,
   setupListTransformRunsEndpoint,
   setupListTransformTagsEndpoint,
   setupListTransformsEndpoint,
@@ -14,6 +16,7 @@ import {
 } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { isNotNull } from "metabase/utils/types";
 import type { TransformRun } from "metabase-types/api";
 import {
   createMockListTransformRunsResponse,
@@ -28,6 +31,8 @@ type SetupOpts = {
 };
 
 function setup({ runs = [] }: SetupOpts = {}) {
+  const transforms = runs.map((run) => run.transform).filter(isNotNull);
+
   setupUserMetabotPermissionsEndpoint();
   setupListTransformRunsEndpoint(
     createMockListTransformRunsResponse({
@@ -35,8 +40,14 @@ function setup({ runs = [] }: SetupOpts = {}) {
       total: runs.length,
     }),
   );
-  setupListTransformsEndpoint([]);
+  if (transforms.length) {
+    setupListTransformsEndpoint(transforms);
+  }
   setupListTransformTagsEndpoint([]);
+  transforms.forEach((transform) => {
+    setupGetTransformEndpoint(transform);
+    setupListDatabaseSchemasEndpoint(transform.target.database, []);
+  });
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
   const path = Urls.transformRunList();

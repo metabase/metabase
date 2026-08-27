@@ -1,5 +1,4 @@
 // Re-export all plugins from OSS modules (excluding reinitialize functions to avoid conflicts)
-export { PLUGIN_API } from "./oss/api";
 export {
   PLUGIN_AUDIT,
   type InsightsLinkProps,
@@ -41,7 +40,10 @@ export {
   type CollectionAuthorityLevelIcon,
 } from "./oss/collections";
 export { PLUGIN_CONTENT_TRANSLATION } from "./oss/content-translation";
-export { PLUGIN_CUSTOM_VIZ } from "./oss/custom-viz";
+export {
+  type LoadCustomVizPluginForDisplayResult,
+  PLUGIN_CUSTOM_VIZ,
+} from "./oss/custom-viz";
 export {
   PLUGIN_CONTENT_VERIFICATION,
   type ModelFilterControlsProps,
@@ -189,9 +191,9 @@ export type {
   SyncedCollectionsSidebarSectionProps,
 } from "./types";
 
-// Export a single reinitialize function that calls all individual reinitialize functions
+import { reinitializeRequestHandlers } from "metabase/api/client";
+
 import { reinitialize as reinitializeAiControls } from "./oss/ai-controls";
-import { reinitialize as reinitializeApi } from "./oss/api";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
 import { reinitialize as reinitializeAuth } from "./oss/auth";
 import { reinitialize as reinitializeCaching } from "./oss/caching";
@@ -239,7 +241,7 @@ export function reinitialize() {
   reinitializeNotificationsSdk();
 
   reinitializeAiControls();
-  reinitializeApi();
+  reinitializeRequestHandlers();
   reinitializeAudit();
   reinitializeAuth();
   reinitializeCaching();

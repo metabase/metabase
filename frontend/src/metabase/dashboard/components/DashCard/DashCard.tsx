@@ -32,7 +32,6 @@ import {
   getInitialStateForCardDataSource,
   getInitialStateForMultipleSeries,
   getInitialStateForVisualizerCard,
-  isVisualizerDashboardCard,
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -42,6 +41,7 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";

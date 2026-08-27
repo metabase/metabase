@@ -49,7 +49,15 @@
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
-(driver/register! :starburst, :parent #{:sql-mbql5 :sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :starburst, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/host-carrying-parameters :starburst
+  [_driver]
+  ["httpProxy" "socksProxy"])
+
+(defmethod driver/non-host-parameters :starburst
+  [_driver]
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
 
 (set! *warn-on-reflection* true)
 
@@ -67,6 +75,7 @@
                               :convert-timezone                true
                               :connection/multiple-databases   true
                               :metadata/key-constraints        false
+                              :native-pivot-tables             true
                               :now                             true
                               :database-routing                true
                               :connection-impersonation        true}]
@@ -312,7 +321,7 @@
   [driver [_ _opts pred]]
   ;; starburst will use the precision given here in the final expression, which chops off digits
   ;; need to explicitly provide two digits after the decimal
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :sum-where 1.00M pred)))
+  (sql.qp/->honeysql driver [:sum-where {} 1.00M pred]))
 
 (defmethod sql.qp/->honeysql [:starburst :time]
   [_ [_ _opts t]]
@@ -999,7 +1008,7 @@
 
 (defmethod sql.qp/inline-value [:starburst String]
   [_ ^String s]
-  (str \' (sql.u/escape-sql s :ansi) \'))
+  (sql.u/quote-literal s :ansi))
 
 (defmethod sql.qp/inline-value [:starburst Time]
   [driver t]
@@ -1033,7 +1042,7 @@
 
 (defmethod sql.qp/->honeysql [:starburst ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 ;; starburst returns line numbers in error messages which will be off by 1 if
 ;; the remark is prepended (#64133)

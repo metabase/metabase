@@ -24,6 +24,7 @@ import type {
   TransformRunForJobRun,
   UpdateTransformRequest,
 } from "metabase-types/api";
+import { PENDING_RUN_ID } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
@@ -83,7 +84,7 @@ export const transformApi = Api.injectEndpoints({
         const patchResult = dispatch(
           transformApi.util.updateQueryData("getTransform", id, (draft) => {
             draft.last_run = {
-              id: -1,
+              id: PENDING_RUN_ID,
               status: "started",
               start_time: new Date().toISOString(),
               end_time: null,

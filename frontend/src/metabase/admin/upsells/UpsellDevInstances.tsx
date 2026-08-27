@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
 import { UpsellBanner } from "metabase/common/components/upsells/components";
-import { useSetting, useStoreUrl } from "metabase/common/hooks";
+import { useStoreUrl } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Text } from "metabase/ui";
 
 type LOCATION = "embedding-page" | "settings-general";

@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
@@ -5,24 +7,25 @@ import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { PublicDashboardMode } from "metabase/public/PublicDashboardMode";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import { useParams, useRouter } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { parseSearchQuery } from "metabase/utils/browser";
 import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
-import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import type { EntityToken } from "metabase-types/api/entity";
 
 import { usePublicEndpoints } from "../../../hooks/use-public-endpoints";
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
 
 const PublicOrEmbeddedDashboardPageInner = () => {
-  const { location, router } = useRouter();
+  const location = useLocation();
 
   useDashboardLocationSync({ location });
-  useDashboardUrlQuery(router, location);
+  useDashboardUrlQuery(location);
 
   return <PublicOrEmbeddedDashboardView />;
 };
@@ -30,10 +33,13 @@ const PublicOrEmbeddedDashboardPageInner = () => {
 export const PublicOrEmbeddedDashboardPage = () => {
   const dispatch = useDispatch();
 
-  const { location } = useRouter();
+  const location = useLocation();
   const { uuid, token } = useParams<{ uuid: string; token: EntityToken }>();
 
-  const parameterQueryParams = location.query;
+  const parameterQueryParams = useMemo(
+    () => parseSearchQuery(location.search),
+    [location.search],
+  );
 
   const dashboardId = uuid || token;
 
@@ -76,7 +82,9 @@ export const PublicOrEmbeddedDashboardPage = () => {
           parameterQueryParams={parameterQueryParams}
           cardTitled={true}
           withFooter={true}
-          getClickActionMode={({ question }) => new Mode(question, PublicMode)}
+          getClickActionMode={({ question }) =>
+            new Mode(question, PublicDashboardMode)
+          }
           navigateToNewCardFromDashboard={null}
           onError={(error) => {
             dispatch(setErrorPage(error));

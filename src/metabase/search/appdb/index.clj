@@ -117,21 +117,22 @@
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
-       (t2/query {:select [:table_name]
-                  :from   :information_schema.tables
+       (t2/query {:select [:ist.table_name]
+                  :from   [[:information_schema.tables :ist]]
                   :where  [:and
-                           [:= :table_schema :%current_schema]
+                           [:= :ist.table_schema :%current_schema]
                            [:or
-                            [:like [:lower :table_name] [:inline "search\\_index\\_\\_%"]]
+                            [:like [:lower :ist.table_name] "search\\_index\\_\\_%"]
                             ;; legacy table names
-                            [:in [:lower :table_name]
-                             (mapv #(vector :inline %) ["search_index" "search_index_next" "search_index_retired"])]]
+                            [:in [:lower :ist.table_name]
+                             ["search_index" "search_index_next" "search_index_retired"]]]
                            ;; Exclude temp tables — they are managed by with-temp-index-table
-                           [:not-like [:lower :table_name] [:inline "%\\_temp"]]
-                           [:not-in [:lower :table_name]
-                            {:select [:%lower.index_name]
-                             :from   [(t2/table-name :model/SearchIndexMetadata)]
-                             :where  [:= :engine [:inline "appdb"]]}]]})))
+                           [:not-like [:lower :ist.table_name] "%\\_temp"]
+                           [:not [:exists ^:allow-subquery {:select [1]
+                                                            :from   [[(t2/table-name :model/SearchIndexMetadata) :sim]]
+                                                            :where  [:and
+                                                                     [:= :sim.engine "appdb"]
+                                                                     [:= [:lower :sim.index_name] [:lower :ist.table_name]]]}]]]})))
 
 (defn- delete-obsolete-tables! []
   ;; Delete metadata around indexes that are no longer needed.
@@ -172,7 +173,7 @@
          [:legacy_input :text :not-null]
          ;; useful for tracking the speed and age of the index
          [:created_at :timestamp-with-time-zone
-          [:default [:raw "CURRENT_TIMESTAMP"]]
+          [:default ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"]]
           :not-null]
          [:updated_at :timestamp-with-time-zone :not-null]]
         (keep (fn [[k t]]

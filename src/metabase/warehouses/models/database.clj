@@ -424,26 +424,34 @@
   {:pre [(pos-int? database-id)]}
   ;; Field has `define-before-delete` deleting children, but we'll delete them all at once because they refer same
   ;; database - iteratively, deleting those that no one depends on first
-  (loop []
-    (let [deleted (t2/query-one
-                   {:delete-from (t2/table-name :model/Field)
-                    :where
-                    [:and
-                     [:in :table_id {:from   [(t2/table-name :model/Table)]
-                                     :select [:id]
-                                     :where  [:= :db_id database-id]}]
-                     ;; Double-wrapped subquery to work around MySQL limitation
-                     [:not-in :id {:select [:parent_id]
-                                   :from   [[{:select [:parent_id]
-                                              :from   [(t2/table-name :model/Field)]
-                                              :where  [:and
-                                                       [:not= :parent_id nil]
-                                                       [:in :table_id {:from   [(t2/table-name :model/Table)]
-                                                                       :select [:id]
-                                                                       :where  [:= :db_id database-id]}]]}
-                                             :parent_fields]]}]]})]
-      (when (pos? deleted)
-        (recur)))))
+  (let [table-ids-query ^:allow-subquery {:from   [(t2/table-name :model/Table)]
+                                          :select [:id]
+                                          :where  [:= :db_id database-id]}]
+    ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
+    ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
+    ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
+    (when (t2/exists? :model/Field :table_id [:in table-ids-query])
+      (let [no-children-clause (if (= (mdb/db-type) :mysql)
+                                 ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
+                                 ;; DELETE target
+                                 [:not-in :id ^:allow-subquery {:select [:parent_id]
+                                                                :from   [[^:allow-subquery {:select [:parent_id]
+                                                                                            :from   [(t2/table-name :model/Field)]
+                                                                                            :where  [:and
+                                                                                                     [:not= :parent_id nil]
+                                                                                                     [:in :table_id table-ids-query]]}
+                                                                          :parent_fields]]}]
+                                 [:not [:exists ^:allow-subquery {:select [1]
+                                                                  :from   [[(t2/table-name :model/Field) :child_field]]
+                                                                  :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+        (loop []
+          (let [deleted (t2/query-one
+                         {:delete-from (t2/table-name :model/Field)
+                          :where       [:and
+                                        [:in :table_id table-ids-query]
+                                        no-children-clause]})]
+            (when (pos? deleted)
+              (recur))))))))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
@@ -493,9 +501,59 @@
     (throw (ex-info (tru "Cannot change router_database_id; a destination database is established at creation, not by updating an existing database.")
                     {:status-code 400}))))
 
+(def ^:private details-keys
+  "Every place a Database stores a set of connection details."
+  [:details :write_data_details :admin_details])
+
+(defn- exempt-audit-db?
+  "Whether `database` is the Audit DB as the analytics installer writes it: a clone of the *application* database
+  rather than a warehouse anybody pointed somewhere, carrying no details of its own and reached over the app-db
+  connection. There is no user-supplied host in it to police, and checking it anyway refuses the instance's own app
+  db -- empty details read as `localhost`, since every `:sql-jdbc` client substitutes that. The refusal lands during
+  init, so the instance fails to boot rather than failing a request.
+
+  Narrowed to a database with no details at all, which is the only shape the installer produces
+  ([[metabase-enterprise.audit-app.audit/install-database!]] writes none and nothing else adds any). `:is_audit`
+  alone would be too much to hang this on: it is not writable through the API, but it is in the Database serdes
+  `:copy` set, and serialization import is one of the routes this check exists to cover."
+  [database]
+  (and (:is_audit database)
+       (every? #(empty? (get database %)) details-keys)))
+
+(defn- validate-connection-hosts!
+  "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
+  the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
+  import, config-file provisioning, and destination databases.
+
+  `keys-to-check` names which of [[details-keys]] to look at. An overlay is checked the way
+  [[metabase.driver.connection/effective-details]] resolves it -- merged onto `:details` -- since that, and not the
+  overlay by itself, is what a connection is opened with: one holding nothing but credentials repoints nothing.
+
+  The Audit DB is exempt -- see [[exempt-audit-db?]]."
+  [engine database keys-to-check]
+  (when-not (exempt-audit-db? database)
+    (when-let [engine (some-> engine keyword)]
+      (driver.u/with-database-network-policy database
+        (doseq [k     keys-to-check
+                :let  [details (get database k)]
+                :when (map? details)]
+          (driver.u/validate-connection-hosts! engine (cond->> details
+                                                        (not= k :details) (merge (:details database)))))))))
+
 (t2/define-before-update :model/Database
   [database]
   (assert-router-database-id-not-mutated! database)
+  (let [changes  (t2/changes database)
+        original (t2/original database)]
+    ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new
+    ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
+    ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
+    ;; it accompanies rather than on its own.
+    (validate-connection-hosts! (or (:engine changes) (:engine original))
+                                (merge original changes)
+                                (if (contains? changes :engine)
+                                  details-keys
+                                  (filterv #(contains? changes %) details-keys))))
   ;; Note: the "sample database may not be edited" policy is enforced at the API layer
   ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
   ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
@@ -552,7 +610,8 @@
   (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
 
 (t2/define-before-insert :model/Database
-  [{:keys [details initial_sync_status], :as database}]
+  [{:keys [details initial_sync_status engine], :as database}]
+  (validate-connection-hosts! engine database details-keys)
   (-> (merge {:is_full_sync true
               :is_on_demand false}
              database)
@@ -659,14 +718,9 @@
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 (defmethod serdes/make-spec "Database"
-  [_model-name {:keys [include-database-secrets]}]
-  ;; Export only when secrets are explicitly included AND the database isn't an attached DWH.
-  ;; Import is unconditional.
-  (let [details-transform {:export-with-context (fn [current _ details]
-                                                  (if (and include-database-secrets
-                                                           (not (:is_attached_dwh current)))
-                                                    details
-                                                    ::serdes/skip))
+  [_model-name _opts]
+  ;; Connection details are never exported. Import is unconditional.
+  (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
                  :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub

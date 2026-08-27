@@ -177,49 +177,75 @@ export const makeSandboxFetch = (
       );
     }
 
-    return realFetch(input, init);
+    // An allowlisted host could 30x to `<instance>/api/user`, which the browser
+    // would follow same-origin with the session cookie.
+    return realFetch(input, { ...init, redirect: "manual" });
   };
 };
 
-export const makeSandboxXhr = (
-  targetWindow: SandboxRealm,
-  allowedHosts: string[],
-  label: string,
-  onBlocked?: SandboxBlockedNetworkListener,
-): typeof XMLHttpRequest | null => {
-  if (allowedHosts.length === 0) {
-    return null;
+/**
+ * `XMLHttpRequest` is deliberately NOT allowlisted — it stays on the sandbox's
+ * hard block even for apps that declare `allowed_hosts`.
+ *
+ * A URL check can only run at `open()`, against the *initial* URL, and XHR has
+ * no way to opt out of following redirects (`fetch`'s `redirect: "manual"` has
+ * no XHR equivalent). So an allowlisted host could answer with a `307` to
+ * `<instance>/api/user` and the browser would follow it same-origin, carrying
+ * the session cookie — the privileged, cookie-authed request the allowlist
+ * exists to prevent. There is no way to make an allowlisted XHR safe, so the
+ * guest simply doesn't get one.
+ */
+
+const XHR_BLOCKED = new WeakSet<Window & typeof globalThis>();
+
+/**
+ * Makes `XMLHttpRequest` unusable in the data-app document's HOST realm, so the
+ * "data apps are fetch-only" rule holds for host-side code too — not just for
+ * the guest behind the membrane.
+ *
+ * Constructing one deliberately SUCCEEDS. Libraries feature-detect XHR by
+ * building an instance and probing it — Snowplow decides its transport with
+ * `'withCredentials' in new XMLHttpRequest()` — so throwing from the
+ * constructor takes the whole app down instead of letting callers route around
+ * XHR. The instance is inert instead: every method throws, and `withCredentials`
+ * is absent, so a CORS probe reports "unusable" and the caller falls back to a
+ * non-XHR transport of its own accord.
+ */
+export function blockHostRealmXhr(
+  targetWindow: Window & typeof globalThis,
+): void {
+  if (XHR_BLOCKED.has(targetWindow)) {
+    return;
+  }
+  XHR_BLOCKED.add(targetWindow);
+
+  const blocked = () => {
+    throw new Error(
+      "[data-app] blocked XMLHttpRequest: data apps are fetch-only",
+    );
+  };
+
+  class BlockedXMLHttpRequest {
+    readonly readyState = 0;
+    readonly status = 0;
+    open = blocked;
+    send = blocked;
+    abort = blocked;
+    setRequestHeader = blocked;
+    getResponseHeader = blocked;
+    getAllResponseHeaders = blocked;
+    overrideMimeType = blocked;
+    // Listener registration commonly happens before `open()`, and a probe that
+    // registers one shouldn't be the thing that fails — `send()` still throws.
+    addEventListener = () => {};
+    removeEventListener = () => {};
+    dispatchEvent = () => false;
   }
 
-  const NativeXhr = targetWindow.XMLHttpRequest;
-  const base = targetWindow.location.href;
-  const metabaseOrigin = targetWindow.location.origin;
-  const SandboxXhr = class extends NativeXhr {
-    open(
-      method: string,
-      url: string | URL,
-      async: boolean = true,
-      username?: string | null,
-      password?: string | null,
-    ): void {
-      const reason = getBlockedReason(url, base, allowedHosts, metabaseOrigin);
-
-      if (reason) {
-        reportBlockedEvent(onBlocked, {
-          api: "xhr",
-          url: buildRequestUrl(url, base),
-          reason,
-        });
-
-        throw new Error(
-          `[data-app ${label}] blocked XMLHttpRequest to ${reason}`,
-        );
-      }
-      super.open(method, url, async, username, password);
-    }
-  };
-
-  // The subclass inherits the static UNSENT/OPENED/… constants at runtime;
-  // cast so the type matches the native constructor the membrane expects.
-  return SandboxXhr as typeof XMLHttpRequest;
-};
+  Object.defineProperty(targetWindow, "XMLHttpRequest", {
+    configurable: false,
+    enumerable: true,
+    writable: false,
+    value: BlockedXMLHttpRequest,
+  });
+}

@@ -1,7 +1,4 @@
-import type {
-  FunnelDatum,
-  FunnelStep,
-} from "metabase/static-viz/components/FunnelChart/types";
+import type { FunnelDatum, FunnelStep } from "./types";
 
 export const calculateFunnelSteps = (
   data: FunnelDatum[],

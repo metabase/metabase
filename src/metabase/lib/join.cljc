@@ -448,28 +448,24 @@
 ;;; TODO -- this probably ought to live in [[metabase.lib.query]]
 (defmethod join-clause-method :mbql/query
   [another-query]
-  (-> {:lib/type :mbql/join
-       :stages   (:stages (lib.util/pipeline another-query))}
-      lib.options/ensure-uuid))
+  {:lib/type :mbql/join
+   :stages   (:stages (lib.util/pipeline another-query))})
 
 ;;; TODO -- this probably ought to live in [[metabase.lib.stage]]
 (defmethod join-clause-method :mbql.stage/mbql
   [mbql-stage]
-  (-> {:lib/type :mbql/join
-       :stages   [mbql-stage]}
-      lib.options/ensure-uuid))
+  {:lib/type :mbql/join
+   :stages   [mbql-stage]})
 
 (defmethod join-clause-method :metadata/card
   [card]
-  (-> {:lib/type :mbql/join
-       :stages [{:source-card (:id card)
-                 :lib/type :mbql.stage/mbql}]}
-      lib.options/ensure-uuid))
+  {:lib/type :mbql/join
+   :stages [{:source-card (:id card)
+             :lib/type :mbql.stage/mbql}]})
 
 (defmethod join-clause-method :metadata/table
   [{:keys [lib/join-alias], :as table-metadata}]
   (cond-> (join-clause-method {:lib/type     :mbql.stage/mbql
-                               :lib/options  {:lib/uuid (str (random-uuid))}
                                :source-table (:id table-metadata)})
     join-alias (with-join-alias join-alias)))
 
@@ -1236,8 +1232,15 @@
                stage-number (lib.util/canonical-stage-index query stage-number)
                available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
                available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
-               sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
-               sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+               ;; `:default` (the explicit "Don't bin" state) isn't listed in
+               ;; `available-temporal-buckets`, but it should still propagate — a join needs both
+               ;; sides bucketed the same way. Accept it alongside `nil` and the available units.
+               sync-lhs? (or (nil? unit)
+                             (= :default unit)
+                             (contains? (set (map :unit available-lhs)) unit))
+               sync-rhs? (or (nil? unit)
+                             (= :default unit)
+                             (contains? (set (map :unit available-rhs)) unit))]
            (cond-> join-condition
              sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
              sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))))

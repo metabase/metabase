@@ -5,6 +5,9 @@ import fetchMock, {
 
 import type { MetabotConversationDetail } from "metabase/metabot/utils/normalize-fetched-chat-messages";
 import type {
+  LlmConnectionModels,
+  LlmProviderConnection,
+  LlmProviderType,
   MetabotConversation,
   MetabotConversationTitleResponse,
   MetabotGroupLimit,
@@ -12,15 +15,14 @@ import type {
   MetabotId,
   MetabotInfo,
   MetabotInstanceLimit,
-  MetabotSettingsResponse,
   MetabotTenantLimit,
   PurchaseCloudAddOnRequest,
   RegenerateSuggestedMetabotPromptsResponse,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
-  UpdateMetabotSettingsRequest,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
+import { createMockLlmProviderConnection } from "metabase-types/api/mocks/llm";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
 
 const METABASE_MANAGED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
@@ -80,6 +82,7 @@ export function createMockMetabotConversationDetail(
     created_at: new Date().toISOString(),
     title: null,
     user_id: 1,
+    forked_from_conversation_id: null,
     state: {},
     messages: [],
     ...opts,
@@ -216,27 +219,82 @@ export function setupMetabotSlackSettingsEndpointWithError(
   );
 }
 
-export function setupMetabotSettingsEndpoint({
-  provider,
-  response,
-}: {
-  provider: UpdateMetabotSettingsRequest["provider"];
-  response: MetabotSettingsResponse;
-}) {
-  fetchMock.get(`path:/api/metabot/settings?provider=${provider}`, response);
-}
+const LLM_PROVIDER_TYPES_ROUTE_NAME = "llm-provider-types";
 
-export function setupUpdateMetabotSettingsEndpoint(
-  response: MetabotSettingsResponse,
+export function setupLlmProviderTypesEndpoint(
+  providerTypes: LlmProviderType[] = [],
 ) {
-  fetchMock.put("path:/api/metabot/settings", response);
+  fetchMock.removeRoute(LLM_PROVIDER_TYPES_ROUTE_NAME);
+  fetchMock.get("path:/api/llm/provider-types", providerTypes, {
+    name: LLM_PROVIDER_TYPES_ROUTE_NAME,
+  });
 }
 
-export function setupUpdateMetabotSettingsEndpointWithError(
+const LLM_PROVIDERS_ROUTE_NAME = "llm-providers";
+
+export function setupLlmProvidersEndpoint(
+  connections: LlmProviderConnection[] = [],
+) {
+  fetchMock.removeRoute(LLM_PROVIDERS_ROUTE_NAME);
+  fetchMock.get("path:/api/llm/providers", connections, {
+    name: LLM_PROVIDERS_ROUTE_NAME,
+  });
+}
+
+const LLM_MODELS_ROUTE_NAME = "llm-models";
+
+export function setupLlmModelsEndpoint(
+  connections: LlmConnectionModels[] = [],
+) {
+  fetchMock.removeRoute(LLM_MODELS_ROUTE_NAME);
+  fetchMock.get("path:/api/llm/models", connections, {
+    name: LLM_MODELS_ROUTE_NAME,
+  });
+}
+
+const CREATE_LLM_PROVIDER_ROUTE_NAME = "create-llm-provider";
+
+export function setupCreateLlmProviderEndpoint(
+  connection: LlmProviderConnection = createMockLlmProviderConnection(),
+) {
+  fetchMock.removeRoute(CREATE_LLM_PROVIDER_ROUTE_NAME);
+  fetchMock.post("path:/api/llm/providers", connection, {
+    name: CREATE_LLM_PROVIDER_ROUTE_NAME,
+  });
+}
+
+export function setupCreateLlmProviderEndpointWithError(
   status: number,
   body: string,
 ) {
-  fetchMock.put("path:/api/metabot/settings", { status, body });
+  fetchMock.removeRoute(CREATE_LLM_PROVIDER_ROUTE_NAME);
+  fetchMock.post(
+    "path:/api/llm/providers",
+    { status, body },
+    { name: CREATE_LLM_PROVIDER_ROUTE_NAME },
+  );
+}
+
+const UPDATE_LLM_PROVIDER_ROUTE_NAME = "update-llm-provider";
+
+export function setupUpdateLlmProviderEndpoint(
+  connection: LlmProviderConnection = createMockLlmProviderConnection(),
+) {
+  fetchMock.removeRoute(UPDATE_LLM_PROVIDER_ROUTE_NAME);
+  fetchMock.put("express:/api/llm/providers/:key", connection, {
+    name: UPDATE_LLM_PROVIDER_ROUTE_NAME,
+  });
+}
+
+const DELETE_LLM_PROVIDER_ROUTE_NAME = "delete-llm-provider";
+
+export function setupDeleteLlmProviderEndpoint() {
+  fetchMock.removeRoute(DELETE_LLM_PROVIDER_ROUTE_NAME);
+  fetchMock.delete(
+    "express:/api/llm/providers/:key",
+    { status: 204 },
+    { name: DELETE_LLM_PROVIDER_ROUTE_NAME },
+  );
 }
 
 type SetupMetabaseManagedAiEndpointsOptions = {

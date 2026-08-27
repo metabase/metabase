@@ -127,7 +127,10 @@
     ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
     false
     ;; Otherwise check whether the user selected "remember me" during login
-    (get-in request [:body :remember])))
+    (let [body (:body request)]
+      (if (map? body)
+        (or (get body "remember") (get body :remember))
+        false))))
 
 (mu/defn set-session-cookies
   "Add the appropriate cookies to the `response` for the Session."

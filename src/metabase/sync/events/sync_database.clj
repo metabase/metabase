@@ -9,8 +9,8 @@
    [metabase.warehouses.core :as warehouses]
    [methodical.core :as methodical]))
 
-(derive ::event :metabase/event)
-(derive :event/database-create ::event)
+(events/derive! ::event :metabase/event)
+(events/derive! :event/database-create ::event)
 
 (methodical/defmethod events/publish-event! ::event
   "When a new Database is created, kick off a sync process for it in a different thread."

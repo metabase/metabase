@@ -27,6 +27,7 @@
    [metabase.documents.api]
    [metabase.eid-translation.api]
    [metabase.embedding-rest.api]
+   [metabase.explorations.api]
    [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
@@ -40,7 +41,6 @@
    [metabase.mcp.callback-api]
    [metabase.measures.api]
    [metabase.metabot.api]
-   [metabase.metabot.api.entity-analysis]
    [metabase.metrics.api]
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
@@ -70,7 +70,7 @@
    [metabase.transforms-rest.api.transform]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
-   [metabase.typed-schemas.api]
+   [metabase.typed-schemas-rest.api]
    [metabase.upload.api]
    [metabase.user-key-value.api]
    [metabase.users-rest.api]
@@ -97,6 +97,7 @@
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
+         metabase.explorations.api/keep-me
          metabase.frontend-errors.api/keep-me
          metabase.geojson.api/keep-me
          metabase.glossary.api/keep-me
@@ -126,7 +127,7 @@
          metabase.transforms-rest.api.transform/keep-me
          metabase.transforms-rest.api.transform-job/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me
-         metabase.typed-schemas.api/keep-me
+         metabase.typed-schemas-rest.api/keep-me
          metabase.upload.api/keep-me
          metabase.user-key-value.api/keep-me
          metabase.users-rest.api/keep-me
@@ -171,7 +172,6 @@
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
    "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
-   "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
    "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
@@ -193,11 +193,12 @@
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
-   "/email"                metabase.channel.api/email-routes
+   "/email"                (+auth metabase.channel.api/email-routes)
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
+   "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
@@ -246,7 +247,7 @@
    "/transform-dag-run"    (+auth metabase.transforms-rest.api.transform/transform-dag-run-routes)
    "/transform-job"        (+auth metabase.transforms-rest.api.transform/transform-job-routes)
    "/transform-tag"        (+auth metabase.transforms-rest.api.transform/transform-tag-routes)
-   "/typed-schemas"        (+auth metabase.typed-schemas.api/routes)
+   "/typed-schemas"        (+auth 'metabase.typed-schemas-rest.api)
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)

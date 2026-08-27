@@ -2,9 +2,8 @@ import cx from "classnames";
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { Link } from "metabase/router";
 import {
   ActionIcon,
   Box,

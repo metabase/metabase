@@ -143,6 +143,7 @@ export const TransformGraphRunSidebar = memo(function TransformGraphRunSidebar({
         direction="column"
         flex={1}
         h="100%"
+        miw={0}
         bg="background_page-primary"
         data-testid="transform-graph-run-sidebar"
       >

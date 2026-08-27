@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { measureApi, metricApi, segmentApi } from "metabase/api";
 import { useDispatch, useStore } from "metabase/redux";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getObjectEntries } from "metabase/utils/objects";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
@@ -87,7 +87,7 @@ async function loadMeasureDefinition(
 }
 
 export function useViewerState(): UseViewerStateResult {
-  const { location } = useRouter();
+  const location = useLocation();
   const dispatch = useDispatch();
   const store = useStore();
 

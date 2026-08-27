@@ -1,10 +1,10 @@
-import { formatNullable } from "metabase/utils/formatting/nullable";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatNullable } from "metabase/utils/formatting";
+import { formatValue } from "metabase/value-formatting";
 import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 import { getFormattingOptionsWithoutScaling } from "../echarts/cartesian/model/util";
 
-export const formatValueForTooltip = ({
+export const formatValueForTooltipWithoutScaling = ({
   value,
   column,
   settings,

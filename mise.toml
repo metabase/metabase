@@ -35,8 +35,8 @@
 # Automatically install tools when entering the project directory
 auto_install = true
 
-# Uses the version in the tool's version file when installing
-idiomatic_version_file_enable_tools = ["bun"]
+# Uses the version in each tool's idiomatic version file when installing
+idiomatic_version_file_enable_tools = ["bun", "node"]
 
 [env]
 # Add bin/ to PATH so mage and other project scripts are available
@@ -50,10 +50,7 @@ COREPACK_ENABLE_AUTO_PIN = "0"
 # =============================================================================
 
 [tools]
-# Node.js - for frontend development
-# We pin to a specific version to ensure consistency across the team.
-# This should match .nvmrc for compatibility with other version managers.
-node = "22.13.1"
+# Node.js - for frontend development, installed with the version specified in .nvmrc
 
 # Bun - for package management and running scripts, installed with the version specified in package.json
 

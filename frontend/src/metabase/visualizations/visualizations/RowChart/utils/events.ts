@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { formatNullable } from "metabase/utils/formatting/nullable";
+import { formatNullable } from "metabase/utils/formatting";
 import { isNotNull } from "metabase/utils/types";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type {
@@ -10,7 +10,7 @@ import type {
 } from "metabase/visualizations/lib/graph/columns";
 import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
+import { formatValueForTooltipWithoutScaling } from "metabase/visualizations/lib/tooltip";
 import type {
   BarData,
   Series,
@@ -244,7 +244,7 @@ export const getStackedTooltipRows = <TDatum>(
         value,
         formatter: (value: unknown) =>
           String(
-            formatValueForTooltip({
+            formatValueForTooltipWithoutScaling({
               value,
               settings,
               column: series.seriesInfo?.metricColumn,
@@ -265,7 +265,7 @@ export const getTooltipModel = <TDatum>(
   const dimensionValue = series.yAccessor(datum);
 
   const headerTitle = String(
-    formatValueForTooltip({
+    formatValueForTooltipWithoutScaling({
       value: dimensionValue,
       column: chartColumns.dimension.column,
       settings,
@@ -287,7 +287,7 @@ export const getTooltipModel = <TDatum>(
 
   const totalFormatter = (value: unknown) =>
     String(
-      formatValueForTooltip({
+      formatValueForTooltipWithoutScaling({
         value,
         settings,
         column: hasBreakout

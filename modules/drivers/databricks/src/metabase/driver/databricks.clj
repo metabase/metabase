@@ -42,6 +42,10 @@
 
 (driver/register! :databricks, :parent :hive-like)
 
+(defmethod driver/host-carrying-parameters :databricks
+  [_driver]
+  ["ProxyHost" "OAuth2ConnAuthAuthorizationEndPoint" "OAuth2ConnAuthTokenEndpoint"])
+
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :database-routing                true
@@ -153,11 +157,12 @@
 (defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
   (when schema-names
     (if multi-level-schema
-      [:in [:composite catalog-column schema-column]
-       (map (comp (fn [catalog+schema]
-                    (into [:composite] catalog+schema))
-                  split-catalog+schema)
-            schema-names)]
+      ;; Use OR / AND because they are faster than IN for tuples on Databricks
+      (into [:or]
+            (map (fn [schema-name]
+                   (let [[catalog schema] (split-catalog+schema schema-name)]
+                     [:and [:= catalog-column catalog] [:= schema-column schema]])))
+            schema-names)
       [:in schema-column schema-names])))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
@@ -501,7 +506,7 @@
 
 (defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "string")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "string"]))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]

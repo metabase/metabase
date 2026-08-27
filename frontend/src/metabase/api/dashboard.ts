@@ -1,4 +1,4 @@
-import { DashboardSchema, QueryMetadataSchema } from "metabase/schema";
+import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
   CreateDashboardRequest,
@@ -75,7 +75,6 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboards) =>
           dashboards ? provideDashboardListTags(dashboards) : [],
-        onQueryStarted: hydrateMetadataStore([DashboardSchema]),
       }),
       getDashboard: builder.query<Dashboard, GetDashboardRequest>({
         query: ({ id, ignore_error, ...params }) => ({
@@ -86,7 +85,6 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (dashboard) =>
           dashboard ? provideDashboardTags(dashboard) : [],
-        onQueryStarted: hydrateMetadataStore(DashboardSchema),
       }),
       getDashboardQueryMetadata: builder.query<
         DashboardQueryMetadata,
@@ -167,7 +165,10 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
-        Omit<ListCollectionItemsRequest, "id"> & { id: DashboardId }
+        Omit<
+          ListCollectionItemsRequest,
+          "id" | "q" | "include_available_models"
+        > & { id: DashboardId }
       >({
         query: ({ id, ...body }) => ({
           method: "GET",
@@ -218,6 +219,9 @@ export const dashboardApi = Api.injectEndpoints({
             tag("parameter-values"),
             listTag("revision"),
             listTag("subscription"),
+            // Archiving the dashboard the user has as their homepage clears the homepage server-side.
+            // getCurrentUser provides this tag, so invalidating it refetches the user.
+            idTag("user-homepage-dashboard", id),
           ]),
       }),
       deleteDashboard: builder.mutation<void, DashboardId>({

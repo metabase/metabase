@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";

@@ -8,7 +8,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.util.performance :as perf]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
@@ -104,6 +105,16 @@
     :group-type/main "main"
     (:group-type/join.explicit :group-type/join.implicit) "connection"))
 
+(defn- group-id
+  "Id for a column group, derived from the group's identity rather than generated.
+
+   The id is persisted on every dimension that belongs to the group and is one of the keys
+   `metabase.lib-metric.dimension/dimensions-changed?` compares, so a freshly generated id would
+   make every sync look like a change and rewrite the row — including on the read paths that sync
+   first."
+  ^String [type-str display-name]
+  (str (UUID/nameUUIDFromBytes (.getBytes (str type-str "/" display-name) "UTF-8"))))
+
 (defn compute-dimension-pairs
   "Compute dimension/mapping pairs from visible columns. IDs not yet assigned.
    Only includes actual database fields, not expressions.
@@ -130,9 +141,11 @@
                                  (:is-from-join group-info)           :group-type/join.explicit
                                  (:is-implicitly-joinable group-info) :group-type/join.implicit
                                  :else                                :group-type/main)
-                   group-desc  {:id           (str (random-uuid))
-                                :type         (group-type->type group-type)
-                                :display-name (or (:display-name group-info) "Unknown")}
+                   group-kind  (group-type->type group-type)
+                   group-name  (or (:display-name group-info) "Unknown")
+                   group-desc  {:id           (group-id group-kind group-name)
+                                :type         group-kind
+                                :display-name group-name}
                    group-cols  (lib/columns-group-columns col-group)]
                (->> group-cols
                     (remove #(= :source/expressions (:lib/source %)))

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type Table from "metabase-lib/v1/metadata/Table";
+import type { Table } from "metabase-types/api";
 
 import {
   NodeListContainer,
@@ -30,7 +30,7 @@ export const ConnectedTableList = ({
       <li key={table.id}>
         <NodeListItemLink onClick={() => onTableClick(table)}>
           <NodeListItemIcon name="table" />
-          <NodeListItemName>{table.displayName()}</NodeListItemName>
+          <NodeListItemName>{table.display_name}</NodeListItemName>
         </NodeListItemLink>
       </li>
     ))}

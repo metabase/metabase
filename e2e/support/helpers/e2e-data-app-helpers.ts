@@ -48,6 +48,7 @@ export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   id: 1,
   name: DATA_APP_NAME,
   display_name: DATA_APP_DISPLAY_NAME,
+  description: null,
   bundle_path: `data_apps/${DATA_APP_NAME}/dist/index.js`,
   enabled: true,
   allowed_hosts: [],
@@ -117,7 +118,12 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
       {
         statusCode: 200,
         headers: {
-          "content-type": "text/javascript",
+          // Match the REAL bundle endpoint (`data_apps/api.clj`), which serves
+          // `application/javascript` + `nosniff`. The runtime fetch-and-evals the
+          // bundle, so the type is irrelevant there — but a stricter mock (e.g.
+          // `text/plain`) would diverge from production, so keep it aligned.
+          "content-type": "application/javascript",
+          "X-Content-Type-Options": "nosniff",
           "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
         },
         body: prelude + bundleCode,

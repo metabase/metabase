@@ -61,6 +61,59 @@
 ;;; confound your tests with data from your dev appdb, remember to eagerly
 ;;; `(into [] (extract/extract ...))` in these tests.
 
+(defn- cause-chain-messages
+  "Messages of `e` and every exception beneath it, skipping any that have none."
+  [e]
+  ;; `keep`, not `map` - an exception with a nil message would NPE the callers' `re-find` and hide the real failure
+  (into [] (keep ex-message) (take-while some? (iterate ex-cause e))))
+
+(defn- load-failure-messages!
+  "Loads `ingestion`, expecting it to throw, and returns the thrown exception's cause-chain messages."
+  [ingestion]
+  (try
+    (serdes.load/load-metabase! ingestion)
+    ["load-metabase! unexpectedly succeeded"]
+    (catch Exception e
+      (cause-chain-messages e))))
+
+(deftest schema-validation-opt-out-reaches-import-test
+  (testing (str "GHY-4241: MB_SERIALIZATION_SKIP_SCHEMA_VALIDATION has to travel env var -> Setting -> the binding "
+                "in load-metabase! -> import-mbql. Nothing else covers that chain, so dropping the binding would "
+                "silently disable the opt-out.")
+    (let [extracted (atom nil)]
+      (mt/with-empty-h2-app-db!
+        (let [db   (ts/create! :model/Database :name "my-db")
+              coll (ts/create! :model/Collection :name "Some collection")
+              card (ts/create! :model/Card
+                               :name          "Native with a variable"
+                               :collection_id (:id coll)
+                               :dataset_query {:database (:id db)
+                                               :type     :native
+                                               :native   {:template-tags {"id" {:id           "e2d15f07-37b3-01fc-3944-2ff860a5eb46"
+                                                                                :name         "id"
+                                                                                :display-name "ID"
+                                                                                :type         :number}}
+                                                          :query         "SELECT 1 WHERE x = {{id}}"}})]
+          (reset! extracted {:db   (serdes/extract-one "Database" {} db)
+                             :coll (serdes/extract-one "Collection" {} coll)
+                             :card (serdes/extract-one "Card" {} card)})))
+      ;; a tag type this version has no representation for - what an export from a newer Metabase that introduced
+      ;; one would look like
+      (let [{:keys [db coll card]} @extracted
+            bad-card  (assoc-in card [:dataset_query :stages 0 :template-tags]
+                                {"id" {:type :tag-type-from-the-future :name "id" :display-name "ID" :id "abc-123"}})
+            ingestion #(ingestion-in-memory [db coll bad-card])
+            ours?     #(some (partial re-find #"does not match this Metabase's query schema") %)]
+        (testing "by default the schema check is what refuses the import"
+          (mt/with-empty-h2-app-db!
+            (is (ours? (load-failure-messages! (ingestion))))))
+        (testing "with the opt-out set the schema check is skipped, so the import fails downstream instead"
+          (mt/with-empty-h2-app-db!
+            (mt/with-temp-env-var-value! [mb-serialization-skip-schema-validation "true"]
+              (let [messages (load-failure-messages! (ingestion))]
+                (is (some (partial re-find #"Invalid input.*:template-tags") messages))
+                (is (not (ours? messages)))))))))))
+
 (deftest load-basics-test
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)
@@ -2007,16 +2060,11 @@
                          (t2/select-one-fn :details :model/Database)))))))))
       (mt/with-temp [:model/Database   _ {:name    "My Database"
                                           :details {:some "secret"}}]
-        (testing "with :include-database-secrets"
+        (testing "connection details are never exported, even when :include-database-secrets is requested"
           (let [extracted (vec (serdes.extract/extract {:no-settings true :include-database-secrets true}))
                 dbs       (filterv #(= "Database" (:model (last (serdes/path %)))) extracted)]
             (is (= 1 (count dbs)))
-            (is (every? :details dbs))
-            (ts/with-db dest-db
-              (testing "Details are imported if provided"
-                (serdes.load/load-metabase! (ingestion-in-memory extracted))
-                (is (= (:details (first dbs))
-                       (t2/select-one-fn :details :model/Database)))))))))))
+            (is (not-any? :details dbs))))))))
 
 (deftest unique-dimensions-test
   (ts/with-dbs [source-db dest-db]
@@ -2852,31 +2900,3 @@
                     (is (= (:id data-dest) (:id data-after))))
                   (testing "permissions are unchanged after import"
                     (is (= perms-before perms-after))))))))))))
-
-(deftest card-last-used-at-test
-  (let [serialized  (atom nil)
-        eid         (u/generate-nano-id)
-        source-date (t/offset-date-time 2021 3 1 10)]
-    (ts/with-dbs [source-db dest-db]
-      (ts/with-db source-db
-        (let [db   (ts/create! :model/Database :name "my-db")
-              card (ts/create! :model/Card
-                               :name "old card"
-                               :entity_id eid
-                               :database_id (:id db)
-                               :dataset_query {:database (:id db)
-                                               :type     :native
-                                               :native   {:query "select 1"}})]
-          (t2/update! :model/Card (:id card) {:last_used_at source-date})
-          (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
-      (ts/with-db dest-db
-        (testing "a fresh import brings over last_used_at, so auto-trash can see the card is stale (GDGT-217)"
-          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-          (is (= (t/instant source-date)
-                 (t2/select-one-fn (comp t/instant :last_used_at) :model/Card :entity_id eid))))
-        (testing "re-importing an existing card keeps the destination's own last_used_at"
-          (let [dest-date (t/offset-date-time 2025 6 1 12)]
-            (t2/update! :model/Card :entity_id eid {:last_used_at dest-date})
-            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-            (is (= (t/instant dest-date)
-                   (t2/select-one-fn (comp t/instant :last_used_at) :model/Card :entity_id eid)))))))))

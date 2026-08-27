@@ -127,7 +127,7 @@
                              (m/dissoc-in result [:data :rows])
                              {}))
      (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
-           min-duration-ms (:min-duration-ms strategy 0)
+           min-duration-ms (:min_duration_ms strategy 0)
            ;; cache any query that ran long enough -- including ones that returned no rows, so a slow empty result
            ;; doesn't get re-run at full cost on every request
            eligible?       (> duration-ms min-duration-ms)]
@@ -236,13 +236,14 @@
   A fraction rather than a fixed lead time so it scales with each strategy's own duration: a lead time longer than
   the duration would put an entry in the refresh zone the moment it was written. Returns false when `window-ms` is
   nil, since a strategy whose boundary doesn't slide (`:schedule`) has no \"about to expire\"."
-  [updated-at invalidated-at window-ms early-refresh-ratio]
+  [updated-at window-ms early-refresh-ratio]
   (boolean (and updated-at
                 window-ms
-                ;; how much of the window is left: the boundary slides with the clock, so the distance from it to
-                ;; `updated-at` is the time until this entry falls behind it
-                (let [remaining-ms (.toMillis (t/duration (t/instant invalidated-at) (t/instant updated-at)))]
-                  (< remaining-ms (* early-refresh-ratio window-ms))))))
+                ;; how much of the window is left, measured from the clock rather than from the strategy's
+                ;; `invalidated-at`: an explicit invalidation pins that boundary to a fixed instant, and the distance
+                ;; from a pinned boundary is the entry's age since the invalidation, not its remaining freshness
+                (let [age-ms (.toMillis (t/duration (t/instant updated-at) (t/instant)))]
+                  (< (- window-ms age-ms) (* early-refresh-ratio window-ms))))))
 
 (defn- not-too-stale?
   "Whether an entry last written at `updated-at` is close enough to `invalidated-at` (the strategy's freshness
@@ -294,7 +295,6 @@
                    (and (cache-fresh? updated-at invalidated-at)
                         (due-for-early-refresh?
                          updated-at
-                         invalidated-at
                          (fresh-duration-ms strategy)
                          (cache/query-caching-early-refresh-ratio))
                         (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*))
@@ -342,7 +342,6 @@
     (log/trace "Running query and saving cached results (if eligible)...")
     (binding [qp.pipeline/*reduce* (fn reduce'
                                      [rff metadata rows]
-                                     {:post [(some? %)]}
                                      (impl/do-with-serialization
                                       (fn [in-fn result-fn]
                                         (binding [*in-fn*     in-fn
@@ -352,7 +351,7 @@
           (fn [metadata]
             (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))
 
-(mu/defn- run-query-with-cache :- :some
+(mu/defn- run-query-with-cache :- :any
   [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
    rff                                               :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated

@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { useListOAuthAuthorizationsQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -15,7 +14,7 @@ import {
   useUrlState,
 } from "metabase/common/hooks/use-url-state";
 import CS from "metabase/css/core/index.css";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import {
   Badge,
   type BadgeColor,
@@ -32,6 +31,8 @@ import type {
   OAuthAuthorization,
   OAuthClientEventType,
 } from "metabase-types/api";
+
+import { useListOAuthAuthorizationsQuery } from "../settings/api/oauth";
 
 import S from "./OAuthAuthorizationsPage.module.css";
 import {
@@ -78,7 +79,7 @@ function parseEventType(param: QueryParam): EventTypeFilter {
 }
 
 export const OAuthAuthorizationsPage = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const [{ page, eventType }, { patchUrlState }] = useUrlState(
     location,
     urlStateConfig,

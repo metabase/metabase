@@ -6,7 +6,6 @@ import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
 import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
-import * as metadataActions from "metabase/redux/metadata";
 import * as sharedQB from "metabase/redux/query-builder";
 import {
   createMockLocation,
@@ -310,10 +309,9 @@ describe("QB Actions > initializeQB", () => {
           expect(result.objectId).toBe(123);
         });
 
-        it("passes object ID from location query params correctly", async () => {
+        it("passes object ID from the search string correctly", async () => {
           const location = getLocationForCard(card, {
             search: "?objectId=123",
-            query: { objectId: "123" },
           });
           const { result } = await setup({ card, location });
           expect(result.objectId).toBe("123");
@@ -355,10 +353,9 @@ describe("QB Actions > initializeQB", () => {
           expect(result.objectId).toBe(123);
         });
 
-        it("passes object ID from location query params correctly", async () => {
+        it("passes object ID from the search string correctly", async () => {
           const location = getLocationForCard(card, {
             search: "?objectId=123",
-            query: { objectId: "123" },
           });
           const { result } = await setup({ card: card, location });
           expect(result.objectId).toBe("123");
@@ -1001,17 +998,6 @@ describe("QB Actions > initializeQB", () => {
       const { result } = await setupTableRoute(ORDERS_ID);
       expect(result.card.id).toBeUndefined();
       expect(result.card.displayIsLocked).toBeFalsy();
-    });
-
-    it("fetches database metadata for schema breadcrumbs (metabase#75393)", async () => {
-      const fetchDatabaseMetadataSpy = jest.spyOn(
-        metadataActions,
-        "fetchDatabaseMetadata",
-      );
-
-      await setupTableRoute(ORDERS_ID);
-
-      expect(fetchDatabaseMetadataSpy).toHaveBeenCalledWith(SAMPLE_DB_ID);
     });
 
     it("shows a not-found error for an unknown table", async () => {

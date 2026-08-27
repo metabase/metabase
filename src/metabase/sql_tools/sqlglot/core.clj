@@ -51,19 +51,20 @@
 (defn- referenced-tables
   [driver query]
   (try
-    (let [db-tables (lib.metadata/tables query)
-          db-transforms (lib.metadata/transforms query)
-          sql (lib/raw-native-query query)
+    (let [sql (lib/raw-native-query query)
           default-schema (sql.normalize/default-schema driver)
-          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
+          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)
+          specs (map (fn [[_catalog table-schema table]]
+                       (sql-tools.common/normalize-table-spec
+                        driver {:table table
+                                :schema (or table-schema default-schema)}))
+                     query-tables)
+          table-ids (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table specs))
+          db-tables (lib.metadata/bulk-metadata query :metadata/table table-ids)
+          db-transforms (lib.metadata/transforms query)]
       (into #{}
-            (keep (fn [[_catalog table-schema table]]
-                    (sql-tools.common/find-table-or-transform
-                     driver db-tables db-transforms
-                     (sql-tools.common/normalize-table-spec
-                      driver {:table table
-                              :schema (or table-schema default-schema)}))))
-            query-tables))
+            (keep #(sql-tools.common/find-table-or-transform driver db-tables db-transforms %))
+            specs))
     (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
       (if (sql-parsing/parse-error? e)

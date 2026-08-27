@@ -33,7 +33,8 @@
    {:keys [table_id table_name scan synchronous?]} :- [:map
                                                        [:table_id   {:optional true} [:maybe ms/PositiveInt]]
                                                        [:table_name {:optional true} [:maybe ms/NonBlankString]]
-                                                       [:scan       {:optional true} [:maybe [:enum "full" "schema"]]]]]
+                                                       [:scan       {:optional true} [:maybe [:enum "full" "schema"]]]
+                                                       [:synchronous? {:optional true} [:maybe :boolean]]]]
   (let [schema?       (when scan (#{"schema" :schema} scan))
         table-sync-fn (if schema? sync-metadata/sync-table-metadata! sync/sync-table!)
         db-sync-fn    (if schema? sync-metadata/sync-db-metadata! sync/sync-database!)]

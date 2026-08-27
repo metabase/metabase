@@ -14,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
    [metabase.util.random :as u.random]
+   [metabase.util.yaml :as u.yaml]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -102,7 +103,7 @@
                         :model/Card       ~card  {:collection_id (:id ~coll), :name "frobinate", :type :model
                                                   :query_type    :native
                                                   :dataset_query {:type     :native
-                                                                  :database (t2/select-one-pk :model/Database)
+                                                                  :database (t2/select-one-pk :model/Database :is_audit false)
                                                                   :native   {:query "SELECT 1"}}}]
            ~@body)))))
 
@@ -525,3 +526,71 @@
       (is (= "real_dir"
              (.getName ^File (#'api.serialization/find-serialization-dir dst))))
       (run! io/delete-file (reverse (file-seq dst))))))
+
+(defn- database-archive!
+  "Byte array of an import archive holding a single hand-written Database YAML."
+  [db-name engine extra]
+  (let [dir    (io/file (System/getProperty "java.io.tmpdir") (str "serdes-db-import-" (u.random/random-name)))
+        db-dir (io/file dir "serdes" "databases" db-name)]
+    (try
+      (.mkdirs db-dir)
+      (spit (io/file db-dir (str db-name ".yaml"))
+            (u.yaml/generate-string
+             (merge {"name"                        db-name
+                     "engine"                      (name engine)
+                     "created_at"                  "2025-01-01T00:00:00.000000Z"
+                     "metadata_sync_schedule"      "0 0 0 1 1 ? 2099"
+                     "cache_field_values_schedule" "0 0 0 1 1 ? 2099"
+                     "serdes/meta"                 [{"id" db-name "model" "Database"}]}
+                    extra)))
+      (let [tgz (io/file dir "payload.tar.gz")]
+        (u.compress/tgz (io/file dir "serdes") tgz)
+        (#'api.serialization/ba-copy (io/input-stream tgz)))
+      (finally
+        (run! io/delete-file (reverse (file-seq dir)))))))
+
+(defn- import-archive!
+  "Import `ba` with continue_on_error, returning the import log as a string."
+  [ba]
+  (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
+                            {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                            {:file ba}
+                            :continue_on_error true)
+      io/input-stream
+      slurp))
+
+;; Connection details are never exported, but import takes whatever the archive holds. So both the engine
+;; and the detail keys get checked on the way in.
+
+(deftest import-refuses-h2-databases-test
+  (testing "an archive naming an H2 database is refused and no database is created"
+    (mt/with-premium-features #{:serialization}
+      (let [db-name (str "h2-" (u.random/random-name))
+            log     (import-archive! (database-archive! db-name :h2 {"details" {"db" "mem:imported"}}))]
+        (is (re-find #"h2 is not supported for serialization import" log))
+        (is (nil? (t2/select-one :model/Database :name db-name)))))))
+
+(deftest import-drops-low-level-connection-keys-test
+  (testing "imported connection details keep the driver's own keys and drop the low-level JDBC ones"
+    (mt/with-premium-features #{:serialization}
+      (let [db-name   (str "pg-" (u.random/random-name))
+            low-level {"subname"        "mem:imported"
+                       "classname"      "com.example.Driver"
+                       "connection-uri" "jdbc:example:mem:imported"
+                       "INIT"           "SELECT 1"}]
+        (try
+          (import-archive! (database-archive! db-name :postgres
+                                              {"details"            (merge {"host"   "localhost"
+                                                                            "port"   5432
+                                                                            "dbname" "mydb"}
+                                                                           low-level)
+                                               "write_data_details" low-level
+                                               "admin_details"      low-level}))
+          (let [db (t2/select-one :model/Database :name db-name)]
+            (is (some? db))
+            (is (=? {:host "localhost" :port 5432 :dbname "mydb"} (:details db)))
+            (doseq [k [:details :write_data_details :admin_details]]
+              (is (= #{} (set (keys (select-keys (get db k) [:subname :classname :connection-uri :INIT]))))
+                  (str k " should keep none of the low-level keys"))))
+          (finally
+            (t2/delete! :model/Database :name db-name)))))))

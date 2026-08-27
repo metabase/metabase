@@ -36,7 +36,6 @@ import { PRODUCTS } from "metabase-types/api/mocks/presets";
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
 registerVisualization(BarChart);
-// @ts-expect-error: Heading has its own HeadingProps shape; migrate props to VisualizationProps
 registerVisualization(Heading);
 
 export default {

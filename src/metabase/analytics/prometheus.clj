@@ -281,6 +281,8 @@
                      {:description "Duration in milliseconds of the init!* function execution."})
    (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
+   (prometheus/counter :metabase-bug-report/legacy-reporter
+                       {:description "Number of Slack bug reports whose reporter was sent as a name/email object instead of a boolean."})
    (prometheus/counter :metabase-email/messages
                        {:description "Number of emails sent."})
    (prometheus/counter :metabase-email/message-errors
@@ -331,6 +333,21 @@
    (prometheus/counter :metabase-remote-sync/git-operations-failed
                        {:description "Number of failed git operations"
                         :labels [:operation :remote]})
+   ;; Shared: semantic search and entity retrieval each provision their own tables in it, as more may later.
+   ;; At most one is available at a time: a dedicated MB_PGVECTOR_DB_URL always wins over the app db.
+   (prometheus/gauge :metabase-pgvector/store-available
+                     {:description "Whether the given pgvector storage is available to this instance."
+                      :labels      [:storage]})
+   ;; Probed hourly, so an outage takes up to that long to show up. The dedicated probe opens its own
+   ;; connection, so a store that is up but whose pool is saturated still reads as connected --
+   ;; metabase_database_c3p0_* covers that. The app-db probe shares the application pool, and does not.
+   (prometheus/gauge :metabase-pgvector/store-connected
+                     {:description "Whether the last connection probe to the given pgvector storage succeeded."
+                      :labels      [:storage]})
+   ;; Absent until a probe succeeds, and reset when the instance changes which backing it uses.
+   (prometheus/gauge :metabase-pgvector/store-last-success-timestamp-seconds
+                     {:description "Unix timestamp of the last successful probe to the given pgvector storage."
+                      :labels      [:storage]})
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
                         :labels      [:model]})
@@ -502,6 +519,14 @@
                          {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring, `publish` = Snowplow emit) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
                           :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
+   ;; explorations
+   (prometheus/gauge :metabase-explorations/pending-queue-depth
+                     {:description "Number of exploration_query rows currently in 'pending' status (awaiting execution by the explorations background runner)."})
+   (prometheus/gauge :metabase-explorations/oldest-pending-age-seconds
+                     {:description "Age in seconds of the oldest still-pending exploration_query (0 when the queue is empty)."})
+   (prometheus/counter :metabase-explorations/queries-processed
+                       {:description "Exploration queries processed."
+                        :labels [:status]})
    ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
@@ -709,6 +734,15 @@
    (prometheus/counter :metabase-slackbot/file-uploads
                        {:description "Number of file uploads via the Slack bot."
                         :labels [:result]})
+   (prometheus/counter :metabase-slackbot/responses-truncated
+                       {:description (str "Number of Slack bot responses truncated because they exceeded "
+                                          "Slack's message limits.")})
+   (prometheus/counter :metabase-slackbot/viz-links-dropped
+                       {:description (str "Number of visualization query links dropped from Slack bot messages "
+                                          "because the linked title exceeded Slack's block limits.")})
+   (prometheus/counter :metabase-slackbot/responses-undeliverable
+                       {:description (str "Number of Slack bot responses that reached the user as nothing at all, "
+                                          "because the plain-text fallback failed too.")})
    ;; metabot / LLM agent metrics
    (prometheus/counter :metabase-metabot/llm-requests
                        {:description "LLM provider API requests"
