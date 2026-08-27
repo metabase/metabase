@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { color as colorHex } from "metabase/ui/colors";
 import {
-  getGoalSegmentErrors,
+  hasFailedGoalReferences,
   resolveGoalSegments,
 } from "metabase/visualizations/lib/dynamic-goals";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -15,6 +15,7 @@ import {
 import type { VisualizationDefinition } from "metabase/visualizations/types";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
+import { DEFAULT_GAUGE_RANGE } from "./constants";
 import { getSegmentsRange } from "./utils";
 
 export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
@@ -31,7 +32,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       throw new Error(t`Gauge visualization requires a number.`);
     }
 
-    if (getGoalSegmentErrors(data, settings["gauge.segments"]).length > 0) {
+    if (hasFailedGoalReferences(data, settings["gauge.segments"])) {
       throw new Error(
         t`Couldn't load a value one of this gauge's ranges depends on.`,
       );
@@ -57,7 +58,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
           series[0].data,
           vizSettings["gauge.segments"],
         );
-        return getSegmentsRange(segments) ?? [0, 1];
+        return getSegmentsRange(segments) ?? DEFAULT_GAUGE_RANGE;
       },
       readDependencies: ["gauge.segments"],
     },

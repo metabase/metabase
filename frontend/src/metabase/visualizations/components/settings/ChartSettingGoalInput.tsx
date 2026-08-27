@@ -6,8 +6,7 @@ import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
 import S from "./ChartSettingFieldPicker/ChartSettingFieldPicker.module.css";
-
-const RIGHT_SECTION_WIDTH = 38;
+import { RIGHT_SECTION_WIDTH } from "./ChartSettingSegmentsEditor/constants";
 
 const inputStyles = {
   input: {

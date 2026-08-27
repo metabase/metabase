@@ -140,7 +140,8 @@ export function gaugeSorter(
   thisSegment: ResolvedGoalSegment,
   thatSegment: ResolvedGoalSegment,
 ) {
-  return thisSegment.min - thatSegment.min;
+  // a containing segment goes first so the segments nested in it are drawn on top
+  return thisSegment.min - thatSegment.min || thatSegment.max - thisSegment.max;
 }
 
 export function fixSwappedMinMax(

@@ -84,8 +84,46 @@ describe("useResolvedGoalSegments", () => {
     });
   });
 
+  it("fails without fetching when the dataset already reports a failed reference", () => {
+    const data = createMockDatasetData({
+      ...DATA,
+      referenced_entities: {
+        card: { 9: { status: "failed", error: "boom" } },
+      },
+    });
+
+    const { result } = setup(data, DYNAMIC_SEGMENTS);
+
+    expect(result.current).toEqual({ status: "failed" });
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
+  it("fails when the fresh answer still lacks the referenced column", async () => {
+    setupCardDataset({
+      dataset: {
+        data: createMockDatasetData({
+          referenced_entities: {
+            card: {
+              9: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: "other" })],
+                  rows: [[1]],
+                },
+              },
+            },
+          },
+        }),
+      },
+    });
+
+    const { result } = setup(DATA, DYNAMIC_SEGMENTS);
+
+    await waitFor(() => expect(result.current).toEqual({ status: "failed" }));
+  });
+
   it("fails when the resolving query fails", async () => {
-    fetchMock.post("path:/api/dataset", 500);
+    setupCardDataset({ status: 500 });
 
     const { result } = setup(DATA, DYNAMIC_SEGMENTS);
 

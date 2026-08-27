@@ -12,6 +12,7 @@ import {
   calculateRelativeValueAngle,
   calculateSegmentLabelTextAnchor,
   colorGetter,
+  gaugeSorter,
   getCirclePositionInSvgCoordinate,
   limit,
   populateDefaultColumnSettings,
@@ -178,6 +179,28 @@ describe("Static gauge utils", () => {
           SEGMENT_LABEL_ANCHOR_THRESHOLD_ANGLE - 0.001,
         ),
       ).toEqual("middle");
+    });
+  });
+
+  describe("gaugeSorter", () => {
+    const segment = (min: number, max: number): ResolvedGoalSegment => ({
+      min,
+      max,
+      color: "red",
+    });
+
+    it("orders segments by their min", () => {
+      expect([segment(50, 60), segment(0, 100)].sort(gaugeSorter)).toEqual([
+        segment(0, 100),
+        segment(50, 60),
+      ]);
+    });
+
+    it("orders a containing segment before the segments nested in it when they share a min", () => {
+      expect([segment(0, 60), segment(0, 100)].sort(gaugeSorter)).toEqual([
+        segment(0, 100),
+        segment(0, 60),
+      ]);
     });
   });
 

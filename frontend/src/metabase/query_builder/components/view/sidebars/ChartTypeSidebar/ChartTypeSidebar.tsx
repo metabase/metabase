@@ -18,7 +18,7 @@ import {
   onOpenChartSettings,
   setUIControls,
 } from "metabase/redux/query-builder";
-import { cardHasUnresolvedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
+import { hasUnresolvedGoalReferences } from "metabase/visualizations/lib/dynamic-goals";
 import {
   type GetSensibleVisualizationsProps,
   getSensibleVisualizations,
@@ -84,7 +84,7 @@ export const ChartTypeSidebar = ({
         updateQuestion(newQuestion, {
           run:
             isEditable &&
-            cardHasUnresolvedGoalReferences(newQuestion.card(), result?.data),
+            hasUnresolvedGoalReferences(newQuestion.card(), result?.data),
           shouldUpdateUrl: isEditable,
         }),
       );
