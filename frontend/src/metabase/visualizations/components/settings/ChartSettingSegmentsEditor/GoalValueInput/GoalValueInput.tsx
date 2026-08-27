@@ -19,7 +19,6 @@ import {
   type GoalRefError,
   resolveGoalValue,
 } from "metabase/visualizations/lib/dynamic-goals";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardId,
   DatasetData,
@@ -198,7 +197,9 @@ export const GoalValueInput = ({
       }
 
       const card = await fetchCard({ id: entityId }, true).unwrap();
-      const numericColumns = (card.result_metadata ?? []).filter(isNumeric);
+      const numericColumns = getNumericColumnOptions(
+        card.result_metadata ?? [],
+      );
       return numericColumns.length === 1 ? numericColumns[0].name : null;
     } catch {
       return null;
