@@ -86,6 +86,31 @@ describe("Scalar", () => {
     expect(await screen.findByText("Scalar Title")).toBeInTheDocument();
   });
 
+  it("should navigate to the question when the title is clicked", async () => {
+    const onChangeCardAndRun = jest.fn();
+    render(
+      <Scalar
+        {...mockedProps}
+        showTitle
+        series={series(12345)}
+        rawSeries={series(12345)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        onChangeCardAndRun={onChangeCardAndRun}
+        width={230}
+        height={150}
+      />,
+    );
+
+    await userEvent.click(screen.getByText("Scalar Title"));
+
+    expect(onChangeCardAndRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nextCard: expect.objectContaining({ display: "scalar" }),
+      }),
+    );
+  });
+
   it("should render null", () => {
     render(
       <Scalar

@@ -248,6 +248,38 @@ describe("SmartScalar", () => {
       expect(screen.getByTestId("trend-symbol")).toBeInTheDocument();
     });
 
+    it("should list all comparisons in the query builder", () => {
+      const rows = [
+        ["2019-09-01T00:00:00", 200],
+        ["2019-10-01T00:00:00", 100],
+        ["2019-11-01T00:00:00", 120],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      renderWithProviders(
+        <Visualization
+          rawSeries={series({
+            rows,
+            insights,
+            comparisonTypes: [
+              { id: "1", type: "previousPeriod" },
+              { id: "2", type: "periodsAgo", value: 2 },
+            ],
+          })}
+          width={800}
+          isQueryBuilder
+        />,
+      );
+
+      const list = screen.getByTestId("scalar-comparison-list");
+      expect(within(list).getByText("vs. previous month")).toBeInTheDocument();
+      expect(within(list).getByText("vs. Sep")).toBeInTheDocument();
+      expect(within(list).getByText("+20% (100)")).toBeInTheDocument();
+      expect(within(list).getByText("-40% (200)")).toBeInTheDocument();
+      // no "+N" badge in the full list
+      expect(screen.queryByText("+1")).not.toBeInTheDocument();
+    });
+
     it("should show one tooltip at a time on the smallest cards", async () => {
       const rows = [
         ["2019-10-01T00:00:00", 50],
