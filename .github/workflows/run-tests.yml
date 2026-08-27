@@ -7,7 +7,6 @@ on:
       - "release-**"
   pull_request:
     types: [opened, synchronize, reopened]
-  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -21,6 +20,10 @@ permissions:
 jobs:
   # `force-run` and `force-skip` are global overrides; `defer` means this
   # job has no opinion and every downstream gate behaves as it always has.
+  #
+  # Only the lowest unmerged PR of a stack runs CI: it is the one whose base
+  # ref is the stack base. Every PR above it is force-skipped and gets tested
+  # once it reaches the bottom of the stack.
   should-run:
     name: Decide which jobs should run
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
@@ -36,6 +39,7 @@ jobs:
             ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-x.')) && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:run-all') && 'force-run'
             || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
+            || (github.event.pull_request.stack != null && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref) && 'force-skip'
             || 'defer' }}
         run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
 
@@ -125,10 +129,9 @@ jobs:
       - name: Upload affected tests stats
         env:
           STATS_JSON: ${{ needs.create-test-plan.outputs.stats }}
-          TRIGGERED_BY: ${{ github.event_name == 'pull_request' && 'pr_update' || 'merge_to_master' }}
-          PR_NUMBER: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || 0 }}
-          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
           API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
         run: bun .github/scripts/upload-affected-tests-stats.ts

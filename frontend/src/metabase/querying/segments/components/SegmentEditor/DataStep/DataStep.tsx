@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { selectTableQueryMetadata } from "metabase/api";
 import {
   DataPickerModal,
   getDataPickerValue,
@@ -42,9 +43,15 @@ export function DataStep({
 
   const handleChange = async (tableId: TableId) => {
     await dispatch(fetchTableMetadataAndForeignKeys({ id: tableId }));
-    const metadata = getMetadata(store.getState());
-    const databaseId = checkNotNull(metadata.table(tableId)).db_id;
-    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+    const state = store.getState();
+    const { data: tableMetadata } = selectTableQueryMetadata({ id: tableId })(
+      state,
+    );
+    const databaseId = checkNotNull(tableMetadata).db_id;
+    const metadataProvider = Lib.metadataProvider(
+      databaseId,
+      getMetadata(state),
+    );
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     if (table) {
       const newQuery = Lib.queryFromTableOrCardMetadata(

@@ -17,13 +17,27 @@ const renderingContext: RenderingContext = {
 const timelineEventsModel: TimelineEventsModel = [
   {
     date: "2025-01-01T00:00:00Z",
-    events: [createMockTimelineEvent({ id: 1 })],
+    groups: [
+      {
+        date: "2025-01-01T00:00:00Z",
+        events: [createMockTimelineEvent({ id: 1 })],
+      },
+    ],
   },
   {
     date: "2025-02-01T00:00:00Z",
-    events: [
-      createMockTimelineEvent({ id: 2 }),
-      createMockTimelineEvent({ id: 3 }),
+    groups: [
+      {
+        date: "2025-02-01T00:00:00Z",
+        events: [
+          createMockTimelineEvent({ id: 2 }),
+          createMockTimelineEvent({ id: 3 }),
+        ],
+      },
+      {
+        date: "2025-03-01T00:00:00Z",
+        events: [createMockTimelineEvent({ id: 4 })],
+      },
     ],
   },
 ];
@@ -60,6 +74,16 @@ describe("getTimelineEventsSelectionSeries", () => {
       { xAxis: "2025-01-01T00:00:00Z" },
       { xAxis: "2025-02-01T00:00:00Z" },
     ]);
+  });
+
+  it("draws the line at the member group's own date, not the cluster anchor", () => {
+    const series = getTimelineEventsSelectionSeries(
+      timelineEventsModel,
+      [4],
+      renderingContext,
+    );
+
+    expect(series?.markLine?.data).toEqual([{ xAxis: "2025-03-01T00:00:00Z" }]);
   });
 
   it("uses two-point segments spanning the panel extent for split panels", () => {

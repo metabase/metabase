@@ -20,7 +20,7 @@ import {
   getLegendTitles,
 } from "metabase/visualizations/lib/choropleth";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
-import { getCanonicalRowKey } from "metabase/visualizations/lib/mapping";
+import { getCanonicalRowKey } from "metabase/visualizations/lib/region-codes";
 import { unaggregatedDataWarningMap } from "metabase/visualizations/lib/warnings";
 import {
   getDefaultSize,

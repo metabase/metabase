@@ -28,12 +28,26 @@ export type EChartsSeriesBrushEvent = {
 
 export function isLineXBrushRange(
   range: BrushAreaParam["range"],
-): range is number[] {
-  return Array.isArray(range) && typeof range[0] === "number";
+): range is [number, number] {
+  return (
+    Array.isArray(range) &&
+    range.length === 2 &&
+    typeof range[0] === "number" &&
+    typeof range[1] === "number"
+  );
 }
 
 export type EChartsSeriesBrushEndEvent = EChartsSeriesMouseEvent & {
   areas: BrushAreaParam[];
+};
+
+export type EChartsSeriesBrushSelectedEvent = {
+  batch: {
+    selected: {
+      seriesIndex: number;
+      dataIndex: number[];
+    }[];
+  }[];
 };
 
 export type EChartsCartesianCoordinateSystem = {

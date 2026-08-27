@@ -2,7 +2,6 @@
   "Tests for encryption of Metabase DB details."
   (:require
    [buddy.core.codecs :as codecs]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
@@ -77,30 +76,23 @@
          (encryption/decrypt secret-2 (encryption/encrypt secret "WOW"))))))
 
 (deftest ^:parallel maybe-decrypt-not-encrypted-test
-  (testing "trying to `maybe-decrypt` something that's not encrypted should return it as-is"
+  (testing "trying to `maybe-decrypt-accepting-plaintext` something that's not encrypted should return it as-is"
     (is (= "{\"a\":100}"
-           (encryption/maybe-decrypt secret "{\"a\":100}")))
+           (encryption/maybe-decrypt-accepting-plaintext secret "{\"a\":100}")))
     (is (= "abc"
-           (encryption/maybe-decrypt secret "abc")))))
+           (encryption/maybe-decrypt-accepting-plaintext secret "abc")))))
 
 (deftest ^:parallel maybe-decrypt-with-wrong-key-test
-  (testing (str "trying to decrypt something that is encrypted with the wrong key with `maybe-decrypt` should return "
-                "the ciphertext...")
+  (testing (str "decrypting something encrypted with a different key using `maybe-decrypt-accepting-plaintext` throws "
+                "rather than returning the ciphertext — returning it would let a re-encrypting caller double-encrypt it")
     (let [original-ciphertext (encryption/encrypt secret "WOW")]
-      (is (= original-ciphertext
-             (encryption/maybe-decrypt secret-2 original-ciphertext))))))
-
-(defn- includes-encryption-warning? [log-messages]
-  (some (fn [{:keys [level message]}]
-          (and (= level :warn)
-               (str/includes? message (str "Cannot decrypt encrypted String. Have you changed or forgot to set "
-                                           "MB_ENCRYPTION_SECRET_KEY?"))))
-        log-messages))
+      (is (thrown? Throwable
+                   (encryption/maybe-decrypt-accepting-plaintext secret-2 original-ciphertext))))))
 
 (deftest ^:parallel no-errors-for-unencrypted-test
   (testing "Something obviously not encrypted should avoiding trying to decrypt it (and thus not log an error)"
     (mt/with-log-messages-for-level [messages :warn]
-      (encryption/maybe-decrypt secret "abc")
+      (encryption/maybe-decrypt-accepting-plaintext secret "abc")
       (is (empty? (messages))))))
 
 (def ^:private fake-ciphertext
@@ -109,20 +101,29 @@
   have the same size"
   (apply str (repeat 64 "a")))
 
-(deftest ^:parallel log-warning-on-failure-test
-  (testing (str "Something that is not encrypted, but might be (is the correct shape etc) should attempt to be "
-                "decrypted. If unable to decrypt it, log a warning.")
-    (mt/with-log-messages-for-level [messages :warn]
-      (encryption/maybe-decrypt secret fake-ciphertext)
-      (is (includes-encryption-warning? (messages))))
-    (mt/with-log-messages-for-level [messages :warn]
-      (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW"))
-      (is (includes-encryption-warning? (messages))))))
-
 (deftest ^:parallel possibly-encrypted-test
-  (testing "Something that is not encrypted, but might be should return the original text"
-    (is (= fake-ciphertext
-           (encryption/maybe-decrypt secret fake-ciphertext)))))
+  (testing "a value shaped like ciphertext but that cannot be decrypted with the current key throws rather than being returned as-is"
+    (is (thrown? Throwable
+                 (encryption/maybe-decrypt-accepting-plaintext secret fake-ciphertext)))))
+
+(deftest ^:parallel maybe-decrypt-strict-test
+  (testing "strict `maybe-decrypt`"
+    (testing "decrypts a genuinely encrypted value"
+      (is (= "WOW" (encryption/maybe-decrypt secret (encryption/encrypt secret "WOW")))))
+    (testing "throws on a value that is not encrypted"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"
+                            (encryption/maybe-decrypt secret "{\"a\":100}")))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"
+                            (encryption/maybe-decrypt secret "abc"))))
+    (testing "throws on a value that looks encrypted but fails to decrypt (wrong key or corrupt)"
+      (is (thrown? Throwable (encryption/maybe-decrypt secret fake-ciphertext)))
+      (is (thrown? Throwable (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW")))))
+    (testing "decrypts an encrypted byte array"
+      (is (= "WOW" (String. ^bytes (encryption/maybe-decrypt-bytes secret (encryption/encrypt-bytes secret (.getBytes "WOW")))))))
+    (testing "passes nil through but rejects a blank (non-encrypted) string"
+      (is (nil? (encryption/maybe-decrypt nil)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"
+                            (encryption/maybe-decrypt secret ""))))))
 
 (deftest ^:parallel stream-encryption-test
   (testing "Can encrypt stream"

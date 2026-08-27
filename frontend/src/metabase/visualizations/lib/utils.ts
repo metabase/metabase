@@ -1,6 +1,7 @@
 import * as d3 from "d3";
 import _ from "underscore";
 
+import { data_image_uri_pattern } from "cljs/metabase.util.markdown.image";
 import { isNotNull } from "metabase/utils/types";
 import {
   isCoordinate,
@@ -613,5 +614,4 @@ export const segmentIsValid = (
   return allowOpenEnded ? hasMin || hasMax : hasMin && hasMax;
 };
 
-export const DATA_IMAGE_URI_PATTERN =
-  /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i;
+export const DATA_IMAGE_URI_PATTERN: RegExp = data_image_uri_pattern;
