@@ -1,0 +1,184 @@
+name: App DB snapshot tests
+
+# The test suite boots its application DB from the checked-in snapshot in
+# `test_resources/app_db_snapshots/` instead of replaying the whole changelog. That is only sound while loading the
+# snapshot and migrating the rest lands on the same DB as migrating everything from scratch, so this workflow runs
+# both paths and diffs the result. It is separate from the normal backend jobs because the from-scratch replay is
+# expensive and only needs to happen when the migrations or the snapshot change.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "resources/migrations/**"
+      - "resources/liquibase*.yaml"
+      - "test_resources/app_db_snapshots/**"
+      - "test/metabase/app_db/snapshot_test_util.clj"
+      - "test/metabase/app_db/snapshot_test_util/**"
+      - "test/metabase/app_db/snapshot_test.clj"
+      - "test/metabase/app_db/schema_migrations_test/impl.clj"
+      - ".github/workflows/app-db-snapshot.yml"
+  push:
+    branches:
+      - master
+      - "release-x**"
+    paths:
+      - "resources/migrations/**"
+      - "resources/liquibase*.yaml"
+      - "test_resources/app_db_snapshots/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  snapshot-drift:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest and newest server we support for each app DB, mirroring the matrix in app-db.yml. A snapshot is
+        # a dump taken from one server version and replayed into another, so version coverage is the point: this is
+        # where a dump that only newer (or only older) servers can parse would show up.
+        #
+        # MySQL Latest is absent because app-db.yml disables it too -- `mysql:latest` now resolves to 26.x, which
+        # fails in a way that floods the log until the runner cancels the job.
+        #
+        # These are the servers a snapshot has to load into. The server each snapshot is dumped *from* is pinned in
+        # metabase.app-db.snapshot-test-util.server and started by the snapshot-regeneration job below, so it is not
+        # any of these.
+        include:
+          - name: H2
+            driver: h2
+          - name: Postgres 14.x
+            driver: postgres
+            image: postgres:14-alpine
+          - name: Postgres Latest
+            driver: postgres
+            image: postgres:latest
+          - name: MySQL 8.0
+            driver: mysql
+            image: mysql:8.0
+          - name: MySQL 9
+            driver: mysql
+            image: mysql:9
+          # https://github.com/metabase/metabase-mariadb-docker-image
+          - name: MariaDB 10.6
+            driver: mysql
+            image: metabase/mariadb:10.6
+          - name: MariaDB Latest
+            driver: mysql
+            image: mariadb:latest
+    name: "App DB snapshot drift (${{ matrix.name }})"
+    env:
+      CI: 'true'
+      # what turns the from-scratch comparison on; see metabase.app-db.snapshot-test
+      MB_APP_DB_SNAPSHOT_DRIFT_TEST: 'true'
+      DRIVERS: ${{ matrix.driver }}
+      MB_POSTGRESQL_TEST_USER: mb_test
+      MB_MYSQL_TEST_USER: root
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Start Postgres
+        if: ${{ matrix.driver == 'postgres' }}
+        run: |
+          docker run -d --name appdb -p 5432:5432 \
+            -e POSTGRES_USER=mb_test -e POSTGRES_DB=mb_test -e POSTGRES_HOST_AUTH_METHOD=trust \
+            ${{ matrix.image }}
+        shell: bash
+
+      # MariaDB images want MARIADB_*, MySQL images want MYSQL_*; each ignores the other's variables, so setting
+      # both keeps this one step working for the whole MySQL-family matrix.
+      - name: Start MySQL or MariaDB
+        if: ${{ matrix.driver == 'mysql' }}
+        run: |
+          docker run -d --name appdb -p 3306:3306 \
+            -e MYSQL_ALLOW_EMPTY_PASSWORD=true -e MYSQL_DATABASE=mb_test \
+            -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=true -e MARIADB_DATABASE=mb_test \
+            ${{ matrix.image }}
+        shell: bash
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Wait for the database to accept connections
+        if: ${{ matrix.driver != 'h2' }}
+        run: |
+          # Polls with a client over TCP rather than checking that the port is open. Both image families run a
+          # temporary server while they initialize, and the port is published the moment the container starts, so a
+          # port check can pass well before the real server is up -- that temporary server listens on a unix socket
+          # only, which is what makes a TCP probe the one that waits for the right thing.
+          for _ in $(seq 1 90); do
+            if [ "${{ matrix.driver }}" = "postgres" ]; then
+              if docker exec appdb pg_isready -h 127.0.0.1 -p 5432 -U "$MB_POSTGRESQL_TEST_USER" >/dev/null 2>&1; then
+                exit 0
+              fi
+            elif docker exec appdb sh -c \
+                 'mariadb --protocol=TCP -h127.0.0.1 -uroot -e "SELECT 1" ||
+                  mysql   --protocol=TCP -h127.0.0.1 -uroot -e "SELECT 1"' >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Database never became ready"
+          docker logs appdb || true
+          exit 1
+        shell: bash
+
+      - name: Compare snapshot against a from-scratch migration
+        run: ./bin/test-agent --drivers=${{ matrix.driver }} :only '[metabase.app-db.snapshot-test]'
+        shell: bash
+
+  # Starts the servers it dumps from, so it gets no service container of its own and covers every dialect at once.
+  snapshot-regeneration:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    name: "App DB snapshot regeneration"
+    env:
+      CI: 'true'
+      # what turns the regeneration check on; see metabase.app-db.snapshot-test
+      MB_APP_DB_SNAPSHOT_REGENERATION_TEST: 'true'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Check the checked-in snapshots are what regenerating writes
+        run: |
+          ./bin/test-agent --drivers=h2,postgres,mysql \
+            :only '[metabase.app-db.snapshot-test/snapshot-is-what-generating-it-today-writes-test]'
+        shell: bash
+
+  app-db-snapshot-result:
+    needs: [snapshot-drift, snapshot-regeneration]
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    name: app-db-snapshot-result
+    if: always() && !cancelled()
+    steps:
+      - name: Check job status
+        uses: actions/github-script@v9
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const failed = Object.entries(needs)
+              .filter(([, v]) => v.result !== 'success' && v.result !== 'skipped');
+
+            if (failed.length === 0) {
+              console.log('App DB snapshot matches a from-scratch migration.');
+              process.exit(0);
+            }
+
+            console.log(
+              'The checked-in app DB snapshot no longer matches a from-scratch migration.\n' +
+              'If you changed a migration at or below the snapshot boundary, either move the change to a new\n' +
+              'changeset or regenerate the snapshot with metabase.app-db.snapshot-test-util/generate!.'
+            );
+            failed.forEach(([name, v]) => console.log(`${name} - ${v.result}`));
+            process.exit(1);
