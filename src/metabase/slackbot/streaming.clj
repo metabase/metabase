@@ -189,6 +189,47 @@
    headroom for tool-update and other non-text API calls."
   600)
 
+(def ^:private generic-error-message
+  "Something went wrong. Please try again.")
+
+(def ^:private provider-config-error-codes
+  "Error codes thrown for a misconfigured LLM provider connection, by
+   [[metabase.metabot.self/parse-provider-model]] and the provider adapters'
+   own setup validation, all deserving the same check-your-AI-settings copy."
+  #{"llm-not-configured" "api-key-missing" "base-url-missing" "model-missing"
+    "proxy-unsupported" "proxy-not-configured" "invalid-service-account-key"
+    "not-a-service-account-key" "invalid-location" "project-id-required"
+    "invalid-project-id" "invalid-model" "unsupported-model" "invalid-region"})
+
+(defn- known-error-message
+  "User-facing copy for a failure this namespace recognizes by error code (or, for
+   permission denials, the `:type :metabot/permission-denied` tag), or nil.
+   `error` is a streamed `:error` part's payload or a thrown exception's ex-data;
+   errors the agent loop caught nest their ex-data under `:data`. Only whitelisted
+   markers get copy, and only the usage-limit codes pass their server-authored
+   message through: everything else, raw provider errors and permission keywords
+   included, must stay out of shared Slack channels."
+  [error]
+  (let [code (some-> (or (:error-code error) (get-in error [:data :error-code])) name)]
+    (cond
+      (or (= code "permission_denied")
+          (= :metabot/permission-denied (:type error))
+          (= :metabot/permission-denied (get-in error [:data :type])))
+      "You do not have permission to use the AI assistant."
+
+      (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"} code)
+      (:message error)
+
+      (provider-config-error-codes code)
+      "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."
+
+      :else nil)))
+
+(defn- error-message
+  "[[known-error-message]] with the generic fallback applied."
+  [error]
+  (or (known-error-message error) generic-error-message))
+
 (defn- make-streaming-ai-request
   "Run the agent loop for a slackbot conversation, dispatching parts to callbacks.
 
@@ -277,7 +318,7 @@
 
                                    :error
                                    (when on-text
-                                     (on-text "Something went wrong. Please try again."))
+                                     (on-text (error-message (:error part))))
 
                                    nil)
                                  nil)))]
@@ -573,12 +614,6 @@
                                                        :message_external_id message-external-id
                                                        :positive            false})}}]}])
 
-(defn- free-limit-error-message
-  [e]
-  (let [{:keys [error-code message]} (ex-data e)]
-    (when (= error-code "metabase_ai_managed_locked")
-      (or message (ex-message e)))))
-
 (defn- prepare-response-context
   "Fetch thread/auth context shared by DM and channel delivery paths."
   [client event]
@@ -660,21 +695,19 @@
         (log/errorf "[slackbot] Error in streaming response: %s" (ex-message e))
         (when-not (await-for slack-writer-await-timeout-ms slack-writer)
           (log/warn "[slackbot] Timed out waiting for slack-writer agent to flush"))
-        (if-let [{:keys [stream_ts channel]} @stream-state]
-          (try
-            (slackbot.client/append-markdown-text client channel stream_ts
-                                                  "\nSomething went wrong. Please try again.")
-            (let [stop-result (slackbot.client/stop-stream client channel stream_ts)]
-              (when-not (:ok stop-result)
-                (log/warnf "[slackbot] stop-stream during error cleanup failed: %s" (:error stop-result))
-                (let [fallback-result (slackbot.client/post-thread-reply client
-                                                                         message-ctx
-                                                                         "Something went wrong. Please try again.")]
-                  (when-not (:ok fallback-result)
-                    (log/errorf "[slackbot] cleanup fallback post-message failed: %s" (:error fallback-result))))))
-            (catch Exception stop-e
-              (log/debugf "[slackbot] Failed to stop stream during error cleanup: %s" (ex-message stop-e))))
-          (slackbot.client/post-thread-reply client message-ctx "Something went wrong. Please try again."))))))
+        (let [message (error-message (ex-data e))]
+          (if-let [{:keys [stream_ts channel]} @stream-state]
+            (try
+              (slackbot.client/append-markdown-text client channel stream_ts (str "\n" message))
+              (let [stop-result (slackbot.client/stop-stream client channel stream_ts)]
+                (when-not (:ok stop-result)
+                  (log/warnf "[slackbot] stop-stream during error cleanup failed: %s" (:error stop-result))
+                  (let [fallback-result (slackbot.client/post-thread-reply client message-ctx message)]
+                    (when-not (:ok fallback-result)
+                      (log/errorf "[slackbot] cleanup fallback post-message failed: %s" (:error fallback-result))))))
+              (catch Exception stop-e
+                (log/debugf "[slackbot] Failed to stop stream during error cleanup: %s" (ex-message stop-e))))
+            (slackbot.client/post-thread-reply client message-ctx message)))))))
 
 (defn send-response
   "Send a metabot response using Slack delivery suited to the conversation type.
@@ -698,11 +731,12 @@
                                                     :feedback-blocks            feedback-blocks
                                                     :post-viz-error!            post-viz-error!
                                                     :make-viz-prefetch-callback make-viz-prefetch-callback
-                                                    :cancel-prefetched-viz!     cancel-prefetched-viz!})))
+                                                    :cancel-prefetched-viz!     cancel-prefetched-viz!
+                                                    :error-message              error-message})))
        (catch Exception e
-         (if-let [message (free-limit-error-message e)]
+         (if-let [message (known-error-message (ex-data e))]
            (let [result (slackbot.client/post-thread-reply client message-ctx message)]
              (when-not (:ok result)
-               (log/errorf "[slackbot] Failed to post managed free limit error message: %s" (:error result))
+               (log/errorf "[slackbot] Failed to post pre-flight error message: %s" (:error result))
                (throw e)))
            (throw e)))))))

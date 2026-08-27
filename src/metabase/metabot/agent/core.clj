@@ -445,13 +445,18 @@
 (defn- check-metabot-access!
   "Throw a 403 if the user's metabot permissions do not grant access to the
   requested profile. The base + profile-specific gating policy lives in
-  [[scope/missing-permission]], shared with [[metabase.metabot.self]]."
+  [[scope/missing-permission]], shared with [[metabase.metabot.self]].
+  Tagged with `:type` ([[metabase.metabot.self/check-permission!]]'s convention)
+  rather than an `:error-code` key: the exception middleware strips `:type` from
+  the body, so the message stays the whole 403 response instead of a
+  `Throwable->map` with a stack trace."
   [profile-id perms]
   (when-let [missing (scope/missing-permission perms (profile-id->required-permission profile-id))]
-    (api/check false
-               [403 (if (= missing :permission/metabot)
+    (throw (ex-info (if (= missing :permission/metabot)
                       "You do not have permission to use the AI assistant."
-                      (format "You do not have permission to use the %s assistant." (name profile-id)))])))
+                      (format "You do not have permission to use the %s assistant." (name profile-id)))
+                    {:status-code 403
+                     :type        :metabot/permission-denied}))))
 
 (defn- init-agent
   "Initialize agent state."
