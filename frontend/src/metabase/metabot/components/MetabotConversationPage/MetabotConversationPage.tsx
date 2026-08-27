@@ -60,6 +60,7 @@ export const MetabotConversationPage = () => {
           title: conversation.title ?? undefined,
           forkedFromConversationId:
             conversation.forked_from_conversation_id ?? undefined,
+          contextWindowTokens: conversation.context_window_tokens,
           messages: conversation.messages,
           state: conversation.state,
           activeToolCalls: [],
