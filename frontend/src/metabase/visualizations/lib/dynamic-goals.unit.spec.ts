@@ -252,6 +252,16 @@ describe("resolveGoalSegments", () => {
     ]);
   });
 
+  it("gives a legacy segment with a null color a default fill", () => {
+    const segments = resolveGoalSegments(DATA, [
+      { min: 0, max: 100, color: null },
+    ]);
+
+    expect(segments).toEqual([
+      { min: 0, max: 100, color: color("text-secondary"), label: undefined },
+    ]);
+  });
+
   it("resolves a foreign card reference from referenced_entities", () => {
     const data = createMockDatasetData({
       ...DATA,
