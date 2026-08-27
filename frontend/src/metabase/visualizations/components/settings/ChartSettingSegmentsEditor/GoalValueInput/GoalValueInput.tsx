@@ -1,11 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
-import {
-  type KeyboardEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type KeyboardEvent, useCallback, useRef, useState } from "react";
+import { useUnmount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -138,31 +133,26 @@ export const GoalValueInput = ({
   const abandonPendingPick = useCallback(() => {
     pickTokenRef.current += 1;
   }, []);
-  useEffect(() => abandonPendingPick, [abandonPendingPick]);
 
-  const closeMenu = useCallback(() => {
+  useUnmount(abandonPendingPick);
+
+  const closeMenu = () => {
     abandonPendingPick();
     menu.close();
     setMenuLevel("root");
     setPickedEntity(null);
-  }, [abandonPendingPick, menu]);
+  };
 
-  const commitValue = useCallback(
-    (newValue: GoalValue | null) => {
-      onChange(newValue);
-      closeMenu();
-    },
-    [onChange, closeMenu],
-  );
+  const commitValue = (newValue: GoalValue | null) => {
+    onChange(newValue);
+    closeMenu();
+  };
 
-  const selectEntityColumn = useCallback(
-    (columnName: string) => {
-      if (entity != null) {
-        commitValue({ type: entity.type, id: entity.id, column: columnName });
-      }
-    },
-    [entity, commitValue],
-  );
+  const selectEntityColumn = (columnName: string) => {
+    if (entity != null) {
+      commitValue({ type: entity.type, id: entity.id, column: columnName });
+    }
+  };
 
   const openMenuFromTrigger = () => {
     setMenuLevel("root");
