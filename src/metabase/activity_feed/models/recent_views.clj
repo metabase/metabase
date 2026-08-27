@@ -159,6 +159,8 @@
                        :model_id model-id
                        :context (name context)
                        :timestamp timestamp}))
+        ;; The prune queries are per (user, context), not per view, so collapse the batch down to its distinct
+        ;; pairs first: N views by one user become one set of prune queries instead of N.
         (let [prune-ids (into #{}
                               (comp (map (juxt :user-id :context))
                                     (distinct)
