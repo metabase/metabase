@@ -6,18 +6,8 @@ import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import { updateQuestion } from "metabase/query_builder/actions";
-import {
-  ChartTypeSettings,
-  type UseQuestionVisualizationStateProps,
-  useQuestionVisualizationState,
-} from "metabase/query_builder/components/chart-type-selector";
 import { useDispatch } from "metabase/redux";
-import {
-  onCloseChartType,
-  onOpenChartSettings,
-  setUIControls,
-} from "metabase/redux/query-builder";
+import { setUIControls } from "metabase/redux/query-builder";
 import {
   type GetSensibleVisualizationsProps,
   getSensibleVisualizations,
@@ -25,6 +15,17 @@ import {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationDisplay } from "metabase-types/api";
+
+import { updateQuestion } from "../../../../actions";
+import {
+  onCloseChartType,
+  onOpenChartSettings,
+} from "../../../../store/actions";
+import {
+  ChartTypeSettings,
+  type UseQuestionVisualizationStateProps,
+  useQuestionVisualizationState,
+} from "../../../chart-type-selector";
 
 export type ChartTypeSidebarProps = Pick<
   UseQuestionVisualizationStateProps,

@@ -10,6 +10,7 @@ const SIDE_EFFECT_FREE_PATHS = [
   "frontend/src/metabase/router",
   "frontend/src/metabase/querying/expressions",
   "frontend/src/metabase/ui",
+  "frontend/src/metabase/query_builder",
   // The chart compute layer: static-viz imports a few helpers from its barrel,
   // so without this the GraalJS bundle would pull in every echarts model too.
   "frontend/src/metabase/viz-core",
@@ -23,6 +24,8 @@ const SIDE_EFFECT_PATHS = [
   "frontend/src/metabase/querying/expressions/pratt/syntax.ts",
   // Replaces `Popover.Dropdown` on Mantine's own Popover, which Combobox, Menu, ColorInput and HoverCard render internally.
   "frontend/src/metabase/ui/components/overlays/Popover/register-popover-dropdown.ts",
+  // Registers its endpoints on the shared Api at import, so a bundle that only reaches them by name still has to evaluate it.
+  "frontend/src/metabase/query_builder/api/model-index.ts",
 ].map((file) => path.join(REPO_ROOT, file));
 
 // Only script files are ever marked side-effect free.
