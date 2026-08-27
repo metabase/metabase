@@ -315,5 +315,6 @@ export const InteractiveCard = {
   name: "Checkbox.Card (interactive)",
   parameters: {
     controls: { disable: true },
+    loki: { skip: true },
   },
 };

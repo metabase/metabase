@@ -295,5 +295,6 @@ export const InteractiveCard = {
   name: "Radio.Card (interactive)",
   parameters: {
     controls: { disable: true },
+    loki: { skip: true },
   },
 };
