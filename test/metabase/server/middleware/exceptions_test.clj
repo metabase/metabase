@@ -52,6 +52,20 @@
         (is (contains? (:body response) :via)
             "Response should contain :via key with exception chain")))))
 
+(deftest api-exception-response-error-code-test
+  (testing "a non-500 that declares an :error-code returns its structured body without a stacktrace, whatever hide-stacktraces says"
+    (doseq [hide? [false true]]
+      (mt/with-temporary-setting-values [server.settings/hide-stacktraces hide?]
+        (let [exception (ex-info "You are out of tokens."
+                                 {:status-code 402
+                                  :message     "You are out of tokens."
+                                  :error-code  "metabase_ai_managed_locked"})
+              response  (mw.exceptions/api-exception-response exception nil)]
+          (is (= 402 (:status response)))
+          (is (= {:message    "You are out of tokens."
+                  :error-code "metabase_ai_managed_locked"}
+                 (:body response))))))))
+
 (deftest api-exception-response-hides-stacktraces-returns-generic-message-test
   (testing "When hide-stacktraces is true, exception response contains only a generic message"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces true]
