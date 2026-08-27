@@ -213,13 +213,6 @@ export function getGoalSegmentErrors(
   });
 }
 
-export function needsAnswer(resolved: ResolvedGoalValue): boolean {
-  return (
-    resolved.isUnanswered === true ||
-    resolved.error?.reason === "column-not-found"
-  );
-}
-
 export function getUnansweredGoalEntities(
   data: DatasetData,
   segments: GoalSegment[] | undefined,
@@ -281,31 +274,53 @@ function getGoalForeignColumnRefs(
     .filter(isGoalForeignColumnRef);
 }
 
-export function hasUnansweredGoalReferences(
-  settings: VisualizationSettings,
-  data: DatasetData | undefined,
-): boolean {
-  return getGoalForeignColumnRefs(settings).some(
-    (ref) => data == null || resolveGoalValue(data, ref).isUnanswered === true,
-  );
-}
+export type GoalCard = Pick<Card, "display" | "visualization_settings">;
 
-export function cardHasUnresolvedGoalReferences(
-  card: Pick<Card, "display" | "visualization_settings">,
+function hasGoalReferencesWhere(
+  card: GoalCard,
   data: DatasetData | undefined,
+  predicate: (resolved: ResolvedGoalValue) => boolean,
 ): boolean {
   if (!supportsDynamicGoals(card.display)) {
     return false;
   }
 
-  return getGoalForeignColumnRefs(card.visualization_settings).some((ref) => {
-    if (data == null) {
-      return true;
-    }
+  return getGoalForeignColumnRefs(card.visualization_settings).some(
+    (ref) => data == null || predicate(resolveGoalValue(data, ref)),
+  );
+}
 
-    const { error, isUnanswered } = resolveGoalValue(data, ref);
-    return isUnanswered === true || error != null;
-  });
+// Skips failed references so dashboards don't re-run a failing query on every render.
+export function hasUnansweredGoalReferences(
+  card: GoalCard,
+  data: DatasetData | undefined,
+): boolean {
+  return hasGoalReferencesWhere(card, data, isUnanswered);
+}
+
+// Includes failed references so a user action in the query builder retries them.
+export function hasUnresolvedGoalReferences(
+  card: GoalCard,
+  data: DatasetData | undefined,
+): boolean {
+  return hasGoalReferencesWhere(card, data, isUnresolved);
+}
+
+// Missing columns are worth re-running for; failed queries would just fail again.
+export function needsAnswer(resolved: ResolvedGoalValue): boolean {
+  return (
+    isUnanswered(resolved) || resolved.error?.reason === "column-not-found"
+  );
+}
+
+// The result has no answer for the referenced entity.
+function isUnanswered(resolved: ResolvedGoalValue): boolean {
+  return resolved.isUnanswered === true;
+}
+
+// Unanswered, or answered with an error.
+function isUnresolved(resolved: ResolvedGoalValue): boolean {
+  return isUnanswered(resolved) || resolved.error != null;
 }
 
 export function supportsDynamicGoals(display: VisualizationDisplay): boolean {
