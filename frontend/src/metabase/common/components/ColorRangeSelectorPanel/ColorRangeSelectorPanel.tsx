@@ -2,7 +2,7 @@ import chroma from "chroma-js";
 import type { HTMLAttributes } from "react";
 import { useCallback } from "react";
 
-import { colors } from "metabase/lib/colors/palette";
+import { colors } from "metabase/lib/colors/colors";
 
 import { ColorSelectorPanel } from "../ColorSelectorPanel";
 

@@ -21,3 +21,4 @@ node_modules
 
 Dockerfile
 .dockerignore
+!target/uberjar/metabase.jar

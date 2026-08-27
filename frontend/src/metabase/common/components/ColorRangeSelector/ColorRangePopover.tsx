@@ -34,7 +34,7 @@ export const ColorRangePopover = forwardRef(function ColorRangeSelector(
     return customColorMapping ?? getDefaultColorMapping(colors);
   }, [colors, customColorMapping]);
 
-  const isInverted = false;
+  const isInverted = true;
   // const [isInverted, setIsInverted] = useState(() =>
   //   getDefaultIsInverted(initialValue, colorMapping),
   // );
