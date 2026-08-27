@@ -15,7 +15,7 @@ interface JsxToken {
  */
 export function tokenizeJsx(code: string): JsxToken[] {
   const pattern =
-    /("[^"]*"|'[^']*'|\{[^}]*\})|([<>/=])|([A-Za-z_][\w-]*)|(\s+)|([^\s])/g;
+    /("[^"]*"|'[^']*'|\{[^}]*\})|([<>/=])|([A-Za-z_][\w.-]*)|(\s+)|([^\s])/g;
   const tokens: JsxToken[] = [];
   // Whether we're between `<` and `>` (inside a tag) vs. in element content,
   // and whether the next identifier is the tag name (right after `<` or `</`).

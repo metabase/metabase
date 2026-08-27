@@ -71,6 +71,21 @@ describe("CopyValueAction", () => {
     expect(setup({ column: pkColumn, value: 42 })).toHaveLength(0);
   });
 
+  it("returns no actions for clicks that group several rows, like the pie 'Other' slice (metabase#5334)", () => {
+    const metricColumn = createMockNumericColumn({
+      name: "count",
+      display_name: "Count",
+    });
+
+    const actions = setup({
+      column: metricColumn,
+      value: 93,
+      dimensions: [{ column, value: ["Doohickey", "Gizmo"] }],
+    });
+
+    expect(actions).toHaveLength(0);
+  });
+
   it("returns an action on a foreign key cell", () => {
     const fkColumn = createMockColumn({
       name: "PRODUCT_ID",

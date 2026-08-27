@@ -176,6 +176,22 @@ describe("tablesReducer", () => {
       ]);
     });
 
+    it("skips a field written as null, which is a delete", () => {
+      const state = {
+        1: {
+          id: 1,
+          original_fields: [{ id: 10, display_name: "Old" }],
+        },
+      };
+
+      const nextState = tablesReducer(
+        state,
+        getEntitiesUpdateAction({ 10: null }),
+      );
+
+      expect(nextState).toBe(state);
+    });
+
     it("leaves state untouched when the table has no original_fields", () => {
       const state = { 1: { id: 1, name: "Orders" } };
 

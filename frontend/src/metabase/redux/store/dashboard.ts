@@ -1,4 +1,6 @@
 import type {
+  Card,
+  CardId,
   DashCardDataMap,
   DashCardId,
   Dashboard,
@@ -77,6 +79,11 @@ export type TabDeletion = {
   removedDashCardIds: DashCardId[];
 };
 
+export type DashboardLinkTargets = {
+  questions: Record<CardId, Card>;
+  dashboards: Record<DashboardId, Dashboard>;
+};
+
 export type DashboardLoadingStatus = "idle" | "running" | "complete";
 
 export type DashboardCardsLoadingState = {
@@ -99,6 +106,8 @@ export interface DashboardState {
 
   dashcards: Record<DashCardId, StoreDashcard>;
   dashcardData: DashCardDataMap;
+
+  linkTargets: DashboardLinkTargets;
 
   parameterValues: Record<
     ParameterId,

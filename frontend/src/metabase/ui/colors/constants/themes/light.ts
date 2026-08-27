@@ -127,6 +127,7 @@ const actualColors = {
   "background_surface-warning-strong": baseColors.dubloon[20],
   "border-brand": baseColors.brand[10],
   "border-filter": baseColors.filter[20],
+  "border-highlight": baseColors.brand[30],
   "border-neutral": baseColors.orion[20],
   "border-neutral-strong": baseColors.orionAlpha[30],
   "border-neutral-strongest": baseColors.orionAlpha[50],

@@ -152,7 +152,6 @@ function FormFieldEditor({
               hidden={hidden}
               actions={
                 <Checkbox
-                  size="sm"
                   styles={{
                     label: {
                       fontSize: "12px",
