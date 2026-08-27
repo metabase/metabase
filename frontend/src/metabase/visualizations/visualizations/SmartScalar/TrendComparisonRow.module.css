@@ -5,10 +5,11 @@
   color: var(--mb-color-text-primary);
   border-radius: 0.75rem;
   padding: 1rem;
+  /* the 0.5px hairline outline intentionally stays in px */
   box-shadow:
     0 0 0 0.5px var(--mb-color-border-neutral-subtle),
-    0 1px 4px 0 var(--mb-color-border-neutral-subtle),
-    0 5px 15px 0 var(--mb-color-shadow-default);
+    0 0.0625rem 0.25rem 0 var(--mb-color-border-neutral-subtle),
+    0 0.3125rem 0.9375rem 0 var(--mb-color-shadow-default);
 }
 
 .comparisonRow:not(:last-child) {

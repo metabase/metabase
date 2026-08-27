@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Stack, Tooltip } from "metabase/ui";
+import { Box, Stack, Tooltip, rem } from "metabase/ui";
 import {
   ScalarActionButtons,
   ScalarTitle,
@@ -81,12 +81,25 @@ function SmartScalarComponent({
     }
   };
 
+  const primaryComparison = comparisons[0];
+  const symbolDirection =
+    primaryComparison?.changeArrowIconName ??
+    (primaryComparison?.changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE
+      ? "no_change"
+      : null);
+
   const tier = getScalarSizeTier(width, height);
   const availableWidth = Math.max(width - tier.xPadding * 2, 0);
+  const symbolAllowance =
+    symbolDirection != null ? tier.symbolSize + tier.symbolGap : 0;
+  const valueMaxWidth = Math.max(
+    width - 2 * Math.max(tier.xPadding, symbolAllowance),
+    0,
+  );
 
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    availableWidth,
+    valueMaxWidth,
     tier.valueFontSize,
     formatOptions,
   );
@@ -94,13 +107,6 @@ function SmartScalarComponent({
   const title = showTitle ? settings["card.title"] : null;
   const showsInlineTitle = Boolean(title) && tier.showsTitle;
   const showsTitleOnHover = Boolean(title) && !tier.showsTitle;
-
-  const primaryComparison = comparisons[0];
-  const symbolDirection =
-    primaryComparison?.changeArrowIconName ??
-    (primaryComparison?.changeType === CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE
-      ? "no_change"
-      : null);
 
   const hasValueTooltip = fullScalarValue !== displayValue;
   // show one tooltip at a time: the title tooltip yields to the value and
@@ -127,7 +133,8 @@ function SmartScalarComponent({
         >
           <Box
             pos="relative"
-            maw="100%"
+            // measured pixels, not a design size — must not be rem-scaled
+            maw={`${valueMaxWidth}px`}
             {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
           >
             <ScalarValueContainer
@@ -164,9 +171,10 @@ function SmartScalarComponent({
           {comparisons.length > 0 && (
             <Box
               pos="absolute"
-              top={`calc(100% + ${tier.comparisonGap}px)`}
+              top={`calc(100% + ${rem(tier.comparisonGap)})`}
               left="50%"
-              w={availableWidth}
+              // measured pixels, not a design size — must not be rem-scaled
+              w={`${availableWidth}px`}
               style={{ transform: "translateX(-50%)" }}
               {...innerTooltipHoverHandlers}
             >

@@ -14,6 +14,18 @@ const CHAR_WIDTH_EM = 0.6;
 const THIN_CHAR_WIDTH_EM = 0.25;
 const THIN_CHARS_PATTERN = /[.,' ]/;
 
+// font sizes render in rem, so the effective pixel size follows the root font
+// scale while the measured container width stays in device pixels
+function getRootFontScale() {
+  if (typeof document === "undefined") {
+    return 1;
+  }
+  const rootFontSize = parseFloat(
+    getComputedStyle(document.documentElement).fontSize,
+  );
+  return Number.isFinite(rootFontSize) ? rootFontSize / 16 : 1;
+}
+
 export function estimateScalarValueWidth(text: string, fontSize: number) {
   const widthEm = [...text].reduce(
     (total, char) =>
@@ -21,7 +33,7 @@ export function estimateScalarValueWidth(text: string, fontSize: number) {
       (THIN_CHARS_PATTERN.test(char) ? THIN_CHAR_WIDTH_EM : CHAR_WIDTH_EM),
     0,
   );
-  return widthEm * fontSize;
+  return widthEm * fontSize * getRootFontScale();
 }
 
 function checkShouldCompact(

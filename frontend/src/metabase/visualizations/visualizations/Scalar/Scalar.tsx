@@ -193,8 +193,8 @@ function ScalarComponent(
                   />
                   {label && (
                     <Text
-                      fz="14px"
-                      lh="16px"
+                      fz={14}
+                      lh="1rem"
                       c="text-primary"
                       mt="md"
                       ta="center"
@@ -204,8 +204,8 @@ function ScalarComponent(
                   )}
                   {sublabel && (
                     <Text
-                      fz="12px"
-                      lh="16px"
+                      fz={12}
+                      lh="1rem"
                       c="text-secondary"
                       mt="xs"
                       ta="center"

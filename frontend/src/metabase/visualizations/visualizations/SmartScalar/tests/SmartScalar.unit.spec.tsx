@@ -223,6 +223,20 @@ describe("SmartScalar", () => {
       expect(within(tooltip).getByText("vs. Oct")).toBeInTheDocument();
     });
 
+    it("should compact the value when the full value leaves no room for the trend symbol", () => {
+      const rows = [
+        ["2019-10-01T00:00:00", 45000],
+        ["2019-11-01T00:00:00", 30759.47],
+      ];
+      const insights = createMockInsights([{ unit: "month", col: "Count" }]);
+
+      // "30,759.47" alone fits a 100px card, but not together with the symbol
+      setup(series({ rows, insights }), 100);
+
+      expect(screen.getByText("30.8k")).toBeInTheDocument();
+      expect(screen.getByTestId("trend-symbol")).toBeInTheDocument();
+    });
+
     it("should show one tooltip at a time on the smallest cards", async () => {
       const rows = [
         ["2019-10-01T00:00:00", 50],

@@ -14,16 +14,17 @@
 /* the "Subtle" ActionIcon pill from the card spec: 24×16 with a hairline
    outline + soft shadow; hover/pressed swap the surface, pressed drops the shadow */
 .actionButtons [data-testid="dashcard-menu"] {
-  width: 24px;
-  min-width: 24px;
-  height: 16px;
-  min-height: 16px;
-  border-radius: 4px;
+  width: 1.5rem;
+  min-width: 1.5rem;
+  height: 1rem;
+  min-height: 1rem;
+  border-radius: 0.25rem;
   color: var(--mb-color-text-primary);
   background: var(--mb-color-background_surface-primary);
+  /* the 0.5px hairline outline intentionally stays in px */
   box-shadow:
     0 0 0 0.5px var(--mb-color-border-neutral-subtle),
-    0 1px 3px 0 var(--mb-color-border-neutral-subtle);
+    0 0.0625rem 0.1875rem 0 var(--mb-color-border-neutral-subtle);
 }
 
 .actionButtons [data-testid="dashcard-menu"]:hover {
@@ -37,6 +38,6 @@
 }
 
 .actionButtons [data-testid="dashcard-menu"] svg {
-  width: 12px;
-  height: 12px;
+  width: 0.75rem;
+  height: 0.75rem;
 }
