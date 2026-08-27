@@ -28,11 +28,22 @@ describe("MetabotChatHistory", () => {
     const { store } = setup({
       ui: <MetabotChatHistory />,
       metabotInitialState: assocIn(
-        makeVisibleState([
-          { id: "1", role: "user", type: "text", message: "hi" },
-        ]),
-        ["conversations", testConversationId("omnibot"), "lastTokenUsage"],
-        { contextTokens: 200, contextWindowTokens: 200 },
+        assocIn(
+          makeVisibleState([
+            { id: "1", role: "user", type: "text", message: "hi" },
+            { id: "2", role: "agent", type: "text", message: "hello" },
+          ]),
+          [
+            "conversations",
+            testConversationId("omnibot"),
+            "messages",
+            1,
+            "contextTokens",
+          ],
+          200,
+        ),
+        ["conversations", testConversationId("omnibot"), "contextWindowTokens"],
+        200,
       ),
     });
 

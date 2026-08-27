@@ -947,6 +947,7 @@ export const fetchConversationSnapshot = createAsyncThunk(
         title: detail.title ?? undefined,
         forkedFromConversationId:
           detail.forked_from_conversation_id ?? undefined,
+        contextWindowTokens: detail.context_window_tokens,
         messages: detail.messages,
         state: detail.state,
         activeToolCalls: [],
@@ -1005,6 +1006,7 @@ export const forkConversation = createAsyncThunk(
         title: conversation.title ?? undefined,
         forkedFromConversationId:
           conversation.forked_from_conversation_id ?? undefined,
+        contextWindowTokens: conversation.context_window_tokens,
         messages: conversation.messages,
         state: conversation.state,
         activeToolCalls: [],

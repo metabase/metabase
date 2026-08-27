@@ -23,6 +23,7 @@ import {
   createPauses,
   createTestMetabotState,
   enterChatMessage,
+  expectContextUsage,
   lastChatMessage,
   lastReqBody,
   mockAgentEndpoint,
@@ -38,12 +39,28 @@ const emptyContext = {
   capabilities: [],
 };
 
-const turnEvents = (opts: { messageId: string; text: string }): SSEEvent[] => [
-  { type: "start", messageId: opts.messageId },
+const CONTEXT_WINDOW = 1000;
+
+const turnEvents = ({
+  messageId,
+  text,
+  contextTokens,
+}: {
+  messageId: string;
+  text: string;
+  contextTokens?: number;
+}): SSEEvent[] => [
+  { type: "start", messageId },
   { type: "text-start", id: "t1" },
-  { type: "text-delta", id: "t1", delta: opts.text },
+  { type: "text-delta", id: "t1", delta: text },
   { type: "text-end", id: "t1" },
-  { type: "finish", finishReason: "stop" },
+  {
+    type: "finish",
+    finishReason: "stop",
+    ...(contextTokens != null && {
+      messageMetadata: { contextTokens, contextWindowTokens: CONTEXT_WINDOW },
+    }),
+  },
 ];
 
 describe("metabot > retry", () => {
@@ -279,6 +296,43 @@ describe("metabot > retry", () => {
     );
     expect(await screen.findByText("regenerated reply")).toBeInTheDocument();
     expect(getConvoReqState()).toEqual({ todos: [{ id: "a" }] });
+  });
+
+  it("should rewind the context window usage to the retried turn", async () => {
+    setup();
+
+    mockAgentEndpoint({
+      events: turnEvents({
+        messageId: "msg_1",
+        text: "first reply",
+        contextTokens: 520,
+      }),
+    });
+    await enterChatMessage("first prompt");
+    expect(await screen.findByText("first reply")).toBeInTheDocument();
+    await expectContextUsage(52);
+
+    mockAgentEndpoint({
+      events: turnEvents({
+        messageId: "msg_2",
+        text: "second reply",
+        contextTokens: 640,
+      }),
+    });
+    await enterChatMessage("second prompt");
+    expect(await screen.findByText("second reply")).toBeInTheDocument();
+    await expectContextUsage(64);
+
+    // the regenerated turn reports no usage of its own, so 52% can only come
+    // from the rewind
+    mockAgentEndpoint({
+      events: turnEvents({ messageId: "msg_3", text: "regenerated reply" }),
+    });
+    await userEvent.click(
+      await screen.findByTestId("metabot-chat-message-retry"),
+    );
+    expect(await screen.findByText("regenerated reply")).toBeInTheDocument();
+    await expectContextUsage(52);
   });
 
   it("should stamp the user message with the id it sent", async () => {
