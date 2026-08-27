@@ -91,22 +91,17 @@ describe("scenarios > monitor > content diagnostics > permissions", () => {
       );
     });
 
-    // Monitoring permission gives access to some of Monitor's sections, but the diagnostics pages
-    // require being an admin or an analyst, which this user is neither of.
-    it("keeps the section from a monitoring user who is not an analyst", () => {
+    it("lets in a monitoring user who is not an analyst", () => {
       H.updateAdvancedPermissionsGraph({
         [ALL_USERS_GROUP_ID]: { monitoring: "yes" },
       });
       cy.signInAsNormalUser();
 
       cy.visit("/monitor");
-      H.main().should("be.visible");
-      cy.findByRole("link", { name: /Content diagnostics/ }).should(
-        "not.exist",
-      );
+      cy.findByRole("link", { name: /Content diagnostics/ }).should("exist");
 
-      cy.visit(CONTENT_DIAGNOSTICS_PATH);
-      cy.location("pathname").should("eq", "/unauthorized");
+      visitContentDiagnosticsTab("stale");
+      cy.location("pathname").should("eq", CONTENT_DIAGNOSTICS_PATH);
     });
   });
 });
