@@ -385,6 +385,8 @@
                       (project-id)
                       (track-debounce-seconds))))))
 
+(def ^:private old-dataset-name-pattern "sha_%")
+
 (defn- old-dataset-names
   "Names of test datasets older than `hours`: tracked ones nothing has accessed in that long, plus untracked ones
   created that long ago. Excludes the current `test-data`, which [[destroy-dataset!]] refuses to delete anyway.
@@ -396,18 +398,16 @@
     (into []
           (comp (map first)
                 (remove #(= % current-test-data)))
-          (execute! (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
-                         " WHERE `name` LIKE 'sha_%%'"
-                         " AND `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%d hour))"
+          (execute! (str "(SELECT `name` FROM `%1$s.metabase_test_tracking.datasets`"
+                         " WHERE `name` LIKE '%2$s'"
+                         " AND `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%3$d hour))"
                          " UNION ALL "
-                         "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
-                           where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
-                           and d.schema_name like 'sha_%%'
-                           and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%d hour))")
+                         "(select schema_name from `%1$s`.INFORMATION_SCHEMA.SCHEMATA d
+                           where d.schema_name not in (select name from `%1$s.metabase_test_tracking.datasets`)
+                           and d.schema_name like '%2$s'
+                           and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -%3$d hour))")
                     (project-id)
-                    hours
-                    (project-id)
-                    (project-id)
+                    old-dataset-name-pattern
                     hours))))
 
 (defn- drop-datasets!
