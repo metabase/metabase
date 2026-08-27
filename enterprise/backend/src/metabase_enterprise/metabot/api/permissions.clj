@@ -8,7 +8,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.scope :as scope]
    [metabase.settings.core :as setting]
-   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (def ^:private perm-type-enum
@@ -98,20 +97,11 @@
       (setting/restore-cache!)
       (throw e))))
 
-(defn- check-mode-switchable!
-  "Throw a 400 when [[metabot-settings/metabot-advanced-permissions]] is forced by an environment variable.
-  Writing the setting would then have no effect, while the associated row deletions would leave the instance in a
-  state that neither mode describes."
-  []
-  (api/check-400 (not (setting/env-var-value :metabot-advanced-permissions))
-                 (tru "The permission mode is set by the MB_METABOT_ADVANCED_PERMISSIONS environment variable.")))
-
 (api.macros/defendpoint :post "/advanced" :- permissions-response-schema
   "Switch to group-level permissions. Removes the permissions of All Users and All tenant users, so nobody has
    access until they are in a group that grants it."
   []
   (api/check-superuser)
-  (check-mode-switchable!)
   (switch-mode! true)
   (permissions-response))
 
@@ -120,7 +110,6 @@
    and All tenant users."
   []
   (api/check-superuser)
-  (check-mode-switchable!)
   (switch-mode! false)
   (permissions-response))
 
