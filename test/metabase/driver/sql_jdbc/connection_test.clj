@@ -558,10 +558,13 @@
                                         :ssl true))]
           (testing "Connection spec is configured with AWS wrapper"
             (let [spec (sql-jdbc.conn/connection-details->spec :mysql iam-db-details)]
-              (is (= "aws-wrapper:mysql" (:subprotocol spec)))
+              (is (= "aws-wrapper:mariadb" (:subprotocol spec)))
               (is (= "software.amazon.jdbc.ds.AwsWrapperDataSource" (:classname spec)))
               (is (= "iam" (:wrapperPlugins spec)))
-              (is (= "VERIFY_CA" (:sslMode spec))))))))))
+              (is (= "VERIFY_CA" (:sslMode spec)))
+              (testing "and says SSL via sslMode only — mariadb 3.x's legacy handler escalates
+                        useSSL to verify-full, clobbering sslMode"
+                (is (not (contains? spec :useSSL)))))))))))
 
 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}

@@ -707,8 +707,11 @@
    :useUnicode           true
    :characterEncoding    "UTF8"
    :characterSetResults  "UTF8"
-   ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
-   :useCompression       true
+   ;; Protocol compression (formerly enabled here) is intentionally OFF: mariadb-java-client 3.x hangs the
+   ;; connection when `useCompression=true` is combined with `LOAD DATA LOCAL INFILE` — the upload path —
+   ;; against MySQL and MariaDB alike (verified 3.3.3 through 3.5.9 vs MySQL 8.4/26.7, MariaDB 12.3; the
+   ;; 2.x connector handled it fine). Users can re-enable compression via additional-options, at the cost
+   ;; of hanging uploads until the driver bug is fixed.
    ;; record transaction isolation level and auto-commit locally, and avoid hitting the DB if we do something like
    ;; `.setTransactionIsolation()` to something we previously set it to. Since we do this every time we run a
    ;; query (see [[metabase.driver.sql-jdbc.execute/set-best-transaction-level!]]) this should speed up things a bit by
@@ -760,14 +763,22 @@
     (merge
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
-     {:useSSL (boolean ssl?)}
+     ;; No :useSSL for IAM — mariadb 3.x's legacy-SSL handler escalates `useSSL` to verify-full,
+     ;; clobbering the :sslMode below (breaks hostname-mismatched endpoints like RDS Proxy custom
+     ;; endpoints); see [[metabase.app-db.spec]] for the appdb equivalent
+     (when-not use-iam?
+       {:useSSL (boolean ssl?)})
      (let [details (cond-> details
                      ssl-cert?
                      (set/rename-keys {:ssl-cert :serverSslCert})
 
                      use-iam?
                      (->
-                      (assoc :subprotocol "aws-wrapper:mysql"
+                      ;; the wrapper's `mariadb` protocol, not `mysql`: `mysql` resolves to Connector/J
+                      ;; (absent from the classpath) and only connects via a DriverManager fallback that
+                      ;; strips the query string; `mariadb` hands the driver a jdbc:mariadb: URL it
+                      ;; accepts unconditionally. See [[metabase.app-db.spec]]
+                      (assoc :subprotocol "aws-wrapper:mariadb"
                              :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
                              :sslMode "VERIFY_CA"
                              :wrapperPlugins "iam")
@@ -854,19 +865,28 @@
 ;;
 ;; There is currently no way to tell whether the column is the result of a `timediff()` call (i.e., a duration) or a
 ;; normal `LocalTime` -- JDBC doesn't have interval/duration type enums. `java.time.LocalTime`only accepts values of
-;; hour between 0 and 23 (inclusive). The MariaDB JDBC driver's implementations of `(.getObject rs i
-;; java.time.LocalTime)` will throw Exceptions in these cases.
+;; hour between 0 and 23 (inclusive), so those values must come back as their string representations instead.
 ;;
-;; Thus we should attempt to fetch temporal results the normal way and fall back to string representations for cases
-;; where the values are unparseable.
+;; We can't rely on `(.getObject rs i java.time.LocalTime)` failing for them: mariadb-java-client 2.x threw, but 3.x
+;; silently wraps out-of-range values modulo 24 hours (`25:00:00` → `01:00`, `-01:00:00` → `23:00`). So look at the
+;; string form first and only go through the normal read when the value is an in-range time of day.
 (defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/TIME]
   [driver ^ResultSet rs rsmeta ^Integer i]
   (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/TIME]) driver rs rsmeta i)]
     (fn read-time-thunk []
-      (try
-        (parent-thunk)
-        (catch Throwable _
-          (.getString rs i))))))
+      (let [s (.getString rs i)]
+        (cond
+          (nil? s)
+          nil
+
+          ;; negative, or hours segment ≥ 24: not a time of day -- hand back the string
+          (re-find #"^-|^(?:2[4-9]|[3-9]\d|\d{3,}):" s)
+          s
+
+          :else
+          (try
+            (parent-thunk)
+            (catch Throwable _ s)))))))
 
 ;; Mysql 8.1+ returns results of YEAR(..) function having a YEAR type. In Mysql 8.0.33, return value of that function
 ;; has an integral type. Let's make the returned values consistent over mysql versions.

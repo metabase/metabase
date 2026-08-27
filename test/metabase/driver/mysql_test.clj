@@ -344,7 +344,7 @@
 
 (deftest ^:parallel connection-spec-test-3
   (testing "Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)"
-    (is (=? {:useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true"}
+    (is (=? {:useSSL true, :subname "//localhost:3306/my_db?permitMysqlScheme=true&useSSL=true&trustServerCertificate=true"}
             (sql-jdbc.conn/connection-details->spec :mysql
                                                     (assoc sample-connection-details
                                                            :ssl false
@@ -353,7 +353,7 @@
 (deftest ^:parallel connection-spec-test-4
   (testing "A program_name specified in additional-options is not overwritten by us"
     (let [conn-attrs "connectionAttributes=program_name:my_custom_value"]
-      (is (=? {:subname (str "//localhost:3306/my_db?" conn-attrs)
+      (is (=? {:subname (str "//localhost:3306/my_db?permitMysqlScheme=true&" conn-attrs)
                :useSSL false
                ;; because program_name was in additional-options, we shouldn't use emit :connectionAttributes
                :connectionAttributes (symbol "nil #_\"key is not present.\"")}

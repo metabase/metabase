@@ -7,7 +7,6 @@
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.interface :as mi]
-   [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [next.jdbc.result-set :as rs]
@@ -75,7 +74,7 @@
       (.setAutoCommit conn false)
       (try
         (with-open [stmt (doto (sql-jdbc.execute/prepared-statement driver conn sql params)
-                           (u.connection/set-query-timeout! *query-timeout-seconds*))
+                           (.setQueryTimeout *query-timeout-seconds*))
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (rs/datafiable-result-set rs conn {}))
         (finally
