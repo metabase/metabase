@@ -34,43 +34,52 @@ jobs:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: | #js
             const fs = require('fs');
+            const path = require('path');
             const { owner, repo } = context.repo;
             const pr = context.payload.pull_request;
             const author = pr.user.login;
             const registry = JSON.parse(fs.readFileSync('.github/reviewer-rotation.json', 'utf-8'));
-            const team = registry.teams.find((t) => t.members.includes(author));
+            const team = registry.teams.find((t) => t.pools.some((pool) => pool.members.includes(author)));
 
             if (!team) {
               core.info(`${author} is not in .github/reviewer-rotation.json, skipping`);
               return;
             }
 
-            const alreadyHandled = async () => {
+            const files = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: pr.number, per_page: 100 });
+            const extensions = new Set(files.map((f) => path.extname(f.filename)));
+            const matchedPools = team.pools.filter((pool) => pool.extensions.some((ext) => extensions.has(ext)));
+            if (matchedPools.length === 0) {
+              core.info(`no changed files match any pool of ${team.name}, skipping`);
+              return;
+            }
+            core.info(`matched pools: ${matchedPools.map((pool) => pool.name).join(', ')}`);
+
+            const { data: reviews } = await github.rest.pulls.listReviews({ owner, repo, pull_number: pr.number });
+            const reviewedBy = new Set(reviews.map((r) => r.user?.login));
+
+            const openPools = async () => {
               const { data: fresh } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
               if (fresh.draft) {
                 core.info('PR is back to draft, skipping');
-                return true;
+                return [];
               }
-              if (fresh.requested_reviewers.length > 0) {
-                core.info(`reviewers already requested: ${fresh.requested_reviewers.map((u) => u.login).join(', ')}, skipping`);
+              const requested = new Set(fresh.requested_reviewers.map((u) => u.login));
+              return matchedPools.filter((pool) => {
+                const handledBy = pool.members.find((login) => requested.has(login) || reviewedBy.has(login));
+                if (handledBy) {
+                  core.info(`${pool.name}: ${handledBy} already requested or reviewed, skipping`);
+                  return false;
+                }
+                if (pool.members.every((login) => login === author)) {
+                  core.info(`${pool.name}: empty reviewer pool, skipping`);
+                  return false;
+                }
                 return true;
-              }
-              return false;
+              });
             };
 
-            if (await alreadyHandled()) {
-              return;
-            }
-
-            const { data: reviews } = await github.rest.pulls.listReviews({ owner, repo, pull_number: pr.number });
-            if (reviews.some((r) => r.user?.login !== author)) {
-              core.info('PR already has reviews, skipping');
-              return;
-            }
-
-            const pool = team.members.filter((login) => login !== author);
-            if (pool.length === 0) {
-              core.info(`empty reviewer pool for ${team.name}, skipping`);
+            if ((await openPools()).length === 0) {
               return;
             }
 
@@ -115,49 +124,66 @@ jobs:
               return { login, load, last };
             };
 
-            const ranked = [];
-            for (const login of pool) {
-              ranked.push(await stats(login));
+            const statsCache = new Map();
+            const rankPool = async (pool) => {
+              const ranked = [];
+              for (const login of pool.members.filter((login) => login !== author)) {
+                if (!statsCache.has(login)) {
+                  statsCache.set(login, await stats(login));
+                }
+                ranked.push(statsCache.get(login));
+              }
+              ranked.sort((a, b) => a.load - b.load || a.last - b.last || a.login.localeCompare(b.login));
+              core.info(`${pool.name} load in last ${team.loadWindowDays}d: ${ranked.map((r) => `${r.login} (${r.load})`).join(', ')}`);
+              return { pool, ranked, pick: ranked[0].login };
+            };
+
+            const picks = [];
+            for (const pool of matchedPools) {
+              picks.push(await rankPool(pool));
             }
-            ranked.sort((a, b) => a.load - b.load || a.last - b.last || a.login.localeCompare(b.login));
 
-            core.info(`load in last ${team.loadWindowDays}d: ${ranked.map((r) => `${r.login} (${r.load})`).join(', ')}`);
-            const pick = ranked[0].login;
-            core.info(`picked ${pick}${team.githubTeam ? ` + ${owner}/${team.githubTeam}` : ''}`);
-
-            if (await alreadyHandled()) {
+            const stillOpen = new Set((await openPools()).map((pool) => pool.name));
+            const finalPicks = picks.filter((p) => stillOpen.has(p.pool.name));
+            if (finalPicks.length === 0) {
               return;
             }
+
+            const reviewers = finalPicks.map((p) => p.pick);
+            const teams = finalPicks.map((p) => p.pool.githubTeam).filter(Boolean);
+            core.info(`picked ${reviewers.join(', ')}${teams.length ? ` + ${teams.map((t) => `${owner}/${t}`).join(', ')}` : ''}`);
 
             const request = (params) =>
               github.rest.pulls.requestReviewers({ owner, repo, pull_number: pr.number, ...params });
 
-            let teamRequested = false;
-            if (team.githubTeam) {
+            let teamsRequested = false;
+            if (teams.length > 0) {
               try {
-                await request({ reviewers: [pick], team_reviewers: [team.githubTeam] });
-                teamRequested = true;
+                await request({ reviewers, team_reviewers: teams });
+                teamsRequested = true;
               } catch (e) {
-                core.warning(`could not request team ${team.githubTeam}: ${e.message}`);
+                core.warning(`could not request teams ${teams.join(', ')}: ${e.message}`);
               }
             }
-            if (!teamRequested) {
-              await request({ reviewers: [pick] });
+            if (!teamsRequested) {
+              await request({ reviewers });
             }
 
-            const loadRows = ranked.map((r) => `| ${r.login} | ${r.load} |`).join('\n');
+            const sections = finalPicks.map(({ pool, ranked, pick }) => [
+              `**${pool.name}: it's ${pick}!**${teamsRequested && pool.githubTeam ? ` Requested together with \`${owner}/${pool.githubTeam}\`.` : ''}`,
+              '',
+              `| Reviewer | PRs in last ${team.loadWindowDays}d |`,
+              '| --- | --- |',
+              ...ranked.map((r) => `| ${r.login} | ${r.load} |`),
+              '',
+            ]);
             const body = [
-              '### Who\'s that reviewer?',
+              "### Who's that reviewer?",
               '',
               '<details>',
               '<summary>🔍 Reveal</summary>',
               '',
-              `**It's ${pick}!**${teamRequested ? ` Requested together with \`${owner}/${team.githubTeam}\`.` : ''}`,
-              '',
-              `| Reviewer | PRs in last ${team.loadWindowDays}d |`,
-              '| --- | --- |',
-              loadRows,
-              '',
+              ...sections.flat(),
               '</details>',
             ].join('\n');
             await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });

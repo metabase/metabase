@@ -1,11 +1,23 @@
 {
-  "description": "Opt-in reviewer rotation. When a ready (non-draft) PR by one of `members` gets the `Reviewer-I-Choose-You` label, or a labeled draft is flipped to ready, auto-request-reviewer.yml requests `githubTeam` plus the other member with the lowest review load in the last `loadWindowDays` days. Add your team below to opt in.",
+  "description": "Opt-in reviewer rotation. When a ready (non-draft) PR by a member of one of the team's pools gets the `Reviewer-I-Choose-You` label, or a labeled draft is flipped to ready, auto-request-reviewer.yml looks at the changed files and, for every pool whose `extensions` match, requests `githubTeam` plus the pool member (author excluded) with the lowest review load in the last `loadWindowDays` days. Add your team below to opt in.",
   "teams": [
     {
-      "name": "Gadget frontend",
-      "githubTeam": "core-frontend-gadget",
+      "name": "Gadget",
       "loadWindowDays": 14,
-      "members": ["chodorowicz", "egorgrushin", "olehk-mb", "stasgavrylov", "uladzimirdev"]
+      "pools": [
+        {
+          "name": "frontend",
+          "githubTeam": "core-frontend-gadget",
+          "extensions": [".ts", ".tsx", ".js", ".jsx", ".css"],
+          "members": ["chodorowicz", "egorgrushin", "olehk-mb", "stasgavrylov", "uladzimirdev"]
+        },
+        {
+          "name": "backend",
+          "githubTeam": "core-backend-gadget",
+          "extensions": [".clj", ".cljc", ".cljs", ".edn"],
+          "members": ["bronsa", "metatyb", "qnkhuat"]
+        }
+      ]
     }
   ]
 }
