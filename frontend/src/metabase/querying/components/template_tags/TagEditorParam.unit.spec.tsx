@@ -378,7 +378,7 @@ describe("TagEditorParam", () => {
         });
         const { setTemplateTag } = setup({ tag });
         await userEvent.type(
-          screen.getByTestId("field-alias-input"),
+          await screen.findByTestId("field-alias-input"),
           "p.created_at",
         );
         await userEvent.tab();
@@ -397,7 +397,7 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
       await userEvent.type(
-        screen.getByTestId("field-alias-input"),
+        await screen.findByTestId("field-alias-input"),
         " p.created_at ",
       );
       await userEvent.tab();
@@ -417,7 +417,7 @@ describe("TagEditorParam", () => {
           "widget-type": type === "dimension" ? "date/all-options" : undefined,
         });
         const { setTemplateTag } = setup({ tag });
-        await userEvent.clear(screen.getByTestId("field-alias-input"));
+        await userEvent.clear(await screen.findByTestId("field-alias-input"));
         await userEvent.tab();
         expect(setTemplateTag).toHaveBeenCalledWith({
           ...tag,
@@ -450,9 +450,13 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
-      await userEvent.click(screen.getByTestId("filter-widget-type-select"));
+      await userEvent.click(
+        await screen.findByTestId("filter-widget-type-select"),
+      );
       await userEvent.click(screen.getByText("String"));
-      await userEvent.click(screen.getByTestId("filter-widget-type-select"));
+      await userEvent.click(
+        await screen.findByTestId("filter-widget-type-select"),
+      );
       await userEvent.click(screen.getByText("String contains"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -472,9 +476,13 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
-      await userEvent.click(screen.getByTestId("filter-widget-type-select"));
+      await userEvent.click(
+        await screen.findByTestId("filter-widget-type-select"),
+      );
       await userEvent.click(screen.getByText("String starts with"));
-      await userEvent.click(screen.getByTestId("filter-widget-type-select"));
+      await userEvent.click(
+        await screen.findByTestId("filter-widget-type-select"),
+      );
       await userEvent.click(screen.getByText("String"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -493,7 +501,9 @@ describe("TagEditorParam", () => {
       });
       setup({ tag });
 
-      await userEvent.click(screen.getByTestId("filter-widget-type-select"));
+      await userEvent.click(
+        await screen.findByTestId("filter-widget-type-select"),
+      );
       expect(screen.getByText("String")).toBeInTheDocument();
     });
   });

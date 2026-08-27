@@ -5,4 +5,9 @@ export type TimelineEventGroup = {
   events: TimelineEvent[];
 };
 
-export type TimelineEventsModel = TimelineEventGroup[];
+export type TimelineEventCluster = {
+  date: string;
+  groups: TimelineEventGroup[];
+};
+
+export type TimelineEventsModel = TimelineEventCluster[];

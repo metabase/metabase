@@ -81,13 +81,24 @@
           (is (= stats-with-warehouse-values
                  (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))
 
-(deftest chart-stats-reads-pre-encryption-plaintext-test
-  (testing "rows written before this column was encrypted keep reading — `maybe-decrypt` passes
-            plaintext through, so no migration is needed"
-    (let [id (query-result-row! nil)]
-      (t2/query-one {:update :exploration_query_result
-                     :set    {:chart_stats (pr-str stats-with-warehouse-values)}
-                     :where  [:= :id id]})
-      (encryption-test/with-secret-key "chart-stats-encryption-test-key"
+(deftest chart-stats-rejects-plaintext-when-key-set-test
+  (testing "with a key set, encrypted chart_stats reads back but a plaintext value written directly via SQL is rejected"
+    (encryption-test/with-secret-key "chart-stats-encryption-test-key"
+      (let [id (query-result-row! stats-with-warehouse-values)]
+        (is (= stats-with-warehouse-values
+               (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))
+        (t2/query-one {:update :exploration_query_result
+                       :set    {:chart_stats (pr-str stats-with-warehouse-values)}
+                       :where  [:= :id id]})
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))))))
+
+(deftest chart-stats-plaintext-allowed-without-key-test
+  (testing "with no key set there is nothing to decrypt with, so plaintext chart_stats reads back as-is"
+    (encryption-test/with-secret-key nil
+      (let [id (query-result-row! nil)]
+        (t2/query-one {:update :exploration_query_result
+                       :set    {:chart_stats (pr-str stats-with-warehouse-values)}
+                       :where  [:= :id id]})
         (is (= stats-with-warehouse-values
                (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))))))

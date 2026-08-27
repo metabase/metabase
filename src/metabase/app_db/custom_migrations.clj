@@ -135,17 +135,17 @@
   (comp encryption/maybe-encrypt json-in))
 
 (defn- encrypted-json-out
-  "Should mirror [[metabase.models.interface/encrypted-json-out]]"
+  "Lenient deserialize of an encrypted-json column that tolerates plaintext at rest, for reading legacy rows during
+  migrations. Mirrors [[metabase.models.interface/encrypted-json-in]]'s inverse from before that read became strict."
   [v]
-  (let [decrypted (encryption/maybe-decrypt v)]
-    (try
-      (json/decode+kw decrypted)
-      (catch Throwable e
-        (if (or (encryption/possibly-encrypted-string? decrypted)
-                (encryption/possibly-encrypted-bytes? decrypted))
-          (log/errorf "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?: %s" (ex-message e))
-          (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
-        v))))
+  (try
+    (json/decode+kw (encryption/maybe-decrypt-accepting-plaintext v))
+    (catch Throwable e
+      (if (or (encryption/possibly-encrypted-string? v)
+              (encryption/possibly-encrypted-bytes? v))
+        (log/errorf "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?: %s" (ex-message e))
+        (log/errorf "Error parsing JSON: %s" (ex-message e)))  ; same message as in `json-out`
+      v)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -1406,7 +1406,7 @@
 (defn- raw-setting-value [key]
   (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
           :value
-          encryption/maybe-decrypt))
+          encryption/maybe-decrypt-accepting-plaintext))
 
 (define-reversible-migration MigrateUploadsSettings
   (do (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)
@@ -2242,3 +2242,63 @@
 (define-reversible-migration MigrateLlmProviderSettings
   (llm-providers/migrate-up!)
   (llm-providers/migrate-down!))
+
+(define-migration EncryptAuthIdentityCredentials
+  (when (encryption/default-encryption-enabled?)
+    (run! (fn [{:keys [id credentials]}]
+            (when (and (string? credentials)
+                       (not (str/blank? credentials))
+                       (not (encryption/possibly-encrypted-string? credentials)))
+              (t2/query {:update :auth_identity
+                         :set    {:credentials (encryption/maybe-encrypt credentials)}
+                         :where  [:= :id id]})))
+          (t2/reducible-query {:select [:id :credentials]
+                               :from   [:auth_identity]}))))
+
+(define-reversible-migration EncryptApiKeys
+  (when (encryption/default-encryption-enabled?)
+    (run! (fn [{:keys [id] k :key}]
+            (when (and (string? k)
+                       (not (str/blank? k))
+                       (not (encryption/possibly-encrypted-string? k)))
+              (t2/query {:update :api_key
+                         :set    {:key (encryption/maybe-encrypt k)}
+                         :where  [:= :id id]})))
+          (t2/reducible-query {:select [:id :key]
+                               :from   [:api_key]})))
+  (when (encryption/default-encryption-enabled?)
+    (run! (fn [{:keys [id] k :key}]
+            (when (and (string? k)
+                       (not (str/blank? k))
+                       (encryption/possibly-encrypted-string? k))
+              (t2/query {:update :api_key
+                         :set    {:key (encryption/maybe-decrypt k)}
+                         :where  [:= :id id]})))
+          (t2/reducible-query {:select [:id :key]
+                               :from   [:api_key]}))))
+
+(define-reversible-migration EncryptPublicUuids
+  (when (encryption/default-encryption-enabled?)
+    (doseq [table [:report_card :report_dashboard :action :document]]
+      (run! (fn [{:keys [id public_uuid]}]
+              (when (and (string? public_uuid)
+                         (not (str/blank? public_uuid))
+                         (not (encryption/possibly-encrypted-string? public_uuid)))
+                (t2/query {:update table
+                           :set    {:public_uuid (encryption/maybe-encrypt public_uuid)}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :public_uuid]
+                                 :from   [table]
+                                 :where  [:!= :public_uuid nil]}))))
+  (when (encryption/default-encryption-enabled?)
+    (doseq [table [:report_card :report_dashboard :action :document]]
+      (run! (fn [{:keys [id public_uuid]}]
+              (when (and (string? public_uuid)
+                         (not (str/blank? public_uuid))
+                         (encryption/possibly-encrypted-string? public_uuid))
+                (t2/query {:update table
+                           :set    {:public_uuid (encryption/maybe-decrypt public_uuid)}
+                           :where  [:= :id id]})))
+            (t2/reducible-query {:select [:id :public_uuid]
+                                 :from   [table]
+                                 :where  [:!= :public_uuid nil]})))))
