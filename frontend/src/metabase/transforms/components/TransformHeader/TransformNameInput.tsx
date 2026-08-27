@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
-import { useUpdateTransformMutation } from "metabase/api";
 import { PaneHeaderInput } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { NAME_MAX_LENGTH } from "metabase/transforms/constants";
 import type { Transform } from "metabase-types/api";
+
+import { useUpdateTransformMutation } from "../../api/transform";
 
 type TransformNameInputProps = {
   transform: Transform;

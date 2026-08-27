@@ -1,5 +1,9 @@
-import { useGetTransformQuery, useLazyGetTransformQuery } from "metabase/api";
 import { PLUGIN_TRANSFORMS, type TransformsPlugin } from "metabase/plugins";
+
+import {
+  useGetTransformQuery,
+  useLazyGetTransformQuery,
+} from "./api/transform";
 
 const useLazyTransformQuery: TransformsPlugin["useLazyGetTransformQuery"] =
   () => {

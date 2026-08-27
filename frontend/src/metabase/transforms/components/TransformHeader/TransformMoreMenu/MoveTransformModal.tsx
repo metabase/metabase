@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { c } from "ttag";
 
-import { useUpdateTransformMutation } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import type {
   EntityPickerOptions,
@@ -10,6 +9,8 @@ import type {
 } from "metabase/common/components/Pickers";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import type { Transform } from "metabase-types/api";
+
+import { useUpdateTransformMutation } from "../../../api/transform";
 
 const TRANSFORM_COLLECTION_PICKER_OPTIONS: EntityPickerOptions = {
   hasSearch: false,

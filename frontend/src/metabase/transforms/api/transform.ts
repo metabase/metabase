@@ -1,3 +1,14 @@
+import { Api } from "metabase/api";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideInspectorLensTags,
+  provideTransformListTags,
+  provideTransformRunListTags,
+  provideTransformTags,
+  tag,
+} from "metabase/api/tags";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   CancelJobRunRequest,
@@ -26,17 +37,6 @@ import type {
 } from "metabase-types/api";
 import { PENDING_RUN_ID } from "metabase-types/api";
 
-import { Api } from "./api";
-import {
-  idTag,
-  invalidateTags,
-  listTag,
-  provideInspectorLensTags,
-  provideTransformListTags,
-  provideTransformRunListTags,
-  provideTransformTags,
-  tag,
-} from "./tags";
 
 export const transformApi = Api.injectEndpoints({
   endpoints: (builder) => ({

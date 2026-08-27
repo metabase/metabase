@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import { useGetInspectorLensQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useGetInspectorLensQuery } from "metabase/transforms/api/transform";
 import { Center, Stack } from "metabase/ui";
 import type { InspectorDiscoveryResponse, Transform } from "metabase-types/api";
 

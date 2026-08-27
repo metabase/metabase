@@ -11,7 +11,6 @@ import {
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import {
   skipToken,
-  useListTransformsQuery,
   useListUserAttributesQuery,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
@@ -21,6 +20,7 @@ import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
+import { useListTransformsQuery } from "metabase/transforms/api/transform";
 import {
   Alert,
   Box,
