@@ -5,7 +5,6 @@ import { jt, t } from "ttag";
 import {
   skipToken,
   useGetFieldQuery,
-  useResetCheckpointMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -13,6 +12,8 @@ import { CheckpointValue } from "metabase/transforms/components/CheckpointValue"
 import { isTransformRunning } from "metabase/transforms/utils";
 import { Box, Button, Code, Group, Icon, Text } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
+
+import { useResetCheckpointMutation } from "../../../api/transform";
 
 export function ResetCheckpointSection({
   transform,

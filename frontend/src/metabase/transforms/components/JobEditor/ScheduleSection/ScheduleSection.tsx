@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
-import { useCancelJobRunMutation } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   Schedule,
@@ -23,6 +22,7 @@ import { isResourceNotFoundError } from "metabase/utils/errors";
 import type { ScheduleDisplayType } from "metabase-types/api";
 
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
+import { useCancelJobRunMutation } from "../../../api/transform";
 import { useRunTransformJobMutation } from "../../../api/transform-job";
 import { RunButton } from "../../RunButton";
 import { RunStatus } from "../../RunStatus";

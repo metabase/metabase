@@ -4,7 +4,6 @@ import { t } from "ttag";
 import {
   collectionApi,
   snippetApi,
-  transformApi,
   useUpdateCollectionMutation,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
@@ -18,6 +17,7 @@ import {
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
+import { transformApi } from "metabase/transforms/api/transform";
 import {
   ActionIcon,
   Box,

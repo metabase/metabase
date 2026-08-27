@@ -3,14 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useCancelCurrentTransformRunMutation,
-  useListDagRunTransformRunsQuery,
-  useRunTransformDagMutation,
-  useRunTransformMutation,
-  useUpdateTransformMutation,
-} from "metabase/api";
+import { skipToken } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
@@ -41,6 +34,13 @@ import {
   trackTransformTriggerDagRun,
   trackTransformTriggerManualRun,
 } from "../../../analytics";
+import {
+  useCancelCurrentTransformRunMutation,
+  useListDagRunTransformRunsQuery,
+  useRunTransformDagMutation,
+  useRunTransformMutation,
+  useUpdateTransformMutation,
+} from "../../../api/transform";
 import { RunButton } from "../../../components/RunButton";
 import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";

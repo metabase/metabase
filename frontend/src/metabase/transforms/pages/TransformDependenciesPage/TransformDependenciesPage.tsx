@@ -1,4 +1,4 @@
-import { skipToken, useGetTransformQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
@@ -7,6 +7,7 @@ import { useTransformPermissions } from "metabase/transforms/hooks/use-transform
 import { Card, Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { useGetTransformQuery } from "../../api/transform";
 import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "../../components/TransformHeader";
 
