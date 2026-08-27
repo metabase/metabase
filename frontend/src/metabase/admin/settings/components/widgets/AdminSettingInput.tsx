@@ -105,8 +105,8 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
       return;
     }
     const { error } = await updateSetting({ key: name, value: newValue });
-    if (error && inputType === "boolean") {
-      // remount resets a toggle; a text input would lose what the user typed
+    if (error && ["boolean", "select", "radio"].includes(inputType)) {
+      // remount resets a click-driven input; a text input would lose what the user typed
       setResetKey((key) => key + 1);
     }
   };

@@ -488,6 +488,51 @@ describe("AdminSettingInput", () => {
     });
   });
 
+  it("should revert a select input when the save fails", async () => {
+    setup({
+      title: "Humanization",
+      name: "humanization-strategy",
+      inputType: "select",
+      options: [
+        { label: "None", value: "none" },
+        { label: "Simple", value: "simple" },
+      ],
+    });
+    setupUpdateSettingEndpoint({ status: 500 });
+
+    const input = await screen.findByRole("textbox");
+    expect(input).toHaveValue("None");
+    await userEvent.click(input);
+    await userEvent.click(await screen.findByText("Simple"));
+
+    await screen.findByText("Error saving humanization-strategy");
+    await waitFor(() => {
+      expect(screen.getByRole("textbox")).toHaveValue("None");
+    });
+  });
+
+  it("should revert a radio input when the save fails", async () => {
+    setup({
+      title: "Humanization",
+      name: "humanization-strategy",
+      inputType: "radio",
+      options: [
+        { label: "None", value: "none" },
+        { label: "Simple", value: "simple" },
+      ],
+    });
+    setupUpdateSettingEndpoint({ status: 500 });
+
+    const inputs = await screen.findAllByRole("radio");
+    expect(inputs[0]).toBeChecked();
+    await userEvent.click(screen.getByText("Simple"));
+
+    await screen.findByText("Error saving humanization-strategy");
+    await waitFor(() => {
+      expect(screen.getAllByRole("radio")[0]).toBeChecked();
+    });
+  });
+
   it("should keep a typed value when the save fails", async () => {
     setup({
       title: "Site Name",
