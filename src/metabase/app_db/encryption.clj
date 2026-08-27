@@ -33,7 +33,11 @@
    [:channel :details]
    [:api_key :key]
    [:workspace_database :database_details]
-   [:auth_identity :credentials]])
+   [:auth_identity :credentials]
+   [:report_card :public_uuid]
+   [:report_dashboard :public_uuid]
+   [:action :public_uuid]
+   [:document :public_uuid]])
 
 (def ^:private encrypted-bytes-columns
   "`^bytes` columns encrypted at rest via `mi/transform-secret-value` (a strict `maybe-decrypt-bytes` on read). Unlike
